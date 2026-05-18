@@ -118,6 +118,7 @@ impl AttributeTemplate {
     pub fn suggestions(
         &self,
         style: AttrSuggestionStyle,
+        wrap_with_unsafe: bool,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
         let (start, macro_call, end) = match style {
@@ -129,20 +130,29 @@ impl AttributeTemplate {
 
         let mut suggestions = vec![];
 
+        let (maybe_unsafe_start, maybe_unsafe_end) =
+            if wrap_with_unsafe { ("unsafe(", ")") } else { ("", "") };
+
         if self.word {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
-            suggestions.push(format!("{start}{name}{end}"));
+            suggestions.push(format!("{maybe_unsafe_start}{start}{name}{end}{maybe_unsafe_end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!("{start}{name}{macro_call}({descr}){end}"));
+                suggestions.push(format!(
+                    "{maybe_unsafe_start}{start}{name}{macro_call}({descr}){end}{maybe_unsafe_end}"
+                ));
             }
         }
-        suggestions.extend(self.one_of.iter().map(|&word| format!("{start}{name}({word}){end}")));
+        suggestions.extend(self.one_of.iter().map(|&word| {
+            format!("{maybe_unsafe_start}{start}{name}({word}){end}{maybe_unsafe_end}")
+        }));
         if let Some(descr) = self.name_value_str {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
-                suggestions.push(format!("{start}{name} = \"{descr}\"{end}"));
+                suggestions.push(format!(
+                    "{maybe_unsafe_start}{start}{name} = \"{descr}\"{end}{maybe_unsafe_end}"
+                ));
             }
         }
         suggestions.sort();

@@ -327,8 +327,11 @@ pub fn parse_cfg_attr(
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
-                    let suggestions = CFG_ATTR_TEMPLATE
-                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr);
+                    let suggestions = CFG_ATTR_TEMPLATE.suggestions(
+                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        matches!(cfg_attr.get_normal_item().unsafety, rustc_ast::Safety::Unsafe(_)),
+                        sym::cfg_attr,
+                    );
                     e.with_span_suggestions(
                         cfg_attr.span,
                         "must be of the form",
@@ -360,8 +363,11 @@ pub fn parse_cfg_attr(
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
-                    CFG_ATTR_TEMPLATE
-                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
+                    CFG_ATTR_TEMPLATE.suggestions(
+                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        matches!(cfg_attr.get_normal_item().unsafety, rustc_ast::Safety::Unsafe(_)),
+                        sym::cfg_attr,
+                    ),
                 ),
             });
         }
