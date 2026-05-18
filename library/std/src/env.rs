@@ -1091,7 +1091,6 @@ pub mod consts {
     /// * `"uefi"`
     /// * `"fuchsia"`
     /// * `"haiku"`
-    /// * `"hermit"`
     /// * `"watchos"`
     /// * `"visionos"`
     /// * `"tvos"`
