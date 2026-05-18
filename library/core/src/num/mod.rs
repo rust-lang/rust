@@ -1735,7 +1735,9 @@ macro_rules! from_str_int_impl {
             #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_radix(b\"1 \", 10).is_err());")]
             /// ```
             #[unstable(feature = "int_from_ascii", issue = "134821")]
-            #[inline]
+            // `inline(always)` so the body's `radix`-dependent `ilog` bound
+            // and fast-prefix size const-fold at literal-radix call sites.
+            #[inline(always)]
             pub const fn from_ascii_radix(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
