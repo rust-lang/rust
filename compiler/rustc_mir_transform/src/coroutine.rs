@@ -1302,13 +1302,21 @@ fn create_coroutine_resume_function<'tcx>(
 enum Operation {
     Resume,
     Drop,
+    AsyncDrop,
 }
 
 impl Operation {
     fn target_block(self, point: &SuspensionPoint<'_>) -> Option<BasicBlock> {
         match self {
             Operation::Resume => Some(point.resume),
-            Operation::Drop => point.drop,
+            Operation::Drop | Operation::AsyncDrop => point.drop,
+        }
+    }
+
+    fn resume_place<'tcx>(self, point: &SuspensionPoint<'tcx>) -> Option<Place<'tcx>> {
+        match self {
+            Operation::Resume | Operation::AsyncDrop => Some(point.resume_arg),
+            Operation::Drop => None,
         }
     }
 }
@@ -1339,12 +1347,14 @@ fn create_cases<'tcx>(
                     }
                 }
 
-                if operation == Operation::Resume && point.resume_arg != CTX_ARG.into() {
-                    // Move the resume argument to the destination place of the `Yield` terminator
+                // Move the resume argument to the destination place of the `Yield` terminator
+                if let Some(resume_arg) = operation.resume_place(point)
+                    && resume_arg != CTX_ARG.into()
+                {
                     statements.push(Statement::new(
                         source_info,
                         StatementKind::Assign(Box::new((
-                            point.resume_arg,
+                            resume_arg,
                             Rvalue::Use(Operand::Move(CTX_ARG.into()), WithRetag::Yes),
                         ))),
                     ));
