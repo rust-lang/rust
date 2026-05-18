@@ -9,7 +9,6 @@
 // errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
-#![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
@@ -635,11 +634,6 @@ mod patterns {
         let ();
         let (true,);
         let (true, false);
-    }
-
-    /// PatKind::Box
-    fn pat_box() {
-        let box pat;
     }
 
     /// PatKind::Deref

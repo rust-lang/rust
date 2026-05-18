@@ -1,8 +1,8 @@
-// Test bindings-after-at with box-patterns
+// Test bindings-after-at with deref patterns
 
 //@ run-pass
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {
@@ -12,13 +12,13 @@ enum MatchArm {
 
 fn test(x: Option<Box<i32>>) -> MatchArm {
     match x {
-        ref bar @ Some(box n) if n > 0 => {
+        ref bar @ Some(deref!(n)) if n > 0 => {
             // bar is a &Option<Box<i32>>
             assert_eq!(bar, &x);
 
             MatchArm::Arm(0)
         },
-        Some(ref bar @ box n) if n < 0 => {
+        Some(ref bar @ deref!(n)) if n < 0 => {
             // bar is a &Box<i32> here
             assert_eq!(**bar, n);
 
