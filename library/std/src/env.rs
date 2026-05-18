@@ -640,6 +640,7 @@ impl Error for JoinPathsError {
 /// ```
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[doc(alias = "home")]
 pub fn home_dir() -> Option<PathBuf> {
     paths_imp::home_dir()
 }

@@ -1570,6 +1570,7 @@ impl<T> SizedTypeProperties for T {}
 #[diagnostic::on_unmatch_args(
     note = "this macro expects a container type and a (nested) field path, like `offset_of!(Type, field)`"
 )]
+#[doc(alias = "memoffset")]
 #[allow_internal_unstable(builtin_syntax, core_intrinsics)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
