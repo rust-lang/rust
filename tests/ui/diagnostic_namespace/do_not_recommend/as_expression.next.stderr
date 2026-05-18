@@ -22,6 +22,26 @@ LL |     where
 LL |         T: AsExpression<Self::SqlType>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::check`
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `X: A` is not satisfied
+  --> $DIR/as_expression.rs:60:15
+   |
+LL |     X.start().foo().finish();
+   |               ^^^ unsatisfied trait bound
+   |
+help: the trait `A` is not implemented for `X`
+  --> $DIR/as_expression.rs:70:1
+   |
+LL | struct X;
+   | ^^^^^^^^
+note: required by a bound in `Ext::foo`
+  --> $DIR/as_expression.rs:79:23
+   |
+LL |     fn foo(self) -> Self
+   |        --- required by a bound in this associated function
+LL |     where
+LL |         Self: Sized + A;
+   |                       ^ required by this bound in `Ext::foo`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

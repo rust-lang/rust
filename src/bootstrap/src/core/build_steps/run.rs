@@ -12,7 +12,7 @@ use clap_complete::{Generator, shells};
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
-use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
+use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor, default_paths_to_vendor};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
@@ -275,9 +275,10 @@ impl Step for GenerateCopyright {
                 sync_args: Vec::new(),
                 versioned_dirs: true,
                 root_dir: builder.src.clone(),
-                output_dir: cache_dir.clone(),
+                output_dir: Some(cache_dir.clone()),
+                only_library_workspace: false,
             });
-            cache_dir
+            cache_dir.join(VENDOR_DIR)
         };
 
         let _guard = builder.group("generate-copyright");
