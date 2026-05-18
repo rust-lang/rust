@@ -1342,14 +1342,14 @@ fn check_with_config(
     };
     let sema = &Semantics::new(&db);
     let source_file = sema.parse(file_id);
+    let (editor, _) = SyntaxEditor::new(source_file.syntax().clone());
     let file = pos
         .and_then(|pos| source_file.syntax().token_at_offset(pos.expect_offset()).next()?.parent())
         .and_then(|it| ImportScope::find_insert_use_container(&it, sema))
         .unwrap_or_else(|| ImportScope {
-            kind: ImportScopeKind::File(source_file),
+            kind: ImportScopeKind::File(source_file.clone()),
             required_cfgs: vec![],
-        })
-        .clone_for_update();
+        });
     let path = ast::SourceFile::parse(&format!("use {path};"), span::Edition::CURRENT)
         .tree()
         .syntax()
@@ -1357,8 +1357,9 @@ fn check_with_config(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    insert_use(&file, path, config);
-    let result = file.as_syntax_node().ancestors().last().unwrap().to_string();
+    insert_use_with_editor(&file, path, config, &editor);
+    let edit = editor.finish();
+    let result = edit.new_root().to_string();
     assert_eq_text!(&trim_indent(ra_fixture_after), &result);
 }
 

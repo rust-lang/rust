@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, LintExpectationId};
+use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
@@ -779,7 +779,7 @@ fn has_allow_dead_code_or_lang_attr(
 ) -> Option<ComesFromAllowExpect> {
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
+        let lint_level = tcx.lint_level_spec_at_node(lint::builtin::DEAD_CODE, hir_id).level();
         matches!(lint_level, lint::Allow | lint::Expect)
     }
 
@@ -1035,7 +1035,7 @@ fn mark_live_symbols_and_ignored_derived_traits(
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level: (lint::Level, Option<LintExpectationId>),
+    level_plus: (lint::Level, Option<StableLintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
@@ -1082,10 +1082,13 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
+    fn def_lint_level_plus(
+        &self,
+        id: LocalDefId,
+    ) -> (lint::Level, Option<StableLintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        let level = self.tcx.lint_level_at_node(self.target_lint, hir_id);
-        (level.level, level.lint_id)
+        let level_spec = self.tcx.lint_level_spec_at_node(self.target_lint, hir_id);
+        (level_spec.level(), level_spec.lint_id())
     }
 
     fn dead_code_pub_in_binary_note(&self) -> Option<DeadCodePubInBinaryNote> {
@@ -1108,8 +1111,8 @@ impl<'tcx> DeadVisitor<'tcx> {
         let Some(&first_item) = dead_codes.first() else { return };
         let tcx = self.tcx;
 
-        let first_lint_level = first_item.level;
-        assert!(dead_codes.iter().skip(1).all(|item| item.level == first_lint_level));
+        let first_lint_level_plus = first_item.level_plus;
+        assert!(dead_codes.iter().skip(1).all(|item| item.level_plus == first_lint_level_plus));
 
         let names: Vec<_> = dead_codes.iter().map(|item| item.name).collect();
         let spans: Vec<_> = dead_codes
@@ -1266,9 +1269,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         if dead_codes.is_empty() {
             return;
         }
-        // FIXME: `dead_codes` should probably be morally equivalent to `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
-        dead_codes.sort_by_key(|v| v.level.0);
-        for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
+        // FIXME: `dead_codes` should probably be morally equivalent to
+        // `IndexMap<(Level, StableLintExpectationId), (DefId, Symbol)>`
+        dead_codes.sort_by_key(|v| v.level_plus.0);
+        for group in dead_codes.chunk_by(|a, b| a.level_plus == b.level_plus) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }
@@ -1277,7 +1281,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         let item = DeadItem {
             def_id: id,
             name: self.tcx.item_name(id.to_def_id()),
-            level: self.def_lint_level(id),
+            level_plus: self.def_lint_level_plus(id),
         };
         self.lint_at_single_level(&[&item], participle, None, ReportOn::NamedField);
     }
@@ -1381,8 +1385,8 @@ fn lint_dead_codes<'tcx>(
                     && !visitor.is_live_code(local_def_id)
                 {
                     let name = tcx.item_name(def_id);
-                    let level = visitor.def_lint_level(local_def_id);
-                    dead_codes.push(DeadItem { def_id: local_def_id, name, level });
+                    let level_plus = visitor.def_lint_level_plus(local_def_id);
+                    dead_codes.push(DeadItem { def_id: local_def_id, name, level_plus });
                 }
             }
         }
@@ -1408,8 +1412,8 @@ fn lint_dead_codes<'tcx>(
                 let def_id = variant.def_id.expect_local();
                 if !live_symbols.contains(&def_id) {
                     // Record to group diagnostics.
-                    let level = visitor.def_lint_level(def_id);
-                    dead_variants.push(DeadItem { def_id, name: variant.name, level });
+                    let level_plus = visitor.def_lint_level_plus(def_id);
+                    dead_variants.push(DeadItem { def_id, name: variant.name, level_plus });
                     continue;
                 }
 
@@ -1424,8 +1428,8 @@ fn lint_dead_codes<'tcx>(
                     .filter_map(|field| {
                         let def_id = field.did.expect_local();
                         if let ShouldWarnAboutField::Yes = visitor.should_warn_about_field(field) {
-                            let level = visitor.def_lint_level(def_id);
-                            Some(DeadItem { def_id, name: field.name, level })
+                            let level_plus = visitor.def_lint_level_plus(def_id);
+                            Some(DeadItem { def_id, name: field.name, level_plus })
                         } else {
                             None
                         }

@@ -240,7 +240,7 @@ impl MetaItemOrLitParser {
         }
     }
 
-    pub fn lit(&self) -> Option<&MetaItemLit> {
+    pub fn as_lit(&self) -> Option<&MetaItemLit> {
         match self {
             MetaItemOrLitParser::Lit(meta_item_lit) => Some(meta_item_lit),
             MetaItemOrLitParser::MetaItemParser(_) => None,

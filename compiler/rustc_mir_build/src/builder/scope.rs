@@ -892,7 +892,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let expr = &self.thir[value];
         let constant = match &expr.kind {
-            ExprKind::Adt(box AdtExpr { variant_index, fields, base, .. }) => {
+            ExprKind::Adt(AdtExpr { variant_index, fields, base, .. }) => {
                 assert!(matches!(base, AdtExprBase::None));
                 assert!(fields.is_empty());
                 ConstOperand {
@@ -1302,7 +1302,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .tcx
                 .hir_attrs(id)
                 .iter()
-                .any(|attr| Level::from_attr(attr.name(), || attr.id()).is_some())
+                .any(|attr| Level::from_opt_symbol(attr.name()).is_some())
             {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.

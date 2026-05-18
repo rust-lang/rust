@@ -13,7 +13,7 @@ use rustc_macros::{Decodable, Encodable, StableHash, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::errors::feature_err_issue;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
-use rustc_session::lint::{DeprecatedSinceKind, Level, Lint};
+use rustc_session::lint::{DeprecatedSinceKind, Lint};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
@@ -234,7 +234,7 @@ fn late_report_deprecation(
     // Calculating message for lint involves calling `self.def_path_str`,
     // which will by default invoke the expensive `visible_parent_map` query.
     // Skip all that work if the lint is allowed anyway.
-    if tcx.lint_level_at_node(lint, hir_id).level == Level::Allow {
+    if tcx.lint_level_spec_at_node(lint, hir_id).is_allow() {
         return;
     }
 

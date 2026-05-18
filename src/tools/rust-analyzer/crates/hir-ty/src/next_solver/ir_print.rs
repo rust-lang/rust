@@ -3,6 +3,8 @@
 use hir_def::signatures::{TraitSignature, TypeAliasSignature};
 use rustc_type_ir::{self as ty, ir_print::IrPrint};
 
+use crate::next_solver::TermId;
+
 use super::SolverDefId;
 use super::interner::DbInterner;
 
@@ -32,7 +34,7 @@ impl<'db> IrPrint<ty::AliasTerm<Self>> for DbInterner<'db> {
     }
 
     fn print_debug(t: &ty::AliasTerm<Self>, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        crate::with_attached_db(|db| match t.def_id {
+        crate::with_attached_db(|db| match t.def_id() {
             SolverDefId::TypeAliasId(id) => fmt.write_str(&format!(
                 "AliasTerm({:?}[{:?}])",
                 TypeAliasSignature::of(db, id).name.as_str(),
@@ -141,8 +143,8 @@ impl<'db> IrPrint<ty::ExistentialProjection<Self>> for DbInterner<'db> {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         crate::with_attached_db(|db| {
-            let id = match t.def_id {
-                SolverDefId::TypeAliasId(id) => id,
+            let id = match t.def_id.0 {
+                TermId::TypeAliasId(id) => id,
                 _ => panic!("Expected trait."),
             };
             fmt.write_str(&format!(
@@ -167,7 +169,7 @@ impl<'db> IrPrint<ty::ProjectionPredicate<Self>> for DbInterner<'db> {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         crate::with_attached_db(|db| {
-            let id = match t.projection_term.def_id {
+            let id = match t.projection_term.def_id() {
                 SolverDefId::TypeAliasId(id) => id,
                 _ => panic!("Expected trait."),
             };

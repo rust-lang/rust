@@ -256,10 +256,7 @@ pub fn try_normalize_import(use_item: &ast::Use, style: NormalizationStyle) -> O
     Some(use_item)
 }
 
-pub fn try_normalize_use_tree_mut(
-    use_tree: &ast::UseTree,
-    style: NormalizationStyle,
-) -> Option<()> {
+fn try_normalize_use_tree_mut(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
     if style == NormalizationStyle::One {
         let mut modified = false;
         modified |= use_tree.wrap_in_tree_list().is_some();

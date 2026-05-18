@@ -29,4 +29,4 @@ fn main() {
 }
 
 // EMIT_MIR deref_nested_borrows.src.GVN.diff
-// EMIT_MIR deref_nested_borrows.src.PreCodegen.after.mir
+// EMIT_MIR deref_nested_borrows.src.runtime-optimized.after.mir

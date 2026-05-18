@@ -12,14 +12,14 @@ use crate::{
     context::{PathCompletionCtx, PathExprCtx, Qualified},
 };
 
-struct PathCallback<'a, F> {
-    ctx: &'a CompletionContext<'a>,
+struct PathCallback<'a, 'db, F> {
+    ctx: &'a CompletionContext<'a, 'db>,
     acc: &'a mut Completions,
     add_assoc_item: F,
     seen: FxHashSet<hir::AssocItem>,
 }
 
-impl<F> PathCandidateCallback for PathCallback<'_, F>
+impl<F> PathCandidateCallback for PathCallback<'_, '_, F>
 where
     F: FnMut(&mut Completions, hir::AssocItem),
 {
@@ -46,7 +46,7 @@ where
 
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     expr_ctx: &PathExprCtx<'_>,
 ) {
@@ -458,7 +458,7 @@ pub(crate) fn complete_expr_path(
 
 pub(crate) fn complete_expr(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
 ) {
     let _p = tracing::info_span!("complete_expr").entered();

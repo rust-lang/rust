@@ -426,7 +426,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
     ) {
         match statement.kind {
             // An assignment makes a local initialized.
-            StatementKind::Assign(box (place, _)) => {
+            StatementKind::Assign((place, _)) => {
                 if let Some(local) = place.as_local() {
                     state.remove(local);
                 }

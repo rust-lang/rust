@@ -6,7 +6,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
-use rustc_type_ir::inherent::{AdtDef as _, IntoKind};
+use rustc_type_ir::inherent::IntoKind;
 use span::{Edition, TextRange};
 use stdx::{format_to, never};
 use syntax::{AstNode, AstPtr};
@@ -42,7 +42,7 @@ fn display_place(db: &TestDB, store: &ExpressionStore, place: &Place, local: Bin
                 match ty.kind() {
                     TyKind::Tuple(_) => format_to!(result, ".{field_idx}"),
                     TyKind::Adt(adt_def, _) => {
-                        let variant = match adt_def.def_id().0 {
+                        let variant = match adt_def.def_id() {
                             AdtId::StructId(id) => VariantId::from(id),
                             AdtId::UnionId(id) => id.into(),
                             AdtId::EnumId(id) => {
@@ -102,19 +102,19 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
 
                     // FIXME: Deduplicate this with hir::Local::sources().
                     let captured_local = capture.captured_local();
-                    let local_text_range = match body.self_param.zip(source_map.self_param_syntax())
+                    let local_text_range = if body.self_params.contains(&captured_local)
+                        && let Some(source) = source_map.self_param_syntax()
                     {
-                        Some((param, source)) if param == captured_local => {
-                            format!("{:?}", text_range(db, source))
-                        }
-                        _ => source_map
+                        format!("{:?}", text_range(db, source))
+                    } else {
+                        source_map
                             .patterns_for_binding(captured_local)
                             .iter()
                             .map(|&definition| {
                                 text_range(db, source_map.pat_syntax(definition).unwrap())
                             })
                             .map(|it| format!("{it:?}"))
-                            .join(", "),
+                            .join(", ")
                     };
                     let place = display_place(db, body, &capture.place, captured_local);
                     let capture_ty = capture
@@ -598,5 +598,22 @@ fn f() {
 }
 "#,
         expect!["77..110;46..47;96..97 ByRef(Immutable) b &'<erased> i32"],
+    );
+}
+
+#[test]
+fn fail_to_normalize_place() {
+    check_closure_captures(
+        r#"
+//- minicore: index, slice
+const FAIL_CONST: usize = loop {};
+struct Foo {
+    arr: [i32; FAIL_CONST],
+}
+fn foo(foo: &Foo) {
+    || { return foo.arr[0] };
+}
+    "#,
+        expect!["102..126;85..88;114..117 ByRef(Immutable) *foo &'<erased> Foo"],
     );
 }

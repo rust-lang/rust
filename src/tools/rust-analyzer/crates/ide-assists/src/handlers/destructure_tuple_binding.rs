@@ -34,7 +34,10 @@ use crate::{
 //     let v = _0;
 // }
 // ```
-pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn destructure_tuple_binding(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     destructure_tuple_binding_impl(acc, ctx, false)
 }
 
@@ -58,7 +61,7 @@ pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext<'
 // ```
 pub(crate) fn destructure_tuple_binding_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     with_sub_pattern: bool,
 ) -> Option<()> {
     let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
@@ -84,7 +87,7 @@ pub(crate) fn destructure_tuple_binding_impl(
 }
 
 fn destructure_tuple_edit_impl(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     edit: &mut SourceChangeBuilder,
     data: &TupleData,
     in_sub_pattern: bool,
@@ -102,7 +105,7 @@ fn destructure_tuple_edit_impl(
     edit.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
-fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
+fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_, '_>) -> Option<TupleData> {
     if ident_pat.at_token().is_some() {
         // Cannot destructure pattern with sub-pattern:
         // Only IdentPat can have sub-pattern,
@@ -168,7 +171,7 @@ struct TupleData {
     usages: Option<Vec<FileReference>>,
 }
 fn edit_tuple_assignment(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     edit: &mut SourceChangeBuilder,
     editor: &SyntaxEditor,
     data: &TupleData,
@@ -235,7 +238,7 @@ impl AssignmentEdit {
 
 fn edit_tuple_usages(
     data: &TupleData,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     in_sub_pattern: bool,
 ) -> Option<Vec<EditTupleUsage>> {
@@ -258,7 +261,7 @@ fn edit_tuple_usages(
     Some(edits)
 }
 fn edit_tuple_usage(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     usage: &FileReference,
     data: &TupleData,
@@ -275,7 +278,7 @@ fn edit_tuple_usage(
 }
 
 fn edit_tuple_field_usage(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     data: &TupleData,
     index: TupleIndex,
@@ -305,7 +308,7 @@ enum EditTupleUsage {
 impl EditTupleUsage {
     fn apply(
         self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         edit: &mut SourceChangeBuilder,
         syntax_editor: &SyntaxEditor,
     ) {
@@ -371,7 +374,7 @@ mod tests {
     // Tests for direct tuple destructure:
     // `let $0t = (1,2);` -> `let (_0, _1) = (1,2);`
 
-    fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    fn assist(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
         destructure_tuple_binding_impl(acc, ctx, false)
     }
 
@@ -1180,10 +1183,10 @@ fn main {
         use super::*;
         use crate::tests::check_assist_by_label;
 
-        fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+        fn assist(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
             destructure_tuple_binding_impl(acc, ctx, true)
         }
-        fn in_place_assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+        fn in_place_assist(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
             destructure_tuple_binding_impl(acc, ctx, false)
         }
 
@@ -1251,7 +1254,7 @@ fn main() {
 
         #[test]
         fn trigger_both_destructure_tuple_assists() {
-            fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+            fn assist(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
                 destructure_tuple_binding_impl(acc, ctx, true)
             }
             let text = r#"
@@ -1787,7 +1790,7 @@ fn main() {
             // * `?`
             check_in_place_assist(
                 r#"
-//- minicore: option
+//- minicore: try, option
 fn f1(v: i32) {}
 fn f2(v: &i32) {}
 trait T {

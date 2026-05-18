@@ -6,12 +6,12 @@ use syntax::{AstToken, Direction, NodeOrToken, SmolStr, SyntaxKind, algo, ast::I
 
 use crate::{CompletionItem, completions::Completions, context::CompletionContext};
 
-pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
+pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_>) {
     let add_completion = |item: &str| {
         let mut completion =
             CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item, ctx.edition);
         completion.insert_text(format!(r#""{item}""#));
-        acc.add(completion.build(ctx.db));
+        completion.add_to(acc, ctx.db);
     };
 
     // FIXME: Move this into context/analysis.rs
@@ -49,8 +49,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
                     ctx.edition,
                 );
                 item.insert_text(insert_text);
-
-                acc.add(item.build(ctx.db));
+                item.add_to(acc, ctx.db);
             }),
         },
         None => ctx
@@ -82,7 +81,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
                 {
                     item.insert_snippet(cap, snippet);
                 }
-                acc.add(item.build(ctx.db));
+                item.add_to(acc, ctx.db);
             }),
     }
 }

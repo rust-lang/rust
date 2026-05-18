@@ -381,7 +381,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mut fields = vec![];
         for field in &adt_def.non_enum_variant().fields {
-            let layout = this.layout_of(field.ty(*this.tcx, args)).map_err(|_err| orig_ty)?;
+            let layout = this.layout_of(field.ty(*this.tcx, args).skip_norm_wip()).map_err(|_err| orig_ty)?;
             fields.push(this.ty_to_ffitype(layout)?);
         }
 

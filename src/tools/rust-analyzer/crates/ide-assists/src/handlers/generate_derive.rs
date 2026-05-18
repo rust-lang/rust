@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     y: u32,
 // }
 // ```
-pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let target = nominal.syntax().text_range();

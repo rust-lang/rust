@@ -2,120 +2,31 @@
 
 use std::iter::{empty, once, successors};
 
-use parser::{SyntaxKind, T};
+use parser::T;
 
 use crate::{
-    AstNode, AstToken, Direction, SyntaxElement,
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, SyntaxToken,
+    AstNode, AstToken, Direction,
     algo::{self, neighbor},
-    ast::{self, edit::IndentLevel, make},
+    ast::{self, make, syntax_factory::SyntaxFactory},
+    syntax_editor::SyntaxEditor,
     ted,
 };
 
-use super::{GenericParam, HasName};
-
-pub trait AttrsOwnerEdit: ast::HasAttrs {
-    fn remove_attrs_and_docs(&self) {
-        remove_attrs_and_docs(self.syntax());
-
-        fn remove_attrs_and_docs(node: &SyntaxNode) {
-            let mut remove_next_ws = false;
-            for child in node.children_with_tokens() {
-                match child.kind() {
-                    ATTR | COMMENT => {
-                        remove_next_ws = true;
-                        child.detach();
-                        continue;
-                    }
-                    WHITESPACE if remove_next_ws => {
-                        child.detach();
-                    }
-                    _ => (),
-                }
-                remove_next_ws = false;
-            }
-        }
-    }
-}
-
-impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
+use super::HasName;
 
 impl ast::GenericParamList {
-    pub fn add_generic_param(&self, generic_param: ast::GenericParam) {
-        match self.generic_params().last() {
-            Some(last_param) => {
-                let position = ted::Position::after(last_param.syntax());
-                let elements = vec![
-                    make::token(T![,]).into(),
-                    make::tokens::single_space().into(),
-                    generic_param.syntax().clone().into(),
-                ];
-                ted::insert_all(position, elements);
-            }
-            None => {
-                let after_l_angle = ted::Position::after(self.l_angle_token().unwrap());
-                ted::insert(after_l_angle, generic_param.syntax());
-            }
-        }
-    }
-
-    /// Removes the existing generic param
-    pub fn remove_generic_param(&self, generic_param: ast::GenericParam) {
-        if let Some(previous) = generic_param.syntax().prev_sibling() {
-            if let Some(next_token) = previous.next_sibling_or_token() {
-                ted::remove_all(next_token..=generic_param.syntax().clone().into());
-            }
-        } else if let Some(next) = generic_param.syntax().next_sibling() {
-            if let Some(next_token) = next.prev_sibling_or_token() {
-                ted::remove_all(generic_param.syntax().clone().into()..=next_token);
-            }
-        } else {
-            ted::remove(generic_param.syntax());
-        }
-    }
-
-    /// Find the params corresponded to generic arg
-    pub fn find_generic_arg(&self, generic_arg: &ast::GenericArg) -> Option<GenericParam> {
-        self.generic_params().find_map(move |param| match (&param, &generic_arg) {
-            (ast::GenericParam::LifetimeParam(a), ast::GenericArg::LifetimeArg(b)) => {
-                (a.lifetime()?.lifetime_ident_token()?.text()
-                    == b.lifetime()?.lifetime_ident_token()?.text())
-                .then_some(param)
-            }
-            (ast::GenericParam::TypeParam(a), ast::GenericArg::TypeArg(b)) => {
-                debug_assert_eq!(b.syntax().first_token(), b.syntax().last_token());
-                (a.name()?.text() == b.syntax().first_token()?.text()).then_some(param)
-            }
-            (ast::GenericParam::ConstParam(a), ast::GenericArg::TypeArg(b)) => {
-                debug_assert_eq!(b.syntax().first_token(), b.syntax().last_token());
-                (a.name()?.text() == b.syntax().first_token()?.text()).then_some(param)
-            }
-            _ => None,
-        })
-    }
-
-    /// Removes the corresponding generic arg
-    pub fn remove_generic_arg(&self, generic_arg: &ast::GenericArg) {
-        let param_to_remove = self.find_generic_arg(generic_arg);
-
-        if let Some(param) = &param_to_remove {
-            self.remove_generic_param(param.clone());
-        }
-    }
-
     /// Constructs a matching [`ast::GenericArgList`]
-    pub fn to_generic_args(&self) -> ast::GenericArgList {
+    pub fn to_generic_args(&self, make: &SyntaxFactory) -> ast::GenericArgList {
         let args = self.generic_params().filter_map(|param| match param {
             ast::GenericParam::LifetimeParam(it) => {
-                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
+                Some(ast::GenericArg::LifetimeArg(make.lifetime_arg(it.lifetime()?)))
             }
             ast::GenericParam::TypeParam(it) => {
-                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+                Some(ast::GenericArg::TypeArg(make.type_arg(make.ty_name(it.name()?))))
             }
             ast::GenericParam::ConstParam(it) => {
                 // Name-only const params get parsed as `TypeArg`s
-                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+                Some(ast::GenericArg::TypeArg(make.type_arg(make.ty_name(it.name()?))))
             }
         });
 
@@ -123,42 +34,8 @@ impl ast::GenericParamList {
     }
 }
 
-impl ast::WhereClause {
-    pub fn add_predicate(&self, predicate: ast::WherePred) {
-        if let Some(pred) = self.predicates().last()
-            && !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,])
-        {
-            ted::append_child_raw(self.syntax(), make::token(T![,]));
-        }
-        ted::append_child(self.syntax(), predicate.syntax());
-    }
-
-    pub fn remove_predicate(&self, predicate: ast::WherePred) {
-        if let Some(previous) = predicate.syntax().prev_sibling() {
-            if let Some(next_token) = previous.next_sibling_or_token() {
-                ted::remove_all(next_token..=predicate.syntax().clone().into());
-            }
-        } else if let Some(next) = predicate.syntax().next_sibling() {
-            if let Some(next_token) = next.prev_sibling_or_token() {
-                ted::remove_all(predicate.syntax().clone().into()..=next_token);
-            }
-        } else {
-            ted::remove(predicate.syntax());
-        }
-    }
-}
-
 pub trait Removable: AstNode {
     fn remove(&self);
-}
-
-impl Removable for ast::TypeBoundList {
-    fn remove(&self) {
-        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
-            Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
-            None => ted::remove(self.syntax()),
-        }
-    }
 }
 
 impl Removable for ast::UseTree {
@@ -179,24 +56,41 @@ impl Removable for ast::UseTree {
 }
 
 impl ast::UseTree {
+    /// Editor variant of UseTree remove
+    fn remove_with_editor(&self, editor: &SyntaxEditor) {
+        for dir in [Direction::Next, Direction::Prev] {
+            if let Some(next_use_tree) = neighbor(self, dir) {
+                let separators = self
+                    .syntax()
+                    .siblings_with_tokens(dir)
+                    .skip(1)
+                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
+                for separator in separators {
+                    editor.delete(separator);
+                }
+                break;
+            }
+        }
+        editor.delete(self.syntax());
+    }
+
     /// Deletes the usetree node represented by the input. Recursively removes parents, including use nodes that become empty.
-    pub fn remove_recursive(self) {
+    pub fn remove_recursive(self, editor: &SyntaxEditor) {
         let parent = self.syntax().parent();
 
-        self.remove();
-
         if let Some(u) = parent.clone().and_then(ast::Use::cast) {
-            if u.use_tree().is_none() {
-                u.remove();
-            }
+            u.remove(editor);
         } else if let Some(u) = parent.and_then(ast::UseTreeList::cast) {
-            if u.use_trees().next().is_none() {
-                let parent = u.syntax().parent().and_then(ast::UseTree::cast);
-                if let Some(u) = parent {
-                    u.remove_recursive();
-                }
+            if u.use_trees().nth(1).is_none()
+                || u.use_trees().all(|use_tree| {
+                    use_tree.syntax() == self.syntax() || editor.deleted(use_tree.syntax())
+                })
+            {
+                u.parent_use_tree().remove_recursive(editor);
+                return;
             }
-            u.remove_unnecessary_braces();
+            self.remove_with_editor(editor);
+            u.remove_unnecessary_braces(editor);
         }
     }
 
@@ -270,6 +164,35 @@ impl ast::UseTree {
         }
     }
 
+    /// Editor variant of `split_prefix`
+    pub fn split_prefix_with_editor(&self, editor: &SyntaxEditor, prefix: &ast::Path) {
+        debug_assert_eq!(self.path(), Some(prefix.top_path()));
+
+        let make = editor.make();
+        let path = self.path().unwrap();
+        let suffix = if path == *prefix && self.use_tree_list().is_none() {
+            if self.star_token().is_some() {
+                make.use_tree_glob()
+            } else {
+                let self_path = make.path_unqualified(make.path_segment_self());
+                make.use_tree(self_path, None, None, false)
+            }
+        } else {
+            let suffix_segments = path.segments().skip(prefix.segments().count());
+            let suffix_path = make.path_from_segments(suffix_segments, false);
+            make.use_tree(
+                suffix_path,
+                self.use_tree_list(),
+                self.rename(),
+                self.star_token().is_some(),
+            )
+        };
+        let use_tree_list = make.use_tree_list(once(suffix));
+        let new_use_tree = make.use_tree(prefix.clone(), Some(use_tree_list), None, false);
+
+        editor.replace(self.syntax(), new_use_tree.syntax());
+    }
+
     /// Wraps the use tree in use tree list with no top level path (if it isn't already).
     ///
     /// # Examples
@@ -318,8 +241,9 @@ impl ast::UseTreeList {
     }
 }
 
-impl Removable for ast::Use {
-    fn remove(&self) {
+impl ast::Use {
+    fn remove(&self, editor: &SyntaxEditor) {
+        let make = editor.make();
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -328,10 +252,17 @@ impl Removable for ast::Use {
         if let Some(next_ws) = next_ws {
             let ws_text = next_ws.syntax().text();
             if let Some(rest) = ws_text.strip_prefix('\n') {
-                if rest.is_empty() {
-                    ted::remove(next_ws.syntax());
+                let next_use_removed = next_ws
+                    .syntax()
+                    .next_sibling_or_token()
+                    .and_then(|it| it.into_node())
+                    .and_then(ast::Use::cast)
+                    .and_then(|use_| use_.use_tree())
+                    .is_some_and(|use_tree| editor.deleted(use_tree.syntax()));
+                if rest.is_empty() || next_use_removed {
+                    editor.delete(next_ws.syntax());
                 } else {
-                    ted::replace(next_ws.syntax(), make::tokens::whitespace(rest));
+                    editor.replace(next_ws.syntax(), make.whitespace(rest));
                 }
             }
         }
@@ -345,13 +276,13 @@ impl Removable for ast::Use {
             let prev_newline = ws_text.rfind('\n').map(|x| x + 1).unwrap_or(0);
             let rest = &ws_text[0..prev_newline];
             if rest.is_empty() {
-                ted::remove(prev_ws.syntax());
+                editor.delete(prev_ws.syntax());
             } else {
-                ted::replace(prev_ws.syntax(), make::tokens::whitespace(rest));
+                editor.replace(prev_ws.syntax(), make.whitespace(rest));
             }
         }
 
-        ted::remove(self.syntax());
+        editor.delete(self.syntax());
     }
 }
 
@@ -365,216 +296,23 @@ impl ast::Impl {
     }
 }
 
-impl ast::AssocItemList {
-    /// Adds a new associated item after all of the existing associated items.
-    ///
-    /// Attention! This function does align the first line of `item` with respect to `self`,
-    /// but it does _not_ change indentation of other lines (if any).
-    pub fn add_item(&self, item: ast::AssocItem) {
-        let (indent, position, whitespace) = match self.assoc_items().last() {
-            Some(last_item) => (
-                IndentLevel::from_node(last_item.syntax()),
-                ted::Position::after(last_item.syntax()),
-                "\n\n",
-            ),
-            None => match self.l_curly_token() {
-                Some(l_curly) => {
-                    normalize_ws_between_braces(self.syntax());
-                    (IndentLevel::from_token(&l_curly) + 1, ted::Position::after(&l_curly), "\n")
-                }
-                None => (IndentLevel::zero(), ted::Position::last_child_of(self.syntax()), "\n"),
-            },
-        };
-        let elements: Vec<SyntaxElement> = vec![
-            make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
-            item.syntax().clone().into(),
-        ];
-        ted::insert_all(position, elements);
-    }
-}
-
-impl ast::RecordExprFieldList {
-    pub fn add_field(&self, field: ast::RecordExprField) {
-        let is_multiline = self.syntax().text().contains_char('\n');
-        let whitespace = if is_multiline {
-            let indent = IndentLevel::from_node(self.syntax()) + 1;
-            make::tokens::whitespace(&format!("\n{indent}"))
-        } else {
-            make::tokens::single_space()
-        };
-
-        if is_multiline {
-            normalize_ws_between_braces(self.syntax());
-        }
-
-        let position = match self.fields().last() {
-            Some(last_field) => {
-                let comma = get_or_insert_comma_after(last_field.syntax());
-                ted::Position::after(comma)
-            }
-            None => match self.l_curly_token() {
-                Some(it) => ted::Position::after(it),
-                None => ted::Position::last_child_of(self.syntax()),
-            },
-        };
-
-        ted::insert_all(position, vec![whitespace.into(), field.syntax().clone().into()]);
-        if is_multiline {
-            ted::insert(ted::Position::after(field.syntax()), ast::make::token(T![,]));
-        }
-    }
-}
-
 impl ast::RecordExprField {
     /// This will either replace the initializer, or in the case that this is a shorthand convert
     /// the initializer into the name ref and insert the expr as the new initializer.
-    pub fn replace_expr(&self, expr: ast::Expr) {
+    pub fn replace_expr(&self, editor: &SyntaxEditor, expr: ast::Expr) {
         if self.name_ref().is_some() {
-            match self.expr() {
-                Some(prev) => ted::replace(prev.syntax(), expr.syntax()),
-                None => ted::append_child(self.syntax(), expr.syntax()),
+            if let Some(prev) = self.expr() {
+                editor.replace(prev.syntax(), expr.syntax());
             }
-            return;
-        }
-        // this is a shorthand
-        if let Some(ast::Expr::PathExpr(path_expr)) = self.expr()
+        } else if let Some(ast::Expr::PathExpr(path_expr)) = self.expr()
             && let Some(path) = path_expr.path()
             && let Some(name_ref) = path.as_single_name_ref()
         {
-            path_expr.syntax().detach();
-            let children = vec![
-                name_ref.syntax().clone().into(),
-                ast::make::token(T![:]).into(),
-                ast::make::tokens::single_space().into(),
-                expr.syntax().clone().into(),
-            ];
-            ted::insert_all_raw(ted::Position::last_child_of(self.syntax()), children);
+            // shorthand `{ x }` → expand to `{ x: expr }`
+            let new_field = editor
+                .make()
+                .record_expr_field(editor.make().name_ref(&name_ref.text()), Some(expr));
+            editor.replace(self.syntax(), new_field.syntax());
         }
-    }
-}
-
-impl ast::RecordPatFieldList {
-    pub fn add_field(&self, field: ast::RecordPatField) {
-        let is_multiline = self.syntax().text().contains_char('\n');
-        let whitespace = if is_multiline {
-            let indent = IndentLevel::from_node(self.syntax()) + 1;
-            make::tokens::whitespace(&format!("\n{indent}"))
-        } else {
-            make::tokens::single_space()
-        };
-
-        if is_multiline {
-            normalize_ws_between_braces(self.syntax());
-        }
-
-        let position = match self.fields().last() {
-            Some(last_field) => {
-                let syntax = last_field.syntax();
-                let comma = get_or_insert_comma_after(syntax);
-                ted::Position::after(comma)
-            }
-            None => match self.l_curly_token() {
-                Some(it) => ted::Position::after(it),
-                None => ted::Position::last_child_of(self.syntax()),
-            },
-        };
-
-        ted::insert_all(position, vec![whitespace.into(), field.syntax().clone().into()]);
-        if is_multiline {
-            ted::insert(ted::Position::after(field.syntax()), ast::make::token(T![,]));
-        }
-    }
-}
-
-fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
-    match syntax
-        .siblings_with_tokens(Direction::Next)
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T![,])
-    {
-        Some(it) => it,
-        None => {
-            let comma = ast::make::token(T![,]);
-            ted::insert(ted::Position::after(syntax), &comma);
-            comma
-        }
-    }
-}
-
-fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
-    let l = node
-        .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T!['{'])?;
-    let r = node
-        .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T!['}'])?;
-
-    let indent = IndentLevel::from_node(node);
-
-    match l.next_sibling_or_token() {
-        Some(ws)
-            if ws.kind() == SyntaxKind::WHITESPACE
-                && ws.next_sibling_or_token()?.into_token()? == r =>
-        {
-            ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
-        }
-        Some(ws) if ws.kind() == T!['}'] => {
-            ted::insert(ted::Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
-        }
-        _ => (),
-    }
-    Some(())
-}
-
-pub trait Indent: AstNode + Clone + Sized {
-    fn indent_level(&self) -> IndentLevel {
-        IndentLevel::from_node(self.syntax())
-    }
-    fn indent(&self, by: IndentLevel) {
-        by.increase_indent(self.syntax());
-    }
-    fn dedent(&self, by: IndentLevel) {
-        by.decrease_indent(self.syntax());
-    }
-    fn reindent_to(&self, target_level: IndentLevel) {
-        let current_level = IndentLevel::from_node(self.syntax());
-        self.dedent(current_level);
-        self.indent(target_level);
-    }
-}
-
-impl<N: AstNode + Clone> Indent for N {}
-
-#[cfg(test)]
-mod tests {
-    use parser::Edition;
-
-    use crate::SourceFile;
-
-    use super::*;
-
-    fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
-        let parse = SourceFile::parse(text, Edition::CURRENT);
-        parse.tree().syntax().descendants().find_map(N::cast).unwrap().clone_for_update()
-    }
-
-    #[test]
-    fn test_increase_indent() {
-        let arm_list = ast_mut_from_text::<ast::Fn>(
-            "fn foo() {
-    ;
-    ;
-}",
-        );
-        arm_list.indent(IndentLevel(2));
-        assert_eq!(
-            arm_list.to_string(),
-            "fn foo() {
-            ;
-            ;
-        }",
-        );
     }
 }

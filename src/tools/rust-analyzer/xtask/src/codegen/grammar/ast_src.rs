@@ -150,6 +150,7 @@ const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     // "raw",
     "readonly",
     "sym",
+    "deref",
 ];
 
 // keywords that are keywords depending on the edition

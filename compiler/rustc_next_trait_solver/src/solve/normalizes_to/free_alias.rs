@@ -4,10 +4,11 @@
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
+use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -17,7 +18,7 @@ where
     pub(super) fn normalize_free_alias(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let free_alias = goal.predicate.alias;
 

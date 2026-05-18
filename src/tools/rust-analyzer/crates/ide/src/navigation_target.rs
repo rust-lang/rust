@@ -6,8 +6,7 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     AssocItem, Crate, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId,
-    InFile, LocalSource, ModuleSource, Name, Semantics, Symbol, db::ExpandDatabase, sym,
-    symbols::FileSymbol,
+    InFile, LocalSource, ModuleSource, Name, Semantics, Symbol, sym, symbols::FileSymbol,
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
@@ -580,7 +579,7 @@ impl TryToNav for hir::Field {
                 |(FileRange { file_id, range: full_range }, focus_range)| {
                     NavigationTarget::from_syntax(
                         file_id,
-                        Symbol::integer(self.index()),
+                        sym::Integer::get(self.index()),
                         focus_range,
                         full_range,
                         SymbolKind::Field,
@@ -939,10 +938,9 @@ pub(crate) fn orig_range_with_focus_r(
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
-    let call = || db.lookup_intern_macro_call(hir_file.macro_file().unwrap());
+    let call = || hir_file.macro_file().unwrap().loc(db);
 
-    let def_range =
-        || db.lookup_intern_macro_call(hir_file.macro_file().unwrap()).def.definition_range(db);
+    let def_range = || hir_file.macro_file().unwrap().loc(db).def.definition_range(db);
 
     // FIXME: Also make use of the syntax context to determine which site we are at?
     let value_range = InFile::new(hir_file, value).original_node_file_range_opt(db);

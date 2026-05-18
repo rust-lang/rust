@@ -20,7 +20,7 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity, fi
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
 pub(crate) fn unlinked_file(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
@@ -73,7 +73,7 @@ pub(crate) fn unlinked_file(
 }
 
 fn fixes(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     file_id: FileId,
     trigger_range: TextRange,
 ) -> Option<Vec<Assist>> {

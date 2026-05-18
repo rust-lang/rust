@@ -41,10 +41,11 @@ use hir_def::{
     resolver::ValueNs,
 };
 use macros::{TypeFoldable, TypeVisitable};
+use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use rustc_type_ir::{
-    BoundVar, ClosureKind, TypeVisitableExt as _,
+    BoundVar, ClosureKind,
     inherent::{AdtDef as _, GenericArgs as _, IntoKind as _, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
@@ -52,7 +53,7 @@ use span::Edition;
 use tracing::{debug, instrument};
 
 use crate::{
-    FnAbi,
+    Span,
     infer::{
         CaptureInfo, CaptureSourceStack, CapturedPlace, InferenceContext, UpvarCapture,
         closure::analysis::expr_use_visitor::{
@@ -195,7 +196,7 @@ type InferredCaptureInformation = Vec<(Place, CaptureInfo)>;
 
 impl<'a, 'db> InferenceContext<'a, 'db> {
     pub(crate) fn closure_analyze(&mut self) {
-        let upvars = crate::upvars::upvars_mentioned(self.db, self.owner)
+        let upvars = crate::upvars::upvars_mentioned(self.db, self.store_owner)
             .unwrap_or(const { &FxHashMap::with_hasher(FxBuildHasher) });
         for root_expr in self.store.expr_roots() {
             self.analyze_closures_in_expr(root_expr, upvars);
@@ -284,7 +285,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // coroutine-closures that are `move` since otherwise they themselves will
         // be borrowing from the outer environment, so there's no self-borrows occurring.
         if let UpvarArgs::Coroutine(..) = args
-            && let hir_def::hir::ClosureKind::AsyncBlock { source: CoroutineSource::Closure } =
+            && let hir_def::hir::ClosureKind::Coroutine { source: CoroutineSource::Closure, .. } =
                 closure_kind
             && let parent_hir_id = ExpressionStore::closure_for_coroutine(closure_expr_id)
             && let parent_ty = self.result.expr_ty(parent_hir_id)
@@ -310,8 +311,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         //
         // FIXME(async_closures): This could be cleaned up. It's a bit janky that we're just
         // moving all of the `LocalSource::AsyncFn` locals here.
-        if let hir_def::hir::ClosureKind::AsyncBlock {
+        if let hir_def::hir::ClosureKind::Coroutine {
             source: CoroutineSource::Fn | CoroutineSource::Closure,
+            ..
         } = closure_kind
         {
             let Expr::Block { statements, .. } = &self.store[body] else {
@@ -328,7 +330,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 let Expr::Path(path) = &self.store[init] else {
                     panic!();
                 };
-                let update_guard = self.resolver.update_to_inner_scope(self.db, self.owner, init);
+                let update_guard =
+                    self.resolver.update_to_inner_scope(self.db, self.store_owner, init);
                 let Some(ValueNs::LocalBinding(local_id)) =
                     self.resolver.resolve_path_in_value_ns_fully(
                         self.db,
@@ -402,9 +405,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // For coroutine-closures, we additionally must compute the
         // `coroutine_captures_by_ref_ty` type, which is used to generate the by-ref
         // version of the coroutine-closure's output coroutine.
-        if let UpvarArgs::CoroutineClosure(args) = args
-            && !args.references_error()
-        {
+        if let UpvarArgs::CoroutineClosure(args) = args {
             let closure_env_region: Region<'_> = Region::new_bound(
                 self.interner(),
                 rustc_type_ir::INNERMOST,
@@ -459,7 +460,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         tupled_upvars_ty_for_borrow,
                         false,
                         Safety::Safe,
-                        FnAbi::Rust,
+                        ExternAbi::Rust,
                     ),
                     self.types.coroutine_captures_by_ref_bound_var_kinds,
                 ),
@@ -506,7 +507,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
         let final_tupled_upvars_type = Ty::new_tup(self.interner(), &final_upvar_tys);
-        self.demand_suptype(args.tupled_upvars_ty(), final_tupled_upvars_type);
+        _ = self.demand_suptype(
+            closure_expr_id.into(),
+            args.tupled_upvars_ty(),
+            final_tupled_upvars_type,
+        );
 
         let fake_reads = delegate.fake_reads;
 
@@ -737,7 +742,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             };
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
-                let mutability = self.determine_capture_mutability(&place);
+                let mutability = self.determine_capture_mutability(closure_def_id, &place);
                 let min_cap_list = vec![CapturedPlace { place, info: capture_info, mutability }];
                 root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                 continue;
@@ -846,7 +851,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
-                let mutability = self.determine_capture_mutability(&place);
+                let mutability = self.determine_capture_mutability(closure_def_id, &place);
                 let captured_place =
                     CapturedPlace { place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
@@ -915,12 +920,12 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         self.result.closures_data.insert(closure_def_id, closure_data);
     }
 
-    fn normalize_capture_place(&self, place: Place) -> Place {
-        let mut place = self.infcx().resolve_vars_if_possible(place);
+    fn normalize_capture_place(&mut self, span: Span, place: Place) -> Place {
+        let place = self.infcx().resolve_vars_if_possible(place);
 
         // In the new solver, types in HIR `Place`s can contain unnormalized aliases,
         // which can ICE later (e.g. when projecting fields for diagnostics).
-        let cause = ObligationCause::misc();
+        let cause = ObligationCause::new(span);
         let at = self.table.at(&cause);
         match normalize::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
             at,
@@ -940,11 +945,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 }
                 normalized
             }
-            Err(_errors) => {
-                place.base_ty = self.types.types.error.store();
-                for proj in &mut place.projections {
-                    proj.ty = self.types.types.error.store();
-                }
+            Err(errors) => {
+                self.table.trait_errors.extend(errors);
                 place
             }
         }
@@ -997,7 +999,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         }
     }
 
-    fn place_for_root_variable(&self, closure_def_id: ExprId, var_hir_id: BindingId) -> Place {
+    fn place_for_root_variable(&mut self, closure_def_id: ExprId, var_hir_id: BindingId) -> Place {
         let place = Place {
             base_ty: self.result.binding_ty(var_hir_id).store(),
             base: PlaceBase::Upvar { closure: closure_def_id, var_id: var_hir_id },
@@ -1006,13 +1008,13 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
         // Normalize eagerly when inserting into `capture_information`, so all downstream
         // capture analysis can assume a normalized `Place`.
-        self.normalize_capture_place(place)
+        self.normalize_capture_place(var_hir_id.into(), place)
     }
 
     /// A captured place is mutable if
     /// 1. Projections don't include a Deref of an immut-borrow, **and**
     /// 2. PlaceBase is mut or projections include a Deref of a mut-borrow.
-    fn determine_capture_mutability(&mut self, place: &Place) -> Mutability {
+    fn determine_capture_mutability(&mut self, closure_expr: ExprId, place: &Place) -> Mutability {
         let var_hir_id = match place.base {
             PlaceBase::Upvar { var_id, .. } => var_id,
             _ => unreachable!(),
@@ -1025,7 +1027,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         };
 
         for pointer_ty in place.deref_tys() {
-            match self.table.structurally_resolve_type(pointer_ty).kind() {
+            match self.structurally_resolve_type(closure_expr.into(), pointer_ty).kind() {
                 // We don't capture derefs of raw ptrs
                 TyKind::RawPtr(_, _) => unreachable!(),
 
@@ -1127,7 +1129,7 @@ fn restrict_repr_packed_field_ref_capture(
         // Return true for fields of packed structs.
         match p.kind {
             ProjectionKind::Field { .. } => match ty.kind() {
-                TyKind::Adt(def, _) if def.repr().packed() => {
+                TyKind::Adt(def, _) if def.is_packed() => {
                     // We stop here regardless of field alignment. Field alignment can change as
                     // types change, including the types of private fields in other crates, and that
                     // shouldn't affect how we compute our captures.
@@ -1210,7 +1212,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         let mut dummy_capture_info =
             CaptureInfo { sources: SmallVec::new(), capture_kind: dummy_capture_kind };
 
-        let place = ctx.normalize_capture_place(place_with_id.place.clone());
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
         let place = restrict_capture_precision(place, &mut dummy_capture_info);
 
@@ -1226,7 +1228,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         };
         assert_eq!(self.closure_def_id, upvar_closure);
 
-        let place = ctx.normalize_capture_place(place_with_id.place.clone());
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
         self.capture_information.push((
             place,
@@ -1241,7 +1243,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         };
         assert_eq!(self.closure_def_id, upvar_closure);
 
-        let place = ctx.normalize_capture_place(place_with_id.place.clone());
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
         self.capture_information.push((
             place,
@@ -1266,7 +1268,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         let mut capture_info =
             CaptureInfo { sources: place_with_id.origins.iter().cloned().collect(), capture_kind };
 
-        let place = ctx.normalize_capture_place(place_with_id.place.clone());
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
 
         // We only want repr packed restriction to be applied to reading references into a packed
         // struct, and not when the data is being moved. Therefore we call this method here instead

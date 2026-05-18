@@ -997,12 +997,10 @@ fn compute_layout<'tcx>(
         let ignore_for_traits = match decl.local_info {
             // Do not include raw pointers created from accessing `static` items, as those could
             // well be re-created by another access to the same static.
-            ClearCrossCrate::Set(box LocalInfo::StaticRef { is_thread_local, .. }) => {
-                !is_thread_local
-            }
+            ClearCrossCrate::Set(LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
             // Fake borrows are only read by fake reads, so do not have any reality in
             // post-analysis MIR.
-            ClearCrossCrate::Set(box LocalInfo::FakeBorrow) => true,
+            ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
             _ => false,
         };
         let decl =
@@ -1747,7 +1745,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (lhs, rhs)) => {
+            StatementKind::Assign((lhs, rhs)) => {
                 self.check_assigned_place(*lhs, |this| this.visit_rvalue(rhs, location));
             }
 

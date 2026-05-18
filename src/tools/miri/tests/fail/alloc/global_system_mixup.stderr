@@ -7,7 +7,7 @@ LL |         FREE();
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: stack backtrace:
-           0: std::sys::alloc::PLATFORM::dealloc
+           0: std::sys::alloc::PLATFORM::<impl std::alloc::GlobalAlloc for std::alloc::System>::dealloc
                at RUSTLIB/std/src/sys/alloc/PLATFORM.rs:LL:CC
            1: <std::alloc::System as std::alloc::Allocator>::deallocate
                at RUSTLIB/std/src/alloc.rs:LL:CC

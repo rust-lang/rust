@@ -1693,7 +1693,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // which requires object lifetime defaults.
         let type_def_id = match res {
             Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(self.tcx.parent(def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(self.tcx.parent(def_id)),
+            Res::Def(DefKind::Variant, def_id) if depth == 0 || depth == 1 => {
+                Some(self.tcx.parent(def_id))
+            }
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union

@@ -32,6 +32,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             };
                             if let Some(infer_ok) = Self::try_mutable_overloaded_place_op(
                                 &self.table,
+                                tgt_expr,
                                 source_ty,
                                 None,
                                 PlaceOp::Deref,

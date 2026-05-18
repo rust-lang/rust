@@ -52,7 +52,7 @@ use super::remove_unused_param::range_to_remove;
 //     name + 2
 // }
 // ```
-pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;
     }
@@ -267,7 +267,7 @@ fn extract_child_target(
 impl Module {
     fn get_usages_and_record_fields(
         &self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         replace_range: TextRange,
     ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>, FxHashMap<TextSize, ast::Use>)
     {
@@ -356,7 +356,7 @@ impl Module {
 
     fn expand_and_group_usages_file_wise(
         &self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         replace_range: TextRange,
         node_def: Definition,
         refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
@@ -449,7 +449,7 @@ impl Module {
     fn resolve_imports(
         &mut self,
         module: Option<ast::Module>,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
     ) -> Vec<TextRange> {
         let mut imports_to_remove = vec![];
         let mut node_set = FxHashSet::default();
@@ -491,7 +491,7 @@ impl Module {
         def: Definition,
         use_node: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
     ) -> Option<TextRange> {
         //We only need to find in the current file
         let selection_range = ctx.selection_trimmed();
@@ -689,7 +689,7 @@ fn check_intersection_and_push(
 
 fn check_def_in_mod_and_out_sel(
     def: Definition,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     curr_parent_module: &Option<ast::Module>,
     selection_range: TextRange,
     curr_file_id: FileId,

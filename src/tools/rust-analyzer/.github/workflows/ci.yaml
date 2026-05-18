@@ -120,7 +120,7 @@ jobs:
         run: cargo codegen --check
 
       - name: Run tests
-        run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
+        run: cargo nextest run --no-fail-fast --hide-progress-bar
 
       - name: Install cargo-machete
         uses: taiki-e/install-action@cargo-machete

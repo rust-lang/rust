@@ -7,7 +7,7 @@ use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
 use span::{Edition, FileId};
 use syntax::{
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
-    ast::{self, make},
+    ast::{self, make, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
@@ -55,6 +55,31 @@ pub fn mod_path_to_ast(path: &hir::ModPath, edition: Edition) -> ast::Path {
         make::path_segment(make::name_ref(&segment.display_no_db(edition).to_smolstr()))
     }));
     make::path_from_segments(segments, is_abs)
+}
+
+pub fn mod_path_to_ast_with_factory(
+    make: &SyntaxFactory,
+    path: &hir::ModPath,
+    edition: Edition,
+) -> ast::Path {
+    let _p = tracing::info_span!("mod_path_to_ast").entered();
+
+    let mut segments = Vec::new();
+    let mut is_abs = false;
+    match path.kind {
+        hir::PathKind::Plain => {}
+        hir::PathKind::SELF => segments.push(make.path_segment_self()),
+        hir::PathKind::Super(n) => segments.extend((0..n).map(|_| make.path_segment_super())),
+        hir::PathKind::DollarCrate(_) | hir::PathKind::Crate => {
+            segments.push(make.path_segment_crate())
+        }
+        hir::PathKind::Abs => is_abs = true,
+    }
+
+    segments.extend(path.segments().iter().map(|segment| {
+        make.path_segment(make.name_ref(&segment.display_no_db(edition).to_smolstr()))
+    }));
+    make.path_from_segments(segments, is_abs)
 }
 
 /// Iterates all `ModuleDef`s and `Impl` blocks of the given file.

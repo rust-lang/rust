@@ -1802,7 +1802,7 @@ impl<'tcx> CoerceMany<'tcx> {
                         );
                         unsized_return = self.is_return_ty_definitely_unsized(fcx);
                     }
-                    ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                    ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                         arm_span,
                         arm_ty,
                         prior_arm_ty,

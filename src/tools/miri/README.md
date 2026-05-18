@@ -32,12 +32,13 @@ Miri has already discovered many [real-world bugs](#bugs-found-by-miri). If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-By default, Miri ensures a fully deterministic execution and isolates the
+By default, Miri ensures a fully deterministic execution by isolating the
 program from the host system. Some APIs that would usually access the host, such
 as gathering entropy for random number generators, environment variables, and
 clocks, are replaced by deterministic "fake" implementations. Set
 `MIRIFLAGS="-Zmiri-disable-isolation"` to access the real system APIs instead.
-(In particular, the "fake" system RNG APIs make Miri **not suited for
+(Note that this isolation is *not* a proper sandbox, and gaps in the isolation are considered
+normal bugs, not security bugs. Also, the "fake" system RNG APIs make Miri **not suited for
 cryptographic use**! Do not generate keys using Miri.)
 
 All that said, be aware that Miri does **not catch every violation of the Rust specification** in

@@ -16,9 +16,11 @@ use syntax::{
     Edition, SyntaxKind, SyntaxNode, T, TextRange,
     ast::{
         self, AstNode, BlockExpr, CallExpr, HasArgList, HasGenericParams, HasModuleItem,
-        HasTypeBounds, edit::IndentLevel, edit_in_place::Indent, make,
+        HasTypeBounds,
+        edit::{AstNodeEdit, IndentLevel},
+        syntax_factory::SyntaxFactory,
     },
-    ted,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{
@@ -51,11 +53,11 @@ use crate::{
 // }
 //
 // ```
-pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     gen_fn(acc, ctx).or_else(|| gen_method(acc, ctx))
 }
 
-fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
@@ -74,9 +76,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     {
         return None;
     }
+    let make = SyntaxFactory::without_mappings();
 
     let function_builder =
-        FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target, &adt_info)?;
+        FunctionBuilder::from_call(&make, ctx, &call, fn_name, target_module, target, &adt_info)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
     add_func_to_accumulator(acc, ctx, text_range, function_builder, file, adt_info, label)
@@ -101,7 +104,7 @@ impl TargetInfo {
 }
 
 fn fn_target_info(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     path: ast::Path,
     call: &CallExpr,
     fn_name: &str,
@@ -131,7 +134,7 @@ fn fn_target_info(
     }
 }
 
-fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     if ctx.sema.resolve_method_call(&call).is_some() {
         return None;
@@ -148,7 +151,9 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
 
     let enclosing_impl = ctx.find_node_at_offset::<ast::Impl>();
     let cursor_impl = enclosing_impl.filter(|impl_| {
-        ctx.sema.to_def(impl_).map_or(false, |def| def.self_ty(ctx.sema.db).as_adt() == Some(adt))
+        ctx.sema.to_def(impl_).is_some_and(|def| {
+            def.self_ty(ctx.sema.db).as_adt() == Some(adt) && def.trait_(ctx.sema.db).is_none()
+        })
     });
 
     let (impl_, file) = if let Some(impl_) = cursor_impl {
@@ -158,7 +163,10 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     };
     let target = get_method_target(ctx, &impl_, &adt)?;
 
+    let make = SyntaxFactory::without_mappings();
+
     let function_builder = FunctionBuilder::from_method_call(
+        &make,
         ctx,
         &call,
         &fn_name,
@@ -174,7 +182,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
 
 fn add_func_to_accumulator(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     text_range: TextRange,
     function_builder: FunctionBuilder,
     file: FileId,
@@ -182,34 +190,21 @@ fn add_func_to_accumulator(
     label: String,
 ) -> Option<()> {
     acc.add(AssistId::generate("generate_function"), label, text_range, |edit| {
-        edit.edit_file(file);
-
         let target = function_builder.target.clone();
-        let edition = function_builder.target_edition;
-        let func = function_builder.render(ctx.config.snippet_cap, edit);
+        let snippet_cap = ctx.config.snippet_cap;
 
         if let Some(adt) = adt_info
             .and_then(|adt_info| if adt_info.impl_exists { None } else { Some(adt_info.adt) })
         {
-            let name = make::ty_path(make::ext::ident_path(&format!(
-                "{}",
-                adt.name(ctx.db()).display(ctx.db(), edition)
-            )));
-
-            // FIXME: adt may have generic params.
-            let impl_ = make::impl_(None, None, None, name, None, None).clone_for_update();
-
-            func.indent(IndentLevel(1));
-            impl_.get_or_create_assoc_item_list().add_item(func.into());
-            target.insert_impl_at(edit, impl_);
+            target.insert_impl_at(edit, file, ctx, &function_builder, adt, snippet_cap);
         } else {
-            target.insert_fn_at(edit, func);
+            target.insert_fn_at(edit, file, &function_builder, snippet_cap);
         }
     })
 }
 
 fn get_adt_source(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     adt: &hir::Adt,
     fn_name: &str,
 ) -> Option<(Option<ast::Impl>, FileId)> {
@@ -240,7 +235,8 @@ impl FunctionBuilder {
     /// Prepares a generated function that matches `call`.
     /// The function is generated in `target_module` or next to `call`
     fn from_call(
-        ctx: &AssistContext<'_>,
+        make: &SyntaxFactory,
+        ctx: &AssistContext<'_, '_>,
         call: &ast::CallExpr,
         fn_name: &str,
         target_module: Option<Module>,
@@ -253,9 +249,10 @@ impl FunctionBuilder {
 
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
-        let fn_name = make::name(fn_name);
+        let fn_name = make.name(fn_name);
         let mut necessary_generic_params = FxHashSet::default();
         let params = fn_args(
+            make,
             ctx,
             target_module,
             ast::CallableExpr::Call(call.clone()),
@@ -272,25 +269,26 @@ impl FunctionBuilder {
         // If generated function has the name "new" and is an associated function, we generate fn body
         // as a constructor and assume a "Self" return type.
         if let Some(body) =
-            make_fn_body_as_new_function(ctx, &fn_name.text(), adt_info, target_edition)
+            make_fn_body_as_new_function(make, ctx, &fn_name.text(), adt_info, target_edition)
         {
-            ret_type = Some(make::ret_type(make::ty_path(make::ext::ident_path("Self"))));
+            ret_type = Some(make.ret_type(make.ty_path(make.ident_path("Self")).into()));
             should_focus_return_type = false;
             fn_body = body;
         } else {
             let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
             (ret_type, should_focus_return_type) = make_return_type(
+                make,
                 ctx,
                 &expr_for_ret_ty,
                 target_module,
                 &mut necessary_generic_params,
             );
             let placeholder_expr = expr_fill_default(ctx.config);
-            fn_body = make::block_expr(vec![], Some(placeholder_expr));
+            fn_body = make.block_expr(vec![], Some(placeholder_expr));
         };
 
         let (generic_param_list, where_clause) =
-            fn_generic_params(ctx, necessary_generic_params, &target)?;
+            fn_generic_params(make, ctx, necessary_generic_params, &target)?;
 
         Some(Self {
             target,
@@ -308,7 +306,8 @@ impl FunctionBuilder {
     }
 
     fn from_method_call(
-        ctx: &AssistContext<'_>,
+        make: &SyntaxFactory,
+        ctx: &AssistContext<'_, '_>,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
         receiver_ty: Type<'_>,
@@ -320,10 +319,11 @@ impl FunctionBuilder {
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
 
-        let fn_name = make::name(name.ident_token()?.text());
+        let fn_name = make.name(name.ident_token()?.text());
         let mut necessary_generic_params = FxHashSet::default();
         necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
         let params = fn_args(
+            make,
             ctx,
             target_module,
             ast::CallableExpr::MethodCall(call.clone()),
@@ -334,14 +334,19 @@ impl FunctionBuilder {
         let is_async = await_expr.is_some();
 
         let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
-        let (ret_type, should_focus_return_type) =
-            make_return_type(ctx, &expr_for_ret_ty, target_module, &mut necessary_generic_params);
+        let (ret_type, should_focus_return_type) = make_return_type(
+            make,
+            ctx,
+            &expr_for_ret_ty,
+            target_module,
+            &mut necessary_generic_params,
+        );
 
         let (generic_param_list, where_clause) =
-            fn_generic_params(ctx, necessary_generic_params, &target)?;
+            fn_generic_params(make, ctx, necessary_generic_params, &target)?;
 
         let placeholder_expr = expr_fill_default(ctx.config);
-        let fn_body = make::block_expr(vec![], Some(placeholder_expr));
+        let fn_body = make.block_expr(vec![], Some(placeholder_expr));
 
         Some(Self {
             target,
@@ -358,55 +363,28 @@ impl FunctionBuilder {
         })
     }
 
-    fn render(self, cap: Option<SnippetCap>, edit: &mut SourceChangeBuilder) -> ast::Fn {
+    fn render(&self, make: &SyntaxFactory) -> ast::Fn {
         let visibility = match self.visibility {
             Visibility::None => None,
-            Visibility::Crate => Some(make::visibility_pub_crate()),
-            Visibility::Pub => Some(make::visibility_pub()),
+            Visibility::Crate => Some(make.visibility_pub_crate()),
+            Visibility::Pub => Some(make.visibility_pub()),
         };
         let type_params =
-            self.generic_param_list.filter(|list| list.generic_params().next().is_some());
-        let fn_def = make::fn_(
+            self.generic_param_list.clone().filter(|list| list.generic_params().next().is_some());
+        make.fn_(
             None,
             visibility,
-            self.fn_name,
+            self.fn_name.clone(),
             type_params,
-            self.where_clause,
-            self.params,
-            self.fn_body,
-            self.ret_type,
+            self.where_clause.clone(),
+            self.params.clone(),
+            self.fn_body.clone(),
+            self.ret_type.clone(),
             self.is_async,
             false, // FIXME : const and unsafe are not handled yet.
             false,
             false,
         )
-        .clone_for_update();
-
-        let ret_type = fn_def.ret_type();
-        // PANIC: we guarantee we always create a function body with a tail expr
-        let tail_expr = fn_def
-            .body()
-            .expect("generated function should have a body")
-            .tail_expr()
-            .expect("function body should have a tail expression");
-
-        if let Some(cap) = cap {
-            if self.should_focus_return_type {
-                // Focus the return type if there is one
-                match ret_type {
-                    Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type);
-                    }
-                    None => {
-                        edit.add_placeholder_snippet(cap, tail_expr);
-                    }
-                }
-            } else {
-                edit.add_placeholder_snippet(cap, tail_expr);
-            }
-        }
-
-        fn_def
     }
 }
 
@@ -420,32 +398,33 @@ impl FunctionBuilder {
 /// * If we could infer the return type, don't focus it (and thus focus the function body) so the
 ///   user can change the `todo!` function body.
 fn make_return_type(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     expr: &ast::Expr,
     target_module: Module,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> (Option<ast::RetType>, bool) {
-    let (ret_ty, should_focus_return_type) = {
+    let (ret_ty, should_focus_return_type) =
         match ctx.sema.type_of_expr(expr).map(TypeInfo::original) {
-            Some(ty) if ty.is_unknown() => (Some(make::ty_placeholder()), true),
-            None => (Some(make::ty_placeholder()), true),
+            Some(ty) if ty.is_unknown() => (Some(make.ty_placeholder()), true),
+            None => (Some(make.ty_placeholder()), true),
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 necessary_generic_params.extend(ty.generic_params(ctx.db()));
                 let rendered = ty.display_source_code(ctx.db(), target_module.into(), true);
                 match rendered {
-                    Ok(rendered) => (Some(make::ty(&rendered)), false),
-                    Err(_) => (Some(make::ty_placeholder()), true),
+                    Ok(rendered) => (Some(make.ty(&rendered)), false),
+                    Err(_) => (Some(make.ty_placeholder()), true),
                 }
             }
-        }
-    };
-    let ret_type = ret_ty.map(make::ret_type);
+        };
+    let ret_type = ret_ty.map(|ty| make.ret_type(ty));
     (ret_type, should_focus_return_type)
 }
 
 fn make_fn_body_as_new_function(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     fn_name: &str,
     adt_info: &Option<AdtInfo>,
     edition: Edition,
@@ -455,7 +434,7 @@ fn make_fn_body_as_new_function(
     };
     let adt_info = adt_info.as_ref()?;
 
-    let path_self = make::ext::ident_path("Self");
+    let path_self = make.ident_path("Self");
     let placeholder_expr = expr_fill_default(ctx.config);
     let tail_expr = if let Some(strukt) = adt_info.adt.as_struct() {
         match strukt.kind(ctx.db()) {
@@ -464,8 +443,8 @@ fn make_fn_body_as_new_function(
                     .fields(ctx.db())
                     .iter()
                     .map(|field| {
-                        make::record_expr_field(
-                            make::name_ref(&format!(
+                        make.record_expr_field(
+                            make.name_ref(&format!(
                                 "{}",
                                 field.name(ctx.db()).display(ctx.db(), edition)
                             )),
@@ -474,7 +453,7 @@ fn make_fn_body_as_new_function(
                     })
                     .collect::<Vec<_>>();
 
-                make::record_expr(path_self, make::record_expr_field_list(fields)).into()
+                make.record_expr(path_self, make.record_expr_field_list(fields)).into()
             }
             StructKind::Tuple => {
                 let args = strukt
@@ -483,20 +462,20 @@ fn make_fn_body_as_new_function(
                     .map(|_| placeholder_expr.clone())
                     .collect::<Vec<_>>();
 
-                make::expr_call(make::expr_path(path_self), make::arg_list(args)).into()
+                make.expr_call(make.expr_path(path_self), make.arg_list(args)).into()
             }
-            StructKind::Unit => make::expr_path(path_self),
+            StructKind::Unit => make.expr_path(path_self),
         }
     } else {
         placeholder_expr
     };
 
-    let fn_body = make::block_expr(vec![], Some(tail_expr));
+    let fn_body = make.block_expr(vec![], Some(tail_expr));
     Some(fn_body)
 }
 
 fn get_fn_target_info(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<TargetInfo> {
@@ -505,7 +484,7 @@ fn get_fn_target_info(
 }
 
 fn get_fn_target(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
@@ -522,7 +501,7 @@ fn get_fn_target(
 }
 
 fn get_method_target(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     impl_: &Option<ast::Impl>,
     adt: &Adt,
 ) -> Option<GeneratedFunctionTarget> {
@@ -534,7 +513,7 @@ fn get_method_target(
 }
 
 fn assoc_fn_target_info(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     call: &CallExpr,
     adt: hir::Adt,
     fn_name: &str,
@@ -575,92 +554,236 @@ impl GeneratedFunctionTarget {
         }
     }
 
-    fn insert_impl_at(&self, edit: &mut SourceChangeBuilder, impl_: ast::Impl) {
+    fn insert_impl_at(
+        &self,
+        edit: &mut SourceChangeBuilder,
+        file: FileId,
+        ctx: &AssistContext<'_, '_>,
+        function_builder: &FunctionBuilder,
+        adt: Adt,
+        cap: Option<SnippetCap>,
+    ) {
+        let editor = edit.make_editor(self.syntax());
+
         match self {
             GeneratedFunctionTarget::AfterItem(item) => {
-                let item = edit.make_syntax_mut(item.clone());
                 let position = if item.parent().is_some() {
-                    ted::Position::after(&item)
+                    Position::after(item)
                 } else {
-                    ted::Position::first_child_of(&item)
+                    Position::first_child_of(item)
                 };
 
-                let indent = IndentLevel::from_node(&item);
-                let leading_ws = make::tokens::whitespace(&format!("\n{indent}"));
-                impl_.indent(indent);
-
-                ted::insert_all(position, vec![leading_ws.into(), impl_.syntax().clone().into()]);
+                let indent = IndentLevel::from_node(item);
+                insert_rendered_impl(
+                    &editor,
+                    edit,
+                    ctx,
+                    function_builder,
+                    adt,
+                    position,
+                    indent,
+                    indent,
+                    cap,
+                );
             }
             GeneratedFunctionTarget::InEmptyItemList(item_list) => {
-                let item_list = edit.make_syntax_mut(item_list.clone());
                 let insert_after =
                     item_list.children_with_tokens().find_or_first(|child| child.kind() == T!['{']);
                 let position = match insert_after {
-                    Some(child) => ted::Position::after(child),
-                    None => ted::Position::first_child_of(&item_list),
+                    Some(child) => Position::after(child),
+                    None => Position::first_child_of(item_list),
                 };
 
-                let indent = IndentLevel::from_node(&item_list);
+                let indent = IndentLevel::from_node(item_list);
                 let leading_indent = indent + 1;
-                let leading_ws = make::tokens::whitespace(&format!("\n{leading_indent}"));
-                impl_.indent(indent);
-
-                ted::insert_all(position, vec![leading_ws.into(), impl_.syntax().clone().into()]);
+                insert_rendered_impl(
+                    &editor,
+                    edit,
+                    ctx,
+                    function_builder,
+                    adt,
+                    position,
+                    indent,
+                    leading_indent,
+                    cap,
+                );
             }
             GeneratedFunctionTarget::InImpl(_) => {
                 unreachable!("can't insert an impl inside an impl")
             }
         }
+        edit.add_file_edits(file, editor);
     }
 
-    fn insert_fn_at(&self, edit: &mut SourceChangeBuilder, func: ast::Fn) {
+    fn insert_fn_at(
+        &self,
+        edit: &mut SourceChangeBuilder,
+        file: FileId,
+        function_builder: &FunctionBuilder,
+        cap: Option<SnippetCap>,
+    ) {
+        let editor = edit.make_editor(self.syntax());
+        let make = editor.make();
+
         match self {
             GeneratedFunctionTarget::AfterItem(item) => {
-                let item = edit.make_syntax_mut(item.clone());
                 let position = if item.parent().is_some() {
-                    ted::Position::after(&item)
+                    Position::after(item)
                 } else {
-                    ted::Position::first_child_of(&item)
+                    Position::first_child_of(item)
                 };
 
-                let indent = IndentLevel::from_node(&item);
-                let leading_ws = make::tokens::whitespace(&format!("\n\n{indent}"));
-                func.indent(indent);
-
-                ted::insert_all_raw(
+                let indent = IndentLevel::from_node(item);
+                insert_rendered_fn(
+                    &editor,
+                    edit,
+                    function_builder,
                     position,
-                    vec![leading_ws.into(), func.syntax().clone().into()],
+                    indent,
+                    format!("\n\n{indent}"),
+                    None,
+                    cap,
                 );
             }
             GeneratedFunctionTarget::InEmptyItemList(item_list) => {
-                let item_list = edit.make_syntax_mut(item_list.clone());
                 let insert_after =
                     item_list.children_with_tokens().find_or_first(|child| child.kind() == T!['{']);
                 let position = match insert_after {
-                    Some(child) => ted::Position::after(child),
-                    None => ted::Position::first_child_of(&item_list),
+                    Some(child) => Position::after(child),
+                    None => Position::first_child_of(item_list),
                 };
 
-                let indent = IndentLevel::from_node(&item_list);
+                let indent = IndentLevel::from_node(item_list);
                 let leading_indent = indent + 1;
-                let leading_ws = make::tokens::whitespace(&format!("\n{leading_indent}"));
-                let trailing_ws = make::tokens::whitespace(&format!("\n{indent}"));
-                func.indent(leading_indent);
-
-                ted::insert_all(
+                insert_rendered_fn(
+                    &editor,
+                    edit,
+                    function_builder,
                     position,
-                    vec![leading_ws.into(), func.syntax().clone().into(), trailing_ws.into()],
+                    leading_indent,
+                    format!("\n{leading_indent}"),
+                    Some(format!("\n{indent}")),
+                    cap,
                 );
             }
             GeneratedFunctionTarget::InImpl(impl_) => {
-                let impl_ = edit.make_mut(impl_.clone());
-
                 let leading_indent = impl_.indent_level() + 1;
-                func.indent(leading_indent);
 
-                impl_.get_or_create_assoc_item_list().add_item(func.into());
+                if let Some(item_list) = impl_.assoc_item_list() {
+                    let insert_after_item = item_list.assoc_items().last();
+                    let insert_after = item_list
+                        .assoc_items()
+                        .last()
+                        .map(|it| it.syntax().clone().into())
+                        .or_else(|| {
+                            item_list
+                                .syntax()
+                                .children_with_tokens()
+                                .find_or_first(|child| child.kind() == T!['{'])
+                        });
+                    let position = match insert_after {
+                        Some(child) => Position::after(child),
+                        None => Position::first_child_of(item_list.syntax()),
+                    };
+                    let indent = impl_.indent_level();
+                    let leading_ws = if insert_after_item.is_some() {
+                        format!("\n\n{leading_indent}")
+                    } else {
+                        format!("\n{leading_indent}")
+                    };
+                    let trailing_ws = insert_after_item.is_none().then(|| format!("\n{indent}"));
+                    insert_rendered_fn(
+                        &editor,
+                        edit,
+                        function_builder,
+                        position,
+                        leading_indent,
+                        leading_ws,
+                        trailing_ws,
+                        cap,
+                    );
+                } else {
+                    let func = function_builder.render(make).indent(leading_indent);
+                    let item_list = make.assoc_item_list([func.into()]);
+                    if let Some(fn_) = item_list.syntax().descendants().find_map(ast::Fn::cast) {
+                        add_generated_fn_annotation(&editor, edit, function_builder, &fn_, cap);
+                    }
+                    editor.insert(Position::last_child_of(impl_.syntax()), item_list.syntax());
+                }
             }
         }
+        edit.add_file_edits(file, editor);
+    }
+}
+
+fn insert_rendered_impl(
+    editor: &SyntaxEditor,
+    edit: &mut SourceChangeBuilder,
+    ctx: &AssistContext<'_, '_>,
+    function_builder: &FunctionBuilder,
+    adt: Adt,
+    position: Position,
+    impl_indent: IndentLevel,
+    leading_ws_indent: IndentLevel,
+    cap: Option<SnippetCap>,
+) {
+    let make = editor.make();
+    let leading_ws = make.whitespace(&format!("\n{leading_ws_indent}"));
+    let name = make.ty_path(make.ident_path(&format!(
+        "{}",
+        adt.name(ctx.db()).display(ctx.db(), function_builder.target_edition)
+    )));
+
+    // FIXME: adt may have generic params.
+    let fn_ = function_builder.render(make).indent(IndentLevel(1));
+    let impl_ =
+        make.impl_(None, None, None, name.into(), None, Some(make.assoc_item_list([fn_.into()])));
+    let impl_ = impl_.indent(impl_indent);
+    if let Some(fn_) = impl_.syntax().descendants().find_map(ast::Fn::cast) {
+        add_generated_fn_annotation(editor, edit, function_builder, &fn_, cap);
+    }
+
+    editor.insert_all(position, vec![leading_ws.into(), impl_.syntax().clone().into()]);
+}
+
+fn insert_rendered_fn(
+    editor: &SyntaxEditor,
+    edit: &mut SourceChangeBuilder,
+    function_builder: &FunctionBuilder,
+    position: Position,
+    indent: IndentLevel,
+    leading_ws: String,
+    trailing_ws: Option<String>,
+    cap: Option<SnippetCap>,
+) {
+    let make = editor.make();
+    let leading_ws = make.whitespace(&leading_ws);
+    let func = function_builder.render(make).indent(indent);
+    add_generated_fn_annotation(editor, edit, function_builder, &func, cap);
+
+    let mut elements = vec![leading_ws.into(), func.syntax().clone().into()];
+    if let Some(trailing_ws) = trailing_ws {
+        elements.push(make.whitespace(&trailing_ws).into());
+    }
+    editor.insert_all(position, elements);
+}
+
+fn add_generated_fn_annotation(
+    editor: &SyntaxEditor,
+    edit: &mut SourceChangeBuilder,
+    function_builder: &FunctionBuilder,
+    fn_: &ast::Fn,
+    cap: Option<SnippetCap>,
+) {
+    let Some(cap) = cap else { return };
+
+    let annotation = edit.make_placeholder_snippet(cap);
+    if function_builder.should_focus_return_type
+        && let Some(ret_type) = fn_.ret_type()
+    {
+        editor.add_annotation(ret_type.syntax(), annotation);
+    } else if let Some(tail_expr) = fn_.body().and_then(|body| body.tail_expr()) {
+        editor.add_annotation(tail_expr.syntax(), annotation);
     }
 }
 
@@ -677,7 +800,8 @@ impl AdtInfo {
 
 /// Computes parameter list for the generated function.
 fn fn_args(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     target_module: Module,
     call: ast::CallableExpr,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
@@ -689,14 +813,15 @@ fn fn_args(
         arg_types.push(fn_arg_type(ctx, target_module, &arg, necessary_generic_params));
     }
     deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
-        make::param(make::ext::simple_ident_pat(make::name(&name)).into(), make::ty(&ty))
-    });
+    let params = arg_names
+        .into_iter()
+        .zip(arg_types)
+        .map(|(name, ty)| make.param(make.simple_ident_pat(make.name(&name)).into(), make.ty(&ty)));
 
-    Some(make::param_list(
+    Some(make.param_list(
         match call {
             ast::CallableExpr::Call(_) => None,
-            ast::CallableExpr::MethodCall(_) => Some(make::self_param()),
+            ast::CallableExpr::MethodCall(_) => Some(make.self_param()),
         },
         params,
     ))
@@ -711,7 +836,8 @@ fn fn_args(
 /// currently do anything about it because it's actually easy to resolve it after the assist: just
 /// use the Rename functionality.
 fn fn_generic_params(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     necessary_params: FxHashSet<hir::GenericParam>,
     target: &GeneratedFunctionTarget,
 ) -> Option<(Option<ast::GenericParamList>, Option<ast::WhereClause>)> {
@@ -737,45 +863,45 @@ fn fn_generic_params(
     filter_unnecessary_bounds(&mut generic_params, &mut where_preds, necessary_params);
     filter_bounds_in_scope(&mut generic_params, &mut where_preds, ctx, target);
 
+    let source_scope = generic_params.first().and_then(|param| ctx.sema.scope(param.node.syntax()));
+    let target_scope = source_scope.as_ref().and_then(|_| ctx.sema.scope(&target.parent()));
+
     let generic_params: Vec<ast::GenericParam> =
-        generic_params.into_iter().map(|it| it.node.clone_for_update()).collect();
-    let where_preds: Vec<ast::WherePred> =
-        where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
+        generic_params.into_iter().map(|it| it.node).collect();
+    let where_preds: Vec<ast::WherePred> = where_preds.into_iter().map(|it| it.node).collect();
 
-    let (generic_params, where_preds): (Vec<ast::GenericParam>, Vec<ast::WherePred>) =
-        if let Some(param) = generic_params.first()
-            && let source_scope = ctx.sema.scope(param.syntax())?
-            && let target_scope = ctx.sema.scope(&target.parent())?
-            && source_scope.module() != target_scope.module()
-        {
-            // 4. Rewrite paths
-            let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
-            let generic_params = generic_params.iter().map(|it| it.syntax());
-            let where_preds = where_preds.iter().map(|it| it.syntax());
-            transform
-                .apply_all(generic_params.chain(where_preds))
-                .into_iter()
-                .filter_map(|it| {
-                    if let Some(it) = ast::GenericParam::cast(it.clone()) {
-                        Some(either::Either::Left(it))
-                    } else {
-                        ast::WherePred::cast(it).map(either::Either::Right)
-                    }
-                })
-                .partition_map(|it| it)
-        } else {
-            (generic_params, where_preds)
-        };
+    let (generic_params, where_preds) = if let Some(source_scope) = source_scope
+        && let Some(target_scope) = target_scope
+        && source_scope.module() != target_scope.module()
+    {
+        // 4. Rewrite paths
+        let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
+        let generic_params = generic_params.iter().map(|it| it.syntax());
+        let where_preds = where_preds.iter().map(|it| it.syntax());
+        transform
+            .apply_all(generic_params.chain(where_preds))
+            .into_iter()
+            .filter_map(|it| {
+                if let Some(it) = ast::GenericParam::cast(it.clone()) {
+                    Some(either::Either::Left(it))
+                } else {
+                    ast::WherePred::cast(it).map(either::Either::Right)
+                }
+            })
+            .partition_map(|it| it)
+    } else {
+        (generic_params, where_preds)
+    };
 
-    let generic_param_list = make::generic_param_list(generic_params);
+    let generic_param_list = make.generic_param_list(generic_params);
     let where_clause =
-        if where_preds.is_empty() { None } else { Some(make::where_clause(where_preds)) };
+        if where_preds.is_empty() { None } else { Some(make.where_clause(where_preds)) };
 
     Some((Some(generic_param_list), where_clause))
 }
 
 fn params_and_where_preds_in_scope(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> (Vec<ast::GenericParam>, Vec<ast::WherePred>) {
     let Some(body) = containing_body(ctx) else {
         return Default::default();
@@ -816,7 +942,7 @@ fn params_and_where_preds_in_scope(
     (generic_params, where_clauses)
 }
 
-fn containing_body(ctx: &AssistContext<'_>) -> Option<hir::DefWithBody> {
+fn containing_body(ctx: &AssistContext<'_, '_>) -> Option<hir::DefWithBody> {
     let item: ast::Item = ctx.find_node_at_offset()?;
     let def = match item {
         ast::Item::Fn(it) => ctx.sema.to_def(&it)?.into(),
@@ -828,7 +954,7 @@ fn containing_body(ctx: &AssistContext<'_>) -> Option<hir::DefWithBody> {
 }
 
 fn get_bounds_in_scope<D>(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     def: D,
 ) -> (impl Iterator<Item = ast::GenericParam>, impl Iterator<Item = ast::WherePred>)
 where
@@ -894,7 +1020,7 @@ struct WherePredWithParams {
 }
 
 fn compute_contained_params_in_generic_param(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     node: ast::GenericParam,
 ) -> Option<ParamBoundWithParams> {
     match &node {
@@ -923,7 +1049,7 @@ fn compute_contained_params_in_generic_param(
 }
 
 fn compute_contained_params_in_where_pred(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     node: ast::WherePred,
 ) -> Option<WherePredWithParams> {
     let self_ty = node.ty()?;
@@ -944,7 +1070,10 @@ fn compute_contained_params_in_where_pred(
     Some(WherePredWithParams { node, self_ty_params, other_params })
 }
 
-fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hir::GenericParam> {
+fn filter_generic_params(
+    ctx: &AssistContext<'_, '_>,
+    node: SyntaxNode,
+) -> Option<hir::GenericParam> {
     let path = ast::Path::cast(node)?;
     match ctx.sema.resolve_path(&path)? {
         PathResolution::TypeParam(it) => Some(it.into()),
@@ -1039,7 +1168,7 @@ fn filter_unnecessary_bounds(
 fn filter_bounds_in_scope(
     generic_params: &mut Vec<ParamBoundWithParams>,
     where_preds: &mut Vec<WherePredWithParams>,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     target: &GeneratedFunctionTarget,
 ) -> Option<()> {
     let target_impl = target.parent().ancestors().find_map(ast::Impl::cast)?;
@@ -1122,13 +1251,13 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
 }
 
 fn fn_arg_type(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     target_module: Module,
     fn_arg: &ast::Expr,
     generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> String {
     fn maybe_displayed_type(
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         target_module: Module,
         fn_arg: &ast::Expr,
         generic_params: &mut FxHashSet<hir::GenericParam>,
@@ -1221,7 +1350,7 @@ enum Visibility {
 fn calculate_necessary_visibility(
     current_module: Module,
     target_module: Module,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Visibility {
     let db = ctx.db();
     let current_module = current_module.nearest_non_block_module(db);
@@ -3237,6 +3366,84 @@ impl Foo {
 
     fn method2(&self, arg: i32) {
         ${0:todo!()}
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn generate_method_skips_trait_impl_for_inherent() {
+        // regression: rust-lang/rust-analyzer#22123
+        check_assist(
+            generate_function,
+            r"
+struct Bar;
+
+impl Bar {
+    fn func1() {}
+}
+
+trait Foo { fn foo(&self); }
+
+impl Foo for Bar {
+    fn foo(&self) {
+        self.func2$0();
+    }
+}
+",
+            r"
+struct Bar;
+
+impl Bar {
+    fn func1() {}
+
+    fn func2(&self) ${0:-> _} {
+        todo!()
+    }
+}
+
+trait Foo { fn foo(&self); }
+
+impl Foo for Bar {
+    fn foo(&self) {
+        self.func2();
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn generate_method_from_trait_impl_creates_new_inherent_impl() {
+        // #22123: no inherent impl exists, so the assist must synthesize one
+        // instead of inserting into the trait impl.
+        check_assist(
+            generate_function,
+            r"
+struct Bar;
+
+trait Foo { fn foo(&self); }
+
+impl Foo for Bar {
+    fn foo(&self) {
+        self.func2$0();
+    }
+}
+",
+            r"
+struct Bar;
+impl Bar {
+    fn func2(&self) ${0:-> _} {
+        todo!()
+    }
+}
+
+trait Foo { fn foo(&self); }
+
+impl Foo for Bar {
+    fn foo(&self) {
+        self.func2();
     }
 }
 ",

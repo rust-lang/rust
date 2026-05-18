@@ -68,14 +68,12 @@ fn main() {
     let thread1 = spawn(move || {
         unsafe { VAL_ONE = 41 };
 
-        let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc_utils::write_all(fds_a[0], data as *const libc::c_void, 5) };
-        assert_eq!(res, 5);
+        let data = "abcde".as_bytes();
+        libc_utils::write_all(fds_a[0], data).unwrap();
 
         unsafe { VAL_TWO = 51 };
 
-        let res = unsafe { libc_utils::write_all(fds_b[0], data as *const libc::c_void, 5) };
-        assert_eq!(res, 5);
+        libc_utils::write_all(fds_b[0], data).unwrap();
     });
     thread::yield_now();
 

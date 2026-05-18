@@ -81,7 +81,7 @@ pub(super) fn apply_mark(
         return apply_mark_internal(db, ctxt, call_id, transparency, edition);
     }
 
-    let call_site_ctxt = db.lookup_intern_macro_call(call_id.into()).ctxt;
+    let call_site_ctxt = crate::MacroCallId::from(call_id).loc(db).ctxt;
     let mut call_site_ctxt = if transparency == Transparency::SemiOpaque {
         call_site_ctxt.normalize_to_macros_2_0(db)
     } else {

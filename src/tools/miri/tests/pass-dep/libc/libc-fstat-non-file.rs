@@ -55,6 +55,7 @@ fn test_fstat_socketpair() {
             libc::S_IFSOCK,
             "socketpair should have S_IFSOCK mode"
         );
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "socketpair should have permissions");
         assert_eq!(stat.st_size, 0, "socketpair should have size 0");
         assert_stat_fields_are_accessible(stat);
     }
@@ -72,6 +73,7 @@ fn test_fstat_pipe() {
         let mut buf = MaybeUninit::uninit();
         let stat = do_fstat(*fd, &mut buf);
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFIFO, "pipe should have S_IFIFO mode");
+        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "pipe should have permissions");
         assert_eq!(stat.st_size, 0, "pipe should have size 0");
         assert_stat_fields_are_accessible(stat);
     }

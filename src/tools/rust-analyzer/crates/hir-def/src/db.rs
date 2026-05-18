@@ -7,87 +7,22 @@ use hir_expand::{
 use triomphe::Arc;
 
 use crate::{
-    AnonConstId, AnonConstLoc, AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc,
-    EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
-    ExternCrateLoc, FunctionId, FunctionLoc, ImplId, ImplLoc, Macro2Id, Macro2Loc, MacroExpander,
-    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
-    StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
-    UnionLoc, UseId, UseLoc,
+    AssocItemId, AttrDefId, Macro2Loc, MacroExpander, MacroId, MacroRulesLoc, MacroRulesLocFlags,
+    TraitId,
     attrs::AttrFlags,
-    item_tree::{ItemTree, file_item_tree_query},
+    item_tree::{ItemTree, file_item_tree},
     nameres::crate_def_map,
     visibility::{self, Visibility},
 };
 
-use salsa::plumbing::AsId;
-
-#[query_group::query_group(InternDatabaseStorage)]
-pub trait InternDatabase: SourceDatabase {
-    // region: items
-    #[salsa::interned]
-    fn intern_use(&self, loc: UseLoc) -> UseId;
-
-    #[salsa::interned]
-    fn intern_extern_crate(&self, loc: ExternCrateLoc) -> ExternCrateId;
-
-    #[salsa::interned]
-    fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
-
-    #[salsa::interned]
-    fn intern_struct(&self, loc: StructLoc) -> StructId;
-
-    #[salsa::interned]
-    fn intern_union(&self, loc: UnionLoc) -> UnionId;
-
-    #[salsa::interned]
-    fn intern_enum(&self, loc: EnumLoc) -> EnumId;
-
-    #[salsa::interned]
-    fn intern_enum_variant(&self, loc: EnumVariantLoc) -> EnumVariantId;
-
-    #[salsa::interned]
-    fn intern_const(&self, loc: ConstLoc) -> ConstId;
-
-    #[salsa::interned]
-    fn intern_static(&self, loc: StaticLoc) -> StaticId;
-
-    #[salsa::interned]
-    fn intern_anon_const(&self, loc: AnonConstLoc) -> AnonConstId;
-
-    #[salsa::interned]
-    fn intern_trait(&self, loc: TraitLoc) -> TraitId;
-
-    #[salsa::interned]
-    fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
-
-    #[salsa::interned]
-    fn intern_impl(&self, loc: ImplLoc) -> ImplId;
-
-    #[salsa::interned]
-    fn intern_extern_block(&self, loc: ExternBlockLoc) -> ExternBlockId;
-
-    #[salsa::interned]
-    fn intern_macro2(&self, loc: Macro2Loc) -> Macro2Id;
-
-    #[salsa::interned]
-    fn intern_proc_macro(&self, loc: ProcMacroLoc) -> ProcMacroId;
-
-    #[salsa::interned]
-    fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
-    // endregion: items
-
-    #[salsa::interned]
-    fn intern_block(&self, loc: BlockLoc) -> BlockId;
-}
-
 #[query_group::query_group]
-pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
+pub trait DefDatabase: ExpandDatabase + SourceDatabase {
     /// Whether to expand procedural macros during name resolution.
     #[salsa::input]
     fn expand_proc_attr_macros(&self) -> bool;
 
     /// Computes an [`ItemTree`] for the given file or macro expansion.
-    #[salsa::invoke(file_item_tree_query)]
+    #[salsa::invoke(file_item_tree)]
     #[salsa::transparent]
     fn file_item_tree(&self, file_id: HirFileId, krate: Crate) -> &ItemTree;
 
@@ -122,11 +57,7 @@ fn include_macro_invoc(
         .modules
         .values()
         .flat_map(|m| m.scope.iter_macro_invoc())
-        .filter_map(|invoc| {
-            db.lookup_intern_macro_call(*invoc.1)
-                .include_file_id(db, *invoc.1)
-                .map(|x| (*invoc.1, x))
-        })
+        .filter_map(|invoc| invoc.1.loc(db).include_file_id(db, *invoc.1).map(|x| (*invoc.1, x)))
         .collect()
 }
 

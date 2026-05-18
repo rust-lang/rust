@@ -29,7 +29,7 @@ use crate::{
 // ```
 pub(crate) fn replace_is_method_with_if_let_method(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let has_cond = ctx.find_node_at_offset::<Either<ast::IfExpr, ast::WhileExpr>>()?;
 

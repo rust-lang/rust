@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(string_from_utf8_lossy_owned)]
@@ -17,6 +17,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
@@ -26,7 +27,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LevelAndSource;
+use rustc_middle::lint::StableLevelSpec;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -167,6 +168,37 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct RetagInfo<V> {
+    /// The size of the initial range within the allocation that is
+    /// associated with the permission created by the retag.
+    pub size: Size,
+    /// Encoded type information used to determine the kind of permission
+    /// created by the retag.
+    pub flags: RetagFlags,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafeCell` within the pointee type.
+    pub im_layout: V,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafePinned` within the pointee type.
+    pub pin_layout: V,
+}
+
+bitflags::bitflags! {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub struct RetagFlags: u8 {
+        /// If this is a function-entry retag.
+        const IS_PROTECTED = 1 << 0;
+        /// If this is a mutable reference or a `Box`.
+        const IS_MUTABLE = 1 << 1;
+        /// If this is a `Box`.
+        const IS_BOX = 1 << 2;
+        /// If the pointee type is `Freeze`
+        const IS_FREEZE = 1 << 3;
+    }
+}
+
 // This is the same as `rustc_session::cstore::NativeLib`, except:
 // - (important) the `foreign_module` field is missing, because it contains a `DefId`, which can't
 //   be encoded with `FileEncoder`.
@@ -223,7 +255,7 @@ pub struct CrateInfo {
     pub dependency_formats: Arc<Dependencies>,
     pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
-    pub lint_levels: CodegenLintLevels,
+    pub lint_level_specs: CodegenLintLevelSpecs,
     pub metadata_symbol: String,
     pub each_linked_rlib_file_for_lto: Vec<PathBuf>,
     pub exported_symbols_for_lto: Vec<String>,
@@ -341,16 +373,16 @@ impl CompiledModules {
 /// solely from the `.rlink` file. `Lint`s are defined too early to be encodeable.
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
-pub struct CodegenLintLevels {
-    linker_messages: LevelAndSource,
-    linker_info: LevelAndSource,
+pub struct CodegenLintLevelSpecs {
+    linker_messages: StableLevelSpec,
+    linker_info: StableLevelSpec,
 }
 
-impl CodegenLintLevels {
+impl CodegenLintLevelSpecs {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
         Self {
-            linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
-            linker_info: tcx.lint_level_at_node(LINKER_INFO, CRATE_HIR_ID),
+            linker_messages: tcx.lint_level_spec_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
+            linker_info: tcx.lint_level_spec_at_node(LINKER_INFO, CRATE_HIR_ID),
         }
     }
 }

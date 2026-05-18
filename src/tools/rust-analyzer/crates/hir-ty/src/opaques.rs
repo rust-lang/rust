@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::Ty as _;
 use syntax::ast;
 
 use crate::{
-    ImplTraitId, InferenceResult,
+    ImplTraitId, InferBodyId, InferenceResult,
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{ImplTraitIdx, ImplTraits},
     next_solver::{
@@ -22,10 +22,10 @@ use crate::{
 
 pub(crate) fn opaque_types_defined_by(
     db: &dyn HirDatabase,
-    def_id: DefWithBodyId,
+    def_id: InferBodyId,
     result: &mut Vec<SolverDefId>,
 ) {
-    if let DefWithBodyId::FunctionId(func) = def_id {
+    if let Some(func) = def_id.as_function() {
         // A function may define its own RPITs.
         extend_with_opaques(
             db,
@@ -66,9 +66,15 @@ pub(crate) fn opaque_types_defined_by(
         _ => {}
     };
     match def_id {
-        DefWithBodyId::ConstId(id) => extend_with_atpit_from_container(id.loc(db).container),
-        DefWithBodyId::FunctionId(id) => extend_with_atpit_from_container(id.loc(db).container),
-        DefWithBodyId::StaticId(_) | DefWithBodyId::VariantId(_) => {}
+        InferBodyId::DefWithBodyId(DefWithBodyId::ConstId(id)) => {
+            extend_with_atpit_from_container(id.loc(db).container)
+        }
+        InferBodyId::DefWithBodyId(DefWithBodyId::FunctionId(id)) => {
+            extend_with_atpit_from_container(id.loc(db).container)
+        }
+        InferBodyId::DefWithBodyId(DefWithBodyId::StaticId(_))
+        | InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(_))
+        | InferBodyId::AnonConstId(_) => {}
     }
 
     // FIXME: Collect opaques from `#[define_opaque]`.
@@ -91,8 +97,8 @@ pub(crate) fn opaque_types_defined_by(
 // These are firewall queries to prevent drawing dependencies between infers:
 
 #[salsa::tracked(returns(ref))]
-pub(crate) fn rpit_hidden_types<'db>(
-    db: &'db dyn HirDatabase,
+pub(crate) fn rpit_hidden_types(
+    db: &dyn HirDatabase,
     function: FunctionId,
 ) -> ArenaMap<ImplTraitIdx, StoredEarlyBinder<StoredTy>> {
     let infer = InferenceResult::of(db, DefWithBodyId::from(function));
@@ -105,8 +111,8 @@ pub(crate) fn rpit_hidden_types<'db>(
 }
 
 #[salsa::tracked(returns(ref))]
-pub(crate) fn tait_hidden_types<'db>(
-    db: &'db dyn HirDatabase,
+pub(crate) fn tait_hidden_types(
+    db: &dyn HirDatabase,
     type_alias: TypeAliasId,
 ) -> ArenaMap<ImplTraitIdx, StoredEarlyBinder<StoredTy>> {
     // Call this first, to not perform redundant work if there are no TAITs.
@@ -149,7 +155,7 @@ pub(crate) fn tait_hidden_types<'db>(
                     _ = ocx.eq(
                         &cause,
                         param_env,
-                        entry.get().get().instantiate_identity(),
+                        entry.get().get().instantiate_identity().skip_norm_wip(),
                         hidden_type,
                     );
                 }

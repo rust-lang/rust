@@ -22,7 +22,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // # mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 // ```
-pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let call = ctx.find_node_at_offset::<ast::CallExpr>()?;
     let ast::Expr::PathExpr(path_expr) = call.expr()? else { return None };
     let path = path_expr.path()?;
@@ -77,7 +77,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
 fn add_import(
     qualifier: ast::Path,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     editor: &syntax::syntax_editor::SyntaxEditor,
 ) {
     if let Some(path_segment) = qualifier.segment() {

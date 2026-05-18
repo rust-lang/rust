@@ -160,7 +160,7 @@ impl From<Ident> for LifetimeSyntax {
 // platforms where the alignment is already sufficient.
 #[repr(align(4))]
 pub struct Lifetime {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
 
     /// Either a named lifetime definition (e.g. `'a`, `'static`) or an
@@ -369,7 +369,7 @@ impl Path<'_> {
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub res: Res,
 
@@ -440,7 +440,7 @@ impl<'hir> ConstItemRhs<'hir> {
 #[derive(Clone, Copy, Debug, StableHash)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: ConstArgKind<'hir, Unambig>,
     pub span: Span,
@@ -538,7 +538,7 @@ pub struct ConstArgArrayExpr<'hir> {
 
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct InferArg {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
 }
@@ -829,7 +829,7 @@ pub enum GenericParamKind<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct GenericParam<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub name: ParamName,
@@ -1088,12 +1088,99 @@ impl<'hir> Generics<'hir> {
             bound_span.with_lo(bounds[bound_pos - 1].span().hi())
         }
     }
+
+    /// Computes the span representing the removal of a generic parameter at `param_index`.
+    ///
+    /// This function identifies the correct slice of source code to delete so that the
+    /// remaining generic list remains syntactically valid (handling commas and brackets).
+    ///
+    /// ### Examples
+    ///
+    /// 1. **With a following parameter:** (Includes the trailing comma)
+    ///    - Input: `<T, U>` (index 0)
+    ///    - Produces span for: `T, `
+    ///
+    /// 2. **With a previous parameter:** (Includes the leading comma and bounds)
+    ///    - Input: `<T: Clone, U>` (index 1)
+    ///    - Produces span for: `, U`
+    ///
+    /// 3. **The only parameter:** (Includes the angle brackets)
+    ///    - Input: `<T>` (index 0)
+    ///    - Produces span for: `<T>`
+    ///
+    /// 4. **Parameter with where-clause bounds:**
+    ///    - Input: `fn foo<T, U>() where T: Copy` (index 0)
+    ///    - Produces span for: `T, ` (The where-clause remains for other logic to handle).
+    pub fn span_for_param_removal(&self, param_index: usize) -> Span {
+        if param_index >= self.params.len() {
+            return self.span.shrink_to_hi();
+        }
+
+        let is_param_explicit = |par: &&GenericParam<'_>| match par.kind {
+            GenericParamKind::Type { .. }
+            | GenericParamKind::Const { .. }
+            | GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit } => true,
+            _ => false,
+        };
+
+        // Find the span of the type parameter.
+        if let Some(next) = self.params[param_index + 1..].iter().find(is_param_explicit) {
+            self.params[param_index].span.until(next.span)
+        } else if let Some(prev) = self.params[..param_index].iter().rfind(is_param_explicit) {
+            let mut prev_span = prev.span;
+            // Consider the span of the bounds with the previous generic parameter when there is.
+            if let Some(prev_bounds_span) = self.span_for_param_bounds(prev) {
+                prev_span = prev_span.to(prev_bounds_span);
+            }
+
+            // Consider the span of the bounds with the current generic parameter when there is.
+            prev_span.shrink_to_hi().to(
+                if let Some(cur_bounds_span) = self.span_for_param_bounds(&self.params[param_index])
+                {
+                    cur_bounds_span
+                } else {
+                    self.params[param_index].span
+                },
+            )
+        } else {
+            // Remove also angle brackets <> when there is just ONE generic parameter.
+            self.span
+        }
+    }
+
+    /// Returns the span of the `WherePredicate` associated with the given `GenericParam`, if any.
+    ///
+    /// This looks specifically for predicates in the `where` clause that were generated
+    /// from the parameter definition (e.g., `T` in `where T: Bound`).
+    ///
+    /// ### Example
+    ///
+    /// - Input: `param` representing `T`
+    /// - Context: `where T: Clone + Default, U: Copy`
+    /// - Returns: Span of `T: Clone + Default`
+    fn span_for_param_bounds(&self, param: &GenericParam<'hir>) -> Option<Span> {
+        self.predicates
+            .iter()
+            .find(|pred| {
+                if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                    origin: PredicateOrigin::GenericParam,
+                    bounded_ty,
+                    ..
+                }) = pred.kind
+                {
+                    bounded_ty.span == param.span
+                } else {
+                    false
+                }
+            })
+            .map(|pred| pred.span)
+    }
 }
 
 /// A single predicate in a where-clause.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct WherePredicate<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: &'hir WherePredicateKind<'hir>,
@@ -1340,7 +1427,7 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn value_str(&self) -> Option<Symbol> {
-        self.value_lit().and_then(|x| x.value_str())
+        self.value_lit().and_then(|x| x.value_as_str())
     }
 
     #[inline]
@@ -1650,7 +1737,7 @@ pub struct OwnerInfo<'hir> {
     ///
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub delayed_lints: Steal<DelayedLints>,
 }
 
@@ -1696,6 +1783,14 @@ pub struct Closure<'hir> {
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
+    pub explicit_captures: &'hir [ExplicitCapture],
+}
+
+/// A HIR local that must be captured by value even if ordinary closure capture
+/// analysis would infer a weaker capture kind from its uses in the body.
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct ExplicitCapture {
+    pub var_hir_id: HirId,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, StableHash, Encodable, Decodable)]
@@ -1724,7 +1819,7 @@ pub struct Block<'hir> {
     /// An expression at the end of the block
     /// without a semicolon, if any.
     pub expr: Option<&'hir Expr<'hir>>,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -1754,7 +1849,7 @@ pub struct TyFieldPath {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TyPat<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: TyPatKind<'hir>,
     pub span: Span,
@@ -1762,7 +1857,7 @@ pub struct TyPat<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Pat<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
@@ -1910,7 +2005,7 @@ impl<'hir> Pat<'hir> {
 /// except `is_shorthand` is true.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PatField<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     /// The identifier for the field.
     pub ident: Ident,
@@ -1966,7 +2061,7 @@ impl fmt::Debug for DotDotPos {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PatExpr<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: PatExprKind<'hir>,
@@ -2074,7 +2169,7 @@ pub enum PatKind<'hir> {
 /// A statement.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Stmt<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
@@ -2108,7 +2203,7 @@ pub struct LetStmt<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     /// Else block for a `let...else` binding.
     pub els: Option<&'hir Block<'hir>>,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
@@ -2121,7 +2216,7 @@ pub struct LetStmt<'hir> {
 /// `<pat> (if <guard>) => <body>`.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Arm<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// If this pattern and the optional guard matches, then `body` is evaluated.
@@ -2150,7 +2245,7 @@ pub struct LetExpr<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct ExprField<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: &'hir Expr<'hir>,
@@ -2424,7 +2519,7 @@ pub type Lit = Spanned<LitKind>;
 /// `const N: usize = { ... }` with `tcx.hir_opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, Debug, StableHash)]
 pub struct AnonConst {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -2434,7 +2529,7 @@ pub struct AnonConst {
 /// An inline constant expression `const { something }`.
 #[derive(Copy, Clone, Debug, StableHash)]
 pub struct ConstBlock {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -2450,7 +2545,7 @@ pub struct ConstBlock {
 /// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Expr<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
     pub span: Span,
@@ -2463,12 +2558,10 @@ impl Expr<'_> {
         };
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
-                    FnRetTy::Return(_) => prefix_attrs_precedence(),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
+                FnRetTy::Return(_) => prefix_attrs_precedence(),
+            },
 
             ExprKind::Break(..)
             | ExprKind::Ret(..)
@@ -2479,17 +2572,16 @@ impl Expr<'_> {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
@@ -3366,7 +3458,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct AssocItemConstraint<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
@@ -3446,7 +3538,7 @@ pub enum AmbigArg {}
 #[derive(Debug, Clone, Copy, StableHash)]
 #[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: TyKind<'hir, Unambig>,
@@ -3692,7 +3784,7 @@ pub struct UnsafeBinderTy<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct OpaqueTy<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub bounds: GenericBounds<'hir>,
@@ -3732,7 +3824,7 @@ impl PreciseCapturingArg<'_> {
 /// since resolve_bound_vars operates on `Lifetime`s.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PreciseCapturingNonLifetimeArg {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub res: Res,
@@ -3932,7 +4024,7 @@ impl InlineAsm<'_> {
 /// Represents a parameter in a function header.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Param<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,
@@ -4233,7 +4325,7 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
@@ -4273,7 +4365,7 @@ pub enum UseKind {
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_ref_id: HirId,
 }
 
@@ -4309,7 +4401,7 @@ pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub ident: Ident,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
@@ -4334,11 +4426,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], #[stable_hasher(ignore)] HirId, LocalDefId),
+    Tuple(&'hir [FieldDef<'hir>], #[stable_hash(ignore)] HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(#[stable_hasher(ignore)] HirId, LocalDefId),
+    Unit(#[stable_hash(ignore)] HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {

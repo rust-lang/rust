@@ -24,7 +24,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 // mod foo;
 // ```
-pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let module_ast = ctx.find_node_at_offset::<ast::Module>()?;
     let module_items = module_ast.item_list()?;
 

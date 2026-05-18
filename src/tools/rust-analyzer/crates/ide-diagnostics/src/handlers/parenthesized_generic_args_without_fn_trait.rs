@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is shown when a `Fn`-trait-style generic parameters (`Trait(A, B) -> C`)
 // was used on non-`Fn` trait/type.
 pub(crate) fn parenthesized_generic_args_without_fn_trait(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::ParenthesizedGenericArgsWithoutFnTrait,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

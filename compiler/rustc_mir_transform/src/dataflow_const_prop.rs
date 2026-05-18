@@ -164,13 +164,13 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<FlatSet<Scalar>>) {
         match &statement.kind {
-            StatementKind::Assign(box (place, rvalue)) => {
+            StatementKind::Assign((place, rvalue)) => {
                 self.handle_assign(*place, rvalue, state);
             }
-            StatementKind::SetDiscriminant { box place, variant_index } => {
-                self.handle_set_discriminant(*place, *variant_index, state);
+            StatementKind::SetDiscriminant { place, variant_index } => {
+                self.handle_set_discriminant(**place, *variant_index, state);
             }
-            StatementKind::Intrinsic(box intrinsic) => {
+            StatementKind::Intrinsic(intrinsic) => {
                 self.handle_intrinsic(intrinsic);
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
@@ -214,7 +214,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
             Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
-            Operand::Constant(box constant) => {
+            Operand::Constant(constant) => {
                 ValueOrPlace::Value(self.handle_constant(constant, state))
             }
             Operand::Copy(place) | Operand::Move(place) => {
@@ -352,7 +352,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::BinaryOp(op, box (left, right)) if op.is_overflowing() => {
+            Rvalue::BinaryOp(op, (left, right)) if op.is_overflowing() => {
                 // Flood everything now, so we can use `insert_value_idx` directly later.
                 state.flood(target.as_ref(), &self.map);
 
@@ -442,7 +442,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::BinaryOp(op, box (left, right)) if !op.is_overflowing() => {
+            Rvalue::BinaryOp(op, (left, right)) if !op.is_overflowing() => {
                 // Overflows must be ignored here.
                 // The overflowing operators are handled in `handle_assign`.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
@@ -546,7 +546,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     self.assign_constant(state, place, op, rhs.projection);
                 }
             }
-            Operand::Constant(box constant) => {
+            Operand::Constant(constant) => {
                 if let Some(constant) = self
                     .ecx
                     .borrow()
@@ -871,8 +871,9 @@ fn try_write_constant<'tcx>(
         ty::FnDef(..) => {}
 
         // Those are scalars, must be handled above.
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char =>
-            throw_machine_stop_str!("primitive type with provenance"),
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+            throw_machine_stop_str!("primitive type with provenance")
+        }
 
         ty::Tuple(elem_tys) => {
             for (i, elem) in elem_tys.iter().enumerate() {
@@ -898,7 +899,9 @@ fn try_write_constant<'tcx>(
                     throw_machine_stop_str!("discriminant with provenance")
                 };
                 let discr_bits = discr.to_bits(discr.size());
-                let Some((variant, _)) = def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val) else {
+                let Some((variant, _)) =
+                    def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val)
+                else {
                     throw_machine_stop_str!("illegal discriminant for enum")
                 };
                 let Some(variant_place) = map.apply(place, TrackElem::Variant(variant)) else {
@@ -911,7 +914,7 @@ fn try_write_constant<'tcx>(
             };
 
             for (i, field) in variant_def.fields.iter_enumerated() {
-                let ty = field.ty(*ecx.tcx, args);
+                let ty = field.ty(*ecx.tcx, args).skip_norm_wip();
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")
                 };
@@ -956,7 +959,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         location: Location,
     ) {
         match &statement.kind {
-            StatementKind::Assign(box (_, rvalue)) => {
+            StatementKind::Assign((_, rvalue)) => {
                 OperandCollector {
                     state,
                     visitor: self,
@@ -978,10 +981,10 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         location: Location,
     ) {
         match statement.kind {
-            StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_), _))) => {
+            StatementKind::Assign((_, Rvalue::Use(Operand::Constant(_), _))) => {
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
-            StatementKind::Assign(box (place, _)) => {
+            StatementKind::Assign((place, _)) => {
                 if let Some(value) = self.try_make_constant(
                     &mut analysis.ecx.borrow_mut(),
                     place,
@@ -1020,7 +1023,7 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         if let Some(value) = self.assignments.get(&location) {
             match &mut statement.kind {
-                StatementKind::Assign(box (_, rvalue)) => {
+                StatementKind::Assign((_, rvalue)) => {
                     let old_retag = match rvalue {
                         Rvalue::Use(_, retag) => *retag,
                         _ => WithRetag::Yes,

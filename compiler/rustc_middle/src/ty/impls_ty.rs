@@ -6,8 +6,8 @@ use std::ptr;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{
-    HashingControls, StableHash, StableHashCtxt, StableHasher,
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use tracing::trace;
 
@@ -22,12 +22,12 @@ where
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
+            static CACHE: RefCell<FxHashMap<(*const (), StableHashControls), Fingerprint>> =
                 RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {
-            let key = (ptr::from_ref(*self).cast::<()>(), hcx.hashing_controls());
+            let key = (ptr::from_ref(*self).cast::<()>(), hcx.stable_hash_controls());
             if let Some(&hash) = cache.borrow().get(&key) {
                 return hash;
             }

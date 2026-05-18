@@ -77,21 +77,11 @@ impl SingleAttributeParser for RustcForceInlineParser {
             ArgParser::List(list) => {
                 let l = cx.expect_single(list)?;
 
-                let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
-                    cx.adcx().expected_string_literal(l.span(), l.lit());
-                    return None;
-                };
+                let reason = cx.expect_string_literal(l)?;
 
                 Some(reason)
             }
-            ArgParser::NameValue(v) => {
-                let Some(reason) = v.value_as_str() else {
-                    cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
-                    return None;
-                };
-
-                Some(reason)
-            }
+            ArgParser::NameValue(v) => cx.expect_string_literal(v),
         };
 
         Some(AttributeKind::Inline(

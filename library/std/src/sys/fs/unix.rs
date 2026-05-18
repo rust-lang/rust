@@ -1090,7 +1090,7 @@ impl DirEntry {
             target_os = "illumos",
             target_vendor = "apple",
         )),
-        miri
+        miri // no dirfd on Miri
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         run_path_with_cstr(&self.path(), &lstat)

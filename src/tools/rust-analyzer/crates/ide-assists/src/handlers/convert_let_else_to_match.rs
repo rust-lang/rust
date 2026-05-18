@@ -24,7 +24,10 @@ use crate::{AssistContext, AssistId, Assists};
 //     };
 // }
 // ```
-pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_let_else_to_match(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     // Should focus on the `else` token to trigger
     let let_stmt = ctx
@@ -142,6 +145,10 @@ fn remove_mut_and_collect_idents(
         ast::Pat::BoxPat(p) => {
             let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
             make.box_pat(pat).into()
+        }
+        ast::Pat::DerefPat(p) => {
+            let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
+            make.deref_pat(pat)
         }
         ast::Pat::OrPat(p) => {
             let pats = p

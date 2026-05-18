@@ -7,9 +7,9 @@ LL |             cell.set(Some(Box::leak(Box::new(123))));
    = note: stack backtrace:
            0: main::{closure#0}::{closure#0}
                at tests/fail/tls_macro_leak.rs:LL:CC
-           1: std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with
+           1: std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>
                at RUSTLIB/std/src/thread/local.rs:LL:CC
-           2: std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with
+           2: std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>
                at RUSTLIB/std/src/thread/local.rs:LL:CC
            3: main::{closure#0}
                at tests/fail/tls_macro_leak.rs:LL:CC

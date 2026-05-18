@@ -45,7 +45,7 @@ use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
@@ -61,7 +61,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::hir::{self as mid_hir};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{DelegationInfo, ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{DelegationInfo, PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::errors::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -126,6 +126,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
+    owner: &'a PerOwnerResolverData,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
@@ -159,6 +160,11 @@ struct LoweringContext<'a, 'hir> {
 
     delayed_lints: Vec<DelayedLint>,
 
+    /// Stack of `move(...)` collection states. A plain closure body pushes
+    /// `Some`, so `move(...)` expressions can record the generated locals they
+    /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
+    move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
+
     attribute_parser: AttributeParser<'hir>,
 }
 
@@ -168,6 +174,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             tcx,
             resolver,
             current_disambiguator: Default::default(),
+            owner: &resolver.owners[&CRATE_NODE_ID],
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -216,6 +223,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
+            move_expr_bindings: Vec::new(),
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),
@@ -310,12 +318,8 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         self.delegation_infos.get(&id)
     }
 
-    fn opt_local_def_id(&self, id: NodeId) -> Option<LocalDefId> {
-        self.node_id_to_def_id.get(&id).copied()
-    }
-
-    fn local_def_id(&self, id: NodeId) -> LocalDefId {
-        self.opt_local_def_id(id).expect("must have def_id")
+    fn owner_def_id(&self, id: NodeId) -> LocalDefId {
+        self.owners[&id].def_id
     }
 
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
@@ -483,20 +487,20 @@ fn index_crate<'a, 'b>(
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.resolver.owner_def_id(item.id);
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
             visit::walk_item(self, item)
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.resolver.owner_def_id(item.id);
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
-            let def_id = self.resolver.local_def_id(item.id);
+            let def_id = self.resolver.owner_def_id(item.id);
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
             visit::walk_item(self, item);
@@ -662,12 +666,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id
             .get(&node)
-            .or_else(|| self.resolver.node_id_to_def_id.get(&node))
+            .or_else(|| self.owner.node_id_to_def_id.get(&node))
             .copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            self.resolver.owners.items().any(|(id, items)| {
+                items.node_id_to_def_id.items().any(|(node_id, def_id)| {
+                    if *node_id == node {
+                        let actual_owner = items.node_id_to_def_id.get(id);
+                        panic!("{def_id:?} ({node_id}) was found in {actual_owner:?} ({id})",)
+                    }
+                    false
+                })
+            });
+            panic!("no entry for node id: `{node:?}`");
+        })
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
@@ -679,7 +694,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
     fn owner_id(&self, node: NodeId) -> hir::OwnerId {
-        hir::OwnerId { def_id: self.local_def_id(node) }
+        hir::OwnerId { def_id: self.resolver.owners[&node].def_id }
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -704,6 +719,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
 
         let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);
+        let current_ast_owner = std::mem::replace(&mut self.owner, &self.resolver.owners[&owner]);
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
@@ -739,6 +755,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let info = self.make_owner_info(item);
 
         self.current_disambiguator = disambiguator;
+        self.owner = current_ast_owner;
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.define_opaque = current_define_opaque;
@@ -1787,7 +1804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let output = match coro {
             Some(coro) => {
-                let fn_def_id = self.local_def_id(fn_node_id);
+                let fn_def_id = self.owner.def_id;
                 self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind)
             }
             None => match &decl.output {
@@ -1795,19 +1812,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let itctx = match kind {
                         FnDeclKind::Fn | FnDeclKind::Inherent => ImplTraitContext::OpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn {
-                                parent: self.local_def_id(fn_node_id),
+                                parent: self.owner.def_id,
                                 in_trait_or_impl: None,
                             },
                         },
                         FnDeclKind::Trait => ImplTraitContext::OpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn {
-                                parent: self.local_def_id(fn_node_id),
+                                parent: self.owner.def_id,
                                 in_trait_or_impl: Some(hir::RpitContext::Trait),
                             },
                         },
                         FnDeclKind::Impl => ImplTraitContext::OpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn {
-                                parent: self.local_def_id(fn_node_id),
+                                parent: self.owner.def_id,
                                 in_trait_or_impl: Some(hir::RpitContext::TraitImpl),
                             },
                         },

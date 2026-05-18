@@ -27,7 +27,7 @@ use tracing::{debug, trace};
 
 use crate::clean::ItemKind;
 use crate::clean::types::{ExternalCrate, ExternalLocation};
-use crate::config::RenderOptions;
+use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -132,11 +132,10 @@ impl<'tcx> JsonRenderer<'tcx> {
 }
 
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
-    fn descr() -> &'static str {
-        "json"
-    }
-
+    const DESCR: &'static str = "json";
     const RUN_ON_MODULE: bool = false;
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::JsonFiles;
+
     type ModuleData = ();
 
     fn save_module_data(&mut self) -> Self::ModuleData {

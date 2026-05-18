@@ -21,9 +21,9 @@ LL | fn inner(x: &mut i32, f: fn(usize)) {
    = note: stack backtrace:
            0: <std::boxed::Box<i32> as std::ops::Drop>::drop
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           1: std::ptr::drop_glue))
+           1: std::ptr::drop_glue::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           2: std::mem::drop
+           2: std::mem::drop::<std::boxed::Box<i32>>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
            3: main::{closure#0}
                at tests/fail/tree_borrows/wildcard/strongly_protected_wildcard.rs:LL:CC

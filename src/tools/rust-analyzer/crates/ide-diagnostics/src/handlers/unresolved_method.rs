@@ -17,7 +17,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // This diagnostic is triggered if a method does not exist on a given type.
 pub(crate) fn unresolved_method(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
 ) -> Diagnostic {
     let suffix = if d.field_with_same_name.is_some() {
@@ -49,7 +49,10 @@ pub(crate) fn unresolved_method(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall<'_>) -> Option<Vec<Assist>> {
+fn fixes(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::UnresolvedMethodCall<'_>,
+) -> Option<Vec<Assist>> {
     let field_fix = if let Some(ty) = &d.field_with_same_name {
         field_fix(ctx, d, ty)
     } else {
@@ -71,7 +74,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall<'_>) -> Opt
 }
 
 fn field_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
     ty: &hir::Type<'_>,
 ) -> Option<Assist> {
@@ -108,7 +111,7 @@ fn field_fix(
 }
 
 fn assoc_func_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedMethodCall<'_>,
 ) -> Option<Assist> {
     if let Some(f) = d.assoc_func_with_same_name {

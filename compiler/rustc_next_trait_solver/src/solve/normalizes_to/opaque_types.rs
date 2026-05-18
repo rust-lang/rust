@@ -2,11 +2,11 @@
 //! behaves differently depending on the current `TypingMode`.
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{GoalSource, NoSolution, RerunReason};
+use rustc_type_ir::solve::{GoalSource, QueryResultOrRerunNonErased, RerunReason};
 use rustc_type_ir::{self as ty, Interner, MayBeErased, TypingMode, fold_regions};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, QueryResult};
+use crate::solve::{Certainty, EvalCtxt, Goal};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -18,7 +18,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
         def_id: I::OpaqueTyId,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
@@ -39,6 +39,7 @@ where
                 // This can then allow nested goals to fail after we've constrained the `term`.
                 self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous));
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into)
             }
             TypingMode::Analysis {
                 defining_opaque_types_and_generators: defining_opaque_types,
@@ -50,7 +51,9 @@ where
                 else {
                     // If we're not in the defining scope, treat the alias as rigid.
                     self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
-                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    return self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        .map_err(Into::into);
                 };
 
                 // We structurally normalize the args so that we're able to detect defining uses
@@ -108,6 +111,7 @@ where
                     expected,
                 );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into)
             }
             TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
                 let Some(def_id) = opaque_ty
@@ -116,7 +120,9 @@ where
                     .filter(|&def_id| defined_opaque_types.contains(&def_id))
                 else {
                     self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
-                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    return self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        .map_err(Into::into);
                 };
 
                 let actual =
@@ -130,6 +136,7 @@ where
                 });
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into)
             }
             TypingMode::PostAnalysis => {
                 // FIXME: Add an assertion that opaque type storage is empty.
@@ -137,6 +144,7 @@ where
                     cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into)
             }
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 let def_id = opaque_ty.def_id().as_local();
@@ -151,20 +159,16 @@ where
                     self.opaque_accesses.rerun_if_opaque_in_opaque_type_storage(
                         RerunReason::NormalizeOpaqueType,
                         def_id,
-                    );
+                    )?;
                 } else {
                     self.opaque_accesses
-                        .rerun_if_in_post_analysis(RerunReason::NormalizeOpaqueTypeRemoteCrate);
-                }
-                if self.opaque_accesses.should_bail() {
-                    // If we already accessed opaque types once, bail.
-                    // We can't make it more precise
-                    return Err(NoSolution);
+                        .rerun_if_in_post_analysis(RerunReason::NormalizeOpaqueTypeRemoteCrate)?;
                 }
 
                 // Always treat the opaque type as rigid.
                 self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into)
             }
         }
     }

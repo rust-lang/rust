@@ -9,7 +9,6 @@ use hir_expand::{
 };
 use span::SyntaxContext;
 use syntax::ast;
-use triomphe::Arc;
 
 use crate::{
     AstIdWithPath, MacroId, ModuleId, UnresolvedMacro,
@@ -126,7 +125,7 @@ pub(super) fn attr_macro_as_call_id(
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
-            attr_args: arg.map(Arc::new),
+            attr_args: arg.map(Box::new),
             censored_attr_ids,
         },
         macro_attr.ctxt,

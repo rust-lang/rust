@@ -165,7 +165,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {
-        if let Some(id) = self.opt_local_def_id(id)
+        if let Some(id) = self.owners.get(&id).map(|i| i.def_id)
             && self.tcx.def_kind(id).is_module_like()
         {
             self.mods_with_parse_errors.insert(id.to_def_id());
@@ -175,10 +175,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
-            match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if let Some(name) = name => name,
-                _ => kw::Crate,
-            }
+            self.resolve_crate_root(ident).name().unwrap_or(kw::Crate)
         });
     }
 
@@ -193,7 +190,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let output_macro_rules_scope = collect_definitions(self, fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
-        parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
+        let module = parent_scope.module.expect_local();
+        module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
         if let Some(unexpanded_invocations) =
             self.impl_unexpanded_invocations.get_mut(&self.invocation_parent(expansion))
         {
@@ -217,7 +215,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
         let parent_module =
-            parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
+            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -491,7 +489,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
-        self.proc_macros.push(self.local_def_id(id))
+        self.proc_macros.push(self.owner_def_id(id))
     }
 
     fn append_stripped_cfg_item(
@@ -523,7 +521,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
-        if !target_trait.unexpanded_invocations.borrow().is_empty() {
+        if target_trait.has_unexpanded_invocations() {
             return Err(Indeterminate);
         }
         // FIXME: Instead of waiting try generating all trait methods, and pruning
@@ -1275,8 +1273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::NonModule(..) |
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.dcx()
-                        .emit_err(errors::CfgAccessibleUnsure { span });
+                    self.dcx().emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.

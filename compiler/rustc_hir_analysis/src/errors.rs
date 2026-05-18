@@ -15,6 +15,8 @@ pub(crate) mod wrong_number_of_generic_args;
 mod precise_captures;
 pub(crate) use precise_captures::*;
 
+pub(crate) mod remove_or_use_generic;
+
 #[derive(Diagnostic)]
 #[diag("ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`")]
 pub(crate) struct AmbiguousAssocItem<'a> {
@@ -1671,6 +1673,14 @@ pub(crate) struct UnsupportedDelegation<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("delegation self type is not specified")]
+#[help("consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`")]
+pub(crate) struct DelegationSelfTypeNotSpecified {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("method should be `async` or return a future, but it is synchronous")]
 pub(crate) struct MethodShouldReturnFuture {
     #[primary_span]
@@ -1985,4 +1995,36 @@ pub(crate) struct EiiDefkindMismatchStaticSafety {
     #[primary_span]
     pub span: Span,
     pub eii_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("conflicting implementations of `Drop::drop` and `Drop::pin_drop`")]
+pub(crate) struct ConflictImplDropAndPinDrop {
+    #[primary_span]
+    pub span: Span,
+    #[label("`drop(&mut self)` implemented here")]
+    pub drop_span: Span,
+    #[label("`pin_drop(&pin mut self)` implemented here")]
+    pub pin_drop_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$adt_name}` must implement `pin_drop`")]
+#[help("structurally pinned types must keep `Pin`'s safety contract")]
+pub(crate) struct PinV2WithoutPinDrop {
+    #[primary_span]
+    #[suggestion(
+        "implement `pin_drop` instead",
+        code = "fn pin_drop(&pin mut self)",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+    #[note("`{$adt_name}` is marked `#[pin_v2]` here")]
+    #[suggestion(
+        "remove the `#[pin_v2]` attribute if it is not intended for structurally pinning",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub pin_v2_span: Option<Span>,
+    pub adt_name: Symbol,
 }

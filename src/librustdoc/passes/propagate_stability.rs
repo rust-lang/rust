@@ -69,7 +69,10 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     item_stability
                 };
 
-                let (ItemKind::StrippedItem(box kind) | kind) = &item.kind;
+                let kind = match &item.kind {
+                    ItemKind::StrippedItem(kind) => kind,
+                    kind => kind,
+                };
                 match kind {
                     ItemKind::ExternCrateItem { .. }
                     | ItemKind::ImportItem(..)

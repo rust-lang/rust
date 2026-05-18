@@ -10,7 +10,7 @@ use crate::{CompletionItem, CompletionItemKind, Completions, context::Completion
 /// Complete identifiers in format strings.
 pub(crate) fn format_string(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     original: &ast::String,
     expanded: &ast::String,
 ) {

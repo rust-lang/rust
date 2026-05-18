@@ -1,6 +1,6 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
-//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni
+//@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -15,6 +15,7 @@ fn main() {
     assert!(is_x86_feature_detected!("avx512bitalg"));
     assert!(is_x86_feature_detected!("avx512vpopcntdq"));
     assert!(is_x86_feature_detected!("avx512vnni"));
+    assert!(is_x86_feature_detected!("avx512vbmi"));
 
     unsafe {
         test_avx512();
@@ -23,6 +24,7 @@ fn main() {
         test_avx512vpopcntdq();
         test_avx512ternarylogic();
         test_avx512vnni();
+        test_avx512vbmi();
     }
 }
 
@@ -754,6 +756,114 @@ unsafe fn test_avx512bw() {
         assert_eq_m512i(_mm512_packus_epi32(a, b), dst);
     }
     test_mm512_packus_epi32();
+}
+
+#[target_feature(enable = "avx512vbmi")]
+unsafe fn test_avx512vbmi() {
+    #[target_feature(enable = "avx512vbmi")]
+    unsafe fn test_mm512_permutex2var_epi8() {
+        // For each index byte in `idx`: the low 6 bits (bits [5:0]) select
+        // a lane (0..63) within a source vector, the 7th bit (bit [6]) picks
+        // the source vector (0 = `a`, 1 = `b`), and the 8th bit (bit [7])
+        // is ignored.
+        //
+        // a[i] = i + 1, b[i] = i + 65.
+        #[rustfmt::skip]
+        let a = _mm512_set_epi8(
+            64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49,
+            48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33,
+            32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17,
+            16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,
+        );
+        #[rustfmt::skip]
+        let b = _mm512_set_epi8(
+            128u8 as i8, 127, 126, 125, 124, 123, 122, 121,
+            120, 119, 118, 117, 116, 115, 114, 113,
+            112, 111, 110, 109, 108, 107, 106, 105,
+            104, 103, 102, 101, 100,  99,  98,  97,
+             96,  95,  94,  93,  92,  91,  90,  89,
+             88,  87,  86,  85,  84,  83,  82,  81,
+             80,  79,  78,  77,  76,  75,  74,  73,
+             72,  71,  70,  69,  68,  67,  66,  65,
+        );
+
+        // Indices 0..63: the 7th bit (bit [6]) is clear so all elements
+        // come from `a`, and bits [5:0] equal the lane index so each lane
+        // reads from the same position.
+        #[rustfmt::skip]
+        let idx = _mm512_set_epi8(
+            63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48,
+            47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32,
+            31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+            15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0,
+        );
+        assert_eq_m512i(_mm512_permutex2var_epi8(a, idx, b), a);
+
+        // Indices 64..127: the 7th bit (bit [6]) is set so all elements
+        // come from `b`, and bits [5:0] still equal the lane index.
+        let idx = _mm512_add_epi8(idx, _mm512_set1_epi8(64));
+        assert_eq_m512i(_mm512_permutex2var_epi8(a, idx, b), b);
+
+        // Mix: even byte positions from `a`, odd from `b`.
+        #[rustfmt::skip]
+        let idx = _mm512_set_epi8(
+            127u8 as i8, 62, 125, 60, 123, 58, 121, 56,
+            119, 54, 117, 52, 115, 50, 113, 48,
+            111, 46, 109, 44, 107, 42, 105, 40,
+            103, 38, 101, 36,  99, 34,  97, 32,
+             95, 30,  93, 28,  91, 26,  89, 24,
+             87, 22,  85, 20,  83, 18,  81, 16,
+             79, 14,  77, 12,  75, 10,  73,  8,
+             71,  6,  69,  4,  67,  2,  65,  0,
+        );
+        #[rustfmt::skip]
+        let e = _mm512_set_epi8(
+            128u8 as i8, 63, 126, 61, 124, 59, 122, 57,
+            120, 55, 118, 53, 116, 51, 114, 49,
+            112, 47, 110, 45, 108, 43, 106, 41,
+            104, 39, 102, 37, 100, 35,  98, 33,
+             96, 31,  94, 29,  92, 27,  90, 25,
+             88, 23,  86, 21,  84, 19,  82, 17,
+             80, 15,  78, 13,  76, 11,  74,  9,
+             72,  7,  70,  5,  68,  3,  66,  1,
+        );
+        assert_eq_m512i(_mm512_permutex2var_epi8(a, idx, b), e);
+
+        // Only bits [6:0] of each index are used: bits [5:0] pick the lane,
+        // bit 6 selects between `a` and `b`, bit 7 is ignored.
+        #[rustfmt::skip]
+        let idx = _mm512_set_epi8(
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+              0, -1i8, -128i8, 127, 64, 63, 128u8 as i8, 1,
+        );
+        // 0       -> 0b_0_000000 -> a[0]  = 1
+        // -1      -> 0xFF = 0b_11_111111 -> bit6=1, lane=63 -> b[63] = 128
+        // -128    -> 0x80 = 0b_10_000000 -> bit6=0, lane=0  -> a[0]  = 1  (bit7 ignored)
+        // 127     -> 0x7F = 0b_01_111111 -> bit6=1, lane=63 -> b[63] = 128
+        // 64      -> 0x40 = 0b_01_000000 -> bit6=1, lane=0  -> b[0]  = 65
+        // 63      -> 0x3F = 0b_00_111111 -> bit6=0, lane=63 -> a[63] = 64
+        // 128u8   -> 0x80 = 0b_10_000000 -> bit6=0, lane=0  -> a[0]  = 1  (bit7 ignored)
+        // 1       -> 0b_0_000001 -> a[1]  = 2
+        #[rustfmt::skip]
+        let e = _mm512_set_epi8(
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+            1, 128u8 as i8, 1, 128u8 as i8, 65, 64, 1, 2,
+        );
+        assert_eq_m512i(_mm512_permutex2var_epi8(a, idx, b), e);
+    }
+    test_mm512_permutex2var_epi8();
 }
 
 #[track_caller]

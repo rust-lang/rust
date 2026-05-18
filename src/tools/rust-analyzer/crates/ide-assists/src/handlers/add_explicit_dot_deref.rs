@@ -29,7 +29,7 @@ use crate::{AssistContext, Assists};
 // ```
 pub(crate) fn add_explicit_method_call_deref(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;

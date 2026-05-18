@@ -9,6 +9,7 @@ use syntax::{
     SyntaxNode, TextRange, TextSize,
     ast::{self, IsString},
 };
+use triomphe::Arc;
 
 use crate::{
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
@@ -92,6 +93,7 @@ pub(super) fn doc_comment(
         Some(it) => it,
         None => return,
     };
+    let vfs_file_id = src_file_id.file_id(sema.db);
     let src_file_id: HirFileId = src_file_id.into();
     let Some(docs) = attributes.hir_docs(sema.db) else { return };
 
@@ -171,7 +173,16 @@ pub(super) fn doc_comment(
 
     inj.add_unmapped("\n}");
 
-    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
+    let proc_macro_cwd = {
+        match sema.first_crate(vfs_file_id) {
+            Some(krate) => krate.base().data(sema.db).proc_macro_cwd.clone(),
+            None => {
+                // Arbitrarily pick /, since from_single_file treats this file as as /main.rs anyway.
+                Arc::new(ide_db::base_db::AbsPathBuf::try_from("/").unwrap())
+            }
+        }
+    };
+    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text(), proc_macro_cwd);
 
     if let Ok(ranges) = analysis.with_db(|db| {
         super::highlight(

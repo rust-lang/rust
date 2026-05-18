@@ -819,15 +819,6 @@ impl f64 {
         !self.is_sign_negative()
     }
 
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "renamed to is_sign_positive")]
-    #[inline]
-    #[doc(hidden)]
-    pub fn is_positive(self) -> bool {
-        self.is_sign_positive()
-    }
-
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
     /// negative sign bit and negative infinity.
     ///
@@ -853,15 +844,6 @@ impl f64 {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
         self.to_bits() & Self::SIGN_MASK != 0
-    }
-
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", note = "renamed to is_sign_negative")]
-    #[inline]
-    #[doc(hidden)]
-    pub fn is_negative(self) -> bool {
-        self.is_sign_negative()
     }
 
     /// Returns the least number greater than `self`.
@@ -1168,7 +1150,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f64) -> f64 {
-        const HI: f64 = f64::MAX / 2.;
+        const HI: f64 = f64::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -1176,9 +1158,9 @@ impl f64 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 

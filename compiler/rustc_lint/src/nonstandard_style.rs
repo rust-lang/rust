@@ -169,14 +169,12 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match &it.kind {
-            ast::ItemKind::TyAlias(box ast::TyAlias { ident, .. })
+            ast::ItemKind::TyAlias(ast::TyAlias { ident, .. })
             | ast::ItemKind::Enum(ident, ..)
             | ast::ItemKind::Struct(ident, ..)
             | ast::ItemKind::Union(ident, ..) => self.check_case(cx, "type", ident),
-            ast::ItemKind::Trait(box ast::Trait { ident, .. }) => {
-                self.check_case(cx, "trait", ident)
-            }
-            ast::ItemKind::TraitAlias(box ast::TraitAlias { ident, .. }) => {
+            ast::ItemKind::Trait(ast::Trait { ident, .. }) => self.check_case(cx, "trait", ident),
+            ast::ItemKind::TraitAlias(ast::TraitAlias { ident, .. }) => {
                 self.check_case(cx, "trait alias", ident)
             }
 

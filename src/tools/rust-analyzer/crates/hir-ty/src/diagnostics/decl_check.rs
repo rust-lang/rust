@@ -33,7 +33,7 @@ use hir_expand::{
     HirFileId,
     name::{AsName, Name},
 };
-use intern::sym;
+use rustc_abi::ExternAbi;
 use stdx::{always, never};
 use syntax::{
     AstNode, AstPtr, ToSmolStr,
@@ -211,7 +211,7 @@ impl<'a> DeclValidator<'a> {
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
             let no_mangle = AttrFlags::query(self.db, func.into()).contains(AttrFlags::NO_MANGLE);
-            if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
+            if no_mangle && data.abi != ExternAbi::Rust {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {
                 self.create_incorrect_case_diagnostic_for_item_name(

@@ -24,8 +24,9 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
+    ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
+    VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -117,11 +118,16 @@ where
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
 
-    register_region_constraints(
-        delegate,
-        region_constraints.iter().map(|(c, vis)| (*c, vis.and(visible_for_leak_check))),
-        span,
-    );
+    match region_constraints {
+        ExternalRegionConstraints::Old(r) => register_region_constraints(
+            delegate,
+            r.iter().map(|(c, vis)| (*c, vis.and(visible_for_leak_check))),
+            span,
+        ),
+        ExternalRegionConstraints::NextGen(r) => {
+            delegate.register_solver_region_constraint(r.clone())
+        }
+    };
     register_new_opaque_types(delegate, opaque_types, span);
 
     (normalization_nested_goals.clone(), certainty)
@@ -375,7 +381,7 @@ pub fn response_no_constraints_raw<I: Interner>(
             var_values: ty::CanonicalVarValues::make_identity(cx, var_kinds),
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
-            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
+            external_constraints: cx.mk_external_constraints(ExternalConstraintsData::new(cx)),
             certainty,
         },
     }

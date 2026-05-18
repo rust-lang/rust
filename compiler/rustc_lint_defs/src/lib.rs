@@ -2,9 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stable_hasher::{
-    StableCompare, StableHash, StableHashCtxt, StableHasher,
-};
+use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -102,54 +100,48 @@ pub enum Applicability {
 /// have that amount of lints listed. `u16` values should therefore suffice.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
-    /// Used for lints emitted during the `EarlyLintPass`. This id is not
-    /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<u16> },
-    /// The [`HirId`] that the lint expectation is attached to. This id is
-    /// stable and can be cached. The additional index ensures that nodes with
-    /// several expectations can correctly match diagnostics to the individual
-    /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Unstable(UnstableLintExpectationId),
+    Stable(StableLintExpectationId),
 }
 
-impl LintExpectationId {
-    pub fn is_stable(&self) -> bool {
-        match self {
-            LintExpectationId::Unstable { .. } => false,
-            LintExpectationId::Stable { .. } => true,
-        }
-    }
+/// Used for lints emitted during the `EarlyLintPass`. This id is not hash
+/// stable and should not be cached.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct UnstableLintExpectationId {
+    pub attr_id: AttrId,
+    pub lint_index: Option<u16>,
+}
 
-    pub fn get_lint_index(&self) -> Option<u16> {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index
-    }
-
-    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index = new_lint_index
+impl From<UnstableLintExpectationId> for LintExpectationId {
+    fn from(id: UnstableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Unstable(id)
     }
 }
 
-impl StableHash for LintExpectationId {
+/// The [`HirId`] that the lint expectation is attached to. This id is stable
+/// and can be cached. The additional index ensures that nodes with several
+/// expectations can correctly match diagnostics to the individual expectation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct StableLintExpectationId {
+    pub hir_id: HirId,
+    pub attr_index: u16,
+    pub lint_index: Option<u16>,
+}
+
+impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.stable_hash(hcx, hasher);
-                attr_index.stable_hash(hcx, hasher);
-                lint_index.stable_hash(hcx, hasher);
-            }
-            _ => {
-                unreachable!(
-                    "StableHash should only be called for filled and stable `LintExpectationId`"
-                )
-            }
-        }
+        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+
+        hir_id.stable_hash(hcx, hasher);
+        attr_index.stable_hash(hcx, hasher);
+        lint_index.expect("must be filled to call `stable_hash`").stable_hash(hcx, hasher);
+    }
+}
+
+impl From<StableLintExpectationId> for LintExpectationId {
+    fn from(id: StableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Stable(id)
     }
 }
 
@@ -217,34 +209,19 @@ impl Level {
         }
     }
 
-    /// Converts an `Attribute` to a level.
-    pub fn from_attr(
-        attr_name: Option<Symbol>,
-        attr_id: impl Fn() -> AttrId,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
-        attr_name.and_then(|name| Self::from_symbol(name, || Some(attr_id())))
+    /// Converts an `Option<Symbol>` to a level.
+    pub fn from_opt_symbol(s: Option<Symbol>) -> Option<Self> {
+        s.and_then(Self::from_symbol)
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(
-        s: Symbol,
-        id: impl FnOnce() -> Option<AttrId>,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
+    pub fn from_symbol(s: Symbol) -> Option<Self> {
         match s {
-            sym::allow => Some((Level::Allow, None)),
-            sym::expect => {
-                if let Some(attr_id) = id() {
-                    Some((
-                        Level::Expect,
-                        Some(LintExpectationId::Unstable { attr_id, lint_index: None }),
-                    ))
-                } else {
-                    None
-                }
-            }
-            sym::warn => Some((Level::Warn, None)),
-            sym::deny => Some((Level::Deny, None)),
-            sym::forbid => Some((Level::Forbid, None)),
+            sym::allow => Some(Level::Allow),
+            sym::expect => Some(Level::Expect),
+            sym::warn => Some(Level::Warn),
+            sym::deny => Some(Level::Deny),
+            sym::forbid => Some(Level::Forbid),
             _ => None,
         }
     }

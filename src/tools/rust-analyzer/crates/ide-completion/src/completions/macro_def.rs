@@ -4,7 +4,7 @@ use ide_db::SymbolKind;
 
 use crate::{CompletionItem, Completions, context::CompletionContext};
 
-pub(crate) fn complete_macro_segment(acc: &mut Completions, ctx: &CompletionContext<'_>) {
+pub(crate) fn complete_macro_segment(acc: &mut Completions, ctx: &CompletionContext<'_, '_>) {
     for &label in MACRO_SEGMENTS {
         let item =
             CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), label, ctx.edition);

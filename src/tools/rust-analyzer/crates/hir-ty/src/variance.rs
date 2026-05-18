@@ -18,10 +18,7 @@ use hir_def::{
     signatures::{StructFlags, StructSignature},
 };
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
-    Variance,
-    inherent::{AdtDef, IntoKind},
-};
+use rustc_type_ir::{Variance, inherent::IntoKind};
 use stdx::never;
 
 use crate::{
@@ -129,7 +126,7 @@ impl<'db> Context<'db> {
                 let mut add_constraints_from_variant = |variant| {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            field.get().instantiate_identity(),
+                            field.get().instantiate_identity().skip_norm_wip(),
                             Variance::Covariant,
                         );
                     }
@@ -214,7 +211,7 @@ impl<'db> Context<'db> {
                 }
             }
             TyKind::Adt(def, args) => {
-                self.add_constraints_from_args(def.def_id().0.into(), args, variance);
+                self.add_constraints_from_args(def.def_id().into(), args, variance);
             }
             TyKind::Alias(alias) => {
                 // FIXME: Probably not correct wrt. opaques.
@@ -479,7 +476,6 @@ struct Other<'a> {
 
     #[test]
     fn rustc_test_variance_associated_consts() {
-        // FIXME: Should be invariant
         check(
             r#"
 trait Trait {
@@ -491,7 +487,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: bivariant]
+                Foo[T: invariant]
             "#]],
         );
     }

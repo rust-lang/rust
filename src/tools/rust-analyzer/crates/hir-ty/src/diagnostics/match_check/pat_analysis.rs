@@ -4,15 +4,14 @@ use std::{cell::LazyCell, fmt};
 
 use hir_def::{
     EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId, attrs::AttrFlags,
-    signatures::VariantFields,
+    signatures::VariantFields, unstable_features::UnstableFeatures,
 };
-use intern::sym;
 use rustc_pattern_analysis::{
     IndexVec, PatCx, PrivateUninhabitedField,
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use rustc_type_ir::inherent::IntoKind;
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 
@@ -82,8 +81,7 @@ pub(crate) struct MatchCheckCtx<'a, 'db> {
 impl<'a, 'db> MatchCheckCtx<'a, 'db> {
     pub(crate) fn new(module: ModuleId, infcx: &'a InferCtxt<'db>, env: ParamEnv<'db>) -> Self {
         let db = infcx.interner.db;
-        let def_map = module.crate_def_map(db);
-        let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
+        let exhaustive_patterns = UnstableFeatures::query(db, module.krate(db)).exhaustive_patterns;
         Self { module, db, exhaustive_patterns, env, infcx }
     }
 
@@ -151,7 +149,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
         let fields_len = variant.fields(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
-            let ty = field_tys[fid].get().instantiate(self.infcx.interner, substs);
+            let ty = field_tys[fid].get().instantiate(self.infcx.interner, substs).skip_norm_wip();
             let ty = self
                 .infcx
                 .at(&ObligationCause::dummy(), self.env)
@@ -199,7 +197,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
                         arity = substs.len();
                     }
                     TyKind::Adt(adt_def, _) => {
-                        let adt = adt_def.def_id().0;
+                        let adt = adt_def.def_id();
                         ctor = match pat.kind.as_ref() {
                             PatKind::Leaf { .. } if matches!(adt, hir_def::AdtId::UnionId(_)) => {
                                 UnionField
@@ -267,7 +265,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
                 },
                 TyKind::Adt(adt, substs) => {
                     let variant =
-                        Self::variant_id_for_adt(self.db, pat.ctor(), adt.def_id().0).unwrap();
+                        Self::variant_id_for_adt(self.db, pat.ctor(), adt.def_id()).unwrap();
                     let subpatterns = self
                         .list_variant_fields(*pat.ty(), variant)
                         .zip(subpatterns)
@@ -327,7 +325,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                 TyKind::Tuple(tys) => tys.len(),
                 TyKind::Adt(adt_def, ..) => {
                     let variant =
-                        Self::variant_id_for_adt(self.db, ctor, adt_def.def_id().0).unwrap();
+                        Self::variant_id_for_adt(self.db, ctor, adt_def.def_id()).unwrap();
                     variant.fields(self.db).fields().len()
                 }
                 _ => {
@@ -361,7 +359,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                 }
                 TyKind::Ref(_, rty, _) => single(rty),
                 TyKind::Adt(adt_def, ..) => {
-                    let adt = adt_def.def_id().0;
+                    let adt = adt_def.def_id();
                     let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
                     let visibilities =
@@ -430,7 +428,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
             TyKind::Int(..) | TyKind::Uint(..) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             TyKind::Adt(adt_def, subst) => {
-                let adt = adt_def.def_id().0;
+                let adt = adt_def.def_id();
                 match adt {
                     hir_def::AdtId::EnumId(enum_id) => {
                         let enum_data = enum_id.enum_variants(cx.db);

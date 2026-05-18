@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 
 use crate::aligned::Aligned;
-use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 /// This describes tags that the [`TaggedRef`] struct can hold.
 ///

@@ -5,10 +5,7 @@ use hir_def::{
     AdtId, EnumVariantId, ModuleId, VariantId, signatures::VariantFields, visibility::Visibility,
 };
 use rustc_hash::FxHashSet;
-use rustc_type_ir::{
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
-    inherent::{AdtDef, IntoKind},
-};
+use rustc_type_ir::{TypeSuperVisitable, TypeVisitable, TypeVisitor, inherent::IntoKind};
 
 use crate::{
     consteval::try_const_usize,
@@ -85,7 +82,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
         }
 
         let r = match ty.kind() {
-            TyKind::Adt(adt, subst) => self.visit_adt(adt.def_id().0, subst),
+            TyKind::Adt(adt, subst) => self.visit_adt(adt.def_id(), subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self),
             TyKind::Array(item_ty, len) => match try_const_usize(self.infcx.interner.db, len) {
@@ -172,7 +169,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         subst: GenericArgs<'db>,
     ) -> ControlFlow<VisiblyUninhabited> {
         if vis.is_none_or(|it| it.is_visible_from(self.db(), self.target_mod)) {
-            let ty = ty.instantiate(self.interner(), subst);
+            let ty = ty.instantiate(self.interner(), subst).skip_norm_wip();
             ty.visit_with(self)
         } else {
             CONTINUE_OPAQUELY_INHABITED

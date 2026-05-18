@@ -153,6 +153,17 @@ impl<'a, H, T: Copy> rustc_type_ir::inherent::SliceLike for &'a RawList<H, T> {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::BoundVarKinds<TyCtxt<'tcx>>
+    for &'tcx RawList<(), crate::ty::BoundVariableKind<'tcx>>
+{
+    fn from_vars(
+        tcx: TyCtxt<'tcx>,
+        iter: impl IntoIterator<Item = crate::ty::BoundVariableKind<'tcx>>,
+    ) -> Self {
+        tcx.mk_bound_variable_kinds_from_iter(iter.into_iter())
+    }
+}
+
 macro_rules! impl_list_empty {
     ($header_ty:ty, $header_init:expr) => {
         impl<T> RawList<$header_ty, T> {

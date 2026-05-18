@@ -2,6 +2,7 @@
 //! consts.
 use std::ops;
 
+use arrayvec::ArrayVec;
 use hir_expand::{InFile, Lookup};
 use span::Edition;
 use syntax::ast;
@@ -28,7 +29,12 @@ pub struct Body {
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
     pub params: Box<[PatId]>,
-    pub self_param: Option<BindingId>,
+    /// The first element, if it exists, is the real `self` binding.
+    ///
+    /// The second element is used for `async fn` (or `gen fn` etc.). These functions
+    /// have to put a `let self = self` inside the returned coroutine, and the second element
+    /// points at it.
+    pub self_params: ArrayVec<BindingId, 2>,
 }
 
 impl ops::Deref for Body {
@@ -74,6 +80,7 @@ impl Body {
         let mut params = None;
 
         let mut is_async_fn = false;
+        let mut is_gen_fn = false;
         let InFile { file_id, value: body } = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
@@ -81,6 +88,7 @@ impl Body {
                     let src = f.source(db);
                     params = src.value.param_list();
                     is_async_fn = src.value.async_token().is_some();
+                    is_gen_fn = src.value.gen_token().is_some();
                     src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {
@@ -101,7 +109,8 @@ impl Body {
             }
         };
         let module = def.module(db);
-        let (body, source_map) = lower_body(db, def, file_id, module, params, body, is_async_fn);
+        let (body, source_map) =
+            lower_body(db, def, file_id, module, params, body, is_async_fn, is_gen_fn);
 
         (Arc::new(body), source_map)
     }
@@ -114,7 +123,19 @@ impl Body {
 
 impl Body {
     pub fn root_expr(&self) -> ExprId {
-        self.store.expr_roots().next().unwrap()
+        // A `Body` can also contain root expressions that aren't the body (in the param patterns),
+        // but the body always come last.
+        self.store.expr_roots().next_back().unwrap()
+    }
+
+    pub fn self_param(&self) -> Option<BindingId> {
+        self.self_params.first().copied()
+    }
+
+    /// `async fn` (or `gen fn` etc.), have to put a `let self = self` inside the returned coroutine.
+    /// This function returns it.
+    pub fn coroutine_self_binding(&self) -> Option<BindingId> {
+        self.self_params.get(1).copied()
     }
 
     pub fn pretty_print(

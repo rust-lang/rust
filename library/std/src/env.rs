@@ -303,12 +303,12 @@ impl Error for VarError {}
 ///
 /// # Safety
 ///
-/// This function is safe to call in a single-threaded program.
+/// This function is sound to call in a single-threaded program.
 ///
-/// This function is also always safe to call on Windows, in single-threaded
+/// This function is also always sound to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, the only safe option is
+/// In multi-threaded programs on other operating systems, the only sound option is
 /// to not use `set_var` or `remove_var` at all.
 ///
 /// The exact requirement is: you
@@ -322,7 +322,7 @@ impl Error for VarError {}
 /// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
 /// which functions may read from the environment in future versions of a
 /// library. All this makes it not practically possible for you to guarantee
-/// that no other thread will read the environment, so the only safe option is
+/// that no other thread will read the environment, so the only sound option is
 /// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
@@ -366,12 +366,12 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 ///
 /// # Safety
 ///
-/// This function is safe to call in a single-threaded program.
+/// This function is sound to call in a single-threaded program.
 ///
-/// This function is also always safe to call on Windows, in single-threaded
+/// This function is also always sound to call on Windows, in single-threaded
 /// and multi-threaded programs.
 ///
-/// In multi-threaded programs on other operating systems, the only safe option is
+/// In multi-threaded programs on other operating systems, the only sound option is
 /// to not use `set_var` or `remove_var` at all.
 ///
 /// The exact requirement is: you
@@ -385,7 +385,7 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 /// lookups from [`std::net::ToSocketAddrs`]. No stable guarantee is made about
 /// which functions may read from the environment in future versions of a
 /// library. All this makes it not practically possible for you to guarantee
-/// that no other thread will read the environment, so the only safe option is
+/// that no other thread will read the environment, so the only sound option is
 /// to not use `set_var` or `remove_var` in multi-threaded programs at all.
 ///
 /// Discussion of this unsafety on Unix may be found in:
@@ -689,7 +689,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
 /// [appledoc]: https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html#//apple_ref/doc/uid/TP40002585-SW10
 ///
-/// ```no_run
+/// ```
 /// use std::env;
 ///
 /// fn main() {

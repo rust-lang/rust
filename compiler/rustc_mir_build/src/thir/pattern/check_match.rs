@@ -8,7 +8,6 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint_defs::Level;
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -60,7 +59,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     };
 
     for param in thir.params.iter() {
-        if let Some(box ref pattern) = param.pat {
+        if let Some(ref pattern) = param.pat {
             visitor.check_binding_is_irrefutable(pattern, origin, None, None);
         }
     }
@@ -149,16 +148,16 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 }
                 return;
             }
-            ExprKind::Match { scrutinee, box ref arms, match_source } => {
+            ExprKind::Match { scrutinee, ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
             }
             ExprKind::LoopMatch {
-                match_data: box LoopMatchMatchData { scrutinee, box ref arms, span },
+                match_data: LoopMatchMatchData { scrutinee, ref arms, span },
                 ..
             } => {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
-            ExprKind::Let { box ref pat, expr } => {
+            ExprKind::Let { ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span, None);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
@@ -179,7 +178,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'p Stmt<'tcx>) {
         match stmt.kind {
-            StmtKind::Let { box ref pattern, initializer, else_block, hir_id, span, .. } => {
+            StmtKind::Let { ref pattern, initializer, else_block, hir_id, span, .. } => {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
@@ -251,7 +250,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             ExprKind::Scope { value, hir_id, .. } => {
                 self.with_hir_source(hir_id, |this| this.visit_land_rhs(&this.thir[value]))
             }
-            ExprKind::Let { box ref pat, expr } => {
+            ExprKind::Let { ref pat, expr } => {
                 let expr = &self.thir()[expr];
                 self.with_let_source(LetSource::None, |this| {
                     this.visit_expr(expr);
@@ -363,13 +362,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | UpvarRef { .. }
             | VarRef { .. }
             | ZstLiteral { .. }
-            | Yield { .. } => true,
-            ExprKind::Reborrow { .. } => {
-                // FIXME(reborrow): matching on a Reborrow expression should be impossible
-                // currently. Whether this remains to be true, and if the reborrow result then is a
-                // known valid scrutinee requires further thought.
-                unreachable!("Reborrow expression in match")
-            }
+            | Yield { .. }
+            | Reborrow { .. } => true,
         }
     }
 
@@ -471,7 +465,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             && self.tcx.is_diagnostic_item(rustc_span::sym::Option, s_ty.did())
             && let ExprKind::Scope { value, .. } = initializer.kind
             && let initializer_expr = &self.thir[value]
-            && let ExprKind::Adt(box AdtExpr { fields, .. }) = &initializer_expr.kind
+            && let ExprKind::Adt(AdtExpr { fields, .. }) = &initializer_expr.kind
             && let Some(field) = fields.first()
             && let inner = &self.thir[field.expr]
             && let Some(inner_ty) = inner.ty.ty_adt_def()
@@ -759,7 +753,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 /// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+    let PatKind::Binding { name, mode, ty, subpattern: Some(ref sub), .. } = pat.kind else {
         return;
     };
 
@@ -1031,7 +1025,7 @@ fn find_fallback_pattern_typo<'tcx>(
     pat: &Pat<'tcx>,
     lint: &mut UnreachablePattern<'_>,
 ) {
-    if let Level::Allow = cx.tcx.lint_level_at_node(UNREACHABLE_PATTERNS, hir_id).level {
+    if cx.tcx.lint_level_spec_at_node(UNREACHABLE_PATTERNS, hir_id).is_allow() {
         // This is because we use `with_no_trimmed_paths` later, so if we never emit the lint we'd
         // ICE. At the same time, we don't really need to do all of this if we won't emit anything.
         return;

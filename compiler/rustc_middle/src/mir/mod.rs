@@ -7,7 +7,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::iter;
 use std::ops::{Index, IndexMut};
 
-pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
+pub use basic_blocks::BasicBlocks;
 use either::Either;
 use polonius_engine::Atom;
 use rustc_abi::{FieldIdx, VariantIdx};
@@ -413,13 +413,36 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        match self.phase {
-            // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
-                tcx.param_env(self.source.def_id()),
-                ty::TypingMode::non_body_analysis(),
-            ),
-            MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+        if tcx.use_typing_mode_borrowck() {
+            match self.phase {
+                MirPhase::Built if let Some(def_id) = self.source.def_id().as_local() => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::borrowck(tcx, def_id),
+                    )
+                }
+                MirPhase::Analysis(_) if let Some(def_id) = self.source.def_id().as_local() => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::post_borrowck_analysis(tcx, def_id),
+                    )
+                }
+                MirPhase::Built | MirPhase::Analysis(_) => {
+                    // This branch happens for drop glue and fn ptr shims.
+                    // FIXME: why do we do any of this analysis on drop glue etc?
+                    // This should ideally all be skipped.
+                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                }
+                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+            }
+        } else {
+            match self.phase {
+                MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
+                    tcx.param_env(self.source.def_id()),
+                    ty::TypingMode::non_body_analysis(),
+                ),
+                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+            }
         }
     }
 
@@ -1671,7 +1694,7 @@ pub fn find_self_call<'tcx>(
     debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator
-        && let Operand::Constant(box ConstOperand { const_, .. }) = func
+        && let Operand::Constant(ConstOperand { const_, .. }) = func
         && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
         && let Some(item) = tcx.opt_associated_item(def_id)
         && item.is_method()
@@ -1685,7 +1708,7 @@ pub fn find_self_call<'tcx>(
         // Handle the case where `self_place` gets reborrowed.
         // This happens when the receiver is `&T`.
         for stmt in &body[block].statements {
-            if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+            if let StatementKind::Assign((place, rvalue)) = &stmt.kind
                 && let Some(reborrow_local) = place.as_local()
                 && self_place.as_local() == Some(reborrow_local)
                 && let Rvalue::Ref(_, _, deref_place) = rvalue

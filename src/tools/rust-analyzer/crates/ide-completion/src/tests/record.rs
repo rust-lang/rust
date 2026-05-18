@@ -176,7 +176,7 @@ fn main() {
             fn main()                          fn()
             lc foo                              Foo
             lc thing                            i32
-            md core
+            md core::
             st Foo                              Foo
             st Foo {…} Foo { foo1: u32, foo2: u32 }
             tt Default

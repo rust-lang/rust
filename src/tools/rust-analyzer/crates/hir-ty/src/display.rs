@@ -10,17 +10,20 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule, LocalFieldId,
-    Lookup, ModuleDefId, ModuleId, TraitId,
+    ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule,
+    ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId, TypeAliasId,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
-    hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
+    hir::{
+        ClosureKind as HirClosureKind, CoroutineKind,
+        generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
+    },
     item_scope::ItemInNs,
     item_tree::FieldsShape,
     lang_item::LangItems,
     signatures::{
-        EnumSignature, FunctionSignature, StructSignature, TraitSignature, TypeAliasSignature,
-        UnionSignature, VariantFields,
+        ConstSignature, EnumSignature, FunctionSignature, StaticSignature, StructSignature,
+        TraitSignature, TypeAliasSignature, UnionSignature, VariantFields,
     },
     type_ref::{
         ConstRef, LifetimeRef, LifetimeRefId, TraitBoundModifier, TypeBound, TypeRef, TypeRefId,
@@ -32,6 +35,7 @@ use hir_expand::{mod_path::PathKind, name::Name};
 use intern::{Internable, Interned, sym};
 use itertools::Itertools;
 use la_arena::ArenaMap;
+use rustc_abi::ExternAbi;
 use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
@@ -40,30 +44,60 @@ use rustc_ast_ir::FloatTy;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, RegionKind, Upcast,
-    inherent::{AdtDef, GenericArgs as _, IntoKind, Term as _, Ty as _, Tys as _},
+    inherent::{GenericArgs as _, IntoKind, Term as _, Ty as _, Tys as _},
 };
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
 
 use crate::{
-    CallableDefId, FnAbi, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
-    db::{HirDatabase, InternedClosure},
-    generics::generics,
+    CallableDefId, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
+    db::{GeneralConstId, HirDatabase},
+    generics::{ProvenanceSplit, generics},
     layout::Layout,
     lower::GenericPredicates,
     mir::pad16,
     next_solver::{
         AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,
         ExistentialPredicate, FnSig, GenericArg, GenericArgKind, GenericArgs, ParamEnv, PolyFnSig,
-        Region, SolverDefId, StoredEarlyBinder, StoredTy, Term, TermKind, TraitRef, Ty, TyKind,
-        TypingMode, ValTree,
+        Region, StoredEarlyBinder, StoredTy, Term, TermId, TermKind, TraitPredicate, TraitRef, Ty,
+        TyKind, TypingMode, Unnormalized, ValTree,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
     primitive,
     utils::{detect_variant_from_bytes, fn_traits},
 };
+
+fn async_gen_item_ty_from_yield_ty<'db>(
+    lang_items: &LangItems,
+    yield_ty: Ty<'db>,
+) -> Option<Ty<'db>> {
+    let poll_id = lang_items.Poll.map(hir_def::AdtId::EnumId)?;
+    let option_id = lang_items.Option.map(hir_def::AdtId::EnumId)?;
+
+    let TyKind::Adt(poll_def, poll_args) = yield_ty.kind() else {
+        return None;
+    };
+    if poll_def.def_id() != poll_id {
+        return None;
+    }
+    let [poll_inner] = poll_args.as_slice() else {
+        return None;
+    };
+    let poll_inner = poll_inner.ty()?;
+
+    let TyKind::Adt(option_def, option_args) = poll_inner.kind() else {
+        return None;
+    };
+    if option_def.def_id() != option_id {
+        return None;
+    }
+    let [item] = option_args.as_slice() else {
+        return None;
+    };
+    item.ty()
+}
 
 pub type Result<T = (), E = HirDisplayError> = std::result::Result<T, E>;
 
@@ -101,7 +135,15 @@ pub struct HirFormatter<'a, 'db> {
     display_lifetimes: DisplayLifetime,
     display_kind: DisplayKind,
     display_target: DisplayTarget,
-    bounds_formatting_ctx: BoundsFormattingCtx<'db>,
+    /// We can have recursive bounds like the following case:
+    /// ```ignore
+    /// where
+    ///     T: Foo,
+    ///     T::FooAssoc: Baz<<T::FooAssoc as Bar>::BarAssoc> + Bar
+    /// ```
+    /// So, record the projection types met while formatting bounds and
+    /// prevent recursing into their bounds to avoid infinite loops.
+    currently_formatting_bounds: FxHashSet<AliasTy<'db>>,
     /// Whether formatting `impl Trait1 + Trait2` or `dyn Trait1 + Trait2` needs parentheses around it,
     /// for example when formatting `&(impl Trait1 + Trait2)`.
     trait_bounds_need_parens: bool,
@@ -121,34 +163,6 @@ pub enum DisplayLifetime {
     Never,
 }
 
-#[derive(Default)]
-enum BoundsFormattingCtx<'db> {
-    Entered {
-        /// We can have recursive bounds like the following case:
-        /// ```ignore
-        /// where
-        ///     T: Foo,
-        ///     T::FooAssoc: Baz<<T::FooAssoc as Bar>::BarAssoc> + Bar
-        /// ```
-        /// So, record the projection types met while formatting bounds and
-        //. prevent recursing into their bounds to avoid infinite loops.
-        projection_tys_met: FxHashSet<AliasTy<'db>>,
-    },
-    #[default]
-    Exited,
-}
-
-impl<'db> BoundsFormattingCtx<'db> {
-    fn contains(&self, proj: &AliasTy<'db>) -> bool {
-        match self {
-            BoundsFormattingCtx::Entered { projection_tys_met } => {
-                projection_tys_met.contains(proj)
-            }
-            BoundsFormattingCtx::Exited => false,
-        }
-    }
-}
-
 impl<'db> HirFormatter<'_, 'db> {
     pub fn start_location_link(&mut self, location: ModuleDefId) {
         self.fmt.start_location_link(location);
@@ -162,26 +176,42 @@ impl<'db> HirFormatter<'_, 'db> {
         self.fmt.end_location_link();
     }
 
-    fn format_bounds_with<T, F: FnOnce(&mut Self) -> T>(
+    fn format_bounds_with<F: FnOnce(&mut Self) -> Result>(
         &mut self,
         target: AliasTy<'db>,
         format_bounds: F,
-    ) -> T {
-        match self.bounds_formatting_ctx {
-            BoundsFormattingCtx::Entered { ref mut projection_tys_met } => {
-                projection_tys_met.insert(target);
-                format_bounds(self)
-            }
-            BoundsFormattingCtx::Exited => {
-                let mut projection_tys_met = FxHashSet::default();
-                projection_tys_met.insert(target);
-                self.bounds_formatting_ctx = BoundsFormattingCtx::Entered { projection_tys_met };
-                let res = format_bounds(self);
-                // Since we want to prevent only the infinite recursions in bounds formatting
-                // and do not want to skip formatting of other separate bounds, clear context
-                // when exiting the formatting of outermost bounds
-                self.bounds_formatting_ctx = BoundsFormattingCtx::Exited;
-                res
+    ) -> Result {
+        if self.currently_formatting_bounds.insert(target) {
+            let result = format_bounds(self);
+            self.currently_formatting_bounds.remove(&target);
+            result
+        } else {
+            if self.display_kind.is_source_code() {
+                Err(HirDisplayError::DisplaySourceCodeError(DisplaySourceCodeError::Cycle))
+            } else {
+                match target.kind {
+                    AliasTyKind::Projection { def_id } => {
+                        let def_id = def_id.0;
+                        let ItemContainerId::TraitId(trait_) = def_id.loc(self.db).container else {
+                            panic!("expected an assoc type");
+                        };
+                        let trait_name = &TraitSignature::of(self.db, trait_).name;
+                        let assoc_type_name = &TypeAliasSignature::of(self.db, def_id).name;
+                        write!(
+                            self,
+                            "<… as {}>::{}",
+                            trait_name.display(self.db, self.edition()),
+                            assoc_type_name.display(self.db, self.edition()),
+                        )?;
+                        if target.args.len() > 1 {
+                            self.write_str("<…>")?;
+                        }
+                        Ok(())
+                    }
+                    AliasTyKind::Inherent { .. }
+                    | AliasTyKind::Opaque { .. }
+                    | AliasTyKind::Free { .. } => self.write_str("…"),
+                }
             }
         }
     }
@@ -335,7 +365,7 @@ pub trait HirDisplay<'db> {
             display_kind: DisplayKind::SourceCode { target_module_id: module_id, allow_opaque },
             show_container_bounds: false,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
-            bounds_formatting_ctx: Default::default(),
+            currently_formatting_bounds: Default::default(),
             trait_bounds_need_parens: false,
         }) {
             Ok(()) => {}
@@ -511,6 +541,7 @@ pub enum DisplaySourceCodeError {
     PathNotFound,
     Coroutine,
     OpaqueType,
+    Cycle,
 }
 
 pub enum HirDisplayError {
@@ -571,7 +602,7 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
             closure_style: self.closure_style,
             show_container_bounds: self.show_container_bounds,
             display_lifetimes: self.display_lifetimes,
-            bounds_formatting_ctx: Default::default(),
+            currently_formatting_bounds: Default::default(),
             trait_bounds_need_parens: false,
         })
     }
@@ -623,63 +654,58 @@ fn write_projection<'db>(
     f: &mut HirFormatter<'_, 'db>,
     alias: &AliasTy<'db>,
     needs_parens_if_multi: bool,
+    def_id: TypeAliasId,
 ) -> Result {
-    if f.should_truncate() {
-        return write!(f, "{TYPE_HINT_TRUNCATION}");
-    }
-    let trait_ref = alias.trait_ref(f.interner);
-    let self_ty = trait_ref.self_ty();
+    f.format_bounds_with(*alias, |f| {
+        if f.should_truncate() {
+            return write!(f, "{TYPE_HINT_TRUNCATION}");
+        }
+        let trait_ref = alias.trait_ref(f.interner);
+        let self_ty = trait_ref.self_ty();
 
-    // if we are projection on a type parameter, check if the projection target has bounds
-    // itself, if so, we render them directly as `impl Bound` instead of the less useful
-    // `<Param as Trait>::Assoc`
-    if !f.display_kind.is_source_code()
-        && let TyKind::Param(param) = self_ty.kind()
-        && !f.bounds_formatting_ctx.contains(alias)
-    {
-        // FIXME: We shouldn't use `param.id`, it should be removed. We should know the
-        // `GenericDefId` from the formatted type (store it inside the `HirFormatter`).
-        let bounds = GenericPredicates::query_all(f.db, param.id.parent())
-            .iter_identity()
-            .filter(|wc| {
-                let ty = match wc.kind().skip_binder() {
-                    ClauseKind::Trait(tr) => tr.self_ty(),
-                    ClauseKind::TypeOutlives(t) => t.0,
-                    _ => return false,
-                };
-                let TyKind::Alias(a) = ty.kind() else {
-                    return false;
-                };
-                a == *alias
-            })
-            .collect::<Vec<_>>();
-        if !bounds.is_empty() {
-            return f.format_bounds_with(*alias, |f| {
-                write_bounds_like_dyn_trait_with_prefix(
+        // if we are projection on a type parameter, check if the projection target has bounds
+        // itself, if so, we render them directly as `impl Bound` instead of the less useful
+        // `<Param as Trait>::Assoc`
+        if !f.display_kind.is_source_code()
+            && let TyKind::Param(param) = self_ty.kind()
+        {
+            // FIXME: We shouldn't use `param.id`, it should be removed. We should know the
+            // `GenericDefId` from the formatted type (store it inside the `HirFormatter`).
+            let bounds = GenericPredicates::query_all(f.db, param.id.parent())
+                .iter_identity()
+                .map(Unnormalized::skip_norm_wip)
+                .filter(|wc| {
+                    let ty = match wc.kind().skip_binder() {
+                        ClauseKind::Trait(tr) => tr.self_ty(),
+                        ClauseKind::TypeOutlives(t) => t.0,
+                        _ => return false,
+                    };
+                    let TyKind::Alias(a) = ty.kind() else {
+                        return false;
+                    };
+                    a == *alias
+                })
+                .collect::<Vec<_>>();
+            if !bounds.is_empty() {
+                return write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "impl",
                     Either::Left(Ty::new_alias(f.interner, *alias)),
                     &bounds,
                     SizedByDefault::NotSized,
                     needs_parens_if_multi,
-                )
-            });
+                );
+            }
         }
-    }
 
-    write!(f, "<")?;
-    self_ty.hir_fmt(f)?;
-    write!(f, " as ")?;
-    trait_ref.hir_fmt(f)?;
-    write!(
-        f,
-        ">::{}",
-        TypeAliasSignature::of(f.db, alias.kind.def_id().expect_type_alias())
-            .name
-            .display(f.db, f.edition())
-    )?;
-    let proj_params = &alias.args.as_slice()[trait_ref.args.len()..];
-    hir_fmt_generics(f, proj_params, None, None)
+        write!(f, "<")?;
+        self_ty.hir_fmt(f)?;
+        write!(f, " as ")?;
+        trait_ref.hir_fmt(f)?;
+        write!(f, ">::{}", TypeAliasSignature::of(f.db, def_id).name.display(f.db, f.edition()))?;
+        let proj_params = &alias.args.as_slice()[trait_ref.args.len()..];
+        hir_fmt_generics(f, proj_params, None, None)
+    })
 }
 
 impl<'db> HirDisplay<'db> for GenericArg<'db> {
@@ -710,7 +736,7 @@ impl<'db> HirDisplay<'db> for Const<'db> {
             }
             ConstKind::Infer(..) => write!(f, "#c#"),
             ConstKind::Param(param) => {
-                let generics = generics(f.db, param.id.parent());
+                let generics = GenericParams::of(f.db, param.id.parent());
                 let param_data = &generics[param.id.local_id()];
                 f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name().unwrap().display(f.db, f.edition()))?;
@@ -720,7 +746,25 @@ impl<'db> HirDisplay<'db> for Const<'db> {
             ConstKind::Value(value) => render_const_scalar_from_valtree(f, value.ty, value.value),
             ConstKind::Unevaluated(unev) => {
                 let c = unev.def.0;
-                write!(f, "{}", c.name(f.db))?;
+                match c {
+                    GeneralConstId::ConstId(id) => match &ConstSignature::of(f.db, id).name {
+                        Some(name) => {
+                            f.start_location_link(id.into());
+                            write!(f, "{}", name.display(f.db, f.edition()))?;
+                            f.end_location_link();
+                        }
+                        None => f.write_str("_")?,
+                    },
+                    GeneralConstId::StaticId(id) => {
+                        let name = &StaticSignature::of(f.db, id).name;
+                        f.start_location_link(id.into());
+                        write!(f, "{}", name.display(f.db, f.edition()))?;
+                        f.end_location_link();
+                    }
+                    GeneralConstId::AnonConstId(_) => {
+                        f.write_str(if f.display_kind.is_source_code() { "_" } else { "{const}" })?
+                    }
+                };
                 hir_fmt_generics(f, unev.args.as_slice(), c.generic_def(f.db), None)?;
                 Ok(())
             }
@@ -738,7 +782,7 @@ fn render_const_scalar<'db>(
 ) -> Result {
     let param_env = ParamEnv::empty();
     let infcx = f.interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let ty = infcx.at(&ObligationCause::new(), param_env).deeply_normalize(ty).unwrap_or(ty);
+    let ty = infcx.at(&ObligationCause::dummy(), param_env).deeply_normalize(ty).unwrap_or(ty);
     render_const_scalar_inner(f, b, memory_map, ty, param_env)
 }
 
@@ -857,7 +901,7 @@ fn render_const_scalar_inner<'db>(
                 f.write_str("&")?;
                 render_const_scalar(f, bytes, memory_map, t)
             }
-            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id().0 {
+            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id() {
                 hir_def::AdtId::StructId(s) => {
                     let data = StructSignature::of(f.db, s);
                     write!(f, "&{}", data.name.display(f.db, f.edition()))?;
@@ -911,7 +955,7 @@ fn render_const_scalar_inner<'db>(
             f.write_str(")")
         }
         TyKind::Adt(def, args) => {
-            let def = def.def_id().0;
+            let def = def.def_id();
             let Ok(layout) = f.db.layout_of_adt(def, args.store(), param_env.store()) else {
                 return f.write_str("<layout-error>");
             };
@@ -941,7 +985,7 @@ fn render_const_scalar_inner<'db>(
                         return f.write_str("<target-layout-not-available>");
                     };
                     let Some((var_id, var_layout)) =
-                        detect_variant_from_bytes(&layout, f.db, &target_data_layout, b, e)
+                        detect_variant_from_bytes(&layout, f.db, target_data_layout, b, e)
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };
@@ -1023,7 +1067,7 @@ fn render_const_scalar_from_valtree<'db>(
 ) -> Result {
     let param_env = ParamEnv::empty();
     let infcx = f.interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let ty = infcx.at(&ObligationCause::new(), param_env).deeply_normalize(ty).unwrap_or(ty);
+    let ty = infcx.at(&ObligationCause::dummy(), param_env).deeply_normalize(ty).unwrap_or(ty);
     render_const_scalar_from_valtree_inner(f, ty, valtree, param_env)
 }
 
@@ -1176,7 +1220,7 @@ fn render_variant_after_name<'db>(
         FieldsShape::Record | FieldsShape::Tuple => {
             let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
-                let ty = field_types[id].get().instantiate(f.interner, args);
+                let ty = field_types[id].get().instantiate(f.interner, args).skip_norm_wip();
                 let Ok(layout) = f.db.layout_of_ty(ty.store(), param_env.store()) else {
                     return f.write_str("<layout-error>");
                 };
@@ -1287,7 +1331,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             }
             TyKind::FnDef(def, args) => {
                 let def = def.0;
-                let sig = db.callable_item_signature(def).instantiate(interner, args);
+                let sig =
+                    db.callable_item_signature(def).instantiate(interner, args).skip_norm_wip();
 
                 if f.display_kind.is_source_code() {
                     // `FnDef` is anonymous and there's no surface syntax for it. Show it as a
@@ -1297,7 +1342,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 if let Safety::Unsafe = sig.safety() {
                     write!(f, "unsafe ")?;
                 }
-                if !matches!(sig.abi(), FnAbi::Rust | FnAbi::RustCall) {
+                if !sig.abi().is_rustic_abi() {
                     f.write_str("extern \"")?;
                     f.write_str(sig.abi().as_str())?;
                     f.write_str("\" ")?;
@@ -1331,8 +1376,14 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 if !args.is_empty() {
                     let generic_def_id = GenericDefId::from_callable(db, def);
                     let generics = generics(db, generic_def_id);
-                    let (parent_len, self_param, type_, const_, impl_, lifetime) =
-                        generics.provenance_split();
+                    let ProvenanceSplit {
+                        parent_total: parent_len,
+                        has_self_param: self_param,
+                        non_impl_trait_type_params: type_,
+                        const_params: const_,
+                        impl_trait_type_params: impl_,
+                        lifetimes: lifetime,
+                    } = generics.provenance_split();
                     let parameters = args.as_slice();
                     debug_assert_eq!(
                         parameters.len(),
@@ -1387,7 +1438,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
             }
             TyKind::Adt(def, parameters) => {
-                let def_id = def.def_id().0;
+                let def_id = def.def_id();
                 f.start_location_link(def_id.into());
                 match f.display_kind {
                     DisplayKind::Diagnostics | DisplayKind::Test => {
@@ -1425,10 +1476,10 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
                 f.end_location_link();
 
-                hir_fmt_generics(f, parameters.as_slice(), Some(def.def_id().0.into()), None)?;
+                hir_fmt_generics(f, parameters.as_slice(), Some(def.def_id().into()), None)?;
             }
-            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) => {
-                write_projection(f, &alias_ty, trait_bounds_need_parens)?
+            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Projection { def_id }, .. }) => {
+                write_projection(f, &alias_ty, trait_bounds_need_parens, def_id.0)?
             }
             TyKind::Foreign(alias) => {
                 let type_alias = TypeAliasSignature::of(db, alias.0);
@@ -1437,19 +1488,17 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 f.end_location_link();
             }
             TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Opaque { def_id }, .. }) => {
-                let opaque_ty_id = match def_id {
-                    SolverDefId::InternedOpaqueTyId(id) => id,
-                    _ => unreachable!(),
-                };
+                let opaque_ty_id = def_id.0;
                 if !f.display_kind.allows_opaque() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
                         DisplaySourceCodeError::OpaqueType,
                     ));
                 }
-                let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
+                let impl_trait_id = opaque_ty_id.loc(db);
                 let data = impl_trait_id.predicates(db);
                 let bounds = data
                     .iter_instantiated_copied(interner, alias_ty.args.as_slice())
+                    .map(Unnormalized::skip_norm_wip)
                     .collect::<Vec<_>>();
                 let krate = match impl_trait_id {
                     ImplTraitId::ReturnTypeImplTrait(func, _) => {
@@ -1519,6 +1568,15 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             }
             TyKind::CoroutineClosure(id, args) => {
                 let id = id.0;
+                let closure_kind = match id.loc(db).kind {
+                    HirClosureKind::CoroutineClosure(kind) => kind,
+                    kind => panic!("invalid kind for coroutine closure: {kind:?}"),
+                };
+                let closure_label = match closure_kind {
+                    CoroutineKind::Async => "async closure",
+                    CoroutineKind::Gen => "gen closure",
+                    CoroutineKind::AsyncGen => "async gen closure",
+                };
                 if f.display_kind.is_source_code() {
                     if !f.display_kind.allows_opaque() {
                         return Err(HirDisplayError::DisplaySourceCodeError(
@@ -1533,25 +1591,28 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ClosureStyle::ClosureWithId => {
                         return write!(
                             f,
-                            "{{async closure#{:?}}}",
+                            "{{{closure_label}#{:?}}}",
                             salsa::plumbing::AsId::as_id(&id).index()
                         );
                     }
                     ClosureStyle::ClosureWithSubst => {
                         write!(
                             f,
-                            "{{async closure#{:?}}}",
+                            "{{{closure_label}#{:?}}}",
                             salsa::plumbing::AsId::as_id(&id).index()
                         )?;
                         return hir_fmt_generics(f, args.as_slice(), None, None);
                     }
                     _ => (),
                 }
-                let kind = args.as_coroutine_closure().kind();
-                let kind = match kind {
-                    rustc_type_ir::ClosureKind::Fn => "AsyncFn",
-                    rustc_type_ir::ClosureKind::FnMut => "AsyncFnMut",
-                    rustc_type_ir::ClosureKind::FnOnce => "AsyncFnOnce",
+                let callable_kind = args.as_coroutine_closure().kind();
+                let kind = match (closure_kind, callable_kind) {
+                    (CoroutineKind::Async, rustc_type_ir::ClosureKind::Fn) => "AsyncFn",
+                    (CoroutineKind::Async, rustc_type_ir::ClosureKind::FnMut) => "AsyncFnMut",
+                    (CoroutineKind::Async, rustc_type_ir::ClosureKind::FnOnce) => "AsyncFnOnce",
+                    (_, rustc_type_ir::ClosureKind::Fn) => "Fn",
+                    (_, rustc_type_ir::ClosureKind::FnMut) => "FnMut",
+                    (_, rustc_type_ir::ClosureKind::FnOnce) => "FnOnce",
                 };
                 let coroutine_sig = args.as_coroutine_closure().coroutine_closure_sig();
                 let coroutine_sig = coroutine_sig.skip_binder();
@@ -1559,7 +1620,11 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 let coroutine_output = coroutine_sig.return_ty;
                 match f.closure_style {
                     ClosureStyle::ImplFn => write!(f, "impl {kind}(")?,
-                    ClosureStyle::RANotation => write!(f, "async |")?,
+                    ClosureStyle::RANotation => match closure_kind {
+                        CoroutineKind::Async => write!(f, "async |")?,
+                        CoroutineKind::Gen => write!(f, "gen |")?,
+                        CoroutineKind::AsyncGen => write!(f, "async gen |")?,
+                    },
                     _ => unreachable!(),
                 }
                 if coroutine_inputs.is_empty() {
@@ -1582,7 +1647,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             TyKind::Param(param) => {
                 // FIXME: We should not access `param.id`, it should be removed, and we should know the
                 // parent from the formatted type.
-                let generics = generics(db, param.id.parent());
+                let generics = GenericParams::of(db, param.id.parent());
                 let param_data = &generics[param.id.local_id()];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
@@ -1601,6 +1666,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         TypeParamProvenance::ArgumentImplTrait => {
                             let bounds = GenericPredicates::query_all(f.db, param.id.parent())
                                 .iter_identity()
+                                .map(Unnormalized::skip_norm_wip)
                                 .filter(|wc| match wc.kind().skip_binder() {
                                     ClauseKind::Trait(tr) => tr.self_ty() == *self,
                                     ClauseKind::Projection(proj) => proj.self_ty() == *self,
@@ -1670,21 +1736,14 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             }
             TyKind::Infer(..) => write!(f, "_")?,
             TyKind::Coroutine(coroutine_id, subst) => {
-                let InternedClosure(owner, expr_id) = coroutine_id.0.loc(db);
+                let kind = coroutine_id.0.loc(db).kind;
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
-                let body = ExpressionStore::of(db, owner);
-                let expr = &body[expr_id];
-                match expr {
-                    hir_def::hir::Expr::Closure {
-                        closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. },
-                        ..
-                    } => {
-                        let future_trait = f.lang_items().Future;
-                        let output = future_trait.and_then(|t| {
-                            t.trait_items(db)
-                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
-                        });
+                match kind {
+                    HirClosureKind::Coroutine { kind: CoroutineKind::Async, .. } => {
+                        let lang_items = f.lang_items();
+                        let future_trait = lang_items.Future;
+                        let output = lang_items.FutureOutput;
                         write!(f, "impl ")?;
                         if let Some(t) = future_trait {
                             f.start_location_link(t.into());
@@ -1705,10 +1764,57 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         return_ty.hir_fmt(f)?;
                         write!(f, ">")?;
                     }
-                    hir_def::hir::Expr::Closure {
-                        closure_kind: hir_def::hir::ClosureKind::Coroutine(..),
-                        ..
-                    } => {
+                    HirClosureKind::Coroutine { kind: CoroutineKind::Gen, .. } => {
+                        let lang_items = f.lang_items();
+                        let iterator_trait = lang_items.Iterator;
+                        let item = lang_items.IteratorItem;
+                        write!(f, "impl ")?;
+                        if let Some(t) = iterator_trait {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Iterator")?;
+                        if iterator_trait.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, "<")?;
+                        if let Some(t) = item {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Item")?;
+                        if item.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, " = ")?;
+                        yield_ty.hir_fmt(f)?;
+                        write!(f, ">")?;
+                    }
+                    HirClosureKind::Coroutine { kind: CoroutineKind::AsyncGen, .. } => {
+                        let lang_items = f.lang_items();
+                        let async_iterator_trait = lang_items.AsyncIterator;
+                        let item = lang_items.AsyncIteratorItem;
+                        write!(f, "impl ")?;
+                        if let Some(t) = async_iterator_trait {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "AsyncIterator")?;
+                        if async_iterator_trait.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, "<")?;
+                        if let Some(t) = item {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Item")?;
+                        if item.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, " = ")?;
+                        let item_ty = async_gen_item_ty_from_yield_ty(f.lang_items(), yield_ty)
+                            .unwrap_or(yield_ty);
+                        item_ty.hir_fmt(f)?;
+                        write!(f, ">")?;
+                    }
+                    HirClosureKind::OldCoroutine(..) => {
                         if f.display_kind.is_source_code() {
                             return Err(HirDisplayError::DisplaySourceCodeError(
                                 DisplaySourceCodeError::Coroutine,
@@ -1724,7 +1830,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         write!(f, " -> ")?;
                         return_ty.hir_fmt(f)?;
                     }
-                    _ => panic!("invalid expr for coroutine: {expr:?}"),
+                    _ => panic!("invalid kind for coroutine: {kind:?}"),
                 }
             }
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
@@ -1769,7 +1875,9 @@ fn generic_args_sans_defaults<'ga, 'db>(
                 let should_show = |arg: GenericArg<'db>, i: usize| match default_parameters.get(i) {
                     None => true,
                     Some(default_parameter) => {
-                        arg != default_parameter.instantiate(f.interner, &parameters[..i])
+                        arg != default_parameter
+                            .instantiate(f.interner, &parameters[..i])
+                            .skip_norm_wip()
                     }
                 };
                 let mut default_from = 0;
@@ -1852,8 +1960,8 @@ fn hir_fmt_tys<'db>(
 
 impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        let FnSig { inputs_and_output, c_variadic, safety, abi: _ } = self.skip_binder();
-        if let Safety::Unsafe = safety {
+        let FnSig { inputs_and_output, fn_sig_kind } = self.skip_binder();
+        if let Safety::Unsafe = fn_sig_kind.safety() {
             write!(f, "unsafe ")?;
         }
         // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
@@ -1864,7 +1972,7 @@ impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
         // }
         write!(f, "fn(")?;
         f.write_joined(inputs_and_output.inputs(), ", ")?;
-        if c_variadic {
+        if fn_sig_kind.c_variadic() {
             if inputs_and_output.inputs().is_empty() {
                 write!(f, "...")?;
             } else {
@@ -2067,6 +2175,9 @@ fn write_bounds_like_dyn_trait<'db>(
                 }
             }
             ClauseKind::Projection(projection) => {
+                let TermId::TypeAliasId(assoc_ty_id) = projection.def_id().0 else {
+                    continue;
+                };
                 // in types in actual Rust, these will always come
                 // after the corresponding Implemented predicate
                 if angle_open {
@@ -2075,7 +2186,6 @@ fn write_bounds_like_dyn_trait<'db>(
                     write!(f, "<")?;
                     angle_open = true;
                 }
-                let assoc_ty_id = projection.def_id().expect_type_alias();
                 let type_alias = TypeAliasSignature::of(f.db, assoc_ty_id);
                 f.start_location_link(assoc_ty_id.into());
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
@@ -2174,11 +2284,28 @@ impl<'db> HirDisplay<'db> for TraitRef<'db> {
     }
 }
 
+impl<'db> HirDisplay<'db> for TraitPredicate<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
+        self.self_ty().hir_fmt(f)?;
+        f.write_str(": ")?;
+        match self.polarity {
+            rustc_type_ir::PredicatePolarity::Positive => {}
+            rustc_type_ir::PredicatePolarity::Negative => f.write_char('!')?,
+        }
+        let trait_ = self.def_id().0;
+        f.start_location_link(trait_.into());
+        write!(f, "{}", TraitSignature::of(f.db, trait_).name.display(f.db, f.edition()))?;
+        f.end_location_link();
+        let substs = &self.trait_ref.args[1..];
+        hir_fmt_generic_args(f, substs, None, None)
+    }
+}
+
 impl<'db> HirDisplay<'db> for Region<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         match self.kind() {
             RegionKind::ReEarlyParam(param) => {
-                let generics = generics(f.db, param.id.parent);
+                let generics = GenericParams::of(f.db, param.id.parent);
                 let param_data = &generics[param.id.local_id];
                 f.start_location_link_generic(param.id.into());
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
@@ -2364,9 +2491,9 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                 if fn_.is_unsafe {
                     write!(f, "unsafe ")?;
                 }
-                if let Some(abi) = &fn_.abi {
+                if fn_.abi != ExternAbi::Rust {
                     f.write_str("extern \"")?;
-                    f.write_str(abi.as_str())?;
+                    f.write_str(fn_.abi.as_str())?;
                     f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;

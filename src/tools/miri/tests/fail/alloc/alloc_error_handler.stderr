@@ -10,7 +10,7 @@ LL |         crate::process::abort()
    = note: stack backtrace:
            0: std::alloc::rust_oom::{closure#0}
                at RUSTLIB/std/src/alloc.rs:LL:CC
-           1: std::sys::backtrace::__rust_end_short_backtrace
+           1: std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::alloc::rust_oom::{closure#0}}, !>
                at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
            2: std::alloc::rust_oom
                at RUSTLIB/std/src/alloc.rs:LL:CC

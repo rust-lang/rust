@@ -16,18 +16,6 @@ impl<'tcx> MiriMachine<'tcx> {
         interp_ok(())
     }
 
-    /// Zero-initialized pointer-sized extern statics are pretty common.
-    /// Most of them are for weak symbols, which we all set to null (indicating that the
-    /// symbol is not supported, and triggering fallback code which ends up calling
-    /// some other shim that we do support).
-    fn null_ptr_extern_statics(ecx: &mut MiriInterpCx<'tcx>, names: &[&str]) -> InterpResult<'tcx> {
-        for name in names {
-            let val = ImmTy::from_int(0, ecx.machine.layouts.usize);
-            Self::alloc_extern_static(ecx, name, val)?;
-        }
-        interp_ok(())
-    }
-
     /// Extern statics that are initialized with function pointers to the symbols of the same name.
     fn weak_symbol_extern_statics(
         ecx: &mut MiriInterpCx<'tcx>,
@@ -53,17 +41,9 @@ impl<'tcx> MiriMachine<'tcx> {
 
         match &ecx.tcx.sess.target.os {
             Os::Linux => {
-                Self::null_ptr_extern_statics(
-                    ecx,
-                    &["__cxa_thread_atexit_impl", "__clock_gettime64", "__clock_nanosleep_time64"],
-                )?;
-                Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx"])?;
-            }
-            Os::FreeBsd => {
-                Self::null_ptr_extern_statics(ecx, &["__cxa_thread_atexit_impl"])?;
+                Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
             }
             Os::Android => {
-                Self::null_ptr_extern_statics(ecx, &["bsd_signal"])?;
                 Self::weak_symbol_extern_statics(ecx, &["signal", "getrandom", "gettid"])?;
             }
             Os::Windows => {
@@ -75,8 +55,14 @@ impl<'tcx> MiriMachine<'tcx> {
             Os::Illumos | Os::Solaris => {
                 Self::weak_symbol_extern_statics(ecx, &["pthread_setname_np"])?;
             }
-            _ => {} // No "extern statics" supported on this target
+            _ => {} // No "extern statics" supported on this target.
         }
+
+        // Also initialize `missing_weak_symbol`.
+        let place = ecx.allocate(ecx.machine.layouts.usize, MiriMemoryKind::ExternStatic.into())?;
+        ecx.write_null(&place)?;
+        ecx.machine.missing_weak_symbol = Some(place.ptr().into_pointer_or_addr().unwrap());
+
         interp_ok(())
     }
 }

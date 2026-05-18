@@ -8,6 +8,7 @@ use std::{
 
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
+use rustc_abi::ExternAbi;
 use span::Edition;
 use stdx::never;
 use syntax::ast::{HasName, RangeOp};
@@ -17,8 +18,8 @@ use crate::{
     attrs::AttrFlags,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
-        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, RecordSpread,
-        Statement,
+        Array, BindingAnnotation, CaptureBy, ClosureKind, CoroutineKind, Literal, Movability,
+        RecordSpread, Statement,
         generics::{GenericParams, WherePredicate},
     },
     lang_item::LangItemTarget,
@@ -91,7 +92,7 @@ pub fn print_body_hir(
     };
     if let DefWithBodyId::FunctionId(_) = owner {
         p.buf.push('(');
-        if let Some(self_param) = body.self_param {
+        if let Some(self_param) = body.self_param() {
             p.print_binding(self_param);
             p.buf.push_str(", ");
         }
@@ -292,7 +293,7 @@ pub fn print_function(
     if flags.contains(FnFlags::EXPLICIT_SAFE) {
         w!(p, "safe ");
     }
-    if let Some(abi) = abi {
+    if *abi != ExternAbi::Rust {
         w!(p, "extern \"{}\" ", abi.as_str());
     }
     w!(p, "fn ");
@@ -668,10 +669,7 @@ impl Printer<'_> {
                 }
             }
             Expr::RecordLit { path, fields, spread } => {
-                match path {
-                    Some(path) => self.print_path(path),
-                    None => w!(self, "�"),
-                }
+                self.print_path(path);
 
                 w!(self, "{{");
                 let edition = self.edition;
@@ -764,28 +762,36 @@ impl Printer<'_> {
                 let mut body = *body;
                 let mut print_pipes = true;
                 match closure_kind {
-                    ClosureKind::Coroutine(Movability::Static) => {
+                    ClosureKind::OldCoroutine(Movability::Static) => {
                         w!(self, "static ");
                     }
-                    ClosureKind::AsyncClosure => {
+                    ClosureKind::CoroutineClosure(kind) => {
                         if let Expr::Closure {
                             body: inner_body,
-                            closure_kind: ClosureKind::AsyncBlock { .. },
+                            closure_kind: ClosureKind::Coroutine { .. },
                             ..
                         } = self.store[body]
                         {
                             body = inner_body;
                         } else {
-                            never!("async closure should always have an async block body");
+                            never!("coroutine closure should always have a coroutine body");
                         }
 
-                        w!(self, "async ");
+                        match kind {
+                            CoroutineKind::Async => w!(self, "async "),
+                            CoroutineKind::Gen => w!(self, "gen "),
+                            CoroutineKind::AsyncGen => w!(self, "async gen "),
+                        }
                     }
-                    ClosureKind::AsyncBlock { .. } => {
-                        w!(self, "async ");
+                    ClosureKind::Coroutine { kind, .. } => {
+                        match kind {
+                            CoroutineKind::Async => w!(self, "async "),
+                            CoroutineKind::Gen => w!(self, "gen "),
+                            CoroutineKind::AsyncGen => w!(self, "async gen "),
+                        }
                         print_pipes = false;
                     }
-                    ClosureKind::Closure | ClosureKind::Coroutine(Movability::Movable) => (),
+                    ClosureKind::Closure | ClosureKind::OldCoroutine(Movability::Movable) => (),
                 }
                 match capture_by {
                     CaptureBy::Value => {
@@ -898,6 +904,7 @@ impl Printer<'_> {
 
         match pat {
             Pat::Missing => w!(self, "�"),
+            Pat::Rest => w!(self, ".."),
             Pat::Wild => w!(self, "_"),
             Pat::Tuple { args, ellipsis } => {
                 w!(self, "(");
@@ -923,10 +930,7 @@ impl Printer<'_> {
                 w!(self, ")");
             }
             Pat::Record { path, args, ellipsis } => {
-                match path {
-                    Some(path) => self.print_path(path),
-                    None => w!(self, "�"),
-                }
+                self.print_path(path);
 
                 w!(self, " {{");
                 let edition = self.edition;
@@ -1004,10 +1008,7 @@ impl Printer<'_> {
                 }
             }
             Pat::TupleStruct { path, args, ellipsis } => {
-                match path {
-                    Some(path) => self.print_path(path),
-                    None => w!(self, "�"),
-                }
+                self.print_path(path);
                 w!(self, "(");
                 for (i, arg) in args.iter().enumerate() {
                     if i != 0 {
@@ -1030,6 +1031,11 @@ impl Printer<'_> {
             Pat::Box { inner } => {
                 w!(self, "box ");
                 self.print_pat(*inner);
+            }
+            Pat::Deref { inner } => {
+                w!(self, "deref!(");
+                self.print_pat(*inner);
+                w!(self, ")");
             }
             Pat::ConstBlock(c) => {
                 w!(self, "const ");
@@ -1310,9 +1316,9 @@ impl Printer<'_> {
                 if fn_.is_unsafe {
                     w!(self, "unsafe ");
                 }
-                if let Some(abi) = &fn_.abi {
+                if fn_.abi != ExternAbi::Rust {
                     w!(self, "extern ");
-                    w!(self, "{}", abi.as_str());
+                    w!(self, "{}", fn_.abi.as_str());
                     w!(self, " ");
                 }
                 w!(self, "fn(");

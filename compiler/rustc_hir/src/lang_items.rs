@@ -8,7 +8,7 @@
 //! * Functions called by the compiler itself.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_macros::{BlobDecodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Symbol, kw, sym};
 

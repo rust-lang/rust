@@ -2,16 +2,13 @@
 //! be directly created from an ast::TypeRef, without further queries.
 
 use hir_expand::name::Name;
-use intern::Symbol;
 use la_arena::Idx;
+use rustc_abi::ExternAbi;
 use thin_vec::ThinVec;
 
 use crate::{
     LifetimeParamId, TypeParamId,
-    expr_store::{
-        ExpressionStore,
-        path::{GenericArg, Path},
-    },
+    expr_store::{ExpressionStore, path::Path},
     hir::ExprId,
 };
 
@@ -100,7 +97,7 @@ pub struct FnType {
     pub params: Box<[(Option<Name>, TypeRefId)]>,
     pub is_varargs: bool,
     pub is_unsafe: bool,
-    pub abi: Option<Symbol>,
+    pub abi: ExternAbi,
 }
 
 impl FnType {
@@ -190,71 +187,6 @@ pub enum TraitBoundModifier {
 impl TypeRef {
     pub(crate) fn unit() -> TypeRef {
         TypeRef::Tuple(ThinVec::new())
-    }
-
-    pub fn walk(this: TypeRefId, map: &ExpressionStore, f: &mut impl FnMut(TypeRefId, &TypeRef)) {
-        go(this, f, map);
-
-        fn go(
-            type_ref_id: TypeRefId,
-            f: &mut impl FnMut(TypeRefId, &TypeRef),
-            map: &ExpressionStore,
-        ) {
-            let type_ref = &map[type_ref_id];
-            f(type_ref_id, type_ref);
-            match type_ref {
-                TypeRef::Fn(fn_) => {
-                    fn_.params.iter().for_each(|&(_, param_type)| go(param_type, f, map))
-                }
-                TypeRef::Tuple(types) => types.iter().for_each(|&t| go(t, f, map)),
-                TypeRef::RawPtr(type_ref, _) | TypeRef::Slice(type_ref) => go(*type_ref, f, map),
-                TypeRef::Reference(it) => go(it.ty, f, map),
-                TypeRef::Array(it) => go(it.ty, f, map),
-                TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
-                    for bound in bounds {
-                        match bound {
-                            &TypeBound::Path(path, _) | &TypeBound::ForLifetime(_, path) => {
-                                go_path(&map[path], f, map)
-                            }
-                            TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
-                        }
-                    }
-                }
-                TypeRef::Path(path) => go_path(path, f, map),
-                TypeRef::Never | TypeRef::Placeholder | TypeRef::Error | TypeRef::TypeParam(_) => {}
-            };
-        }
-
-        fn go_path(path: &Path, f: &mut impl FnMut(TypeRefId, &TypeRef), map: &ExpressionStore) {
-            if let Some(type_ref) = path.type_anchor() {
-                go(type_ref, f, map);
-            }
-            for segment in path.segments().iter() {
-                if let Some(args_and_bindings) = segment.args_and_bindings {
-                    for arg in args_and_bindings.args.iter() {
-                        match arg {
-                            GenericArg::Type(type_ref) => {
-                                go(*type_ref, f, map);
-                            }
-                            GenericArg::Const(_) | GenericArg::Lifetime(_) => {}
-                        }
-                    }
-                    for binding in args_and_bindings.bindings.iter() {
-                        if let Some(type_ref) = binding.type_ref {
-                            go(type_ref, f, map);
-                        }
-                        for bound in binding.bounds.iter() {
-                            match bound {
-                                &TypeBound::Path(path, _) | &TypeBound::ForLifetime(_, path) => {
-                                    go_path(&map[path], f, map)
-                                }
-                                TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

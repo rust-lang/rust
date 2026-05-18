@@ -12,8 +12,18 @@ if [ "$PR_CI_JOB" == "1" ]; then
   SKIP_TIDY="--skip tidy"
 fi
 
+# The combination of rust.randomize-layout and LLVM 21 is causing random
+# SIGSEGV in the `hir-def` rust-analyzer tests. Since it seems to be fixed in
+# LLVM 22, let's just disable this for now since it has been disruptive for
+# CI. See https://github.com/rust-lang/rust/issues/156460.
+if [[ "$CI_JOB_NAME" == *"llvm-21"* ]]; then
+  echo "CI_JOB_NAME contains 'llvm-21'; skipping rust-analyzer"
+  SKIP_RUST_ANALYZER="--skip src/tools/rust-analyzer"
+fi
+
 ../x.py --stage 2 test \
   ${SKIP_TIDY:+$SKIP_TIDY} \
+  ${SKIP_RUST_ANALYZER:+$SKIP_RUST_ANALYZER} \
   --skip tests \
   --skip coverage-map \
   --skip coverage-run \

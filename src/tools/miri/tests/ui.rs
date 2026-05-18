@@ -219,7 +219,7 @@ fn run_tests(
         config.program.args.push("-Zmiri-disable-stacked-borrows".into());
     }
 
-    eprintln!("   Compiler: {}", config.program.display());
+    println!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         // Only run one test suite. In the future we can add all test suites to one `Vec` and run
         // them all at once, making best use of systems with high parallelism.
@@ -267,8 +267,6 @@ regexes! {
     "<[0-9]+="                       => "<TAG=",
     // normalize width of Tree Borrows diagnostic borders (which otherwise leak borrow tag info)
     "(─{50})─+"                      => "$1",
-    // erase generics in backtraces
-    "([0-9]+: .*)::<.*>"             => "$1",
     // erase long hexadecimals
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
     // erase specific alignments
@@ -305,7 +303,7 @@ fn ui(
     tmpdir: &Path,
 ) -> Result<()> {
     let msg = format!("## Running ui tests in {path} for {target}");
-    eprintln!("{}", msg.green().bold());
+    println!("{}", msg.green().bold());
 
     let with_dependencies = match with_dependencies {
         WithDependencies => true,

@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
@@ -380,6 +380,8 @@ declare_features! (
     (unstable, abi_ptx, "1.15.0", Some(38788)),
     /// Allows `extern "riscv-interrupt-m" fn()` and `extern "riscv-interrupt-s" fn()`.
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
+    /// Allows `extern "Swift" fn()`.
+    (unstable, abi_swift, "CURRENT_RUSTC_VERSION", Some(156481)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
     /// Allows additional const parameter types, such as `[u8; 10]` or user defined types
@@ -638,6 +640,8 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// Allows `move(expr)` in closures.
+    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(155050)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.

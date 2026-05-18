@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType};
 use tracing::debug;
 
 use crate::infer::unify_key::{ConstVidKey, RegionVidKey};
-use crate::infer::{InferCtxtInner, region_constraints, type_variable};
+use crate::infer::{InferCtxtInner, SolverRegionConstraint, region_constraints, type_variable};
 use crate::traits;
 
 pub struct Snapshot<'tcx> {
@@ -28,6 +28,8 @@ pub(crate) enum UndoLog<'tcx> {
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
     PushTypeOutlivesConstraint,
+    PushSolverRegionConstraint,
+    OverwriteSolverRegionConstraint { old_constraint: SolverRegionConstraint<'tcx> },
     PushRegionAssumption,
     PushHirTypeckPotentiallyRegionDependentGoal,
 }
@@ -77,6 +79,18 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
                 self.region_constraint_storage.as_mut().unwrap().unification_table.reverse(undo)
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
+            UndoLog::PushSolverRegionConstraint => {
+                let popped = self.solver_region_constraint_storage.pop();
+                assert_matches!(
+                    popped,
+                    Some(_),
+                    "pushed solver region constraint but could not pop it"
+                );
+            }
+            UndoLog::OverwriteSolverRegionConstraint { old_constraint } => {
+                self.solver_region_constraint_storage
+                    .overwrite_solver_region_constraint(old_constraint);
+            }
             UndoLog::PushTypeOutlivesConstraint => {
                 let popped = self.region_obligations.pop();
                 assert_matches!(popped, Some(_), "pushed region constraint but could not pop it");

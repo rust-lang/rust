@@ -99,10 +99,10 @@ impl<'db> NormalizationFolder<'_, 'db> {
 
         self.depth += 1;
 
-        let infer_term = infcx.next_term_var_of_kind(alias_term);
+        let infer_term = infcx.next_term_var_of_kind(alias_term, self.at.cause.span());
         let obligation = Obligation::new(
             interner,
-            self.at.cause.clone(),
+            *self.at.cause,
             self.at.param_env,
             PredicateKind::AliasRelate(alias_term, infer_term, AliasRelationDirection::Equate),
         );
@@ -229,7 +229,6 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for NormalizationFolder<'_, 'db> {
 }
 
 // Deeply normalize a value and return it
-#[expect(dead_code, reason = "rustc has this")]
 pub(crate) fn deeply_normalize_for_diagnostics<'db, T: TypeFoldable<DbInterner<'db>>>(
     infcx: &InferCtxt<'db>,
     param_env: ParamEnv<'db>,

@@ -1241,12 +1241,9 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    assert!(
-        up_var_tys
-            .iter()
-            .all(|t| t
-                == cx.tcx.normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(t)))
-    );
+    for ty in up_var_tys.iter() {
+        cx.tcx.assert_fully_normalized(cx.typing_env(), ty);
+    }
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_coroutine_ty);

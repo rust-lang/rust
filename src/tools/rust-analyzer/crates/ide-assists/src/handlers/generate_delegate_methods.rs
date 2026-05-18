@@ -48,7 +48,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_delegate_methods(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     if !ctx.config.code_action_grouping {
         return None;
     }
@@ -192,7 +195,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     None => {
                         let name = &strukt_name.to_string();
                         let ty_params = strukt.generic_param_list();
-                        let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
+                        let ty_args = ty_params.as_ref().map(|it| it.to_generic_args(make));
                         let where_clause = strukt.where_clause();
                         let assoc_item_list = make.assoc_item_list(vec![item]);
 
@@ -210,7 +213,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         let impl_def = impl_def.indent(indent);
 
                         // Insert the impl block.
-                        let strukt = edit.make_mut(strukt.clone());
                         editor.insert_all(
                             Position::after(strukt.syntax()),
                             vec![

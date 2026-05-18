@@ -26,7 +26,7 @@ pub(crate) struct UniversalRegionRelations<'tcx> {
     /// Stores the outlives relations that are known to hold from the
     /// implied bounds, in-scope where-clauses, and that sort of
     /// thing.
-    outlives: TransitiveRelation<RegionVid>,
+    pub(crate) outlives: TransitiveRelation<RegionVid>,
 
     /// This is the `<=` relation; that is, if `a: b`, then `b <= a`,
     /// and we store that here. This is useful when figuring out how

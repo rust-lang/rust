@@ -23,8 +23,8 @@ use hir_def::{
     nameres::{DefMap, block_def_map, crate_def_map},
     resolver::Resolver,
     signatures::{ConstSignature, FunctionSignature},
+    unstable_features::UnstableFeatures,
 };
-use intern::{Symbol, sym};
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     TypeVisitableExt,
@@ -35,13 +35,13 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    all_super_traits,
+    Span, all_super_traits,
     db::HirDatabase,
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
     next_solver::{
         AnyImplId, Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
-        SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode,
+        SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode, Unnormalized,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
             select::ImplSource,
@@ -57,32 +57,15 @@ pub use self::probe::{
     Candidate, CandidateKind, CandidateStep, CandidateWithPrivate, Mode, Pick, PickKind,
 };
 
-#[derive(Debug, Clone)]
-pub struct MethodResolutionUnstableFeatures {
-    arbitrary_self_types: bool,
-    arbitrary_self_types_pointers: bool,
-    supertrait_item_shadowing: bool,
-}
-
-impl MethodResolutionUnstableFeatures {
-    pub fn from_def_map(def_map: &DefMap) -> Self {
-        Self {
-            arbitrary_self_types: def_map.is_unstable_feature_enabled(&sym::arbitrary_self_types),
-            arbitrary_self_types_pointers: def_map
-                .is_unstable_feature_enabled(&sym::arbitrary_self_types_pointers),
-            supertrait_item_shadowing: def_map
-                .is_unstable_feature_enabled(&sym::supertrait_item_shadowing),
-        }
-    }
-}
-
 pub struct MethodResolutionContext<'a, 'db> {
     pub infcx: &'a InferCtxt<'db>,
     pub resolver: &'a Resolver<'db>,
     pub param_env: ParamEnv<'db>,
     pub traits_in_scope: &'a FxHashSet<TraitId>,
     pub edition: Edition,
-    pub unstable_features: &'a MethodResolutionUnstableFeatures,
+    pub features: &'a UnstableFeatures,
+    pub call_span: Span,
+    pub receiver_span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
@@ -152,7 +135,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         receiver: ExprId,
         call_expr: ExprId,
     ) -> Result<(MethodCallee<'db>, bool), MethodError<'db>> {
-        let (pick, is_visible) = match self.lookup_probe(name, self_ty) {
+        let (pick, is_visible) = match self.lookup_probe(call_expr, receiver, name, self_ty) {
             Ok(it) => (it, true),
             Err(MethodError::PrivateMatch(it)) => {
                 // FIXME: Report error.
@@ -177,10 +160,12 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn lookup_probe(
         &self,
+        call_expr: ExprId,
+        receiver: ExprId,
         method_name: Name,
         self_ty: Ty<'db>,
     ) -> probe::PickResult<'db> {
-        self.with_method_resolution(|ctx| {
+        self.with_method_resolution(call_expr.into(), receiver.into(), |ctx| {
             let pick = ctx.probe_for_name(probe::Mode::MethodCall, method_name, self_ty)?;
             Ok(pick)
         })
@@ -188,6 +173,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     pub(crate) fn with_method_resolution<R>(
         &self,
+        call_span: Span,
+        receiver_span: Span,
         f: impl FnOnce(&MethodResolutionContext<'_, 'db>) -> R,
     ) -> R {
         let traits_in_scope = self.get_traits_in_scope();
@@ -201,7 +188,9 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             param_env: self.table.param_env,
             traits_in_scope,
             edition: self.edition,
-            unstable_features: &self.unstable_features,
+            features: self.features,
+            call_span,
+            receiver_span,
         };
         f(&ctx)
     }
@@ -234,8 +223,8 @@ impl<'db> InferenceTable<'db> {
     pub(super) fn lookup_method_for_operator(
         &self,
         cause: ObligationCause,
-        method_name: Symbol,
         trait_def_id: TraitId,
+        method_item: FunctionId,
         self_ty: Ty<'db>,
         opt_rhs_ty: Option<Ty<'db>>,
         treat_opaques: TreatNotYetDefinedOpaques,
@@ -258,7 +247,7 @@ impl<'db> InferenceTable<'db> {
                         // FIXME: We should stop passing `None` for the failure case
                         // when probing for call exprs. I.e. `opt_rhs_ty` should always
                         // be set when it needs to be.
-                        self.next_var_for_param(param_id)
+                        self.var_for_def(param_id, cause.span())
                     }
                 }
             },
@@ -288,13 +277,6 @@ impl<'db> InferenceTable<'db> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let interner = self.interner();
-        // We use `Ident::with_dummy_span` since no built-in operator methods have
-        // any macro-specific hygiene, so the span's context doesn't really matter.
-        let Some(method_item) =
-            trait_def_id.trait_items(self.db).method_by_name(&Name::new_symbol_root(method_name))
-        else {
-            panic!("expected associated item for operator trait")
-        };
 
         let def_id = method_item;
 
@@ -307,11 +289,16 @@ impl<'db> InferenceTable<'db> {
         // N.B., instantiate late-bound regions before normalizing the
         // function signature so that normalization does not need to deal
         // with bound regions.
-        let fn_sig =
-            self.db.callable_item_signature(method_item.into()).instantiate(interner, args);
         let fn_sig = self
-            .infer_ctxt
-            .instantiate_binder_with_fresh_vars(BoundRegionConversionTime::FnCall, fn_sig);
+            .db
+            .callable_item_signature(method_item.into())
+            .instantiate(interner, args)
+            .skip_norm_wip();
+        let fn_sig = self.infer_ctxt.instantiate_binder_with_fresh_vars(
+            cause.span(),
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
@@ -323,8 +310,8 @@ impl<'db> InferenceTable<'db> {
         // any late-bound regions appearing in its bounds.
         let bounds = GenericPredicates::query_all(self.db, method_item.into());
         let bounds = clauses_as_obligations(
-            bounds.iter_instantiated(interner, args.as_slice()),
-            ObligationCause::new(),
+            bounds.iter_instantiated(interner, args.as_slice()).map(Unnormalized::skip_norm_wip),
+            cause,
             self.param_env,
         );
 
@@ -338,7 +325,7 @@ impl<'db> InferenceTable<'db> {
         for ty in fn_sig.inputs_and_output {
             obligations.push(Obligation::new(
                 interner,
-                obligation.cause.clone(),
+                obligation.cause,
                 self.param_env,
                 Binder::dummy(PredicateKind::Clause(ClauseKind::WellFormed(ty.into()))),
             ));
@@ -612,7 +599,7 @@ impl InherentImpls {
                 for impl_id in module_data.scope.inherent_impls() {
                     let interner = DbInterner::new_no_crate(db);
                     let self_ty = db.impl_self_ty(impl_id);
-                    let self_ty = self_ty.instantiate_identity();
+                    let self_ty = self_ty.instantiate_identity().skip_norm_wip();
                     if let Some(self_ty) =
                         simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer)
                     {
@@ -727,7 +714,7 @@ impl TraitImpls {
             for (_module_id, module_data) in def_map.modules() {
                 for impl_id in module_data.scope.trait_impls() {
                     let trait_ref = match db.impl_trait(impl_id) {
-                        Some(tr) => tr.instantiate_identity(),
+                        Some(tr) => tr.instantiate_identity().skip_norm_wip(),
                         None => continue,
                     };
                     // Reservation impls should be ignored during trait resolution, so we never need

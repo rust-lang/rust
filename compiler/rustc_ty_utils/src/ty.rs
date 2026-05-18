@@ -358,12 +358,13 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
     let cause = traits::ObligationCause::dummy();
     let param_env = tcx.param_env(impl_def_id);
 
+    let self_ty = ocx.normalize(&cause, param_env, tcx.type_of(impl_def_id).instantiate_identity());
     let tail = tcx.struct_tail_raw(
-        tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip(),
+        self_ty,
         &cause,
         |ty| {
             // FIXME: ambiguity is just ignored.
-            ocx.normalize(&cause, param_env, Unnormalized::new_wip(ty))
+            ocx.normalize(&cause, param_env, ty)
         },
         || (),
     );

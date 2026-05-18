@@ -40,8 +40,8 @@ use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
-    expected_output_path, output_base_dir, output_relative_path,
+    CodegenBackend, CompareMode, Config, Debugger, ForcePassMode, TestMode, TestPaths,
+    UI_EXTENSIONS, expected_output_path, output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
@@ -446,7 +446,7 @@ fn parse_config(args: Vec<String>) -> Config {
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
-            mode.parse::<PassMode>()
+            mode.parse::<ForcePassMode>()
                 .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
         }),
         // FIXME: this run scheme is... confusing.

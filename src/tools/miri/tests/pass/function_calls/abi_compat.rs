@@ -66,7 +66,7 @@ fn test_abi_newtype<T: Copy + Default>() {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     enum Wrapper4<T> {
-        V(Zst, T, [u8; 0])
+        V(Zst, T, [u8; 0]),
     }
 
     let t = T::default();

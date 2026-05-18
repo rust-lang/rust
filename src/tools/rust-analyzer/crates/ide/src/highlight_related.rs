@@ -695,14 +695,14 @@ fn merge_map(res: &mut HighlightMap, new: Option<HighlightMap>) {
 /// Preorder walk all the expression's child expressions.
 /// For macro calls, the callback will be called on the expanded expressions after
 /// visiting the macro call itself.
-struct WalkExpandedExprCtx<'a> {
-    sema: &'a Semantics<'a, RootDatabase>,
+struct WalkExpandedExprCtx<'a, 'db> {
+    sema: &'a Semantics<'db, RootDatabase>,
     depth: usize,
     check_ctx: &'static dyn Fn(&ast::Expr) -> bool,
 }
 
-impl<'a> WalkExpandedExprCtx<'a> {
-    fn new(sema: &'a Semantics<'a, RootDatabase>) -> Self {
+impl<'a, 'db> WalkExpandedExprCtx<'a, 'db> {
+    fn new(sema: &'a Semantics<'db, RootDatabase>) -> Self {
         Self { sema, depth: 0, check_ctx: &is_closure_or_blk_with_modif }
     }
 

@@ -34,7 +34,10 @@ static ASSIST_LABEL: &str = "Introduce named lifetime";
 //     }
 // }
 // ```
-pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn introduce_named_lifetime(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     // FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
     // FIXME: should also add support for the case fun(f: &Foo) -> &$0Foo
     let lifetime =

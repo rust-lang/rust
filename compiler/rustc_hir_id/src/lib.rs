@@ -6,7 +6,7 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_data_structures::stable_hasher::{
+use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};

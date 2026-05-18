@@ -16,8 +16,8 @@ mod traits;
 use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
-    AssocItemId, DefWithBodyId, GenericDefId, HasModule, Lookup, ModuleDefId, ModuleId,
-    SyntheticSyntax,
+    AdtId, AssocItemId, DefWithBodyId, GenericDefId, HasModule, Lookup, ModuleDefId, ModuleId,
+    SyntheticSyntax, VariantId,
     expr_store::{Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap},
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
@@ -36,9 +36,10 @@ use syntax::{
 use test_fixture::WithFixture;
 
 use crate::{
-    InferenceResult,
+    InferenceDiagnostic, InferenceResult,
+    db::{AnonConstId, HirDatabase},
     display::{DisplayTarget, HirDisplay},
-    infer::{Adjustment, TypeMismatch},
+    infer::Adjustment,
     next_solver::Ty,
     setup_tracing,
     test_db::TestDB,
@@ -88,15 +89,12 @@ fn check_impl(
                 let file_range = FileRange { file_id, range };
                 if only_types {
                     types.insert(file_range, expected);
-                } else if expected.starts_with("type: ") {
-                    types.insert(file_range, expected.trim_start_matches("type: ").to_owned());
+                } else if let Some(ty) = expected.strip_prefix("type: ") {
+                    types.insert(file_range, ty.to_owned());
                 } else if expected.starts_with("expected") {
                     mismatches.insert(file_range, expected);
-                } else if expected.starts_with("adjustments:") {
-                    adjustments.insert(
-                        file_range,
-                        expected.trim_start_matches("adjustments:").trim().to_owned(),
-                    );
+                } else if let Some(adjs) = expected.strip_prefix("adjustments:") {
+                    adjustments.insert(file_range, adjs.trim().to_owned());
                 } else {
                     panic!("unexpected annotation: {expected} @ {range:?}");
                 }
@@ -198,7 +196,14 @@ fn check_impl(
                 }
             }
 
-            for (expr_or_pat, mismatch) in inference_result.type_mismatches() {
+            let type_mismatches =
+                inference_result.diagnostics().iter().filter_map(|diag| match diag {
+                    InferenceDiagnostic::TypeMismatch { node, expected, found } => {
+                        Some((*node, expected.as_ref(), found.as_ref()))
+                    }
+                    _ => None,
+                });
+            for (expr_or_pat, expected, actual) in type_mismatches {
                 let Some(node) = (match expr_or_pat {
                     hir_def::hir::ExprOrPatId::ExprId(expr) => {
                         expr_node(body_source_map, expr, &db)
@@ -210,8 +215,8 @@ fn check_impl(
                 let range = node.as_ref().original_file_range_rooted(&db);
                 let actual = format!(
                     "expected {}, got {}",
-                    mismatch.expected.as_ref().display_test(&db, display_target),
-                    mismatch.actual.as_ref().display_test(&db, display_target)
+                    expected.display_test(&db, display_target),
+                    actual.display_test(&db, display_target)
                 );
                 match mismatches.remove(&range) {
                     Some(annotation) => assert_eq!(actual, annotation),
@@ -329,7 +334,17 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                              krate: Crate| {
             let display_target = DisplayTarget::from_crate(&db, krate);
             let mut types: Vec<(InFile<SyntaxNode>, Ty<'_>)> = Vec::new();
-            let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
+            let type_mismatch_for_node = inference_result
+                .diagnostics()
+                .iter()
+                .filter_map(|diag| match diag {
+                    InferenceDiagnostic::TypeMismatch { node, expected, found } => {
+                        Some((*node, (expected.as_ref(), found.as_ref())))
+                    }
+                    _ => None,
+                })
+                .collect::<FxHashMap<_, _>>();
+            let mut mismatches: Vec<(InFile<SyntaxNode>, (Ty<'_>, Ty<'_>))> = Vec::new();
 
             if let Some((binding_id, syntax_ptr)) = self_param {
                 let ty = &inference_result.type_of_binding[binding_id];
@@ -352,8 +367,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     Err(SyntheticSyntax) => continue,
                 };
                 types.push((node.clone(), ty.as_ref()));
-                if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat) {
-                    mismatches.push((node, mismatch));
+                if let Some(mismatch) = type_mismatch_for_node.get(&pat.into()) {
+                    mismatches.push((node, *mismatch));
                 }
             }
 
@@ -366,8 +381,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     Err(SyntheticSyntax) => continue,
                 };
                 types.push((node.clone(), ty.as_ref()));
-                if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr) {
-                    mismatches.push((node, mismatch));
+                if let Some(mismatch) = type_mismatch_for_node.get(&expr.into()) {
+                    mismatches.push((node, *mismatch));
                 }
             }
 
@@ -398,7 +413,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     let range = node.value.text_range();
                     (range.start(), range.end())
                 });
-                for (src_ptr, mismatch) in &mismatches {
+                for (src_ptr, (expected, actual)) in &mismatches {
                     let range = src_ptr.value.text_range();
                     let macro_prefix = if src_ptr.file_id != file_id { "!" } else { "" };
                     format_to!(
@@ -406,8 +421,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                         "{}{:?}: expected {}, got {}\n",
                         macro_prefix,
                         range,
-                        mismatch.expected.as_ref().display_test(&db, display_target),
-                        mismatch.actual.as_ref().display_test(&db, display_target),
+                        expected.display_test(&db, display_target),
+                        actual.display_test(&db, display_target),
                     );
                 }
             }
@@ -418,6 +433,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
         let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
         let mut generic_defs: Vec<(GenericDefId, Crate)> = Vec::new();
+        let mut variants: Vec<(VariantId, Crate)> = Vec::new();
         visit_module(&db, def_map, module, &mut |it| {
             let krate = module.krate(&db);
             match it {
@@ -438,6 +454,16 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 }
                 ModuleDefId::AdtId(it) => {
                     generic_defs.push((it.into(), krate));
+                    match it {
+                        AdtId::StructId(id) => variants.push((id.into(), krate)),
+                        AdtId::UnionId(id) => variants.push((id.into(), krate)),
+                        AdtId::EnumId(id) => variants.extend(
+                            id.enum_variants(&db)
+                                .variants
+                                .iter()
+                                .map(|&(variant, ..)| (variant.into(), krate)),
+                        ),
+                    }
                 }
                 ModuleDefId::TraitId(it) => {
                     generic_defs.push((it.into(), krate));
@@ -488,7 +514,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (def, krate) in defs {
             let (body, source_map) = Body::with_source_map(&db, def);
             let infer = InferenceResult::of(&db, def);
-            let self_param = body.self_param.map(|id| (id, source_map.self_param_syntax()));
+            let self_param = body.self_param().map(|id| (id, source_map.self_param_syntax()));
             infer_def(infer, body, source_map, self_param, krate);
         }
 
@@ -497,11 +523,26 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         for (def, krate) in generic_defs {
             let (store, source_map) = ExpressionStore::with_source_map(&db, def.into());
             // Skip if there are no const expressions in the signature
-            if store.const_expr_origins().is_empty() {
+            if store.expr_roots().next().is_none() {
                 continue;
             }
-            let infer = InferenceResult::of(&db, def);
-            infer_def(infer, store, source_map, None, krate);
+            for &anon_const in AnonConstId::all_from_signature(&db, def).into_iter().flatten() {
+                let infer = InferenceResult::of(&db, anon_const);
+                infer_def(infer, store, source_map, None, krate);
+            }
+        }
+        variants.dedup();
+        for (def, krate) in variants {
+            let (store, source_map) = ExpressionStore::with_source_map(&db, def.into());
+            // Skip if there are no const expressions in the signature
+            if store.expr_roots().next().is_none() {
+                continue;
+            }
+            let anon_consts = db.field_types_with_diagnostics(def).defined_anon_consts();
+            for &anon_const in anon_consts {
+                let infer = InferenceResult::of(&db, anon_const);
+                infer_def(infer, store, source_map, None, krate);
+            }
         }
 
         buf.truncate(buf.trim_end().len());
@@ -558,7 +599,7 @@ pub(crate) fn visit_module(
                     let body = Body::of(db, it.into());
                     visit_body(db, body, cb);
                 }
-                ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
+                ModuleDefId::AdtId(AdtId::EnumId(it)) => {
                     it.enum_variants(db).variants.iter().for_each(|&(it, _, _)| {
                         let body = Body::of(db, it.into());
                         cb(it.into());

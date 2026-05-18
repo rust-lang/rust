@@ -149,7 +149,7 @@ impl Cfg {
             | CfgEntry::All(..)
             | CfgEntry::NameValue { .. }
             | CfgEntry::Version(..)
-            | CfgEntry::Not(box CfgEntry::NameValue { .. }, _) => true,
+            | CfgEntry::Not(CfgEntry::NameValue { .. }, _) => true,
             CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
         }
     }
@@ -386,7 +386,7 @@ impl Display<'_> {
 impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            CfgEntry::Not(box CfgEntry::Any(sub_cfgs, _), _) => {
+            CfgEntry::Not(CfgEntry::Any(sub_cfgs, _), _) => {
                 let separator = if sub_cfgs.iter().all(is_simple_cfg) { " nor " } else { ", nor " };
                 fmt.write_str("neither ")?;
 
@@ -399,10 +399,10 @@ impl fmt::Display for Display<'_> {
                     })
                     .joined(separator, fmt)
             }
-            CfgEntry::Not(box simple @ CfgEntry::NameValue { .. }, _) => {
+            CfgEntry::Not(simple @ CfgEntry::NameValue { .. }, _) => {
                 write!(fmt, "non-{}", Display(simple, self.1))
             }
-            CfgEntry::Not(box c, _) => write!(fmt, "not ({})", Display(c, self.1)),
+            CfgEntry::Not(c, _) => write!(fmt, "not ({})", Display(c, self.1)),
 
             CfgEntry::Any(sub_cfgs, _) => {
                 let separator = if sub_cfgs.iter().all(is_simple_cfg) { " or " } else { ", or " };

@@ -23,7 +23,7 @@ use ide_db::{
     syntax_helpers::tree_diff::diff,
     text_edit::TextEdit,
 };
-use syntax::ast::make;
+use syntax::{AstNode, syntax_editor::SyntaxEditor};
 
 use crate::{
     completions::Completions,
@@ -258,7 +258,7 @@ pub fn completions(
                 completions::attribute::complete_known_attribute_input(
                     acc,
                     ctx,
-                    colon_prefix,
+                    *colon_prefix,
                     attr,
                     extern_crate.as_ref(),
                 );
@@ -296,23 +296,26 @@ pub fn resolve_completion_edits(
     let current_module = sema.scope(position_for_import)?.module();
     let current_crate = current_module.krate(db);
     let current_edition = current_crate.edition(db);
-    let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
+    let (editor, _) = SyntaxEditor::new(original_file.syntax().clone());
+    let make = editor.make();
 
     imports.into_iter().for_each(|import| {
-        let full_path = make::path_from_text_with_edition(&import.path, current_edition);
+        let full_path = make.path_from_text_with_edition(&import.path, current_edition);
         if import.as_underscore {
-            insert_use::insert_use_as_alias(
-                &new_ast,
+            insert_use::insert_use_as_alias_with_editor(
+                &scope,
                 full_path,
                 &config.insert_use,
                 current_edition,
+                &editor,
             );
         } else {
-            insert_use::insert_use(&new_ast, full_path, &config.insert_use);
+            insert_use::insert_use_with_editor(&scope, full_path, &config.insert_use, &editor);
         }
     });
 
-    diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
+    let edit = editor.finish();
+    diff(edit.old_root(), edit.new_root()).into_text_edit(&mut import_insert);
     Some(vec![import_insert.finish()])
 }

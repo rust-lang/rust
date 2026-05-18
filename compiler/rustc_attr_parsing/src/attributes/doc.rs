@@ -255,8 +255,7 @@ impl DocParser {
             }
             ArgParser::List(list) => {
                 for i in list.mixed() {
-                    let Some(alias) = i.lit().and_then(|i| i.value_str()) else {
-                        cx.adcx().expected_string_literal(i.span(), i.lit());
+                    let Some(alias) = cx.expect_string_literal(i) else {
                         continue;
                     };
 
@@ -264,8 +263,7 @@ impl DocParser {
                 }
             }
             ArgParser::NameValue(nv) => {
-                let Some(alias) = nv.value_as_str() else {
-                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                let Some(alias) = cx.expect_string_literal(nv) else {
                     return;
                 };
                 self.add_alias(cx, alias, nv.value_span);

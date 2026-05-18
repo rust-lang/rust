@@ -22,7 +22,7 @@ use span::Edition;
 use stdx::{always, never, variance::PhantomCovariantLifetime};
 
 use crate::{
-    InferenceResult,
+    ByRef, InferenceResult,
     db::HirDatabase,
     display::{HirDisplay, HirDisplayError, HirFormatter},
     infer::BindingMode,
@@ -121,7 +121,7 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
         self.infer.pat_adjustments.get(&pat).map(|it| &**it).unwrap_or_default().iter().rev().fold(
             unadjusted_pat,
             |subpattern, ref_ty| Pat {
-                ty: ref_ty.as_ref(),
+                ty: ref_ty.source.as_ref(),
                 kind: Box::new(PatKind::Deref { subpattern }),
             },
         )
@@ -158,8 +158,8 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
                 ty = self.infer.binding_ty(id);
                 let name = &self.body[id].name;
                 match (bm, ty.kind()) {
-                    (BindingMode::Ref(_), TyKind::Ref(_, rty, _)) => ty = rty,
-                    (BindingMode::Ref(_), _) => {
+                    (BindingMode(ByRef::Yes(_), _), TyKind::Ref(_, rty, _)) => ty = rty,
+                    (BindingMode(ByRef::Yes(_), _), _) => {
                         never!(
                             "`ref {}` has wrong type {:?}",
                             name.display(self.db, Edition::LATEST),

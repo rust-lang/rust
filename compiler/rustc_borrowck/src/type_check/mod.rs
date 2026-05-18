@@ -173,6 +173,25 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
+    if infcx.tcx.assumptions_on_binders() {
+        let mut converter = constraint_conversion::ConstraintConversion::new(
+            typeck.infcx,
+            typeck.universal_regions,
+            typeck.region_bound_pairs,
+            typeck.known_type_outlives_obligations,
+            Locations::All(rustc_span::DUMMY_SP),
+            rustc_span::DUMMY_SP,
+            ConstraintCategory::Boring,
+            typeck.constraints,
+        );
+        typeck.infcx.destructure_solver_region_constraints_for_borrowck(
+            &mut converter,
+            typeck.known_type_outlives_obligations,
+            universal_region_relations.outlives.clone(),
+            infcx.tcx.def_span(infcx.root_def_id),
+        );
+    }
+
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.
     if let Some(guar) = universal_region_relations.universal_regions.encountered_re_error() {
@@ -461,18 +480,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |ty| self.normalize(ty, locations),
-                |ty, variant_index, field, ()| PlaceTy::field_ty(tcx, ty, variant_index, field),
+                |ty| self.normalize(ty::Unnormalized::new_wip(ty), locations),
+                |ty, variant_index, field, ()| {
+                    PlaceTy::field_ty(tcx, ty, variant_index, field).skip_norm_wip()
+                },
                 |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
         }
         trace!(?curr_projected_ty);
 
-        // Need to renormalize `a` as typecheck may have failed to normalize
-        // higher-ranked aliases if normalization was ambiguous due to inference.
-        let a = self.normalize(a, locations);
-        let ty = self.normalize(curr_projected_ty.ty, locations);
+        // Need to renormalize `a` in the old solver as typecheck may have failed
+        // to normalize higher-ranked aliases if normalization was ambiguous due
+        // to inference.
+        //
+        // We properly normalize higher-ranked aliases during writeback with the
+        // new solver, so this is no longer necessary.
+        let mut a = a;
+        let mut ty = curr_projected_ty.ty;
+        if !self.infcx.next_trait_solver() {
+            a = self.normalize(ty::Unnormalized::new_wip(a), locations);
+            ty = self.normalize(ty::Unnormalized::new_wip(ty), locations);
+        }
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
@@ -581,7 +610,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_statement(stmt, location);
         let tcx = self.tcx();
         match &stmt.kind {
-            StatementKind::Assign(box (place, rv)) => {
+            StatementKind::Assign((place, rv)) => {
                 // Assignments to temporaries are not "interesting";
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
@@ -620,11 +649,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 let place_ty = place.ty(self.body, tcx).ty;
                 debug!(?place_ty);
-                let place_ty = self.normalize(place_ty, location);
+                let place_ty = self.normalize(ty::Unnormalized::new_wip(place_ty), location);
                 debug!("place_ty normalized: {:?}", place_ty);
                 let rv_ty = rv.ty(self.body, tcx);
                 debug!(?rv_ty);
-                let rv_ty = self.normalize(rv_ty, location);
+                let rv_ty = self.normalize(ty::Unnormalized::new_wip(rv_ty), location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
                 if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
@@ -672,7 +701,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::AscribeUserType(box (place, projection), variance) => {
+            StatementKind::AscribeUserType((place, projection), variance) => {
                 let place_ty = place.ty(self.body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
@@ -693,7 +722,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(..))
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(..))
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
@@ -702,7 +731,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(..))
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
@@ -1063,7 +1092,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 },
                             );
 
-                            let src_ty = self.normalize(src_ty, location);
+                            let src_ty =
+                                self.normalize(ty::Unnormalized::new_wip(src_ty), location);
                             if let Err(terr) = self.sub_types(
                                 src_ty,
                                 *ty,
@@ -1105,7 +1135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let src_ty = self.normalize(src_ty, location);
+                        let src_ty = self.normalize(ty::Unnormalized::new_wip(src_ty), location);
                         if let Err(terr) = self.sub_types(
                             src_ty,
                             *ty,
@@ -1171,7 +1201,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(fn_sig, location);
+                        let fn_sig = self.normalize(ty::Unnormalized::new_wip(fn_sig), location);
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
@@ -1591,7 +1621,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
-                box (left, right),
+                (left, right),
             ) => {
                 let ty_left = left.ty(self.body, tcx);
                 match ty_left.kind() {
@@ -1767,8 +1797,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty =
-                    tcx.type_of(static_def_id).instantiate_identity().skip_norm_wip();
+                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
                 let normalized_ty = self.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
@@ -1857,7 +1886,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
-                let fty = self.normalize(fty, location);
+                let fty = self.normalize(ty::Unnormalized::new_wip(fty), location);
                 let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
                 let ty = self.normalize(ty, location);
                 debug!(?fty, ?ty);
@@ -1873,7 +1902,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::OpaqueCast(ty) => {
-                let ty = self.normalize(ty, location);
+                let ty = self.normalize(ty::Unnormalized::new_wip(ty), location);
                 self.relate_types(
                     ty,
                     context.ambient_variance(),
@@ -1926,7 +1955,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         } else {
             let dest_ty = destination.ty(self.body, tcx).ty;
-            let dest_ty = self.normalize(dest_ty, term_location);
+            let dest_ty = self.normalize(ty::Unnormalized::new_wip(dest_ty), term_location);
             let category = match destination.as_local() {
                 Some(RETURN_PLACE) => {
                     if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
@@ -2011,7 +2040,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.node.ty(self.body, self.tcx());
 
-            let op_arg_ty = self.normalize(op_arg_ty, term_location);
+            let op_arg_ty = self.normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location);
             let category = if call_source.from_hir_call() {
                 ConstraintCategory::CallArgument(Some(
                     self.infcx.tcx.erase_and_anonymize_regions(func_ty),
@@ -2283,7 +2312,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             };
             let operand_ty = operand.ty(self.body, tcx);
-            let operand_ty = self.normalize(operand_ty, location);
+            let operand_ty = self.normalize(ty::Unnormalized::new_wip(operand_ty), location);
 
             if let Err(terr) = self.sub_types(
                 operand_ty,
@@ -2494,8 +2523,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 else {
                     continue;
                 };
-                let dest_ty = dest_field.ty(tcx, dest_args);
-                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args);
+                let dest_ty = dest_field.ty(tcx, dest_args).skip_norm_wip();
+                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args).skip_norm_wip();
                 if let (
                     ty::Ref(borrow_region, _, Mutability::Mut),
                     ty::Ref(ref_region, _, Mutability::Not),

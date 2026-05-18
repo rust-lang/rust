@@ -23,7 +23,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
-use rustc_data_structures::stable_hasher::StableHash;
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
@@ -52,7 +52,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
@@ -1389,11 +1389,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn with_stable_hashing_context<R>(
-        self,
-        f: impl FnOnce(StableHashingContext<'_>) -> R,
-    ) -> R {
-        f(StableHashingContext::new(self.sess, &self.untracked))
+    pub fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashState<'_>) -> R) -> R {
+        f(StableHashState::new(self.sess, &self.untracked))
     }
 
     #[inline]
@@ -2462,8 +2459,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
+        let level_spec = self.lint_level_spec_at_node(lint, hir_id);
+        emit_lint_base(self.sess, lint, level_spec, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2505,8 +2502,8 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        let level = self.lint_level_at_node(lint, id);
-        emit_lint_base(self.sess, lint, level, None, decorator);
+        let level_spec = self.lint_level_spec_at_node(lint, id);
+        emit_lint_base(self.sess, lint, level_spec, None, decorator);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
@@ -2653,6 +2650,10 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::bad_opt_access)]
     pub fn use_typing_mode_borrowck(self) -> bool {
         self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
+    }
+
+    pub fn assumptions_on_binders(self) -> bool {
+        self.sess.opts.unstable_opts.assumptions_on_binders
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

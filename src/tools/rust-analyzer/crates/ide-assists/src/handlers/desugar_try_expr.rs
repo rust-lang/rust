@@ -50,7 +50,7 @@ use crate::assist_context::{AssistContext, Assists};
 //     };
 // }
 // ```
-pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let question_tok = ctx.find_token_syntax_at_offset(T![?])?;
     let try_expr = question_tok.parent().and_then(ast::TryExpr::cast)?;
 

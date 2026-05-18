@@ -240,7 +240,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
-        let container = match old_binding.parent_module.unwrap().kind {
+        let container = match old_binding.parent_module.unwrap().expect_local().kind {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
             ModuleKind::Def(kind, def_id, _, _) => kind.descr(def_id),
@@ -2307,7 +2307,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.mention_default_field_values(source, ident, &mut err);
 
-        let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
             let mut import_suggestions = self.lookup_import_candidates(
                 outer_ident,
@@ -2332,7 +2331,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
             // If we suggest importing a public re-export, don't point at the definition.
             if point_to_def && ident.span != outer_ident.span {
-                not_publicly_reexported = true;
                 let label = errors::OuterIdentIsNotPubliclyReexported {
                     span: outer_ident.span,
                     outer_ident_descr: this_res.descr(),
@@ -2408,7 +2406,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let first_binding = decl;
         let mut next_binding = Some(decl);
         let mut next_ident = ident;
-        let mut path = vec![];
         while let Some(binding) = next_binding {
             let name = next_ident;
             next_binding = match binding.kind {
@@ -2428,18 +2425,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             match binding.kind {
-                DeclKind::Import { import, .. } => {
-                    for segment in import.module_path.iter().skip(1) {
-                        // Don't include `{{root}}` in suggestions - it's an internal symbol
-                        // that should never be shown to users.
-                        if segment.ident.name != kw::PathRoot {
-                            path.push(segment.ident);
-                        }
-                    }
-                    sugg_paths.push((
-                        path.iter().cloned().chain(std::iter::once(ident)).collect::<Vec<_>>(),
-                        true, // re-export
-                    ));
+                DeclKind::Import { source_decl, import, .. } => {
+                    // Don't include `{{root}}` in suggestions - it's an internal symbol
+                    // that should never be shown to users.
+                    let path = import
+                        .module_path
+                        .iter()
+                        .filter(|seg| seg.ident.name != kw::PathRoot)
+                        .map(|seg| seg.ident.clone())
+                        .chain(std::iter::once(ident))
+                        .collect::<Vec<_>>();
+                    let through_reexport = !matches!(source_decl.kind, DeclKind::Def(_));
+                    sugg_paths.push((path, through_reexport));
                 }
                 DeclKind::Def(_) => {}
             }
@@ -2472,25 +2469,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
         }
-        // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
-        sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
-        for (sugg, reexport) in sugg_paths {
-            if not_publicly_reexported {
+        // The suggestion replaces `dedup_span` with a path reaching the failing ident.
+        // That's valid only when
+        // 1) the failing ident is the imported leaf, otherwise `as` renames and trailing segments
+        //    get dropped, and
+        // 2) the use isn't nested, otherwise `dedup_span` is one ident in `{...}`.
+        //
+        // See issue #156060.
+        let can_replace_use =
+            !single_nested && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
+        if can_replace_use {
+            // We prioritize shorter paths, non-core imports and direct imports over the
+            // alternatives.
+            sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
+            for (sugg, reexport) in sugg_paths {
+                if sugg.len() <= 1 {
+                    // A single path segment suggestion is wrong. This happens on circular
+                    // imports. `tests/ui/imports/issue-55884-2.rs`
+                    continue;
+                }
+                let path = join_path_idents(sugg);
+                let sugg = if reexport {
+                    errors::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
+                } else {
+                    errors::ImportIdent::Directly { span: dedup_span, ident, path }
+                };
+                err.subdiagnostic(sugg);
                 break;
             }
-            if sugg.len() <= 1 {
-                // A single path segment suggestion is wrong. This happens on circular imports.
-                // `tests/ui/imports/issue-55884-2.rs`
-                continue;
-            }
-            let path = join_path_idents(sugg);
-            let sugg = if reexport {
-                errors::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
-            } else {
-                errors::ImportIdent::Directly { span: dedup_span, ident, path }
-            };
-            err.subdiagnostic(sugg);
-            break;
         }
 
         err.emit();
@@ -2591,7 +2597,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let module = module.to_module();
                         current_module.is_ancestor_of(module) && current_module != module
                     })
-                    .flat_map(|(_, module)| module.kind.name()),
+                    .flat_map(|(_, module)| module.name()),
             )
             .chain(
                 self.extern_module_map
@@ -2601,7 +2607,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let module = module.to_module();
                         current_module.is_ancestor_of(module) && current_module != module
                     })
-                    .flat_map(|(_, module)| module.kind.name()),
+                    .flat_map(|(_, module)| module.name()),
             )
             .filter(|c| !c.to_string().is_empty())
             .collect::<Vec<_>>();
@@ -2625,8 +2631,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> (String, String, Option<Suggestion>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
-        let module_res = match module {
-            Some(ModuleOrUniformRoot::Module(module)) => module.res(),
+        let module_def_id = match module {
+            Some(ModuleOrUniformRoot::Module(module)) => module.opt_def_id(),
             _ => None,
         };
         let scope = match &path[..failed_segment_idx] {
@@ -2641,7 +2647,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let message = format!("cannot find `{ident}` in {scope}");
 
-        if module_res == self.graph_root.res() {
+        if module_def_id == Some(CRATE_DEF_ID.to_def_id()) {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
             candidates
@@ -3139,7 +3145,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !kinds.contains(MacroKinds::BANG) {
             return None;
         }
-        let module_name = crate_module.kind.name().unwrap_or(kw::Crate);
+        let module_name = crate_module.name().unwrap_or(kw::Crate);
         let import_snippet = match import.kind {
             ImportKind::Single { source, target, .. } if source != target => {
                 format!("{source} as {target}")
@@ -3255,7 +3261,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .stripped_cfg_items
                 .iter()
                 .filter_map(|item| {
-                    let parent_scope = self.opt_local_def_id(item.parent_scope)?.to_def_id();
+                    let parent_scope = self.local_modules.iter().find_map(|m| match m.kind {
+                        ModuleKind::Def(_, def_id, node_id, _) if node_id == item.parent_scope => {
+                            Some(def_id)
+                        }
+                        _ => None,
+                    })?;
                     Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg.clone() })
                 })
                 .collect::<Vec<_>>();
@@ -3284,20 +3295,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return cached;
                 }
                 visited.insert(parent_module, false);
-                let m = r.expect_module(parent_module);
                 let mut res = false;
-                for importer in m.glob_importers.borrow().iter() {
-                    if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id() {
-                        if next_parent_module == module
-                            || comes_from_same_module_for_glob(
-                                r,
-                                next_parent_module,
-                                module,
-                                visited,
-                            )
+                let m = r.expect_module(parent_module);
+                if m.is_local() {
+                    for importer in m.glob_importers.borrow().iter() {
+                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
                         {
-                            res = true;
-                            break;
+                            if next_parent_module == module
+                                || comes_from_same_module_for_glob(
+                                    r,
+                                    next_parent_module,
+                                    module,
+                                    visited,
+                                )
+                            {
+                                res = true;
+                                break;
+                            }
                         }
                     }
                 }

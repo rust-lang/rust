@@ -156,6 +156,8 @@ const _: () = {
 
     impl zalsa_::SalsaStructInDb for SyntaxContext {
         type MemoIngredientMap = salsa::plumbing::MemoIngredientSingletonIndex;
+        const LEAF_TYPE_IDS: &[salsa::plumbing::ConstTypeId] =
+            &[salsa::plumbing::ConstTypeId::of::<SyntaxContext>()];
 
         fn lookup_ingredient_index(aux: &zalsa_::Zalsa) -> salsa::plumbing::IngredientIndices {
             aux.lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>().into()

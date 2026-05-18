@@ -12,7 +12,7 @@ use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};

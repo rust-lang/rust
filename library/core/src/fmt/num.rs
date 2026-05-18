@@ -299,8 +299,8 @@ macro_rules! impl_Display {
         }
 
         impl $Unsigned {
-            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            /// Allows users to write an integer (in unsigned decimal format) into a variable `buf`
+            /// of type [`NumBuffer`] that is passed by the caller by mutable reference.
             ///
             /// # Examples
             ///
@@ -738,7 +738,7 @@ impl u128 {
         offset
     }
 
-    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+    /// Allows users to write an integer (in unsigned decimal format) into a variable `buf` of
     /// type [`NumBuffer`] that is passed by the caller by mutable reference.
     ///
     /// # Examples

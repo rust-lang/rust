@@ -29,7 +29,10 @@ use crate::{
 //     let Some(val) = opt else { return };
 // }
 // ```
-pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_match_to_let_else(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let let_stmt: ast::LetStmt = ctx.find_node_at_offset()?;
     let pat = let_stmt.pat()?;
     if ctx.offset() > pat.syntax().text_range().end() {
@@ -61,9 +64,17 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
         |builder| {
             let extracting_arm_pat =
                 rename_variable(&extracting_arm_pat, &extracted_variable_positions, pat);
+            let (open_paren, close_paren) = if ast::OrPat::can_cast(extracting_arm_pat.kind()) {
+                // Or patterns cannot put put directly under let statements.
+                // FIXME: Do this with `SyntaxEditor` in `rename_variable()`, it's just difficult right now
+                // since it re-roots nodes.
+                ("(", ")")
+            } else {
+                ("", "")
+            };
             builder.replace(
                 let_stmt.syntax().text_range(),
-                format!("let {extracting_arm_pat} = {initializer_expr} else {diverging_arm_expr};"),
+                format!("let {open_paren}{extracting_arm_pat}{close_paren} = {initializer_expr} else {diverging_arm_expr};"),
             )
         },
     )
@@ -71,7 +82,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
 
 // Given a match expression, find extracting and diverging arms.
 fn find_arms(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     match_expr: &ast::MatchExpr,
 ) -> Option<(ast::MatchArm, ast::MatchArm)> {
     let arms = match_expr.match_arm_list()?.arms().collect::<Vec<_>>();
@@ -99,7 +110,7 @@ fn find_arms(
 }
 
 // Given an extracting arm, find the extracted variable.
-fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Option<Vec<Name>> {
+fn find_extracted_variable(ctx: &AssistContext<'_, '_>, arm: &ast::MatchArm) -> Option<Vec<Name>> {
     match arm.expr()? {
         ast::Expr::PathExpr(path) => {
             let name_ref = path.syntax().descendants().find_map(ast::NameRef::cast)?;
@@ -541,6 +552,40 @@ fn f() {
     };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn top_level_or_pat() {
+        check_assist(
+            convert_match_to_let_else,
+            r#"
+enum E {
+    A(u32),
+    B(u32),
+    C,
+}
+
+fn foo() {
+    let e = E::A(0);
+    let _$0 = match e {
+        E::A(v) | E::B(v) => v,
+        _ => return,
+    };
+}
+        "#,
+            r#"
+enum E {
+    A(u32),
+    B(u32),
+    C,
+}
+
+fn foo() {
+    let e = E::A(0);
+    let (E::A(_) | E::B(_)) = e else { return };
+}
+        "#,
         );
     }
 }

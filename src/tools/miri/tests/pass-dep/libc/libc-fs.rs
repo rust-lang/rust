@@ -221,8 +221,8 @@ fn test_dup_stdout_stderr() {
     unsafe {
         let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
         let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
-        libc_utils::write_all(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
-        libc_utils::write_all(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
+        libc_utils::write_all(new_stdout, bytes).unwrap();
+        libc_utils::write_all(new_stderr, bytes).unwrap();
     }
 }
 
@@ -605,6 +605,7 @@ fn test_fstat() {
 
     assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -625,6 +626,7 @@ fn test_stat() {
 
     assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -648,6 +650,7 @@ fn test_lstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);

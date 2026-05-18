@@ -155,7 +155,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
             }
             hir::ItemKind::TyAlias(..) => {
                 let ty = tcx.type_of(def_id).instantiate_identity();
-                if ty.skip_normalization().has_non_region_param() {
+                if ty.has_non_region_param() {
                     tcx.dcx().span_err(
                         attr_span,
                         "`rustc_dump_vtable` must be applied to non-generic type",

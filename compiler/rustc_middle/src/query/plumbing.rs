@@ -11,7 +11,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
 use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
@@ -108,7 +108,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// Function pointer that hashes this query's result values.
     ///
     /// For `no_hash` queries, this function pointer is None.
-    pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
+    pub hash_value_fn: Option<fn(&mut StableHashState<'_>, &C::Value) -> Fingerprint>,
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative

@@ -18,9 +18,7 @@ use hir_expand::{
 };
 use hir_ty::{
     db::HirDatabase,
-    method_resolution::{
-        self, CandidateId, MethodError, MethodResolutionContext, MethodResolutionUnstableFeatures,
-    },
+    method_resolution::{self, CandidateId, MethodError, MethodResolutionContext},
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
 };
 use intern::Symbol;
@@ -498,15 +496,16 @@ fn resolve_impl_trait_item<'db>(
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
     let interner = DbInterner::new_with(db, environment.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let unstable_features =
-        MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
+    let features = resolver.top_level_def_map().features();
     let ctx = MethodResolutionContext {
         infcx: &infcx,
         resolver: &resolver,
         param_env: environment.param_env,
         traits_in_scope: &traits_in_scope,
         edition: krate.edition(db),
-        unstable_features: &unstable_features,
+        features,
+        call_span: hir_ty::Span::Dummy,
+        receiver_span: hir_ty::Span::Dummy,
     };
     let resolution = ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty);
     let resolution = match resolution {
