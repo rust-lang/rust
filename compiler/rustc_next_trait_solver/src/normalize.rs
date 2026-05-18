@@ -187,8 +187,8 @@ where
 
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
-        let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
+        let folded_ty = ty.try_super_fold_with(self)?;
+        let ty::Alias(alias_ty) = folded_ty.kind() else { return Ok(folded_ty) };
 
         let result = if alias_ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
@@ -204,14 +204,14 @@ where
                     &self.universes,
                     result.expect_ty(),
                 ),
-                None => ty,
+                None => folded_ty,
             }
         } else {
             match ensure_sufficient_stack(|| {
                 self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)
             })? {
                 Some(term) => term.expect_ty(),
-                None => ty,
+                None => folded_ty,
             }
         };
 
