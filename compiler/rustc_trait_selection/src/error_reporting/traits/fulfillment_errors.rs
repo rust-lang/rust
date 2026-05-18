@@ -816,6 +816,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn apply_do_not_recommend(
         &self,
         obligation: &mut PredicateObligation<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
     ) -> bool {
         let mut base_cause = obligation.cause.code().clone();
         let mut applied_do_not_recommend = false;
@@ -823,6 +824,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
                 if self.tcx.do_not_recommend_impl(c.impl_or_alias_def_id) {
                     let code = (*c.derived.parent_code).clone();
+                    // Keep more precise spans that still point within the parent obligation,
+                    // but do not let hidden impl details move the span outside of it.
+                    if code == *root_obligation.cause.code()
+                        && !root_obligation.cause.span.contains(obligation.cause.span)
+                    {
+                        obligation.cause.span = root_obligation.cause.span;
+                    }
                     obligation.cause.map_code(|_| code);
                     obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
                     applied_do_not_recommend = true;
