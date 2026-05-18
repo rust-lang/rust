@@ -133,8 +133,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// See [LayoutOf::layout_of] for the original documentation.
     #[inline(always)]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
+        static FILE: std::sync::OnceLock<std::fs::File> =
+            std::sync::OnceLock::<std::fs::File>::new();
+
+        let mut file: &_ = FILE.get_or_init(|| {
+            std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .append(true)
+                .open("/tmp/ty-layout-trace.txt")
+                .unwrap()
+        });
+
+        let start = std::time::Instant::now();
         let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
-        LayoutOf::layout_of(self, ty)
+        let layout = LayoutOf::layout_of(self, ty);
+        let timing = start.elapsed().as_nanos();
+
+        use std::io::Write as _;
+
+        file.lock().unwrap();
+        writeln!(file, "{timing:12}\t{:?}", ty).unwrap();
+        file.unlock().unwrap();
+
+        layout
     }
 
     pub fn layout_of_usize(&self) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
