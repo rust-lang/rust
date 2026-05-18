@@ -1,11 +1,12 @@
+use core::io::Custom;
+#[cfg_attr(no_global_oom_handling, expect(unused_imports))]
+use core::io::CustomOwner;
 use core::{error, result};
 
 use crate::boxed::Box;
-#[cfg_attr(no_global_oom_handling, expect(unused_imports))]
-use crate::io::CustomOwner;
 #[cfg_attr(any(no_rc, no_sync, no_global_oom_handling), expect(unused_imports))]
 use crate::io::const_error;
-use crate::io::{Custom, Error, ErrorKind};
+use crate::io::{Error, ErrorKind};
 
 impl Error {
     /// Creates a new I/O error from a known kind of error as well as an
@@ -242,9 +243,7 @@ impl From<crate::collections::TryReserveError> for Error {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn custom_owner_from_box(
+fn custom_owner_from_box(
     kind: ErrorKind,
     error: Box<dyn core::error::Error + Send + Sync>,
 ) -> CustomOwner {
