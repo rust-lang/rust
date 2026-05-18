@@ -13,16 +13,17 @@ pub use core::io::RawOsError;
 // This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
 // Therefore, the packed representation is explicitly disabled for UEFI
 // targets, and the unpacked representation must be used instead.
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-mod repr_bitpacked;
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-use repr_bitpacked::Repr;
+#[cfg_attr(
+    all(target_pointer_width = "64", not(target_os = "uefi")),
+    path = "error/repr_bitpacked.rs"
+)]
+#[cfg_attr(
+    not(all(target_pointer_width = "64", not(target_os = "uefi"))),
+    path = "error/repr_unpacked.rs"
+)]
+mod repr;
 
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-mod repr_unpacked;
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-use repr_unpacked::Repr;
-
+use self::repr::Repr;
 use crate::{error, fmt, result, sys};
 
 /// A specialized [`Result`] type for I/O operations.
