@@ -5,6 +5,7 @@ mod tests;
 pub use alloc_crate::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
+use alloc_crate::io::{Custom, CustomOwner, custom_owner_from_box};
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
@@ -208,16 +209,6 @@ pub macro const_error($kind:expr, $message:expr $(,)?) {
     ))
 }
 
-// As with `SimpleMessage`: `#[repr(align(4))]` here is just because
-// repr_bitpacked's encoding requires it. In practice it almost certainly be
-// already be this high or higher.
-#[derive(Debug)]
-#[repr(align(4))]
-struct Custom {
-    kind: ErrorKind,
-    error: Box<dyn error::Error + Send + Sync>,
-}
-
 /// Intended for use for errors not exposed to the user, where allocating onto
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
@@ -242,6 +233,33 @@ impl From<ErrorKind> for Error {
 }
 
 impl Error {
+    /// # Safety
+    ///
+    /// The provided `CustomOwner` must have been constructed from a `Box` from the `alloc` crate.
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub unsafe fn from_custom_owner(custom: CustomOwner) -> Error {
+        Error { repr: Repr::new_custom(custom) }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn into_custom_owner(self) -> result::Result<CustomOwner, Self> {
+        if matches!(self.repr.data(), ErrorData::Custom(..)) {
+            let ErrorData::Custom(c) = self.repr.into_data() else {
+                // SAFETY: Checked above using `matches!`.
+                unsafe { crate::hint::unreachable_unchecked() }
+            };
+            Ok(c)
+        } else {
+            Err(self)
+        }
+    }
+
     /// Creates a new I/O error from a known kind of error as well as an
     /// arbitrary error payload.
     ///
@@ -275,7 +293,10 @@ impl Error {
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
     {
-        Self::_new(kind, error.into())
+        let custom = custom_owner_from_box(kind, error.into());
+
+        // SAFETY: `custom_owner` has been constructed from a `Box` from the `alloc` crate.
+        unsafe { Error::from_custom_owner(custom) }
     }
 
     /// Creates a new I/O error from an arbitrary error payload.
@@ -303,11 +324,7 @@ impl Error {
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
     {
-        Self::_new(ErrorKind::Other, error.into())
-    }
-
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
-        Error { repr: Repr::new_custom(Box::new(Custom { kind, error })) }
+        Self::new(ErrorKind::Other, error)
     }
 
     /// Creates a new I/O error from a known kind of error as well as a constant
@@ -465,7 +482,7 @@ impl Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(&*c.error),
+            ErrorData::Custom(c) => Some(c.error_ref()),
         }
     }
 
@@ -539,7 +556,7 @@ impl Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(&mut *c.error),
+            ErrorData::Custom(c) => Some(c.error_mut()),
         }
     }
 
@@ -577,12 +594,20 @@ impl Error {
     #[inline]
     #[rustc_allow_incoherent_impl]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
-        match self.repr.into_data() {
-            ErrorData::Os(..) => None,
-            ErrorData::Simple(..) => None,
-            ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(c.error),
-        }
+        let custom_owner = self.into_custom_owner().ok()?;
+
+        let ptr = custom_owner.into_raw().as_ptr();
+
+        // SAFETY:
+        // `Error` can only contain a `CustomOwner` if it was constructed using `Box::into_raw`.
+        let custom = unsafe { Box::<Custom>::from_raw(ptr) };
+
+        let ptr = custom.into_raw().as_ptr();
+
+        // SAFETY:
+        // Any `CustomOwner` from an `Error` was constructed by the `alloc` crate
+        // to contain a `Custom` which itself was constructed with `Box::into_raw`.
+        Some(unsafe { Box::from_raw(ptr) })
     }
 
     /// Attempts to downcast the custom boxed error to `E`.
@@ -661,16 +686,16 @@ impl Error {
     where
         E: error::Error + Send + Sync + 'static,
     {
-        if let ErrorData::Custom(c) = self.repr.data()
-            && c.error.is::<E>()
+        if let Some(e) = self.get_ref()
+            && e.is::<E>()
         {
-            if let ErrorData::Custom(b) = self.repr.into_data()
-                && let Ok(err) = b.error.downcast::<E>()
+            if let Some(b) = self.into_inner()
+                && let Ok(err) = b.downcast::<E>()
             {
                 Ok(*err)
             } else {
                 // Safety: We have just checked that the condition is true
-                unsafe { crate::hint::unreachable_unchecked() }
+                unsafe { core::hint::unreachable_unchecked() }
             }
         } else {
             Err(self)
@@ -756,7 +781,7 @@ impl fmt::Display for Error {
                 let detail = sys::io::error_string(code);
                 write!(fmt, "{detail} (os error {code})")
             }
-            ErrorData::Custom(ref c) => c.error.fmt(fmt),
+            ErrorData::Custom(c) => fmt::Display::fmt(c.error_ref(), fmt),
             ErrorData::Simple(kind) => kind.fmt(fmt),
             ErrorData::SimpleMessage(msg) => msg.message.fmt(fmt),
         }
@@ -771,7 +796,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.cause(),
+            ErrorData::Custom(c) => c.error_ref().cause(),
         }
     }
 
@@ -780,7 +805,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.source(),
+            ErrorData::Custom(c) => c.error_ref().source(),
         }
     }
 }
