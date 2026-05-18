@@ -75,6 +75,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// [Write]: ../../std/io/trait.Write.html
 /// [Seek]: ../../std/io/trait.Seek.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 pub struct Error {
     repr: Repr,
 }
@@ -200,7 +201,7 @@ pub struct SimpleMessage {
 /// ```
 #[rustc_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
-#[allow_internal_unstable(hint_must_use, io_const_error_internals)]
+#[allow_internal_unstable(core_io, hint_must_use, io_const_error_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {
     $crate::hint::must_use($crate::io::Error::from_static_message(
         const { &$crate::io::SimpleMessage { kind: $kind, message: $message } },
@@ -269,6 +270,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "io_error_new")]
     #[inline(never)]
+    #[rustc_allow_incoherent_impl]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
@@ -296,6 +298,7 @@ impl Error {
     /// let custom_error2 = Error::other(custom_error);
     /// ```
     #[stable(feature = "io_error_other", since = "1.74.0")]
+    #[rustc_allow_incoherent_impl]
     pub fn other<E>(error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
@@ -343,6 +346,7 @@ impl Error {
     /// let os_error = Error::last_os_error();
     /// println!("last OS error: {os_error:?}");
     /// ```
+    #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[doc(alias = "GetLastError")]
     #[doc(alias = "errno")]
@@ -377,6 +381,7 @@ impl Error {
     /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     /// # }
     /// ```
+    #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
@@ -570,6 +575,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
+    #[rustc_allow_incoherent_impl]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr.into_data() {
             ErrorData::Os(..) => None,
@@ -650,6 +656,7 @@ impl Error {
     /// # }
     /// ```
     #[stable(feature = "io_error_downcast", since = "1.79.0")]
+    #[rustc_allow_incoherent_impl]
     pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,
