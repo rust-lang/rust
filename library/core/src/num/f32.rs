@@ -1164,10 +1164,10 @@ impl f32 {
                 target_arch = "wasm32",
                 target_arch = "wasm64",
             ) => {
-                ((self as f64 + other as f64) / 2.0) as f32
+                ((self as f64 + other as f64) * 0.5) as f32
             }
             _ => {
-                const HI: f32 = f32::MAX / 2.;
+                const HI: f32 = f32::MAX * 0.5;
 
                 let (a, b) = (self, other);
                 let abs_a = a.abs();
@@ -1175,9 +1175,9 @@ impl f32 {
 
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
-                    (a + b) / 2.
+                    (a + b) * 0.5
                 } else {
-                    (a / 2.) + (b / 2.)
+                    (a * 0.5) + (b * 0.5)
                 }
             }
         }
