@@ -285,6 +285,7 @@ pub struct Stdin {
 /// ```
 #[must_use = "if unused stdin will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "StdinLock")]
 pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<StdinRaw>>,
 }

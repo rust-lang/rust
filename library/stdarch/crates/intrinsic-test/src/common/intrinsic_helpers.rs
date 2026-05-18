@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
-use super::cli::Language;
 use super::indentation::Indentation;
 use super::values::value_for_array;
 
@@ -94,6 +93,7 @@ impl TypeKind {
             Self::Poly => "u",
             Self::Char(Sign::Unsigned) => "u",
             Self::Char(Sign::Signed) => "i",
+            Self::Mask => "u",
             _ => unreachable!("Unused type kind: {self:#?}"),
         }
     }
@@ -154,67 +154,7 @@ impl IntrinsicType {
         self.ptr
     }
 
-    pub fn c_scalar_type(&self) -> String {
-        match self.kind() {
-            TypeKind::Char(_) => String::from("char"),
-            TypeKind::Vector => String::from("int32_t"),
-            _ => format!(
-                "{prefix}{bits}_t",
-                prefix = self.kind().c_prefix(),
-                bits = self.inner_size()
-            ),
-        }
-    }
-
-    pub fn c_promotion(&self) -> &str {
-        match *self {
-            IntrinsicType {
-                kind,
-                bit_len: Some(8),
-                ..
-            } => match kind {
-                TypeKind::Int(Sign::Signed) => "int",
-                TypeKind::Int(Sign::Unsigned) => "unsigned int",
-                TypeKind::Poly => "uint8_t",
-                _ => "",
-            },
-            IntrinsicType {
-                kind: TypeKind::Poly,
-                bit_len: Some(bit_len),
-                ..
-            } => match bit_len {
-                8 => unreachable!("handled above"),
-                16 => "uint16_t",
-                32 => "uint32_t",
-                64 => "uint64_t",
-                128 => "",
-                _ => panic!("invalid bit_len"),
-            },
-            IntrinsicType {
-                kind: TypeKind::Float,
-                bit_len: Some(bit_len),
-                ..
-            } => match bit_len {
-                16 => "float16_t",
-                32 => "float",
-                64 => "double",
-                128 => "",
-                _ => panic!("invalid bit_len"),
-            },
-            IntrinsicType {
-                kind: TypeKind::Char(_),
-                ..
-            } => "char",
-            _ => "",
-        }
-    }
-
-    pub fn populate_random(
-        &self,
-        indentation: Indentation,
-        loads: u32,
-        language: &Language,
-    ) -> String {
+    pub fn populate_random(&self, indentation: Indentation, loads: u32) -> String {
         match self {
             IntrinsicType {
                 bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
@@ -224,13 +164,9 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let (prefix, suffix) = match language {
-                    Language::Rust => ('[', ']'),
-                    Language::C => ('{', '}'),
-                };
                 let body_indentation = indentation.nested();
                 format!(
-                    "{prefix}\n{body}\n{indentation}{suffix}",
+                    "[\n{body}\n{indentation}]",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(*bit_len, i);
@@ -241,13 +177,7 @@ impl IntrinsicType {
                                 let mask = !0u64 >> (64 - *bit_len);
                                 let ones_compl = src ^ mask;
                                 let twos_compl = ones_compl + 1;
-                                if (twos_compl == src) && (language == &Language::C) {
-                                    // `src` is INT*_MIN. C requires `-0x7fffffff - 1` to avoid
-                                    // undefined literal overflow behaviour.
-                                    fmt(&format_args!("{body_indentation}-{ones_compl:#x} - 1"))
-                                } else {
-                                    fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
-                                }
+                                fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
                             } else {
                                 fmt(&format_args!("{body_indentation}{src:#x}"))
                             }
@@ -261,20 +191,11 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let (prefix, cast_prefix, cast_suffix, suffix) = match (language, bit_len) {
-                    (&Language::Rust, 16) => ('[', "f16::from_bits(", ")", ']'),
-                    (&Language::Rust, 32) => ('[', "f32::from_bits(", ")", ']'),
-                    (&Language::Rust, 64) => ('[', "f64::from_bits(", ")", ']'),
-                    (&Language::C, 16) => ('{', "cast<float16_t, uint16_t>(", ")", '}'),
-                    (&Language::C, 32) => ('{', "cast<float, uint32_t>(", ")", '}'),
-                    (&Language::C, 64) => ('{', "cast<double, uint64_t>(", ")", '}'),
-                    _ => unreachable!(),
-                };
                 format!(
-                    "{prefix}\n{body}\n{indentation}{suffix}",
+                    "[\n{body}\n{indentation}]",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| fmt(&format_args!(
-                            "{indentation}{cast_prefix}{src:#x}{cast_suffix}",
+                            "{indentation}f{bit_len}::from_bits({src:#x})",
                             indentation = indentation.nested(),
                             src = value_for_array(*bit_len, i)
                         )))
@@ -287,14 +208,10 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let (prefix, suffix) = match language {
-                    Language::Rust => ('[', ']'),
-                    Language::C => ('{', '}'),
-                };
                 let body_indentation = indentation.nested();
                 let effective_bit_len = 32;
                 format!(
-                    "{prefix}\n{body}\n{indentation}{suffix}",
+                    "[\n{body}\n{indentation}]",
                     body = (0..(vec_len.unwrap_or(1) * simd_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(effective_bit_len, i);
@@ -304,13 +221,7 @@ impl IntrinsicType {
                                 let mask = !0u64 >> (64 - effective_bit_len);
                                 let ones_compl = src ^ mask;
                                 let twos_compl = ones_compl + 1;
-                                if (twos_compl == src) && (language == &Language::C) {
-                                    // `src` is INT*_MIN. C requires `-0x7fffffff - 1` to avoid
-                                    // undefined literal overflow behaviour.
-                                    fmt(&format_args!("{body_indentation}-{ones_compl:#x} - 1"))
-                                } else {
-                                    fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
-                                }
+                                fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
                             } else {
                                 fmt(&format_args!("{body_indentation}{src:#x}"))
                             }
@@ -320,73 +231,31 @@ impl IntrinsicType {
             _ => unimplemented!("populate random: {self:#?}"),
         }
     }
-
-    pub fn is_rust_vals_array_const(&self) -> bool {
-        match self {
-            // Floats have to be loaded at runtime for stable NaN conversion.
-            IntrinsicType {
-                kind: TypeKind::Float,
-                ..
-            } => false,
-            IntrinsicType {
-                kind: TypeKind::Int(_) | TypeKind::Poly,
-                ..
-            } => true,
-            _ => true,
-        }
-    }
-
-    pub fn as_call_param_c(&self, name: &String) -> String {
-        if self.ptr {
-            format!("&{name}")
-        } else {
-            name.clone()
-        }
-    }
 }
 
 pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// Determines the load function for this type.
     /// can be implemented in an `impl` block
-    fn get_load_function(&self, _language: Language) -> String;
-
-    /// can be implemented in an `impl` block
-    fn get_lane_function(&self) -> String;
+    fn get_load_function(&self) -> String;
 
     /// Gets a string containing the typename for this type in C format.
     /// can be directly defined in `impl` blocks
     fn c_type(&self) -> String;
 
+    /// Gets a string containing the typename for this type in Rust format.
     /// can be directly defined in `impl` blocks
-    fn c_single_vector_type(&self) -> String;
-
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String;
-
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_rust(&self) -> String {
-        String::from("format_args!(\"{__return_value:.150?}\")")
-    }
+    fn rust_type(&self) -> String;
 
     /// To enable architecture-specific logic
     fn rust_scalar_type(&self) -> String {
-        format!(
-            "{prefix}{bits}",
-            prefix = self.kind().rust_prefix(),
-            bits = self.inner_size()
-        )
-    }
-
-    fn generate_final_type_cast(&self) -> String {
-        let type_data = self.c_promotion();
-        if type_data.len() > 2 {
-            format!("({type_data})")
+        if self.is_simd() {
+            format!(
+                "{prefix}{bits}",
+                prefix = self.kind().rust_prefix(),
+                bits = self.inner_size()
+            )
         } else {
-            String::new()
+            self.rust_type()
         }
     }
 }

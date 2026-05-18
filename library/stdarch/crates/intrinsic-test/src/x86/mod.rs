@@ -1,4 +1,3 @@
-mod compile;
 mod config;
 mod constraint;
 mod intrinsic;
@@ -7,7 +6,6 @@ mod xml_parser;
 
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
-use crate::common::compile_c::CppCompilation;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::X86IntrinsicType;
@@ -15,32 +13,58 @@ use xml_parser::get_xml_intrinsics;
 
 pub struct X86ArchitectureTest {
     intrinsics: Vec<Intrinsic<X86IntrinsicType>>,
-    cli_options: ProcessedCli,
 }
 
 impl SupportedArchitectureTest for X86ArchitectureTest {
     type IntrinsicImpl = X86IntrinsicType;
 
-    fn cli_options(&self) -> &ProcessedCli {
-        &self.cli_options
-    }
-
     fn intrinsics(&self) -> &[Intrinsic<X86IntrinsicType>] {
         &self.intrinsics
     }
 
-    fn cpp_compilation(&self) -> Option<CppCompilation> {
-        compile::build_cpp_compilation(&self.cli_options)
-    }
-
     const NOTICE: &str = config::NOTICE;
 
-    const PLATFORM_C_HEADERS: &[&str] = &["immintrin.h", "cstddef", "cstdint"];
-    const PLATFORM_C_DEFINITIONS: &str = config::PLATFORM_C_DEFINITIONS;
-    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::PLATFORM_C_FORWARD_DECLARATIONS;
+    const PLATFORM_C_HEADERS: &[&str] = &["immintrin.h"];
 
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
+
+    fn arch_flags(&self) -> Vec<&str> {
+        vec![
+            "-mavx",
+            "-mavx2",
+            "-mavx512f",
+            "-msse2",
+            "-mavx512vl",
+            "-mavx512bw",
+            "-mavx512dq",
+            "-mavx512cd",
+            "-mavx512fp16",
+            "-msha",
+            "-msha512",
+            "-msm3",
+            "-msm4",
+            "-mavxvnni",
+            "-mavxvnniint8",
+            "-mavxneconvert",
+            "-mavxifma",
+            "-mavxvnniint16",
+            "-mavx512bf16",
+            "-mavx512bitalg",
+            "-mavx512ifma",
+            "-mavx512vbmi",
+            "-mavx512vbmi2",
+            "-mavx512vnni",
+            "-mavx512vpopcntdq",
+            "-mavx512vp2intersect",
+            "-mbmi",
+            "-mbmi2",
+            "-mgfni",
+            "-mvaes",
+            "-mvpclmulqdq",
+            "-mlzcnt",
+        ]
+    }
 
     fn create(cli_options: ProcessedCli) -> Self {
         let mut intrinsics =
@@ -67,9 +91,6 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
             .take(sample_size)
             .collect::<Vec<_>>();
 
-        Self {
-            intrinsics: intrinsics,
-            cli_options: cli_options,
-        }
+        Self { intrinsics }
     }
 }
