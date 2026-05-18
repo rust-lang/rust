@@ -169,18 +169,6 @@ impl<'db> SingleGenerics<'db> {
             )
         })
     }
-
-    pub(crate) fn type_or_const_param(&self, param_id: TypeParamId) -> GenericParamDataRef<'db> {
-        let data = &self.params[param_id.local_id()];
-        match data {
-            TypeOrConstParamData::TypeParamData(type_param_data) => {
-                GenericParamDataRef::TypeParamData(type_param_data)
-            }
-            TypeOrConstParamData::ConstParamData(const_param_data) => {
-                GenericParamDataRef::ConstParamData(const_param_data)
-            }
-        }
-    }
 }
 
 impl<'db> Generics<'db> {
@@ -343,13 +331,15 @@ impl<'db> Generics<'db> {
             return (owner.preceding_params_len + (idx as u32), false);
         }
 
-        if let Some(late_bound_idx) = owner.params.late_bound_lifetime_idx(&param.local_id) {
-            return (late_bound_idx as u32, true);
-        }
         let has_trait_self = matches!(owner.def, GenericDefId::TraitId(_));
-        match owner.params.early_bound_lifetime_idx(&param.local_id) {
-            Some(idx) => {
-                (owner.preceding_params_len + u32::from(has_trait_self) + (idx as u32), false)
+        match owner.params.lifetime_param_idx(&param.local_id) {
+            Some((idx, is_late_bound)) => {
+                let idx = if is_late_bound {
+                    idx as u32
+                } else {
+                    owner.preceding_params_len + u32::from(has_trait_self) + (idx as u32)
+                };
+                (idx, is_late_bound)
             }
             _ => unreachable!(),
         }
@@ -365,10 +355,6 @@ impl<'db> Generics<'db> {
             store: ExpressionStore::empty(),
         });
         Generics { chain }
-    }
-
-    pub(crate) fn type_or_const_param(&self, param_id: TypeParamId) -> GenericParamDataRef<'db> {
-        self.find_owner(param_id.parent()).type_or_const_param(param_id)
     }
 
     fn opaque_lifetime_idx(&self, param: LifetimeParamId) -> usize {

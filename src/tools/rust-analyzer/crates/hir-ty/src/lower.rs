@@ -268,7 +268,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let in_binders = DebruijnIndex::ZERO;
         let interner = DbInterner::new_with(db, resolver.krate());
-        let bound_vars = Vec::from(&[Self::bound_vars(db, interner, generic_def)]);
+        let bound_vars = vec![BoundVarKinds::empty(interner)];
         Self {
             db,
             // Can provide no block since we don't use it for trait solving.
@@ -396,14 +396,19 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         }
     }
 
+    fn peek_bound_vars(&self) -> BoundVarKinds<'db> {
+        *self.bound_vars.last().unwrap()
+    }
+
     fn bound_vars(
         db: &'db dyn HirDatabase,
         interner: DbInterner<'db>,
         def: GenericDefId,
+        generic: &'a OnceCell<Generics<'db>>,
     ) -> BoundVarKinds<'db> {
-        let generics = generics(db, def);
         let def_id = def.into();
 
+        let generics = generic.get_or_init(|| generics(db, def));
         let args = generics.iter_self_late_bound().map(|(_, data)| match data {
             GenericParamDataRef::TypeParamData(..) => {
                 BoundVariableKind::Ty(BoundTyKind::Param(def_id))
@@ -638,12 +643,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         let args = GenericArgs::for_item(
                             self.interner,
                             opaque_ty_id.into(),
-                            |index, param @ (id, data), _| {
-                                if let GenericParamDataRef::LifetimeParamData(lt) = data
+                            |index, param_id, lt_param, _| {
+                                if let Some(lt) = lt_param
                                     && lt.is_late_bound()
                                     && !self.is_lowering_impl_trait_bounds
                                 {
-                                    let GenericParamId::LifetimeParamId(id) = id else {
+                                    let GenericParamId::LifetimeParamId(id) = param_id else {
                                         unreachable!()
                                     };
                                     let bound_region_kind =
@@ -667,7 +672,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                     return region.into();
                                 }
 
-                                mk_param(interner, index - late_bound_index, param)
+                                mk_param(interner, index - late_bound_index, param_id)
                             },
                         );
                         Ty::new_alias(
@@ -736,7 +741,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         });
         self.lifetime_elision = old_lifetime_elision;
 
-        let binder = BoundVarKinds::new_from_slice(self.bound_vars.last().unwrap().as_slice());
+        // FIXME: When we don't drop HRTB lifetimes, use those here.
+        let binder = BoundVarKinds::empty(interner);
         Ty::new_fn_ptr(
             interner,
             Binder::bind_with_vars(
@@ -897,8 +903,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let mut clause = None;
         match bound {
             &TypeBound::Path(path, TraitBoundModifier::None) | &TypeBound::ForLifetime(_, path) => {
-                let binder =
-                    BoundVarKinds::new_from_slice(self.bound_vars.last().unwrap().as_slice());
+                let binder = self.peek_bound_vars();
                 // FIXME Don't silently drop the hrtb lifetimes here
                 if let Some((trait_ref, mut ctx)) = self.lower_trait_ref_from_path(path, self_ty) {
                     // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
@@ -944,8 +949,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
             &TypeBound::Lifetime(l) => {
                 let lifetime = self.lower_lifetime(l);
-                let binder =
-                    BoundVarKinds::new_from_slice(self.bound_vars.last().unwrap().as_slice());
+                let binder = self.peek_bound_vars();
                 clause = Some(Clause(Predicate::new(
                     self.interner,
                     Binder::bind_with_vars(
@@ -1269,7 +1273,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             trait_id.into(),
                             GenericArgs::new_from_slice(&[self_ty.into()]),
                         );
-                        let binder = BoundVarKinds::new_from_slice(ctx.bound_vars.last().unwrap());
+                        let binder = ctx.peek_bound_vars();
                         Clause(Predicate::new(
                             interner,
                             Binder::bind_with_vars(
@@ -2817,7 +2821,7 @@ fn fn_sig_for_fn(
     ctx_params.diagnostics.extend(ctx_ret.diagnostics);
     ctx_params.defined_anon_consts.extend(ctx_ret.defined_anon_consts);
 
-    let binder = BoundVarKinds::new_from_slice(ctx_params.bound_vars.last().unwrap().as_slice());
+    let binder = TyLoweringContext::bound_vars(db, interner, def.into(), &generics);
     let result = StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::bind_with_vars(
         FnSig {
             inputs_and_output,

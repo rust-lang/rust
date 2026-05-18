@@ -4317,9 +4317,9 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
     "#,
         expect![[r#"
             90..94 'self': &'? Self
-            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'<late-param> i32> + 'static)
+            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             164..195 '{     ...f(); }': ()
-            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'<late-param> i32> + 'static)
+            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             170..184 'v.get::<i32>()': <{unknown} as Trait>::Assoc<i32>
             170..192 'v.get:...eref()': {unknown}
         "#]],

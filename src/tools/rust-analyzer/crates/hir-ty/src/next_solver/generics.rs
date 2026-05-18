@@ -1,6 +1,9 @@
 //! Things related to generics in the next-trait-solver.
 
-use hir_def::{GenericDefId, GenericParamId, TypeParamId, hir::generics::GenericParamDataRef};
+use hir_def::{
+    GenericDefId, GenericParamId, TypeParamId,
+    hir::generics::{GenericParamDataRef, LifetimeParamData},
+};
 
 use crate::db::HirDatabase;
 
@@ -49,7 +52,7 @@ pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'
 pub struct Generics<'db> {
     generics: crate::generics::Generics<'db>,
     /// This is used for builtin derives, specifically `CoercePointee`.
-    additional_param: Option<(GenericParamId, GenericParamDataRef<'db>)>,
+    additional_param: Option<GenericParamId>,
     consider_late_bound: bool,
 }
 
@@ -72,17 +75,26 @@ impl<'db> Generics<'db> {
         additional_param: TypeParamId,
         consider_late_bound: bool,
     ) -> Generics<'db> {
-        let generics = crate::generics::generics(db, def);
-        let data_ref = generics.type_or_const_param(additional_param);
         Generics {
-            generics,
-            additional_param: Some((additional_param.into(), data_ref)),
+            generics: crate::generics::generics(db, def),
+            additional_param: Some(additional_param.into()),
             consider_late_bound,
         }
     }
 
-    pub(super) fn iter(&self) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
-        self.generics.iter(self.consider_late_bound).chain(self.additional_param)
+    pub(super) fn iter(
+        &self,
+    ) -> impl Iterator<Item = (GenericParamId, Option<&LifetimeParamData>)> {
+        self.generics
+            .iter(self.consider_late_bound)
+            .map(|(id, data)| {
+                if let GenericParamDataRef::LifetimeParamData(lt_param) = data {
+                    (id, Some(lt_param))
+                } else {
+                    (id, None)
+                }
+            })
+            .chain(self.additional_param.zip(None))
     }
 }
 

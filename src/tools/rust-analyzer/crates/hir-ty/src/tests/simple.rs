@@ -3253,9 +3253,9 @@ fn main() {
         "#,
         expect![[r#"
             104..108 'self': &'? Box<T>
-            188..192 'self': &'<late-param> Box<Foo<T>>
+            188..192 'self': &'_ Box<Foo<T>>
             218..220 '{}': &'? T
-            242..246 'self': &'<late-param> Box<Foo<T>>
+            242..246 'self': &'_ Box<Foo<T>>
             275..277 '{}': &'? Foo<T>
             297..301 'self': Box<Foo<T>>
             322..324 '{}': Foo<T>

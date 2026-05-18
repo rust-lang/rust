@@ -9,7 +9,7 @@
 use std::{hint::unreachable_unchecked, marker::PhantomData, ptr::NonNull};
 
 use arrayvec::ArrayVec;
-use hir_def::{GenericDefId, GenericParamId, hir::generics::GenericParamDataRef};
+use hir_def::{GenericDefId, GenericParamId, hir::generics::LifetimeParamData};
 use intern::InternedRef;
 use rustc_type_ir::{
     ClosureArgs, ConstVid, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder,
@@ -520,12 +520,13 @@ impl<'db> GenericArgs<'db> {
     ) where
         F: FnMut(
             u32,
-            (GenericParamId, GenericParamDataRef<'db>),
+            GenericParamId,
+            Option<&LifetimeParamData>,
             &[GenericArg<'db>],
         ) -> GenericArg<'db>,
     {
-        defs.iter().enumerate().for_each(|(idx, param)| {
-            let new_arg = mk_kind(idx as u32, param, args.as_ref());
+        defs.iter().enumerate().for_each(|(idx, (param, lt_data))| {
+            let new_arg = mk_kind(idx as u32, param, lt_data, args.as_ref());
             args.push(new_arg);
         });
     }
@@ -535,7 +536,8 @@ impl<'db> GenericArgs<'db> {
     where
         F: FnMut(
             u32,
-            (GenericParamId, GenericParamDataRef<'db>),
+            GenericParamId,
+            Option<&LifetimeParamData>,
             &[GenericArg<'db>],
         ) -> GenericArg<'db>,
     {
@@ -557,7 +559,8 @@ impl<'db> GenericArgs<'db> {
     where
         F: FnMut(
             u32,
-            (GenericParamId, GenericParamDataRef<'db>),
+            GenericParamId,
+            Option<&LifetimeParamData>,
             &[GenericArg<'db>],
         ) -> GenericArg<'db>,
     {
@@ -577,7 +580,7 @@ impl<'db> GenericArgs<'db> {
 
     /// Creates an all-error `GenericArgs`.
     pub fn error_for_item(interner: DbInterner<'db>, def_id: SolverDefId) -> GenericArgs<'db> {
-        GenericArgs::for_item(interner, def_id, |_, (id, _), _| {
+        GenericArgs::for_item(interner, def_id, |_, id, _, _| {
             GenericArg::error_from_id(interner, id)
         })
     }
@@ -592,7 +595,7 @@ impl<'db> GenericArgs<'db> {
         F: FnMut(u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
         let defaults = interner.db.generic_defaults(def_id);
-        Self::for_item(interner, def_id.into(), |idx, (id, _), prev| {
+        Self::for_item(interner, def_id.into(), |idx, id, _, prev| {
             match defaults.get(idx as usize) {
                 Some(default) => default.instantiate(interner, prev).skip_norm_wip(),
                 None => fallback(idx, id, prev),
@@ -611,7 +614,7 @@ impl<'db> GenericArgs<'db> {
         F: FnMut(u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
         let mut iter = first.into_iter();
-        Self::for_item(interner, def_id, |idx, (id, _), prev| {
+        Self::for_item(interner, def_id, |idx, id, _, prev| {
             iter.next().unwrap_or_else(|| fallback(idx, id, prev))
         })
     }
@@ -692,7 +695,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
         interner: DbInterner<'db>,
         def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
     ) -> <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs {
-        Self::for_item(interner, def_id, |index, kind, _| mk_param(interner, index, kind))
+        Self::for_item(interner, def_id, |index, kind, _, _| mk_param(interner, index, kind))
     }
 
     fn extend_with_error(
@@ -700,7 +703,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
         def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
         original_args: &[<DbInterner<'db> as rustc_type_ir::Interner>::GenericArg],
     ) -> <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs {
-        Self::for_item(interner, def_id, |index, (kind, _), _| {
+        Self::for_item(interner, def_id, |index, kind, _, _| {
             if let Some(arg) = original_args.get(index as usize) {
                 *arg
             } else {
@@ -781,11 +784,7 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
     }
 }
 
-pub fn mk_param<'db>(
-    interner: DbInterner<'db>,
-    index: u32,
-    (id, _): (GenericParamId, GenericParamDataRef<'db>),
-) -> GenericArg<'db> {
+pub fn mk_param<'db>(interner: DbInterner<'db>, index: u32, id: GenericParamId) -> GenericArg<'db> {
     match id {
         GenericParamId::LifetimeParamId(id) => {
             Region::new_early_param(interner, EarlyParamRegion { index, id }).into()

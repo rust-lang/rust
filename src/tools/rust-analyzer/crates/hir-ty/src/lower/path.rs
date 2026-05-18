@@ -34,9 +34,8 @@ use crate::{
         LifetimeElisionKind, PathDiagnosticCallbackData, const_param_ty,
     },
     next_solver::{
-        AliasTermKind, Binder, BoundVarKinds, Clause, Const, DbInterner, EarlyBinder,
-        ErrorGuaranteed, GenericArg, GenericArgs, Predicate, ProjectionPredicate, Region, TraitRef,
-        Ty,
+        AliasTermKind, Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg,
+        GenericArgs, Predicate, ProjectionPredicate, Region, TraitRef, Ty,
     },
 };
 
@@ -957,9 +956,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
                             ) => {
                                 let ty = this.ctx.lower_ty(type_ref);
-                                let bound_vars = BoundVarKinds::new_from_slice(
-                                    this.ctx.bound_vars.last().unwrap().as_slice(),
-                                );
+                                let bound_vars = this.ctx.peek_bound_vars();
                                 let pred = Clause(Predicate::new(
                                     interner,
                                     Binder::bind_with_vars(

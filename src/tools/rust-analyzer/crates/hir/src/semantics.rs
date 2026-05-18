@@ -1826,7 +1826,7 @@ impl<'db> SemanticsImpl<'db> {
         let substs = hir_ty::next_solver::GenericArgs::for_item(
             interner,
             trait_.id.into(),
-            |_, (id, _), _| {
+            |_, id, _, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
                 subst.next().expect("too few subst").ty.skip_binder().into()
             },

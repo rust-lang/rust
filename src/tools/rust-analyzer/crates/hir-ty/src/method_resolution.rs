@@ -236,7 +236,7 @@ impl<'db> InferenceTable<'db> {
         let args = GenericArgs::for_item(
             self.interner(),
             trait_def_id.into(),
-            |param_idx, (param_id, _), _| match param_id {
+            |param_idx, param_id, _, _| match param_id {
                 GenericParamId::LifetimeParamId(_) | GenericParamId::ConstParamId(_) => {
                     unreachable!("did not expect operator trait to have lifetime/const")
                 }

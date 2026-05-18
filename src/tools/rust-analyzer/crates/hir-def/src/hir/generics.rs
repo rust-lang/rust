@@ -34,7 +34,6 @@ pub struct TypeParamData {
 pub struct LifetimeParamData {
     pub name: Name,
     pub bound_type: LifetimeBoundType,
-    pub is_opaque_captured: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -410,21 +409,21 @@ impl GenericParams {
         })
     }
 
-    pub fn late_bound_lifetime_idx(
+    pub fn lifetime_param_idx(
         &self,
         lifetime_param_id: &LocalLifetimeParamId,
-    ) -> Option<usize> {
-        self.iter_late_bound_lt().position(|(id, data)| {
-            data.bound_type == LifetimeBoundType::LateBound && id == *lifetime_param_id
-        })
-    }
+    ) -> Option<(usize, bool)> {
+        let mut late_bound_idx = 0;
+        self.iter_lt().enumerate().find_map(|(idx, (param_id, param_data))| {
+            let idx = if param_data.is_late_bound() {
+                let prev = late_bound_idx;
+                late_bound_idx += 1;
+                prev
+            } else {
+                idx - late_bound_idx
+            };
 
-    pub fn early_bound_lifetime_idx(
-        &self,
-        lifetime_param_id: &LocalLifetimeParamId,
-    ) -> Option<usize> {
-        self.iter_early_bound_lt().position(|(id, data)| {
-            data.bound_type == LifetimeBoundType::EarlyBound && id == *lifetime_param_id
+            (param_id == *lifetime_param_id).then(|| (idx, param_data.is_late_bound()))
         })
     }
 }
