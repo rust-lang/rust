@@ -3145,8 +3145,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// not be used in security-sensitive contexts:
 /// - **Miri**: Even when emulating targets where the underlying implementation will protect against
 ///   TOCTOU races, Miri will not do so.
-/// - **Redox OS**: This function does not protect against TOCTOU races, as Redox does not implement
-///   the required platform support to do so.
+/// - **QNX**, **Redox OS**, **VxWorks**: This function does not protect against TOCTOU races, as
+///   the underlying platform does not implement the required platform support to do so.
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior
