@@ -715,8 +715,10 @@ impl Error {
         }
     }
 
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[doc(hidden)]
     #[inline]
-    pub(crate) fn is_interrupted(&self) -> bool {
+    pub fn is_interrupted(&self) -> bool {
         match self.repr.data() {
             ErrorData::Os(code) => sys::io::is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
