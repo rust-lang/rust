@@ -12,7 +12,7 @@ use base_db::{FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile, Lookup, MacroDefId,
+    HirFileId, InFile, MacroDefId,
     mod_path::ModPath,
     name::{AsName, Name},
     span_map::SpanMap,
@@ -35,13 +35,13 @@ use thin_vec::ThinVec;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, HasModule, ImplId,
+    AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     expr_store::{
         Body, BodySourceMap, ExprPtr, ExprRoot, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
-        PatPtr, TypePtr,
+        PatPtr, StoreVisitor, TypePtr,
         body::Param,
         expander::Expander,
         lower::generics::ImplTraitLowerFn,
@@ -57,8 +57,7 @@ use crate::{
     item_tree::FieldsShape,
     lang_item::{LangItemTarget, LangItems},
     nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
-    signatures::StructSignature,
-    src::HasSource,
+    signatures::{StructSignature, TypeAliasSignature},
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
         RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
@@ -3461,57 +3460,88 @@ impl ExprCollector<'_> {
 
     fn get_constrained_lifetimes_if_type_alias(
         &mut self,
-        path: &ast::Path,
+        mod_path: &intern::Interned<ModPath>,
+        generic_args: Option<&GenericArgs>,
     ) -> Option<FxIndexSet<Name>> {
-        let mod_path = ModPath::from_src(self.db, path.clone(), &mut |range| {
-            self.span_map().span_for_range(range).ctx
-        })?;
-
         let r_path = self.def_map.resolve_path(
             self.local_def_map,
             self.db,
             self.module,
-            &mod_path,
+            mod_path,
             BuiltinShadowMode::Module,
             None,
         );
         let def_id = r_path.0.types.map(|item| item.def)?;
         let res = if let crate::ModuleDefId::TypeAliasId(id) = def_id {
-            Some(get_constrained_lifetimes(self.db, id))
+            let Some(generic_args) = generic_args else { return Some(FxIndexSet::default()) };
+
+            let constrained_lt_indices = get_constrained_lifetimes(self.db, id);
+            let res = constrained_lt_indices
+                .into_iter()
+                .filter_map(|idx| {
+                    if let GenericArg::Lifetime(lt_ref) = generic_args.args[idx as usize]
+                        && let LifetimeRef::Named(name) = &self.store.lifetimes[lt_ref]
+                    {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            Some(res)
         } else {
             None
         };
         return res;
 
         #[salsa::tracked(returns(clone), cycle_result = get_constrained_lifetimes_cycle_result)]
-        fn get_constrained_lifetimes(
-            db: &dyn DefDatabase,
-            type_alias_id: TypeAliasId,
-        ) -> FxIndexSet<Name> {
-            let loc = type_alias_id.lookup(db);
-            let module = loc.container.module(db);
-            let alias = loc.source(db);
+        fn get_constrained_lifetimes(db: &dyn DefDatabase, type_alias_id: TypeAliasId) -> Vec<u32> {
+            let TypeAliasSignature { generic_params, store, ty, .. } =
+                TypeAliasSignature::of(db, type_alias_id);
+            let &Some(ty) = ty else { return Vec::new() };
 
-            let mut expr_collector = ExprCollector::new(db, module, alias.file_id);
-            alias.value.ty().map(|ty| {
-                // Note: This is specific for function lowering, re-using it for type alias because rustc
-                // determines lifetimes by visiting the type itself
-                expr_collector.with_lifetime_bound_scope(
-                    LifetimeBoundScope::Argument,
-                    |expr_collector| {
-                        expr_collector.lower_type_ref(ty, &mut ExprCollector::impl_trait_allocator)
-                    },
-                )
-            });
-            expr_collector.named_lifetime_store.lifetimes_constrained_by_input
+            let mut visitor = Visitor {
+                store,
+                generic_params,
+                parent: type_alias_id,
+                constrained_lt_indices: Vec::new(),
+            };
+            store.visit_type_ref_children(ty, &mut visitor);
+
+            return visitor.constrained_lt_indices;
+
+            struct Visitor<'a> {
+                store: &'a ExpressionStore,
+                generic_params: &'a GenericParams,
+                parent: TypeAliasId,
+                constrained_lt_indices: Vec<u32>,
+            }
+
+            impl StoreVisitor for Visitor<'_> {
+                fn on_lifetime(&mut self, lifetime: LifetimeRefId) {
+                    if let LifetimeRef::Named(lifetime_name) = &self.store[lifetime]
+                        && let Some(param_id) = self
+                            .generic_params
+                            .find_lifetime_by_name(lifetime_name, self.parent.into())
+                    {
+                        self.constrained_lt_indices.push(param_id.local_id.into_raw().into_u32());
+                    }
+                }
+
+                fn on_generic_args(&mut self, args: &GenericArgs) {
+                    if !args.has_self_type {
+                        crate::expr_store::visit_generic_args(self, args);
+                    }
+                }
+            }
         }
 
         fn get_constrained_lifetimes_cycle_result(
             _db: &dyn DefDatabase,
             _: salsa::Id,
             _id: TypeAliasId,
-        ) -> FxIndexSet<Name> {
-            FxIndexSet::default()
+        ) -> Vec<u32> {
+            Vec::new()
         }
     }
 }

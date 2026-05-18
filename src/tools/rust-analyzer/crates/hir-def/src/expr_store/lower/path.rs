@@ -55,15 +55,11 @@ pub(super) fn lower_path(
         segments.push(name);
     };
 
-    let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(&path);
-    let mut old_lifetime_bound_scope = None;
-    if collector.is_argument_lt_bound_scope()
-        && let Some(lifetimes) = type_alias_constrained_lifetimes
-    {
-        collector.extend_type_alias_lifetime(lifetimes.into_iter());
-        // we are disabling lifetime bound collector for the entire path
-        old_lifetime_bound_scope = collector.named_lifetime_store.lifetime_bound_scope.take();
-    }
+    let old_lifetimes_constrained_by_input = if collector.is_argument_lt_bound_scope() {
+        Some(std::mem::take(&mut collector.named_lifetime_store.lifetimes_constrained_by_input))
+    } else {
+        None
+    };
 
     loop {
         let Some(segment) = path.segment() else {
@@ -212,9 +208,6 @@ pub(super) fn lower_path(
             None => break,
         };
     }
-    if let Some(old_scope) = old_lifetime_bound_scope {
-        collector.named_lifetime_store.lifetime_bound_scope = Some(old_scope)
-    }
     segments.reverse();
     if !generic_args.is_empty() || type_anchor.is_some() {
         generic_args.resize(segments.len(), None);
@@ -261,6 +254,24 @@ pub(super) fn lower_path(
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
+
+    let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(
+        &mod_path,
+        generic_args.last().and_then(|g| g.as_ref()),
+    );
+    if let Some(old_lifetimes_constrained_by_input) = old_lifetimes_constrained_by_input {
+        if let Some(lifetimes) = type_alias_constrained_lifetimes {
+            collector.named_lifetime_store.lifetimes_constrained_by_input =
+                old_lifetimes_constrained_by_input;
+            collector.extend_type_alias_lifetime(lifetimes.into_iter());
+        } else {
+            collector
+                .named_lifetime_store
+                .lifetimes_constrained_by_input
+                .extend(old_lifetimes_constrained_by_input);
+        }
+    }
+
     if type_anchor.is_none() && generic_args.is_empty() {
         return Some(Path::BarePath(mod_path));
     } else {

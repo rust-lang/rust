@@ -4324,3 +4324,38 @@ fn foo() {
     );
 }
 
+#[test]
+fn type_alias_with_different_lifetime_name() {
+    check_infer(
+        r#"
+trait Trait<'t> {
+    type Assoc<'a> where Self: 'a;
+}
+
+struct Foo;
+
+impl<'u> Trait<'u> for Foo {
+    type Assoc<'b> = &'b u32;
+}
+
+type Alias<'y, 'z> = <Foo as Trait<'y>>::Assoc<'z>;
+
+fn foo<'e, 'f>(alias: Alias<'e, 'f>) -> &'e u32 {
+    &1u32
+}
+
+fn check() {
+    let foo_fn = foo;
+}
+"#,
+        expect![[r#"
+            199..204 'alias': &'_ u32
+            232..245 '{     &1u32 }': &'e u32
+            238..243 '&1u32': &'? u32
+            239..243 '1u32': u32
+            258..283 '{     ...foo; }': ()
+            268..274 'foo_fn': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
+            277..280 'foo': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
+        "#]],
+    );
+}
