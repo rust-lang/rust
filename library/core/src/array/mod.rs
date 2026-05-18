@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{TrustedLen, UncheckedIterator, repeat_n};
+use crate::iter::{TrustedLen, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -52,7 +52,10 @@ pub use iter::IntoIter;
 #[must_use = "cloning is often expensive and is not expected to have side effects"]
 #[stable(feature = "array_repeat", since = "1.91.0")]
 pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
-    from_trusted_iterator(repeat_n(val, N))
+    let mut iter = repeat_n(val, N);
+    // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
+    // and repeat_n's next() will return Some for N times.
+    from_fn(move |_| unsafe { iter.next().unwrap_unchecked() })
 }
 
 /// Creates an array where each element is produced by calling `f` with
@@ -464,7 +467,15 @@ trait SpecArrayClone: Clone {
 impl<T: Clone> SpecArrayClone for T {
     #[inline]
     default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        from_trusted_iterator(array.iter().cloned())
+        let mut ptr: *const T = array.as_ptr();
+        // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
+        // so our pointer arithmetic will be in bounds for the N-element array.
+        // This works even for ZSTs, since in that case, add() is a no-op.
+        from_fn(move |_| unsafe {
+            let old = ptr;
+            ptr = ptr.add(1);
+            (&*old).clone()
+        })
     }
 }
 
@@ -875,39 +886,6 @@ impl<T, const N: usize> [T; N] {
     pub fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
         self.split_last_chunk_mut::<M>().unwrap()
     }
-}
-
-/// Populate an array from the first `N` elements of `iter`
-///
-/// # Panics
-///
-/// If the iterator doesn't actually have enough items.
-///
-/// By depending on `TrustedLen`, however, we can do that check up-front (where
-/// it easily optimizes away) so it doesn't impact the loop that fills the array.
-#[inline]
-fn from_trusted_iterator<T, const N: usize>(iter: impl UncheckedIterator<Item = T>) -> [T; N] {
-    try_from_trusted_iterator(iter.map(NeverShortCircuit)).0
-}
-
-#[inline]
-fn try_from_trusted_iterator<T, R, const N: usize>(
-    iter: impl UncheckedIterator<Item = R>,
-) -> ChangeOutputType<R, [T; N]>
-where
-    R: Try<Output = T>,
-    R::Residual: Residual<[T; N]>,
-{
-    assert!(iter.size_hint().0 >= N);
-    fn next<T>(mut iter: impl UncheckedIterator<Item = T>) -> impl FnMut(usize) -> T {
-        move |_| {
-            // SAFETY: We know that `from_fn` will call this at most N times,
-            // and we checked to ensure that we have at least that many items.
-            unsafe { iter.next_unchecked() }
-        }
-    }
-
-    try_from_fn(next(iter))
 }
 
 /// Version of [`try_from_fn`] using a passed-in slice in order to avoid
