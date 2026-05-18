@@ -87,29 +87,43 @@ impl fmt::Debug for Error {
 }
 
 /// Common errors constants for use in std
-#[allow(dead_code)]
+#[doc(hidden)]
 impl Error {
-    pub(crate) const INVALID_UTF8: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const INVALID_UTF8: Self =
         const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
-    pub(crate) const READ_EXACT_EOF: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const READ_EXACT_EOF: Self =
         const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "the number of hardware threads is not known for the target platform",
     );
 
-    pub(crate) const UNSUPPORTED_PLATFORM: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const UNSUPPORTED_PLATFORM: Self =
         const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
-    pub(crate) const WRITE_ALL_EOF: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const WRITE_ALL_EOF: Self =
         const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
-    pub(crate) const ZERO_TIMEOUT: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const ZERO_TIMEOUT: Self =
         const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 
-    pub(crate) const NO_ADDRESSES: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const NO_ADDRESSES: Self =
         const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses");
 }
 
