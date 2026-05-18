@@ -3,7 +3,6 @@
 //@ edition:2018
 //@ dont-require-annotations: HELP
 
-#![feature(box_patterns)]
 #![allow(warnings)]
 
 pub fn main() {
@@ -39,7 +38,7 @@ pub fn main() {
 
     struct W<T, U>(T, U);
     struct B { f: Box<u8> }
-    let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
+    let mut W(mut a, W(b, W(ref c, W(d, B { f }))))
     //~^ ERROR `mut` must be attached to each individual binding
         = W(0, W(1, W(2, W(3, B { f: Box::new(4u8) }))));
 

@@ -9,12 +9,12 @@
 // errors that only occur once we get past the AST.
 
 #![allow(incomplete_features)]
-#![attr = Feature([auto_traits#0, box_patterns#0, builtin_syntax#0,
-const_trait_impl#0, coroutines#0, decl_macro#0, deref_patterns#0,
-explicit_tail_calls#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
-never_type#0, pattern_types#0, pattern_type_macro#0, prelude_import#0,
-specialization#0, trace_macros#0, trait_alias#0, try_blocks#0,
-try_blocks_heterogeneous#0, yeet_expr#0])]
+#![attr = Feature([auto_traits#0, builtin_syntax#0, const_trait_impl#0,
+coroutines#0, decl_macro#0, deref_patterns#0, explicit_tail_calls#0,
+gen_blocks#0, more_qualified_paths#0, never_patterns#0, never_type#0,
+pattern_types#0, pattern_type_macro#0, prelude_import#0, specialization#0,
+trace_macros#0, trait_alias#0, try_blocks#0, try_blocks_heterogeneous#0,
+yeet_expr#0])]
 extern crate std;
 #[attr = PreludeImport]
 use std::prelude::rust_2024::*;
@@ -565,8 +565,6 @@ mod patterns {
     }
     /// PatKind::Tuple
     fn pat_tuple() { let (); let (true,); let (true, false); }
-    /// PatKind::Box
-    fn pat_box() { let box pat; }
     /// PatKind::Deref
     fn pat_deref() { let deref!(pat); }
     /// PatKind::Ref

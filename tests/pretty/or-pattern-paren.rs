@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 //@ pretty-compare-only
 //@ pretty-mode:expanded
@@ -24,7 +24,7 @@ fn check_ref(x: &i32) {
 
 fn check_box(x: Box<i32>) {
     match x {
-        box or_pat!(1, 2, 3) => {}
+        deref!(or_pat!(1, 2, 3)) => {}
         _ => {}
     }
 }
