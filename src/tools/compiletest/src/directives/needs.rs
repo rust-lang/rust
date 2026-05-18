@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use crate::common::{
     Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
 };
-use crate::directives::{DirectiveLine, IgnoreDecision};
+use crate::directives::{DirectiveLine, IgnoreDecision, KNOWN_DIRECTIVE_NAMES_SET};
 
 pub(super) fn handle_needs(
     conditions: &PreparedNeedsConditions,
@@ -135,26 +137,18 @@ pub(super) fn handle_needs(
         return IgnoreDecision::Continue;
     }
 
-    let mut found_valid = false;
-    for need in &conditions.simple_needs {
-        if need.name == name {
-            if need.condition {
-                found_valid = true;
-                break;
-            } else {
-                return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = ln.remark_after_space() {
-                        format!("{} ({})", need.ignore_reason, comment.trim())
-                    } else {
-                        need.ignore_reason.into()
-                    },
-                };
+    if let Some(need) = conditions.simple_needs.get(name) {
+        if need.condition {
+            IgnoreDecision::Continue
+        } else {
+            IgnoreDecision::Ignore {
+                reason: if let Some(comment) = ln.remark_after_space() {
+                    format!("{} ({})", need.ignore_reason, comment.trim())
+                } else {
+                    need.ignore_reason.into()
+                },
             }
         }
-    }
-
-    if found_valid {
-        IgnoreDecision::Continue
     } else {
         IgnoreDecision::Error { message: format!("invalid needs directive: {name}") }
     }
@@ -168,7 +162,7 @@ struct Need {
 
 pub(crate) struct PreparedNeedsConditions {
     /// The `//@ needs-*` conditions that can be treated as a simple name->boolean mapping.
-    simple_needs: Vec<Need>,
+    simple_needs: HashMap<&'static str, Need>,
 
     /// Might add particular other mnemonics heavily needed by tests here.
     /// Otherwise call into llvm for every check
@@ -394,6 +388,15 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
             ignore_reason: "ignored if target does not support std",
         },
     ];
+    let simple_needs = simple_needs
+        .into_iter()
+        .map(|need| {
+            let name = need.name;
+            assert!(name.starts_with("needs-"), "must start with `needs-`: {name:?}");
+            assert!(KNOWN_DIRECTIVE_NAMES_SET.contains(name), "unknown directive name: {name:?}");
+            (name, need)
+        })
+        .collect::<HashMap<_, _>>();
 
     PreparedNeedsConditions {
         simple_needs,
