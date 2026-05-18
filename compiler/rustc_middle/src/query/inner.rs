@@ -4,7 +4,7 @@
 use rustc_data_structures::cache_entry::{CacheEntry, EntryInProgress};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::dep_graph::{self, DepNodeIndex, DepNodeKey};
+use crate::dep_graph::{self, DepNodeKey};
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
@@ -16,11 +16,10 @@ use crate::ty::TyCtxt;
 #[inline(always)]
 fn get_cached_or_start<'tcx, 'a, V>(
     tcx: TyCtxt<'tcx>,
-    cache_entry: &'a CacheEntry<V>,
+    entry: &'a CacheEntry<V>,
 ) -> Result<&'a V, EntryInProgress<'a, V>> {
-    match cache_entry.get_or_start() {
+    match tcx.cache_entry_get_or_start(entry) {
         Ok((value, index)) => {
-            let index = DepNodeIndex::from_u32(index);
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
             Ok(value)
@@ -30,10 +29,9 @@ fn get_cached_or_start<'tcx, 'a, V>(
 }
 
 #[inline(always)]
-fn try_get_cached<'tcx, 'a, V>(tcx: TyCtxt<'tcx>, cache_entry: &'a CacheEntry<V>) -> Option<&'a V> {
-    match cache_entry.get() {
+fn try_get_cached<'tcx, 'a, V>(tcx: TyCtxt<'tcx>, entry: &'a CacheEntry<V>) -> Option<&'a V> {
+    match tcx.cache_entry_get(entry) {
         Some((value, index)) => {
-            let index = DepNodeIndex::from_u32(index);
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
             Some(value)

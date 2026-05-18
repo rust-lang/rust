@@ -632,7 +632,7 @@ pub fn park(validate: impl FnOnce(usize) -> bool) -> bool {
     assert!(!worker_thread.is_null());
     unsafe {
         let registry = &(*worker_thread).registry;
-        registry.sleep.park(validate, (*worker_thread).index)
+        registry.sleep.park(validate, (*worker_thread).index, &registry.deadlock_handler)
     }
 }
 

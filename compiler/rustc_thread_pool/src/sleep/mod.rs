@@ -105,7 +105,12 @@ impl Sleep {
     }
 
     #[inline]
-    pub(super) fn park(&self, validate: impl FnOnce(usize) -> bool, thread_index: usize) -> bool {
+    pub(super) fn park(
+        &self,
+        validate: impl FnOnce(usize) -> bool,
+        thread_index: usize,
+        deadlock_handler: &Option<Box<DeadlockHandler>>,
+    ) -> bool {
         let sleep_state = &self.worker_sleep_states_2[thread_index];
         let mut is_blocked = sleep_state.is_blocked.lock().unwrap();
         debug_assert!(!*is_blocked);
@@ -113,6 +118,7 @@ impl Sleep {
             return false;
         }
         *is_blocked = true;
+        self.mark_blocked(deadlock_handler);
         while *is_blocked {
             is_blocked = sleep_state.condvar.wait(is_blocked).unwrap();
         }
@@ -139,6 +145,7 @@ impl Sleep {
             let mut is_blocked = sleep_state.is_blocked.lock().unwrap();
             debug_assert!(*is_blocked);
             *is_blocked = false;
+            self.mark_unblocked();
         }
         sleep_state.condvar.notify_one();
     }

@@ -402,7 +402,7 @@ pub(super) fn execute_query_non_incr_inner<'tcx, 'a, C: QueryCache>(
 ) -> &'a C::Value {
     let entry = match mode {
         QueryMode::Get { entry } => entry,
-        QueryMode::Ensure { entry, .. } => match entry.get_or_start() {
+        QueryMode::Ensure { entry, .. } => match tcx.cache_entry_get_or_start(entry) {
             Ok((result, _)) => return result,
             Err(entry) => entry,
         },
@@ -428,9 +428,9 @@ pub(super) fn execute_query_incr_inner<'tcx, 'a, C: QueryCache>(
             if ensure_can_skip_execution(query, tcx, key, dep_node, ensure_mode) {
                 return None;
             }
-            match entry.get_or_start() {
+            match tcx.cache_entry_get_or_start(entry) {
                 Ok((result, dep_node_index)) => {
-                    tcx.dep_graph.read_index(DepNodeIndex::from_u32(dep_node_index));
+                    tcx.dep_graph.read_index(dep_node_index);
                     return Some(result);
                 }
                 Err(entry) => entry,
@@ -462,7 +462,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     };
 
     let entry = query.cache.lookup(key);
-    if let Err(entry) = entry.get_or_start() {
+    if let Err(entry) = tcx.cache_entry_get_or_start(entry) {
         ensure_sufficient_stack(|| {
             try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node), entry)
         });

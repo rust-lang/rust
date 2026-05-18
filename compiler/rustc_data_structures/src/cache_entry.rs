@@ -36,12 +36,16 @@ impl<V> CacheEntry<V> {
         index | Self::COMPLETE_BIT
     }
 
+    #[inline]
     pub const fn empty() -> Self {
         CacheEntry { status: AtomicU32::new(0), value: UnsafeCell::new(MaybeUninit::uninit()) }
     }
 
     #[inline]
-    pub fn get_or_start(&self) -> Result<(&V, u32), EntryInProgress<'_, V>> {
+    pub fn get_or_start(
+        &self,
+        before_sleep: impl FnOnce(),
+    ) -> Result<(&V, u32), EntryInProgress<'_, V>> {
         let mut status = self.status.load(Ordering::Acquire);
         loop {
             if status & Self::COMPLETE_BIT != 0 {
@@ -61,7 +65,7 @@ impl<V> CacheEntry<V> {
                     }
                 }
             } else {
-                return Ok(self.wait());
+                return Ok(self.wait(before_sleep));
             }
         }
     }
@@ -95,14 +99,14 @@ impl<V> CacheEntry<V> {
     }
 
     #[inline]
-    pub fn get(&self) -> Option<(&V, u32)> {
+    pub fn get(&self, before_sleep: impl FnOnce()) -> Option<(&V, u32)> {
         let status = self.status.load(Ordering::Acquire);
         if status & Self::COMPLETE_BIT != 0 {
             Some(unsafe { self.assume_complete(status) })
         } else if status == Self::EMPTY_STATUS {
             None
         } else {
-            Some(self.wait())
+            Some(self.wait(before_sleep))
         }
     }
 
@@ -128,7 +132,7 @@ impl<V> CacheEntry<V> {
     }
 
     #[cold]
-    fn wait(&self) -> (&V, u32) {
+    fn wait(&self, before_sleep: impl FnOnce()) -> (&V, u32) {
         // FIXME: try spinning, that's a good trick
         let mut status = self.status.load(Ordering::Relaxed);
         let did_park = rustc_thread_pool::park(|thread_index| {
@@ -152,6 +156,7 @@ impl<V> CacheEntry<V> {
                 if let Err(new) = res {
                     status = new;
                 } else {
+                    before_sleep();
                     break true;
                 }
             }
