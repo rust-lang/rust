@@ -271,7 +271,7 @@ mod private {
     #[cfg(target_has_atomic_load_store = "64")]
     #[repr(C, align(8))]
     pub struct Align8<T>(T);
-    #[cfg(target_has_atomic_load_store = "128")]
+    #[cfg(any(target_has_atomic_load_store = "128", doc))]
     #[repr(C, align(16))]
     pub struct Align16<T>(T);
 }
@@ -307,7 +307,7 @@ macro impl_atomic_primitive(
         reason = "implementation detail which may disappear or be replaced at any time",
         issue = "none"
     )]
-    #[cfg(target_has_atomic_load_store = $size)]
+    #[cfg(any(target_has_atomic_load_store = $size, doc))]
     unsafe impl $(<$T>)? AtomicPrimitive for $Primitive {
         type Storage = private::$Storage<$Operand>;
     }
@@ -2617,6 +2617,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
             ///
             #[doc = concat!("let atomic_forty_two = ", stringify!($atomic_type), "::new(42);")]
@@ -2636,6 +2637,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{self, ", stringify!($atomic_type), "};")]
             ///
             /// // Get a pointer to an allocated value
@@ -2698,6 +2700,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_var = ", stringify!($atomic_type), "::new(10);")]
@@ -2727,6 +2730,7 @@ macro_rules! atomic_int {
             ///
             /// ```
             /// #![feature(atomic_from_mut)]
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             /// let mut some_int = 123;
@@ -2756,6 +2760,7 @@ macro_rules! atomic_int {
             ///
             /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
@@ -2797,6 +2802,7 @@ macro_rules! atomic_int {
             ///
             /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             /// let mut some_ints = [0; 10];
@@ -2830,6 +2836,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -2856,6 +2863,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -2882,6 +2890,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -2911,6 +2920,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -2968,6 +2978,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -3021,6 +3032,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
@@ -3088,6 +3100,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let val = ", stringify!($atomic_type), "::new(4);")]
@@ -3146,6 +3159,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0);")]
@@ -3177,6 +3191,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(20);")]
@@ -3211,6 +3226,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
@@ -3245,6 +3261,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0x13);")]
@@ -3279,6 +3296,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
@@ -3313,6 +3331,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
@@ -3389,6 +3408,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```rust
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let x = ", stringify!($atomic_type), "::new(7);")]
@@ -3456,6 +3476,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```rust
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let x = ", stringify!($atomic_type), "::new(7);")]
@@ -3501,6 +3522,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
@@ -3511,6 +3533,7 @@ macro_rules! atomic_int {
             /// If you want to obtain the maximum value in one step, you can use the following:
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
@@ -3546,6 +3569,7 @@ macro_rules! atomic_int {
             /// # Examples
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
@@ -3558,6 +3582,7 @@ macro_rules! atomic_int {
             /// If you want to obtain the minimum value in one step, you can use the following:
             ///
             /// ```
+            #[$cfg_cas]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
@@ -3762,10 +3787,10 @@ atomic_int! {
     8,
     u64 AtomicU64
 }
-#[cfg(target_has_atomic_load_store = "128")]
+#[cfg(any(target_has_atomic_load_store = "128", doc))]
 atomic_int! {
-    cfg(target_has_atomic = "128"),
-    cfg(target_has_atomic_equal_alignment = "128"),
+    cfg(any(target_has_atomic = "128", doc)),
+    cfg(any(target_has_atomic_equal_alignment = "128", doc)),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
@@ -3780,10 +3805,10 @@ atomic_int! {
     16,
     i128 AtomicI128
 }
-#[cfg(target_has_atomic_load_store = "128")]
+#[cfg(any(target_has_atomic_load_store = "128", doc))]
 atomic_int! {
-    cfg(target_has_atomic = "128"),
-    cfg(target_has_atomic_equal_alignment = "128"),
+    cfg(any(target_has_atomic = "128", doc)),
+    cfg(any(target_has_atomic_equal_alignment = "128", doc)),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
     unstable(feature = "integer_atomics", issue = "99069"),
