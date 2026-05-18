@@ -114,8 +114,7 @@ mod test_3 {
     //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
 
     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
-    //~^ ERROR: missing lifetime specifiers [E0106]
-    //~| ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
+    //~^ ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
