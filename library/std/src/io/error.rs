@@ -5,7 +5,10 @@ mod tests;
 pub use alloc_crate::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
-use alloc_crate::io::{Custom, CustomOwner, custom_owner_from_box};
+use alloc_crate::io::{
+    Custom, CustomOwner, OsFunctions, custom_owner_from_box, decode_error_kind, format_os_error,
+    is_interrupted, set_functions,
+};
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
@@ -344,6 +347,25 @@ impl Error {
         Self { repr: Repr::new_simple_message(msg) }
     }
 
+    /// # Safety
+    ///
+    /// `functions` must point to data that is entirely constant; it must
+    /// not be created during runtime.
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub unsafe fn from_raw_os_error_with_functions(
+        code: RawOsError,
+        functions: &'static OsFunctions,
+    ) -> Error {
+        // SAFETY: Caller ensures `functions` is a constant not created at runtime.
+        unsafe {
+            set_functions(functions);
+        }
+        Error { repr: Repr::new_os(code) }
+    }
+
     /// Returns an error representing the last OS error which occurred.
     ///
     /// This function reads the value of `errno` for the target platform (e.g.
@@ -403,7 +425,14 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn from_raw_os_error(code: RawOsError) -> Error {
-        Error { repr: Repr::new_os(code) }
+        const FUNCTIONS: &'static OsFunctions = &OsFunctions {
+            format_os_error: |code, fmt| fmt.write_str(&sys::io::error_string(code)),
+            decode_error_kind: sys::io::decode_error_kind,
+            is_interrupted: sys::io::is_interrupted,
+        };
+
+        // SAFETY: `FUNCTIONS` is a constant and not created at runtime.
+        unsafe { Error::from_raw_os_error_with_functions(code, FUNCTIONS) }
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -733,7 +762,7 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::decode_error_kind(code),
+            ErrorData::Os(code) => decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
@@ -745,7 +774,7 @@ impl Error {
     #[inline]
     pub fn is_interrupted(&self) -> bool {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::is_interrupted(code),
+            ErrorData::Os(code) => is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
             ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
             ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
@@ -759,8 +788,13 @@ impl fmt::Debug for Repr {
             ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::io::decode_error_kind(code))
-                .field("message", &sys::io::error_string(code))
+                .field("kind", &decode_error_kind(code))
+                .field(
+                    "message",
+                    &fmt::from_fn(|fmt| {
+                        write!(fmt, "\"{}\"", fmt::from_fn(|fmt| format_os_error(code, fmt)))
+                    }),
+                )
                 .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -778,7 +812,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                let detail = sys::io::error_string(code);
+                let detail = fmt::from_fn(|fmt| format_os_error(code, fmt));
                 write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(c) => fmt::Display::fmt(c.error_ref(), fmt),

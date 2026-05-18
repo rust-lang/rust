@@ -12,7 +12,10 @@ pub use core::io::{
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use core::io::{Custom, CustomOwner, chain, take};
+pub use core::io::{
+    Custom, CustomOwner, OsFunctions, chain, decode_error_kind, format_os_error, is_interrupted,
+    set_functions, take,
+};
 
 #[cfg(not(no_global_oom_handling))]
 #[doc(hidden)]
