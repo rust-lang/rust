@@ -1265,6 +1265,7 @@ impl File {
     #[doc(alias = "futimens")]
     #[doc(alias = "futimes")]
     #[doc(alias = "SetFileTime")]
+    #[doc(alias = "filetime")]
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         self.inner.set_times(times.0)
     }
