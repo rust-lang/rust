@@ -452,7 +452,7 @@ pub struct Hashes {
     pub attrs_hash: Option<Fingerprint>,
 }
 
-/// Unites some of `OwnerInfo`'s fields into same struct that is used by owner `query`.
+/// Unites some of `OwnerInfo`'s fields into same struct that is used by `hir_owner` query.
 /// `AttributeMap` is handled separately as placing it in this struct led to perf regressions:
 /// <https://github.com/rust-lang/rust/pull/155678#issuecomment-4304597871>.
 /// This struct is created mainly for uniting/splitting fields of `OwnerInfo` so they are

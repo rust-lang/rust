@@ -112,7 +112,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// This function is used only inside eval-always query analysis
+    /// This function is used only inside eval-always query `analysis`
     /// (`analysis -> run_required_analysis` -> `emit_delayed_lints`), so it is safe
     /// to obtain delayed lints from non-eval-always `owner` query.
     #[inline]
