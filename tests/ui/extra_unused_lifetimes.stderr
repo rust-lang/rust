@@ -7,41 +7,71 @@ LL | fn unused_lt<'a>(x: u8) {}
    = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::extra_unused_lifetimes)]`
 
+error: this lifetime isn't used in the type
+  --> tests/ui/extra_unused_lifetimes.rs:22:29
+   |
+LL | struct BoxedFoo(Box<dyn for<'a> Fn()>);
+   |                             ^^
+
+error: this lifetime isn't used in the type
+  --> tests/ui/extra_unused_lifetimes.rs:27:36
+   |
+LL | fn unused_for_return() -> impl for<'a> Fn()
+   |                                    ^^
+
+error: this lifetime isn't used in the type
+  --> tests/ui/extra_unused_lifetimes.rs:39:14
+   |
+LL | impl dyn for<'a> SimplerTrait {}
+   |              ^^
+
+error: this lifetime isn't used in the type
+  --> tests/ui/extra_unused_lifetimes.rs:44:13
+   |
+LL | impl<T: for<'a> SimplerTrait> SimpleTrait<'_> for T {}
+   |             ^^
+
+error: this lifetime isn't used in the type
+  --> tests/ui/extra_unused_lifetimes.rs:47:44
+   |
+LL | async fn unused_impl_for<F>(body: impl for<'a> FnOnce(u32) -> F)
+   |                                            ^^
+
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:47:10
+  --> tests/ui/extra_unused_lifetimes.rs:80:10
    |
 LL |     fn x<'a>(&self) {}
    |          ^^
 
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:74:22
+  --> tests/ui/extra_unused_lifetimes.rs:107:22
    |
 LL |         fn unused_lt<'a>(x: u8) {}
    |                      ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:86:10
+  --> tests/ui/extra_unused_lifetimes.rs:119:10
    |
 LL |     impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
    |          ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:93:10
+  --> tests/ui/extra_unused_lifetimes.rs:126:10
    |
 LL |     impl<'b> Scalar {
    |          ^^
 
 error: this lifetime isn't used in the function definition
-  --> tests/ui/extra_unused_lifetimes.rs:95:26
+  --> tests/ui/extra_unused_lifetimes.rs:128:26
    |
 LL |         pub fn something<'c>() -> Self {
    |                          ^^
 
 error: this lifetime isn't used in the impl
-  --> tests/ui/extra_unused_lifetimes.rs:125:10
+  --> tests/ui/extra_unused_lifetimes.rs:158:10
    |
 LL |     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
    |          ^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 12 previous errors
 
