@@ -32,13 +32,15 @@ mod va_list;
 pub use self::va_list::{VaArgSafe, VaList};
 
 mod primitives;
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub use self::primitives::{
+    IntPtr, TaggedPointer, c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t,
+};
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use self::primitives::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
     c_ulong, c_ulonglong, c_ushort,
 };
-#[unstable(feature = "c_size_t", issue = "88345")]
-pub use self::primitives::{c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t};
 
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in

@@ -166,6 +166,10 @@ pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub use core::ffi::{
+    IntPtr, TaggedPointer, c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t,
+};
 #[unstable(
     feature = "c_variadic",
     reason = "the `c_variadic` feature has not been properly tested on \
@@ -178,8 +182,6 @@ pub use core::ffi::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
     c_ulong, c_ulonglong, c_ushort,
 };
-#[unstable(feature = "c_size_t", issue = "88345")]
-pub use core::ffi::{c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t};
 
 #[doc(inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]

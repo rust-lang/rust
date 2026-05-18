@@ -12,10 +12,10 @@ The `c_size_t` feature allows to enable C FFI types `size_t` `ssize_t` `intptr_t
 ```rust
 #![feature(c_size_t)]
 
-use std::ffi::{c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t};
+use std::ffi::{TaggedPointer, c_uintptr_t};
 
 fn main() {
     let ptr = core::ptr::with_exposed_provenance(16_usize);
-    let _ptr_uintptr_t = c_uintptr_t(ptr);
+    let _ptr_uintptr_t = c_uintptr_t::new(ptr);
 }
 ```
