@@ -1170,6 +1170,7 @@ symbols! {
         lang_items,
         large_assignments,
         last,
+        late_bound_turbofishing,
         lateout,
         lazy_normalization_consts,
         lazy_type_alias,

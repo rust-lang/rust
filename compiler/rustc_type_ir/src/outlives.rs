@@ -91,12 +91,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                 // See https://github.com/rust-lang/rust/issues/70917
                 // for further background and discussion.
                 for child in args.iter() {
-                    match child.kind() {
-                        ty::GenericArgKind::Lifetime(_) => {}
-                        ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_) => {
-                            child.visit_with(self);
-                        }
-                    }
+                    child.visit_with(self);
                 }
             }
 

@@ -59,6 +59,7 @@ pub struct GenericParamDef {
     /// `'a`/`T` won't be accessed during the parent type's `Drop` impl.
     pub pure_wrt_drop: bool,
 
+    pub is_late_bound: bool,
     pub kind: GenericParamDefKind,
 }
 
@@ -118,6 +119,7 @@ pub struct GenericParamCount {
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
+    pub parent_count_without_late: usize,
     pub own_params: Vec<GenericParamDef>,
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
@@ -125,7 +127,6 @@ pub struct Generics {
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
-    pub has_late_bound_regions: Option<Span>,
 }
 
 impl std::fmt::Debug for Generics {
@@ -147,7 +148,7 @@ impl std::fmt::Debug for Generics {
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
     fn count(&self) -> usize {
-        self.parent_count + self.own_params.len()
+        Generics::count(self)
     }
 }
 
@@ -167,9 +168,19 @@ impl<'tcx> Generics {
         }
     }
 
+    pub fn has_late_bound_regions(&self) -> bool {
+        // FIXME: a length comparison could probably work here?
+        self.own_params.iter().any(|p| p.is_late_bound)
+    }
+
     #[inline]
     pub fn count(&self) -> usize {
         self.parent_count + self.own_params.len()
+    }
+
+    #[inline]
+    pub fn count_without_late(&self) -> usize {
+        self.parent_count_without_late + self.own_params.iter().filter(|p| !p.is_late_bound).count()
     }
 
     pub fn own_counts(&self) -> GenericParamCount {
@@ -235,6 +246,7 @@ impl<'tcx> Generics {
     /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
+            // TODO: check for OOB
             &self.own_params[index]
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))

@@ -605,6 +605,8 @@ declare_features! (
     (unstable, lahfsahf_target_feature, "1.78.0", Some(150251)),
     /// Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
+    /// Allow late-bound lifetimes to be specified using turbofish syntax.
+    (incomplete, late_bound_turbofishing, "1.97.0", Some(156581)),
     /// Allow to have type alias types for inter-crate use.
     (incomplete, lazy_type_alias, "1.72.0", Some(112792)),
     /// Allows using `#[link(kind = "link-arg", name = "...")]`

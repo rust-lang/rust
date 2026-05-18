@@ -679,10 +679,6 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
             params,
             param_def_id_to_index,
             has_self: self.has_self,
-            has_late_bound_regions: self
-                .has_late_bound_regions
-                .as_ref()
-                .map(|late_bound_regions| late_bound_regions.stable(tables, cx)),
         }
     }
 }
