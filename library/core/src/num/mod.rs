@@ -1518,6 +1518,29 @@ pub enum FpCategory {
     Normal,
 }
 
+/// Largest `k` such that `radix.pow(k) <= 2.pow(bits)` — the largest digit
+/// count for which the unchecked `result = result * radix + d` accumulator is
+/// guaranteed not to overflow an integer of magnitude `2.pow(bits) - 1`.
+/// `radix` must be in `2..=36`.
+///
+/// Implemented as a macro because a `const fn` defeats cross-crate inlining.
+macro_rules! max_safe_digits {
+    ($bits:expr, $radix:expr) => {{
+        let bits: u32 = $bits;
+        let radix_u128 = ($radix) as u128;
+        if bits < 128 {
+            (1u128 << bits).ilog(radix_u128)
+        } else {
+            // 2.pow(128) doesn't fit u128. `u128::MAX.ilog(radix)` agrees with
+            // the true answer except when `radix` exactly tiles 128 bits
+            // (power of two dividing 128), where it undercounts by 1.
+            let base = u128::MAX.ilog(radix_u128);
+            let exact_tile = ($radix).is_power_of_two() && 128 % ($radix).ilog2() == 0;
+            base + exact_tile as u32
+        }
+    }};
+}
+
 /// Determines if a string of text of that length of that radix could be guaranteed to be
 /// stored in the given type T.
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
@@ -1526,7 +1549,8 @@ pub enum FpCategory {
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
-    radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
+    let bits = (size_of::<T>() * 8 - is_signed_ty as usize) as u32;
+    digits.len() <= max_safe_digits!(bits, radix) as usize
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
@@ -1747,7 +1771,42 @@ macro_rules! from_str_int_impl {
                     };
                 }
 
-                if can_not_overflow::<$int_ty>(radix, is_signed_ty, digits) {
+                // Capture the original-input overflow decision *before* the
+                // u64 fast-prefix consumes any digits — consuming a safe
+                // prefix only shrinks the remaining-digit count, so an
+                // originally-safe input stays safe.
+                let no_overflow = can_not_overflow::<$int_ty>(radix, is_signed_ty, digits);
+
+                // u64 fast-prefix for types wider than `u64` (i.e. `i128`/`u128`):
+                // 128-bit multiply/add are several times slower than 64-bit on
+                // 64-bit hardware, so parse as many leading digits as fit in
+                // `u64`, then promote and let the main loop finish the rest.
+                if size_of::<$int_ty>() > size_of::<u64>() && !digits.is_empty() {
+                    let prefix_max = max_safe_digits!(64u32, radix) as usize;
+                    // `usize::min` is `const fn` but gated by an unstable
+                    // feature this function can't depend on yet.
+                    let take = if digits.len() < prefix_max { digits.len() } else { prefix_max };
+                    let (mut head, tail) = digits.split_at(take);
+                    let mut r64: u64 = 0;
+                    while let [c, rest @ ..] = head {
+                        let d = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit);
+                        // `head.len() <= prefix_max` keeps `r64` within `u64`.
+                        r64 = r64 * radix as u64 + d as u64;
+                        head = rest;
+                    }
+                    // For unsigned `$int_ty`, `is_positive` is always `true`
+                    // (the `-` arm of the sign match requires `is_signed_ty`),
+                    // so the negative branch is dead and gets eliminated.
+                    // For `i128`, `r64 < 2^64` so the negation cannot overflow.
+                    result = if is_positive {
+                        r64 as $int_ty
+                    } else {
+                        (r64 as $int_ty).wrapping_neg()
+                    };
+                    digits = tail;
+                }
+
+                if no_overflow {
                     // If the len of the str is short compared to the range of the type
                     // we are parsing into, then we can be certain that an overflow will not occur.
                     // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
