@@ -12,7 +12,7 @@ note: an implementation of `PartialEq` might be missing for `T1`
 LL | struct T1;
    | ^^^^^^^^^ must implement `PartialEq`
 note: `std::io::Error` does not implement `PartialEq`
-  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+  --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
    = note: `std::io::Error` is defined in another crate
 help: consider annotating `T1` with `#[derive(PartialEq)]`
@@ -34,7 +34,7 @@ note: `Thread` does not implement `PartialEq`
    |
    = note: `Thread` is defined in another crate
 note: `std::io::Error` does not implement `PartialEq`
-  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+  --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
    = note: `std::io::Error` is defined in another crate
 
@@ -58,7 +58,7 @@ note: `Thread` does not implement `PartialEq`
    |
    = note: `Thread` is defined in another crate
 note: `std::io::Error` does not implement `PartialEq`
-  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+  --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
    = note: `std::io::Error` is defined in another crate
 help: consider annotating `T1` with `#[derive(PartialEq)]`

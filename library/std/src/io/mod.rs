@@ -299,22 +299,25 @@ mod tests;
 
 use core::slice::memchr;
 
+use alloc_crate::io::OsFunctions;
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use alloc_crate::io::RawOsError;
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
+pub use alloc_crate::io::SimpleMessage;
+#[unstable(feature = "io_const_error", issue = "133448")]
+pub use alloc_crate::io::const_error;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::io::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
+pub use alloc_crate::io::{
+    Chain, Empty, Error, ErrorKind, Repeat, Result, Sink, Take, empty, repeat, sink,
+};
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub use self::error::RawOsError;
-#[doc(hidden)]
-#[unstable(feature = "io_const_error_internals", issue = "none")]
-pub use self::error::SimpleMessage;
-#[unstable(feature = "io_const_error", issue = "133448")]
-pub use self::error::const_error;
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
@@ -331,7 +334,6 @@ pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
     copy::copy,
     cursor::Cursor,
-    error::{Error, ErrorKind, Result},
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
 };
 use crate::mem::MaybeUninit;
