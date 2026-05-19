@@ -104,6 +104,7 @@ diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CannotBeDereferenced<'db>,
+    CannotIndexInto<'db>,
     CastToUnsized<'db>,
     ExpectedArrayOrSlicePat<'db>,
     ExpectedFunction<'db>,
@@ -323,6 +324,12 @@ pub struct ExpectedFunction<'db> {
 
 #[derive(Debug)]
 pub struct CannotBeDereferenced<'db> {
+    pub expr: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotIndexInto<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
 }
@@ -946,6 +953,10 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: Type::new(db, def, found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::CannotIndexInto { expr, found } => {
+                let expr = expr_syntax(*expr)?;
+                CannotIndexInto { expr, found: Type::new(db, def, found.as_ref()) }.into()
             }
             InferenceDiagnostic::TyDiagnostic { source, diag } => {
                 let source_map = match source {
