@@ -35,6 +35,7 @@ fn main() {
     test_listen();
 
     test_accept_connect();
+    test_connect_error();
     test_send_peek_recv();
     test_write_read();
     test_readv();
@@ -256,6 +257,27 @@ fn test_accept_connect() {
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+}
+
+/// Test connecting to an address where nothing is listening and ensure the error matches what
+/// the standard library expects.
+fn test_connect_error() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Connecting to a zero port fails on all host platforms.
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    // Ensure that we fail for the same reasons as the standard library expects.
+    assert!(matches!(
+        err.kind(),
+        ErrorKind::ConnectionRefused
+            | ErrorKind::InvalidInput
+            | ErrorKind::AddrInUse
+            | ErrorKind::AddrNotAvailable
+            | ErrorKind::NetworkUnreachable
+    ));
 }
 
 /// Test sending bytes into a connected stream and then peeking and receiving

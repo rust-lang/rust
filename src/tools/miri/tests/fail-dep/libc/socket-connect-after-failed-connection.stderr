@@ -1,0 +1,16 @@
+error: unsupported operation: connect: sockets are in an unspecified state after a failed `connect`; any operation on such a socket is thus unsupported
+  --> tests/fail-dep/libc/socket-connect-after-failed-connection.rs:LL:CC
+   |
+LL | /         libc::connect(
+LL | |             client_sockfd,
+LL | |             (&addr as *const libc::sockaddr_in).cast(),
+LL | |             size_of::<libc::sockaddr_in>() as libc::socklen_t,
+LL | |         )
+   | |_________^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
