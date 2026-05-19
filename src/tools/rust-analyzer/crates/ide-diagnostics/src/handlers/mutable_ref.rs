@@ -10,7 +10,7 @@ pub(crate) fn mutable_ref_binding(
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0658"),
-        "`mut` bindings cannot also be `ref` by default in 2024 edition",
+        "bindings cannot be both mutable and by-reference by default in 2024 edition. add experimental #![feature(mut_ref)] for this functionality",
         d.pat.map(Into::into),
     )
     .stable()
@@ -26,12 +26,15 @@ mod tests {
             r#"
 //- minicore: option
 #![feature(ref_pat_eat_one_layer_2024)]
+struct TestStruct {
+   val: i32
+}
 fn main() {
-    let opt_ref = &Some(42);
+    let opt_ref = &Some(TestStruct {val: 1});
 
     if let Some(mut x) = opt_ref {
-              //^^^^^ error: `mut` bindings cannot also be `ref` by default in 2024 edition
-        x = &5;
+              //^^^^^ error: bindings cannot be both mutable and by-reference by default in 2024 edition. add experimental #![feature(mut_ref)] for this functionality
+        x = &TestStruct{val: 5};
     }
 }
 "#,
@@ -45,11 +48,14 @@ fn main() {
 //- minicore: option
 #![feature(ref_pat_eat_one_layer_2024)]
 #![feature(mut_ref)]
+struct TestStruct {
+    val: i32
+}
 fn main() {
-    let opt_ref = &Some(42);
+    let opt_ref = &Some(TestStruct{val: 1});
 
     if let Some(mut x) = opt_ref {
-        x = &5;
+        x = &TestStruct{val: 5};
     }
 }
 "#,

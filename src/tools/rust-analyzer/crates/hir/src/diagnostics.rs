@@ -131,7 +131,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
-             MutableRefBinding,
+    MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
