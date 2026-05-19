@@ -23,8 +23,8 @@ use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
 use crate::html::format::HrefInfo;
 use crate::html::macro_expansion::ExpandedCode;
-use crate::html::render::span_map::{DUMMY_SP, Span};
-use crate::html::render::{Context, LinkFromSrc};
+use crate::html::render::Context;
+use crate::html::span_map::{DUMMY_SP, LinkFromSrc, Span};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
 pub(crate) struct HrefContext<'a, 'tcx> {
