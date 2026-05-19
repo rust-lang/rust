@@ -13,7 +13,8 @@ use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
 
 use rustc_ast::visit::{
-    AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
+    AssocCtxt, BoundKind, FnCtxt, FnKind, LifetimeCtxt, Visitor, try_visit, visit_opt, walk_list,
+    walk_ty,
 };
 use rustc_ast::*;
 use rustc_data_structures::either::Either;
@@ -2448,9 +2449,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             binder: fn_id,
             report_in_path: report_elided_lifetimes_in_path,
         };
+        let output_has_lifetime = fn_output_has_lifetime(output_ty);
         self.with_lifetime_rib(rib, |this| {
             // Add each argument to the rib.
-            let elision_lifetime = this.resolve_fn_params(has_self, inputs);
+            let elision_lifetime = this.resolve_fn_params(has_self, inputs, output_has_lifetime);
             debug!(?elision_lifetime);
 
             let outer_failures = take(&mut this.diag_metadata.current_elision_failures);
@@ -2493,6 +2495,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
+        output_has_lifetime: bool,
     ) -> Result<LifetimeRes, (Vec<MissingLifetime>, Vec<ElisionFnParameter>)> {
         enum Elision {
             /// We have not found any candidate.
@@ -2583,7 +2586,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             if index == 0 && has_self {
                 let self_lifetime = self.find_lifetime_for_self(ty);
 
-                if self.self_type_has_reference(ty)
+                if output_has_lifetime
+                    && self.self_type_has_reference(ty)
                     && !self.self_param_has_genuine_self(ty)
                 {
                     self.r.lint_buffer.buffer_lint(
@@ -5655,6 +5659,30 @@ impl ItemInfoCollector<'_, '_, '_> {
             .delegation_fn_sigs
             .insert(self.r.owner_def_id(id), DelegationFnSig { has_self: decl.has_self() });
     }
+}
+
+fn fn_output_has_lifetime(output_ty: &FnRetTy) -> bool {
+    struct Probe(bool);
+    impl<'ast> Visitor<'ast> for Probe {
+        fn visit_lifetime(&mut self, _: &'ast Lifetime, _: LifetimeCtxt) {
+            self.0 = true;
+        }
+        fn visit_ty(&mut self, ty: &'ast Ty) {
+            if self.0 {
+                return;
+            }
+            match &ty.kind {
+                TyKind::Ref(..) | TyKind::PinnedRef(..) | TyKind::TraitObject(..) => {
+                    self.0 = true;
+                }
+                _ => walk_ty(self, ty),
+            }
+        }
+    }
+    let FnRetTy::Ty(ty) = output_ty else { return false };
+    let mut p = Probe(false);
+    p.visit_ty(ty);
+    p.0
 }
 
 fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> {

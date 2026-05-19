@@ -65,4 +65,10 @@ impl<'a> Alias<'a> {
     //~| ERROR missing lifetime specifier [E0106]
 }
 
+impl<'a> Foo<'a> {
+    fn no_output_lifetime(self: &Foo<'a>) -> u32 {
+        0
+    }
+}
+
 fn main() {}
