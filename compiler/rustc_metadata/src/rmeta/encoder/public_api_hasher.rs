@@ -1,9 +1,14 @@
+use core::iter::Iterator;
 use std::fmt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::graph::scc::{Annotation, Annotations, Sccs};
+use rustc_data_structures::graph::{DirectedGraph, Successors};
+use rustc_data_structures::indexmap::map::Entry;
 use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def_id::DefIndex;
@@ -13,21 +18,22 @@ use rustc_middle::ich::StableHashingContext;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
-use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::data_structures::IndexMap;
+use rustc_middle::ty::{PredicateKind, Ty};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
-use rustc_span::Symbol;
-use rustc_span::def_id::{LOCAL_CRATE, LocalDefId, StableCrateId};
+use rustc_span::def_id::{DefId, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_span::edition::Edition;
+use rustc_span::hygiene::ExpnIndex;
+use rustc_span::{ExpnId, LocalExpnId, Span, Symbol, SyntaxContext};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
 use crate::rmeta::{
-    CrateHashes, DefPathHashMapRef, EiiMapEncodedKeyValue, ExpnDataTable, ExpnHashTable,
-    IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue, ProcMacroData,
+    CrateHashes, DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, ExpnDataTable,
+    ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue, ProcMacroData,
     SyntaxContextTable, TraitImpls,
 };
 
@@ -64,8 +70,12 @@ impl PublicApiHasher {
 pub(crate) trait TablePublicApiHasher<I: Idx>: Default {
     type IterHasher;
 
-    fn digest<V>(&mut self, index: I, value: V, hcx: &mut PublicApiHashingContext<'_>)
-    where
+    fn digest<V>(
+        &mut self,
+        index: impl TableIndex<Encoded = I>,
+        value: V,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) where
         V: StableHash;
     fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint>;
 
@@ -86,28 +96,35 @@ impl<I: Idx> Default for RDRHashAll<I> {
 pub(crate) struct PublicApiHashingContext<'a> {
     pub(crate) hcx: StableHashingContext<'a>,
     hash_public_api: bool,
+    def_id_hashes: IndexGraphHashes,
 }
 
 impl<'a> PublicApiHashingContext<'a> {
     pub(crate) fn new(hash_public_api: bool, hcx: StableHashingContext<'a>) -> Self {
-        Self { hash_public_api, hcx }
+        Self { hash_public_api, hcx, def_id_hashes: Default::default() }
     }
 }
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashAll<I> {
     type IterHasher = OrderedIterHasher;
-    fn digest<V>(&mut self, index: I, value: V, hcx: &mut PublicApiHashingContext<'_>)
-    where
+    fn digest<V>(
+        &mut self,
+        index: impl TableIndex<Encoded = I>,
+        value: V,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) where
         V: StableHash,
     {
         if !hcx.hash_public_api {
             return;
         }
         let mut hasher = StableHasher::default();
-        // add the non-stable hash of the index here to hash the order of items without storing them and iterating over it later
-        (index.index(), value).stable_hash(&mut hcx.hcx, &mut hasher);
+        value.stable_hash(&mut hcx.hcx, &mut hasher);
         let hash: Fingerprint = hasher.finish();
-        self.hash = self.hash.combine_commutative(hash);
+        let idx_hash = hcx.def_id_hashes.get_mut(index);
+        *idx_hash = idx_hash.combine_commutative(hash);
+        // remove this later, not needed anymore
+        self.hash.combine_commutative(hash);
     }
 
     fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
@@ -154,8 +171,12 @@ impl<I> Default for RDRHashNone<I> {
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
     type IterHasher = RDRHashNone<()>;
-    fn digest<V>(&mut self, _index: I, _value: V, _hcx: &mut PublicApiHashingContext<'_>)
-    where
+    fn digest<V>(
+        &mut self,
+        _index: impl TableIndex<Encoded = I>,
+        _value: V,
+        _hcx: &mut PublicApiHashingContext<'_>,
+    ) where
         V: StableHash,
     {
     }
@@ -413,11 +434,14 @@ pub(crate) struct HashableCrateRoot {
 impl HashableCrateRoot {
     pub(super) fn into_crate_root(
         self,
-        tcx: TyCtxt<'_>,
+        ecx: &mut EncodeContext<'_, '_>,
         hcx: &mut PublicApiHashingContext<'_>,
     ) -> CrateRoot {
+        let tcx = ecx.tcx;
         let hashes = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
+            let graph = ecx.index_graph_builder.take().unwrap().build_graph(&mut hcx.hcx);
+
             let mut hasher = StableHasher::default();
             self.stable_hash(&mut hcx.hcx, &mut hasher);
             let public_hash = Svh::new(hasher.finish());
@@ -497,51 +521,300 @@ impl HashableCrateRoot {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(crate) enum RecordMode {
-    All,
-    ReachableAtLevel(Level),
-    None,
+pub(super) enum RecordMode<'tcx> {
+    From(LocalNode<'tcx>),
 }
 
-impl RecordMode {
-    pub(super) fn through_impl_trait() -> Self {
-        Self::ReachableAtLevel(Level::ReachableThroughImplTrait)
+impl<'tcx> RecordMode<'tcx> {
+    pub(super) fn from(from: LocalNode<'tcx>) -> Self {
+        Self::From(from)
     }
 }
 
-pub(super) struct LocalDefIdGraphBuilder<'tcx> {
-    pub(super) from: Option<LocalDefId>,
-    pub(super) record_mode: RecordMode,
-    graph: IndexVec<LocalDefId, FxHashSet<LocalDefId>>,
-    effective_visibilities: &'tcx EffectiveVisibilities,
+struct IndexGraph<'tcx> {
+    nodes: IndexMap<Node<'tcx>, Fingerprint>,
+    edges: IndexVec<NodeIdx, Vec<NodeIdx>>,
+    roots: Vec<NodeIdx>,
 }
 
-impl<'tcx> LocalDefIdGraphBuilder<'tcx> {
-    pub(super) fn new(tcx: TyCtxt<'tcx>) -> Self {
+pub(super) struct IndexGraphBuilder<'tcx> {
+    pub(super) record_mode: Vec<RecordMode<'tcx>>,
+    edges: FxHashMap<LocalNode<'tcx>, FxHashSet<Node<'tcx>>>,
+    roots: FxHashSet<Node<'tcx>>,
+}
+
+impl Default for IndexGraphBuilder<'_> {
+    fn default() -> Self {
         Self {
-            from: None,
-            record_mode: RecordMode::All,
-            graph: IndexVec::from_elem_n(
-                Default::default(),
-                tcx.definitions_untracked().def_index_count(),
-            ),
-            effective_visibilities: tcx.effective_visibilities(()),
+            record_mode: Default::default(),
+            edges: Default::default(),
+            roots: [Node::DefId(rustc_hir::def_id::CRATE_DEF_ID.into())].into_iter().collect(),
+        }
+    }
+}
+
+fn stable_hash<'a, T: StableHash>(hcx: &mut StableHashingContext<'a>, val: &T) -> Fingerprint {
+    let mut hasher = StableHasher::new();
+    val.stable_hash(hcx, &mut hasher);
+    hasher.finish()
+}
+
+impl<'tcx> IndexGraphBuilder<'tcx> {
+    fn build_graph(self, hcx: &mut StableHashingContext<'_>) -> IndexGraph<'tcx> {
+        let mut hashes = IndexMap::default();
+        // iterating over FxHashSet and FxHashMap is fine here, as it is only used to build the
+        // hashes map, which is never returned or iterated
+        #[allow(rustc::potential_query_instability)]
+        for node in self
+            .edges
+            .iter()
+            .flat_map(|(node, edges)| {
+                std::iter::once(node.into_node()).chain(edges.iter().copied())
+            })
+            .chain(self.roots.iter().copied())
+        {
+            match hashes.entry(node) {
+                Entry::Vacant(v) => {
+                    let hash = stable_hash(hcx, &node);
+                    v.insert(hash);
+                }
+                Entry::Occupied(_o) => {}
+            }
+        }
+        hashes.sort_by_key(|_, v| *v);
+
+        // iterating here is fine, as we stable sort right after
+        #[allow(rustc::potential_query_instability)]
+        let mut roots: Vec<_> =
+            self.roots.into_iter().map(|node| hashes.get_index_of(&node).unwrap()).collect();
+        roots.sort();
+        let mut edges = IndexVec::from_elem_n(Vec::default(), hashes.len());
+        // iterating here is fine, as we stable when saving to `edges`
+        #[allow(rustc::potential_query_instability)]
+        for (node, node_edges) in self.edges {
+            // iterating here is fine, as we stable sort right after
+            #[allow(rustc::potential_query_instability)]
+            let mut node_edges: Vec<_> =
+                node_edges.into_iter().map(|node| hashes.get_index_of(&node).unwrap()).collect();
+            node_edges.sort();
+            edges[hashes.get_index_of(&node.into_node()).unwrap()] = node_edges;
+        }
+
+        IndexGraph { roots, edges, nodes: hashes }
+    }
+
+    pub(super) fn record(&mut self, to: Node<'tcx>) {
+        match self.record_mode.last() {
+            Some(RecordMode::From(from)) => {
+                self.edges.entry(*from).or_insert(Default::default()).insert(to);
+            }
+            None => {
+                self.roots.insert(to);
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct IndexGraphHashes {
+    local: UnordMap<LocalDefId, Fingerprint>,
+    expn: UnordMap<LocalExpnId, Fingerprint>,
+    syntax: UnordMap<SyntaxContext, Fingerprint>,
+}
+
+impl IndexGraphHashes {
+    fn get_mut<I: TableIndex>(&mut self, i: I) -> &mut Fingerprint {
+        i.index_mut(self)
+    }
+
+    fn get_node(&self, node: &Node<'_>) -> Option<Fingerprint> {
+        match node {
+            Node::DefId(id) => id.as_local().and_then(|local| self.local.get(&local)).copied(),
+            Node::ExpnId(id) => id.as_local().and_then(|local| self.expn.get(&local)).copied(),
+            Node::SyntaxContext(id) => self.syntax.get(id).copied(),
+            Node::ParentlessSpan(_) => None,
+            Node::ParentSpan(_) => None,
+            Node::Ty(_) => None,
+            Node::Predicate(_) => None,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+pub(super) enum LocalNode<'tcx> {
+    DefId(LocalDefId),
+    ExpnId(LocalExpnId),
+    SyntaxContext(SyntaxContext),
+    Ty(Ty<'tcx>),
+    Predicate(PredicateKind<'tcx>),
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, StableHash)]
+pub(super) enum Node<'tcx> {
+    DefId(DefId),
+    ExpnId(ExpnId),
+    SyntaxContext(SyntaxContext),
+    ParentlessSpan(Span),
+    ParentSpan(LocalDefId),
+    Ty(Ty<'tcx>),
+    Predicate(PredicateKind<'tcx>),
+}
+
+impl<'tcx> LocalNode<'tcx> {
+    fn into_node(self) -> Node<'tcx> {
+        match self {
+            LocalNode::DefId(id) => Node::DefId(id.into()),
+            LocalNode::ExpnId(id) => Node::ExpnId(id.to_expn_id()),
+            LocalNode::SyntaxContext(id) => Node::SyntaxContext(id),
+            LocalNode::Ty(id) => Node::Ty(id),
+            LocalNode::Predicate(id) => Node::Predicate(id),
+        }
+    }
+}
+
+impl From<LocalDefId> for Node<'_> {
+    fn from(value: LocalDefId) -> Self {
+        Self::DefId(value.into())
+    }
+}
+impl From<DefId> for Node<'_> {
+    fn from(value: DefId) -> Self {
+        Self::DefId(value)
+    }
+}
+impl From<ExpnId> for Node<'_> {
+    fn from(value: ExpnId) -> Self {
+        Self::ExpnId(value)
+    }
+}
+impl From<SyntaxContext> for Node<'_> {
+    fn from(value: SyntaxContext) -> Self {
+        Self::SyntaxContext(value)
+    }
+}
+
+pub(crate) trait TableIndex: Copy {
+    type Encoded: Idx;
+    fn index_mut(self, hashes: &mut IndexGraphHashes) -> &mut Fingerprint;
+    fn into_encoded(self) -> Self::Encoded;
+}
+
+impl TableIndex for DefIndex {
+    type Encoded = DefIndex;
+    fn index_mut(self, hashes: &mut IndexGraphHashes) -> &mut Fingerprint {
+        hashes.local.entry(LocalDefId { local_def_index: self }).or_insert(Fingerprint::ZERO)
+    }
+    fn into_encoded(self) -> Self::Encoded {
+        self
+    }
+}
+
+impl TableIndex for LocalDefId {
+    type Encoded = DefIndex;
+    fn index_mut(self, hashes: &mut IndexGraphHashes) -> &mut Fingerprint {
+        hashes.local.entry(self).or_insert(Fingerprint::ZERO)
+    }
+    fn into_encoded(self) -> Self::Encoded {
+        self.local_def_index
+    }
+}
+
+impl TableIndex for LocalExpnId {
+    type Encoded = ExpnIndex;
+    fn index_mut(self, hashes: &mut IndexGraphHashes) -> &mut Fingerprint {
+        hashes.expn.entry(self).or_insert(Fingerprint::ZERO)
+    }
+    fn into_encoded(self) -> Self::Encoded {
+        self.as_raw()
+    }
+}
+
+impl TableIndex for SyntaxContext {
+    type Encoded = u32;
+    fn index_mut(self, hashes: &mut IndexGraphHashes) -> &mut Fingerprint {
+        hashes.syntax.entry(self).or_insert(Fingerprint::ZERO)
+    }
+    fn into_encoded(self) -> Self::Encoded {
+        self.as_u32()
+    }
+}
+
+impl DirectedGraph for IndexGraph<'_> {
+    type Node = NodeIdx;
+
+    fn num_nodes(&self) -> usize {
+        self.nodes.len()
+    }
+}
+
+impl Successors for IndexGraph<'_> {
+    fn successors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
+        self.edges[node].iter().copied()
+    }
+}
+
+pub type NodeIdx = usize;
+pub type SccIdx = u32;
+
+#[derive(Debug, Copy, Clone)]
+pub struct FingerprintAnnotation {
+    pub fingerprint: Fingerprint,
+}
+
+impl Annotation for FingerprintAnnotation {
+    fn update_scc(&mut self, other: &Self) {
+        self.fingerprint = self.fingerprint.combine_commutative(other.fingerprint);
+    }
+
+    fn update_reachable(&mut self, other: &Self) {
+        self.fingerprint = self.fingerprint.combine_commutative(other.fingerprint);
+    }
+}
+
+pub struct FingerprintAnnotations<'a, 'tcx> {
+    graph: &'a IndexGraph<'tcx>,
+    hashes: &'a IndexGraphHashes,
+    scc_fingerprints: IndexVec<SccIdx, Fingerprint>,
+}
+
+impl<'a, 'tcx> FingerprintAnnotations<'a, 'tcx> {
+    pub fn new(graph: &'a IndexGraph<'tcx>, hashes: &'a IndexGraphHashes) -> Self {
+        Self { graph, hashes, scc_fingerprints: IndexVec::with_capacity(graph.nodes.len()) }
+    }
+}
+
+impl<'a, 'tcx> Annotations<NodeIdx> for FingerprintAnnotations<'a, 'tcx> {
+    type Ann = FingerprintAnnotation;
+    type SccIdx = SccIdx;
+
+    fn new(&self, node: NodeIdx) -> FingerprintAnnotation {
+        FingerprintAnnotation {
+            fingerprint: if let Some(encoded_data_hash) =
+                self.hashes.get_node(self.graph.nodes.get_index(node).unwrap().0)
+            {
+                self.graph.nodes.get_index(node).unwrap().1.combine_commutative(encoded_data_hash)
+            } else {
+                *self.graph.nodes.get_index(node).unwrap().1
+            },
         }
     }
 
-    pub(super) fn record(&mut self, to: DefIndex) {
-        let to = LocalDefId { local_def_index: to };
-        match self.record_mode {
-            RecordMode::All => {
-                self.graph[self.from.unwrap()].insert(to);
-            }
-            RecordMode::ReachableAtLevel(level) => {
-                if self.effective_visibilities.is_public_at_level(to, level) {
-                    self.graph[self.from.unwrap()].insert(to);
-                }
-            }
-            RecordMode::None => (),
-        }
+    fn annotate_scc(&mut self, scc: SccIdx, annotation: FingerprintAnnotation) {
+        debug_assert_eq!(self.scc_fingerprints.len(), scc.index());
+        self.scc_fingerprints.push(annotation.fingerprint);
     }
+}
+
+fn build_public_hashes(graph: &IndexGraph<'_>, hashes: &IndexGraphHashes) -> ItemPublicHashes {
+    let mut roots = graph.roots.clone();
+    let mut annotations = FingerprintAnnotations::new(graph, hashes);
+    let sccs = Sccs::<_, SccIdx>::new_with_annotation(graph, &mut annotations);
+    todo!()
+}
+
+#[derive(Default)]
+pub(crate) struct ItemPublicHashes {
+    local: UnordMap<LocalDefId, Fingerprint>,
+    expn: UnordMap<LocalExpnId, Fingerprint>,
+    syntax: UnordMap<SyntaxContext, Fingerprint>,
 }

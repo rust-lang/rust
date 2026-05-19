@@ -575,8 +575,8 @@ define_tables! {
     //
     // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
     def_keys: Table<RDRHashNone, DefIndex, LazyValue<DefKey>>,
-    // FIXME do we need to hash this?
-    proc_macro_quoted_spans: Table<RDRHashAll, usize, LazyValue<Span>>,
+    // only used for proc macros, we don't calculate public hash for proc macros
+    proc_macro_quoted_spans: Table<RDRHashNone, usize, LazyValue<Span>>,
     // FIXME do we need to hash this?
     variant_data: Table<RDRHashAll, DefIndex, LazyValue<VariantData>>,
     // FIXME do we need to hash this?

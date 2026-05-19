@@ -5,7 +5,7 @@ use rustc_index::Idx;
 
 use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHashingContext, TablePublicApiHasher,
+    Hashed, PublicApiHashingContext, TableIndex, TablePublicApiHasher,
 };
 use crate::rmeta::*;
 
@@ -465,7 +465,7 @@ where
 {
     pub(crate) fn set_some_hashed<'a, HashedT>(
         &mut self,
-        i: I,
+        i: impl TableIndex<Encoded = I>,
         value: T,
         hashed: HashedT,
         hcx: &mut PublicApiHashingContext<'a>,
@@ -473,7 +473,7 @@ where
         HashedT: StableHash,
     {
         self.hasher.digest(i, hashed, hcx);
-        self.set(i, Some(value));
+        self.set(i.into_encoded(), Some(value));
     }
 }
 
@@ -536,7 +536,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
 
     pub(super) fn set_hashed<HashedT>(
         &mut self,
-        i: I,
+        i: impl TableIndex<Encoded = I>,
         value: T,
         hashed: HashedT,
         hcx: &mut PublicApiHashingContext<'_>,
@@ -544,7 +544,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         HashedT: StableHash,
     {
         self.hasher.digest(i, hashed, hcx);
-        self.set(i, value);
+        self.set(i.into_encoded(), value);
     }
 
     /// Sets the table value if it is not default.

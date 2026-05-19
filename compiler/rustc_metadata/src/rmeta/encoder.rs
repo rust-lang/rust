@@ -24,15 +24,15 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocContainer, Visibility};
+use rustc_middle::ty::{AssocContainer, PredicateKind, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
-    ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
-    Symbol, SyntaxContext, sym,
+    ByteSymbol, ExternalSource, FileName, SourceFile, SpanEncoder, StableSourceFileId, Symbol,
+    SyntaxContext, sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -42,7 +42,7 @@ use self::public_api_hasher::{
 };
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
-use crate::rmeta::encoder::public_api_hasher::{LocalDefIdGraphBuilder, RecordMode};
+use crate::rmeta::encoder::public_api_hasher::{IndexGraphBuilder, LocalNode, Node, RecordMode};
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
@@ -54,7 +54,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     tables: TableBuilders,
 
     lazy_state: LazyState,
-    span_shorthands: FxHashMap<Span, usize>,
+    span_shorthands: FxHashMap<Span, (usize, Vec<Node<'tcx>>)>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
 
@@ -75,7 +75,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
-    local_def_id_graph_builder: Option<LocalDefIdGraphBuilder<'tcx>>,
+    index_graph_builder: Option<IndexGraphBuilder<'tcx>>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -156,18 +156,18 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     fn encode_def_index(&mut self, def_index: DefIndex) {
         // This is treated as if we are encoding a LocalDefId for now
         self.emit_u32(def_index.as_u32());
-        self.record_encoded_local_def_id(def_index);
+        self.record_encoded_index(LocalDefId { local_def_index: def_index });
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
         def_id.krate.encode(self);
+        // this must not be encoded as a DefIndex, as that would record it as a LocalDefId
         self.emit_u32(def_id.index.as_u32());
-        if def_id.is_local() {
-            self.record_encoded_local_def_id(def_id.index);
-        }
+        self.record_encoded_index(def_id);
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
+        self.record_encoded_index(syntax_context);
         rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_ctxt, self);
     }
 
@@ -181,6 +181,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
         expn_id.krate.encode(self);
         expn_id.local_id.encode(self);
+        self.record_encoded_index(expn_id);
     }
 
     fn encode_span(&mut self, span: Span) {
@@ -188,7 +189,13 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
                 // This saves space since smaller numbers encode in less bits.
-                let last_location = *o.get();
+                let (last_location, edges) = o.get();
+                if let Some(local_def_id_graph_builder) = self.index_graph_builder.as_mut() {
+                    for edge in edges {
+                        local_def_id_graph_builder.record(*edge);
+                    }
+                }
+                let last_location = *last_location;
                 // This cannot underflow. Metadata is written with increasing position(), so any
                 // previously saved offset must be smaller than the current position.
                 let offset = self.opaque.position() - last_location;
@@ -208,11 +215,11 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
                     });
                 }
             }
-            Entry::Vacant(v) => {
+            Entry::Vacant(_v) => {
                 let position = self.opaque.position();
-                v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
-                span.data().encode(self);
+                let edges = encode_span_data(span, self);
+                self.span_shorthands.insert(span, (position, edges));
             }
         }
     }
@@ -232,150 +239,170 @@ fn bytes_needed(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()).div_ceil(u8::BITS) as usize
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        // Don't serialize any `SyntaxContext`s from a proc-macro crate,
-        // since we don't load proc-macro dependencies during serialization.
-        // This means that any hygiene information from macros used *within*
-        // a proc-macro crate (e.g. invoking a macro that expands to a proc-macro
-        // definition) will be lost.
-        //
-        // This can show up in two ways:
-        //
-        // 1. Any hygiene information associated with identifier of
-        // a proc macro (e.g. `#[proc_macro] pub fn $name`) will be lost.
-        // Since proc-macros can only be invoked from a different crate,
-        // real code should never need to care about this.
-        //
-        // 2. Using `Span::def_site` or `Span::mixed_site` will not
-        // include any hygiene information associated with the definition
-        // site. This means that a proc-macro cannot emit a `$crate`
-        // identifier which resolves to one of its dependencies,
-        // which also should never come up in practice.
-        //
-        // Additionally, this affects `Span::parent`, and any other
-        // span inspection APIs that would otherwise allow traversing
-        // the `SyntaxContexts` associated with a span.
-        //
-        // None of these user-visible effects should result in any
-        // cross-crate inconsistencies (getting one behavior in the same
-        // crate, and a different behavior in another crate) due to the
-        // limited surface that proc-macros can expose.
-        //
-        // IMPORTANT: If this is ever changed, be sure to update
-        // `rustc_span::hygiene::raw_encode_expn_id` to handle
-        // encoding `ExpnData` for proc-macro crates.
-        let ctxt = if s.is_proc_macro { SyntaxContext::root() } else { self.ctxt };
+fn encode_span_data<'a, 'tcx>(span: Span, s: &mut EncodeContext<'a, 'tcx>) -> Vec<Node<'tcx>> {
+    let this = span.data();
+    let mut nodes = Vec::<Node<'tcx>>::new();
+    // Don't serialize any `SyntaxContext`s from a proc-macro crate,
+    // since we don't load proc-macro dependencies during serialization.
+    // This means that any hygiene information from macros used *within*
+    // a proc-macro crate (e.g. invoking a macro that expands to a proc-macro
+    // definition) will be lost.
+    //
+    // This can show up in two ways:
+    //
+    // 1. Any hygiene information associated with identifier of
+    // a proc macro (e.g. `#[proc_macro] pub fn $name`) will be lost.
+    // Since proc-macros can only be invoked from a different crate,
+    // real code should never need to care about this.
+    //
+    // 2. Using `Span::def_site` or `Span::mixed_site` will not
+    // include any hygiene information associated with the definition
+    // site. This means that a proc-macro cannot emit a `$crate`
+    // identifier which resolves to one of its dependencies,
+    // which also should never come up in practice.
+    //
+    // Additionally, this affects `Span::parent`, and any other
+    // span inspection APIs that would otherwise allow traversing
+    // the `SyntaxContexts` associated with a span.
+    //
+    // None of these user-visible effects should result in any
+    // cross-crate inconsistencies (getting one behavior in the same
+    // crate, and a different behavior in another crate) due to the
+    // limited surface that proc-macros can expose.
+    //
+    // IMPORTANT: If this is ever changed, be sure to update
+    // `rustc_span::hygiene::raw_encode_expn_id` to handle
+    // encoding `ExpnData` for proc-macro crates.
+    let ctxt = if s.is_proc_macro { SyntaxContext::root() } else { this.ctxt };
 
-        if self.is_dummy() {
-            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
-            tag.encode(s);
-            if tag.context().is_none() {
-                ctxt.encode(s);
-            }
-            return;
-        }
-
-        // The Span infrastructure should make sure that this invariant holds:
-        debug_assert!(self.lo <= self.hi);
-
-        if !s.source_file_cache.0.contains(self.lo) {
-            let source_map = s.tcx.sess.source_map();
-            let source_file_index = source_map.lookup_source_file_idx(self.lo);
-            s.source_file_cache =
-                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
-        }
-        let (ref source_file, source_file_index) = s.source_file_cache;
-        debug_assert!(source_file.contains(self.lo));
-
-        if !source_file.contains(self.hi) {
-            // Unfortunately, macro expansion still sometimes generates Spans
-            // that malformed in this way.
-            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
-            tag.encode(s);
-            if tag.context().is_none() {
-                ctxt.encode(s);
-            }
-            return;
-        }
-
-        // There are two possible cases here:
-        // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
-        // crate we are writing metadata for. When the metadata for *this* crate gets
-        // deserialized, the deserializer will need to know which crate it originally came
-        // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
-        // be deserialized after the rest of the span data, which tells the deserializer
-        // which crate contains the source map information.
-        // 2. This span comes from our own crate. No special handling is needed - we just
-        // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
-        // our own source map information.
-        //
-        // If we're a proc-macro crate, we always treat this as a local `Span`.
-        // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
-        // if we're a proc-macro crate.
-        // This allows us to avoid loading the dependencies of proc-macro crates: all of
-        // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
-            // To simplify deserialization, we 'rebase' this span onto the crate it originally came
-            // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
-            // values are relative to the source map information for the 'foreign' crate whose
-            // CrateNum we write into the metadata. This allows `imported_source_files` to binary
-            // search through the 'foreign' crate's source map information, using the
-            // deserialized 'lo' and 'hi' values directly.
-            //
-            // All of this logic ensures that the final result of deserialization is a 'normal'
-            // Span that can be used without any additional trouble.
-            let metadata_index = {
-                // Introduce a new scope so that we drop the 'read()' temporary
-                match &*source_file.external_src.read() {
-                    ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
-                    src => panic!("Unexpected external source {src:?}"),
-                }
-            };
-
-            (SpanKind::Foreign, metadata_index)
-        } else {
-            // Record the fact that we need to encode the data for this `SourceFile`
-            let source_files =
-                s.required_source_files.as_mut().expect("Already encoded SourceMap!");
-            let (metadata_index, _) = source_files.insert_full(source_file_index);
-            let metadata_index: u32 =
-                metadata_index.try_into().expect("cannot export more than U32_MAX files");
-
-            (SpanKind::Local, metadata_index)
-        };
-
-        // Encode the start position relative to the file start, so we profit more from the
-        // variable-length integer encoding.
-        // IMPORTANT: if this is ever changed, the public api span hashing must be updated. It
-        // currently uses the `hash_spans_as_parentless` option to make sure spans are hashed not
-        // relative to their parent, but relative to their file.
-        let lo = self.lo - source_file.start_pos;
-
-        // Encode length which is usually less than span.hi and profits more
-        // from the variable-length integer encoding that we use.
-        let len = self.hi - self.lo;
-
-        let tag = SpanTag::new(kind, ctxt, len.0 as usize);
+    if s.index_graph_builder.is_some() {
+        nodes.push(ctxt.into());
+    }
+    if this.is_dummy() {
+        let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
         tag.encode(s);
         if tag.context().is_none() {
             ctxt.encode(s);
+        } else {
+            s.record_encoded_index(ctxt);
         }
-        lo.encode(s);
-        if tag.length().is_none() {
-            len.encode(s);
+        return nodes;
+    }
+
+    // The Span infrastructure should make sure that this invariant holds:
+    debug_assert!(this.lo <= this.hi);
+
+    if !s.source_file_cache.0.contains(this.lo) {
+        let source_map = s.tcx.sess.source_map();
+        let source_file_index = source_map.lookup_source_file_idx(this.lo);
+        s.source_file_cache =
+            (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
+    }
+    let (ref source_file, source_file_index) = s.source_file_cache;
+    debug_assert!(source_file.contains(this.lo));
+
+    if !source_file.contains(this.hi) {
+        // Unfortunately, macro expansion still sometimes generates Spans
+        // that malformed in this way.
+        let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
+        tag.encode(s);
+        if tag.context().is_none() {
+            ctxt.encode(s);
+        } else {
+            s.record_encoded_index(ctxt);
         }
+        return nodes;
+    }
 
-        // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
-        metadata_index.encode(s);
+    // There are two possible cases here:
+    // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
+    // crate we are writing metadata for. When the metadata for *this* crate gets
+    // deserialized, the deserializer will need to know which crate it originally came
+    // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
+    // be deserialized after the rest of the span data, which tells the deserializer
+    // which crate contains the source map information.
+    // 2. This span comes from our own crate. No special handling is needed - we just
+    // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
+    // our own source map information.
+    //
+    // If we're a proc-macro crate, we always treat this as a local `Span`.
+    // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
+    // if we're a proc-macro crate.
+    // This allows us to avoid loading the dependencies of proc-macro crates: all of
+    // the information we need to decode `Span`s is stored in the proc-macro crate.
+    let source_file_start = source_file.start_pos;
+    let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+        // To simplify deserialization, we 'rebase' this span onto the crate it originally came
+        // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
+        // values are relative to the source map information for the 'foreign' crate whose
+        // CrateNum we write into the metadata. This allows `imported_source_files` to binary
+        // search through the 'foreign' crate's source map information, using the
+        // deserialized 'lo' and 'hi' values directly.
+        //
+        // All of this logic ensures that the final result of deserialization is a 'normal'
+        // Span that can be used without any additional trouble.
+        let metadata_index = {
+            // Introduce a new scope so that we drop the 'read()' temporary
+            match &*source_file.external_src.read() {
+                ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
+                src => panic!("Unexpected external source {src:?}"),
+            }
+        };
+        (SpanKind::Foreign, metadata_index)
+    } else {
+        // Record the fact that we need to encode the data for this `SourceFile`
+        let source_files = s.required_source_files.as_mut().expect("Already encoded SourceMap!");
+        let (metadata_index, _) = source_files.insert_full(source_file_index);
+        let metadata_index: u32 =
+            metadata_index.try_into().expect("cannot export more than U32_MAX files");
 
-        if kind == SpanKind::Foreign {
-            // This needs to be two lines to avoid holding the `s.source_file_cache`
-            // while calling `cnum.encode(s)`
-            let cnum = s.source_file_cache.0.cnum;
-            cnum.encode(s);
+        (SpanKind::Local, metadata_index)
+    };
+    if s.index_graph_builder.is_some() {
+        if let Some(parent) = this.parent {
+            let node = Node::ParentSpan(parent);
+            nodes.push(node);
+            s.record_encoded_index(node);
+        } else {
+            let node = Node::ParentlessSpan(span);
+            nodes.push(node);
+            s.record_encoded_index(node);
         }
     }
+
+    // Encode the start position relative to the file start, so we profit more from the
+    // variable-length integer encoding.
+    // IMPORTANT: if this is ever changed, the public api span hashing must be updated. It
+    // currently uses the `hash_spans_as_parentless` option to make sure spans are hashed not
+    // relative to their parent, but relative to their file.
+    let lo = this.lo - source_file_start;
+
+    // Encode length which is usually less than span.hi and profits more
+    // from the variable-length integer encoding that we use.
+    let len = this.hi - this.lo;
+
+    let tag = SpanTag::new(kind, ctxt, len.0 as usize);
+    tag.encode(s);
+    if tag.context().is_none() {
+        ctxt.encode(s);
+    } else {
+        s.record_encoded_index(ctxt);
+    }
+    lo.encode(s);
+    if tag.length().is_none() {
+        len.encode(s);
+    }
+
+    // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
+    metadata_index.encode(s);
+
+    if kind == SpanKind::Foreign {
+        // This needs to be two lines to avoid holding the `s.source_file_cache`
+        // while calling `cnum.encode(s)`
+        let cnum = s.source_file_cache.0.cnum;
+        cnum.encode(s);
+    }
+    nodes
 }
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
@@ -392,8 +419,34 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
+    fn type_encode_begin(&mut self, ty: Ty<'tcx>) {
+        if let Some(index_graph_builder) = self.index_graph_builder.as_mut() {
+            index_graph_builder.record(Node::Ty(ty));
+            index_graph_builder.record_mode.push(RecordMode::from(LocalNode::Ty(ty)));
+        }
+    }
+
+    fn type_encode_end(&mut self) {
+        if let Some(index_graph_builder) = self.index_graph_builder.as_mut() {
+            index_graph_builder.record_mode.pop();
+        }
+    }
+
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
+    }
+
+    fn predicate_encode_begin(&mut self, pred: PredicateKind<'tcx>) {
+        if let Some(index_graph_builder) = self.index_graph_builder.as_mut() {
+            index_graph_builder.record(Node::Predicate(pred));
+            index_graph_builder.record_mode.push(RecordMode::from(LocalNode::Predicate(pred)));
+        }
+    }
+
+    fn predicate_encode_end(&mut self) {
+        if let Some(index_graph_builder) = self.index_graph_builder.as_mut() {
+            index_graph_builder.record_mode.pop();
+        }
     }
 
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
@@ -411,18 +464,18 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {{
-        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value, RecordMode::All)
+        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value, RecordMode::from)
     }};
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, RecordMode::$mode:tt ) => {{
         record!($self.$tables.$table[$def_id] <- $value, $hcx, $value, RecordMode::$mode)
     }};
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr ) => {{
-        record!($self.$tables.$table[$def_id] <- $value, $hcx, $hashed_value, RecordMode::All)
+        record!($self.$tables.$table[$def_id] <- $value, $hcx, $hashed_value, RecordMode::from)
     }};
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr, $record_mode:expr) => {{
         {
             let value = $value;
-            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+            let lazy = $self.with_record_mode($record_mode(LocalNode::DefId($def_id.expect_local())), |this|
                 this.lazy(value)
             );
             $self.$tables.$table.set_some_hashed(
@@ -439,16 +492,16 @@ macro_rules! record {
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {
-        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::All)
+        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::from)
     };
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {
-        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::All)
+        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::from)
     };
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr, $record_mode:expr) => {{
         {
             let value = $value;
             let mut hasher = $self.$tables.$table.iter_hasher();
-            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+            let lazy = $self.with_record_mode($record_mode(LocalNode::DefId($def_id.expect_local())), |this|
                 this.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map))
             );
             $self.$tables.$table.set_some_hashed(
@@ -463,16 +516,16 @@ macro_rules! record_array {
 
 macro_rules! record_defaulted_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {
-        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::All)
+        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::from)
     };
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {
-        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::All)
+        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::from)
     };
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr, $record_mode:expr) => {{
         {
             let value = $value;
             let mut hasher = $self.$tables.$table.iter_hasher();
-            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+            let lazy = $self.with_record_mode($record_mode(LocalNode::DefId($def_id.expect_local())), |this|
                 this.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map))
             );
             $self.$tables.$table.set_hashed(
@@ -517,41 +570,23 @@ macro_rules! hashed_lazy_array {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn with_record_mode<F, T>(&mut self, mode: RecordMode, f: F) -> T
+    fn with_record_mode<F, T>(&mut self, mode: RecordMode<'tcx>, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
     {
-        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
-            let old = local_def_id_graph_builder.record_mode;
-            local_def_id_graph_builder.record_mode = mode;
+        if let Some(index_graph_builder) = self.index_graph_builder.as_mut() {
+            index_graph_builder.record_mode.push(mode);
             let res = f(self);
-            self.local_def_id_graph_builder.as_mut().unwrap().record_mode = old;
+            self.index_graph_builder.as_mut().unwrap().record_mode.pop();
             res
         } else {
             f(self)
         }
     }
 
-    fn with_record_mode_and_index<F, T>(&mut self, mode: RecordMode, from: DefIndex, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
-            let old = local_def_id_graph_builder.record_mode;
-            let old_from = local_def_id_graph_builder.from;
-            local_def_id_graph_builder.record_mode = mode;
-            local_def_id_graph_builder.from = Some(LocalDefId { local_def_index: from });
-            let res = f(self);
-            self.local_def_id_graph_builder.as_mut().unwrap().record_mode = old;
-            self.local_def_id_graph_builder.as_mut().unwrap().from = old_from;
-            res
-        } else {
-            f(self)
-        }
-    }
-    fn record_encoded_local_def_id(&mut self, to: DefIndex) {
-        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
-            local_def_id_graph_builder.record(to);
+    fn record_encoded_index(&mut self, index: impl Into<Node<'tcx>>) {
+        if let Some(local_def_id_graph_builder) = self.index_graph_builder.as_mut() {
+            local_def_id_graph_builder.record(index.into());
         }
     }
 
@@ -689,7 +724,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // is done.
         let required_source_files = self.required_source_files.take().unwrap();
 
-        let mut adapted = TableBuilder::<RDRHashAll<_>, _, _>::default();
+        // we don't hash the files here. What we need to hash for the public api comes from
+        let mut adapted = TableBuilder::<RDRHashNone<_>, _, _>::default();
 
         let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
 
@@ -742,39 +778,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let on_disk_index: u32 =
                 on_disk_index.try_into().expect("cannot export more than U32_MAX files");
-            adapted.set_some_hashed(
-                on_disk_index,
-                self.lazy(&adapted_source_file),
-                {
-                    let SourceFile {
-                        name,
-                        src,
-                        src_hash,
-                        checksum_hash,
-                        external_src,
-                        start_pos,
-                        normalized_source_len,
-                        unnormalized_source_len,
-                        lines,
-                        multibyte_chars,
-                        normalized_pos,
-                        stable_id,
-                        cnum,
-                    } = &adapted_source_file;
-                    // not encoded
-                    let _ = (src, external_src, start_pos);
-                    // hashed as adapted_source_file.lines()
-                    let _ = lines;
-                    // hashed with stable_id
-                    let _ = name;
-                    (
-                        (src_hash, checksum_hash, normalized_source_len, unnormalized_source_len),
-                        (adapted_source_file.lines(), multibyte_chars, stable_id, normalized_pos),
-                        cnum,
-                    )
-                },
-                hcx,
-            );
+            adapted.set_some_unhashed(on_disk_index, self.lazy(&adapted_source_file));
         }
 
         adapted.encode(&mut self.opaque, hcx)
@@ -965,7 +969,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
         };
-        let crate_root = crate_root.into_crate_root(self.tcx, hcx);
+        let crate_root = crate_root.into_crate_root(self, hcx);
         let hashes = crate_root.header.hashes;
 
         let root = stat!("final", || { self.lazy(crate_root) });
@@ -2221,23 +2225,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.hygiene_ctxt.encode(
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), index, ctxt_data| {
-                syntax_contexts.set_some_hashed(
-                    index.as_u32(),
-                    this.lazy(ctxt_data),
-                    ctxt_data,
-                    &mut hcx.borrow_mut(),
-                );
+                this.with_record_mode(RecordMode::From(LocalNode::SyntaxContext(index)), |this| {
+                    syntax_contexts.set_some_hashed(
+                        index,
+                        this.lazy(ctxt_data),
+                        ctxt_data,
+                        &mut hcx.borrow_mut(),
+                    );
+                });
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 if let Some(index) = index.as_local() {
-                    expn_data_table.set_some_hashed(
-                        index.as_raw(),
-                        this.lazy(expn_data),
-                        index,
-                        &mut hcx.borrow_mut(),
-                    );
-                    // don't need to hash it since it is already included with `expn_data_table`
-                    expn_hash_table.set_some_unhashed(index.as_raw(), this.lazy(hash));
+                    this.with_record_mode(RecordMode::From(LocalNode::ExpnId(index)), |this| {
+                        expn_data_table.set_some_hashed(
+                            index,
+                            this.lazy(expn_data),
+                            index,
+                            &mut hcx.borrow_mut(),
+                        );
+                        // don't need to hash it since it is already included with `expn_data_table`
+                        expn_hash_table.set_some_unhashed(index.as_raw(), this.lazy(hash));
+                    });
                 }
             },
         );
@@ -2263,7 +2271,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.lazy_array(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
                 let encoded_span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set_some_hashed(i, encoded_span, span, hcx);
+                self.tables.proc_macro_quoted_spans.set_some_unhashed(i, encoded_span);
             }
 
             self.tables.def_kind.set_some_local_hashed(CRATE_DEF_ID, DefKind::Mod, hcx);
@@ -2909,7 +2917,7 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),
-        local_def_id_graph_builder: hash_public_api.then(|| LocalDefIdGraphBuilder::new(tcx)),
+        index_graph_builder: hash_public_api.then(|| Default::default()),
     };
 
     // Encode the rustc version string in a predictable location.
