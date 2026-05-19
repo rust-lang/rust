@@ -688,8 +688,7 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s)
-            | PatKind::Deref(s)
+            PatKind::Deref(s)
             | PatKind::Ref(s, _, _)
             | PatKind::Paren(s)
             | PatKind::Guard(s, _) => s.walk(it),
@@ -901,9 +900,6 @@ pub enum PatKind {
 
     /// A tuple pattern (`(a, b)`).
     Tuple(ThinVec<Pat>),
-
-    /// A `box` pattern.
-    Box(Box<Pat>),
 
     /// A `deref` pattern (currently `deref!()` macro-based syntax).
     Deref(Box<Pat>),

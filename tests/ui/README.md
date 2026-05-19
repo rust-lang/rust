@@ -179,12 +179,11 @@ Tests for borrow checking. E.g. lifetime analysis, borrowing rules, and diagnost
 
 ## `tests/ui/box/`: Box Behavior
 
-Tests for `Box<T>` smart pointer and `#![feature(box_patterns)]`. E.g. allocation, deref coercion, and edge cases in box pattern matching and placement.
+Tests for the `Box<T>` smart pointer. E.g. allocation, deref coercion, and edge cases in box pattern matching and placement.
 
 See:
 
 - [`std::box::Boxed`](https://doc.rust-lang.org/std/boxed/struct.Box.html)
-- [Tracking issue for `box_patterns` feature #29641](https://github.com/rust-lang/rust/issues/29641)
 
 ## `tests/ui/builtin-superkinds/`: Built-in Trait Hierarchy Tests
 

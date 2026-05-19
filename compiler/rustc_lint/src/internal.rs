@@ -674,9 +674,6 @@ impl EarlyLintPass for BadUseOfFindAttr {
                         find_attr_kind_in_pat(cx, pat);
                     }
                 }
-                PatKind::Box(pat) => {
-                    find_attr_kind_in_pat(cx, pat);
-                }
                 PatKind::Deref(pat) => {
                     find_attr_kind_in_pat(cx, pat);
                 }

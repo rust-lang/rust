@@ -117,9 +117,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
                         break hir::PatKind::Tuple(pats, ddpos);
                     }
-                    PatKind::Box(inner) => {
-                        break hir::PatKind::Box(self.lower_pat(inner));
-                    }
                     PatKind::Deref(inner) => {
                         break hir::PatKind::Deref(self.lower_pat(inner));
                     }
