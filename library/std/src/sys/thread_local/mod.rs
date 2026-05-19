@@ -51,9 +51,9 @@ cfg_select! {
         pub(crate) use native::{LocalPointer, local_pointer};
     }
     _ => {
-        mod os;
-        pub(crate) use os::{LocalPointer, local_pointer};
-        pub use os::{Storage, thread_local_inner, value_align};
+        mod key_based;
+        pub use key_based::{Key, thread_local_inner};
+        pub(crate) use key_based::{LocalPointer, local_pointer};
     }
 }
 
@@ -135,9 +135,12 @@ pub(crate) mod guard {
             mod solid;
             pub(crate) use solid::enable;
         }
-        _ => {
+        target_thread_local => {
             mod key;
             pub(crate) use key::enable;
+        }
+        _ => {
+            pub(crate) use super::key_based::init as enable;
         }
     }
 }
@@ -170,7 +173,7 @@ pub(crate) mod key {
             #[cfg(test)]
             mod tests;
             mod windows;
-            pub(super) use windows::{Key, LazyKey, get, run_dtors, set};
+            pub(super) use windows::{LazyKey, get, run_dtors, set};
         }
         all(target_vendor = "fortanix", target_env = "sgx") => {
             mod racy;

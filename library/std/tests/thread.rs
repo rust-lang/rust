@@ -63,14 +63,14 @@ fn thread_local_hygeiene() {
 
     #![allow(dead_code)]
     type LocalKey = ();
-    type Storage = ();
+    type Key = ();
     type LazyStorage = ();
     type EagerStorage = ();
     #[allow(non_camel_case_types)]
     type usize = ();
     thread_local! {
         static A: LocalKey = const { () };
-        static B: Storage = const { () };
+        static B: Key = const { () };
         static C: LazyStorage = const { () };
         static D: EagerStorage = const { () };
     }
