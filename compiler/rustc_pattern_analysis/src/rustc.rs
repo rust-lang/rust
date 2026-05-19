@@ -824,14 +824,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
             }
-            DerefPattern(_) if pat.ty().is_box() && !self.tcx.features().deref_patterns() => {
-                // FIXME(deref_patterns): Remove this special handling once `box_patterns` is gone.
-                // HACK(@dianne): `box _` syntax is exposed on stable in diagnostics, e.g. to
-                // witness non-exhaustiveness of `match Box::new(0) { Box { .. } if false => {} }`.
-                // To avoid changing diagnostics before deref pattern syntax is finalized, let's use
-                // `box _` syntax unless `deref_patterns` is enabled.
-                format!("box {}", print(&pat.fields[0]))
-            }
             DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
