@@ -3763,6 +3763,50 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             Vec<(Span, String)>,
         ) -> bool,
     ) {
+        self.suggest_introducing_lifetime_filtered(err, name, |_| true, suggest);
+    }
+
+    pub(crate) fn suggest_introducing_lifetime_for_assoc_ty_binding(
+        &self,
+        err: &mut Diag<'_>,
+        lifetime: Span,
+    ) {
+        self.suggest_introducing_lifetime_filtered(
+            err,
+            None,
+            |kind| {
+                !matches!(
+                    kind,
+                    LifetimeBinderKind::FnPtrType
+                        | LifetimeBinderKind::PolyTrait
+                        | LifetimeBinderKind::WhereBound
+                )
+            },
+            |err, _higher_ranked, span, message, intro_sugg, _| {
+                err.multipart_suggestion(
+                    message,
+                    vec![(span, intro_sugg), (lifetime.shrink_to_hi(), "'a ".to_string())],
+                    Applicability::MaybeIncorrect,
+                );
+                false
+            },
+        );
+    }
+
+    fn suggest_introducing_lifetime_filtered(
+        &self,
+        err: &mut Diag<'_>,
+        name: Option<Ident>,
+        mut consider: impl FnMut(LifetimeBinderKind) -> bool,
+        suggest: impl Fn(
+            &mut Diag<'_>,
+            bool,
+            Span,
+            Cow<'static, str>,
+            String,
+            Vec<(Span, String)>,
+        ) -> bool,
+    ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
             let mut should_continue = true;
@@ -3775,7 +3819,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     {
                         continue;
                     }
-                    if let LifetimeBinderKind::ImplAssocType = kind {
+                    if matches!(kind, LifetimeBinderKind::ImplAssocType) || !consider(kind) {
                         continue;
                     }
 
