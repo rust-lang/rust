@@ -14,8 +14,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match statement.kind {
             mir::StatementKind::Assign((ref place, ref rvalue)) => {
                 let needs_retag = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some()
-                    && retag::rvalue_needs_retag(rvalue)
-                    && retag::place_needs_retag(place);
+                    && retag::rvalue_needs_retag(rvalue);
 
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {

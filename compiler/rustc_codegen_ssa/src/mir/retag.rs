@@ -1,16 +1,11 @@
 //! Experimental support for emitting retags as function calls in generated code.
 
-use rustc_middle::mir::{Place, Rvalue, WithRetag};
+use rustc_middle::mir::{Rvalue, WithRetag};
 
 use crate::mir::FunctionCx;
 use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::traits::BuilderMethods;
-
-pub(crate) fn place_needs_retag(place: &Place<'_>) -> bool {
-    // We're not interested in tracking stores to "outside" locations
-    !place.is_indirect_first_projection()
-}
 
 pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
     // `Ref` has its own internal retagging
