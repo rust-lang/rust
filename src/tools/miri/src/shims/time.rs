@@ -81,7 +81,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .now()
                     .duration_since(this.machine.monotonic_clock.epoch()),
             None => {
-                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
         };
 
@@ -109,7 +109,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -362,7 +362,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
         let Some(duration) = this.read_timespec(&duration)? else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         let deadline = this.machine.monotonic_clock.now().add_lossy(duration);
 
@@ -401,7 +401,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let Some(duration) = this.read_timespec(&timespec)? else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
         let timeout_style = if flags == 0 {

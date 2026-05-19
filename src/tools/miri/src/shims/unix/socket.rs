@@ -295,7 +295,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`socket`", reject_with)?;
-            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         let mut is_sock_nonblock = false;
@@ -369,17 +369,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let socket = this.read_scalar(socket)?.to_i32()?;
         let address = match this.read_socket_address(address, address_len, "bind")? {
             Ok(addr) => addr,
-            Err(e) => return this.set_last_error_and_return_i32(e),
+            Err(e) => return this.set_errno_and_return_neg1_i32(e),
         };
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -407,7 +407,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // See <https://man7.org/linux/man-pages/man3/bind.3p.html>
                         LibcError("EAFNOSUPPORT")
                     };
-                    return this.set_last_error_and_return_i32(err);
+                    return this.set_errno_and_return_neg1_i32(err);
                 }
 
                 *state = SocketState::Bound(address);
@@ -437,12 +437,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -460,7 +460,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // we now have an associated host socket.
                         this.machine.blocking_io.register(socket);
                     }
-                    Err(e) => return this.set_last_error_and_return_i32(e),
+                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
                 },
             SocketState::Initial => {
                 throw_unsup_format!(
@@ -500,12 +500,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -562,7 +562,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
                     this.write_scalar(Scalar::from_int(sockfd, dest.layout.size), dest)
                 }
-                Err(e) => this.set_last_error_and_return(e, dest),
+                Err(e) => this.set_errno_and_return_neg1(e, dest),
             }
         } else {
             // The socket is in blocking mode and thus the accept call should block
@@ -590,17 +590,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let socket = this.read_scalar(socket)?.to_i32()?;
         let address = match this.read_socket_address(address, address_len, "connect")? {
             Ok(address) => address,
-            Err(e) => return this.set_last_error_and_return(e, dest),
+            Err(e) => return this.set_errno_and_return_neg1(e, dest),
         };
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -610,7 +610,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             SocketState::Initial => { /* fall-through to below */ }
             // The socket is already in a connecting state.
             SocketState::Connecting(_) =>
-                return this.set_last_error_and_return(LibcError("EALREADY"), dest),
+                return this.set_errno_and_return_neg1(LibcError("EALREADY"), dest),
             // We don't return EISCONN for already connected sockets, for which we're
             // sure that the connection is established, since TCP sockets are usually
             // allowed to be connected multiple times.
@@ -630,7 +630,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // we now have an associated host socket.
                 this.machine.blocking_io.register(socket.clone());
             }
-            Err(e) => return this.set_last_error_and_return(e, dest),
+            Err(e) => return this.set_errno_and_return_neg1(e, dest),
         };
 
         if socket.is_non_block.get() {
@@ -640,7 +640,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Since the [`TcpStream::connect`] function of mio hides the EINPROGRESS
             // we just always return EINPROGRESS and check whether the connection succeeded
             // once we want to use the connected socket.
-            this.set_last_error_and_return(LibcError("EINPROGRESS"), dest)
+            this.set_errno_and_return_neg1(LibcError("EINPROGRESS"), dest)
         } else {
             // The socket is in blocking mode and thus the connect call should block
             // until the connection with the server is established.
@@ -661,7 +661,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // that it has been consumed by `ensure_connected`
                             // and is now stored in `socket.error`.
                             let err = socket.error.take().unwrap();
-                            this.set_last_error_and_return(err, &dest)
+                            this.set_errno_and_return_neg1(err, &dest)
                         } else {
                             this.write_scalar(Scalar::from_i32(0), &dest)
                         }
@@ -691,12 +691,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let mut is_op_non_block = false;
@@ -748,7 +748,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_last_error_and_return(LibcError("ENOTCONN"), &dest)
+                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
                     }
 
                     if is_op_non_block || socket.is_non_block.get() {
@@ -756,7 +756,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // thus don't want to block until we can send.
                         match this.try_non_block_send(&socket, buffer_ptr, length)? {
                             Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                            Err(e) => this.set_last_error_and_return(e, &dest),
+                            Err(e) => this.set_errno_and_return_neg1(e, &dest),
                         }
                     } else {
                         // The socket is in blocking mode and thus the send call should block
@@ -770,7 +770,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             } |this, result: Result<usize, IoError>| {
                                 match result {
                                     Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                                    Err(e) => this.set_last_error_and_return(e, &dest)
+                                    Err(e) => this.set_errno_and_return_neg1(e, &dest)
                                 }
                             }),
                         )
@@ -800,12 +800,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket
-            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let mut should_peek = false;
@@ -869,7 +869,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_last_error_and_return(LibcError("ENOTCONN"), &dest)
+                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
                     }
 
                     if is_op_non_block || socket.is_non_block.get() {
@@ -877,7 +877,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // thus don't want to block until we can receive.
                         match this.try_non_block_recv(&socket, buffer_ptr, length, should_peek)? {
                             Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                            Err(e) => this.set_last_error_and_return(e, &dest),
+                            Err(e) => this.set_errno_and_return_neg1(e, &dest),
                         }
                     } else {
                         // The socket is in blocking mode and thus the receive call should block
@@ -892,7 +892,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             } |this, result: Result<usize, IoError>| {
                                 match result {
                                     Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                                    Err(e) => this.set_last_error_and_return(e, &dest)
+                                    Err(e) => this.set_errno_and_return_neg1(e, &dest)
                                 }
                             }),
                         )
@@ -921,12 +921,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         if level == this.eval_libc_i32("SOL_SOCKET") {
@@ -939,7 +939,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if option_name == opt_so_nosigpipe {
                     if option_len != 4 {
                         // Option value should be C-int which is usually 4 bytes.
-                        return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                        return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                     }
                     let option_value =
                         this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
@@ -953,7 +953,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if option_name == opt_so_reuseaddr {
                 if option_len != 4 {
                     // Option value should be C-int which is usually 4 bytes.
-                    return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                 }
                 let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
                 let _val = this.read_scalar(&option_value)?.to_i32()?;
@@ -971,7 +971,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if option_name == opt_ip_ttl {
                 if option_len != 4 {
                     // Option value should be C-uint which is usually 4 bytes.
-                    return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                 }
                 let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.u32);
                 let ttl = this.read_scalar(&option_value)?.to_u32()?;
@@ -990,7 +990,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 return match result {
                     Ok(_) => interp_ok(Scalar::from_i32(0)),
-                    Err(e) => this.set_last_error_and_return_i32(e),
+                    Err(e) => this.set_errno_and_return_neg1_i32(e),
                 };
             } else {
                 throw_unsup_format!(
@@ -1003,7 +1003,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if option_name == opt_tcp_nodelay {
                 if option_len != 4 {
                     // Option value should be C-int which is usually 4 bytes.
-                    return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                 }
                 let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
                 let nodelay = this.read_scalar(&option_value)?.to_i32()? != 0;
@@ -1021,7 +1021,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 return match result {
                     Ok(_) => interp_ok(Scalar::from_i32(0)),
-                    Err(e) => this.set_last_error_and_return_i32(e),
+                    Err(e) => this.set_errno_and_return_neg1_i32(e),
                 };
             } else {
                 throw_unsup_format!(
@@ -1059,18 +1059,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
             // This socket option returns a value and thus we need to return EFAULT
             // when either the value or the length pointers are null pointers.
-            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         let socklen_layout = this.libc_ty_layout("socklen_t");
@@ -1132,7 +1132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let ttl = match ttl {
                     Ok(ttl) => ttl,
-                    Err(e) => return this.set_last_error_and_return_i32(e),
+                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
                 };
 
                 // Allocate new buffer on the stack with the `u32` layout.
@@ -1161,7 +1161,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let nodelay = match nodelay {
                     Ok(nodelay) => nodelay,
-                    Err(e) => return this.set_last_error_and_return_i32(e),
+                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
                 };
 
                 // Allocate new buffer on the stack with the `i32` layout.
@@ -1220,12 +1220,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -1250,7 +1250,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             SocketState::Listening(listener) =>
                 match listener.local_addr() {
                     Ok(address) => address,
-                    Err(e) => return this.set_last_error_and_return_i32(e),
+                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
                 },
             SocketState::Connecting(stream) | SocketState::Connected(stream) => {
                 if cfg!(windows) && matches!(&*state, SocketState::Connecting(_)) {
@@ -1267,7 +1267,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 match stream.local_addr() {
                     Ok(address) => address,
-                    Err(e) => return this.set_last_error_and_return_i32(e),
+                    Err(e) => return this.set_errno_and_return_neg1_i32(e),
                 }
             }
             // For non-bound sockets the POSIX manual says the returned address is unspecified.
@@ -1296,12 +1296,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
+            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -1322,7 +1322,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 } |this, result: Result<(), ()>| {
                     if result.is_err() {
-                        return this.set_last_error_and_return(LibcError("ENOTCONN"), &dest)
+                        return this.set_errno_and_return_neg1(LibcError("ENOTCONN"), &dest)
                     };
 
                     let SocketState::Connected(stream) = &*socket.state.borrow() else {
@@ -1331,7 +1331,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let address = match stream.peer_addr() {
                         Ok(address) => address,
-                        Err(e) => return this.set_last_error_and_return(e, &dest),
+                        Err(e) => return this.set_errno_and_return_neg1(e, &dest),
                     };
 
                     this.write_socket_address(
@@ -1354,12 +1354,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
-            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
         assert!(this.machine.communicate(), "cannot have `Socket` with isolation enabled!");
@@ -1368,7 +1368,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let state = socket.state.borrow();
 
         let (SocketState::Connecting(stream) | SocketState::Connected(stream)) = &*state else {
-            return this.set_last_error_and_return_i32(LibcError("ENOTCONN"));
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOTCONN"));
         };
 
         let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
@@ -1380,11 +1380,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ if is_write_shutdown => Shutdown::Write,
             _ if is_read_write_shutdown => Shutdown::Both,
             // An invalid value was passed to `how`.
-            _ => return this.set_last_error_and_return_i32(LibcError("EINVAL")),
+            _ => return this.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
         };
 
         if let Err(e) = stream.shutdown(how) {
-            return this.set_last_error_and_return_i32(e);
+            return this.set_errno_and_return_neg1_i32(e);
         };
 
         drop(state);
@@ -1458,7 +1458,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // We need to block the thread again as it would still block.
                         this.block_for_accept(socket, address_ptr, address_len_ptr, is_client_sock_nonblock, dest)
                     }
-                    Err(e) => this.set_last_error_and_return(e, &dest),
+                    Err(e) => this.set_errno_and_return_neg1(e, &dest),
                 }
             }),
         )
