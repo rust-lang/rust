@@ -754,7 +754,6 @@ symbols! {
         custom_mir,
         custom_test_frameworks,
         d32,
-        dbg_macro,
         dead_code,
         dead_code_pub_in_binary,
         dealloc,

@@ -92,26 +92,33 @@ impl LateLintPass<'_> for DbgMacro {
                                 (macro_call.span, String::from("()"))
                             }
                         },
-                        ExprKind::Match(args, _, _) => {
-                            let suggestion = match args.kind {
-                                // dbg!(1) => 1
-                                ExprKind::Tup([val]) => {
-                                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
-                                        .to_string()
+                        // dbg!(1)
+                        ExprKind::Match(val, ..) => (
+                            macro_call.span,
+                            snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
+                                .to_string(),
+                        ),
+                        // dbg!(2, 3)
+                        ExprKind::Tup(
+                            [
+                                Expr {
+                                    kind: ExprKind::Match(first, ..),
+                                    ..
                                 },
-                                // dbg!(2, 3) => (2, 3)
-                                ExprKind::Tup([first, .., last]) => {
-                                    let snippet = snippet_with_applicability(
-                                        cx,
-                                        first.span.source_callsite().to(last.span.source_callsite()),
-                                        "..",
-                                        &mut applicability,
-                                    );
-                                    format!("({snippet})")
+                                ..,
+                                Expr {
+                                    kind: ExprKind::Match(last, ..),
+                                    ..
                                 },
-                                _ => unreachable!(),
-                            };
-                            (macro_call.span, suggestion)
+                            ],
+                        ) => {
+                            let snippet = snippet_with_applicability(
+                                cx,
+                                first.span.source_callsite().to(last.span.source_callsite()),
+                                "..",
+                                &mut applicability,
+                            );
+                            (macro_call.span, format!("({snippet})"))
                         },
                         _ => unreachable!(),
                     };
