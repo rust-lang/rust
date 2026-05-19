@@ -730,13 +730,10 @@ impl<'db> InferenceContext<'_, 'db> {
                         trait_element_ty
                     }
                     None => {
-                        if self.lang_items.Index.is_some() && self.lang_items.Index_index.is_some()
-                        {
-                            self.push_diagnostic(InferenceDiagnostic::CannotIndexInto {
-                                expr: tgt_expr,
-                                found: base_t.store(),
-                            });
-                        }
+                        self.push_diagnostic(InferenceDiagnostic::CannotIndexInto {
+                            expr: tgt_expr,
+                            found: base_t.store(),
+                        });
                         self.types.types.error
                     }
                 }
