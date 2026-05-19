@@ -768,6 +768,9 @@ pub(crate) struct DiagMetadata<'ast> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     current_where_predicate: Option<&'ast WherePredicate>,
 
+    /// Whether we are visiting an associated type equality binding like `Trait<Assoc = &T>`.
+    in_assoc_ty_binding: bool,
+
     current_type_path: Option<&'ast Ty>,
 
     /// The current impl items (used to suggest).
@@ -1327,7 +1330,11 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         }
         match constraint.kind {
             AssocItemConstraintKind::Equality { ref term } => match term {
-                Term::Ty(ty) => self.visit_ty(ty),
+                Term::Ty(ty) => {
+                    let prev = replace(&mut self.diag_metadata.in_assoc_ty_binding, true);
+                    self.visit_ty(ty);
+                    self.diag_metadata.in_assoc_ty_binding = prev;
+                }
                 Term::Const(c) => {
                     self.resolve_anon_const(c, AnonConstKind::ConstArg(IsRepeatExpr::No))
                 }
@@ -1927,21 +1934,27 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
                 LifetimeRibKind::AnonymousReportError => {
                     let guar = if elided {
-                        let suggestion = self.lifetime_ribs[i..].iter().rev().find_map(|rib| {
-                            if let LifetimeRibKind::Generics {
-                                span,
-                                kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
-                                ..
-                            } = rib.kind
-                            {
-                                Some(crate::diagnostics::ElidedAnonymousLifetimeReportErrorSuggestion {
-                                    lo: span.shrink_to_lo(),
-                                    hi: lifetime.ident.span.shrink_to_hi(),
-                                })
-                            } else {
-                                None
-                            }
-                        });
+                        let suggestion = if self.diag_metadata.in_assoc_ty_binding {
+                            None
+                        } else {
+                            self.lifetime_ribs[i..].iter().rev().find_map(|rib| {
+                                if let LifetimeRibKind::Generics {
+                                    span,
+                                    kind:
+                                        LifetimeBinderKind::PolyTrait
+                                        | LifetimeBinderKind::WhereBound,
+                                    ..
+                                } = rib.kind
+                                {
+                                    Some(crate::diagnostics::ElidedAnonymousLifetimeReportErrorSuggestion {
+                                        lo: span.shrink_to_lo(),
+                                        hi: lifetime.ident.span.shrink_to_hi(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            })
+                        };
                         // are we trying to use an anonymous lifetime
                         // on a non GAT associated trait type?
                         if !self.in_func_body
@@ -1993,6 +2006,18 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
                                 err.emit()
                             }
+                        } else if self.diag_metadata.in_assoc_ty_binding {
+                            let mut err = self.r.dcx().create_err(
+                                crate::diagnostics::ElidedAnonymousLifetimeReportError {
+                                    span: lifetime.ident.span,
+                                    suggestion,
+                                },
+                            );
+                            self.suggest_introducing_lifetime_for_assoc_ty_binding(
+                                &mut err,
+                                lifetime.ident.span,
+                            );
+                            err.emit()
                         } else {
                             self.r.dcx().emit_err(
                                 crate::diagnostics::ElidedAnonymousLifetimeReportError {
