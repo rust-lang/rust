@@ -717,7 +717,13 @@ impl<I: Interner> AliasTerm<I> {
     }
 
     pub fn from_unevaluated_const(interner: I, ct: ty::UnevaluatedConst<I>) -> Self {
-        let kind = interner.alias_term_kind_from_def_id(ct.def.into());
+        let mut kind = interner.alias_term_kind_from_def_id(ct.def.into());
+        if let AliasTermKind::InherentConst { .. } = kind
+            && !interner.is_type_const(ct.def.into())
+        {
+            // Only `type const` inherent associated consts use inherent projection args.
+            kind = AliasTermKind::UnevaluatedConst { def_id: ct.def };
+        }
         AliasTerm::new_from_args(interner, kind, ct.args)
     }
 

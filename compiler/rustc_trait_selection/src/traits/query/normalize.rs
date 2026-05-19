@@ -4,7 +4,6 @@
 
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::def::DefKind;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
@@ -278,16 +277,17 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             _ => return constant.try_super_fold_with(self),
         };
 
-        let constant = match self.cx().def_kind(uv.def) {
-            DefKind::AnonConst => crate::traits::with_replaced_escaping_bound_vars(
-                self.infcx,
-                &mut self.universes,
-                constant,
-                |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
-            ),
-            _ => self
-                .try_fold_free_or_assoc(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))?
-                .expect_const(),
+        let alias_term = ty::AliasTerm::from_unevaluated_const(self.cx(), uv);
+        let constant = match alias_term.kind(self.cx()) {
+            ty::AliasTermKind::UnevaluatedConst { .. } => {
+                crate::traits::with_replaced_escaping_bound_vars(
+                    self.infcx,
+                    &mut self.universes,
+                    constant,
+                    |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
+                )
+            }
+            _ => self.try_fold_free_or_assoc(alias_term)?.expect_const(),
         };
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)

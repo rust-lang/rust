@@ -6,7 +6,6 @@
 use std::iter;
 
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
@@ -1079,12 +1078,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ));
                     }
 
-                    if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
-                        && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
-                    {
-                        self.add_wf_preds_for_inherent_projection(
-                            ty::AliasTerm::from_unevaluated_const(tcx, uv),
-                        );
+                    let alias_term = ty::AliasTerm::from_unevaluated_const(tcx, uv);
+                    if let ty::AliasTermKind::InherentConst { .. } = alias_term.kind(tcx) {
+                        self.add_wf_preds_for_inherent_projection(alias_term);
                         return; // Subtree is handled by above function
                     } else {
                         let obligations = self.nominal_obligations(uv.def, uv.args);

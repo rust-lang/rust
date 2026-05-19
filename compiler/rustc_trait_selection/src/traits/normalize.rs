@@ -2,7 +2,6 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
@@ -461,30 +460,18 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             _ => return ct.super_fold_with(self),
         };
 
-        // Note that the AssocConst and Const cases are unreachable on stable,
-        // unless a `min_generic_const_args` feature gate error has already
-        // been emitted earlier in compilation.
-        //
-        // That's because we can only end up with an Unevaluated ty::Const for a const item
-        // if it was marked with `type const`. Using this attribute without the mgca
-        // feature gate causes a parse error.
-        let ct = match tcx.def_kind(uv.def) {
-            DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
-                DefKind::Trait => self
-                    .normalize_trait_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                DefKind::Impl { of_trait: false } => self
-                    .normalize_inherent_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                kind => unreachable!(
-                    "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
-                    kind
-                ),
-            },
-            DefKind::Const { .. } => self
-                .normalize_free_alias(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                .expect_const(),
-            DefKind::AnonConst => {
+        let alias_term = ty::AliasTerm::from_unevaluated_const(tcx, uv);
+        let ct = match alias_term.kind(tcx) {
+            ty::AliasTermKind::ProjectionConst { .. } => {
+                self.normalize_trait_projection(alias_term).expect_const()
+            }
+            ty::AliasTermKind::InherentConst { .. } => {
+                self.normalize_inherent_projection(alias_term).expect_const()
+            }
+            ty::AliasTermKind::FreeConst { .. } => {
+                self.normalize_free_alias(alias_term).expect_const()
+            }
+            ty::AliasTermKind::UnevaluatedConst { .. } => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(
                     self.selcx.infcx,
@@ -494,7 +481,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 )
             }
             kind => {
-                unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
+                unreachable!("unexpected `AliasTermKind` for const alias to resolve to: {:?}", kind)
             }
         };
 
