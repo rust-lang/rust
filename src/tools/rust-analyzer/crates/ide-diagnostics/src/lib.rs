@@ -33,6 +33,7 @@ mod handlers {
     pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod cannot_be_dereferenced;
+    pub(crate) mod cannot_index_into;
     pub(crate) mod duplicate_field;
     pub(crate) mod elided_lifetimes_in_path;
     pub(crate) mod expected_array_or_slice_pat;
@@ -433,6 +434,7 @@ pub fn semantic_diagnostics(
         let d = match diag {
             AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
             AnyDiagnostic::CannotBeDereferenced(d) => handlers::cannot_be_dereferenced::cannot_be_dereferenced(&ctx, &d),
+            AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
             AnyDiagnostic::ExpectedArrayOrSlicePat(d) => handlers::expected_array_or_slice_pat::expected_array_or_slice_pat(&ctx, &d),
             AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),

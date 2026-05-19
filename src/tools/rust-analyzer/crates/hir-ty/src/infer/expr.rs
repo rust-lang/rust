@@ -729,8 +729,16 @@ impl<'db> InferenceContext<'_, 'db> {
                         self.table.select_obligations_where_possible();
                         trait_element_ty
                     }
-                    // FIXME: Report an error.
-                    None => self.types.types.error,
+                    None => {
+                        if self.lang_items.Index.is_some() && self.lang_items.Index_index.is_some()
+                        {
+                            self.push_diagnostic(InferenceDiagnostic::CannotIndexInto {
+                                expr: tgt_expr,
+                                found: base_t.store(),
+                            });
+                        }
+                        self.types.types.error
+                    }
                 }
             }
             Expr::Tuple { exprs, .. } => {
