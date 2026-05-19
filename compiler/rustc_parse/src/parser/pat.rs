@@ -667,7 +667,7 @@ impl<'a> Parser<'a> {
 
                     // Sub-patterns
                     // FIXME: this doesn't work with recursive subpats (`&mut &mut <err>`)
-                    PatKind::Box(subpat) | PatKind::Ref(subpat, _, _)
+                    PatKind::Ref(subpat, _, _)
                         if matches!(subpat.kind, PatKind::Err(_) | PatKind::Expr(_)) =>
                     {
                         self.maybe_add_suggestions_then_emit(subpat.span, p.span, false)
@@ -1491,9 +1491,11 @@ impl<'a> Parser<'a> {
 
             Ok(PatKind::Ident(BindingMode::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
-            let pat = Box::new(self.parse_pat_with_range_pat(false, None, None)?);
-            self.psess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
-            Ok(PatKind::Box(pat))
+            self.parse_pat_with_range_pat(false, None, None)?;
+            let guar = self
+                .dcx()
+                .emit_err(errors::BoxPatternsRemoved { span: box_span.to(self.prev_token.span) });
+            Ok(PatKind::Err(guar))
         }
     }
 
@@ -1727,7 +1729,7 @@ impl<'a> Parser<'a> {
     /// Parse a field in a struct pattern.
     ///
     /// ```ebnf
-    /// PatField = FieldName ":" Pat | "box"? "mut"? ByRef? Ident
+    /// PatField = FieldName ":" Pat | "mut"? ByRef? Ident
     /// ```
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {
         let hi;
@@ -1745,7 +1747,9 @@ impl<'a> Parser<'a> {
         } else {
             let is_box = self.eat_keyword(exp!(Box));
             if is_box {
-                self.psess.gated_spans.gate(sym::box_patterns, self.prev_token.span);
+                return Err(self
+                    .dcx()
+                    .create_err(errors::BoxPatternsRemoved { span: self.prev_token.span }));
             }
             let boxed_span = self.token.span;
             let mutability = self.parse_mutability();
@@ -1761,12 +1765,7 @@ impl<'a> Parser<'a> {
             ) {
                 self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
             }
-            let subpat = if is_box {
-                self.mk_pat(lo.to(hi), PatKind::Box(Box::new(fieldpat)))
-            } else {
-                fieldpat
-            };
-            (subpat, fieldname, true)
+            (fieldpat, fieldname, true)
         };
 
         Ok(PatField {

@@ -634,7 +634,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Or,
                 Path,
                 Tuple,
-                Box,
                 Deref,
                 Ref,
                 Expr,
