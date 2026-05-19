@@ -786,6 +786,7 @@ define_Conf! {
         manual_hash_one,
         manual_is_ascii_check,
         manual_is_power_of_two,
+        manual_isolate_lowest_one,
         manual_let_else,
         manual_midpoint,
         manual_non_exhaustive,

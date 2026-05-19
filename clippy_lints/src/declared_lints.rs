@@ -612,6 +612,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::operators::INVALID_UPCAST_COMPARISONS_INFO,
     crate::operators::MANUAL_DIV_CEIL_INFO,
     crate::operators::MANUAL_IS_MULTIPLE_OF_INFO,
+    crate::operators::MANUAL_ISOLATE_LOWEST_ONE_INFO,
     crate::operators::MANUAL_MIDPOINT_INFO,
     crate::operators::MISREFACTORED_ASSIGN_OP_INFO,
     crate::operators::MODULO_ARITHMETIC_INFO,

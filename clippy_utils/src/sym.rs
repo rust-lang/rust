@@ -648,6 +648,7 @@ generate! {
     warnings,
     wildcard_imports,
     with_capacity,
+    wrapping_neg,
     wrapping_offset,
     write,
     write_unaligned,
