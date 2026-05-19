@@ -14,9 +14,16 @@ where
 {
 }
 
-// Regression test for https://github.com/rust-lang/rust/issues/156456 and
-// https://github.com/rust-lang/rust/issues/122025.
+// Regression test for https://github.com/rust-lang/rust/issues/156456.
 fn associated_type_binding<I: IntoIterator<Item = &String>>() {}
+//~^ ERROR: `&` without an explicit lifetime name cannot be used here [E0637]
+
+trait T {
+    type Assoc;
+}
+
+// Regression test for https://github.com/rust-lang/rust/issues/122025.
+fn foo<F>(t: F) where F: T<Assoc=&str> {}
 //~^ ERROR: `&` without an explicit lifetime name cannot be used here [E0637]
 
 fn main() {}
