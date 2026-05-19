@@ -560,8 +560,31 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 }
 
 impl<'tcx> EmbargoVisitor<'tcx> {
-    fn check_assoc_item(&mut self, item: &ty::AssocItem, item_ev: EffectiveVisibility) {
+    fn check_assoc_item(&mut self, item: &ty::AssocItem, parent_ev: EffectiveVisibility) {
         let def_id = item.def_id.expect_local();
+
+        let item_ev = match item.container {
+            AssocContainer::Trait => {
+                self.update(def_id, parent_ev, Level::Reachable);
+                parent_ev
+            }
+            AssocContainer::InherentImpl => {
+                self.update_eff_vis(
+                    def_id,
+                    parent_ev,
+                    Some(self.tcx.local_visibility(def_id)),
+                    Level::Direct,
+                );
+                let Some(item_ev) = self.get(def_id) else { return };
+                item_ev
+            }
+            AssocContainer::TraitImpl(_) => {
+                self.update_eff_vis(def_id, parent_ev, None, Level::Direct);
+                let Some(item_ev) = self.get(def_id) else { return };
+                item_ev
+            }
+        };
+
         let tcx = self.tcx;
         let mut reach = self.reach(def_id, item_ev);
         reach.generics().predicates();
@@ -599,9 +622,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                     self.reach(def_id, item_ev).generics().predicates();
 
                     for assoc_item in self.tcx.associated_items(def_id).in_definition_order() {
-                        let def_id = assoc_item.def_id.expect_local();
-                        self.update(def_id, item_ev, Level::Reachable);
-
                         self.check_assoc_item(assoc_item, item_ev);
                     }
                 }
@@ -640,14 +660,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
 
                 for assoc_item in self.tcx.associated_items(def_id).in_definition_order() {
-                    let def_id = assoc_item.def_id.expect_local();
-                    let max_vis =
-                        if of_trait { None } else { Some(self.tcx.local_visibility(def_id)) };
-                    self.update_eff_vis(def_id, item_ev, max_vis, Level::Direct);
-
-                    if let Some(impl_item_ev) = self.get(def_id) {
-                        self.check_assoc_item(assoc_item, impl_item_ev);
-                    }
+                    self.check_assoc_item(assoc_item, item_ev);
                 }
             }
             DefKind::Enum => {
@@ -702,13 +715,18 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                     }
                 }
             }
+
+            DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
+                let assoc_item = self.tcx.associated_item(def_id);
+                if let Some(parent_ev) = self.get(self.tcx.local_parent(def_id)) {
+                    self.check_assoc_item(&assoc_item, parent_ev);
+                }
+            }
+
             // Contents are checked directly.
             DefKind::ForeignMod => {}
             DefKind::Field
             | DefKind::Variant
-            | DefKind::AssocFn
-            | DefKind::AssocTy
-            | DefKind::AssocConst { .. }
             | DefKind::TyParam
             | DefKind::AnonConst
             | DefKind::InlineConst
@@ -783,14 +801,12 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 }
             }
 
-            DefKind::TraitAlias | DefKind::Fn => {
+            DefKind::TraitAlias
+            | DefKind::Fn
+            | DefKind::AssocConst { .. }
+            | DefKind::AssocFn
+            | DefKind::AssocTy => {
                 self.ev.queue.insert(def_id);
-            }
-
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
-                // FIXME: `EmbargoVisitor` can't check assoc items(see `check_def_id`).
-                // Let's traverse the whole impl/trait.
-                self.ev.queue.insert(self.ev.tcx.local_parent(def_id));
             }
 
             DefKind::Ctor(ctor_of, _) => {
