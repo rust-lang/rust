@@ -22,9 +22,8 @@ use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags, DILocation,
-    DISPFlags, DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind,
-    DebugNameTableKind,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
+    DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm::MetadataKindId;
 use crate::{TryFromU32, llvm};
@@ -752,7 +751,6 @@ pub(crate) mod debuginfo {
     pub(crate) type DICompositeType = DIDerivedType;
     pub(crate) type DIVariable = DIDescriptor;
     pub(crate) type DIArray = DIDescriptor;
-    pub(crate) type DIEnumerator = DIDescriptor;
     pub(crate) type DITemplateTypeParameter = DIDescriptor;
 
     bitflags! {
@@ -1794,6 +1792,15 @@ unsafe extern "C" {
         Flags: DIFlags, // (default is `DIFlags::DIFlagZero`)
     ) -> &'ll Metadata;
 
+    pub(crate) fn LLVMDIBuilderCreateEnumeratorOfArbitraryPrecision<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        SizeInBits: u64,
+        Words: *const u64, // LLVM computes `NumWords = (SizeInBits + 63) / 64`.
+        IsUnsigned: llvm::Bool,
+    ) -> &'ll Metadata;
+
     pub(crate) fn LLVMDIBuilderCreateUnionType<'ll>(
         Builder: &DIBuilder<'ll>,
         Scope: Option<&'ll Metadata>,
@@ -2285,15 +2292,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
-        Builder: &DIBuilder<'a>,
-        Name: *const c_char,
-        NameLen: size_t,
-        Value: *const u64,
-        SizeInBits: c_uint,
-        IsUnsigned: bool,
-    ) -> &'a DIEnumerator;
 
     pub(crate) fn LLVMRustDIBuilderCreateEnumerationType<'a>(
         Builder: &DIBuilder<'a>,
