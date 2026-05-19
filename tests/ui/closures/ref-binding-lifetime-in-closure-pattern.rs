@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16994
+
 //@ check-pass
 
 fn cb<'a,T>(_x: Box<dyn Fn((&'a i32, &'a (Vec<&'static i32>, bool))) -> T>) -> T {

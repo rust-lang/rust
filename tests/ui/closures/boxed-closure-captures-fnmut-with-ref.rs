@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/18188
+
 //@ check-pass
 
 pub trait Promisable: Send + Sync {}

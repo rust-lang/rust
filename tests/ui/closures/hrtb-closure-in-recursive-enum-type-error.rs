@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23046
+
 pub enum Expr<'var, VAR> {
     Let(Box<Expr<'var, VAR>>,
         Box<dyn for<'v> Fn(Expr<'v, VAR>) -> Expr<'v, VAR> + 'var>)
