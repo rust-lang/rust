@@ -1,5 +1,5 @@
-use crate::marker::Destruct;
 use crate::array;
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
@@ -96,9 +96,41 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
-    /// Pulls `N` items from the back of the iterator and returns them as an array.
+    /// Advances from the back of the iterator and returns an array containing the next
+    /// `N` values in sequence.
     ///
-    /// See [`Iterator::next_chunk`] for more details.
+    /// If there are not enough elements to fill the array then `Err` is returned
+    /// containing an iterator over the remaining elements.
+    ///
+    /// Note: This is not equivalent to doing `iter.rev().next_chunk()` as this method
+    /// takes elements from the back of the iterator and preserves the order that the
+    /// elements were seen in the original iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let mut iter = "lorem".chars();
+    ///
+    /// assert_eq!(iter.next_chunk_back().unwrap(), ['e', 'm']);              // N is inferred as 2
+    /// assert_eq!(iter.next_chunk_back().unwrap(), ['l', 'o', 'r']);         // N is inferred as 3
+    /// assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+    /// ```
+    ///
+    /// Split a string and get the last three items in sequence.
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let quote = "not all those who wander are lost";
+    /// let [first, second, third] = quote.split_whitespace().next_chunk_back().unwrap();
+    /// assert_eq!(first, "wander");
+    /// assert_eq!(second, "are");
+    /// assert_eq!(third, "lost");
+    /// ```
     #[inline]
     #[unstable(feature = "iter_next_chunk", issue = "98326")]
     fn next_chunk_back<const N: usize>(
