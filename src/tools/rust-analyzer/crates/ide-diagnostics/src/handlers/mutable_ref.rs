@@ -25,7 +25,6 @@ mod tests {
         check_diagnostics(
             r#"
 //- minicore: option
-//- /main.rs 
 #![feature(ref_pat_eat_one_layer_2024)]
 fn main() {
     let opt_ref = &Some(42);
@@ -44,7 +43,6 @@ fn main() {
         check_diagnostics(
             r#"
 //- minicore: option
-//- /main.rs 
 #![feature(ref_pat_eat_one_layer_2024)]
 #![feature(mut_ref)]
 fn main() {
