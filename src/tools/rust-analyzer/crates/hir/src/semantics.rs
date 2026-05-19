@@ -1088,7 +1088,12 @@ impl<'db> SemanticsImpl<'db> {
     /// That is, we strictly check if it lies inside the input of a macro call.
     pub fn is_inside_macro_call(&self, token @ InFile { value, .. }: InFile<&SyntaxToken>) -> bool {
         value.parent_ancestors().any(|ancestor| {
-            if ast::MacroCall::can_cast(ancestor.kind()) {
+            if let Some(macro_call) = ast::MacroCall::cast(ancestor.clone())
+                // If this is the *path* of a macro, it's not inside the call.
+                && macro_call.path().is_none_or(|path| {
+                    !path.syntax().text_range().contains_range(value.text_range())
+                })
+            {
                 return true;
             }
 

@@ -3928,3 +3928,36 @@ fn tryme(param: impl SubTrait) {
         "#]],
     );
 }
+
+#[test]
+fn can_complete_macro_path_inside_expansion() {
+    check(
+        r#"
+macro_rules! bar { () => (); }
+macro_rules! foo { ($i:ident) => { $i!() }; }
+fn main() {
+    foo!(ba$0);
+}
+    "#,
+        expect![[r#"
+            fn main()          fn()
+            ma bar macro_rules! bar
+            ma foo macro_rules! foo
+            bt u32              u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
