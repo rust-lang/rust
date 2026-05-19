@@ -145,12 +145,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             MacOsFutexTimeout::Relative { clock_op, timeout_op } => {
                 let clock = this.read_scalar(clock_op)?.to_u32()?;
                 let timeout = this.read_scalar(timeout_op)?.to_u64()?;
-                Some((clock, TimeoutAnchor::Relative, timeout))
+                Some((clock, TimeoutStyle::Relative, timeout))
             }
             MacOsFutexTimeout::Absolute { clock_op, timeout_op } => {
                 let clock = this.read_scalar(clock_op)?.to_u32()?;
                 let timeout = this.read_scalar(timeout_op)?.to_u64()?;
-                Some((clock, TimeoutAnchor::Absolute, timeout))
+                Some((clock, TimeoutStyle::Absolute, timeout))
             }
         };
 
@@ -168,12 +168,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let is_shared = flags == shared;
-        let timeout = clock_timeout.map(|(_, anchor, timeout)| {
-            // The only clock that is currently supported is the monotonic clock.
+        let deadline = clock_timeout.map(|(_, style, timeout)| {
+            // The only clock that is currently supported is the monotonic clock (checked above).
             // While the deadline argument of `os_sync_wait_on_address_with_deadline`
             // is actually not in nanoseconds but in the units of `mach_current_time`,
             // the two are equivalent in miri.
-            (TimeoutClock::Monotonic, anchor, Duration::from_nanos(timeout))
+            this.machine.timeout(TimeoutClock::Monotonic, style, Duration::from_nanos(timeout))
         });
 
         // See the Linux futex implementation for why this fence exists.
@@ -213,7 +213,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.futex_wait(
                 futex_ref.clone(),
                 u32::MAX, // bitset
-                timeout,
+                deadline,
                 callback!(
                     @capture<'tcx> {
                         dest: MPlaceTy<'tcx>,

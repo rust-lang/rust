@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fs::{self, DirBuilder, File, FileType, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
-use std::path::{self, Path, PathBuf};
+use std::path::{self, Path};
 use std::time::SystemTime;
 
 use rustc_abi::Size;
@@ -750,7 +750,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // However, `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
         // actually provide for any target.
-        let mut mask = this.eval_libc_u32("STATX_TYPE") | this.eval_libc_u32("STATX_SIZE");
+        let mut mask = this.eval_libc_u32("STATX_TYPE")
+            | this.eval_libc_u32("STATX_MODE")
+            | this.eval_libc_u32("STATX_SIZE");
 
         // Check which pieces of metadata we acquired, and set the appropriate flags in the mask.
         if metadata.ino.is_some() {
@@ -1650,13 +1652,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Write the modified template back to the passed in pointer to maintain POSIX semantics.
             this.write_bytes_ptr(template_ptr, template_bytes.iter().copied())?;
 
-            // To actually open the file, turn this into a host OsString.
-            let p = bytes_to_os_str(template_bytes)?.to_os_string();
-
-            let possibly_unique = std::env::temp_dir().join::<PathBuf>(p.into());
-
-            let file = fopts.open(possibly_unique);
-
+            // See if we can create and open this file.
+            let file = fopts.open(bytes_to_os_str(template_bytes)?);
             match file {
                 Ok(f) => {
                     let fd = this.machine.fds.insert_new(FileHandle { file: f, writable: true });

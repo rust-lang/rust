@@ -473,11 +473,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If the timeout is 0 or there is a ready event, we can return immediately.
             return_ready_list(&epfd, dest, &event, this)?;
         } else {
-            // Blocking
-            let timeout = match timeout {
+            // Blocking, with a relative timeout.
+            let deadline = match timeout {
                 0.. => {
                     let duration = Duration::from_millis(timeout.try_into().unwrap());
-                    Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration))
+                    Some(this.machine.monotonic_clock.now().add_lossy(duration).into())
                 }
                 -1 => None,
                 ..-1 => {
@@ -495,7 +495,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // a thread is permanently blocked so this is fine.
             this.block_thread(
                 BlockReason::Epoll { epfd: epfd.clone() },
-                timeout,
+                deadline,
                 callback!(
                     @capture<'tcx> {
                         epfd: FileDescriptionRef<Epoll>,

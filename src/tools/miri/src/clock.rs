@@ -1,5 +1,7 @@
 use std::cell::Cell;
-use std::time::{Duration, Instant as StdInstant};
+use std::time::{Duration, Instant as StdInstant, SystemTime};
+
+use crate::MiriMachine;
 
 /// When using a virtual clock, this defines how many nanoseconds we pretend are passing for each
 /// basic block.
@@ -8,6 +10,7 @@ use std::time::{Duration, Instant as StdInstant};
 /// (See `tests/pass/shims/time-with-isolation*.rs`.)
 const NANOSECONDS_PER_BASIC_BLOCK: u128 = 5000;
 
+/// An instant (a fixed moment in time) in Miri's monotone clock.
 #[derive(Debug)]
 pub struct Instant {
     kind: InstantKind,
@@ -127,5 +130,81 @@ impl MonotonicClock {
             MonotonicClockKind::Virtual { nanoseconds } =>
                 Instant { kind: InstantKind::Virtual { nanoseconds: nanoseconds.get() } },
         }
+    }
+}
+
+/// A deadline for some event to occur.
+#[derive(Debug)]
+pub enum Deadline {
+    Monotonic(Instant),
+    RealTime(SystemTime),
+}
+
+impl From<Instant> for Deadline {
+    fn from(value: Instant) -> Self {
+        Deadline::Monotonic(value)
+    }
+}
+
+impl Deadline {
+    /// Will try to add `duration`, but if that overflows it may add less.
+    fn add_lossy(&self, duration: Duration) -> Self {
+        match self {
+            Deadline::Monotonic(i) => Deadline::Monotonic(i.add_lossy(duration)),
+            Deadline::RealTime(s) => {
+                // If this overflows, try adding just 1h and assume that will not overflow.
+                Deadline::RealTime(
+                    s.checked_add(duration)
+                        .unwrap_or_else(|| s.checked_add(Duration::from_secs(3600)).unwrap()),
+                )
+            }
+        }
+    }
+}
+
+/// The clock to use for the timeout you are asking for.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum TimeoutClock {
+    /// The timeout is measured using the monotone clock.
+    Monotonic,
+    /// The timeout is measured using the host's system clock.
+    RealTime,
+}
+
+/// Whether the timeout is relative or absolute.
+#[derive(Debug, Copy, Clone)]
+pub enum TimeoutStyle {
+    /// The given duration is interpreted relative to "now" for the selected clock.
+    Relative,
+    /// The given duration is interpreted as an "absolute" time, i.e., relative to the epoch of the
+    /// selected clock.
+    Absolute,
+}
+
+impl MiriMachine<'_> {
+    /// Computes the deadline for a given timeout configuration and duration.
+    pub fn timeout(
+        &self,
+        clock: TimeoutClock,
+        style: TimeoutStyle,
+        duration: Duration,
+    ) -> Deadline {
+        // First let's figure out what "zero" means for the given clock and style.
+        let zero = match clock {
+            TimeoutClock::RealTime => {
+                assert!(self.communicate(), "cannot have `RealTime` timeout with isolation");
+                Deadline::RealTime(match style {
+                    TimeoutStyle::Absolute => SystemTime::UNIX_EPOCH,
+                    TimeoutStyle::Relative => SystemTime::now(),
+                })
+            }
+            TimeoutClock::Monotonic =>
+                Deadline::Monotonic(match style {
+                    TimeoutStyle::Absolute => self.monotonic_clock.epoch(),
+                    TimeoutStyle::Relative => self.monotonic_clock.now(),
+                }),
+        };
+        // Then add the given duration relative to that "zero".
+        zero.add_lossy(duration)
     }
 }

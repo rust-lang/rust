@@ -89,7 +89,7 @@ fn test_notification_after_timeout() {
     check_epoll_wait::<1>(epfd, &[Ev { events: libc::EPOLLIN | libc::EPOLLOUT, data: fds[0] }], 10);
 }
 
-// This test shows a data_race before epoll had vector clocks added.
+// This test shows a data race before epoll had vector clocks added.
 fn test_epoll_race() {
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -99,7 +99,7 @@ fn test_epoll_race() {
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Register eventfd with the epoll instance.
-    epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLET).unwrap();
 
     static mut VAL: u8 = 0;
     let thread1 = thread::spawn(move || {
@@ -109,13 +109,10 @@ fn test_epoll_race() {
         write_all(fd, &1_u64.to_ne_bytes()).unwrap();
     });
     thread::yield_now();
-    // epoll_wait for the event to happen.
-    check_epoll_wait::<8>(epfd, &[Ev { events: (libc::EPOLLIN | libc::EPOLLOUT), data: fd }], -1);
+    // epoll_wait for EPOLLIN.
+    check_epoll_wait::<8>(epfd, &[Ev { events: libc::EPOLLIN, data: fd }], -1);
     // Read from the static mut variable.
-    #[allow(static_mut_refs)]
-    unsafe {
-        assert_eq!(VAL, 1)
-    };
+    assert_eq!(unsafe { VAL }, 1);
     thread1.join().unwrap();
 }
 

@@ -125,7 +125,7 @@ enum ThreadState<'tcx> {
     /// The thread is enabled and can be executed.
     Enabled,
     /// The thread is blocked on something.
-    Blocked { reason: BlockReason, timeout: Option<Timeout>, callback: DynUnblockCallback<'tcx> },
+    Blocked { reason: BlockReason, deadline: Option<Deadline>, callback: DynUnblockCallback<'tcx> },
     /// The thread has terminated its execution. We do not delete terminated
     /// threads (FIXME: why?).
     Terminated,
@@ -135,8 +135,11 @@ impl<'tcx> std::fmt::Debug for ThreadState<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Enabled => write!(f, "Enabled"),
-            Self::Blocked { reason, timeout, .. } =>
-                f.debug_struct("Blocked").field("reason", reason).field("timeout", timeout).finish(),
+            Self::Blocked { reason, deadline, .. } =>
+                f.debug_struct("Blocked")
+                    .field("reason", reason)
+                    .field("deadline", deadline)
+                    .finish(),
             Self::Terminated => write!(f, "Terminated"),
         }
     }
@@ -375,52 +378,6 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
     }
 }
 
-/// The moment in time when a blocked thread should be woken up.
-#[derive(Debug)]
-enum Timeout {
-    Monotonic(Instant),
-    RealTime(SystemTime),
-}
-
-impl Timeout {
-    /// How long do we have to wait from now until the specified time?
-    fn get_wait_time(&self, clock: &MonotonicClock) -> Duration {
-        match self {
-            Timeout::Monotonic(instant) => instant.duration_since(clock.now()),
-            Timeout::RealTime(time) =>
-                time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO),
-        }
-    }
-
-    /// Will try to add `duration`, but if that overflows it may add less.
-    fn add_lossy(&self, duration: Duration) -> Self {
-        match self {
-            Timeout::Monotonic(i) => Timeout::Monotonic(i.add_lossy(duration)),
-            Timeout::RealTime(s) => {
-                // If this overflows, try adding just 1h and assume that will not overflow.
-                Timeout::RealTime(
-                    s.checked_add(duration)
-                        .unwrap_or_else(|| s.checked_add(Duration::from_secs(3600)).unwrap()),
-                )
-            }
-        }
-    }
-}
-
-/// The clock to use for the timeout you are asking for.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum TimeoutClock {
-    Monotonic,
-    RealTime,
-}
-
-/// Whether the timeout is relative or absolute.
-#[derive(Debug, Copy, Clone)]
-pub enum TimeoutAnchor {
-    Relative,
-    Absolute,
-}
-
 /// An error signaling that the requested thread doesn't exist or has terminated.
 #[derive(Debug, Copy, Clone)]
 pub enum ThreadLookupError {
@@ -655,12 +612,12 @@ impl<'tcx> ThreadManager<'tcx> {
     fn block_thread(
         &mut self,
         reason: BlockReason,
-        timeout: Option<Timeout>,
+        deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) {
         let state = &mut self.threads[self.active_thread].state;
         assert!(state.is_enabled());
-        *state = ThreadState::Blocked { reason, timeout, callback }
+        *state = ThreadState::Blocked { reason, deadline, callback }
     }
 
     /// Change the active thread to some enabled thread.
@@ -755,7 +712,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // `pthread_cond_timedwait`, "an error is returned if [...] the absolute time specified by
         // abstime has already been passed at the time of the call".
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
-        let potential_sleep_time = this.unblock_expired_timeouts()?;
+        let potential_sleep_time = this.unblock_expired_deadlines()?;
 
         let thread_manager = &mut this.machine.threads;
         let rng = this.machine.rng.get_mut();
@@ -856,19 +813,27 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     /// Find all threads with expired timeouts, unblock them and execute their timeout callbacks.
     ///
-    /// This method returns the minimum duration until the next thread timeout expires.
-    /// If all ready threads have no timeout set, [`None`] is returned.
-    fn unblock_expired_timeouts(&mut self) -> InterpResult<'tcx, Option<Duration>> {
+    /// This method returns the minimum duration until the next thread deadline.
+    /// If all ready threads have no deadline set, [`None`] is returned.
+    fn unblock_expired_deadlines(&mut self) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let clock = &this.machine.monotonic_clock;
+        let communicate = this.machine.communicate();
 
         let mut min_wait_time = Option::<Duration>::None;
         let mut callbacks = Vec::new();
 
         for (id, thread) in this.machine.threads.threads.iter_enumerated_mut() {
             match &thread.state {
-                ThreadState::Blocked { timeout: Some(timeout), .. } => {
-                    let wait_time = timeout.get_wait_time(clock);
+                ThreadState::Blocked { deadline: Some(deadline), .. } => {
+                    let wait_time = match deadline {
+                        Deadline::Monotonic(instant) =>
+                            instant.duration_since(this.machine.monotonic_clock.now()),
+                        Deadline::RealTime(time) => {
+                            assert!(communicate, "cannot have `RealTime` timeout with isolation");
+                            time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO)
+                        }
+                    };
+
                     if wait_time.is_zero() {
                         // The timeout expired for this thread.
                         let old_state = mem::replace(&mut thread.state, ThreadState::Enabled);
@@ -1098,34 +1063,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn block_thread(
         &mut self,
         reason: BlockReason,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
-        if timeout.is_some() && this.machine.data_race.as_genmc_ref().is_some() {
+        if deadline.is_some() && this.machine.data_race.as_genmc_ref().is_some() {
             panic!("Unimplemented: Timeouts not yet supported in GenMC mode.");
         }
-        let timeout = timeout.map(|(clock, anchor, duration)| {
-            let anchor = match clock {
-                TimeoutClock::RealTime => {
-                    assert!(
-                        this.machine.communicate(),
-                        "cannot have `RealTime` timeout with isolation enabled!"
-                    );
-                    Timeout::RealTime(match anchor {
-                        TimeoutAnchor::Absolute => SystemTime::UNIX_EPOCH,
-                        TimeoutAnchor::Relative => SystemTime::now(),
-                    })
-                }
-                TimeoutClock::Monotonic =>
-                    Timeout::Monotonic(match anchor {
-                        TimeoutAnchor::Absolute => this.machine.monotonic_clock.epoch(),
-                        TimeoutAnchor::Relative => this.machine.monotonic_clock.now(),
-                    }),
-            };
-            anchor.add_lossy(duration)
-        });
-        this.machine.threads.block_thread(reason, timeout, callback);
+        if matches!(deadline, Some(Deadline::RealTime(_))) && !this.machine.communicate() {
+            panic!("cannot have `RealTime` timeout with isolation");
+        }
+        this.machine.threads.block_thread(reason, deadline, callback);
     }
 
     /// Put the blocked thread into the enabled state.
