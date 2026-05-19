@@ -1,0 +1,87 @@
+error: definition in module root file
+  --> src/edge_cases/mod.rs:13:1
+   |
+13 | pub struct AboveMod;
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move struct `AboveMod` to a dedicated file
+   = note: `-D clippy::definition-in-module-root` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::definition_in_module_root)]`
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:20:1
+   |
+20 | pub struct Foo;
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: move struct `Foo` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:23:1
+   |
+23 | pub struct Generic<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move struct `Generic` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:24:1
+   |
+24 | / impl<T> Generic<T> {
+25 | |     pub fn new(t: T) -> Self {
+26 | |         Self(t)
+27 | |     }
+28 | | }
+   | |_^
+   |
+   = help: move the implementation to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:31:1
+   |
+31 | pub async fn frob() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move function `frob` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:34:1
+   |
+34 | / pub const fn cnst() -> u32 {
+35 | |     0
+36 | | }
+   | |_^
+   |
+   = help: move function `cnst` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:39:1
+   |
+39 | pub static FOO: u32 = 1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move static item `FOO` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:43:1
+   |
+43 | / macro_rules! local_macro {
+44 | |     () => {};
+45 | | }
+   | |_^
+   |
+   = help: move macro definition `local_macro` to a dedicated file
+
+error: definition in module root file
+  --> src/edge_cases/mod.rs:48:1
+   |
+48 | / pub trait WithDefault {
+49 | |     fn default_method(&self) -> u32 {
+50 | |         42
+51 | |     }
+52 | | }
+   | |_^
+   |
+   = help: move trait `WithDefault` to a dedicated file
+
+error: could not compile `fail-edge-cases` (lib) due to 9 previous errors
