@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/40000
+
 fn main() {
     let bar: fn(&mut u32) = |_| {};
 

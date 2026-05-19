@@ -68,7 +68,7 @@ pub fn futex<'tcx>(
             }
 
             let timeout = ecx.deref_pointer_as(timeout, ecx.libc_ty_layout("timespec"))?;
-            let timeout = if ecx.ptr_is_null(timeout.ptr())? {
+            let deadline = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {
                 let Some(duration) = ecx.read_timespec(&timeout)? else {
@@ -82,14 +82,14 @@ pub fn futex<'tcx>(
                 } else {
                     TimeoutClock::Monotonic
                 };
-                let timeout_anchor = if wait_bitset {
+                let timeout_style = if wait_bitset {
                     // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    TimeoutAnchor::Absolute
+                    TimeoutStyle::Absolute
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
-                    TimeoutAnchor::Relative
+                    TimeoutStyle::Relative
                 };
-                Some((timeout_clock, timeout_anchor, duration))
+                Some(ecx.machine.timeout(timeout_clock, timeout_style, duration))
             };
             // There may be a concurrent thread changing the value of addr
             // and then invoking the FUTEX_WAKE syscall. It is critical that the
@@ -154,7 +154,7 @@ pub fn futex<'tcx>(
                 ecx.futex_wait(
                     futex_ref,
                     bitset,
-                    timeout,
+                    deadline,
                     callback!(
                         @capture<'tcx> {
                             dest: MPlaceTy<'tcx>,

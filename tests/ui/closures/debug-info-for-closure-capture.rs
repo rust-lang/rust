@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/26484
+
 //@ run-pass
 //@ compile-flags:-g
 

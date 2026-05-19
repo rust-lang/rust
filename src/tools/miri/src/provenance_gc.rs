@@ -44,6 +44,12 @@ where
     }
 }
 
+impl<T: VisitProvenance> VisitProvenance for Vec<T> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        self.iter().for_each(|el| el.visit_provenance(visit));
+    }
+}
+
 impl<T: VisitProvenance> VisitProvenance for std::cell::RefCell<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.borrow().visit_provenance(visit)

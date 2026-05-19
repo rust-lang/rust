@@ -226,8 +226,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 this.write(fd, buf, count, None, dest)?;
             }
+            "readv" => {
+                let [fd, iov, iovcnt] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, i32) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.readv(fd, iov, iovcnt, None, dest)?;
+            }
+            "writev" => {
+                let [fd, iov, iovcnt] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, i32) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.writev(fd, iov, iovcnt, None, dest)?;
+            }
             "pread" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off_t) -> isize),
                     link_name,
@@ -241,7 +258,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read(fd, buf, count, Some(offset), dest)?;
             }
             "pwrite" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, n, offset] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *const _, usize, libc::off_t) -> isize),
                     link_name,
@@ -255,6 +271,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 this.write(fd, buf, count, Some(offset), dest)?;
             }
+            "preadv" => {
+                let [fd, iov, iovcnt, offset] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, i32, libc::off_t) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.readv(fd, iov, iovcnt, Some(offset), dest)?;
+            }
+            "pwritev" => {
+                let [fd, iov, iovcnt, offset] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, i32, libc::off_t) -> isize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.writev(fd, iov, iovcnt, Some(offset), dest)?;
+            }
+
             "close" => {
                 let [fd] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32) -> i32),
