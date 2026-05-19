@@ -77,22 +77,28 @@ pub extern "gpu-kernel" fn kernel_1(x: *mut [f64; 256]) {
 ```
 
 ## Compile instructions
-It is important to use a clang compiler build on the same llvm as rustc.
+It is important to use a clang compiler build on the same LLVM as rustc.
 Just calling clang without the full path will likely use your system clang, which probably will be incompatible.
 So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
 
-First we generate the device (gpu) code.
-Replace the target-cpu with the right code for your gpu.
+First we generate the device (GPU) code.
+
+<div class="warning">
+    
+Replace the `target-cpu` (gfx90a) with the right code for your GPU. These are often referred to as "LLVM target names"[^list].
+
+</div>
+
 ```
 RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
 ```
 You might afterwards need to copy your target/release/deps/<lib_name>.bc to lib.bc for now, before the next step.
 
-Now we generate the host (cpu) code.
+Now we generate the host (CPU) code.
 ```
 RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/p/lustre1/drehwald1/prog/offload/r/target/amdgcn-amd-amdhsa/release/deps/host.out -Zunstable-options" cargo +offload build -r
 ```
-This call also does a lot of work and generates multiple intermediate files for llvm offload.
+This call also does a lot of work and generates multiple intermediate files for LLVM offload.
 While we integrated most offload steps into rustc by now, one binary invocation still remains for now:
 
 ```
@@ -100,7 +106,7 @@ While we integrated most offload steps into rustc by now, one binary invocation 
 ```
 
 You can try to find the paths to those files on your system.
-However, I recommend to not fix the paths, but rather just re-generate them by copying a bare-mode openmp example and compiling it with your clang.
+However, I recommend to not fix the paths, but rather just re-generate them by copying a bare-mode OpenMP example and compiling it with your clang.
 By adding `-###` to your clang invocation, you can see the invidual steps.
 It will show multiple steps, just look for the clang-linker-wrapper example.
 Make sure to still include the path to the `host.o` file, and not whatever tmp file you got when compiling your c++ example with the following call.
@@ -121,3 +127,5 @@ To receive more information about the memory transfer, you can enable info print
 ```
 LIBOMPTARGET_INFO=-1  ./main
 ```
+
+[^list]: https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html or https://developer.nvidia.com/cuda/gpus. Alternatively, check `rustc --print target-cpus`.
