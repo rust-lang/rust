@@ -82,8 +82,13 @@ Just calling clang without the full path will likely use your system clang, whic
 So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
 
 First we generate the device (GPU) code.
- > [!IMPORTANT]
- > Replace the `target-cpu` (gfx90a) with the right code for your GPU. These are often referred to as "LLVM target names"[^list].
+
+<div class="warning">
+    
+Replace the `target-cpu` (gfx90a) with the right code for your GPU. These are often referred to as "LLVM target names"[^list].
+
+</div>
+
 ```
 RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
 ```
