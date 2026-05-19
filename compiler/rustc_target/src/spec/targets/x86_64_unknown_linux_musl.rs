@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD;
+    base.supports_fentry = true;
     base.supports_xray = true;
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
