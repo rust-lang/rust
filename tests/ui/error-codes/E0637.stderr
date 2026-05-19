@@ -36,10 +36,10 @@ error[E0637]: `&` without an explicit lifetime name cannot be used here
 LL | fn associated_type_binding<I: IntoIterator<Item = &String>>() {}
    |                                                   ^ explicit lifetime name needed here
    |
-help: consider introducing a higher-ranked lifetime here
+help: consider introducing a named lifetime parameter
    |
-LL | fn associated_type_binding<I: for<'a> IntoIterator<Item = &'a String>>() {}
-   |                               +++++++                      ++
+LL | fn associated_type_binding<'a, I: IntoIterator<Item = &'a String>>() {}
+   |                            +++                         ++
 
 error: aborting due to 4 previous errors
 
