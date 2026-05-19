@@ -21,7 +21,6 @@ pub mod intrinsic_helpers;
 
 mod gen_c;
 mod gen_rust;
-mod indentation;
 mod values;
 
 /// Architectures must support this trait

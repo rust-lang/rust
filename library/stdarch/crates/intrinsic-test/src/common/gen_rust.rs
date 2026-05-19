@@ -2,7 +2,6 @@ use std::process::Command;
 
 use itertools::Itertools;
 
-use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::argument::ArgumentList;
 use crate::common::intrinsic::Intrinsic;
@@ -124,7 +123,7 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
                 let name = arg.rust_vals_array_name().to_string();
 
                 if seen.insert(name) {
-                    ArgumentList::gen_arg_rust(arg, w, Indentation::default(), PASSES)?;
+                    ArgumentList::gen_arg_rust(arg, w, PASSES)?;
                 }
             }
         }
@@ -223,9 +222,7 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
             "        }}",
             "    }}",
         ),
-        loaded_args = intrinsic
-            .arguments
-            .load_values_rust(Indentation::default().nest_by(4)),
+        loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
         passes = passes,
@@ -305,9 +302,8 @@ pub fn write_build_rs(
         i = i
     )?;
 
-    let indentation = Indentation::default().nest_by(2);
     for flag in COMMON_FLAGS.iter().chain(arch_flags) {
-        writeln!(w, "{indentation}\"{flag}\",")?;
+        writeln!(w, "\"{flag}\",")?;
     }
 
     write!(
