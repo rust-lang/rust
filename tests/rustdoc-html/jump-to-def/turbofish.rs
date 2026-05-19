@@ -6,12 +6,10 @@
 #![crate_name = "foo"]
 
 //@ has 'src/foo/turbofish.rs.html'
-use std::marker::PhantomData;
+use std::marker::PhantomData as TheOne;
+
 
 pub fn foo() {
-    // `PhantomData::<usize>` — `PhantomData` must be linked despite the turbofish.
-    type TheOne = PhantomData<()>;
-
-    //@ has - '//a[@href="#13"]' 'TheOne'
-    let _: TheOne::<usize> = PhantomData;
+    //@ has - '//a[@href="{{channel}}/core/marker/struct.PhantomData.html"]' 'TheOne'
+    let _: TheOne::<usize>;
 }
