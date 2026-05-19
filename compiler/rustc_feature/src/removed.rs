@@ -65,6 +65,8 @@ declare_features! (
      Some("merged into `min_generic_const_args`")),
     (removed, await_macro, "1.38.0", Some(50547),
      Some("subsumed by `.await` syntax"), 62293),
+    /// Allows using `box` in patterns (RFC 469).
+    (removed, box_patterns, "CURRENT_RUSTC_VERSION", Some(29641), Some("superseded by `deref_patterns`")),
     /// Allows using the `box $expr` syntax.
     (removed, box_syntax, "1.70.0", Some(49733), Some("replaced with `#[rustc_box]`"), 108471),
     /// Allows capturing disjoint fields in a closure/coroutine (RFC 2229).

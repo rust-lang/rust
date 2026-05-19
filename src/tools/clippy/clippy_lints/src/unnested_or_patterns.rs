@@ -150,8 +150,8 @@ fn insert_necessary_parens(pat: &mut Pat) {
             use ast::BindingMode;
             walk_pat(self, pat);
             let target = match &mut pat.kind {
-                // `i @ a | b`, `box a | b`, and `& mut? a | b`.
-                Ident(.., Some(p)) | Box(p) | Ref(p, _, _)
+                // `i @ a | b` and `& mut? a | b`.
+                Ident(.., Some(p)) | Ref(p, _, _)
                     if let Or(ps) = &p.kind
                         && ps.len() > 1 =>
                 {
@@ -251,15 +251,8 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
-        // Transform `box x | ... | box y` into `box (x | y)`.
-        //
         // The cases below until `Slice(...)` deal with *singleton* products.
         // These patterns have the shape `C(p)`, and not e.g., `C(p0, ..., pn)`.
-        Box(target) => extend_with_matching(
-            target, start, alternatives,
-            |k| matches!(k, Box(_)),
-            |k| always_pat!(k, Box(p) => *p),
-        ),
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
         Ref(target, _, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
