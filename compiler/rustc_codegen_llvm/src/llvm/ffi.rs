@@ -2215,6 +2215,9 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
+    /// We can't use LLVM-C's `LLVMDIBuilderCreateCompileUnit` because it hardcodes
+    /// `DICompileUnit::DebugNameTableKind::Default`, but we want to be able to
+    /// pass other values.
     pub(crate) fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,
         Lang: c_uint,
@@ -2232,6 +2235,8 @@ unsafe extern "C" {
         DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 
+    /// We can't use LLVM-C's `LLVMDIBuilderCreateFileWithChecksum` because it
+    /// _requires_ a checksum, but we sometimes don't provide one.
     pub(crate) fn LLVMRustDIBuilderCreateFile<'a>(
         Builder: &DIBuilder<'a>,
         Filename: *const c_char,
@@ -2245,6 +2250,8 @@ unsafe extern "C" {
         SourceLen: size_t,
     ) -> &'a DIFile;
 
+    /// We can't use LLVM-C's `LLVMDIBuilderCreateFunction` because it only
+    /// supports a subset of `DISubprogram::DISPFlags`.
     pub(crate) fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2263,6 +2270,7 @@ unsafe extern "C" {
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateMethod<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2278,6 +2286,7 @@ unsafe extern "C" {
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2293,6 +2302,7 @@ unsafe extern "C" {
         Ty: &'a DIType,
     ) -> &'a DIType;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateEnumerationType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2307,6 +2317,7 @@ unsafe extern "C" {
         IsScoped: bool,
     ) -> &'a DIType;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateVariantPart<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2323,6 +2334,7 @@ unsafe extern "C" {
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateTemplateTypeParameter<'a>(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
@@ -2331,6 +2343,8 @@ unsafe extern "C" {
         Ty: &'a DIType,
     ) -> &'a DITemplateTypeParameter;
 
+    /// We can't use LLVM-C's `LLVMReplaceArrays` because it doesn't take a
+    /// `Params` argument.
     pub(crate) fn LLVMRustDICompositeTypeReplaceArrays<'a>(
         Builder: &DIBuilder<'a>,
         CompositeType: &'a DIType,
@@ -2338,6 +2352,8 @@ unsafe extern "C" {
         Params: Option<&'a DIArray>,
     );
 
+    /// We can't use LLVM-C's `LLVMDIBuilderGetOrCreateSubrange` because it doesn't
+    /// call the overload that takes a `Metadata` upper bound.
     pub(crate) fn LLVMRustDIGetOrCreateSubrange<'a>(
         Builder: &DIBuilder<'a>,
         CountNode: Option<&'a Metadata>,
@@ -2346,6 +2362,8 @@ unsafe extern "C" {
         Stride: Option<&'a Metadata>,
     ) -> &'a Metadata;
 
+    /// We can't use LLVM-C's `LLVMDIBuilderCreateVectorType` because it doesn't
+    /// take a `BitStride` argument.
     pub(crate) fn LLVMRustDICreateVectorType<'a>(
         Builder: &DIBuilder<'a>,
         Size: u64,
@@ -2355,6 +2373,7 @@ unsafe extern "C" {
         BitStride: Option<&'a Metadata>,
     ) -> &'a Metadata;
 
+    /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
         Location: &'a DILocation,
         BD: c_uint,
