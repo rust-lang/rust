@@ -132,11 +132,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // addr must be a multiple of the page size, but apart from that munmap is just implemented
         // as a dealloc.
         if !addr.addr().bytes().is_multiple_of(this.machine.page_size) {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         let Some(length) = length.checked_next_multiple_of(this.machine.page_size) else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         if length > this.target_usize_max() {
             this.set_last_error(LibcError("EINVAL"))?;

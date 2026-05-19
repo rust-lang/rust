@@ -96,7 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 if this.ptr_is_null(mask)? {
-                    this.set_last_error_and_return(LibcError("EFAULT"), dest)?;
+                    this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
                 }
                 // We only support CPU_LEVEL_WHICH and CPU_WHICH_PID for now.
                 // This is the bare minimum to make the tests pass.
@@ -111,7 +111,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // If it's large enough, copying the kernel mask to user space is safe, regardless of the actual size.
                     // See https://github.com/freebsd/freebsd-src/blob/909aa6781340f8c0b4ae01c6366bf1556ee2d1be/sys/kern/kern_cpuset.c#L1985
                     if set_size < u64::from(this.machine.num_cpus).div_ceil(8) {
-                        this.set_last_error_and_return(LibcError("ERANGE"), dest)?;
+                        this.set_errno_and_return_neg1(LibcError("ERANGE"), dest)?;
                     } else {
                         let cpuset = cpuset.clone();
                         let byte_count =

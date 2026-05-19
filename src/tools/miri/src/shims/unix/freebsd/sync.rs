@@ -102,7 +102,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let umtx_time_place = this.ptr_to_mplace(uaddr2, umtx_time_layout);
 
                             let Some(umtx_time) = this.read_umtx_time(&umtx_time_place)? else {
-                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
                             let style = if umtx_time.abs_time {
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // `uaddr2` points to a `struct timespec`.
                             let timespec = this.ptr_to_mplace(uaddr2, timespec_layout);
                             let Some(duration) = this.read_timespec(&timespec)? else {
-                                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
                             // FreeBSD does not seem to document which clock is used when the timeout
@@ -137,7 +137,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 duration,
                             ))
                         } else {
-                            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+                            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                         }
                     };
 
@@ -158,7 +158,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     ecx.write_int(0, &dest)
                                 }
                                 UnblockKind::TimedOut => {
-                                    ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                    ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                                 }
                             }
                         ),
@@ -182,7 +182,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                     // This means that if an address gets reused by a new allocation,
                     // we'll use an independent futex queue for this... that seems acceptable.
-                    return this.set_last_error_and_return(LibcError("EFAULT"), dest);
+                    return this.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
                 };
                 let futex_ref = futex_ref.futex.clone();
 

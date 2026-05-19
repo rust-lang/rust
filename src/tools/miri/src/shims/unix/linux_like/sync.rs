@@ -64,7 +64,7 @@ pub fn futex<'tcx>(
             };
 
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
 
             let timeout = ecx.deref_pointer_as(timeout, ecx.libc_ty_layout("timespec"))?;
@@ -72,7 +72,7 @@ pub fn futex<'tcx>(
                 None
             } else {
                 let Some(duration) = ecx.read_timespec(&timeout)? else {
-                    return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                    return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
                     ecx.check_no_isolation(
@@ -164,7 +164,7 @@ pub fn futex<'tcx>(
                                 ecx.write_int(0, &dest)
                             }
                             UnblockKind::TimedOut => {
-                                ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                             }
                         }
                     ),
@@ -172,7 +172,7 @@ pub fn futex<'tcx>(
             } else {
                 // The futex value doesn't match the expected value, so we return failure
                 // right away without sleeping: -1 and errno set to EAGAIN.
-                return ecx.set_last_error_and_return(LibcError("EAGAIN"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EAGAIN"), dest);
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -189,7 +189,7 @@ pub fn futex<'tcx>(
                 // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                 // This means that if an address gets reused by a new allocation,
                 // we'll use an independent futex queue for this... that seems acceptable.
-                return ecx.set_last_error_and_return(LibcError("EFAULT"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
             };
             let futex_ref = futex_ref.futex.clone();
 
@@ -205,7 +205,7 @@ pub fn futex<'tcx>(
                 u32::MAX
             };
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller
