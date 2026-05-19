@@ -893,14 +893,14 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         let user_bind_annot = BindingMode::from_annotation(binding_data.mode);
         let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(_) = def_br => {
-                // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
+                // Only mention the experimental `mut_ref` feature if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if self.edition.at_least_2024()
                     && (self.features.ref_pat_eat_one_layer_2024
                         || self.features.ref_pat_eat_one_layer_2024_structural)
                 {
                     if !self.features.mut_ref {
-                        // FIXME: Emit an error: binding cannot be both mutable and by-reference.
+                        self.push_diagnostic(InferenceDiagnostic::MutableRefBinding { pat });
                     }
 
                     BindingMode(def_br, Mutability::Mut)
