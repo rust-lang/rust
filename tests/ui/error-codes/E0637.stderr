@@ -31,7 +31,7 @@ LL |     T: for<'a> Into<&'a u32>,
    |        +++++++       ++
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/E0637.rs:19:51
+  --> $DIR/E0637.rs:18:51
    |
 LL | fn associated_type_binding<I: IntoIterator<Item = &String>>() {}
    |                                                   ^ explicit lifetime name needed here
@@ -41,7 +41,18 @@ help: consider introducing a named lifetime parameter
 LL | fn associated_type_binding<'a, I: IntoIterator<Item = &'a String>>() {}
    |                            +++                         ++
 
-error: aborting due to 4 previous errors
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:26:34
+   |
+LL | fn foo<F>(t: F) where F: T<Assoc=&str> {}
+   |                                  ^ explicit lifetime name needed here
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a, F>(t: F) where F: T<Assoc=&'a str> {}
+   |        +++                            ++
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0106, E0637.
 For more information about an error, try `rustc --explain E0106`.
