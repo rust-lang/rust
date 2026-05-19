@@ -62,6 +62,7 @@ mod handlers {
     pub(crate) mod missing_unsafe;
     pub(crate) mod moved_out_of_ref;
     pub(crate) mod mutability_errors;
+    pub(crate) mod mutable_ref;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
     pub(crate) mod non_exhaustive_record_expr;
@@ -466,6 +467,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
+            AnyDiagnostic::MutableRefBinding(d) => handlers::mutable_ref::mutable_ref_binding(&ctx, &d),
             AnyDiagnostic::NeedMut(d) => match handlers::mutability_errors::need_mut(&ctx, &d) {
                 Some(it) => it,
                 None => continue,

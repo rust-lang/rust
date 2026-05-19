@@ -131,6 +131,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
+             MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
@@ -633,6 +634,11 @@ pub struct UnimplementedTrait<'db> {
     pub root_trait_predicate: Option<crate::TraitPredicate<'db>>,
 }
 
+#[derive(Debug)]
+pub struct MutableRefBinding {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
 impl<'db> AnyDiagnostic<'db> {
     pub(crate) fn body_validation_diagnostic(
         db: &'db dyn HirDatabase,
@@ -1069,6 +1075,10 @@ impl<'db> AnyDiagnostic<'db> {
                     }
                 };
                 ExplicitDropMethodUse { expr_or_path }.into()
+            }
+            InferenceDiagnostic::MutableRefBinding { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MutableRefBinding { pat }.into()
             }
         })
     }
