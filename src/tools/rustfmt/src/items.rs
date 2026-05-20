@@ -1889,15 +1889,16 @@ pub(crate) fn rewrite_struct_field_prefix(
     field: &ast::FieldDef,
 ) -> RewriteResult {
     let vis = format_visibility(context, &field.vis);
+    let mut_restriction = format_mut_restriction(context, &field.mut_restriction);
     let safety = format_safety(field.safety);
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Ok(match field.ident {
         Some(name) => format!(
-            "{vis}{safety}{}{}:",
+            "{vis}{mut_restriction}{safety}{}{}:",
             rewrite_ident(context, name),
             type_annotation_spacing.0
         ),
-        None => format!("{vis}{safety}"),
+        None => format!("{vis}{mut_restriction}{safety}"),
     })
 }
 
