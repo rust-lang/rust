@@ -153,24 +153,15 @@ pub(crate) fn compile_codegen_unit(
             }
 
             if cx.sess().pointer_authentication() {
-                // FIXME(jchlanda): In LLVM/Clang, there are also `aarch64-elf-pauthabi-platform`
-                // and `aarch64-elf-pauthabi-version` module flags. These are emitted into the
-                // PAuth core info section of the resulting ELF, which the linker uses to enforce
-                // binary compatibility.
-                //
-                // We intentionally do not emit these flags now, since only a subset of features
-                // included in clang's pauthtest is currently supported. By default, the absence of
-                // this info is treated as compatible with any binary.
-                //
-                // Please note, that this would cause compatibility issues, specifically runtime
-                // crashes due to authentication failures (while compiling and linking
-                // successfully) when linking against binaries that support larger set of features
-                // (for example, signing of C++ member function pointers, virtual function
-                // pointers, virtual table pointers).
-                //
-                // Link to PAuth core info documentation:
-                // <https://github.com/ARM-software/abi-aa/blob/2025Q4/pauthabielf64/pauthabielf64.rst#core-information>
                 let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+
+                let aarch64_elf_pauthabi_version =
+                    cfg.calculate_pauth_abi_version(&cx.sess().target);
+                if aarch64_elf_pauthabi_version != 0 {
+                    cx.add_ptrauth_pauthabi_version_and_platform_flags(
+                        aarch64_elf_pauthabi_version,
+                    );
+                }
                 if cfg.elf_got {
                     cx.add_ptrauth_elf_got_flag();
                 }
