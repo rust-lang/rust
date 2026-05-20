@@ -334,6 +334,26 @@ macro_rules! impl_vvvv {
 
 pub(super) use impl_vvvv;
 
+macro_rules! impl_vvuv {
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(2)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name<const IMM: u32>(a: $oty, b: $oty) -> $oty {
+            static_assert_uimm_bits!(IMM, $ibs);
+            unsafe {
+                let a: $ity = transmute(a);
+                let b: $ity = transmute(b);
+                let r: $ity = $op::<IMM, _>(a, b);
+                transmute(r)
+            }
+        }
+    };
+}
+
+pub(super) use impl_vvuv;
+
 macro_rules! impl_vugv {
     ($ft:literal, $name:ident, $op:path, $oty:ty, $ity:ident, $gty:ty, $ibs:expr) => {
         #[inline]
