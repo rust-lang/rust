@@ -135,23 +135,23 @@ impl AttributeTemplate {
 
         if self.word {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
-            suggestions.push(format!("{maybe_unsafe_start}{start}{name}{end}{maybe_unsafe_end}"));
+            suggestions.push(format!("{start}{maybe_unsafe_start}{name}{maybe_unsafe_end}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
                 suggestions.push(format!(
-                    "{maybe_unsafe_start}{start}{name}{macro_call}({descr}){end}{maybe_unsafe_end}"
+                    "{start}{maybe_unsafe_start}{name}{macro_call}({descr}){maybe_unsafe_end}{end}"
                 ));
             }
         }
         suggestions.extend(self.one_of.iter().map(|&word| {
-            format!("{maybe_unsafe_start}{start}{name}({word}){end}{maybe_unsafe_end}")
+            format!("{start}{maybe_unsafe_start}{name}({word}){maybe_unsafe_end}{end}")
         }));
         if let Some(descr) = self.name_value_str {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
                 suggestions.push(format!(
-                    "{maybe_unsafe_start}{start}{name} = \"{descr}\"{end}{maybe_unsafe_end}"
+                    "{start}{maybe_unsafe_start}{name} = \"{descr}\"{maybe_unsafe_end}{end}"
                 ));
             }
         }
