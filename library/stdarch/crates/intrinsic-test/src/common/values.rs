@@ -1,9 +1,21 @@
 use itertools::Itertools as _;
 
-use crate::common::intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeKind};
+use crate::common::intrinsic_helpers::{
+    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
+};
 
 /// Maximum size of a SVE vector
 pub const MAX_SVE_BITS: u32 = 2048;
+
+/// Returns a string with the name of the static variable containing test values for intrinsic
+/// arguments of this type.
+pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T, num_loads: u32) -> String {
+    format!(
+        "{ty}_{load_size}",
+        ty = ty.rust_scalar_type().to_uppercase(),
+        load_size = test_values_array_length(&ty, num_loads),
+    )
+}
 
 /// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the
 /// `test_values_array_length` fn to determine the number of values that

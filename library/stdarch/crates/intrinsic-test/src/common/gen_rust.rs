@@ -7,6 +7,7 @@ use crate::common::argument::ArgumentList;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::values::test_values_array_name;
 
 // The number of times each intrinsic will be called - influences the generation of the
 // test arrays to minimise repeated testing of the same test values.
@@ -135,7 +136,7 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     for intrinsic in intrinsics {
         for arg in &intrinsic.arguments.args {
             if !arg.has_constraint() {
-                let name = arg.rust_vals_array_name().to_string();
+                let name = test_values_array_name(&arg.ty, PASSES);
 
                 if seen.insert(name) {
                     ArgumentList::gen_arg_rust(arg, w, PASSES)?;
@@ -244,7 +245,7 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
             "        }}",
             "    }}",
         ),
-        loaded_args = intrinsic.arguments.load_values_rust(),
+        loaded_args = intrinsic.arguments.load_values_rust(passes),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
         passes = passes,
