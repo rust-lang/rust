@@ -1,7 +1,10 @@
 use crate::common::constraint::Constraint;
 
-pub fn map_constraints(imm_type: &String, imm_width: u32) -> Option<Constraint> {
+pub fn map_constraints(fn_name: &str, imm_type: &String, imm_width: u32) -> Option<Constraint> {
     if imm_width > 0 {
+        if fn_name == "_mm_sm3rnds2_epi32" {
+            return Some(Constraint::Set((0..64).step_by(2).collect()));
+        }
         let max: i64 = 2i64.pow(imm_width);
         return Some(Constraint::Range(0..max));
     }

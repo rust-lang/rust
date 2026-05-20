@@ -270,7 +270,13 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                     }
                 }
 
-                let sp_lo = e.span.with_lo(e.span.lo() + BytePos("break".len() as u32));
+                let sp_lo = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(e.span)
+                    && let Some(break_pos) = snippet.find("break")
+                {
+                    e.span.with_lo(e.span.lo() + BytePos((break_pos + "break".len()) as u32))
+                } else {
+                    e.span.with_lo(e.span.lo() + BytePos("break".len() as u32))
+                };
                 let label_sp = match break_destination.label {
                     Some(label) => sp_lo.with_hi(label.ident.span.hi()),
                     None => sp_lo.shrink_to_lo(),

@@ -1,6 +1,4 @@
 use super::intrinsic::ArmIntrinsicType;
-use crate::common::cli::Language;
-use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 
 impl IntrinsicTypeDefinition for ArmIntrinsicType {
@@ -8,8 +6,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
     fn c_type(&self) -> String {
         let prefix = self.kind.c_prefix();
 
-        if let (Some(bit_len), simd_len, vec_len) = (self.bit_len, self.simd_len, self.vec_len) {
-            match (simd_len, vec_len) {
+        if let Some(bit_len) = self.bit_len {
+            match (self.simd_len, self.vec_len) {
                 (None, None) => format!("{prefix}{bit_len}_t"),
                 (Some(simd), None) => format!("{prefix}{bit_len}x{simd}_t"),
                 (Some(simd), Some(vec)) => format!("{prefix}{bit_len}x{simd}x{vec}_t"),
@@ -20,19 +18,24 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         }
     }
 
-    fn c_single_vector_type(&self) -> String {
-        if let (Some(bit_len), Some(simd_len)) = (self.bit_len, self.simd_len) {
-            format!(
-                "{prefix}{bit_len}x{simd_len}_t",
-                prefix = self.kind.c_prefix()
-            )
+    fn rust_type(&self) -> String {
+        let rust_prefix = self.kind.rust_prefix();
+        let c_prefix = self.kind.c_prefix();
+
+        if let Some(bit_len) = self.bit_len {
+            match (self.simd_len, self.vec_len) {
+                (None, None) => format!("{rust_prefix}{bit_len}"),
+                (Some(simd), None) => format!("{c_prefix}{bit_len}x{simd}_t"),
+                (Some(simd), Some(vec)) => format!("{c_prefix}{bit_len}x{simd}x{vec}_t"),
+                (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
+            }
         } else {
-            unreachable!("Shouldn't be called on this type")
+            todo!("{self:#?}")
         }
     }
 
     /// Determines the load function for this type.
-    fn get_load_function(&self, language: Language) -> String {
+    fn get_load_function(&self) -> String {
         if let IntrinsicType {
             kind: k,
             bit_len: Some(bl),
@@ -47,43 +50,8 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                 ""
             };
 
-            let choose_workaround = language == Language::C && self.target.contains("v7");
             format!(
                 "vld{len}{quad}_{type}{size}",
-                type = match k {
-                    TypeKind::Int(Sign::Unsigned) => "u",
-                    TypeKind::Int(Sign::Signed) => "s",
-                    TypeKind::Float => "f",
-                    // The ACLE doesn't support 64-bit polynomial loads on Armv7
-                    // if armv7 and bl == 64, use "s", else "p"
-                    TypeKind::Poly => if choose_workaround && *bl == 64 {"s"} else {"p"},
-                    x => todo!("get_load_function TypeKind: {x:#?}"),
-                },
-                size = bl,
-                quad = quad,
-                len = vec_len.unwrap_or(1),
-            )
-        } else {
-            todo!("get_load_function IntrinsicType: {self:#?}")
-        }
-    }
-
-    /// Determines the get lane function for this type.
-    fn get_lane_function(&self) -> String {
-        if let IntrinsicType {
-            kind: k,
-            bit_len: Some(bl),
-            simd_len,
-            ..
-        } = &self.data
-        {
-            let quad = if (simd_len.unwrap_or(1) * bl) > 64 {
-                "q"
-            } else {
-                ""
-            };
-            format!(
-                "vget{quad}_lane_{type}{size}",
                 type = match k {
                     TypeKind::Int(Sign::Unsigned) => "u",
                     TypeKind::Int(Sign::Signed) => "s",
@@ -93,70 +61,11 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                 },
                 size = bl,
                 quad = quad,
+                len = vec_len.unwrap_or(1),
             )
         } else {
-            todo!("get_lane_function IntrinsicType: {self:#?}")
+            todo!("get_load_function IntrinsicType: {self:#?}")
         }
-    }
-
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String {
-        let lanes = if self.num_vectors() > 1 {
-            (0..self.num_vectors())
-                .map(|vector| {
-                    format!(
-                        r#""{ty}(" << {lanes} << ")""#,
-                        ty = self.c_single_vector_type(),
-                        lanes = (0..self.num_lanes())
-                            .map(move |idx| -> std::string::String {
-                                let lane_fn = self.get_lane_function();
-                                let final_cast = self.generate_final_type_cast();
-                                format!(
-                                    "{final_cast}{lane_fn}(__return_value.val[{vector}], {idx})"
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join(r#" << ", " << "#)
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(r#" << ", " << "#)
-        } else if self.num_lanes() > 1 {
-            (0..self.num_lanes())
-                .map(|idx| -> std::string::String {
-                    let lane_fn = self.get_lane_function();
-                    let final_cast = self.generate_final_type_cast();
-                    format!("{final_cast}{lane_fn}(__return_value, {idx})")
-                })
-                .collect::<Vec<_>>()
-                .join(r#" << ", " << "#)
-        } else {
-            format!(
-                "{promote}cast<{cast}>(__return_value)",
-                cast = match self.kind() {
-                    TypeKind::Float if self.inner_size() == 16 => "float16_t".to_string(),
-                    TypeKind::Float if self.inner_size() == 32 => "float".to_string(),
-                    TypeKind::Float if self.inner_size() == 64 => "double".to_string(),
-                    TypeKind::Int(Sign::Signed) => format!("int{}_t", self.inner_size()),
-                    TypeKind::Int(Sign::Unsigned) => format!("uint{}_t", self.inner_size()),
-                    TypeKind::Poly => format!("poly{}_t", self.inner_size()),
-                    ty => todo!("print_result_c - Unknown type: {ty:#?}"),
-                },
-                promote = self.generate_final_type_cast(),
-            )
-        };
-
-        format!(
-            r#"{indentation}std::cout << "Result {additional}-" << i+1 << ": {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
-            ty = if self.is_simd() {
-                format!("{}(", self.c_type())
-            } else {
-                String::from("")
-            },
-            close = if self.is_simd() { ")" } else { "" },
-        )
     }
 }
 

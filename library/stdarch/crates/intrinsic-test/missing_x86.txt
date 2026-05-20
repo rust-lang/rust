@@ -45,23 +45,35 @@ _mm_set1_pch
 _tpause
 _umwait
 
-# IMM8 must be an even number in the range `0..=62`
-_mm_sm3rnds2_epi32
-
 # SDE ERROR: Cannot execute XGETBV with ECX != 0
 _xgetbv
 
 # top bits are undefined, unclear how to test these
+_mm256_castph128_ph256
+_mm256_castps128_ps256
+_mm256_castpd128_pd256
 _mm256_castsi128_si256
+
+_mm512_castph128_ph512
+_mm512_castps128_ps512
+_mm512_castpd128_pd512
 _mm512_castsi128_si512
+
+_mm512_castph256_ph512
+_mm512_castps256_ps512
+_mm512_castpd256_pd512
 _mm512_castsi256_si512
 
 # Clang bug
-_mm256_extract_epi16
-_mm256_extract_epi8
 _mm512_mask_reduce_max_pd
 _mm512_mask_reduce_max_ps
 _mm512_mask_reduce_min_pd
 _mm512_mask_reduce_min_ps
-_mm_extract_epi16
-_mm_extract_epi8
+
+# Rounding errors in release mode
+_mm_maskz_fmadd_sd
+_mm_maskz_fmadd_ss
+_mm_maskz_fmsub_sd
+_mm_maskz_fmsub_ss
+_mm_maskz_fnmadd_sd
+_mm_maskz_fnmadd_ss

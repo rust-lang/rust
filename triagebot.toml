@@ -9,6 +9,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*",
+    "B-*",
     "C-*",
     "D-*",
     "E-*",
@@ -1608,7 +1609,7 @@ dep-bumps = [
 "/compiler/rustc_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
 "/library/alloctests" =                                  ["libs"]
-"/library/core" =                                        ["libs", "@scottmcm"]
+"/library/core" =                                        ["libs"]
 "/library/coretests" =                                   ["libs"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]

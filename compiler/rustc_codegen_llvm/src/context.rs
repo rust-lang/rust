@@ -959,22 +959,47 @@ impl<'ll> CodegenCx<'ll, '_> {
         base_name: &str,
         type_params: &[&'ll Type],
     ) -> (&'ll Type, &'ll Value) {
-        // This isn't an "LLVM intrinsic", but LLVM's optimization passes
-        // recognize it like one (including turning it into `bcmp` sometimes)
-        // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
-        if base_name == "memcmp" {
-            let fn_ty = self
-                .type_func(&[self.type_ptr(), self.type_ptr(), self.type_isize()], self.type_int());
-            let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
+        match base_name {
+            // This isn't an "LLVM intrinsic", but LLVM's optimization passes
+            // recognize it like one (including turning it into `bcmp` sometimes)
+            // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
+            "memcmp" => {
+                let fn_ty = self.type_func(
+                    &[self.type_ptr(), self.type_ptr(), self.type_isize()],
+                    self.type_int(),
+                );
+                let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
 
-            return (fn_ty, f);
+                (fn_ty, f)
+            }
+            // Experimental retag intrinsics.
+            // This form is used to retag a pointer that has already been stored in a register. It receives
+            // the pointer and returns an alias with the same address, but different provenance.
+            "__rust_retag_reg" => {
+                let fn_ty = self.type_func(type_params, self.type_ptr());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            // This form is used to retag a pointer that is stored in another place. It receives a pointer to the
+            // place and returns `void`. This communicates the indirection  without requiring an explicit load and
+            // store. If we used the `reg` form instead, then we would need to load the place, retag it, and then
+            // store the result back, which would be undefined behavior for `readonly` places.
+            "__rust_retag_mem" => {
+                let fn_ty = self.type_func(type_params, self.type_void());
+                let llfn = self.declare_cfn(base_name, llvm::UnnamedAddr::No, fn_ty);
+                let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.llcx);
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+                (fn_ty, llfn)
+            }
+            _ => {
+                let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
+                    .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
+                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                (self.get_type_of_global(f), f)
+            }
         }
-
-        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
-            .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-        let f = intrinsic.get_declaration(self.llmod, &type_params);
-
-        (self.get_type_of_global(f), f)
     }
 
     pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
