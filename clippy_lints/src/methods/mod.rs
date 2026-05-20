@@ -1,4 +1,5 @@
 mod bind_instead_of_map;
+mod by_ref_peekable_peek;
 mod bytecount;
 mod bytes_count_to_len;
 mod bytes_nth;
@@ -199,6 +200,39 @@ declare_clippy_lint! {
     pub BIND_INSTEAD_OF_MAP,
     complexity,
     "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `Iterator::by_ref().peekable().peek()`.
+    ///
+    /// ### Why is this bad?
+    /// While it might look like this will allow peeking on the first
+    /// element of an iterator without consuming it and without consuming
+    /// the iterator itself, it will in practice consume the first element.
+    ///
+    /// The implementation of `Peekable::peek()` produces the first element
+    /// of the underlying iterator, and stores it internally so that it can
+    /// be later produced. As a consequence, it advances the underlying
+    /// iterator, whose `.next()` method will now produce its second element.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut iter = [1, 2, 3].into_iter();
+    /// let x = iter.by_ref().peekable().peek();  // 1
+    /// let y = iter.by_ref().peekable().peek();  // 2
+    /// ```
+    /// If this does what you intended, use the following instead, which is
+    /// shorter and clearer:
+    /// ```no_run
+    /// let mut iter = [1, 2, 3].into_iter();
+    /// let x = iter.next().as_ref();  // 1
+    /// let y = iter.next().as_ref();  // 2
+    /// ```
+    #[clippy::version = "1.98.0"]
+    pub BY_REF_PEEKABLE_PEEK,
+    suspicious,
+    "Using `.by_ref().peekable().peek()` on an iterator"
 }
 
 declare_clippy_lint! {
@@ -4837,6 +4871,7 @@ impl_lint_pass!(Methods => [
     BIND_INSTEAD_OF_MAP,
     BYTES_COUNT_TO_LEN,
     BYTES_NTH,
+    BY_REF_PEEKABLE_PEEK,
     CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     CHARS_LAST_CMP,
     CHARS_NEXT_CMP,
@@ -5605,6 +5640,9 @@ impl Methods {
                     if !bind_instead_of_map::check_or_else_err(cx, expr, recv, arg) {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                     }
+                },
+                (sym::peek, []) => {
+                    by_ref_peekable_peek::check(cx, expr, recv);
                 },
                 (sym::push, [arg]) => {
                     path_buf_push_overwrite::check(cx, expr, arg);
