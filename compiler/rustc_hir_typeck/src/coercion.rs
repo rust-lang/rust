@@ -313,6 +313,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         )
                         .must_apply_modulo_regions() =>
             {
+                // Ordinary non-argument coercion contexts should keep an identity use
+                // as a move/copy when normal unification is sufficient. Argument
+                // coercions use this path for implicit generic reborrows, so preserve
+                // the existing reborrow-first behavior there.
+                if self.allow_two_phase == AllowTwoPhase::No {
+                    let plain_unify = self.commit_if_ok(|_| self.unify(a, b, ForceLeakCheck::No));
+                    if plain_unify.is_ok() {
+                        return plain_unify;
+                    }
+                }
+
                 let reborrow_coerce = self.commit_if_ok(|_| self.coerce_reborrow(a, b));
                 if reborrow_coerce.is_ok() {
                     return reborrow_coerce;
