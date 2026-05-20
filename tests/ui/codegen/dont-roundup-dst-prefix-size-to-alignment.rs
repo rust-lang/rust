@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/35815>
 //@ run-pass
 #![allow(dead_code)]
 use std::mem;

@@ -34,6 +34,22 @@ impl_NumBufferTrait! {
 
 /// A buffer wrapper of which the internal size is based on the maximum
 /// number of digits the associated integer can have.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(int_format_into)]
+/// use core::fmt::NumBuffer;
+///
+/// let mut buf = NumBuffer::new();
+/// let n1 = 1972u32;
+/// assert_eq!(n1.format_into(&mut buf), "1972");
+///
+/// // Formatting a negative integer includes the sign.
+/// let mut buf = NumBuffer::new();
+/// let n2 = -1972i32;
+/// assert_eq!(n2.format_into(&mut buf), "-1972");
+/// ```
 #[unstable(feature = "int_format_into", issue = "138215")]
 pub struct NumBuffer<T: NumBufferTrait> {
     // FIXME: Once const generics feature is working, use `T::BUF_SIZE` instead of 40.
