@@ -3,12 +3,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-use itertools::Itertools as _;
-
-use crate::common::values::test_values_array_length;
-
-use super::values::value_for_array;
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Sign {
     Signed,
@@ -198,85 +192,6 @@ impl IntrinsicType {
     /// Returns `true` if this is a pointer
     pub fn is_ptr(&self) -> bool {
         self.ptr
-    }
-
-    /// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the same
-    /// `test_values_array_length` to determine the number of values that
-    /// `ArgumentList::gen_arg_rust` expects and `ArgumentList::load_values_rust` needs.
-    ///
-    /// Each value in the array starts as a bit pattern from `common::values::value_from_array`
-    /// which is then printed as a hex value in the generated code (and if identified as a negative
-    /// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
-    /// generated for floats.
-    pub fn populate_random(&self, loads: u32) -> String {
-        match self {
-            IntrinsicType {
-                bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
-                kind:
-                    kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_) | TypeKind::Mask),
-                ..
-            } => {
-                format!(
-                    "[\n{body}\n]",
-                    body =
-                        (0..test_values_array_length(self, loads)).format_with(",\n", |i, fmt| {
-                            let src = value_for_array(*bit_len, i);
-                            assert!(src == 0 || src.ilog2() < *bit_len);
-                            if *kind == TypeKind::Int(Sign::Signed) && (src >> (*bit_len - 1)) != 0
-                            {
-                                // `src` is a two's complement representation of a negative value.
-                                let mask = !0u64 >> (64 - *bit_len);
-                                let ones_compl = src ^ mask;
-                                let twos_compl = ones_compl + 1;
-                                fmt(&format_args!("-{twos_compl:#x}"))
-                            } else {
-                                fmt(&format_args!("{src:#x}"))
-                            }
-                        })
-                )
-            }
-            IntrinsicType {
-                kind: TypeKind::Float,
-                bit_len: Some(bit_len @ (16 | 32 | 64)),
-                ..
-            } => {
-                format!(
-                    "[\n{body}\n]",
-                    body = (0..test_values_array_length(self, loads)).format_with(
-                        ",\n",
-                        |i, fmt| fmt(&format_args!(
-                            "f{bit_len}::from_bits({src:#x})",
-                            src = value_for_array(*bit_len, i)
-                        ))
-                    )
-                )
-            }
-            IntrinsicType {
-                kind: TypeKind::Vector,
-                bit_len: Some(128 | 256 | 512),
-                ..
-            } => {
-                let effective_bit_len = 32;
-                format!(
-                    "[\n{body}\n]",
-                    body =
-                        (0..test_values_array_length(self, loads)).format_with(",\n", |i, fmt| {
-                            let src = value_for_array(effective_bit_len, i);
-                            assert!(src == 0 || src.ilog2() < effective_bit_len);
-                            if (src >> (effective_bit_len - 1)) != 0 {
-                                // `src` is a two's complement representation of a negative value.
-                                let mask = !0u64 >> (64 - effective_bit_len);
-                                let ones_compl = src ^ mask;
-                                let twos_compl = ones_compl + 1;
-                                fmt(&format_args!("-{twos_compl:#x}"))
-                            } else {
-                                fmt(&format_args!("{src:#x}"))
-                            }
-                        })
-                )
-            }
-            _ => unimplemented!("populate random: {self:#?}"),
-        }
     }
 }
 

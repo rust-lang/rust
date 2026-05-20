@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::common::intrinsic_helpers::TypeKind;
-use crate::common::values::test_values_array_length;
+use crate::common::values::{test_values_array, test_values_array_length};
 
 use super::constraint::Constraint;
 use super::gen_rust::PASSES;
@@ -187,7 +187,7 @@ where
             name = arg.rust_vals_array_name(),
             ty = arg.ty.rust_scalar_type(),
             load_size = test_values_array_length(&arg.ty, loads),
-            values = arg.ty.populate_random(loads)
+            values = test_values_array(&arg.ty, loads)
         )
     }
 

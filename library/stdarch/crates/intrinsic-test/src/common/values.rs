@@ -1,7 +1,56 @@
-use crate::common::intrinsic_helpers::{IntrinsicType, SimdLen};
+use itertools::Itertools as _;
+
+use crate::common::intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeKind};
 
 /// Maximum size of a SVE vector
 pub const MAX_SVE_BITS: u32 = 2048;
+
+/// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the
+/// `test_values_array_length` fn to determine the number of values that
+/// `ArgumentList::gen_arg_rust` expects and `ArgumentList::load_values_rust` needs.
+///
+/// Each value in the array starts as a bit pattern from `bit_pattern_for_test_values_array`
+/// which is then printed as a hex value in the generated code (and if identified as a negative
+/// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
+/// generated for floats.
+pub fn test_values_array(ty: &IntrinsicType, num_loads: u32) -> String {
+    let (bit_len, kind) = match ty {
+        IntrinsicType {
+            kind: TypeKind::Float,
+            bit_len: Some(bit_len),
+            ..
+        } => (*bit_len, TypeKind::Float),
+        IntrinsicType {
+            kind: TypeKind::Vector,
+            ..
+        } => (32, TypeKind::Vector),
+        IntrinsicType {
+            kind,
+            bit_len: Some(bit_len),
+            ..
+        } => (*bit_len, *kind),
+        _ => unimplemented!(),
+    };
+
+    format!(
+        "[{}]",
+        (0..test_values_array_length(ty, num_loads)).format_with(",", |i, fmt| {
+            let src = bit_pattern_for_test_values_array(bit_len, i);
+            assert!(src == 0 || src.ilog2() < bit_len);
+            match kind {
+                TypeKind::Float => fmt(&format_args!("f{bit_len}::from_bits({src:#x})")),
+                TypeKind::Vector | TypeKind::Int(Sign::Signed) if (src >> (bit_len - 1)) != 0 => {
+                    // `src` is a two's complement representation of a negative value.
+                    let mask = !0u64 >> (64 - bit_len);
+                    let ones_compl = src ^ mask;
+                    let twos_compl = ones_compl + 1;
+                    fmt(&format_args!("-{twos_compl:#x}"))
+                }
+                _ => fmt(&format_args!("{src:#x}")),
+            }
+        })
+    )
+}
 
 /// Returns the number of values that need to be in an array of test values such that there can be
 /// `num_loads` distinct windows for a given vector of type `ty`.
@@ -45,7 +94,7 @@ pub fn test_values_array_length(ty: &IntrinsicType, num_loads: u32) -> u32 {
 /// Each constant array of bit patterns should ideally be at least the length of the largest array
 /// of test values that will be requested (e.g. 51 for a `poly8x8x4` when `PASSES=20`:
 /// `(8 * 4) + 20 - 1`), otherwise values will be repeated.
-pub fn value_for_array(bits: u32, index: u32) -> u64 {
+pub fn bit_pattern_for_test_values_array(bits: u32, index: u32) -> u64 {
     let index = index as usize;
     match bits {
         1 => VALUES_8[index % 2].into(),
@@ -59,7 +108,7 @@ pub fn value_for_array(bits: u32, index: u32) -> u64 {
         16 => VALUES_16[index % VALUES_16.len()].into(),
         32 => VALUES_32[index % VALUES_32.len()].into(),
         64 => VALUES_64[index % VALUES_64.len()],
-        _ => unimplemented!("value_for_array(bits: {bits}, ..)"),
+        _ => unimplemented!("bit_pattern_for_test_values_array(bits: {bits}, ..)"),
     }
 }
 
