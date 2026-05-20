@@ -718,12 +718,13 @@ fn compute_ref_match(
     ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionItemRefMode> {
+    if compute_type_match(ctx, completion_ty).is_some() {
+        return None;
+    }
     let expected_type = ctx.expected_type.as_ref()?;
     let expected_without_ref = expected_type.as_reference();
     let completion_without_ref = completion_ty.as_reference();
-    if expected_type.could_unify_with(ctx.db, completion_ty) {
-        return None;
-    }
+
     if let Some((expected_without_ref, _)) = &expected_without_ref
         && (completion_without_ref.is_none()
             || completion_ty.could_unify_with(ctx.db, expected_without_ref))
@@ -3173,6 +3174,24 @@ fn main() {
                 md core::  []
                 fn foo(…) fn(&u32) []
                 fn main() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+//- minicore: deref
+fn foo<T>(s: &T) {}
+fn main() {
+    let ssss = &mut 2i32;
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                lc ssss &mut i32 [type_could_unify+local]
+                md core::  []
+                fn foo(…) fn(&T) []
+                fn &foo(…) [type]
+                fn main() fn() []
+                fn &main() [type]
             "#]],
         );
     }
