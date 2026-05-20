@@ -2963,6 +2963,83 @@ fn foo() {
 }
 
 #[test]
+fn flyimport_excluded_mod_items_from_flyimport() {
+    check_with_config(
+        CompletionConfig {
+            exclude_flyimport: vec![(
+                "ra_test_fixture::pack::module2".to_owned(),
+                AutoImportExclusionType::SubItems,
+            )],
+            ..TEST_CONFIG
+        },
+        r#"
+mod pack {
+    mod module1 {
+        pub struct XOther;
+    }
+    pub mod module2 {
+        pub use super::module1::*;
+        pub struct XStruct;
+        pub fn xfn() {}
+    }
+}
+
+fn foo() {
+    x$0
+}
+        "#,
+        expect![[r#"
+            ct CONST                   Unit
+            en Enum                    Enum
+            fn foo()                   fn()
+            fn function()              fn()
+            ma makro!(…) macro_rules! makro
+            md module::
+            md pack::
+            sc STATIC                  Unit
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            un Union                  Union
+            ev TupleV(…)        TupleV(u32)
+            bt u32                      u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
 fn excluded_trait_method_is_excluded_from_path_completion() {
     check_with_config(
         CompletionConfig {

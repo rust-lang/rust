@@ -662,6 +662,9 @@ config_data! {
         /// For traits the type "methods" can be used to only exclude the methods but not the trait
         /// itself.
         ///
+        /// For modules the type "subItems" can be used to only exclude the sub items but not the module
+        /// itself.
+        ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
         completion_autoimport_exclude: Vec<AutoImportExclusion> = vec![
             AutoImportExclusion::Verbose { path: "core::borrow::Borrow".to_owned(), r#type: AutoImportExclusionType::Methods },
@@ -1938,6 +1941,9 @@ impl Config {
                             AutoImportExclusionType::Methods => {
                                 ide_completion::AutoImportExclusionType::Methods
                             }
+                            AutoImportExclusionType::SubItems => {
+                                ide_completion::AutoImportExclusionType::SubItems
+                            }
                         },
                     ),
                 })
@@ -2997,6 +3003,7 @@ pub enum AutoImportExclusion {
 pub enum AutoImportExclusionType {
     Always,
     Methods,
+    SubItems,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -4128,10 +4135,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                             },
                             "type": {
                                 "type": "string",
-                                "enum": ["always", "methods"],
+                                "enum": ["always", "methods", "subItems"],
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                    "Do not show this traits methods in auto-import completions."
+                                    "Do not show this traits methods in auto-import completions.",
+                                    "Do not show this modules sub items in auto-import completions."
                                 ],
                             },
                         }

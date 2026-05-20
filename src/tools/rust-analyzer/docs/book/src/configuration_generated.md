@@ -446,6 +446,9 @@ verbose form `{ "path": "path::to::item", type: "always" }`.
 For traits the type "methods" can be used to only exclude the methods but not the trait
 itself.
 
+For modules the type "subItems" can be used to only exclude the sub items but not the module
+itself.
+
 This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
 
 

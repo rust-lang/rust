@@ -848,8 +848,23 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
                     .map(|it| (it.into_module_def(), *kind))
             })
             .collect();
+        let exclude_subitems = exclude_flyimport
+            .iter()
+            .flat_map(|it| match it {
+                (ModuleDef::Module(module), AutoImportExclusionType::SubItems) => {
+                    module.scope(db, None)
+                }
+                _ => vec![],
+            })
+            .filter_map(|(_, def)| match def {
+                ScopeDef::ModuleDef(module_def) => Some(module_def),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
         exclude_flyimport
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
+        exclude_flyimport
+            .extend(exclude_subitems.into_iter().map(|it| (it, AutoImportExclusionType::Always)));
 
         // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
         let complete_semicolon = if !config.add_semicolon_to_unit {

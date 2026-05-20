@@ -389,7 +389,7 @@ fn filter_excluded_flyimport(ctx: &CompletionContext<'_, '_>, import: &LocatedIm
     }
     let method_imported = import.item_to_import != import.original_item;
     if method_imported
-        && (is_exclude_flyimport.is_some()
+        && (is_exclude_flyimport == Some(AutoImportExclusionType::Methods)
             || ctx.exclude_flyimport.contains_key(&import.original_item.into_module_def()))
     {
         // If this is a method, exclude it either if it was excluded itself (which may not be caught above,

@@ -1328,7 +1328,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.autoimport.exclude": {
-                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nFor modules the type \"subItems\" can be used to only exclude the sub items but not the module\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
                         "default": [
                             {
                                 "path": "core::borrow::Borrow",
@@ -1355,11 +1355,13 @@
                                             "type": "string",
                                             "enum": [
                                                 "always",
-                                                "methods"
+                                                "methods",
+                                                "subItems"
                                             ],
                                             "enumDescriptions": [
                                                 "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                                "Do not show this traits methods in auto-import completions."
+                                                "Do not show this traits methods in auto-import completions.",
+                                                "Do not show this modules sub items in auto-import completions."
                                             ]
                                         }
                                     }
