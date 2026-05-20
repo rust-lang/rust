@@ -75,6 +75,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         if !self.visited.insert(ty) {
             return;
         }
+
         // Descend through the types, looking for the various "base"
         // components and collecting them into `out`. This is not written
         // with `collect()` because of the need to sometimes skip subtrees
@@ -82,25 +83,18 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         // projection).
         match ty.kind() {
             ty::FnDef(_, args) => {
-                // HACK(eddyb) ignore lifetimes found shallowly in `args`.
-                // This is inconsistent with `ty::Adt` (including all args)
-                // and with `ty::Closure` (ignoring all args other than
-                // upvars, of which a `ty::FnDef` doesn't have any), but
-                // consistent with previous (accidental) behavior.
-                // See https://github.com/rust-lang/rust/issues/70917
-                // for further background and discussion.
                 for child in args.iter() {
-                    match child.kind() {
-                        ty::GenericArgKind::Lifetime(_) => {}
-                        ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_) => {
-                            child.visit_with(self);
-                        }
-                    }
+                    child.visit_with(self);
                 }
             }
 
             ty::Closure(_, args) => {
+                // FIXME: this is still impacted by #84366
                 args.as_closure().tupled_upvars_ty().visit_with(self);
+                // i think this works? but crossbeam wouldn't compile with it enabled and it didn't fix The Bug.
+                // for child in args.as_closure().args.iter().filter(|a| a.as_type().is_none()) {
+                //     child.visit_with(self);
+                // }
             }
 
             ty::CoroutineClosure(_, args) => {
