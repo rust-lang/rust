@@ -56,8 +56,12 @@ fn is_any_cfg(cfg: &CfgEntry) -> bool {
 fn strip_hidden(cfg: &CfgEntry, hidden: &FxHashSet<NameValueCfg>) -> Option<CfgEntry> {
     match cfg {
         CfgEntry::Bool(..) => Some(cfg.clone()),
-        CfgEntry::NameValue { .. } => {
-            if !hidden.contains(&NameValueCfg::from(cfg)) {
+        CfgEntry::NameValue { name, value, .. } => {
+            // We first check the exact match (both the key and the value).
+            if hidden.contains(&NameValueCfg { name: *name, value: *value }) {
+                None
+            // If the new cfg has a value, we then check if the key itself is hidden.
+            } else if value.is_none() || !hidden.contains(&NameValueCfg::new(*name)) {
                 Some(cfg.clone())
             } else {
                 None
