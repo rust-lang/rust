@@ -959,22 +959,23 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         local_ty
     }
 
-    fn check_dereferenceable(&self, expected: Ty<'db>, inner: PatId) -> Result<(), ()> {
+    fn check_dereferenceable(
+        &mut self,
+        expected: Ty<'db>,
+        pat: PatId,
+        inner: PatId,
+    ) -> Result<(), ()> {
         if let Pat::Bind { .. } = self.store[inner]
             && let Some(pointee_ty) = self.shallow_resolve(expected).builtin_deref(true)
             && let TyKind::Dynamic(..) = pointee_ty.kind()
         {
             // This is "x = dyn SomeTrait" being reduced from
             // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.
-            // FIXME: Emit an error. rustc emits this message:
-            const _CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
-This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
-pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, \
-this type has no compile-time size. Therefore, all accesses to trait types must be through \
-pointers. If you encounter this error you should try to avoid dereferencing the pointer.
-
-You can read more about trait objects in the Trait Objects section of the Reference: \
-https://doc.rust-lang.org/reference/types.html#trait-objects";
+            self.push_diagnostic(InferenceDiagnostic::CannotImplicitlyDerefTraitObject {
+                pat,
+                found: expected.store(),
+            });
+            return Err(());
         }
         Ok(())
     }
@@ -1260,7 +1261,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
     ) -> Ty<'db> {
         let interner = self.interner();
         let (box_ty, inner_ty) = self
-            .check_dereferenceable(expected, inner)
+            .check_dereferenceable(expected, pat, inner)
             .map(|()| {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
@@ -1473,7 +1474,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
             }
         }
 
-        let (ref_ty, inner_ty) = match self.check_dereferenceable(expected, inner) {
+        let (ref_ty, inner_ty) = match self.check_dereferenceable(expected, pat, inner) {
             Ok(()) => {
                 // `demand::subtype` would be good enough, but using `eqtype` turns
                 // out to be equally general. See (note_1) for details.
