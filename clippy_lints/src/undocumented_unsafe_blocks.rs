@@ -4,9 +4,9 @@ use std::sync::Arc;
 use clippy_config::Conf;
 use clippy_utils::consts::const_item_rhs_to_expr;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
+use clippy_utils::{higher, is_lint_allowed};
 use hir::HirId;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, BlockCheckMode, FnSig, Impl, ItemKind, Node, UnsafeSource};
@@ -172,6 +172,9 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         else {
             return;
         };
+        // Compound assignments are expanded into a safe block, but the safety
+        // comment apply to the undesugared assignment nevertheless.
+        let expr = higher::CompoundAssignment::hir(expr).map_or(expr, |c| c.init);
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
             && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
             && let HasSafetyComment::Yes(pos, _) =
