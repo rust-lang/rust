@@ -159,19 +159,15 @@ pub(crate) fn emit_unescape_error(
                      version control settings",
                 );
             } else if looks_like_quote(c) {
-                diag.span_suggestion(
+                diag.help(format!(
+                    "{ec} is not an ASCII quote, but may look like one in some fonts"
+                ));
+                diag.span_suggestion_verbose(
                     err_span,
-                    "if you meant to use a unicode quote; \
-                    consider using its escaped form for clarity",
-                    // lit.replace(c, &ec[1..]),
+                    "consider writing it in its escaped form for clarity",
                     &ec,
                     Applicability::MaybeIncorrect,
                 );
-
-                diag.help(format!(
-                    "{ec} is not an ASCII quote, but may look like one in some fonts; \
-                     consider writing it in its escaped form for clarity."
-                ));
             } else {
                 if mode == Mode::Str || mode == Mode::Char {
                     diag.span_suggestion(
