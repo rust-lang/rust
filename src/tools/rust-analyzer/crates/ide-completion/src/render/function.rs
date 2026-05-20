@@ -952,4 +952,23 @@ fn bar() {
 "#,
         );
     }
+
+    #[test]
+    fn no_semicolon_in_match() {
+        check_edit(
+            r#"foo"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match fo$0 {}
+}
+"#,
+            r#"
+fn foo() {}
+fn bar() {
+    match foo()$0 {}
+}
+"#,
+        );
+    }
 }

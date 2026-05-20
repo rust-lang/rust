@@ -858,7 +858,13 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
             sema.token_ancestors_with_macros(token.clone()).find(|node| {
                 matches!(
                     node.kind(),
-                    BLOCK_EXPR | MATCH_ARM | CLOSURE_EXPR | ARG_LIST | PAREN_EXPR | ARRAY_EXPR
+                    BLOCK_EXPR
+                        | MATCH_ARM
+                        | CLOSURE_EXPR
+                        | ARG_LIST
+                        | PAREN_EXPR
+                        | ARRAY_EXPR
+                        | MATCH_EXPR
                 )
             })
         {
