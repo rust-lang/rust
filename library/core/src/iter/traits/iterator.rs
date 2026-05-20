@@ -1950,6 +1950,7 @@ pub const trait Iterator {
     /// let of_rust: Vec<_> = words.collect();
     /// assert_eq!(of_rust, vec!["of", "Rust"]);
     /// ```
+    #[rustc_diagnostic_item = "IteratorByRef"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self
     where
