@@ -2,7 +2,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{File, canonicalize, remove_file};
+use std::fs::{File, canonicalize, create_dir, remove_dir, remove_file};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
@@ -359,9 +359,16 @@ fn test_o_tmpfile_flag() {
 }
 
 fn test_posix_mkstemp() {
+    use std::env;
     use std::ffi::OsStr;
     use std::os::unix::io::FromRawFd;
     use std::path::Path;
+
+    // We want to test `mkstemp` on a relative name, so we cd to a tempdir and later cd back.
+    let old_cwd = env::current_dir().unwrap();
+    let dir_path = utils::prepare_dir("miri_test_libc_readdir");
+    create_dir(&dir_path).expect("create_dir failed");
+    env::set_current_dir(&dir_path).unwrap();
 
     let valid_template = "fooXXXXXX";
     // C needs to own this as `mkstemp(3)` says:
@@ -370,9 +377,9 @@ fn test_posix_mkstemp() {
     // There seems to be no `as_mut_ptr` on `CString` so we need to use `into_raw`.
     let ptr = CString::new(valid_template).unwrap().into_raw();
     let fd = unsafe { libc::mkstemp(ptr) };
+    assert!(fd >= 0, "mkstemp failed");
     // Take ownership back in Rust to not leak memory.
     let slice = unsafe { CString::from_raw(ptr) };
-    assert!(fd > 0);
     let osstr = OsStr::from_bytes(slice.to_bytes());
     let path: &Path = osstr.as_ref();
     let name = path.to_string_lossy();
@@ -401,6 +408,8 @@ fn test_posix_mkstemp() {
         assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
         assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
     }
+
+    env::set_current_dir(old_cwd).unwrap();
 }
 
 /// Test allocating variant of `realpath`.
@@ -770,7 +779,6 @@ fn test_ioctl() {
 
 fn test_opendir_closedir() {
     // dir should exist
-    use std::fs::{create_dir, remove_dir};
     let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
     create_dir(&path).expect("create_dir failed");
     let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");

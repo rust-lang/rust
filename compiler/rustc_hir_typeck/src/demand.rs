@@ -40,6 +40,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_semicolon_in_repeat_expr(err, expr, expr_ty)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_collect(err, expr, expected, expr_ty)
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)

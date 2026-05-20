@@ -99,7 +99,7 @@ fn xml_to_intrinsic(
             } else {
                 param.imm_width
             };
-            let constraint = map_constraints(&param.imm_type, effective_imm_width);
+            let constraint = map_constraints(&name, &param.imm_type, effective_imm_width);
             let arg = Argument::<X86IntrinsicType>::new(
                 i,
                 param.var_name.clone(),

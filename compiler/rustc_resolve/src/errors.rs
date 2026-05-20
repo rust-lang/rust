@@ -1742,7 +1742,7 @@ pub(crate) struct ElidedLifetimesInPaths {
 )]
 pub(crate) struct UnusedImports {
     #[subdiagnostic]
-    pub sugg: UnusedImportsSugg,
+    pub sugg: Option<UnusedImportsSugg>,
     #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
     pub test_module_span: Option<Span>,
 

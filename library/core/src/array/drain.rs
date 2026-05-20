@@ -6,8 +6,7 @@ impl<'l, 'f, T, U, F: FnMut(T) -> U> Drain<'l, 'f, T, F> {
     /// This function returns a function that lets you index the given array in const.
     /// As implemented it can optimize better than iterators, and can be constified.
     /// It acts like a sort of guard (owns the array) and iterator combined, which can be implemented
-    /// as it is a struct that implements const fn;
-    /// in that regard it is somewhat similar to an array::Iter implementing `UncheckedIterator`.
+    /// as it is a struct that implements const fn.
     /// The only method you're really allowed to call is `next()`,
     /// anything else is more or less UB, hence this function being unsafe.
     /// Moved elements will not be dropped.

@@ -75,7 +75,7 @@ use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolMangli
 use rustc_session::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
-use rustc_session::lint::LintExpectationId;
+use rustc_session::lint::StableLintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
@@ -558,7 +558,7 @@ rustc_queries! {
         desc { "looking up lint levels for `{}`", tcx.def_path_str(key) }
     }
 
-    query lint_expectations(_: ()) -> &'tcx Vec<(LintExpectationId, LintExpectation)> {
+    query lint_expectations(_: ()) -> &'tcx Vec<(StableLintExpectationId, LintExpectation)> {
         arena_cache
         desc { "computing `#[expect]`ed lints in this crate" }
     }

@@ -10,7 +10,8 @@ use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Unsize;
 #[cfg(not(no_global_oom_handling))]
-use core::mem::{self, SizedTypeProperties};
+use core::mem;
+use core::mem::SizedTypeProperties;
 use core::ops::{Deref, DerefMut};
 use core::ptr::{self, NonNull, Pointee};
 
@@ -112,7 +113,7 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
     where
         T: Unsize<Dyn>,
     {
-        if size_of::<T>() == 0 {
+        if T::IS_ZST {
             let ptr = WithOpaqueHeader::new_unsize_zst::<Dyn, T>(value);
             ThinBox { ptr, _marker: PhantomData }
         } else {
@@ -281,7 +282,7 @@ impl<H> WithHeader<H> {
             let ptr = if layout.size() == 0 {
                 // Some paranoia checking, mostly so that the ThinBox tests are
                 // more able to catch issues.
-                debug_assert!(value_offset == 0 && size_of::<T>() == 0 && size_of::<H>() == 0);
+                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
                 layout.dangling_ptr()
             } else {
                 let ptr = alloc::alloc(layout);
@@ -311,7 +312,7 @@ impl<H> WithHeader<H> {
         Dyn: Pointee<Metadata = H> + ?Sized,
         T: Unsize<Dyn>,
     {
-        assert!(size_of::<T>() == 0);
+        assert!(T::IS_ZST);
 
         const fn max(a: usize, b: usize) -> usize {
             if a > b { a } else { b }

@@ -2348,6 +2348,7 @@ fn utf8_char_counts() {
         .flat_map(|n| n - spread..=n + spread)
         .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
+        // Miri is too slow
         reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };

@@ -261,6 +261,9 @@ auto:
   - name: dist-x86_64-freebsd
     <<: *job-linux-4c
 
+  - name: dist-aarch64-freebsd
+    <<: *job-aarch64-linux
+
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 

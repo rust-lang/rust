@@ -3916,7 +3916,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             self.visit_ty(&qself.ty);
         }
 
-        self.visit_path(&delegation.path);
+        // Create lifetimes not with `LifetimeRibKind::Generics` but with `LifetimeRibKind::Elided`,
+        // as we are not processing generic params but generic args in a future function call (#156342).
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            this.visit_path(&delegation.path);
+        });
 
         self.r.delegation_infos.insert(
             self.r.current_owner.def_id,
