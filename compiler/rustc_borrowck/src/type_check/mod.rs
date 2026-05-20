@@ -2516,8 +2516,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Field-by-field relate_types is expected to work based on the wf-checks that the
             // CoerceShared trait performs.
             let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
-            for dest_field in dest_adt.all_fields() {
+            // Filter out PhantomData fields to match the coherence check in
+            // `coerce_shared_info`, which uses `collect_struct_data_fields`.
+            // Without this filter, PhantomData fields with different names
+            // between source and dest would be silently skipped, potentially
+            // dropping lifetime constraints.
+            let borrowed_fields: Vec<_> = borrowed_adt
+                .all_fields()
+                .filter(|f| !f.ty(tcx, borrowed_args).skip_norm_wip().is_phantom_data())
+                .collect();
+            let dest_data_fields = dest_adt
+                .all_fields()
+                .filter(|f| !f.ty(tcx, dest_args).skip_norm_wip().is_phantom_data());
+            for dest_field in dest_data_fields {
                 let Some(borrowed_field) =
                     borrowed_fields.iter().find(|f| f.name == dest_field.name)
                 else {
