@@ -337,23 +337,23 @@ fn test_send_recv_nonblock() {
         .unwrap()
     };
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
             libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(client_sockfd, buf, count, 0),
             )
-            .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
@@ -453,23 +453,23 @@ fn test_send_recv_dontwait() {
         .unwrap()
     };
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
             libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(client_sockfd, buf, count, libc::MSG_DONTWAIT),
             )
-            .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
@@ -540,23 +540,23 @@ fn test_write_read_nonblock() {
     // Writing into the empty buffer should succeed without blocking.
     libc_utils::write_all(client_sockfd, TEST_BYTES).unwrap();
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
             libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::write(client_sockfd, buf, count),
             )
-            .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
