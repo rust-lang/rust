@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
 
-use crate::common::intrinsic_helpers::{
-    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
+use crate::common::{
+    PASSES,
+    intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind},
 };
 
 /// Maximum size of a SVE vector
@@ -9,11 +10,11 @@ pub const MAX_SVE_BITS: u32 = 2048;
 
 /// Returns a string with the name of the static variable containing test values for intrinsic
 /// arguments of this type.
-pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T, num_loads: u32) -> String {
+pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T) -> String {
     format!(
         "{ty}_{load_size}",
         ty = ty.rust_scalar_type().to_uppercase(),
-        load_size = test_values_array_length(&ty, num_loads),
+        load_size = test_values_array_length(&ty),
     )
 }
 
@@ -25,7 +26,7 @@ pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T, num_loads: u32
 /// which is then printed as a hex value in the generated code (and if identified as a negative
 /// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
 /// generated for floats.
-pub fn test_values_array(ty: &IntrinsicType, num_loads: u32) -> String {
+pub fn test_values_array(ty: &IntrinsicType) -> String {
     let (bit_len, kind) = match ty {
         IntrinsicType {
             kind: TypeKind::Float,
@@ -46,7 +47,7 @@ pub fn test_values_array(ty: &IntrinsicType, num_loads: u32) -> String {
 
     format!(
         "[{}]",
-        (0..test_values_array_length(ty, num_loads)).format_with(",", |i, fmt| {
+        (0..test_values_array_length(ty)).format_with(",", |i, fmt| {
             let src = bit_pattern_for_test_values_array(bit_len, i);
             assert!(src == 0 || src.ilog2() < bit_len);
             match kind {
@@ -80,7 +81,7 @@ pub fn test_values_array(ty: &IntrinsicType, num_loads: u32) -> String {
 ///
 /// For scalable vectors (only SVE is currently supported), assume that the length of the vector is
 /// the maximum supported by the architecture.
-pub fn test_values_array_length(ty: &IntrinsicType, num_loads: u32) -> u32 {
+pub fn test_values_array_length(ty: &IntrinsicType) -> u32 {
     let IntrinsicType {
         simd_len, vec_len, ..
     } = ty;
@@ -94,7 +95,7 @@ pub fn test_values_array_length(ty: &IntrinsicType, num_loads: u32) -> u32 {
     });
     let vec_len = vec_len.unwrap_or(1);
 
-    (simd_len * vec_len) + num_loads - 1
+    (simd_len * vec_len) + PASSES - 1
 }
 
 /// Returns a bit pattern for a value being output into a array of test values. Bit patterns come
