@@ -32,12 +32,6 @@ macro_rules! wrap_partialeq {
 wrap_partialeq!(NanEqF16(f16), NanEqF32(f32), NanEqF64(f64));
 "#;
 
-macro_rules! concatln {
-    ($($lines:expr),* $(,)?) => {
-        concat!($( $lines, "\n" ),*)
-    };
-}
-
 /// Run rustfmt on the generated source code
 pub fn run_rustfmt(source_path: &str) {
     let output = Command::new("rustfmt")
@@ -65,11 +59,14 @@ pub fn write_bin_cargo_toml(
     w: &mut impl std::io::Write,
     module_count: usize,
 ) -> std::io::Result<()> {
-    write!(w, concatln!("[workspace]", "members = ["))?;
-    for i in 0..module_count {
-        writeln!(w, "    \"mod_{i}\",")?;
-    }
-    writeln!(w, "]")
+    write!(
+        w,
+        r#"
+[workspace]
+members = [{members}]
+"#,
+        members = (0..module_count).format_with(",", |i, fmt| fmt(&format_args!("\"mod_{i}\"")))
+    )
 }
 
 /// Writes a `Cargo.toml` for a crate with name `name` to `w` that will contain a single Rust source
@@ -77,21 +74,20 @@ pub fn write_bin_cargo_toml(
 pub fn write_lib_cargo_toml(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
     write!(
         w,
-        concatln!(
-            "[package]",
-            "name = \"{name}\"",
-            "version = \"{version}\"",
-            "authors = [{authors}]",
-            "license = \"{license}\"",
-            "edition = \"2018\"",
-            "",
-            "[dependencies]",
-            "core_arch = {{ path = \"../../crates/core_arch\" }}",
-            "",
-            "[build-dependencies]",
-            "cc = \"1\""
-        ),
-        name = name,
+        r#"
+[package]
+name = "{name}"
+version = "{version}"
+authors = [{authors}]
+license = "{license}"
+edition = "2018"
+
+[dependencies]
+core_arch = {{ path = "../../crates/core_arch" }}
+
+[build-dependencies]
+cc = "1"
+"#,
         version = env!("CARGO_PKG_VERSION"),
         authors = env!("CARGO_PKG_AUTHORS")
             .split(":")
@@ -110,22 +106,25 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     i: usize,
     intrinsics: &[Intrinsic<T>],
 ) -> std::io::Result<()> {
-    write!(w, "{notice}")?;
+    writeln!(
+        w,
+        r#"
+{notice}
+#![feature(simd_ffi)]
+#![feature(f16)]
+#![allow(unused)]
 
-    writeln!(w, "#![feature(simd_ffi)]")?;
-    writeln!(w, "#![feature(f16)]")?;
-    writeln!(w, "#![allow(unused)]")?;
+// Cargo will spam the logs if these warnings are not silenced.
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
 
-    // Cargo will spam the logs if these warnings are not silenced.
-    writeln!(w, "#![allow(non_upper_case_globals)]")?;
-    writeln!(w, "#![allow(non_camel_case_types)]")?;
-    writeln!(w, "#![allow(non_snake_case)]")?;
+{cfg}
+{COMMON_RUST_DEFINITIONS}
 
-    writeln!(w, "{cfg}")?;
-
-    writeln!(w, "{}", COMMON_RUST_DEFINITIONS)?;
-
-    writeln!(w, "{definitions}")?;
+{definitions}
+"#
+    )?;
 
     let mut seen = std::collections::HashSet::new();
 
@@ -224,28 +223,25 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
 
     write!(
         w,
-        concatln!(
-            "    for (id, rust, c) in specializations {{",
-            "        for i in 0..{passes} {{",
-            "            unsafe {{",
-            "{loaded_args}",
-            "                let __rust_return_value = rust({rust_args});",
-            "",
-            "                let mut __c_return_value = std::mem::MaybeUninit::uninit();",
-            "                c(__c_return_value.as_mut_ptr(){c_args});",
-            "                let __c_return_value = __c_return_value.assume_init();",
-            "",
-            "                assert_eq!({cast_prefix}__rust_return_value{cast_suffix}, {cast_prefix}__c_return_value{cast_suffix}, \"{{id}}\");",
-            "            }}",
-            "        }}",
-            "    }}",
-        ),
+        r#"
+for (id, rust, c) in specializations {{
+    for i in 0..{PASSES} {{
+        unsafe {{
+            {loaded_args}
+            let __rust_return_value = rust({rust_args});
+
+            let mut __c_return_value = std::mem::MaybeUninit::uninit();
+            c(__c_return_value.as_mut_ptr(){c_args});
+            let __c_return_value = __c_return_value.assume_init();
+
+            assert_eq!({cast_prefix}__rust_return_value{cast_suffix}, {cast_prefix}__c_return_value{cast_suffix}, "{{id}}");
+        }}
+    }}
+}}
+"#,
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
-        passes = PASSES,
-        cast_prefix = cast_prefix,
-        cast_suffix = cast_suffix,
     )
 }
 
@@ -259,7 +255,10 @@ fn create_rust_test<T: IntrinsicTypeDefinition>(
 
     write!(
         w,
-        concatln!("#[test]", "fn test_{intrinsic_name}() {{"),
+        r#"
+#[test]
+fn test_{intrinsic_name}() {{
+"#,
         intrinsic_name = intrinsic.name,
     )?;
 
@@ -279,19 +278,18 @@ pub fn write_bindings_rust<T: IntrinsicTypeDefinition>(
 ) -> std::io::Result<()> {
     write!(
         w,
-        concatln!(
-            "#[allow(improper_ctypes)]",
-            "#[link(name = \"wrapper_{i}\")]",
-            "unsafe extern \"C\" {{"
-        ),
-        i = i
+        r#"
+#[allow(improper_ctypes)]
+#[link(name = "wrapper_{i}")]
+unsafe extern "C" {{
+"#,
     )?;
 
     for intrinsic in intrinsics {
         intrinsic.iter_specializations(|imm_values| {
             writeln!(
                 w,
-                "    fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
+                "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
                 return_ty = intrinsic.results.rust_type(),
                 name = intrinsic.name,
                 imm_arglist = imm_values
@@ -326,32 +324,22 @@ pub fn write_build_rs(
 
     write!(
         w,
-        concatln!(
-            "fn main() {{",
-            "    cc::Build::new()",
-            "    .file(\"../../c_programs/wrapper_{i}.c\")",
-            "    .opt_level(2)",
-            "    .flags(&[",
-        ),
-        i = i
-    )?;
-
-    let compiler_specific_flags = match cli_options.cc_arg_style {
-        CcArgStyle::Gcc => GCC_FLAGS,
-        CcArgStyle::Clang => CLANG_FLAGS,
-    };
-
-    for flag in COMMON_FLAGS
-        .iter()
-        .chain(compiler_specific_flags)
-        .chain(arch_flags)
-    {
-        writeln!(w, "\"{flag}\",")?;
-    }
-
-    write!(
-        w,
-        concatln!("    ])", "    .compile(\"wrapper_{i}\");", "}}"),
-        i = i
+        r#"
+fn main() {{
+    cc::Build::new()
+        .file("../../c_programs/wrapper_{i}.c")
+        .opt_level(2)
+        .flags(&[{flags}])
+        .compile("wrapper_{i}");
+}}
+"#,
+        flags = COMMON_FLAGS
+            .iter()
+            .chain(match cli_options.cc_arg_style {
+                CcArgStyle::Gcc => GCC_FLAGS,
+                CcArgStyle::Clang => CLANG_FLAGS,
+            })
+            .chain(arch_flags)
+            .format_with(",", |flag, fmt| fmt(&format_args!("\"{flag}\""))),
     )
 }
