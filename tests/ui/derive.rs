@@ -117,6 +117,7 @@ impl<T: Copy> Clone for Packed<T> {
 fn issue14558() {
     pub struct Valid {
         pub unsafe actual: (),
+        //~^ missing_safety_doc
     }
 
     unsafe impl Copy for Valid {}
