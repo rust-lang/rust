@@ -15,6 +15,7 @@ pub enum Sign {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TypeKind {
+    Bool,
     BFloat,
     Float,
     Int(Sign),
@@ -23,6 +24,8 @@ pub enum TypeKind {
     Void,
     Mask,
     Vector,
+    SvPattern,
+    SvPrefetchOp,
 }
 
 impl FromStr for TypeKind {
@@ -30,17 +33,22 @@ impl FromStr for TypeKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "bfloat" | "BF16" => Ok(Self::BFloat),
-            "float" | "double" | "FP16" | "FP32" | "FP64" => Ok(Self::Float),
-            "int" | "long" | "short" | "SI8" | "SI16" | "SI32" | "SI64" => {
+            "svbool" | "bool" => Ok(Self::Bool),
+            "svbfloat" | "bfloat" | "BF16" => Ok(Self::BFloat),
+            "svfloat" | "float" | "double" | "FP16" | "FP32" | "FP64" => Ok(Self::Float),
+            "svint" | "int" | "long" | "short" | "SI8" | "SI16" | "SI32" | "SI64" => {
                 Ok(Self::Int(Sign::Signed))
             }
             "poly" => Ok(Self::Poly),
             "char" => Ok(Self::Char(Sign::Signed)),
-            "uint" | "unsigned" | "UI8" | "UI16" | "UI32" | "UI64" => Ok(Self::Int(Sign::Unsigned)),
+            "svuint" | "uint" | "unsigned" | "UI8" | "UI16" | "UI32" | "UI64" => {
+                Ok(Self::Int(Sign::Unsigned))
+            }
             "void" => Ok(Self::Void),
             "MASK" => Ok(Self::Mask),
             "M128" | "M256" | "M512" => Ok(Self::Vector),
+            "svpattern" => Ok(Self::SvPattern),
+            "svprfop" => Ok(Self::SvPrefetchOp),
             _ => Err(format!("Impossible to parse argument kind {s}")),
         }
     }
@@ -52,6 +60,7 @@ impl fmt::Display for TypeKind {
             f,
             "{}",
             match self {
+                Self::Bool => "bool",
                 Self::BFloat => "bfloat",
                 Self::Float => "float",
                 Self::Int(Sign::Signed) => "int",
@@ -62,6 +71,8 @@ impl fmt::Display for TypeKind {
                 Self::Char(Sign::Unsigned) => "unsigned char",
                 Self::Mask => "mask",
                 Self::Vector => "vector",
+                Self::SvPattern => "svpattern",
+                Self::SvPrefetchOp => "svprfop",
             }
         )
     }
@@ -71,6 +82,7 @@ impl TypeKind {
     /// Returns the type component of a C typedef for a type of the form of `{type}{size}_t`
     pub fn c_prefix(&self) -> &str {
         match self {
+            Self::Bool => "bool",
             Self::Float => "float",
             Self::Int(Sign::Signed) => "int",
             Self::Int(Sign::Unsigned) => "uint",
@@ -98,6 +110,21 @@ impl TypeKind {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SimdLen {
+    Scalable,
+    Fixed(u32),
+}
+
+impl std::fmt::Display for SimdLen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Scalable => unimplemented!(),
+            Self::Fixed(len) => <u32 as std::fmt::Display>::fmt(len, f),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct IntrinsicType {
     /// Is this an immediate?
@@ -115,13 +142,13 @@ pub struct IntrinsicType {
     /// Number of bits of this type (e.g. 32 for `u32`).
     pub bit_len: Option<u32>,
 
-    /// Length of a SIMD vector (i.e. 4 for `uint32x4_t`).
+    /// Length of a SIMD vector (i.e. `Fixed(4)` for `uint32x4_t`).
     ///
     /// A value of `None` means this is not a SIMD type. The number of lanes of a type with
     /// `simd_len=None` can be assumed to be one, though it is important to maintain a distinction
-    /// between `simd_len=None` and `simd_len=Some(1)` so as to differentiate between `u64` and
-    /// `uint64x1_t`.
-    pub simd_len: Option<u32>,
+    /// between `simd_len=None` and `simd_len=Some(Fixed(1))` so as to differentiate between `u64`
+    /// and `uint64x1_t`. A value of `Some(Scalable)` indicates that this is a scalable vector.
+    pub simd_len: Option<SimdLen>,
 
     /// Number of rows of a SIMD matrix (i.e. 2 for `uint8x8x2_t`).
     ///
@@ -147,7 +174,13 @@ impl IntrinsicType {
 
     /// Returns the number of lanes of the type
     pub fn num_lanes(&self) -> u32 {
-        self.simd_len.unwrap_or(1)
+        self.simd_len
+            .as_ref()
+            .map(|len| match len {
+                SimdLen::Scalable => unimplemented!(),
+                SimdLen::Fixed(len) => *len,
+            })
+            .unwrap_or(1)
     }
 
     /// Returns the number of vectors of the type
@@ -179,14 +212,14 @@ impl IntrinsicType {
                 bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
                 kind:
                     kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_) | TypeKind::Mask),
-                simd_len,
                 vec_len,
                 ..
             } => {
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                        .format_with(",\n", |i, fmt| {
+                    body = (0..(self.num_lanes() * vec_len.unwrap_or(1) + loads - 1)).format_with(
+                        ",\n",
+                        |i, fmt| {
                             let src = value_for_array(*bit_len, i);
                             assert!(src == 0 || src.ilog2() < *bit_len);
                             if *kind == TypeKind::Int(Sign::Signed) && (src >> (*bit_len - 1)) != 0
@@ -199,37 +232,39 @@ impl IntrinsicType {
                             } else {
                                 fmt(&format_args!("{src:#x}"))
                             }
-                        })
+                        }
+                    )
                 )
             }
             IntrinsicType {
                 kind: TypeKind::Float,
                 bit_len: Some(bit_len @ (16 | 32 | 64)),
-                simd_len,
                 vec_len,
                 ..
             } => {
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
-                        .format_with(",\n", |i, fmt| fmt(&format_args!(
+                    body = (0..(self.num_lanes() * vec_len.unwrap_or(1) + loads - 1)).format_with(
+                        ",\n",
+                        |i, fmt| fmt(&format_args!(
                             "f{bit_len}::from_bits({src:#x})",
                             src = value_for_array(*bit_len, i)
-                        )))
+                        ))
+                    )
                 )
             }
             IntrinsicType {
                 kind: TypeKind::Vector,
                 bit_len: Some(128 | 256 | 512),
-                simd_len,
                 vec_len,
                 ..
             } => {
                 let effective_bit_len = 32;
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(vec_len.unwrap_or(1) * simd_len.unwrap_or(1) + loads - 1))
-                        .format_with(",\n", |i, fmt| {
+                    body = (0..(vec_len.unwrap_or(1) * self.num_lanes() + loads - 1)).format_with(
+                        ",\n",
+                        |i, fmt| {
                             let src = value_for_array(effective_bit_len, i);
                             assert!(src == 0 || src.ilog2() < effective_bit_len);
                             if (src >> (effective_bit_len - 1)) != 0 {
@@ -241,7 +276,8 @@ impl IntrinsicType {
                             } else {
                                 fmt(&format_args!("{src:#x}"))
                             }
-                        })
+                        }
+                    )
                 )
             }
             _ => unimplemented!("populate random: {self:#?}"),
