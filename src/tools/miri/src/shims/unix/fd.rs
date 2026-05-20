@@ -488,7 +488,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest)?;
                             u64::try_from(size).unwrap()
                         },
-                        Err(e) => return this.set_errno_and_return_neg1(e, &dest)
+                        Err(e) => {
+                            this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                            return this.set_errno_and_return_neg1(e, &dest)
+                        }
                     };
                     let mut remaining_bytes = bytes_read;
 
