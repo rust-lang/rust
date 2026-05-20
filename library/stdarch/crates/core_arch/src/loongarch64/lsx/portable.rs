@@ -125,6 +125,54 @@ pub(crate) const unsafe fn simd_replvei_d<const I: u32, T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [I, I])
 }
 
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 8, 2, 10, 4, 12, 6, 14])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 4, 2, 6])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 2])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 9, 3, 11, 5, 13, 7, 15])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 5, 3, 7])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 3])
+}
+
 impl_vv!("lsx", lsx_vpcnt_b, is::simd_ctpop, m128i, i8x16);
 impl_vv!("lsx", lsx_vpcnt_h, is::simd_ctpop, m128i, i16x8);
 impl_vv!("lsx", lsx_vpcnt_w, is::simd_ctpop, m128i, i32x4);
@@ -296,6 +344,14 @@ impl_vvv!("lsx", lsx_vilvl_b, simd_ilvl_b, m128i, i8x16);
 impl_vvv!("lsx", lsx_vilvl_h, simd_ilvl_h, m128i, i16x8);
 impl_vvv!("lsx", lsx_vilvl_w, simd_ilvl_w, m128i, i32x4);
 impl_vvv!("lsx", lsx_vilvl_d, simd_ilvl_d, m128i, i64x2);
+impl_vvv!("lsx", lsx_vpackev_b, simd_packev_b, m128i, i8x16);
+impl_vvv!("lsx", lsx_vpackev_h, simd_packev_h, m128i, i16x8);
+impl_vvv!("lsx", lsx_vpackev_w, simd_packev_w, m128i, i32x4);
+impl_vvv!("lsx", lsx_vpackev_d, simd_packev_d, m128i, i64x2);
+impl_vvv!("lsx", lsx_vpackod_b, simd_packod_b, m128i, i8x16);
+impl_vvv!("lsx", lsx_vpackod_h, simd_packod_h, m128i, i16x8);
+impl_vvv!("lsx", lsx_vpackod_w, simd_packod_w, m128i, i32x4);
+impl_vvv!("lsx", lsx_vpackod_d, simd_packod_d, m128i, i64x2);
 
 impl_vuv!("lsx", lsx_vslli_b, is::simd_shl, m128i, i8x16);
 impl_vuv!("lsx", lsx_vslli_h, is::simd_shl, m128i, i16x8);
