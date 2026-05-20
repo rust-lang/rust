@@ -1,9 +1,9 @@
 //! Implements threads.
 
+use std::mem;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
-use std::{io, mem};
 
 use rand::RngExt;
 use rand::seq::IteratorRandom;
@@ -698,8 +698,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // or timeouts to take care of.
 
         if this.machine.communicate() {
-            // When isolation is disabled we need to check for events for
-            // threads which are blocked on host I/O.
+            // When isolation is disabled we need to check for events for threads
+            // which are blocked on host I/O. Unlike the `poll_and_unblock` before
+            // any foreign item, the call here is needed to ensure that threads which
+            // are blocked on host I/O are woken up even if no shimmed functions are
+            // executed afterwards.
             // We do this before running any other threads such that the threads
             // which received events are available for scheduling afterwards.
 
@@ -790,24 +793,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             ThreadState::Blocked { reason: BlockReason::Epoll { epfd }, .. } =>
                 this.has_epoll_host_interests(epfd),
             _ => false,
-        }
-    }
-
-    /// Poll for I/O events until either an I/O event happened or the timeout expired.
-    /// The different timeout values are described in [`BlockingIoManager::poll`].
-    ///
-    /// Unblocks all threads which are blocked on I/O and whose I/O interests
-    /// are currently fulfilled.
-    fn poll_and_unblock(&mut self, timeout: Option<Duration>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-
-        match BlockingIoManager::poll(this, timeout)? {
-            Ok(_) => interp_ok(()),
-            // We can ignore errors originating from interrupts; that's just a spurious wakeup.
-            Err(e) if e.kind() == io::ErrorKind::Interrupted => interp_ok(()),
-            // For other errors we panic. On Linux and BSD hosts this should only be
-            // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
-            Err(e) => panic!("unexpected error while polling: {e}"),
         }
     }
 

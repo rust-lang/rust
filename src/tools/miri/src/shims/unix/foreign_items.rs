@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::str;
+use std::time::Duration;
 
 use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
@@ -107,6 +108,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
+
+        if this.machine.communicate() {
+            // When isolation is disabled we need to check for new host I/O events before
+            // running any shimmed function. This is needed to ensure that the shim we
+            // execute has up-to-date information about host readiness (as reflected
+            // e.g. by epoll) even if the current thread never yields.
+
+            // Perform a non-blocking poll for newly available I/O events from the OS.
+            this.poll_and_unblock(Some(Duration::ZERO))?;
+        }
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         match link_name.as_str() {
