@@ -1,6 +1,7 @@
 use itertools::Itertools;
 
 use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::values::test_values_array_length;
 
 use super::constraint::Constraint;
 use super::gen_rust::PASSES;
@@ -59,7 +60,7 @@ where
         format!(
             "{ty}_{load_size}",
             ty = self.ty.rust_scalar_type().to_uppercase(),
-            load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
+            load_size = test_values_array_length(&self.ty, loads),
         )
     }
 
@@ -175,16 +176,6 @@ where
     ///     0x80, 0x3b, 0xff,
     /// ];
     /// ```
-    ///
-    /// `num_lanes * num_vectors + loads - 1` elements are present in the array, which is sufficient
-    /// for a `loads` number of `num_lanes * num_vectors` windows into the array to be loaded:
-    ///
-    /// ```text
-    /// [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xf0, 0x80, 0x3b, 0xff]
-    /// ^^^^^^^^^^^^^^^^^^^ first window of `num_lanes * num_vectors` elements (e.g. four elements)
-    ///       ^^^^^^^^^^^^^^^^^^ second window
-    ///                                                                 `loads`th window ^^^^^^^^^^^^^^^^^^^^^^
-    /// ```
     pub fn gen_arg_rust(
         arg: &Argument<T>,
         w: &mut impl std::io::Write,
@@ -195,7 +186,7 @@ where
             "static {name}: [{ty}; {load_size}] = {values};\n",
             name = arg.rust_vals_array_name(),
             ty = arg.ty.rust_scalar_type(),
-            load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+            load_size = test_values_array_length(&arg.ty, loads),
             values = arg.ty.populate_random(loads)
         )
     }
