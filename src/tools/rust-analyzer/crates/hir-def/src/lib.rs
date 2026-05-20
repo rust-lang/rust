@@ -48,7 +48,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::Interned;
+use intern::{Interned, sym};
 use rustc_abi::ExternAbi;
 use thin_vec::ThinVec;
 
@@ -472,6 +472,11 @@ pub struct ModuleIdLt<'db> {
     /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
     /// `DefMap` of `krate`.
     pub block: Option<BlockId>,
+    /// The parent module of this module, or `None` if this is the root module inside the def
+    /// map (including for block def maps).
+    pub containing_module_inside_def_map: Option<ModuleIdLt<'db>>,
+    /// The name of this module, or [`sym::__empty`] for the root module.
+    name_or_empty: Name,
 }
 pub type ModuleId = ModuleIdLt<'static>;
 
@@ -517,21 +522,23 @@ impl ModuleId {
     }
 
     pub fn name(self, db: &dyn DefDatabase) -> Option<Name> {
-        let def_map = self.def_map(db);
-        let parent = def_map[self].parent?;
-        def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self { Some(name.clone()) } else { None }
-        })
+        let name = self.name_or_empty(db);
+        if *name.symbol() == sym::__empty { None } else { Some(name) }
     }
 
     /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
     pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
-        self.def_map(db).containing_module(self)
+        self.containing_module_inside_def_map(db)
+            .or_else(|| self.block(db).map(|block| block.loc(db).module))
+            .map(|module| {
+                // SAFETY: Not sure.
+                unsafe { module.to_static() }
+            })
     }
 
     pub fn is_block_module(self, db: &dyn DefDatabase) -> bool {
-        self.block(db).is_some() && self.def_map(db).root_module_id() == self
+        self.block(db).is_some() && self.containing_module_inside_def_map(db).is_none()
     }
 }
 

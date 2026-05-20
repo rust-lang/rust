@@ -2428,6 +2428,8 @@ impl ModCollector<'_, '_> {
                 self.def_collector.db,
                 self.def_collector.def_map.krate,
                 self.def_collector.def_map.block_id(),
+                Some(self.module_id),
+                name.clone(),
             )
             .to_static()
         };
