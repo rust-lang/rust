@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::common::intrinsic_helpers::TypeKind;
-use crate::common::values::{test_values_array, test_values_array_length, test_values_array_name};
+use crate::common::values::test_values_array_name;
 
 use super::PASSES;
 use super::constraint::Constraint;
@@ -153,27 +153,6 @@ where
                 }
             })
             .join("")
-    }
-
-    /// Returns a string defining a static variable with test values used for all intrinsics with
-    /// arguments of `arg`'s type.
-    ///
-    /// e.g.
-    /// ```rust,ignore
-    /// static U8_20: [u8; 20] = [
-    ///     0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xf0,
-    ///     0x80, 0x3b, 0xff,
-    /// ];
-    /// ```
-    pub fn gen_arg_rust(arg: &Argument<T>, w: &mut impl std::io::Write) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "static {name}: [{ty}; {load_size}] = {values};\n",
-            name = test_values_array_name(&arg.ty),
-            ty = arg.ty.rust_scalar_type(),
-            load_size = test_values_array_length(&arg.ty),
-            values = test_values_array(&arg.ty)
-        )
     }
 
     /// Returns a string defining a local variable for each argument and loading a value into each
