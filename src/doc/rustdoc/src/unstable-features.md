@@ -922,6 +922,29 @@ pub fn foo() {}
 
 The reason behind this is that `doc(auto_cfg = ...)` enables or disables the feature, whereas `doc(auto_cfg(...))` enables it unconditionally, making the first attribute to appear useless as it will be overidden by the next `doc(auto_cfg)` attribute.
 
+If `doc(auto_cfg(hide(...)))` is used on a key without a value (like `feature`), it will then hide all `cfg`s where the key is `feature`, whether or not it has a value:
+
+```rust,ignore (nightly)
+#![doc(auto_cfg(hide(feature)))]
+
+#[cfg(feature)] // Not displayed
+#[cfg(feature = "something")] // Not displayed either.
+pub fn foo() {}
+```
+
+If you use `doc(auto_cfg(show()))` on a key without value, it'll only be applied to the key itself, not the other hidden `key = value` cases:
+
+```rust,ignore (nightly)
+#![doc(auto_cfg(hide(feature)))]
+#![doc(auto_cfg(hide(feature = "tadam")))]
+// ...
+#![doc(auto_cfg(show(feature)))]
+
+#[cfg(feature)] // Displayed
+#[cfg(feature = "tadam")] // Still not displayed.
+pub fn foo() {}
+```
+
 ### `#[doc(auto_cfg(show(...)))]`
 
 This attribute does the opposite of `#[doc(auto_cfg(hide(...)))]`: if you used `#[doc(auto_cfg(hide(...)))]` and want to revert its effect on an item and its descendants, you can use `#[doc(auto_cfg(show(...)))]`.
