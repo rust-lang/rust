@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use std::ops::Range;
 
-/// Describes the values to test for a const generic parameter.
+/// Describes the values to test for a const generic parameter
 #[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum Constraint {
-    /// Test a single value.
+    /// Test a single value
     Equal(i64),
     /// Test a range of values, e.g. `0..16`.
     Range(Range<i64>),
@@ -13,7 +13,7 @@ pub enum Constraint {
 }
 
 impl Constraint {
-    /// Iterate over the values of this constraint.
+    /// Returns an iterator over the values of this constraint
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = i64> + 'a {
         match self {
             Constraint::Equal(i) => std::slice::Iter::default().copied().chain(*i..*i + 1),

@@ -19,6 +19,7 @@ pub struct Cli {
     #[arg(long)]
     pub target: String,
 
+    /// Percentage of intrinsics to test (used to limit testing to keep CI times manageable)
     #[arg(long, default_value_t = 100u8)]
     pub sample_percentage: u8,
 }

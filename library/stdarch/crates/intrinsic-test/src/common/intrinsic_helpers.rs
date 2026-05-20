@@ -68,7 +68,7 @@ impl fmt::Display for TypeKind {
 }
 
 impl TypeKind {
-    /// Gets the type part of a c typedef for a type that's in the form of {type}{size}_t.
+    /// Returns the type component of a C typedef for a type of the form of `{type}{size}_t`
     pub fn c_prefix(&self) -> &str {
         match self {
             Self::Float => "float",
@@ -82,7 +82,7 @@ impl TypeKind {
         }
     }
 
-    /// Gets the rust prefix for the type kind i.e. i, u, f.
+    /// Returns the Rust prefix for this type kind i.e. `i`, `u`, or `f`.
     pub fn rust_prefix(&self) -> &str {
         match self {
             Self::BFloat => "bf",
@@ -100,35 +100,43 @@ impl TypeKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct IntrinsicType {
+    /// Is this an immediate?
     pub constant: bool,
 
-    /// whether this object is a const pointer
+    /// Is this is a const pointer to the type?
     pub ptr_constant: bool,
 
+    /// Is this is a pointer to the type?
     pub ptr: bool,
 
+    /// Element type (e.g. `TypeKind::Int(Sign::Unsigned)` for `uint64x2_t`).
     pub kind: TypeKind,
-    /// The bit length of this type (e.g. 32 for u32).
+
+    /// Number of bits of this type (e.g. 32 for `u32`).
     pub bit_len: Option<u32>,
 
-    /// Length of the SIMD vector (i.e. 4 for uint32x4_t), A value of `None`
-    /// means this is not a simd type. A `None` can be assumed to be 1,
-    /// although in some places a distinction is needed between `u64` and
-    /// `uint64x1_t` this signals that.
+    /// Length of a SIMD vector (i.e. 4 for `uint32x4_t`).
+    ///
+    /// A value of `None` means this is not a SIMD type. The number of lanes of a type with
+    /// `simd_len=None` can be assumed to be one, though it is important to maintain a distinction
+    /// between `simd_len=None` and `simd_len=Some(1)` so as to differentiate between `u64` and
+    /// `uint64x1_t`.
     pub simd_len: Option<u32>,
 
-    /// The number of rows for SIMD matrices (i.e. 2 for uint8x8x2_t).
-    /// A value of `None` represents a type that does not contain any
-    /// rows encoded in the type (e.g. uint8x8_t).
-    /// A value of `None` can be assumed to be 1 though.
+    /// Number of rows of a SIMD matrix (i.e. 2 for `uint8x8x2_t`).
+    ///
+    /// A value of `None` means this is not a SIMD matrix (e.g. `uint8x8_t`). The number of rows of
+    /// a type with `vec_len=None` can be assumed to be one.
     pub vec_len: Option<u32>,
 }
 
 impl IntrinsicType {
+    /// Returns the element type
     pub fn kind(&self) -> TypeKind {
         self.kind
     }
 
+    /// Returns the number of bits of the type (with a minimum of `8`)
     pub fn inner_size(&self) -> u32 {
         if let Some(bl) = self.bit_len {
             cmp::max(bl, 8)
@@ -137,22 +145,34 @@ impl IntrinsicType {
         }
     }
 
+    /// Returns the number of lanes of the type
     pub fn num_lanes(&self) -> u32 {
         self.simd_len.unwrap_or(1)
     }
 
+    /// Returns the number of vectors of the type
     pub fn num_vectors(&self) -> u32 {
         self.vec_len.unwrap_or(1)
     }
 
+    /// Returns `true` if this represents a SIMD vector
     pub fn is_simd(&self) -> bool {
         self.simd_len.is_some() || self.vec_len.is_some()
     }
 
+    /// Returns `true` if this is a pointer
     pub fn is_ptr(&self) -> bool {
         self.ptr
     }
 
+    /// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the same
+    /// `num_lanes * num_vectors + loads - 1` arithmetic to produce the number of values that
+    /// `ArgumentList::gen_arg_rust` expects and `ArgumentList::load_values_rust` needs.
+    ///
+    /// Each value in the array starts as a bit pattern from `common::values::value_from_array`
+    /// which is then printed as a hex value in the generated code (and if identified as a negative
+    /// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
+    /// generated for floats.
     pub fn populate_random(&self, loads: u32) -> String {
         match self {
             IntrinsicType {
@@ -231,18 +251,16 @@ impl IntrinsicType {
 
 pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// Determines the load function for this type.
-    /// can be implemented in an `impl` block
     fn get_load_function(&self) -> String;
 
-    /// Gets a string containing the typename for this type in C format.
-    /// can be directly defined in `impl` blocks
+    /// Gets a string containing the typename for this type in C.
     fn c_type(&self) -> String;
 
-    /// Gets a string containing the typename for this type in Rust format.
-    /// can be directly defined in `impl` blocks
+    /// Gets a string containing the typename for this type in Rust.
     fn rust_type(&self) -> String;
 
-    /// To enable architecture-specific logic
+    /// Gets a string containing the name of the scalar type corresponding to this type if it is a
+    /// vector.
     fn rust_scalar_type(&self) -> String {
         if self.is_simd() {
             format!(

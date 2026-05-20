@@ -46,15 +46,19 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
         let intrinsics = intrinsics
             .into_iter()
-            // Not sure how we would compare intrinsic that returns void.
+            // Skip intrinsics that don't return a value.
             .filter(|i| i.results.kind() != TypeKind::Void)
+            // Skip bfloat intrinsics - not currently supported
             .filter(|i| i.results.kind() != TypeKind::BFloat)
             .filter(|i| !i.arguments.iter().any(|a| a.ty.kind() == TypeKind::BFloat))
             // Skip pointers for now, we would probably need to look at the return
             // type to work out how many elements we need to point to.
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
+            // Skip intrinsics with 128-bit elements (e.g. `p128`)
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
+            // Skip intrinsics from `--skip`
             .filter(|i| !cli_options.skip.contains(&i.name))
+            // Skip A64-specific intrinsics on A32
             .filter(|i| !(a32 && i.arch_tags == vec!["A64".to_string()]))
             .take(sample_size)
             .collect::<Vec<_>>();
