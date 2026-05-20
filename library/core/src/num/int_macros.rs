@@ -1316,6 +1316,47 @@ macro_rules! int_impl {
             if b { imp::overflow_panic::rem() } else { a }
         }
 
+        /// Disjoint, bitwise or. Computes `self | rhs`, assuming no one bits in common.
+        ///
+        /// Practically, this requires that `self | rhs`, `self ^ rhs`, and `self + rhs` all
+        /// yield the same result, allowing for any of the three to be emitted in code gen
+        /// -- depending on whichever is cheapest.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(disjoint_bitor)]
+        ///
+        /// assert_eq!(
+        ///     // SAFETY: `1` and `-2` have no ones in common.
+        #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(-2) },")]
+        ///     -1,
+        /// );
+        /// ```
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behaviour if `self` and `rhs` are not fully disjoint,
+        /// i.e. if `self & rhs == 0` doesn't apply.
+        #[unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot bitor overlapping ones"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => (lhs & rhs) == 0,
+            );
+
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
+        }
+
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
         ///
         /// # Examples
@@ -2933,7 +2974,6 @@ macro_rules! int_impl {
             }
         }
 
-
         /// Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
         ///
         /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
@@ -2962,7 +3002,6 @@ macro_rules! int_impl {
                 (self.rem_euclid(rhs), false)
             }
         }
-
 
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
@@ -3227,7 +3266,6 @@ macro_rules! int_impl {
             }
             q
         }
-
 
         /// Calculates the least nonnegative remainder of `self` when
         /// divided by `rhs`.
