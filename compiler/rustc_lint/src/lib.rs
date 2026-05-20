@@ -644,6 +644,11 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
+    store.register_removed(
+        "no_mangle_generic_items",
+        "converted into hard error, \
+         generic items must always be mangled",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

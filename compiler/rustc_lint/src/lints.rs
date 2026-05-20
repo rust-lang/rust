@@ -266,20 +266,6 @@ pub(crate) enum BuiltinUnusedDocCommentSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("functions generic over types or consts must be mangled")]
-pub(crate) struct BuiltinNoMangleGeneric {
-    // Use of `#[no_mangle]` suggests FFI intent; correct
-    // fix may be to monomorphize source by hand
-    #[suggestion(
-        "remove this attribute",
-        style = "short",
-        code = "",
-        applicability = "maybe-incorrect"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("const items should never be `#[no_mangle]`")]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
