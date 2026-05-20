@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/27997>
 //@ run-pass
 use std::sync::atomic::{Ordering, AtomicUsize};
 
