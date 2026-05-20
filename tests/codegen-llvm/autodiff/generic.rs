@@ -34,7 +34,7 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
 // F64-NEXT: ; Function Attrs: {{.*}}
 // F64-NEXT: define internal {{.*}} void
 // F64-NEXT: start:
-// F64-NEXT:   {{(tail )?}}call {{.*}} @diffe_{{.*}}
+// F64-NEXT:   {{(tail )?}}call {{.*}}{ double } @diffe_{{.*}}(ptr {{.*}}, ptr {{.*}}, double {{.*}})
 // F64: ret void
 
 // Ensure that `square::<f64>` is generated so that it can be differentiated
