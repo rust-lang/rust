@@ -1055,6 +1055,7 @@ fn brr() {
             fn brr()                               fn()
             st YoloVariant                  YoloVariant
             st YoloVariant {…} YoloVariant { f: usize }
+            ev Yolo(…) (use HH::Yolo) Yolo(YoloVariant)
             bt u32                                  u32
             kw const
             kw crate::

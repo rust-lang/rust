@@ -1067,6 +1067,8 @@ fn main() {
 "#,
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant dep::test_mod_b::Enum::Variant [type_could_unify]
+                ev Variant Variant [type_could_unify+requires_import]
+                ev Variant Variant [requires_import]
                 ex dep::test_mod_b::Enum::Variant  [type_could_unify]
                 md dep::  []
                 fn main() fn() []
