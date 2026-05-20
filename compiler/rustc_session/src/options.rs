@@ -1529,19 +1529,19 @@ pub mod parse {
         slot: &mut Option<CodegenRetagOptions>,
         v: Option<&str>,
     ) -> bool {
-        let Some(v) = v else { return true };
         let mut no_precise_im = false;
         let mut no_precise_pin = false;
-
-        for option in v.split(',') {
-            match option {
-                "no-precise-im" => {
-                    no_precise_im = true;
+        if let Some(opt_list) = v.map(|s| s.split(',')) {
+            for opt in opt_list {
+                match opt {
+                    "no-precise-im" => {
+                        no_precise_im = true;
+                    }
+                    "no-precise-pin" => {
+                        no_precise_pin = true;
+                    }
+                    _ => return false,
                 }
-                "no-precise-pin" => {
-                    no_precise_pin = true;
-                }
-                _ => return false,
             }
         }
         *slot = Some(CodegenRetagOptions { no_precise_im, no_precise_pin });
