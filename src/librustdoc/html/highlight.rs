@@ -1001,8 +1001,8 @@ impl<'src> Classifier<'src> {
                 has_ident = true;
                 nb_items += 1;
             } else if nb > 0 && has_ident {
-                // Following `;` will be handled on its own.
-                break Some(nb_items - 1);
+                // Drop all the colons we just peeked (e.g. `Option::<T>` → keep `Option`).
+                break Some(nb_items - nb);
             } else if has_ident {
                 break Some(nb_items);
             } else {
