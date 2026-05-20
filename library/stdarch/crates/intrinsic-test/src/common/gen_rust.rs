@@ -4,11 +4,10 @@ use itertools::Itertools;
 
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::PASSES;
-use crate::common::argument::ArgumentList;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
-use crate::common::values::test_values_array_name;
+use crate::common::values::{test_values_array_name, test_values_array_static};
 
 /// Rust definitions that are included verbatim in the generated source. In particular, defines
 /// a wrapper around float types that defines `NaN`s to be equal reflexively to enable
@@ -136,7 +135,7 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
                 let name = test_values_array_name(&arg.ty);
 
                 if seen.insert(name) {
-                    ArgumentList::gen_arg_rust(arg, w)?;
+                    test_values_array_static(w, &arg.ty)?;
                 }
             }
         }

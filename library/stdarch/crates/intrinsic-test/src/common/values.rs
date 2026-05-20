@@ -8,6 +8,30 @@ use crate::common::{
 /// Maximum size of a SVE vector
 pub const MAX_SVE_BITS: u32 = 2048;
 
+/// Writes a string defining a static variable with test values used for all intrinsics with
+/// arguments of type `ty` to `w`.
+///
+/// e.g.
+/// ```rust,ignore
+/// static U8_20: [u8; 20] = [
+///     0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xf0,
+///     0x80, 0x3b, 0xff,
+/// ];
+/// ```
+pub fn test_values_array_static<T: IntrinsicTypeDefinition>(
+    w: &mut impl std::io::Write,
+    ty: &T,
+) -> std::io::Result<()> {
+    writeln!(
+        w,
+        "static {name}: [{ty}; {load_size}] = {values};\n",
+        name = test_values_array_name(ty),
+        ty = ty.rust_scalar_type(),
+        load_size = test_values_array_length(&ty),
+        values = test_values_array(&ty)
+    )
+}
+
 /// Returns a string with the name of the static variable containing test values for intrinsic
 /// arguments of this type.
 pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T) -> String {
@@ -20,7 +44,7 @@ pub fn test_values_array_name<T: IntrinsicTypeDefinition>(ty: &T) -> String {
 
 /// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the
 /// `test_values_array_length` fn to determine the number of values that
-/// `ArgumentList::gen_arg_rust` expects and `ArgumentList::load_values_rust` needs.
+/// `test_values_array_static` expects and `ArgumentList::load_values_rust` needs.
 ///
 /// Each value in the array starts as a bit pattern from `bit_pattern_for_test_values_array`
 /// which is then printed as a hex value in the generated code (and if identified as a negative
