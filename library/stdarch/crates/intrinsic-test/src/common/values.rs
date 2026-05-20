@@ -1,3 +1,41 @@
+use crate::common::intrinsic_helpers::{IntrinsicType, SimdLen};
+
+/// Maximum size of a SVE vector
+pub const MAX_SVE_BITS: u32 = 2048;
+
+/// Returns the number of values that need to be in an array of test values such that there can be
+/// `num_loads` distinct windows for a given vector of type `ty`.
+///
+/// For example, vectors of type `uint32x2x2_t` load four values (`2 x 2`) and so to support
+/// `num_loads=10` distinct windows, the total length of the array of test values must be
+/// `(2 x 2) + 10 - 1`:
+///
+/// ```text
+/// [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD]
+///  ^^^^^^^^^^^^^^^^^^ first window
+///       ^^^^^^^^^^^^^^^^^^ second window
+///                                   10th window ^^^^^^^^^^^^^^^^^^
+/// ```
+///
+/// For scalable vectors (only SVE is currently supported), assume that the length of the vector is
+/// the maximum supported by the architecture.
+pub fn test_values_array_length(ty: &IntrinsicType, num_loads: u32) -> u32 {
+    let IntrinsicType {
+        simd_len, vec_len, ..
+    } = ty;
+
+    let simd_len = simd_len.map_or(1, |v| {
+        if let SimdLen::Fixed(n) = v {
+            n
+        } else {
+            MAX_SVE_BITS / ty.inner_size()
+        }
+    });
+    let vec_len = vec_len.unwrap_or(1);
+
+    (simd_len * vec_len) + num_loads - 1
+}
+
 /// Returns a bit pattern for a value being output into a array of test values. Bit patterns come
 /// from one of many constant arrays of test values. The specific constant array used depends on
 /// the number of bits - `bits` - of the type having test values generated for it. This function

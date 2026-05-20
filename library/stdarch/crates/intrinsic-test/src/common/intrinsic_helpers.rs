@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
+use crate::common::values::test_values_array_length;
+
 use super::values::value_for_array;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -199,7 +201,7 @@ impl IntrinsicType {
     }
 
     /// Returns the elements used in the test value arrays in `gen_arg_rust`. Uses the same
-    /// `num_lanes * num_vectors + loads - 1` arithmetic to produce the number of values that
+    /// `test_values_array_length` to determine the number of values that
     /// `ArgumentList::gen_arg_rust` expects and `ArgumentList::load_values_rust` needs.
     ///
     /// Each value in the array starts as a bit pattern from `common::values::value_from_array`
@@ -212,14 +214,12 @@ impl IntrinsicType {
                 bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
                 kind:
                     kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_) | TypeKind::Mask),
-                vec_len,
                 ..
             } => {
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(self.num_lanes() * vec_len.unwrap_or(1) + loads - 1)).format_with(
-                        ",\n",
-                        |i, fmt| {
+                    body =
+                        (0..test_values_array_length(self, loads)).format_with(",\n", |i, fmt| {
                             let src = value_for_array(*bit_len, i);
                             assert!(src == 0 || src.ilog2() < *bit_len);
                             if *kind == TypeKind::Int(Sign::Signed) && (src >> (*bit_len - 1)) != 0
@@ -232,19 +232,17 @@ impl IntrinsicType {
                             } else {
                                 fmt(&format_args!("{src:#x}"))
                             }
-                        }
-                    )
+                        })
                 )
             }
             IntrinsicType {
                 kind: TypeKind::Float,
                 bit_len: Some(bit_len @ (16 | 32 | 64)),
-                vec_len,
                 ..
             } => {
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(self.num_lanes() * vec_len.unwrap_or(1) + loads - 1)).format_with(
+                    body = (0..test_values_array_length(self, loads)).format_with(
                         ",\n",
                         |i, fmt| fmt(&format_args!(
                             "f{bit_len}::from_bits({src:#x})",
@@ -256,15 +254,13 @@ impl IntrinsicType {
             IntrinsicType {
                 kind: TypeKind::Vector,
                 bit_len: Some(128 | 256 | 512),
-                vec_len,
                 ..
             } => {
                 let effective_bit_len = 32;
                 format!(
                     "[\n{body}\n]",
-                    body = (0..(vec_len.unwrap_or(1) * self.num_lanes() + loads - 1)).format_with(
-                        ",\n",
-                        |i, fmt| {
+                    body =
+                        (0..test_values_array_length(self, loads)).format_with(",\n", |i, fmt| {
                             let src = value_for_array(effective_bit_len, i);
                             assert!(src == 0 || src.ilog2() < effective_bit_len);
                             if (src >> (effective_bit_len - 1)) != 0 {
@@ -276,8 +272,7 @@ impl IntrinsicType {
                             } else {
                                 fmt(&format_args!("{src:#x}"))
                             }
-                        }
-                    )
+                        })
                 )
             }
             _ => unimplemented!("populate random: {self:#?}"),
