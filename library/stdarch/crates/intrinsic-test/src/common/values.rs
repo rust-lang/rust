@@ -110,45 +110,45 @@ pub fn test_values_array_length(ty: &IntrinsicType) -> u32 {
 pub fn bit_pattern_for_test_values_array(bits: u32, index: u32) -> u64 {
     let index = index as usize;
     match bits {
-        1 => VALUES_8[index % 2].into(),
-        2 => VALUES_8[index % 4].into(),
-        3 => VALUES_8[index % 8].into(),
-        4 => VALUES_8[index % 16].into(),
-        5 => VALUES_5[index % VALUES_5.len()].into(),
-        6 => VALUES_6[index % VALUES_6.len()].into(),
-        7 => VALUES_7[index % VALUES_7.len()].into(),
-        8 => VALUES_8[index % VALUES_8.len()].into(),
-        16 => VALUES_16[index % VALUES_16.len()].into(),
-        32 => VALUES_32[index % VALUES_32.len()].into(),
-        64 => VALUES_64[index % VALUES_64.len()],
+        1 => BIT_PATTERNS_8[index % 2].into(),
+        2 => BIT_PATTERNS_8[index % 4].into(),
+        3 => BIT_PATTERNS_8[index % 8].into(),
+        4 => BIT_PATTERNS_8[index % 16].into(),
+        5 => BIT_PATTERNS_5[index % BIT_PATTERNS_5.len()].into(),
+        6 => BIT_PATTERNS_6[index % BIT_PATTERNS_6.len()].into(),
+        7 => BIT_PATTERNS_7[index % BIT_PATTERNS_7.len()].into(),
+        8 => BIT_PATTERNS_8[index % BIT_PATTERNS_8.len()].into(),
+        16 => BIT_PATTERNS_16[index % BIT_PATTERNS_16.len()].into(),
+        32 => BIT_PATTERNS_32[index % BIT_PATTERNS_32.len()].into(),
+        64 => BIT_PATTERNS_64[index % BIT_PATTERNS_64.len()],
         _ => unimplemented!("bit_pattern_for_test_values_array(bits: {bits}, ..)"),
     }
 }
 
-pub const VALUES_5: &[u8] = &[
+pub const BIT_PATTERNS_5: &[u8] = &[
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x019, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e,
     0x1f,
 ];
 
-pub const VALUES_6: &[u8] = &[
+pub const BIT_PATTERNS_6: &[u8] = &[
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x039, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e,
     0x3f,
 ];
 
-pub const VALUES_7: &[u8] = &[
+pub const BIT_PATTERNS_7: &[u8] = &[
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x079, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e,
     0x7f,
 ];
 
-pub const VALUES_8: &[u8] = &[
+pub const BIT_PATTERNS_8: &[u8] = &[
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0xf0, 0x80, 0x3b, 0xff,
 ];
 
-pub const VALUES_16: &[u16] = &[
+pub const BIT_PATTERNS_16: &[u16] = &[
     0x0000, // 0.0
     0x0400, // The smallest normal value.
     0x37ff, // The value just below 0.5.
@@ -173,7 +173,7 @@ pub const VALUES_16: &[u16] = &[
     0xff23, 0xfe00, 0xfd23, 0xfc01, 0x8012, 0x83ff, 0x8001,
 ];
 
-pub const VALUES_32: &[u32] = &[
+pub const BIT_PATTERNS_32: &[u32] = &[
     // Simple values.
     0x00000000, // 0.0
     0x00800000, // The smallest normal value.
@@ -200,7 +200,7 @@ pub const VALUES_32: &[u32] = &[
     0x80123456, 0x807fffff, 0x80000001,
 ];
 
-pub const VALUES_64: &[u64] = &[
+pub const BIT_PATTERNS_64: &[u64] = &[
     // Simple values.
     0x0000000000000000, // 0.0
     0x0010000000000000, // The smallest normal value.
