@@ -1576,15 +1576,19 @@ pub struct BranchProtection {
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq)]
 pub enum PointerAuthOption {
-    Calls,
-    ReturnAddresses,
-    AuthTraps,
-    IndirectGotos,
-    ElfGot,
     Aarch64JumpTableHardening,
+    AuthTraps,
+    Calls,
+    ElfGot,
     FunctionPointerTypeDiscrimination,
+    IndirectGotos,
     InitFini,
     InitFiniAddressDiscrimination,
+    Intrinsics,
+    ReturnAddresses,
+    TypeInfoVTPtrDisc,
+    VTPtrAddrDisc,
+    VTPtrTypeDisc,
 }
 impl PointerAuthOption {
     pub fn parse(s: &str) -> Option<Self> {
@@ -1597,7 +1601,11 @@ impl PointerAuthOption {
             "indirect-gotos" => Some(Self::IndirectGotos),
             "init-fini" => Some(Self::InitFini),
             "init-fini-address-discrimination" => Some(Self::InitFiniAddressDiscrimination),
+            "intrinsics" => Some(Self::Intrinsics),
             "return-addresses" => Some(Self::ReturnAddresses),
+            "typeinfo-vt-ptr-discrimination" => Some(Self::TypeInfoVTPtrDisc),
+            "vt-ptr-addr-discrimination" => Some(Self::VTPtrAddrDisc),
+            "vt-ptr-type-discrimination" => Some(Self::VTPtrTypeDisc),
             _ => None,
         }
     }

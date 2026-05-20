@@ -737,6 +737,29 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         );
     }
 
+    pub(crate) fn add_ptrauth_pauthabi_version_and_platform_flags(
+        &self,
+        aarch64_elf_pauthabi_version: u32,
+    ) {
+        // NOTE: This must correspond to llvm's AARCH64_PAUTH_PLATFORM_LLVM_LINUX, as defined in
+        // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h.
+        // FIXME (jchlanda) extend possible values once we start supporting other platforms (for
+        // example: AARCH64_PAUTH_PLATFORM_BAREMETAL = 0x1);
+        let aarch64_pauth_platform_llvm_linux = 0x10000002;
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-platform",
+            aarch64_pauth_platform_llvm_linux,
+        );
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "aarch64-elf-pauthabi-version",
+            aarch64_elf_pauthabi_version,
+        );
+    }
+
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `CGObjCCommonMac::EmitImageInfo`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L5085

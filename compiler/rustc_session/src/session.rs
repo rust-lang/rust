@@ -168,6 +168,13 @@ pub struct PointerAuthConfig {
     pub function_pointers: Option<PointerAuthSchema>,
     /// The ABI for function addresses in .init_array and .fini_array
     pub init_fini: Option<PointerAuthSchema>,
+    /// Use of pointer authentication intrinsics.
+    pub intrinsics: bool,
+    /// The following are used only for compatibility with C++ and control over generated abi
+    /// version. They do not control Rust code generation.
+    pub typeinfo_vt_ptr_discrimination: bool,
+    pub vt_ptr_addr_discrimination: bool,
+    pub vt_ptr_type_discrimination: bool,
 }
 impl PointerAuthConfig {
     fn default(target: &Target) -> Self {
@@ -180,7 +187,56 @@ impl PointerAuthConfig {
             aarch64_jump_table_hardening: true,
             function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
             init_fini: Some(PointerAuthSchema::init_fini_default(target)),
+            intrinsics: true,
+            typeinfo_vt_ptr_discrimination: true,
+            vt_ptr_addr_discrimination: true,
+            vt_ptr_type_discrimination: true,
         };
+    }
+    pub fn calculate_pauth_abi_version(&self, target: &Target) -> u32 {
+        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        // Bit positions of version flags for AARCH64_PAUTH_PLATFORM_LLVM_LINUX.
+        // NOTE: The enum values must stay in sync with clang, see:
+        // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h
+        //
+        // We do not expect to use C++ virtual dispatch, but enable these flags
+        // for compatibility with C++ code. Intrinsics are also always enabled.
+        //
+        // Link to PAuth core info documentation:
+        // <https://github.com/ARM-software/abi-aa/blob/2025Q4/pauthabielf64/pauthabielf64.rst#core-information>
+        const INTRINSICS: u32 = 0;
+        const CALLS: u32 = 1;
+        const RETURNS: u32 = 2;
+        const AUTHTRAPS: u32 = 3;
+        const VT_PTR_ADDR_DISCR: u32 = 4;
+        const VT_PTR_TYPE_DISCR: u32 = 5;
+        const INIT_FINI: u32 = 6;
+        const INIT_FINI_ADDR_DISC: u32 = 7;
+        const GOT: u32 = 8;
+        const GOTOS: u32 = 9;
+        const TYPEINFO_VT_PTR_DISCR: u32 = 10;
+        // FIXME(jchlanda) We don't yet support function pointer type discrimination.
+        // const FPTR_TYPE_DISCR: u32 = 11;
+
+        let pauth_abi_version: u32 = (u32::from(self.intrinsics) << INTRINSICS)
+            | (u32::from(self.function_pointers.is_some()) << CALLS)
+            | (u32::from(self.return_addresses) << RETURNS)
+            | (u32::from(self.auth_traps) << AUTHTRAPS)
+            | (u32::from(self.vt_ptr_addr_discrimination) << VT_PTR_ADDR_DISCR)
+            | (u32::from(self.vt_ptr_type_discrimination) << VT_PTR_TYPE_DISCR)
+            | (u32::from(self.init_fini.is_some()) << INIT_FINI)
+            | (u32::from(self.init_fini.as_ref().is_some_and(|schema| {
+                matches!(
+                    schema.is_address_discriminated,
+                    PointerAuthAddressDiscriminator::HardwareAddress(true)
+                        | PointerAuthAddressDiscriminator::Synthetic(_)
+                )
+            })) << INIT_FINI_ADDR_DISC)
+            | (u32::from(self.elf_got) << GOT)
+            | (u32::from(self.indirect_gotos) << GOTOS)
+            | (u32::from(self.typeinfo_vt_ptr_discrimination) << TYPEINFO_VT_PTR_DISCR);
+
+        pauth_abi_version
     }
     pub fn from_raw(raw: &[(PointerAuthOption, bool)], target: &Target) -> Option<Self> {
         if target.cfg_abi != CfgAbi::Pauthtest {
@@ -240,6 +296,13 @@ impl PointerAuthConfig {
                             PointerAuthAddressDiscriminator::Synthetic(1);
                     }
                 }
+
+                PointerAuthOption::Intrinsics => cfg.intrinsics = *enabled,
+                PointerAuthOption::TypeInfoVTPtrDisc => {
+                    cfg.typeinfo_vt_ptr_discrimination = *enabled
+                }
+                PointerAuthOption::VTPtrAddrDisc => cfg.vt_ptr_addr_discrimination = *enabled,
+                PointerAuthOption::VTPtrTypeDisc => cfg.vt_ptr_type_discrimination = *enabled,
             }
         }
 
