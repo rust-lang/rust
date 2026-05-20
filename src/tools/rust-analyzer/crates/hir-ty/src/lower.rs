@@ -33,8 +33,8 @@ use hir_def::{
         TraitFlags, TraitSignature, TypeAliasFlags, TypeAliasSignature,
     },
     type_ref::{
-        ConstRef, FnType, LifetimeRefId, PathId, TraitBoundModifier, TraitRef as HirTraitRef,
-        TypeBound, TypeRef, TypeRefId,
+        ConstRef, FnType, LifetimeRef, LifetimeRefId, PathId, TraitBoundModifier,
+        TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
     },
 };
 use hir_expand::name::Name;
@@ -44,10 +44,10 @@ use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, BoundRegion, BoundRegionKind, BoundTyKind, BoundVar, BoundVarIndexKind,
-    BoundVariableKind, DebruijnIndex, ExistentialPredicate, ExistentialProjection,
-    ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind, TyKind, TypeFoldable,
-    TypeVisitableExt, Upcast, UpcastFrom, elaborate,
+    AliasTyKind, BoundRegion, BoundRegionKind, BoundTyKind, BoundVar, BoundVariableKind,
+    DebruijnIndex, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    Interner, OutlivesPredicate, TermKind, TyKind, TypeFoldable, TypeVisitableExt, Upcast,
+    UpcastFrom, elaborate,
     inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };
 use smallvec::SmallVec;
@@ -226,7 +226,7 @@ pub struct TyLoweringContext<'db, 'a> {
     pub(crate) defined_anon_consts: ThinVec<AnonConstId>,
     infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
     is_lowering_impl_trait_bounds: bool,
-    bound_vars: Vec<BoundVarKinds<'db>>, // FIXME: HRTB and other for lifetime doesn't change it now
+    bound_vars: Vec<(Vec<Name>, BoundVarKinds<'db>)>,
     lifetime_lowering_mode: LifetimeLoweringMode,
 }
 
@@ -244,7 +244,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let in_binders = DebruijnIndex::ZERO;
         let interner = DbInterner::new_with(db, resolver.krate());
-        let bound_vars = vec![BoundVarKinds::empty(interner)];
+        let bound_vars =
+            vec![(Vec::new(), TyLoweringContext::bound_vars(db, interner, generic_def, generics))];
         Self {
             db,
             // Can provide no block since we don't use it for trait solving.
@@ -299,10 +300,13 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     pub(crate) fn with_shifted_in<T>(
         &mut self,
-        debruijn: DebruijnIndex,
+        binder: &[Name],
         f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> T,
-    ) -> T {
-        self.with_debruijn(self.in_binders.shifted_in(debruijn.as_u32()), f)
+    ) -> (T, BoundVarKinds<'db>) {
+        self.push_bound_vars(binder);
+        let res = self.with_debruijn(self.in_binders.shifted_in(1), f);
+        let bound_vars = self.pop_bound_vars();
+        (res, bound_vars)
     }
 
     pub(crate) fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
@@ -372,8 +376,22 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         }
     }
 
+    fn push_bound_vars(&mut self, binder: &[Name]) {
+        let bound_vars = BoundVarKinds::new_from_iter(
+            self.interner,
+            binder.iter().map(|_| {
+                BoundVariableKind::Region(BoundRegionKind::Named(self.generic_def.into()))
+            }),
+        );
+        self.bound_vars.push((binder.to_vec(), bound_vars));
+    }
+
+    fn pop_bound_vars(&mut self) -> BoundVarKinds<'db> {
+        self.bound_vars.pop().unwrap().1
+    }
+
     fn peek_bound_vars(&self) -> BoundVarKinds<'db> {
-        *self.bound_vars.last().unwrap()
+        self.bound_vars.last().unwrap().1
     }
 
     fn bound_vars(
@@ -504,28 +522,46 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             self.types.regions.error
         } else {
             if is_late_bound {
-                if self.lifetime_lowering_mode == LifetimeLoweringMode::Bound {
-                    Region::new_bound(
-                        self.interner,
-                        self.in_binders,
-                        BoundRegion {
-                            var: BoundVar::from_u32(index),
-                            kind: BoundRegionKind::Named(id.parent.into()),
-                        },
-                    )
-                } else {
-                    let solver_def_id = id.parent.into();
-                    Region::new_late_param(
-                        self.interner,
-                        solver_def_id,
-                        BoundRegion {
-                            var: BoundVar::from_u32(index),
-                            kind: BoundRegionKind::Named(solver_def_id),
-                        },
-                    )
-                }
+                self.hrtb_region_param(
+                    index,
+                    DebruijnIndex::from_usize(self.in_binders.as_usize()),
+                    id.parent,
+                )
             } else {
                 Region::new_early_param(self.interner, EarlyParamRegion { id, index })
+            }
+        }
+    }
+
+    fn hrtb_region_param(
+        &self,
+        index: u32,
+        debruijn: DebruijnIndex,
+        parent: GenericDefId,
+    ) -> Region<'db> {
+        if self.param_index_is_disallowed(index) {
+            // FIXME: Report an error.
+            self.types.regions.error
+        } else {
+            if self.lifetime_lowering_mode == LifetimeLoweringMode::Bound {
+                Region::new_bound(
+                    self.interner,
+                    debruijn,
+                    BoundRegion {
+                        var: BoundVar::from_u32(index),
+                        kind: BoundRegionKind::Named(parent.into()),
+                    },
+                )
+            } else {
+                let solver_def_id = parent.into();
+                Region::new_late_param(
+                    self.interner,
+                    solver_def_id,
+                    BoundRegion {
+                        var: BoundVar::from_u32(index),
+                        kind: BoundRegionKind::Named(solver_def_id),
+                    },
+                )
             }
         }
     }
@@ -714,7 +750,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let (params, ret_ty) = fn_.split_params_and_ret();
         let old_lifetime_elision = self.lifetime_elision;
         let mut args = Vec::with_capacity(fn_.params.len());
-        self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx: &mut TyLoweringContext<'_, '_>| {
+        let binder = fn_.binder.as_ref().map(|b| b.as_ref()).unwrap_or_default();
+        let (_, binder) = self.with_shifted_in(binder, |ctx: &mut TyLoweringContext<'_, '_>| {
             ctx.lifetime_elision =
                 LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
             args.extend(params.iter().map(|&(_, tr)| ctx.lower_ty(tr)));
@@ -723,8 +760,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         });
         self.lifetime_elision = old_lifetime_elision;
 
-        // FIXME: When we don't drop HRTB lifetimes, use those here.
-        let binder = BoundVarKinds::empty(interner);
         Ty::new_fn_ptr(
             interner,
             Binder::bind_with_vars(
@@ -850,12 +885,19 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         where_predicate: &'b WherePredicate,
         ignore_bindings: bool,
     ) -> impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db> {
+        let lower_type_outlives = |ctx: &mut TyLoweringContext<'db, '_>,
+                                   target: &TypeRefId,
+                                   bound| {
+            let self_ty = ctx.lower_ty(*target);
+            let clause = ctx.lower_type_bound(bound, self_ty, ignore_bindings).collect::<Vec<_>>();
+            Either::Left(clause.into_iter())
+        };
+
         match where_predicate {
-            WherePredicate::ForLifetime { target, bound, .. }
-            | WherePredicate::TypeBound { target, bound } => {
-                let self_ty = self.lower_ty(*target);
-                Either::Left(self.lower_type_bound(bound, self_ty, ignore_bindings))
+            WherePredicate::ForLifetime { target, bound, lifetimes } => {
+                self.with_shifted_in(lifetimes, |ctx| lower_type_outlives(ctx, target, bound)).0
             }
+            WherePredicate::TypeBound { target, bound } => lower_type_outlives(self, target, bound),
             &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
                 Clause(Predicate::new(
                     self.interner,
@@ -881,42 +923,48 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let interner = self.interner;
         let meta_sized = self.lang_items.MetaSized;
         let pointee_sized = self.lang_items.PointeeSized;
+
         let mut assoc_bounds = None;
         let mut clause = None;
-        match bound {
-            &TypeBound::Path(path, TraitBoundModifier::None) | &TypeBound::ForLifetime(_, path) => {
-                let binder = self.peek_bound_vars();
-                // FIXME Don't silently drop the hrtb lifetimes here
-                if let Some((trait_ref, mut ctx)) = self.lower_trait_ref_from_path(path, self_ty) {
-                    // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
-                    // sized-hierarchy correctly.
-                    if meta_sized.is_some_and(|it| it == trait_ref.def_id.0) {
-                        // Ignore this bound
-                    } else if pointee_sized.is_some_and(|it| it == trait_ref.def_id.0) {
-                        // Regard this as `?Sized` bound
-                        ctx.ty_ctx().unsized_types.insert(self_ty);
-                    } else {
-                        if !ignore_bindings {
-                            assoc_bounds = ctx.assoc_type_bindings_from_type_bound(
-                                trait_ref,
-                                path.type_ref().into(),
-                            );
-                        }
-                        clause = Some(Clause(Predicate::new(
-                            interner,
-                            Binder::bind_with_vars(
-                                rustc_type_ir::PredicateKind::Clause(
-                                    rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                        trait_ref,
-                                        polarity: rustc_type_ir::PredicatePolarity::Positive,
-                                    }),
-                                ),
-                                binder,
-                            ),
-                        )));
+
+        let mut lower_path_bound = |ctx: &mut TyLoweringContext<'db, '_>, path| {
+            let binder = ctx.peek_bound_vars();
+
+            if let Some((trait_ref, mut ctx)) = ctx.lower_trait_ref_from_path(path, self_ty) {
+                // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
+                // sized-hierarchy correctly.
+                if meta_sized.is_some_and(|it| it == trait_ref.def_id.0) {
+                    // Ignore this bound
+                } else if pointee_sized.is_some_and(|it| it == trait_ref.def_id.0) {
+                    // Regard this as `?Sized` bound
+                    ctx.ty_ctx().unsized_types.insert(self_ty);
+                } else {
+                    if !ignore_bindings {
+                        assoc_bounds = ctx
+                            .assoc_type_bindings_from_type_bound(trait_ref, path.type_ref().into())
+                            .map(|iter| iter.collect::<Vec<_>>());
                     }
+                    clause = Some(Clause(Predicate::new(
+                        interner,
+                        Binder::bind_with_vars(
+                            rustc_type_ir::PredicateKind::Clause(rustc_type_ir::ClauseKind::Trait(
+                                TraitPredicate {
+                                    trait_ref,
+                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                },
+                            )),
+                            binder,
+                        ),
+                    )));
                 }
             }
+        };
+
+        match bound {
+            &TypeBound::ForLifetime(ref binder, path) => {
+                self.with_shifted_in(binder, |ctx| lower_path_bound(ctx, path)).0
+            }
+            &TypeBound::Path(path, TraitBoundModifier::None) => lower_path_bound(self, path),
             &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self.lang_items.Sized;
                 // Don't lower associated type bindings as the only possible relaxed trait bound
@@ -961,15 +1009,15 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         // bounds in the input.
         // INVARIANT: If this function returns `DynTy`, there should be at least one trait bound.
         // These invariants are utilized by `TyExt::dyn_trait()` and chalk.
-        let bounds = self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
+        let bounds = 'bounds: {
             let mut principal = None;
             let mut auto_traits = SmallVec::<[_; 3]>::new();
             let mut projections = Vec::new();
             let mut had_error = false;
 
             for b in bounds {
-                let db = ctx.db;
-                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|(b, _)| {
+                let db = self.db;
+                self.lower_type_bound(b, dummy_self_ty, false).for_each(|(b, _)| {
                     match b.kind().skip_binder() {
                         rustc_type_ir::ClauseKind::Trait(t) => {
                             let id = t.def_id();
@@ -1006,12 +1054,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
 
             if had_error {
-                return None;
+                break 'bounds None;
             }
 
             if principal.is_none() && auto_traits.is_empty() {
                 // No traits is not allowed.
-                return None;
+                break 'bounds None;
             }
 
             // `Send + Sync` is the same as `Sync + Send`.
@@ -1200,20 +1248,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 interner,
                 principal.into_iter().chain(projections).chain(auto_traits),
             ))
-        });
+        };
 
         if let Some(bounds) = bounds {
             let region = match region {
-                Some(it) => match it.kind() {
-                    rustc_type_ir::RegionKind::ReBound(BoundVarIndexKind::Bound(db), var) => {
-                        Region::new_bound(
-                            self.interner,
-                            db.shifted_out_to_binder(DebruijnIndex::from_u32(1)),
-                            var,
-                        )
-                    }
-                    _ => it,
-                },
+                Some(it) => it,
                 None => Region::new_static(self.interner),
             };
             Ty::new_dynamic(self.interner, bounds, region)
@@ -1234,44 +1273,41 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         );
         let prev_is_lowering_impl_trait_bounds =
             mem::replace(&mut self.is_lowering_impl_trait_bounds, true);
-        let (predicates, assoc_ty_bounds_start) =
-            self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
-                let mut predicates = Vec::new();
-                let mut assoc_ty_bounds = Vec::new();
-                for b in bounds {
-                    for (pred, source) in ctx.lower_type_bound(b, self_ty, false) {
-                        match source {
-                            GenericPredicateSource::SelfOnly => predicates.push(pred),
-                            GenericPredicateSource::AssocTyBound => assoc_ty_bounds.push(pred),
-                        }
-                    }
-                }
 
-                if !ctx.unsized_types.contains(&self_ty) {
-                    let sized_trait = self.lang_items.Sized;
-                    let sized_clause = sized_trait.map(|trait_id| {
-                        let trait_ref = TraitRef::new_from_args(
-                            interner,
-                            trait_id.into(),
-                            GenericArgs::new_from_slice(&[self_ty.into()]),
-                        );
-                        Clause(Predicate::new(
-                            interner,
-                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                    trait_ref,
-                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
-                                }),
-                            )),
-                        ))
-                    });
-                    predicates.extend(sized_clause);
+        let mut predicates = Vec::new();
+        let mut assoc_ty_bounds = Vec::new();
+        for b in bounds {
+            for (pred, source) in self.lower_type_bound(b, self_ty, false) {
+                match source {
+                    GenericPredicateSource::SelfOnly => predicates.push(pred),
+                    GenericPredicateSource::AssocTyBound => assoc_ty_bounds.push(pred),
                 }
+            }
+        }
 
-                let assoc_ty_bounds_start = predicates.len() as u32;
-                predicates.extend(assoc_ty_bounds);
-                (predicates, assoc_ty_bounds_start)
+        if !self.unsized_types.contains(&self_ty) {
+            let sized_trait = self.lang_items.Sized;
+            let sized_clause = sized_trait.map(|trait_id| {
+                let trait_ref = TraitRef::new_from_args(
+                    interner,
+                    trait_id.into(),
+                    GenericArgs::new_from_slice(&[self_ty.into()]),
+                );
+                Clause(Predicate::new(
+                    interner,
+                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                            trait_ref,
+                            polarity: rustc_type_ir::PredicatePolarity::Positive,
+                        }),
+                    )),
+                ))
             });
+            predicates.extend(sized_clause);
+        }
+
+        let assoc_ty_bounds_start = predicates.len() as u32;
+        predicates.extend(assoc_ty_bounds);
 
         self.is_lowering_impl_trait_bounds = prev_is_lowering_impl_trait_bounds;
         ImplTrait {
@@ -1281,6 +1317,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     pub(crate) fn lower_lifetime(&mut self, lifetime: LifetimeRefId) -> Region<'db> {
+        if let Some(region) = self.find_and_lower_hrtb_lifetime(lifetime) {
+            return region;
+        };
+
         match self.resolver.resolve_lifetime(&self.store[lifetime]) {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => Region::new_static(self.interner),
@@ -1291,6 +1331,24 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 }
             },
             None => Region::error(self.interner),
+        }
+    }
+
+    fn find_and_lower_hrtb_lifetime(&mut self, lifetime: LifetimeRefId) -> Option<Region<'db>> {
+        if let LifetimeRef::Named(lt_name) = &self.store[lifetime] {
+            self.bound_vars.iter().rev().enumerate().find_map(|(debruijn, (binder, _))| {
+                binder.iter().enumerate().find_map(|(index, l)| {
+                    (l == lt_name).then(|| {
+                        self.hrtb_region_param(
+                            index as u32,
+                            DebruijnIndex::from_usize(debruijn),
+                            self.generic_def,
+                        )
+                    })
+                })
+            })
+        } else {
+            None
         }
     }
 }

@@ -1331,6 +1331,17 @@ impl Printer<'_> {
             TypeRef::Fn(fn_) => {
                 let ((_, return_type), args) =
                     fn_.params.split_last().expect("TypeRef::Fn is missing return type");
+                if let Some(binder) = &fn_.binder {
+                    w!(
+                        self,
+                        "for<{}> ",
+                        binder
+                            .iter()
+                            .map(|it| it.display(self.db, self.edition))
+                            .format(", ")
+                            .to_string()
+                    );
+                }
                 if fn_.is_unsafe {
                     w!(self, "unsafe ");
                 }

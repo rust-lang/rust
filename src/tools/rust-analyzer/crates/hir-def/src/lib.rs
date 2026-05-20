@@ -712,6 +712,12 @@ pub struct LifetimeParamId {
     pub local_id: LocalLifetimeParamId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct HrtbLifetimeParamId {
+    pub scope: GenericDefId,
+    pub local_id: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum ItemContainerId {
     ExternBlockId(ExternBlockId),

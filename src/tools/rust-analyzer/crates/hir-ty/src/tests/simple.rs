@@ -4359,3 +4359,82 @@ fn check() {
         "#]],
     );
 }
+
+#[test]
+fn hrtb_fn_ptr() {
+    check_infer(
+        r#"
+//- minicore: fn
+
+fn foo<'b>(f: for <'a> fn(&'a u32, &'b u32)) {}
+"#,
+        expect![[r#"
+            12..13 'f': fn(&'_ u32, &'_ u32)
+            46..48 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn hrtb_with_where_predicate() {
+    check_no_mismatches(
+        r#"
+trait Echo<'a> {
+    fn echo(&self, s: &'a str) -> &'a str;
+}
+
+struct Bot;
+
+// Implement Echo<'b> for &'a Bot — independent of both 'a and 'b
+impl<'a, 'b> Echo<'b> for &'a Bot {
+    fn echo(&self, s: &'b str) -> &'b str {
+        s
+    }
+}
+
+fn foo<T>(val: T)
+where
+    for<'a, 'b> &'a T: Echo<'b>,
+{
+    let owned = String::from("  hello ");
+    let v = (&val).echo(&owned));
+}
+"#,
+    );
+}
+
+#[test]
+fn nested() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+#![feature(lang_items)]
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+fn execute_nested_closures<F>(f: F)
+where
+    for<'a> F: Fn(&'a str) -> Box<dyn for<'b> Fn(&'b str) + 'a>,
+{
+}
+"#,
+    );
+}
+
+#[test]
+fn diff_nested() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+#![feature(lang_items)]
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+fn foo_fn<F>(f: F)
+where
+    F: for<'a> Fn(&'a str) -> Box<dyn for<'b> Fn(&'a &'b str) + 'a>,
+{
+}
+"#,
+    );
+}

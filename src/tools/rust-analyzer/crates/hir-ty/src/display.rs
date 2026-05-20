@@ -2522,6 +2522,14 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                 write!(f, "]")?;
             }
             TypeRef::Fn(fn_) => {
+                if let Some(binder) = &fn_.binder {
+                    let edition = f.edition();
+                    write!(
+                        f,
+                        "for<{}> ",
+                        binder.iter().map(|it| it.display(f.db, edition)).format(", ")
+                    )?;
+                }
                 if fn_.is_unsafe {
                     write!(f, "unsafe ")?;
                 }
