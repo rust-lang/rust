@@ -1,6 +1,7 @@
+use std::process::Command;
+
 use itertools::Itertools;
 
-use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::argument::ArgumentList;
 use crate::common::intrinsic::Intrinsic;
@@ -34,6 +35,22 @@ macro_rules! concatln {
     ($($lines:expr),* $(,)?) => {
         concat!($( $lines, "\n" ),*)
     };
+}
+
+/// Run rustfmt on the generated source code
+pub fn run_rustfmt(source_path: &str) {
+    let output = Command::new("rustfmt")
+        .args([source_path])
+        .output()
+        .expect("failed to run rustfmt on generated sources");
+
+    if !output.status.success() {
+        panic!(
+            "failed to run rustfmt on generated sources:\nstdout:{stdout}\nstderr:{stderr}",
+            stdout = String::from_utf8_lossy(&output.stdout),
+            stderr = String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 pub fn write_bin_cargo_toml(
@@ -106,7 +123,7 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
                 let name = arg.rust_vals_array_name().to_string();
 
                 if seen.insert(name) {
-                    ArgumentList::gen_arg_rust(arg, w, Indentation::default(), PASSES)?;
+                    ArgumentList::gen_arg_rust(arg, w, PASSES)?;
                 }
             }
         }
@@ -205,9 +222,7 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
             "        }}",
             "    }}",
         ),
-        loaded_args = intrinsic
-            .arguments
-            .load_values_rust(Indentation::default().nest_by(4)),
+        loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
         passes = passes,
@@ -287,9 +302,8 @@ pub fn write_build_rs(
         i = i
     )?;
 
-    let indentation = Indentation::default().nest_by(2);
     for flag in COMMON_FLAGS.iter().chain(arch_flags) {
-        writeln!(w, "{indentation}\"{flag}\",")?;
+        writeln!(w, "\"{flag}\",")?;
     }
 
     write!(

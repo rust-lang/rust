@@ -4,7 +4,6 @@ use crate::common::intrinsic_helpers::TypeKind;
 
 use super::constraint::Constraint;
 use super::gen_rust::PASSES;
-use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
@@ -149,37 +148,36 @@ where
     pub fn gen_arg_rust(
         arg: &Argument<T>,
         w: &mut impl std::io::Write,
-        indentation: Indentation,
         loads: u32,
     ) -> std::io::Result<()> {
         writeln!(
             w,
-            "{indentation}static {name}: [{ty}; {load_size}] = {values};\n",
+            "static {name}: [{ty}; {load_size}] = {values};\n",
             name = arg.rust_vals_array_name(),
             ty = arg.ty.rust_scalar_type(),
             load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-            values = arg.ty.populate_random(indentation, loads)
+            values = arg.ty.populate_random(loads)
         )
     }
 
     /// Creates a line for each argument that initializes the argument from array `[ARG]_VALS` at
     /// an offset `i` using a load intrinsic, in Rust.
     /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
-    pub fn load_values_rust(&self, indentation: Indentation) -> String {
+    pub fn load_values_rust(&self) -> String {
         self.iter()
             .filter(|&arg| !arg.has_constraint())
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
                     format!(
-                        "{indentation}let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
+                        "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
                         name = arg.generate_name(),
                         vals_name = arg.rust_vals_array_name(),
                         load = arg.ty.get_load_function(),
                     )
                 } else {
                     format!(
-                        "{indentation}let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
+                        "let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
                         name = arg.generate_name(),
                         vals_name = arg.rust_vals_array_name(),
                     )

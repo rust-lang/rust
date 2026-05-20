@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
-use super::indentation::Indentation;
 use super::values::value_for_array;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -154,7 +153,7 @@ impl IntrinsicType {
         self.ptr
     }
 
-    pub fn populate_random(&self, indentation: Indentation, loads: u32) -> String {
+    pub fn populate_random(&self, loads: u32) -> String {
         match self {
             IntrinsicType {
                 bit_len: Some(bit_len @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64)),
@@ -164,9 +163,8 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let body_indentation = indentation.nested();
                 format!(
-                    "[\n{body}\n{indentation}]",
+                    "[\n{body}\n]",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(*bit_len, i);
@@ -177,9 +175,9 @@ impl IntrinsicType {
                                 let mask = !0u64 >> (64 - *bit_len);
                                 let ones_compl = src ^ mask;
                                 let twos_compl = ones_compl + 1;
-                                fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
+                                fmt(&format_args!("-{twos_compl:#x}"))
                             } else {
-                                fmt(&format_args!("{body_indentation}{src:#x}"))
+                                fmt(&format_args!("{src:#x}"))
                             }
                         })
                 )
@@ -192,11 +190,10 @@ impl IntrinsicType {
                 ..
             } => {
                 format!(
-                    "[\n{body}\n{indentation}]",
+                    "[\n{body}\n]",
                     body = (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| fmt(&format_args!(
-                            "{indentation}f{bit_len}::from_bits({src:#x})",
-                            indentation = indentation.nested(),
+                            "f{bit_len}::from_bits({src:#x})",
                             src = value_for_array(*bit_len, i)
                         )))
                 )
@@ -208,10 +205,9 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let body_indentation = indentation.nested();
                 let effective_bit_len = 32;
                 format!(
-                    "[\n{body}\n{indentation}]",
+                    "[\n{body}\n]",
                     body = (0..(vec_len.unwrap_or(1) * simd_len.unwrap_or(1) + loads - 1))
                         .format_with(",\n", |i, fmt| {
                             let src = value_for_array(effective_bit_len, i);
@@ -221,9 +217,9 @@ impl IntrinsicType {
                                 let mask = !0u64 >> (64 - effective_bit_len);
                                 let ones_compl = src ^ mask;
                                 let twos_compl = ones_compl + 1;
-                                fmt(&format_args!("{body_indentation}-{twos_compl:#x}"))
+                                fmt(&format_args!("-{twos_compl:#x}"))
                             } else {
-                                fmt(&format_args!("{body_indentation}{src:#x}"))
+                                fmt(&format_args!("{src:#x}"))
                             }
                         })
                 )

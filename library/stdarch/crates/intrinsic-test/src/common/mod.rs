@@ -6,7 +6,9 @@ use cli::ProcessedCli;
 
 use crate::common::{
     gen_c::write_wrapper_c,
-    gen_rust::{write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs},
+    gen_rust::{
+        run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
+    },
     intrinsic::Intrinsic,
     intrinsic_helpers::IntrinsicTypeDefinition,
 };
@@ -19,7 +21,6 @@ pub mod intrinsic_helpers;
 
 mod gen_c;
 mod gen_rust;
-mod indentation;
 mod values;
 
 /// Architectures must support this trait
@@ -74,7 +75,7 @@ pub trait SupportedArchitectureTest {
 
                 let rust_filename = format!("rust_programs/mod_{i}/src/lib.rs");
                 trace!("generating `{rust_filename}`");
-                let mut file = File::create(rust_filename)?;
+                let mut file = File::create(&rust_filename)?;
 
                 write_lib_rs(
                     &mut file,
@@ -84,6 +85,7 @@ pub trait SupportedArchitectureTest {
                     i,
                     chunk,
                 )?;
+                run_rustfmt(&rust_filename);
 
                 let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");
                 trace!("generating `{toml_filename}`");
@@ -93,9 +95,10 @@ pub trait SupportedArchitectureTest {
 
                 let build_rs_filename = format!("rust_programs/mod_{i}/build.rs");
                 trace!("generating `{build_rs_filename}`");
-                let mut file = File::create(build_rs_filename).unwrap();
+                let mut file = File::create(&build_rs_filename).unwrap();
 
                 write_build_rs(&mut file, i, &arch_flags).unwrap();
+                run_rustfmt(&build_rs_filename);
 
                 Ok(())
             })
