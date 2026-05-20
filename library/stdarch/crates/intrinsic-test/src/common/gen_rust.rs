@@ -168,35 +168,10 @@ fn generate_rust_test_loop<A: SupportedArchitecture>(
     coerce += ") -> _";
     c_coerce += ")";
 
-    if intrinsic
-        .arguments
-        .iter()
-        .filter(|arg| arg.has_constraint())
-        .count()
-        == 0
-    {
-        writeln!(
-            w,
-            "    let specializations = [(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)];"
-        )?;
-    } else {
-        writeln!(w, "    let specializations = [")?;
-
-        intrinsic.iter_specializations(|imm_values| {
-            writeln!(
-                w,
-                "        (\"{const_args}\", {intrinsic_name}::<{const_args}> as unsafe {coerce}, {intrinsic_name}_wrapper_{c_const_args} as unsafe extern \"C\" {c_coerce}),",
-                const_args = imm_values.iter().join(","),
-                c_const_args = imm_values.iter().join("_"),
-            )
-        })?;
-
-        writeln!(w, "    ];")?;
-    }
-
     write!(
         w,
         r#"
+let specializations = [{specializations}];
 for (id, rust, c) in specializations {{
     for i in 0..{PASSES} {{
         unsafe {{
@@ -212,6 +187,27 @@ for (id, rust, c) in specializations {{
     }}
 }}
 "#,
+        specializations = intrinsic
+            .specializations()
+            .format_with(",", |imm_values, fmt| {
+                if imm_values.is_empty() {
+                    fmt(&format_args!(
+                        "(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)"
+                    ))
+                } else {
+                    fmt(&format_args!(
+                        r#"
+                        (
+                            "{const_args}",
+                            {intrinsic_name}::<{const_args}> as unsafe {coerce},
+                            {intrinsic_name}_wrapper_{c_const_args} as unsafe extern "C" {c_coerce}
+                        )
+                        "#,
+                        const_args = imm_values.iter().join(","),
+                        c_const_args = imm_values.iter().join("_"),
+                    ))
+                }
+            }),
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
@@ -256,25 +252,25 @@ pub fn write_bindings_rust<A: SupportedArchitecture>(
 #[allow(improper_ctypes)]
 #[link(name = "wrapper_{i}")]
 unsafe extern "C" {{
+    {definitions}
+}}
 "#,
-    )?;
-
-    for intrinsic in intrinsics {
-        intrinsic.iter_specializations(|imm_values| {
-            writeln!(
-                w,
-                "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
-                return_ty = intrinsic.results.rust_type(),
-                name = intrinsic.name,
-                imm_arglist = imm_values
-                    .iter()
-                    .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
-                arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
-            )
-        })?;
-    }
-
-    writeln!(w, "}}")
+        definitions = intrinsics.iter().format_with("", |intrinsic, fmt| {
+            fmt(&intrinsic
+                .specializations()
+                .format_with("\n", |imm_values, fmt| {
+                    fmt(&format_args!(
+                        "fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
+                        return_ty = intrinsic.results.rust_type(),
+                        name = intrinsic.name,
+                        imm_arglist = imm_values
+                            .iter()
+                            .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
+                        arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
+                    ))
+                }))
+        })
+    )
 }
 
 /// Writes a `build.rs` into `w` for each test crate that compiles the corresponding C source code
