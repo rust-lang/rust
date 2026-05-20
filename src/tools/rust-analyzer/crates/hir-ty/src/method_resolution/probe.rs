@@ -1295,6 +1295,15 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     return ControlFlow::Break(by_value_pick);
                 }
 
+                if self.mode == Mode::Path {
+                    // Don't autoref in path mode.
+                    // rustc doesn't do that and it's not a big deal as non-autorefd methods take priority
+                    // and if an autorefd one is selected, we'll register the `NonAutorefdT: Trait` obligation
+                    // (which will fail) anyway. But it does have an impact when probing for all methods,
+                    // which is something we need to stay accurate.
+                    return ControlFlow::Continue(());
+                }
+
                 let autoref_pick = self.pick_autorefd_method(
                     step,
                     self_ty,
