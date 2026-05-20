@@ -395,8 +395,22 @@ fn layout_of_uncached<'tcx>(
                 valid_range: WrappingRange { start: 0, end: 0x10FFFF },
             },
         )),
-        ty::Int(ity) => scalar(Int(abi::Integer::from_int_ty(dl, ity), true)),
-        ty::Uint(ity) => scalar(Int(abi::Integer::from_uint_ty(dl, ity), false)),
+        ty::Int(ity) => match ity {
+            ty::IntTy::I8 => tcx.layouts.i8,
+            ty::IntTy::I16 => tcx.layouts.i16,
+            ty::IntTy::I32 => tcx.layouts.i32,
+            ty::IntTy::I64 => tcx.layouts.i64,
+            ty::IntTy::I128 => tcx.layouts.i128,
+            ty::IntTy::Isize => tcx.layouts.isize,
+        },
+        ty::Uint(ity) => match ity {
+            ty::UintTy::U8 => tcx.layouts.u8,
+            ty::UintTy::U16 => tcx.layouts.u16,
+            ty::UintTy::U32 => tcx.layouts.u32,
+            ty::UintTy::U64 => tcx.layouts.u64,
+            ty::UintTy::U128 => tcx.layouts.u128,
+            ty::UintTy::Usize => tcx.layouts.usize,
+        },
         ty::Float(fty) => scalar(Float(abi::Float::from_float_ty(fty))),
         ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));

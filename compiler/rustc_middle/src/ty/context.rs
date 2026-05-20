@@ -384,12 +384,17 @@ pub struct CommonConsts<'tcx> {
 
 pub struct CommonLayouts<'tcx> {
     pub usize: Layout<'tcx>,
+    pub isize: Layout<'tcx>,
+    pub u8: Layout<'tcx>,
+    pub i8: Layout<'tcx>,
     pub u16: Layout<'tcx>,
     pub i16: Layout<'tcx>,
     pub u32: Layout<'tcx>,
     pub i32: Layout<'tcx>,
     pub u64: Layout<'tcx>,
     pub i64: Layout<'tcx>,
+    pub u128: Layout<'tcx>,
+    pub i128: Layout<'tcx>,
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -486,12 +491,17 @@ impl<'tcx> CommonLayouts<'tcx> {
 
         CommonLayouts {
             usize: mk_scalar(mk_int(dl.ptr_sized_integer(), false)),
+            isize: mk_scalar(mk_int(dl.ptr_sized_integer(), true)),
+            u8: mk_scalar(mk_int(Integer::I8, false)),
+            i8: mk_scalar(mk_int(Integer::I8, true)),
             u16: mk_scalar(mk_int(Integer::I16, false)),
             i16: mk_scalar(mk_int(Integer::I16, true)),
             u32: mk_scalar(mk_int(Integer::I32, false)),
             i32: mk_scalar(mk_int(Integer::I32, true)),
             u64: mk_scalar(mk_int(Integer::I64, false)),
             i64: mk_scalar(mk_int(Integer::I64, true)),
+            u128: mk_scalar(mk_int(Integer::I128, false)),
+            i128: mk_scalar(mk_int(Integer::I128, true)),
         }
     }
 }
