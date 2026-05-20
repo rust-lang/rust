@@ -37,6 +37,7 @@ After building the compiler and standard library, you now have a working
 compiler toolchain. You can use it with rustup by linking it.
 
 ```sh
+# note that sometimes you can only have the stage2 depending on the build config
 rustup toolchain link stage1 build/host/stage1
 ```
 
