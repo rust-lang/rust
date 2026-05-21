@@ -1125,33 +1125,51 @@ impl Ord for Components<'_> {
     }
 }
 
-fn compare_components(left: Components<'_>, right: Components<'_>) -> cmp::Ordering {
+fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
     // Fast path for long shared prefixes
     //
     // - compare raw bytes to find first mismatch
     // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
     // - if found update state to only do a component-wise comparison on the remainder,
     //   otherwise do it on the full path
-
-    let left_path = if matches!(left.first_comp, Some(FirstComponent::Prefix)) {
-        &left.path[..left.back]
-    } else {
-        &left.path[left.front..left.back]
-    };
-    let right_path = if matches!(right.first_comp, Some(FirstComponent::Prefix)) {
-        &right.path[..right.back]
-    } else {
-        &right.path[right.front..right.back]
-    };
-    match left_path.iter().zip(right_path).position(|(&a, &b)| a != b) {
-        // Left path and right path are exactly the same
-        None if left_path.len() == right_path.len() => return cmp::Ordering::Equal,
-        // FIXME: This should check the character that they conflict on so you
-        // can return Ordering::Greater or Ordering::Less if the conflicting
-        // characters is not a slash ("/") or current directory character (".")
-        // Some(pos) => {
-        // }
-        _ => {}
+    //
+    // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
+    // the middle of one. If both left and right are at 0, that means no prefix was encoded
+    // into this
+    // possible future improvement: a [u8]::first_mismatch simd implementation
+    // Optimization: can check if the differing character is not a '/' or '.'
+    // and then return either `Ordering::Greater` or `Ordering::Less`
+    if left.front == 0 && right.front == 0 {
+        // Note: Benchmarking details shows that using `left.back.min(right.back)`
+        // causes this function to run slower than using a variable that stores
+        // the `left.back` and `right.back` information (which `back` field
+        // encodes the length of the `Components<'_>` unconsumed path)
+        let left_back = left.back;
+        let right_back = right.back;
+        let first_difference = match left.path[..left.back]
+            .iter()
+            .zip(&right.path[..right.back])
+            .position(|(&a, &b)| a != b)
+        {
+            None if left.back == right.back => return cmp::Ordering::Equal,
+            None => left_back.min(right_back),
+            Some(diff) => diff,
+        };
+        if let Some(previous_sep) =
+            left.path[..first_difference].iter().rposition(|&b| is_sep_byte(b))
+        {
+            // We should always set first_comp to `None` since we got past
+            // the first character (could be root dir or a part of a relative path)
+            // we normalize both `Components<'_>` because we want both to start
+            // at a non-separator character and start comparing from there
+            // (e.g. comparing "/a" with "///a")
+            left.first_comp = None;
+            left.front = previous_sep;
+            left.normalize_front();
+            right.first_comp = None;
+            right.front = previous_sep;
+            right.normalize_front();
+        }
     }
 
     Iterator::cmp(left, right)
