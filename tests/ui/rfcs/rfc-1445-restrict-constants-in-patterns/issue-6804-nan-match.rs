@@ -21,7 +21,7 @@ fn main() {
     };
 
     match MyType(1.0f32) {
-        C => {}, //~ ERROR cannot use NaN in patterns
+        C => {}, //~ ERROR constant of non-structural type `MyType<f32>` in a pattern
         _ => {},
     }
 

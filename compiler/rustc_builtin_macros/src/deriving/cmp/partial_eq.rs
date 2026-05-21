@@ -22,7 +22,7 @@ pub(crate) fn expand_deriving_partial_eq(
         path: path_std!(marker::StructuralPartialEq),
         skip_path_as_bound: true, // crucial!
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: Vec::new(),
+        additional_bounds: vec![Ty::Path(path_std!(marker::StructuralPartialEq))],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,

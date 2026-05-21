@@ -22,17 +22,23 @@ LL |         [NAN, _] => {},
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
 
-error: cannot use NaN in patterns
+error: constant of non-structural type `MyType<f32>` in a pattern
   --> $DIR/issue-6804-nan-match.rs:24:9
    |
+LL | struct MyType<T>(T);
+   | ---------------- `MyType<f32>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+LL |
 LL | const C: MyType<f32> = MyType(f32::NAN);
    | -------------------- constant defined here
 ...
 LL |         C => {},
-   |         ^ evaluates to `NaN`, which is not allowed in patterns
+   |         ^ constant of non-structural type
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
-   = help: try using the `is_nan` method instead
+help: if `MyType<f32>` manually implemented `PartialEq`, you could add a condition to the match arm checking for equality
+   |
+LL -         C => {},
+LL +         binding if binding == C => {},
+   |
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:30:9

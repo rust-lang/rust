@@ -17,21 +17,19 @@ struct NoPartialEq;
 
 #[derive(Copy, Clone, Debug)]
 struct NoDerive;
-//~^ NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
-//~| NOTE must be annotated with `#[derive(PartialEq)]`
+//~^ NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
+//~| NOTE `NoDerive` must be annotated with `#[derive(PartialEq)]`
 
 // This impl makes `NoDerive` irreflexive.
 impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
 //~^ NOTE StructuralPartialEq.html for details
-//~| NOTE StructuralPartialEq.html for details
 //~| NOTE StructuralPartialEq.html for details
 //~| NOTE StructuralPartialEq.html for details
 //~| NOTE StructuralPartialEq.html for details
@@ -55,10 +53,11 @@ impl Eq for TrivialEq { }
 fn main() {
     #[derive(PartialEq, Eq, Debug)]
     enum Derive<X> { Some(X), None, }
+    //~^ NOTE `Derive<NoDerive>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 
     const ENUM: Derive<NoDerive> = Derive::Some(NoDerive); //~ NOTE constant defined here
     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
-    //~^ ERROR constant of non-structural type `NoDerive` in a pattern
+    //~^ ERROR constant of non-structural type `Derive<NoDerive>` in a pattern
     //~| NOTE constant of non-structural type
 
     const FIELD: OND = TrivialEq(Some(NoDerive)).0; //~ NOTE constant defined here
