@@ -23,8 +23,20 @@ use super::{COLLAPSIBLE_MATCH, pat_contains_disallowed_or};
 
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], msrv: Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
-        for arm in arms {
-            check_arm(cx, true, arm.pat, expr, arm.body, arm.guard, Some(els_arm.body), msrv);
+        let last_non_wildcard = arms.iter().rposition(|arm| !arm_is_wild_like(cx, arm));
+        for (idx, arm) in arms.iter().enumerate() {
+            let only_wildcards_after = last_non_wildcard.is_none_or(|lnw| idx >= lnw);
+            check_arm(
+                cx,
+                true,
+                arm.pat,
+                expr,
+                arm.body,
+                arm.guard,
+                Some(els_arm.body),
+                msrv,
+                only_wildcards_after,
+            );
         }
     }
 }
@@ -37,7 +49,7 @@ pub(super) fn check_if_let<'tcx>(
     let_expr: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
-    check_arm(cx, false, pat, let_expr, body, None, else_expr, msrv);
+    check_arm(cx, false, pat, let_expr, body, None, else_expr, msrv, false);
 }
 
 #[expect(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -50,6 +62,7 @@ fn check_arm<'tcx>(
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
     msrv: Msrv,
+    only_wildcards_after: bool,
 ) {
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
@@ -126,6 +139,7 @@ fn check_arm<'tcx>(
             );
         });
     } else if outer_is_match // Leave if-let to the `collapsible_if` lint
+        && only_wildcards_after // adding a guard allows fall-through; unsafe if other arms follow
         && let Some(inner) = If::hir(inner_expr)
         && outer_pat.span.eq_ctxt(inner.cond.span)
         && match (outer_else_body, inner.r#else) {

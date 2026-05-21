@@ -29,3 +29,19 @@ fn issue16558() {
         _ => 1,
     };
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/16875
+// lint still fires when only wildcard-like arms follow (fall-through is harmless)
+fn issue16875(a: Option<&str>, b: i32) -> i32 {
+    let mut res = 0;
+    match a {
+        Some(_) => {
+            if b == 0 {
+                //~^ collapsible_match
+                res = 1;
+            }
+        },
+        _ => {},
+    }
+    res
+}

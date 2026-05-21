@@ -46,5 +46,23 @@ LL |
 LL ~         ,
    |
 
-error: aborting due to 3 previous errors
+error: this `if` can be collapsed into the outer `match`
+  --> tests/ui/collapsible_match_fixable.rs:39:13
+   |
+LL | /             if b == 0 {
+LL | |
+LL | |                 res = 1;
+LL | |             }
+   | |_____________^
+   |
+help: collapse nested if block
+   |
+LL ~         Some(_)
+LL ~             if b == 0 => {
+LL |
+LL |                 res = 1;
+LL ~             },
+   |
+
+error: aborting due to 4 previous errors
 

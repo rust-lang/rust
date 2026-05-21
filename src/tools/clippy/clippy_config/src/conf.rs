@@ -789,6 +789,7 @@ define_Conf! {
         manual_let_else,
         manual_midpoint,
         manual_non_exhaustive,
+        manual_noop_waker,
         manual_option_as_slice,
         manual_pattern_char_comparison,
         manual_range_contains,
