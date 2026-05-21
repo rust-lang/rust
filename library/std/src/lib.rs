@@ -399,6 +399,7 @@
 // tidy-alphabetical-start
 #![feature(alloc_io)]
 #![feature(allocator_api)]
+#![feature(buf_read_has_data_left)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
