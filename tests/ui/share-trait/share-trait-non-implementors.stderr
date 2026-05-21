@@ -1,0 +1,60 @@
+error[E0277]: the trait bound `&mut i32: Share` is not satisfied
+  --> $DIR/share-trait-non-implementors.rs:8:21
+   |
+LL |     require_share::<&mut i32>();
+   |                     ^^^^^^^^ the nightly-only, unstable trait `Share` is not implemented for `&mut i32`
+   |
+help: the trait `Share` is implemented for `&T`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+   = note: `Share` is implemented for `&i32`, but not for `&mut i32`
+note: required by a bound in `require_share`
+  --> $DIR/share-trait-non-implementors.rs:5:21
+   |
+LL | fn require_share<T: Share>() {}
+   |                     ^^^^^ required by this bound in `require_share`
+
+error[E0277]: the trait bound `String: Share` is not satisfied
+  --> $DIR/share-trait-non-implementors.rs:11:21
+   |
+LL |     require_share::<String>();
+   |                     ^^^^^^ the nightly-only, unstable trait `Share` is not implemented for `String`
+   |
+help: the trait `Share` is implemented for `&T`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+note: required by a bound in `require_share`
+  --> $DIR/share-trait-non-implementors.rs:5:21
+   |
+LL | fn require_share<T: Share>() {}
+   |                     ^^^^^ required by this bound in `require_share`
+
+error[E0277]: the trait bound `Vec<i32>: Share` is not satisfied
+  --> $DIR/share-trait-non-implementors.rs:14:21
+   |
+LL |     require_share::<Vec<i32>>();
+   |                     ^^^^^^^^ the nightly-only, unstable trait `Share` is not implemented for `Vec<i32>`
+   |
+help: the trait `Share` is implemented for `&T`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+note: required by a bound in `require_share`
+  --> $DIR/share-trait-non-implementors.rs:5:21
+   |
+LL | fn require_share<T: Share>() {}
+   |                     ^^^^^ required by this bound in `require_share`
+
+error[E0277]: the trait bound `Box<i32>: Share` is not satisfied
+  --> $DIR/share-trait-non-implementors.rs:17:21
+   |
+LL |     require_share::<Box<i32>>();
+   |                     ^^^^^^^^ the nightly-only, unstable trait `Share` is not implemented for `Box<i32>`
+   |
+help: the trait `Share` is implemented for `&T`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+note: required by a bound in `require_share`
+  --> $DIR/share-trait-non-implementors.rs:5:21
+   |
+LL | fn require_share<T: Share>() {}
+   |                     ^^^^^ required by this bound in `require_share`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

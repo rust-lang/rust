@@ -625,7 +625,7 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
 /// in `rustc_trait_selection`.
 mod impls {
-    use super::TrivialClone;
+    use super::{Share, TrivialClone};
     use crate::marker::PointeeSized;
 
     macro_rules! impl_clone {
@@ -713,6 +713,11 @@ mod impls {
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for &T {}
 
+    #[unstable(feature = "share_trait", issue = "156756")]
+    impl<T: PointeeSized> Share for &T {}
+
+    // FIXME(share_trait): Whether mutable references are non-candidates is unresolved; keep
+    // `Share` unimplemented for `&mut T` until that API question is decided.
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: PointeeSized> !Clone for &mut T {}
