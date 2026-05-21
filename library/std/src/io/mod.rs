@@ -342,7 +342,6 @@ pub use self::{
 
 mod buffered;
 mod copy;
-mod cursor;
 mod error;
 mod impls;
 mod pipe;
