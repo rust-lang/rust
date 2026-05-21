@@ -1,8 +1,7 @@
-#![deny(clippy::useless_conversion)]
-#![allow(clippy::into_iter_on_ref)]
-#![allow(clippy::needless_ifs, clippy::unnecessary_wraps, unused)]
+#![warn(clippy::useless_conversion)]
 // FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+#![expect(static_mut_refs)]
+#![allow(clippy::into_iter_on_ref)]
 
 use std::ops::ControlFlow;
 
@@ -173,7 +172,6 @@ fn main() {
     issue11300::bar();
 }
 
-#[allow(dead_code)]
 fn issue11065_fp() {
     use std::option::IntoIter;
     fn takes_into_iter(_: impl IntoIterator<Item = i32>) {}
@@ -187,7 +185,6 @@ fn issue11065_fp() {
     x!(Some(5).into_iter());
 }
 
-#[allow(dead_code)]
 fn explicit_into_iter_fn_arg() {
     fn a<T>(_: T) {}
     fn b<T: IntoIterator<Item = i32>>(_: T) {}
