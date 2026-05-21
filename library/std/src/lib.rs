@@ -318,6 +318,7 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -385,6 +386,7 @@
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(used_with_arg)]
+#![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):

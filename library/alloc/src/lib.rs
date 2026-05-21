@@ -93,6 +93,7 @@
 #![feature(async_iterator)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(can_vector)]
 #![feature(case_ignorable)]
 #![feature(cast_maybe_uninit)]
 #![feature(cell_get_cloned)]
@@ -175,6 +176,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
+#![feature(write_all_vectored)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //

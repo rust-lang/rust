@@ -3,9 +3,9 @@ mod tests;
 
 use crate::alloc::Allocator;
 use crate::collections::VecDeque;
-use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Write};
+use crate::io::{self, BorrowedCursor, BufRead, IoSliceMut, Read};
 use crate::sync::Arc;
-use crate::{cmp, fmt, mem, str};
+use crate::{cmp, str};
 
 // =============================================================================
 // Forwarding implementations
@@ -50,43 +50,6 @@ impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Write + ?Sized> Write for &mut W {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (**self).write(buf)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        (**self).write_vectored(bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        (**self).is_write_vectored()
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        (**self).flush()
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        (**self).write_all(buf)
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        (**self).write_all_vectored(bufs)
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        (**self).write_fmt(fmt)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -162,43 +125,6 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Write + ?Sized> Write for Box<W> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (**self).write(buf)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        (**self).write_vectored(bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        (**self).is_write_vectored()
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        (**self).flush()
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        (**self).write_all(buf)
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        (**self).write_all_vectored(bufs)
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        (**self).write_fmt(fmt)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -362,108 +288,6 @@ impl BufRead for &[u8] {
     }
 }
 
-/// Write is implemented for `&mut [u8]` by copying into the slice, overwriting
-/// its data.
-///
-/// Note that writing updates the slice to point to the yet unwritten part.
-/// The slice will be empty when it has been completely overwritten.
-///
-/// If the number of bytes to be written exceeds the size of the slice, write operations will
-/// return short writes: ultimately, `Ok(0)`; in this situation, `write_all` returns an error of
-/// kind `ErrorKind::WriteZero`.
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Write for &mut [u8] {
-    #[inline]
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        let amt = cmp::min(data.len(), self.len());
-        let (a, b) = mem::take(self).split_at_mut(amt);
-        a.copy_from_slice(&data[..amt]);
-        *self = b;
-        Ok(amt)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let mut nwritten = 0;
-        for buf in bufs {
-            nwritten += self.write(buf)?;
-            if self.is_empty() {
-                break;
-            }
-        }
-
-        Ok(nwritten)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
-        if self.write(data)? < data.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        for buf in bufs {
-            if self.write(buf)? < buf.len() {
-                return Err(io::Error::WRITE_ALL_EOF);
-            }
-        }
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-/// Write is implemented for `Vec<u8>` by appending to the vector.
-/// The vector will grow as needed.
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Write for Vec<u8, A> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len = bufs.iter().map(|b| b.len()).sum();
-        self.reserve(len);
-        for buf in bufs {
-            self.extend_from_slice(buf);
-        }
-        Ok(len)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.extend_from_slice(buf);
-        Ok(())
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        self.write_vectored(bufs)?;
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 /// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 impl<A: Allocator> Read for VecDeque<u8, A> {
@@ -573,96 +397,6 @@ impl<A: Allocator> BufRead for VecDeque<u8, A> {
     }
 }
 
-/// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
-#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
-impl<A: Allocator> Write for VecDeque<u8, A> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.extend(buf);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len = bufs.iter().map(|b| b.len()).sum();
-        self.reserve(len);
-        for buf in bufs {
-            self.extend(&**buf);
-        }
-        Ok(len)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        self.extend(buf);
-        Ok(())
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        self.write_vectored(bufs)?;
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[unstable(feature = "read_buf", issue = "78485")]
-impl<'a> io::Write for core::io::BorrowedCursor<'a> {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let amt = cmp::min(buf.len(), self.capacity());
-        self.append(&buf[..amt]);
-        Ok(amt)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let mut nwritten = 0;
-        for buf in bufs {
-            let n = self.write(buf)?;
-            nwritten += n;
-            if n < buf.len() {
-                break;
-            }
-        }
-        Ok(nwritten)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        if self.write(buf)? < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        for buf in bufs {
-            if self.write(buf)? < buf.len() {
-                return Err(io::Error::WRITE_ALL_EOF);
-            }
-        }
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
 impl<R: Read + ?Sized> Read for Arc<R>
 where
@@ -707,46 +441,5 @@ where
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (&**self).read_buf_exact(cursor)
-    }
-}
-#[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl<W: Write + ?Sized> Write for Arc<W>
-where
-    for<'a> &'a W: Write,
-    W: crate::io::IoHandle,
-{
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (&**self).write(buf)
-    }
-
-    #[inline]
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        (&**self).write_vectored(bufs)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        (&**self).is_write_vectored()
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        (&**self).flush()
-    }
-
-    #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        (&**self).write_all(buf)
-    }
-
-    #[inline]
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        (&**self).write_all_vectored(bufs)
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        (&**self).write_fmt(fmt)
     }
 }
