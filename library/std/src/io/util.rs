@@ -3,52 +3,8 @@
 #[cfg(test)]
 mod tests;
 
-use crate::io::{self, BorrowedCursor, BufRead, Empty, IoSliceMut, Read, Repeat};
+use crate::io::{self, BufRead, Empty};
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Read for Empty {
-    #[inline]
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
-    }
-
-    #[inline]
-    fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        Ok(())
-    }
-
-    #[inline]
-    fn read_vectored(&mut self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        Ok(0)
-    }
-
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        // Do not force `Chain<Empty, T>` or `Chain<T, Empty>` to use vectored
-        // reads, unless the other reader is vectored.
-        false
-    }
-
-    #[inline]
-    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        if !buf.is_empty() { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
-    }
-
-    #[inline]
-    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        if cursor.capacity() != 0 { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
-    }
-
-    #[inline]
-    fn read_to_end(&mut self, _buf: &mut Vec<u8>) -> io::Result<usize> {
-        Ok(0)
-    }
-
-    #[inline]
-    fn read_to_string(&mut self, _buf: &mut String) -> io::Result<usize> {
-        Ok(0)
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BufRead for Empty {
     #[inline]
@@ -77,58 +33,5 @@ impl BufRead for Empty {
     #[inline]
     fn read_line(&mut self, _buf: &mut String) -> io::Result<usize> {
         Ok(0)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Read for Repeat {
-    #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        buf.fill(self.byte);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        buf.fill(self.byte);
-        Ok(())
-    }
-
-    #[inline]
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
-        // SAFETY: No uninit bytes are being written.
-        unsafe { buf.as_mut() }.write_filled(self.byte);
-        // SAFETY: the entire unfilled portion of buf has been initialized.
-        unsafe { buf.advance(buf.capacity()) };
-        Ok(())
-    }
-
-    #[inline]
-    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
-        self.read_buf(buf)
-    }
-
-    /// This function is not supported by `io::Repeat`, because there's no end of its data
-    fn read_to_end(&mut self, _: &mut Vec<u8>) -> io::Result<usize> {
-        Err(io::Error::from(io::ErrorKind::OutOfMemory))
-    }
-
-    /// This function is not supported by `io::Repeat`, because there's no end of its data
-    fn read_to_string(&mut self, _: &mut String) -> io::Result<usize> {
-        Err(io::Error::from(io::ErrorKind::OutOfMemory))
-    }
-
-    #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let mut nwritten = 0;
-        for buf in bufs {
-            nwritten += self.read(buf)?;
-        }
-        Ok(nwritten)
-    }
-
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        true
     }
 }

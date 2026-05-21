@@ -1,9 +1,12 @@
+use core::cmp;
+
 use crate::alloc::Allocator;
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
 use crate::fmt;
-use crate::io::{self, IoSlice, Seek, SeekFrom, SizeHint, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write};
+use crate::string::String;
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 use crate::sync::Arc;
 use crate::vec::Vec;
@@ -11,6 +14,91 @@ use crate::vec::Vec;
 // =============================================================================
 // Forwarding implementations
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<R: Read + ?Sized> Read for &mut R {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (**self).read_to_end(buf)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (**self).read_to_string(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        (**self).read_exact(buf)
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<R: Read + ?Sized> Read for Box<R> {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (**self).read_to_end(buf)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (**self).read_to_string(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        (**self).read_exact(buf)
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf_exact(cursor)
+    }
+}
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl<T> SizeHint for Box<T> {
@@ -93,6 +181,163 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
 // =============================================================================
 // In-memory buffer implementations
 
+/// Read is implemented for `&[u8]` by copying from the slice.
+///
+/// Note that reading updates the slice to point to the yet unread part.
+/// The slice will be empty when EOF is reached.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Read for &[u8] {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let amt = cmp::min(buf.len(), self.len());
+        let (a, b) = self.split_at(amt);
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if amt == 1 {
+            buf[0] = a[0];
+        } else {
+            buf[..amt].copy_from_slice(a);
+        }
+
+        *self = b;
+        Ok(amt)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let amt = cmp::min(cursor.capacity(), self.len());
+        let (a, b) = self.split_at(amt);
+
+        cursor.append(a);
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        let mut nread = 0;
+        for buf in bufs {
+            nread += self.read(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nread)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if buf.len() > self.len() {
+            // `read_exact` makes no promise about the content of `buf` if it
+            // fails so don't bother about that.
+            *self = &self[self.len()..];
+            return Err(io::Error::READ_EXACT_EOF);
+        }
+        let (a, b) = self.split_at(buf.len());
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if buf.len() == 1 {
+            buf[0] = a[0];
+        } else {
+            buf.copy_from_slice(a);
+        }
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if cursor.capacity() > self.len() {
+            // Append everything we can to the cursor.
+            cursor.append(*self);
+            *self = &self[self.len()..];
+            return Err(io::Error::READ_EXACT_EOF);
+        }
+        let (a, b) = self.split_at(cursor.capacity());
+
+        cursor.append(a);
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let len = self.len();
+        buf.try_reserve(len)?;
+
+        cfg_select! {
+            no_global_oom_handling => {
+                // SAFETY:
+                // * self and buf are non-overlapping
+                // * buf[..len] is already initialized
+                // * buf[len..len + count] is initialized by copy_nonoverlapping
+                // * len + count is within the capacity of buf based on the reservation completed above
+                unsafe {
+                    let count = len;
+                    let len = buf.len();
+                    let src = self.as_ptr();
+                    let dst = buf.as_mut_ptr().add(len);
+                    core::ptr::copy_nonoverlapping(src, dst, count);
+                    buf.set_len(len + count);
+                }
+            }
+            _ => {
+                buf.extend_from_slice(*self);
+            }
+        }
+
+        *self = &self[len..];
+        Ok(len)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        let content = str::from_utf8(self).map_err(|_| io::Error::INVALID_UTF8)?;
+        let len = self.len();
+        buf.try_reserve(len)?;
+
+        cfg_select! {
+            no_global_oom_handling => {
+                // SAFETY:
+                // * buf and content are non-overlapping
+                // * buf[..len] is already initialized
+                // * buf[len..len + count] is initialized by copy_nonoverlapping
+                // * len + count is within the capacity of buf based on the reservation completed above
+                // * content is valid UTF-8
+                unsafe {
+                    let buf = buf.as_mut_vec();
+                    let content = content.as_bytes();
+                    let count = content.len();
+                    let len = buf.len();
+                    let src = content.as_ptr();
+                    let dst = buf.as_mut_ptr().add(len);
+                    core::ptr::copy_nonoverlapping(src, dst, count);
+                    buf.set_len(len + count);
+                }
+            }
+            _ => {
+                buf.push_str(content);
+            }
+        }
+
+        *self = &self[len..];
+        Ok(len)
+    }
+}
+
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -163,6 +408,97 @@ impl<A: Allocator> Write for Vec<u8, A> {
     }
 }
 
+/// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
+impl<A: Allocator> Read for VecDeque<u8, A> {
+    /// Fill `buf` with the contents of the "front" slice as returned by
+    /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
+    /// discontiguous, multiple calls to `read` will be needed to read the entire content.
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let (ref mut front, _) = self.as_slices();
+        let n = Read::read(front, buf)?;
+        self.drain(..n);
+        Ok(n)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        let (front, back) = self.as_slices();
+
+        // Use only the front buffer if it is big enough to fill `buf`, else use
+        // the back buffer too.
+        match buf.split_at_mut_checked(front.len()) {
+            None => buf.copy_from_slice(&front[..buf.len()]),
+            Some((buf_front, buf_back)) => match back.split_at_checked(buf_back.len()) {
+                Some((back, _)) => {
+                    buf_front.copy_from_slice(front);
+                    buf_back.copy_from_slice(back);
+                }
+                None => {
+                    self.clear();
+                    return Err(io::Error::READ_EXACT_EOF);
+                }
+            },
+        }
+
+        self.drain(..buf.len());
+        Ok(())
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let (ref mut front, _) = self.as_slices();
+        let n = cmp::min(cursor.capacity(), front.len());
+        Read::read_buf(front, cursor)?;
+        self.drain(..n);
+        Ok(())
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let len = cursor.capacity();
+        let (front, back) = self.as_slices();
+
+        match front.split_at_checked(cursor.capacity()) {
+            Some((front, _)) => cursor.append(front),
+            None => {
+                cursor.append(front);
+                match back.split_at_checked(cursor.capacity()) {
+                    Some((back, _)) => cursor.append(back),
+                    None => {
+                        cursor.append(back);
+                        self.clear();
+                        return Err(io::Error::READ_EXACT_EOF);
+                    }
+                }
+            }
+        }
+
+        self.drain(..len);
+        Ok(())
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        // The total len is known upfront so we can reserve it in a single call.
+        let len = self.len();
+        buf.try_reserve(len)?;
+
+        let (front, back) = self.as_slices();
+        buf.extend_from_slice(front);
+        buf.extend_from_slice(back);
+        self.clear();
+        Ok(len)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        // SAFETY: We only append to the buffer
+        unsafe { io::append_to_string(buf, |buf| self.read_to_end(buf)) }
+    }
+}
 /// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
@@ -206,6 +542,53 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     }
 }
 
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
+impl<R: Read + ?Sized> Read for Arc<R>
+where
+    for<'a> &'a R: Read,
+    R: crate::io::IoHandle,
+{
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf(cursor)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (&**self).read_to_end(buf)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (&**self).read_to_string(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        (&**self).read_exact(buf)
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf_exact(cursor)
+    }
+}
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
 impl<W: Write + ?Sized> Write for Arc<W>
