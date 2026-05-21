@@ -782,6 +782,12 @@ impl<T> Clone for SyncSender<T> {
     }
 }
 
+// FIXME(share_trait): The sender-like `Share` impl set is still being confirmed in
+// rust-lang/rust#156756. This assumes cloning `SyncSender` creates a clone-as-alias
+// value because both handles send to the same receiving endpoint.
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T> Share for SyncSender<T> {}
+
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
