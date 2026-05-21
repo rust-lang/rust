@@ -1,5 +1,5 @@
 #![warn(clippy::trim_split_whitespace)]
-#![allow(clippy::let_unit_value)]
+#![expect(clippy::let_unit_value)]
 
 struct Custom;
 impl Custom {
@@ -39,7 +39,6 @@ impl std::ops::Deref for DerefStrAndCustomSplit {
     }
 }
 impl DerefStrAndCustomSplit {
-    #[allow(dead_code)]
     fn split_whitespace(self) {}
 }
 

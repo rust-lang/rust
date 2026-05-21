@@ -1,9 +1,5 @@
 #![warn(clippy::transmute_ptr_to_ref)]
-#![allow(
-    clippy::match_single_binding,
-    clippy::unnecessary_cast,
-    clippy::missing_transmute_annotations
-)]
+#![allow(clippy::missing_transmute_annotations, clippy::unnecessary_cast)]
 
 fn ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     unsafe {
