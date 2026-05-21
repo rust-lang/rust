@@ -142,6 +142,8 @@
 // not exposed publicly, but if you are curious about the implementation,
 // that's where everything is.
 
+use core::clone::Share;
+
 use crate::sync::mpmc;
 use crate::time::{Duration, Instant};
 use crate::{error, fmt};
@@ -644,6 +646,12 @@ impl<T> Clone for Sender<T> {
         Sender { inner: self.inner.clone() }
     }
 }
+
+// FIXME(share_trait): The sender-like `Share` impl set is still being confirmed in
+// rust-lang/rust#156756. This assumes cloning `Sender` creates a clone-as-alias
+// value because both handles send to the same receiving endpoint.
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T> Share for Sender<T> {}
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
