@@ -245,7 +245,7 @@ use core::any::Any;
 use core::cell::{Cell, CloneFromCell};
 #[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
-use core::clone::{CloneToUninit, UseCloned};
+use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -2524,6 +2524,12 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+
+// FIXME(share_trait): The initial `Share` impl set is still being confirmed in
+// rust-lang/rust#156756. This assumes cloning `Rc` creates a clone-as-alias
+// value because the new handle points to the same allocation.
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T: ?Sized, A: Allocator + Clone> Share for Rc<T, A> {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
