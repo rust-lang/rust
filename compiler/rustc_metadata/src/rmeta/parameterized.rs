@@ -75,6 +75,7 @@ trivially_parameterized_over_tcx! {
     crate::rmeta::VariantData,
     rustc_abi::ReprOptions,
     rustc_ast::DelimArgs,
+    rustc_data_structures::fingerprint::Fingerprint,
     rustc_hir::Attribute,
     rustc_hir::ConstStability,
     rustc_hir::Constness,

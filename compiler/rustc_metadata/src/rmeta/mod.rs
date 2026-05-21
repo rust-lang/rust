@@ -48,7 +48,7 @@ use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHasher, PublicApiHashingContext, RDRHashAll, RDRHashNone,
+    Hashed, ItemPublicHashes, PublicApiHasher, PublicApiHashingContext, RDRHashAll, RDRHashNone,
 };
 
 mod decoder;
@@ -301,6 +301,7 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+    rdr_hashes: ItemPublicHashes,
 }
 
 /// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.

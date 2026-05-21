@@ -1,3 +1,4 @@
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHash;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
@@ -75,6 +76,31 @@ impl FixedSizeEncoding for u64 {
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 8]) {
         *b = self.to_le_bytes();
+    }
+}
+
+impl FixedSizeEncoding for Option<Fingerprint> {
+    type ByteArray = [u8; 17];
+
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        if b[0] == 0 {
+            None
+        } else {
+            Some(Fingerprint::from_le_bytes(b[1..17].try_into().unwrap()))
+        }
+    }
+
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
+        match self {
+            Some(fingerprint) => {
+                b[0] = 1;
+                let buf: &mut [u8; 16] = (&mut b[1..17]).try_into().unwrap();
+                *buf = fingerprint.to_le_bytes();
+            }
+            None => {
+                b[0] = 0;
+            }
+        }
     }
 }
 

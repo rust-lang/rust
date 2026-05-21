@@ -55,6 +55,7 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -77,7 +78,7 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, ExpnId, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
 use crate::hir::Crate;
@@ -2047,6 +2048,20 @@ rustc_queries! {
     query public_api_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash a crate" }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern DefId, panics for the local crate
+    query extern_def_public_hash(_: DefId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of a definition" }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern ExpnId, panics for the local crate
+    query extern_expn_public_hash(_: ExpnId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of an expansion" }
         separate_provide_extern
     }
 

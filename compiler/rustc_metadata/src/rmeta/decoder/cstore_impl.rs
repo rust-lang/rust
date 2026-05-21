@@ -186,18 +186,29 @@ macro_rules! provide {
 // small trait to work around different signature queries all being defined via
 // the macro above.
 trait IntoArgs {
+    type This;
     type Other;
-    fn into_args(self) -> (DefId, Self::Other);
+    fn into_args(self) -> (Self::This, Self::Other);
 }
 
 impl IntoArgs for DefId {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self, ())
     }
 }
 
+impl IntoArgs for ExpnId {
+    type This = ExpnId;
+    type Other = ();
+    fn into_args(self) -> (ExpnId, ()) {
+        (self, ())
+    }
+}
+
 impl IntoArgs for CrateNum {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.as_def_id(), ())
@@ -205,6 +216,7 @@ impl IntoArgs for CrateNum {
 }
 
 impl IntoArgs for (CrateNum, DefId) {
+    type This = DefId;
     type Other = DefId;
     fn into_args(self) -> (DefId, DefId) {
         (self.0.as_def_id(), self.1)
@@ -212,6 +224,7 @@ impl IntoArgs for (CrateNum, DefId) {
 }
 
 impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.def_id(), ())
@@ -219,6 +232,7 @@ impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
 }
 
 impl IntoArgs for (CrateNum, SimplifiedType) {
+    type This = DefId;
     type Other = SimplifiedType;
     fn into_args(self) -> (DefId, SimplifiedType) {
         (self.0.as_def_id(), self.1)
@@ -255,7 +269,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    def_kind => { cdata.def_kind(def_id.index) }
+    def_kind => { table_direct }
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
@@ -436,6 +450,22 @@ provide! { tcx, def_id, other, cdata,
     }
     anon_const_kind => { table }
     const_of_item => { table }
+    extern_def_public_hash => {
+        cdata
+            .root
+            .rdr_hashes
+            .local
+            .get(cdata, def_id.index)
+            .unwrap_or_else(|| bug!("Trying to read public hash of definition categoriazed as private!"))
+    }
+    extern_expn_public_hash => {
+        cdata
+            .root
+            .rdr_hashes
+            .expn
+            .get(cdata, def_id.local_id)
+            .unwrap_or_else(|| bug!("Trying to read public hash of expnasion categoriazed as private!"))
+    }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {

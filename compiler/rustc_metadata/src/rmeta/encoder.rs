@@ -359,15 +359,9 @@ fn encode_span_data<'a, 'tcx>(span: Span, s: &mut EncodeContext<'a, 'tcx>) -> Ve
         (SpanKind::Local, metadata_index)
     };
     if s.index_graph_builder.is_some() {
-        if let Some(parent) = this.parent {
-            let node = Node::ParentSpan(parent);
-            nodes.push(node);
-            s.record_encoded_index(node);
-        } else {
-            let node = Node::ParentlessSpan(span);
-            nodes.push(node);
-            s.record_encoded_index(node);
-        }
+        let node = Node::Span(span);
+        nodes.push(node);
+        s.record_encoded_index(node);
     }
 
     // Encode the start position relative to the file start, so we profit more from the

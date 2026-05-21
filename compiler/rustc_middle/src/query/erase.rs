@@ -206,6 +206,7 @@ impl_erasable_for_types_with_no_type_params! {
     Result<ty::GenericArg<'_>, traits::query::NoSolution>,
     Ty<'_>,
     bool,
+    rustc_data_structures::fingerprint::Fingerprint,
     rustc_data_structures::svh::Svh,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
