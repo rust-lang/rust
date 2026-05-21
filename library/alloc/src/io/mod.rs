@@ -4,6 +4,7 @@ mod cursor;
 mod error;
 mod impls;
 mod read;
+mod util;
 
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
@@ -26,6 +27,14 @@ pub use core::io::{
     slice_write_vectored, stream_len_default, take,
 };
 
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub use self::{read::Read, util::Bytes};
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::read::{DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_vectored};
+pub use self::{
+    read::{
+        DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_buf_exact,
+        default_read_exact, default_read_to_end, default_read_to_string, default_read_vectored,
+    },
+    util::{SpecReadByte, bytes, uninlined_slow_read_byte},
+};
