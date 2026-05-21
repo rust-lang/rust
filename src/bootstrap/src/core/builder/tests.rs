@@ -331,11 +331,16 @@ fn test_test_coverage() {
         Case { cmd: &["test", "coverage"], expected: &["coverage-map", "coverage-run"] },
         Case { cmd: &["test", "coverage-map"], expected: &["coverage-map"] },
         Case { cmd: &["test", "coverage-run"], expected: &["coverage-run"] },
+        Case { cmd: &["test", "--skip=coverage"], expected: &[] },
         Case { cmd: &["test", "coverage", "--skip=coverage"], expected: &[] },
+        Case { cmd: &["test", "--skip=tests/coverage"], expected: &[] },
         Case { cmd: &["test", "coverage", "--skip=tests/coverage"], expected: &[] },
+        Case { cmd: &["test", "--skip=coverage-map"], expected: &["coverage-run"] },
         Case { cmd: &["test", "coverage", "--skip=coverage-map"], expected: &["coverage-run"] },
+        Case { cmd: &["test", "--skip=coverage-run"], expected: &["coverage-map"] },
         Case { cmd: &["test", "coverage", "--skip=coverage-run"], expected: &["coverage-map"] },
         Case { cmd: &["test", "--skip=coverage-map", "--skip=coverage-run"], expected: &[] },
+        Case { cmd: &["test", "--skip=tests"], expected: &[] },
         Case { cmd: &["test", "coverage", "--skip=tests"], expected: &[] },
     ];
 

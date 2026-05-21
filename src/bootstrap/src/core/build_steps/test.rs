@@ -1713,6 +1713,12 @@ impl Coverage {
     const SUITE: &'static str = "coverage";
     const ALL_MODES: &[CompiletestMode] =
         &[CompiletestMode::CoverageMap, CompiletestMode::CoverageRun];
+
+    fn is_mode_skipped(mode: CompiletestMode, skip: &Path) -> bool {
+        let mode = Path::new(mode.as_str());
+        let suite = Path::new(Self::PATH);
+        mode == skip || suite.starts_with(skip) || suite.ends_with(skip)
+    }
 }
 
 impl Step for Coverage {
@@ -1765,18 +1771,12 @@ impl Step for Coverage {
             }
         }
 
-        // Skip any modes that were explicitly skipped/excluded on the command-line.
+        // Skip any modes that were skipped/excluded on the command-line, either
+        // directly or through the coverage suite path.
         // FIXME(Zalathar): Integrate this into central skip handling somehow?
-        modes.retain(|mode| {
-            !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
+        modes.retain(|&mode| {
+            !run.builder.config.skip.iter().any(|skip| Self::is_mode_skipped(mode, skip))
         });
-
-        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
-        // - `./x test --skip=tests`
-        // - `./x test --skip=tests/coverage`
-        // - `./x test --skip=coverage`
-        // Skip handling currently doesn't have a way to know that skipping the coverage
-        // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
             run.builder.ensure(Coverage { compiler, target, mode });
