@@ -1,5 +1,4 @@
 #![warn(clippy::manual_non_exhaustive)]
-#![allow(unused)]
 //@no-rustfix
 pub enum E {
     //~^ manual_non_exhaustive

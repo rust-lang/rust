@@ -1,5 +1,5 @@
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> tests/ui/manual_non_exhaustive_enum.rs:4:1
+  --> tests/ui/manual_non_exhaustive_enum.rs:3:1
    |
 LL | / pub enum E {
 LL | |
@@ -11,7 +11,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> tests/ui/manual_non_exhaustive_enum.rs:9:5
+  --> tests/ui/manual_non_exhaustive_enum.rs:8:5
    |
 LL |     _C,
    |     ^^
@@ -24,7 +24,7 @@ LL | pub enum E {
    |
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> tests/ui/manual_non_exhaustive_enum.rs:29:1
+  --> tests/ui/manual_non_exhaustive_enum.rs:28:1
    |
 LL | / pub enum NoUnderscore {
 LL | |
@@ -36,7 +36,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> tests/ui/manual_non_exhaustive_enum.rs:34:5
+  --> tests/ui/manual_non_exhaustive_enum.rs:33:5
    |
 LL |     C,
    |     ^
