@@ -1,5 +1,5 @@
 error: redundant pattern matching
-  --> tests/ui/crashes/ice-7169.rs:10:12
+  --> tests/ui/crashes/ice-7169.rs:8:12
    |
 LL |     if let Ok(_) = Ok::<_, ()>(A::<String>::default()) {}
    |            ^^^^^
