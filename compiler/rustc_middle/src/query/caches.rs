@@ -15,15 +15,15 @@ use crate::query::keys::QueryKey;
 ///
 /// Types implementing this trait are associated with actual key/value types
 /// by the `Cache` associated type of the `rustc_middle::query::Key` trait.
-pub trait QueryCache: Sized {
+pub trait QueryCache: Sized + DynSync {
     type Key: QueryKey;
-    type Value: Copy;
+    type Value: Copy + DynSend + DynSync;
 
     /// Returns the cached value (and other information) associated with the
     /// given key, if it is present in the cache.
     fn lookup(&self, key: Self::Key) -> &CacheEntry<Self::Value>;
 
-    /// Calls a closure on each entry in this cache.
+    /// Calls a closure on each entry in this cache. Panics if any cache entry is still in progress.
     fn for_each(&self, f: impl FnMut(Self::Key, &Self::Value, DepNodeIndex));
 }
 
@@ -48,15 +48,26 @@ pub struct DefaultCache<K, V> {
     arena: WorkerLocal<TypedArena<CacheEntry<V>>>,
 }
 
+impl<K, V> DefaultCache<K, V> {
+    pub fn store_without_tracking(&self, x: V) -> &V {
+        self.arena
+            .alloc(CacheEntry::complete(DepNodeIndex::FOREVER_RED_NODE.as_u32(), x))
+            .get_finished()
+            .unwrap()
+            .0
+    }
+}
+
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
         DefaultCache { cache: Default::default(), arena: Default::default() }
     }
 }
 
-impl<K, V: Copy> QueryCache for DefaultCache<K, V>
+impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: QueryKey,
+    V: Copy + DynSend + DynSync,
 {
     type Key = K;
     type Value = V;
@@ -94,7 +105,10 @@ impl<V> Default for SingleCache<V> {
     }
 }
 
-impl<V: Copy> QueryCache for SingleCache<V> {
+impl<V> QueryCache for SingleCache<V>
+where
+    V: Copy + DynSend + DynSync,
+{
     type Key = ();
     type Value = V;
 
@@ -127,7 +141,21 @@ impl<V> Default for DefIdCache<V> {
     }
 }
 
-impl<V: Copy> QueryCache for DefIdCache<V> {
+impl<V> DefIdCache<V> {
+    pub fn store_without_tracking(&self, x: V) -> &V {
+        self.foreign
+            .arena
+            .alloc(CacheEntry::complete(DepNodeIndex::FOREVER_RED_NODE.as_u32(), x))
+            .get_finished()
+            .unwrap()
+            .0
+    }
+}
+
+impl<V> QueryCache for DefIdCache<V>
+where
+    V: Copy + DynSend + DynSync,
+{
     type Key = DefId;
     type Value = V;
 
@@ -148,9 +176,10 @@ impl<V: Copy> QueryCache for DefIdCache<V> {
     }
 }
 
-impl<K, V: Copy> QueryCache for VecCache<K, V, DepNodeIndex>
+impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
 where
     K: Idx + QueryKey,
+    V: Copy + DynSend + DynSync,
 {
     type Key = K;
     type Value = V;

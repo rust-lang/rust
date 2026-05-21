@@ -50,10 +50,6 @@ pub(super) struct Sleep {
     /// them block.
     worker_sleep_states: Vec<CachePadded<WorkerSleepState>>,
 
-    /// One "sleep state" per worker. Used to track if a worker is sleeping and to have
-    /// them block.
-    worker_sleep_states_2: Vec<CachePadded<WorkerSleepState>>,
-
     counters: AtomicCounters,
 
     data: Mutex<SleepData>,
@@ -94,7 +90,6 @@ impl Sleep {
         assert!(n_threads <= THREADS_MAX);
         Sleep {
             worker_sleep_states: (0..n_threads).map(|_| Default::default()).collect(),
-            worker_sleep_states_2: (0..n_threads).map(|_| Default::default()).collect(),
             counters: AtomicCounters::new(),
             data: Mutex::new(SleepData {
                 worker_count: n_threads,
@@ -102,27 +97,6 @@ impl Sleep {
                 blocked_threads: 0,
             }),
         }
-    }
-
-    #[inline]
-    pub(super) fn park(
-        &self,
-        validate: impl FnOnce(usize) -> bool,
-        thread_index: usize,
-        deadlock_handler: &Option<Box<DeadlockHandler>>,
-    ) -> bool {
-        let sleep_state = &self.worker_sleep_states_2[thread_index];
-        let mut is_blocked = sleep_state.is_blocked.lock().unwrap();
-        debug_assert!(!*is_blocked);
-        if !validate(thread_index) {
-            return false;
-        }
-        *is_blocked = true;
-        self.mark_blocked(deadlock_handler);
-        while *is_blocked {
-            is_blocked = sleep_state.condvar.wait(is_blocked).unwrap();
-        }
-        true
     }
 
     /// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
@@ -136,18 +110,6 @@ impl Sleep {
         data.blocked_threads += 1;
 
         data.deadlock_check(deadlock_handler);
-    }
-
-    #[inline]
-    pub(super) fn unpark(&self, thread_index: usize) {
-        let sleep_state = &self.worker_sleep_states_2[thread_index];
-        {
-            let mut is_blocked = sleep_state.is_blocked.lock().unwrap();
-            debug_assert!(*is_blocked);
-            *is_blocked = false;
-            self.mark_unblocked();
-        }
-        sleep_state.condvar.notify_one();
     }
 
     /// Mark a previously blocked Rayon worker thread as unblocked

@@ -1,8 +1,10 @@
+use std::mem::transmute;
+
 use rustc_data_structures::sync;
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
-use crate::query::QueryJobId;
+use crate::query::QueryJobRef;
 
 /// This is the implicit state of rustc. It contains the current
 /// `TyCtxt` and query. It is updated when creating a local interner or
@@ -14,7 +16,7 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
     /// The current query job, if any.
-    pub query: Option<QueryJobId>,
+    pub query: Option<QueryJobRef<'a, 'tcx>>,
 
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
@@ -84,6 +86,22 @@ where
     F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
 {
     with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
+}
+
+#[inline]
+pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
+where
+    F: for<'a> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+{
+    with_context_opt(|opt_context| {
+        let icx = opt_context.expect("no ImplicitCtxt stored in tls");
+        assert_eq!(
+            &**icx.tcx as *const _ as *const (), &**tcx as *const _ as *const (),
+            "argument `tcx` isn't related to implicit context's `tcx`"
+        );
+        // SAFETY: checked above
+        f(unsafe { transmute(icx) })
+    })
 }
 
 /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.

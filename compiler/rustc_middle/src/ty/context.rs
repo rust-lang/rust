@@ -17,7 +17,7 @@ use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
-use rustc_data_structures::cache_entry::{CacheEntry, EntryInProgress};
+use rustc_data_structures::cache_entry::{CacheEntry, GetError, GetOrStartError};
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -61,7 +61,10 @@ use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
+use crate::query::{
+    Cycle, IntoQueryKey, LocalCrate, Providers, QuerySystem, QueryWaiter, TyCtxtAt,
+    WorkerParkingArea,
+};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
@@ -677,6 +680,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 
 /// See [TyCtxt] for details about this type.
 pub struct GlobalCtxt<'tcx> {
+    pub parking_area: WorkerParkingArea<'tcx>,
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
     pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
 
@@ -745,9 +749,6 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
     current_gcx: CurrentGcx,
-
-    /// A jobserver reference used to release then acquire a token while waiting on a query.
-    pub jobserver_proxy: Arc<Proxy>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -964,7 +965,7 @@ impl<'tcx> TyCtxt<'tcx> {
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
-            jobserver_proxy,
+            parking_area: WorkerParkingArea::new(jobserver_proxy),
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)
@@ -1783,33 +1784,26 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn cache_entry_get_or_start<'a, V>(
         self,
         entry: &'a CacheEntry<V>,
-    ) -> Result<(&'a V, DepNodeIndex), EntryInProgress<'a, V>> {
-        let mut have_slept = false;
-        let res = entry
-            .get_or_start(|| {
-                self.jobserver_proxy.release_thread();
-                have_slept = true;
-            })
-            .map(|(v, i)| (v, DepNodeIndex::from_u32(i)));
-        if have_slept {
-            self.jobserver_proxy.acquire_thread();
-        }
-        res
+        span: Span,
+    ) -> Result<(&'a V, DepNodeIndex), GetOrStartError<'a, V, Cycle<'tcx>>> {
+        tls::with_related_context(self, |icx| {
+            entry
+                .get_or_start(self.parking_area.parker(QueryWaiter { span, parent: icx.query }))
+                .map(|(v, i)| (v, DepNodeIndex::from_u32(i)))
+        })
     }
 
     #[inline]
-    pub fn cache_entry_get<'a, V>(self, entry: &'a CacheEntry<V>) -> Option<(&'a V, DepNodeIndex)> {
-        let mut have_slept = false;
-        let res = entry
-            .get(|| {
-                self.jobserver_proxy.release_thread();
-                have_slept = true;
-            })
-            .map(|(v, i)| (v, DepNodeIndex::from_u32(i)));
-        if have_slept {
-            self.jobserver_proxy.acquire_thread();
-        }
-        res
+    pub fn cache_entry_get<V>(
+        self,
+        entry: &'tcx CacheEntry<V>,
+        span: Span,
+    ) -> Result<(&'tcx V, DepNodeIndex), GetError<Cycle<'tcx>>> {
+        tls::with_related_context(self, |icx| {
+            entry
+                .get(self.parking_area.parker(QueryWaiter { span, parent: icx.query }))
+                .map(|(v, i)| (v, DepNodeIndex::from_u32(i)))
+        })
     }
 
     pub fn debug_stats(self) -> impl fmt::Debug {

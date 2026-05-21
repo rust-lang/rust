@@ -20,14 +20,13 @@ use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
-use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::{SessionGlobals, Symbol, sym};
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
@@ -225,9 +224,6 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
             let current_gcx2 = current_gcx2.clone();
             let registry = rustc_thread_pool::Registry::current();
-            let session_globals = rustc_span::with_session_globals(|session_globals| {
-                session_globals as *const SessionGlobals as usize
-            });
             thread::Builder::new()
                 .name("rustc query cycle handler".to_string())
                 .spawn(move || {
@@ -249,20 +245,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                         tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
                             tls::with(|tcx| {
                                 // Accessing session globals is sound as they outlive `GlobalCtxt`.
-                                // They are needed to hash query keys containing spans or symbols.
-                                let job_map = rustc_span::set_session_globals_then(
-                                    unsafe { &*(session_globals as *const SessionGlobals) },
-                                    || {
-                                        // Ensure there were no errors collecting all active jobs.
-                                        // We need the complete map to ensure we find a cycle to
-                                        // break.
-                                        collect_active_query_jobs(
-                                            tcx,
-                                            CollectActiveJobsKind::FullNoContention,
-                                        )
-                                    },
-                                );
-                                break_query_cycle(job_map, &registry);
+                                break_query_cycle(tcx, &registry);
                             })
                         })
                     });
