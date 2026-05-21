@@ -1,8 +1,8 @@
 //@ check-pass
 #![feature(no_core, lang_items)]
 #![no_core]
-#![allow(clippy::missing_safety_doc)]
 #![warn(clippy::manual_take)]
+#![expect(clippy::missing_safety_doc)]
 
 #[link(name = "c")]
 unsafe extern "C" {}
