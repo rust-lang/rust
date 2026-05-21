@@ -6,6 +6,8 @@ mod copy;
 mod cursor;
 mod error;
 mod impls;
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub mod prelude;
 mod read;
 mod util;
 
