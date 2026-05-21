@@ -234,6 +234,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_style,
             parsed_description,
             template,
+            attr_safety: attr_safety.unwrap_or(Safety::Default),
             attr_path,
         };
         parse_fn(&mut cx, args)
@@ -404,6 +405,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
+                            attr_safety: n.item.unsafety,
                             attr_path: attr_path.clone(),
                         };
 
