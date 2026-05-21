@@ -1,5 +1,5 @@
 #![warn(clippy::collapsible_match)]
-#![allow(clippy::single_match, clippy::redundant_guards)]
+#![allow(clippy::redundant_guards, clippy::single_match)]
 
 fn issue16558() {
     let opt = Some(1);
