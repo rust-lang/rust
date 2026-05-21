@@ -555,13 +555,15 @@ pub enum SymbolManglingVersion {
     Hashed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum DebugInfo {
-    None,
-    LineDirectivesOnly,
-    LineTablesOnly,
-    Limited,
-    Full,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum DebugInfo {
+        None => "none" | "0",
+        LineDirectivesOnly => "line-directives-only",
+        LineTablesOnly => "line-tables-only",
+        Limited => "limited" | "1",
+        Full => "full" | "2",
+    }
 }
 
 rustc_data_structures::string_enum! {
