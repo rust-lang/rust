@@ -279,6 +279,16 @@ Instead, you can build a specific component by providing its name, like this:
 If you choose the `library` profile when running `x setup`, you can omit `--stage 1` (it's the
 default).
 
+If you want to build a tool, you can use:
+
+```bash
+./x build src/tools/cargo
+```
+
+You can also check the [the section on tool tests][tool-tests-link].
+
+[tool-tests-link]: ../tests/intro.md#tool-tests
+
 ## Creating a rustup toolchain
 
 Once you have successfully built `rustc`, you will have created a bunch
