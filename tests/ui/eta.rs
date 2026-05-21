@@ -2,19 +2,15 @@
 //@require-annotations-for-level: ERROR
 
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
-#![allow(unused)]
-#![allow(
+#![allow(clippy::redundant_closure_call)]
+#![expect(
     clippy::needless_borrow,
     clippy::needless_option_as_deref,
-    clippy::needless_pass_by_value,
     clippy::no_effect,
     clippy::option_map_unit_fn,
-    clippy::redundant_closure_call,
-    clippy::uninlined_format_args,
-    clippy::useless_vec,
     clippy::unnecessary_map_on_constructor,
-    clippy::needless_lifetimes,
-    clippy::unnecessary_option_map_or_else
+    clippy::unnecessary_option_map_or_else,
+    clippy::useless_vec
 )]
 
 use std::path::{Path, PathBuf};

@@ -1,5 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 //@no-rustfix: suggestion does not remove the `+= 1`
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
