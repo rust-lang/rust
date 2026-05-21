@@ -356,6 +356,53 @@ linker = "<path_to>/aarch64-unknown-linux-pauthtest-clang"
 Without it Cargo falls back to the system C toolchain (cc) and the compilation
 fails.
 
+## Controlling pointer authentication features
+
+Pointer authentication behavior for this target can be configured using the
+`-Zpointer-authentication` compiler option. The option accepts a comma-separated
+list of values, each of the form `+<name>` - to enable, or `-<name>` - to
+disable a feature, where `<name>` is one of:
+* `aarch64-jump-table-hardening` - enable hardened lowering for jump-table
+  dispatch
+* `auth-traps` - trap immediately on pointer authentication failure
+* `calls` - enable signing and authentication of indirect calls
+* `elf-got` - enable authentication of pointers loaded from the ELF GOT
+* `function-pointer-type-discrimination` - enable type discrimination for C
+  function pointers
+* `indirect-gotos` - enable signing and authentication of indirect goto targets
+* `init-fini` - enable signing of function pointers stored in init/fini arrays
+* `init-fini-address-discrimination` - enable address discrimination for
+  init/fini array entries
+* `intrinsics` - enable pointer authentication intrinsics
+* `return-addresses` - enable signing and authentication of return addresses
+* `typeinfo-vt-ptr-discrimination` - enable type/address discrimination for
+  authenticated `std::type_info` virtual table pointers
+* `vt-ptr-addr-discrimination` - enable address discrimination for authenticated
+  virtual table pointers
+* `vt-ptr-type-discrimination` - enable type discrimination for authenticated
+  virtual table pointers
+For example:
+`-Zpointer-authentication=+calls,+return-addresses,-init-fini`.
+
+Not all options are currently meaningful for Rust code itself. In particular,
+the virtual table related ones: `typeinfo-vt-ptr-discrimination`,
+`vt-ptr-addr-discrimination`, `vt-ptr-type-discrimination` exist primarily for
+interoperability with C++ code and compatibility with the AArch64 Pointer
+Authentication ELF ABI. Rust does not implement C++ virtual dispatch semantics,
+authenticated C++ member function pointers, or authenticated virtual table
+pointers.
+
+Similarly, `function-pointer-type-discrimination` is recognized for ABI
+compatibility purposes, but full support is not yet implemented in Rust.
+
+Even when these features do not directly affect generated Rust code, they still
+contribute to the emitted PAuth ABI metadata through the LLVM module flags:
+`aarch64-elf-pauthabi-platform`, `aarch64-elf-pauthabi-version`. These flags are
+emitted to communicate pointer authentication ABI requirements to the linker and
+other toolchain components. The ABI version value is computed from the enabled
+pointer authentication features according to the AArch64 ELF PAuth ABI
+specification. The bit layout matches LLVM/Clang definitions.
+
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. A
@@ -391,9 +438,10 @@ The following categories are supported (all present in tree):
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
-* UI error/warning reporting (the target does not support static linking)
+* UI error/warning reporting
   * crt-static-pauthtest.rs
   * pauth-static-link-warning
+  * enable_pointer_authentication_validation.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
 `crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `ui` and
@@ -416,7 +464,8 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
-  tests/ui/statics/crt-static-pauthtest.rs
+  tests/ui/statics/crt-static-pauthtest.rs \
+  tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs
 ```
 
 ## Limitations
