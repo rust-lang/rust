@@ -8,6 +8,7 @@ mod io_slice;
 mod seek;
 mod size_hint;
 mod util;
+mod write;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use self::borrowed_buf::{BorrowedBuf, BorrowedCursor};
@@ -32,6 +33,7 @@ pub use self::{
     seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
+    write::default_write_vectored,
 };
 
 /// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically

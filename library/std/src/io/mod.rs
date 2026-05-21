@@ -312,7 +312,7 @@ pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 pub use alloc_crate::io::{
     Chain, Empty, Error, ErrorKind, Repeat, Result, Seek, SeekFrom, Sink, Take, empty, repeat, sink,
 };
-pub(crate) use alloc_crate::io::{IoHandle, stream_len_default};
+pub(crate) use alloc_crate::io::{IoHandle, default_write_vectored, stream_len_default};
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
 use alloc_crate::io::{OsFunctions, SizeHint};
@@ -547,14 +547,6 @@ where
 {
     let buf = bufs.iter_mut().find(|b| !b.is_empty()).map_or(&mut [][..], |b| &mut **b);
     read(buf)
-}
-
-pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>
-where
-    F: FnOnce(&[u8]) -> Result<usize>,
-{
-    let buf = bufs.iter().find(|b| !b.is_empty()).map_or(&[][..], |b| &**b);
-    write(buf)
 }
 
 pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
