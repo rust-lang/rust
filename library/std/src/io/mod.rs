@@ -306,14 +306,16 @@ pub use alloc_crate::io::RawOsError;
 pub use alloc_crate::io::SimpleMessage;
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use alloc_crate::io::const_error;
-#[allow(unused_imports, reason = "only used by certain platforms")]
-pub(crate) use alloc_crate::io::default_write_vectored;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::io::{
     Chain, Empty, Error, ErrorKind, Repeat, Result, Seek, SeekFrom, Sink, Take, Write, empty,
     repeat, sink,
+};
+#[allow(unused_imports, reason = "only used by certain platforms")]
+pub(crate) use alloc_crate::io::{
+    DEFAULT_BUF_SIZE, default_read_buf, default_read_vectored, default_write_vectored,
 };
 pub(crate) use alloc_crate::io::{IoHandle, stream_len_default};
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -352,8 +354,6 @@ mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
-
-const DEFAULT_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
 
 pub(crate) use stdio::cleanup;
 
@@ -544,14 +544,6 @@ pub(crate) fn default_read_to_string<R: Read + ?Sized>(
     unsafe { append_to_string(buf, |b| default_read_to_end(r, b, size_hint)) }
 }
 
-pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
-where
-    F: FnOnce(&mut [u8]) -> Result<usize>,
-{
-    let buf = bufs.iter_mut().find(|b| !b.is_empty()).map_or(&mut [][..], |b| &mut **b);
-    read(buf)
-}
-
 pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
     while !buf.is_empty() {
         match this.read(buf) {
@@ -564,15 +556,6 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() { Err(Error::READ_EXACT_EOF) } else { Ok(()) }
-}
-
-pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_, u8>) -> Result<()>
-where
-    F: FnOnce(&mut [u8]) -> Result<usize>,
-{
-    let n = read(cursor.ensure_init())?;
-    cursor.advance_checked(n);
-    Ok(())
 }
 
 pub(crate) fn default_read_buf_exact<R: Read + ?Sized>(
