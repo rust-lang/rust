@@ -1435,15 +1435,7 @@ pub mod parse {
     }
 
     pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {
-        match v {
-            Some("0") | Some("none") => *slot = DebugInfo::None,
-            Some("line-directives-only") => *slot = DebugInfo::LineDirectivesOnly,
-            Some("line-tables-only") => *slot = DebugInfo::LineTablesOnly,
-            Some("1") | Some("limited") => *slot = DebugInfo::Limited,
-            Some("2") | Some("full") => *slot = DebugInfo::Full,
-            _ => return false,
-        }
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_debuginfo_compression(
@@ -2214,7 +2206,7 @@ options! {
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
+    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED] [VALUES: DebugInfo::ALL_STR_VARIANTS],
         "debug info emission level (0-2, none, line-directives-only, \
         line-tables-only, limited, or full; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],

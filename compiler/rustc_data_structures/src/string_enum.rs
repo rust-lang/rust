@@ -1,12 +1,17 @@
 /// Like an enum, but the variants are tied to a string representation.
 ///
-/// Generates, for each variant, the mapping between the variant and its string
-/// form, plus a `VARIANTS` and `STR_VARIANTS` array, an inherent `to_str`
-/// method, and `Display`/`FromStr` impls. Intended for use with command-line
-/// flag values where the set of valid strings is fixed and known at compile
-/// time.
+/// Each variant is declared as `Variant => "primary"` or, when multiple
+/// strings should parse to the same variant, `Variant => "primary" | "alias1" | "alias2"`.
+/// The first string is the canonical form returned by `to_str` and `Display`;
+/// all forms are accepted by `FromStr`.
 ///
-/// `FromStr::Err` is `()` because diagnostic emission is handled by the caller.
+/// Generates:
+/// * `VARIANTS` — every variant, in declaration order.
+/// * `STR_VARIANTS` — each variant's canonical string, in declaration order.
+/// * `ALL_STR_VARIANTS` — every accepted string (canonical + aliases) in
+///   declaration order. Use this when help text should list all accepted forms.
+/// * `to_str()`, `Display`, `FromStr`. `FromStr::Err` is `()` because diagnostic
+///   emission is handled by the caller.
 #[macro_export]
 macro_rules! string_enum {
     (
@@ -14,7 +19,7 @@ macro_rules! string_enum {
         $vis:vis enum $name:ident {
             $(
                 $(#[$variant_meta:meta])*
-                $variant:ident => $repr:expr,
+                $variant:ident => $repr:literal $( | $alias:literal )* ,
             )*
         }
     ) => {
@@ -35,6 +40,10 @@ macro_rules! string_enum {
             $vis const STR_VARIANTS: &'static [&'static str] = &[
                 $( Self::$variant.to_str(), )*
             ];
+            #[allow(dead_code)]
+            $vis const ALL_STR_VARIANTS: &'static [&'static str] = &[
+                $( $repr, $( $alias, )* )*
+            ];
 
             $vis const fn to_str(&self) -> &'static str {
                 match self {
@@ -54,7 +63,7 @@ macro_rules! string_enum {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
-                    $( $repr => Ok(Self::$variant), )*
+                    $( $repr $( | $alias )* => Ok(Self::$variant), )*
                     _ => Err(()),
                 }
             }
