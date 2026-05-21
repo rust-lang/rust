@@ -294,9 +294,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
 #[doc(hidden)]
