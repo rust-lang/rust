@@ -329,7 +329,7 @@ pub fn parse_cfg_attr(
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(
                         AttrSuggestionStyle::Attribute(cfg_attr.style),
-                        matches!(cfg_attr.get_normal_item().unsafety, rustc_ast::Safety::Unsafe(_)),
+                        cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     );
                     e.with_span_suggestions(
@@ -365,7 +365,7 @@ pub fn parse_cfg_attr(
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
                         AttrSuggestionStyle::Attribute(cfg_attr.style),
-                        matches!(cfg_attr.get_normal_item().unsafety, rustc_ast::Safety::Unsafe(_)),
+                        cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     ),
                 ),

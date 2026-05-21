@@ -3,6 +3,7 @@
 use std::sync::LazyLock;
 
 use AttributeGate::*;
+use rustc_ast::ast::Safety;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::AttrStyle;
 use rustc_span::{Symbol, sym};
@@ -118,7 +119,7 @@ impl AttributeTemplate {
     pub fn suggestions(
         &self,
         style: AttrSuggestionStyle,
-        wrap_with_unsafe: bool,
+        safety: Safety,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
         let (start, macro_call, end) = match style {
@@ -130,29 +131,32 @@ impl AttributeTemplate {
 
         let mut suggestions = vec![];
 
-        let (maybe_unsafe_start, maybe_unsafe_end) =
-            if wrap_with_unsafe { ("unsafe(", ")") } else { ("", "") };
+        let (safety_start, safety_end) = match safety {
+            Safety::Unsafe(_) => ("unsafe(", ")"),
+            _ => ("", ""),
+        };
 
         if self.word {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
-            suggestions.push(format!("{start}{maybe_unsafe_start}{name}{maybe_unsafe_end}{end}"));
+            suggestions.push(format!("{start}{safety_start}{name}{safety_end}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
                 suggestions.push(format!(
-                    "{start}{maybe_unsafe_start}{name}{macro_call}({descr}){maybe_unsafe_end}{end}"
+                    "{start}{safety_start}{name}{macro_call}({descr}){safety_end}{end}"
                 ));
             }
         }
-        suggestions.extend(self.one_of.iter().map(|&word| {
-            format!("{start}{maybe_unsafe_start}{name}({word}){maybe_unsafe_end}{end}")
-        }));
+        suggestions.extend(
+            self.one_of
+                .iter()
+                .map(|&word| format!("{start}{safety_start}{name}({word}){safety_end}{end}")),
+        );
         if let Some(descr) = self.name_value_str {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
-                suggestions.push(format!(
-                    "{start}{maybe_unsafe_start}{name} = \"{descr}\"{maybe_unsafe_end}{end}"
-                ));
+                suggestions
+                    .push(format!("{start}{safety_start}{name} = \"{descr}\"{safety_end}{end}"));
             }
         }
         suggestions.sort();
