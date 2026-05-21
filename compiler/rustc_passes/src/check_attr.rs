@@ -407,6 +407,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
             AttributeKind::TypeLengthLimit { .. } => (),
+            AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
             AttributeKind::UnstableRemoved(..) => (),
             AttributeKind::Used { .. } => (),
@@ -826,7 +827,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::ExprField
             | Target::Crate
             | Target::MacroCall
-            | Target::Delegation { .. } => None,
+            | Target::Delegation { .. }
+            | Target::Loop
+            | Target::ForLoop
+            | Target::While => None,
         } {
             self.tcx.dcx().emit_err(errors::DocAliasBadLocation { span, location });
             return;

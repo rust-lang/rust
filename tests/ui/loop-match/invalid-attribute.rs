@@ -36,7 +36,8 @@ fn main() {
     || {};
 
     {
-        #[loop_match] //~ ERROR should be applied to a loop
+        #[loop_match] //~ ERROR attribute cannot be used on
+        //~^ ERROR `#[loop_match]` should be applied to a loop
         #[const_continue] //~ ERROR should be applied to a break expression
         5
     };

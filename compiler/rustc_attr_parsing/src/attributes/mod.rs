@@ -74,6 +74,7 @@ pub(crate) mod stability;
 pub(crate) mod test_attrs;
 pub(crate) mod traits;
 pub(crate) mod transparency;
+pub(crate) mod unroll;
 pub(crate) mod util;
 
 type AcceptFn<T> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess>, &ArgParser);

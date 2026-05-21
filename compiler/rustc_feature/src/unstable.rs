@@ -606,6 +606,8 @@ declare_features! (
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Target features on loongarch.
     (unstable, loongarch_target_feature, "1.73.0", Some(150252)),
+    /// Allows use of loop optimization hints via attributes.
+    (unstable, loop_hints, "CURRENT_RUSTC_VERSION", Some(156874)),
     /// Allows fused `loop`/`match` for direct intraprocedural jumps.
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Target features on m68k.
