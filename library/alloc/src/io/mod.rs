@@ -28,4 +28,4 @@ pub use core::io::{
 
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::read::{DEFAULT_BUF_SIZE, default_read_buf, default_read_vectored};
+pub use self::read::{DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_vectored};
