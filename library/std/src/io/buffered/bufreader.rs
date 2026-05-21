@@ -318,6 +318,8 @@ impl<R: ?Sized + Seek> BufReader<R> {
     }
 }
 
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl<R> SpecReadByte for BufReader<R>
 where
     Self: Read,
