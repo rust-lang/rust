@@ -1,6 +1,7 @@
 #![warn(clippy::diverging_sub_expression)]
-#![allow(clippy::match_same_arms, clippy::overly_complex_bool_expr)]
+#![expect(clippy::match_same_arms, clippy::overly_complex_bool_expr)]
 #![allow(clippy::nonminimal_bool)]
+
 #[allow(clippy::empty_loop)]
 fn diverge() -> ! {
     loop {}
@@ -14,7 +15,7 @@ impl A {
     }
 }
 
-#[allow(unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
+#[allow(clippy::unnecessary_operation, clippy::short_circuit_statement)]
 fn main() {
     let b = true;
     b || diverge();
@@ -24,7 +25,6 @@ fn main() {
     //~^ diverging_sub_expression
 }
 
-#[allow(dead_code, unused_variables)]
 #[rustfmt::skip]
 fn foobar() {
     loop {
@@ -77,7 +77,6 @@ fn foobar() {
     }
 }
 
-#[allow(unused)]
 fn ignore_todo() {
     let x: u32 = todo!();
     println!("{x}");
