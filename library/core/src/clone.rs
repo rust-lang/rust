@@ -290,6 +290,30 @@ pub macro Clone($item:item) {
     /* compiler built-in */
 }
 
+/// A trait for types whose [`Clone`] operation creates another alias to the same value.
+///
+/// `Share` marks types where cloning preserves the identity of the underlying value instead of
+/// creating an independent owned copy. The distinction is semantic, not cost-based: implementing
+/// `Share` does not merely mean that cloning is cheap, constant-time, allocation-free, or
+/// harmless.
+///
+/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone) for
+/// implementors.
+// FIXME(share_trait): The public location of `Share` is still unresolved; if libs-api confirms a
+// different home, move this trait and update tests.
+#[unstable(feature = "share_trait", issue = "156756")]
+pub trait Share: Clone {
+    /// Creates another alias to the same underlying value.
+    ///
+    /// This is equivalent to calling [`Clone::clone`].
+    #[unstable(feature = "share_trait", issue = "156756")]
+    // FIXME(share_trait): The default method body form is unresolved; keep the explicit
+    // `Clone::clone(self)` spelling until the tracking issue decides it.
+    fn share(&self) -> Self {
+        Clone::clone(self)
+    }
+}
+
 /// Trait for objects whose [`Clone`] impl is lightweight (e.g. reference-counted)
 ///
 /// Cloning an object implementing this trait should in general:
