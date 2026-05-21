@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::unnecessary_fold, unused)]
+#![allow(clippy::unnecessary_fold, unused, todo_macro_calls)]
 #![warn(clippy::manual_try_fold)]
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_residual)]

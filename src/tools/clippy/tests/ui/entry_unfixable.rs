@@ -1,4 +1,4 @@
-#![allow(clippy::needless_pass_by_value, clippy::collapsible_if)]
+#![allow(clippy::needless_pass_by_value, clippy::collapsible_if, todo_macro_calls)]
 #![warn(clippy::map_entry)]
 
 use std::collections::HashMap;

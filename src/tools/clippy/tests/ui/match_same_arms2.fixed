@@ -5,7 +5,7 @@
     clippy::uninlined_format_args,
     clippy::match_single_binding,
     clippy::match_like_matches_macro
-)]
+, todo_macro_calls)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool {

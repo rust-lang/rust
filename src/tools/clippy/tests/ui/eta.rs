@@ -2,7 +2,7 @@
 //@require-annotations-for-level: ERROR
 
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![allow(
     clippy::needless_borrow,
     clippy::needless_option_as_deref,

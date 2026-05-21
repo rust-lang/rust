@@ -1,5 +1,6 @@
 //@needs-asm-support
 //@aux-build:proc_macros.rs
+#![allow(todo_macro_calls)]
 #![expect(
     dropping_copy_types,
     clippy::unnecessary_operation,

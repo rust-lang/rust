@@ -1,5 +1,6 @@
 // This test's filename is... a bit verbose. But it ensures we suggest the correct code when `Ord`
 // is not in scope.
+#![allow(todo_macro_calls)]
 #![no_main]
 #![no_implicit_prelude]
 //@no-rustfix

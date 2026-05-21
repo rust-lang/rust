@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::manual_repeat_n)]
 
 use std::iter::repeat;

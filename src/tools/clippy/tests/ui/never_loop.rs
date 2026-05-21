@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![feature(try_blocks)]
 #![expect(clippy::eq_op, clippy::single_match, clippy::while_immutable_condition)]
 //@no-rustfix

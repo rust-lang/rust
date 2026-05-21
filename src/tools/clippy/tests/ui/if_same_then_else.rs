@@ -9,7 +9,7 @@
     clippy::branches_sharing_code,
     dead_code,
     unreachable_code
-)]
+, todo_macro_calls)]
 
 use std::ops::*;
 

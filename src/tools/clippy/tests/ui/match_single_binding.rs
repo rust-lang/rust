@@ -5,7 +5,7 @@
     clippy::no_effect,
     clippy::toplevel_ref_arg,
     clippy::useless_vec
-)]
+, todo_macro_calls)]
 
 struct Point {
     x: i32,

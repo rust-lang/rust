@@ -1,4 +1,4 @@
-#![allow(unused, clippy::needless_lifetimes)]
+#![allow(unused, clippy::needless_lifetimes, todo_macro_calls)]
 #![warn(clippy::missing_trait_methods)]
 
 trait A {

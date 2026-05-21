@@ -5,7 +5,7 @@
     clippy::equatable_if_let,
     clippy::needless_borrowed_reference,
     clippy::redundant_guards
-)]
+, todo_macro_calls)]
 
 fn main() {
     let x = Some(5);

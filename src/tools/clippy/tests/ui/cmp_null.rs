@@ -1,5 +1,5 @@
 #![warn(clippy::cmp_null)]
-#![allow(clippy::manual_assert_eq)]
+#![allow(clippy::manual_assert_eq, todo_macro_calls)]
 
 use std::ptr;
 

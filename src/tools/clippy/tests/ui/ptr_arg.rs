@@ -4,7 +4,7 @@
     clippy::needless_lifetimes,
     clippy::redundant_clone,
     clippy::needless_pass_by_ref_mut
-)]
+, todo_macro_calls)]
 #![warn(clippy::ptr_arg)]
 //@no-rustfix
 use std::borrow::Cow;

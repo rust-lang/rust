@@ -4,7 +4,7 @@
     clippy::suspicious_map,
     clippy::iter_count,
     clippy::manual_contains
-)]
+, todo_macro_calls)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList};
 

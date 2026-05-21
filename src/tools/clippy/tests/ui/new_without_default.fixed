@@ -3,7 +3,7 @@
     clippy::extra_unused_lifetimes,
     clippy::extra_unused_type_parameters,
     clippy::needless_lifetimes
-)]
+, todo_macro_calls)]
 #![warn(clippy::new_without_default)]
 
 pub struct Foo;

@@ -9,7 +9,7 @@
     clippy::needless_return,
     clippy::self_named_constructors,
     clippy::struct_field_names
-)]
+, todo_macro_calls)]
 
 use std::cell::Cell;
 

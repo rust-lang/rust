@@ -1,5 +1,5 @@
 #![warn(clippy::search_is_some)]
-#![allow(clippy::needless_borrow)]
+#![allow(clippy::needless_borrow, todo_macro_calls)]
 
 pub struct Thing;
 

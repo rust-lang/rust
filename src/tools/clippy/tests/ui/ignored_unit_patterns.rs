@@ -5,7 +5,7 @@
     clippy::redundant_pattern_matching,
     clippy::single_match,
     clippy::needless_borrow
-)]
+, todo_macro_calls)]
 
 fn foo() -> Result<(), ()> {
     unimplemented!()

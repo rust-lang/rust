@@ -1,5 +1,5 @@
 #![warn(clippy::if_then_some_else_none)]
-#![allow(clippy::manual_is_multiple_of)]
+#![allow(clippy::manual_is_multiple_of, todo_macro_calls)]
 
 mod issue15257 {
     use std::pin::Pin;

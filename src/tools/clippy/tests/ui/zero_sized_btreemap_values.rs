@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::zero_sized_map_values)]
 use std::collections::BTreeMap;
 

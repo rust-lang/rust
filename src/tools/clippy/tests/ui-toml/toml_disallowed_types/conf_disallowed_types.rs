@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::disallowed_types)]
 
 extern crate quote;

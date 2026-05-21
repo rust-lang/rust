@@ -1,5 +1,5 @@
 #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 #![allow(clippy::mixed_read_write_in_expression, clippy::uninlined_format_args)]
 //@no-rustfix
 // This tests the branches_sharing_code lint at the start of blocks

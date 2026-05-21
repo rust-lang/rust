@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![allow(clippy::redundant_clone)]
 #![allow(clippy::ptr_arg)] // https://github.com/rust-lang/rust-clippy/issues/10612
 #![allow(clippy::needless_late_init)]

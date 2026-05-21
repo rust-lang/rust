@@ -1,5 +1,5 @@
 #![warn(clippy::identity_op)]
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![allow(
     clippy::eq_op,
     clippy::no_effect,

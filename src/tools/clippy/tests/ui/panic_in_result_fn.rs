@@ -1,5 +1,5 @@
 #![warn(clippy::panic_in_result_fn)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, todo_macro_calls)]
 struct A;
 
 impl A {

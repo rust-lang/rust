@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;

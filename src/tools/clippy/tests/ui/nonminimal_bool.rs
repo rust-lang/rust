@@ -4,7 +4,7 @@
     clippy::diverging_sub_expression,
     clippy::needless_ifs,
     clippy::redundant_pattern_matching
-)]
+, todo_macro_calls)]
 #![warn(clippy::nonminimal_bool)]
 #![allow(clippy::useless_vec)]
 

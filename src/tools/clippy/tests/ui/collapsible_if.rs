@@ -5,7 +5,7 @@
     clippy::nonminimal_bool,
     clippy::eq_op,
     clippy::redundant_pattern_matching
-)]
+, todo_macro_calls)]
 
 #[rustfmt::skip]
 #[warn(clippy::collapsible_if)]

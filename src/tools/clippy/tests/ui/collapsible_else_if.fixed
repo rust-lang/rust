@@ -1,4 +1,4 @@
-#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs)]
+#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs, todo_macro_calls)]
 #![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]
