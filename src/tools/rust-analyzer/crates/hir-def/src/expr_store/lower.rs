@@ -2588,7 +2588,7 @@ impl<'db> ExprCollector<'db> {
                 self.add_definition_to_binding(binding, pat);
                 pat
             }
-            ast::Pat::WildcardPat(_) => self.collect_pat_top(Some(pat)),
+            ast::Pat::WildcardPat(_) => self.alloc_pat(Pat::Wild, AstPtr::new(&pat)),
             _ => {
                 self.store.diagnostics.push(ExpressionStoreDiagnostics::PatternArgInExternFn {
                     node: self.expander.in_file(AstPtr::new(&pat)),
