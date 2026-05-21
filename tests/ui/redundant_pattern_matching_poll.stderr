@@ -1,5 +1,5 @@
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:13:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:8:12
    |
 LL |     if let Pending = Pending::<()> {}
    |            ^^^^^^^
@@ -13,7 +13,7 @@ LL +     if Pending::<()>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:16:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:11:12
    |
 LL |     if let Ready(_) = Ready(42) {}
    |            ^^^^^^^^
@@ -25,7 +25,7 @@ LL +     if Ready(42).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:19:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:14:12
    |
 LL |     if let Ready(_) = Ready(42) {
    |            ^^^^^^^^
@@ -37,7 +37,7 @@ LL +     if Ready(42).is_ready() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:27:8
+  --> tests/ui/redundant_pattern_matching_poll.rs:22:8
    |
 LL |     if matches!(Ready(42), Ready(_)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     if Ready(42).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:31:8
+  --> tests/ui/redundant_pattern_matching_poll.rs:26:8
    |
 LL |     if matches!(Pending::<()>, Pending) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     if Pending::<()>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:34:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:29:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |               ^^^^^^^^
@@ -73,7 +73,7 @@ LL +     while Ready(42).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:37:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:32:15
    |
 LL |     while let Pending = Ready(42) {}
    |               ^^^^^^^
@@ -85,7 +85,7 @@ LL +     while Ready(42).is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:40:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:35:15
    |
 LL |     while let Pending = Pending::<()> {}
    |               ^^^^^^^
@@ -97,7 +97,7 @@ LL +     while Pending::<()>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:47:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:42:5
    |
 LL | /     match Ready(42) {
 LL | |
@@ -117,7 +117,7 @@ LL +     Ready(42).is_ready();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:53:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:48:5
    |
 LL | /     match Pending::<()> {
 LL | |
@@ -137,7 +137,7 @@ LL +     Pending::<()>.is_pending();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:59:13
+  --> tests/ui/redundant_pattern_matching_poll.rs:54:13
    |
 LL |       let _ = match Pending::<()> {
    |  _____________^
@@ -158,7 +158,7 @@ LL +     let _ = Pending::<()>.is_pending();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:66:20
+  --> tests/ui/redundant_pattern_matching_poll.rs:61:20
    |
 LL |     let _ = if let Ready(_) = poll { true } else { false };
    |                    ^^^^^^^^
@@ -170,7 +170,7 @@ LL +     let _ = if poll.is_ready() { true } else { false };
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:71:20
+  --> tests/ui/redundant_pattern_matching_poll.rs:66:20
    |
 LL |     let _ = if let Ready(_) = gen_poll() {
    |                    ^^^^^^^^
@@ -182,7 +182,7 @@ LL +     let _ = if gen_poll().is_ready() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:74:19
+  --> tests/ui/redundant_pattern_matching_poll.rs:69:19
    |
 LL |     } else if let Pending = gen_poll() {
    |                   ^^^^^^^
@@ -194,7 +194,7 @@ LL +     } else if gen_poll().is_pending() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:91:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:86:12
    |
 LL |     if let Ready(_) = Ready(42) {}
    |            ^^^^^^^^
@@ -206,7 +206,7 @@ LL +     if Ready(42).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:94:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:89:12
    |
 LL |     if let Pending = Pending::<()> {}
    |            ^^^^^^^
@@ -218,7 +218,7 @@ LL +     if Pending::<()>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:97:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:92:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |               ^^^^^^^^
@@ -230,7 +230,7 @@ LL +     while Ready(42).is_ready() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:100:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:95:15
    |
 LL |     while let Pending = Pending::<()> {}
    |               ^^^^^^^
@@ -242,7 +242,7 @@ LL +     while Pending::<()>.is_pending() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:103:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:98:5
    |
 LL | /     match Ready(42) {
 LL | |
@@ -262,7 +262,7 @@ LL +     Ready(42).is_ready();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_poll.rs:109:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:104:5
    |
 LL | /     match Pending::<()> {
 LL | |
