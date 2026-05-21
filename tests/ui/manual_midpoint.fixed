@@ -28,9 +28,12 @@ fn older_msrv() {
 fn main() {
     let a: u32 = 10;
     let _ = u32::midpoint(a, 5); //~ ERROR: manual implementation of `midpoint`
+    let _ = u32::midpoint(a, 5); //~ ERROR: manual implementation of `midpoint`
 
     let f: f32 = 10.0;
     let _ = f32::midpoint(f, 5.0); //~ ERROR: manual implementation of `midpoint`
+    let _ = f32::midpoint(f, 10.0); //~ ERROR: manual implementation of `midpoint`
+    let _ = f32::midpoint(f, 10.0); //~ ERROR: manual implementation of `midpoint`
 
     let _: u32 = 5 + u32::midpoint(8, 8) + 2; //~ ERROR: manual implementation of `midpoint`
     let _: u32 = const { u32::midpoint(8, 8) }; //~ ERROR: manual implementation of `midpoint`
@@ -52,6 +55,7 @@ fn main() {
     // Do not lint on signed integer types
     let i: i32 = 10;
     let _ = (i + 5) / 2;
+    let _ = (i + 5) >> 1;
 
     // Do not lint on (x+1)/2 or (1+x)/2 as this looks more like a `div_ceil()` operation
     let _ = (i + 1) / 2;
