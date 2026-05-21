@@ -1,3 +1,5 @@
+use crate::io::{self, ErrorKind, SeekFrom};
+
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
 ///
@@ -287,5 +289,40 @@ where
     fn clone_from(&mut self, other: &Self) {
         self.inner.clone_from(&other.inner);
         self.pos = other.pos;
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> io::Seek for Cursor<T>
+where
+    T: AsRef<[u8]>,
+{
+    fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
+        let (base_pos, offset) = match style {
+            SeekFrom::Start(n) => {
+                self.set_position(n);
+                return Ok(n);
+            }
+            SeekFrom::End(n) => (self.get_ref().as_ref().len() as u64, n),
+            SeekFrom::Current(n) => (self.position(), n),
+        };
+        match base_pos.checked_add_signed(offset) {
+            Some(n) => {
+                self.set_position(n);
+                Ok(n)
+            }
+            None => Err(io::const_error!(
+                ErrorKind::InvalidInput,
+                "invalid seek to a negative or overflowing position",
+            )),
+        }
+    }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        Ok(self.get_ref().as_ref().len() as u64)
+    }
+
+    fn stream_position(&mut self) -> io::Result<u64> {
+        Ok(self.position())
     }
 }
