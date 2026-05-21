@@ -1,4 +1,4 @@
-#![allow(clippy::unused_unit, clippy::missing_safety_doc)]
+#![expect(clippy::missing_safety_doc)]
 #![warn(clippy::too_many_lines)]
 
 fn good_lines() {

@@ -1,5 +1,5 @@
 #![warn(clippy::get_last_with_len)]
-#![allow(unused, clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 use std::collections::VecDeque;
 

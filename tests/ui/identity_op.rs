@@ -1,14 +1,11 @@
 #![warn(clippy::identity_op)]
-#![allow(unused)]
-#![allow(
-    clippy::eq_op,
-    clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::op_ref,
-    clippy::double_parens,
-    clippy::uninlined_format_args,
+#![allow(clippy::eq_op, clippy::op_ref)]
+#![expect(
     clippy::borrow_deref_ref,
-    clippy::deref_addrof
+    clippy::deref_addrof,
+    clippy::double_parens,
+    clippy::no_effect,
+    clippy::unnecessary_operation
 )]
 
 use std::fmt::Write as _;
