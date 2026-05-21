@@ -711,6 +711,8 @@ declare_features! (
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.
     (unstable, sanitize, "1.91.0", Some(39699)),
+    /// Allows use of the `Share` trait.
+    (unstable, share_trait, "CURRENT_RUSTC_VERSION", Some(156756)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Target features on sparc.
