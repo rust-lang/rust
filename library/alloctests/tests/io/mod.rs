@@ -1,3 +1,5 @@
+mod util;
+
 use alloc::io::{
     self, BorrowedBuf, BufRead, BufReader, Cursor, DEFAULT_BUF_SIZE, IoSlice, Read, Seek, SeekFrom,
     Write, repeat,
