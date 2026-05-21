@@ -46,17 +46,19 @@ mod native_libs;
 mod print_request;
 pub mod sigpipe;
 
-/// The different settings that the `-C strip` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum Strip {
-    /// Do not strip at all.
-    None,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C strip` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum Strip {
+        /// Do not strip at all.
+        None => "none",
 
-    /// Strip debuginfo.
-    Debuginfo,
+        /// Strip debuginfo.
+        Debuginfo => "debuginfo",
 
-    /// Strip all symbols.
-    Symbols,
+        /// Strip all symbols.
+        Symbols => "symbols",
+    }
 }
 
 /// The different settings that the `-C control-flow-guard` flag can have.
@@ -511,15 +513,17 @@ impl LocationDetail {
     }
 }
 
-/// Values for the `-Z fmt-debug` flag.
-#[derive(Copy, Clone, PartialEq, Hash, Debug)]
-pub enum FmtDebug {
-    /// Derive fully-featured implementation
-    Full,
-    /// Print only type name, without fields
-    Shallow,
-    /// `#[derive(Debug)]` and `{:?}` are no-ops
-    None,
+rustc_data_structures::string_enum! {
+    /// Values for the `-Z fmt-debug` flag.
+    #[derive(Copy, Clone, PartialEq, Hash, Debug)]
+    pub enum FmtDebug {
+        /// Derive fully-featured implementation
+        Full => "full",
+        /// Print only type name, without fields
+        Shallow => "shallow",
+        /// `#[derive(Debug)]` and `{:?}` are no-ops
+        None => "none",
+    }
 }
 
 impl FmtDebug {
@@ -560,18 +564,22 @@ pub enum DebugInfo {
     Full,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum DebugInfoCompression {
-    None,
-    Zlib,
-    Zstd,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum DebugInfoCompression {
+        None => "none",
+        Zlib => "zlib",
+        Zstd => "zstd",
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum MirStripDebugInfo {
-    None,
-    LocalsInTinyFunctions,
-    AllLocals,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum MirStripDebugInfo {
+        None => "none",
+        LocalsInTinyFunctions => "locals-in-tiny-functions",
+        AllLocals => "all-locals",
+    }
 }
 
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
@@ -1940,6 +1948,27 @@ pub fn build_unknown_arg_value_diag<'a>(
     let valid = valid_values.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
     let mut diag = early_dcx.early_struct_fatal(format!("unknown {label}: `{bad_value}`"));
     diag.help(format!("valid {label}s are: {valid}"));
+    diag
+}
+
+/// Build a fatal "incorrect value for option" diagnostic listing the valid
+/// values. Used by the `-C`/`-Z` option dispatcher when a parser rejects its
+/// input and the option declared a fixed value vocabulary via `[VALUES: ...]`.
+///
+/// `outputname` is `"codegen"` or `"unstable"`; `key` is the option name
+/// (e.g. `"strip"`).
+pub fn build_unknown_option_value_diag<'a>(
+    early_dcx: &'a EarlyDiagCtxt,
+    outputname: &str,
+    key: &str,
+    bad_value: &str,
+    valid_values: &[&str],
+) -> Diag<'a, FatalAbort> {
+    let valid = valid_values.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
+    let mut diag = early_dcx.early_struct_fatal(format!(
+        "incorrect value `{bad_value}` for {outputname} option `{key}`"
+    ));
+    diag.help(format!("valid values are: {valid}"));
     diag
 }
 
@@ -3381,15 +3410,17 @@ impl Default for InliningThreshold {
     }
 }
 
-/// The different settings that the `-Zfunction-return` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
-pub enum FunctionReturn {
-    /// Keep the function return unmodified.
-    #[default]
-    Keep,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-Zfunction-return` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+    pub enum FunctionReturn {
+        /// Keep the function return unmodified.
+        #[default]
+        Keep => "keep",
 
-    /// Replace returns with jumps to thunk, without emitting the thunk.
-    ThunkExtern,
+        /// Replace returns with jumps to thunk, without emitting the thunk.
+        ThunkExtern => "thunk-extern",
+    }
 }
 
 /// Whether extra span comments are included when dumping MIR, via the `-Z mir-include-spans` flag.
