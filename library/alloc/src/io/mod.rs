@@ -3,6 +3,7 @@
 mod cursor;
 mod error;
 mod impls;
+mod read;
 
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
@@ -24,3 +25,7 @@ pub use core::io::{
     default_write_vectored, slice_write, slice_write_all, slice_write_all_vectored,
     slice_write_vectored, stream_len_default, take,
 };
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::read::{DEFAULT_BUF_SIZE, default_read_buf, default_read_vectored};
