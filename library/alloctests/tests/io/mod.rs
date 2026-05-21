@@ -1,3 +1,4 @@
+mod buffered;
 mod cursor;
 mod util;
 

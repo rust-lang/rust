@@ -340,7 +340,6 @@ pub use self::{
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
 };
 
-mod buffered;
 mod copy;
 mod error;
 mod impls;

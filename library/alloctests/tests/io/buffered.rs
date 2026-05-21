@@ -1,10 +1,14 @@
-use crate::io::prelude::*;
-use crate::io::{
-    self, BorrowedBuf, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom,
+//! Tests for buffering wrappers for I/O traits
+
+use alloc::io::{
+    self, BorrowedBuf, BufRead, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, Read, Seek,
+    SeekFrom, Write,
 };
-use crate::mem::MaybeUninit;
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::{panic, thread};
+use core::mem::MaybeUninit;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use std::{panic, thread};
+
+extern crate test;
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {
@@ -488,7 +492,7 @@ fn dont_panic_in_drop_on_panicked_flush() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_in_write_doesnt_flush_in_drop() {
     static WRITES: AtomicUsize = AtomicUsize::new(0);
 
@@ -504,12 +508,11 @@ fn panic_in_write_doesnt_flush_in_drop() {
         }
     }
 
-    thread::spawn(|| {
+    panic::catch_unwind(panic::AssertUnwindSafe(|| {
         let mut writer = BufWriter::new(PanicWriter);
         let _ = writer.write(b"hello world");
         let _ = writer.flush();
-    })
-    .join()
+    }))
     .unwrap_err();
 
     assert_eq!(WRITES.load(Ordering::SeqCst), 1);
@@ -681,7 +684,7 @@ fn line_vectored() {
 
 #[test]
 fn line_vectored_partial_and_errors() {
-    use crate::collections::VecDeque;
+    use alloc::collections::VecDeque;
 
     enum Call {
         Write { inputs: Vec<&'static [u8]>, output: io::Result<usize> },
@@ -1023,7 +1026,7 @@ struct WriteRecorder {
 
 impl Write for WriteRecorder {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        use crate::str::from_utf8;
+        use core::str::from_utf8;
 
         self.events.push(RecordedEvent::Write(from_utf8(buf).unwrap().to_string()));
         Ok(buf.len())
@@ -1056,7 +1059,7 @@ fn single_formatted_write() {
 fn bufreader_full_initialize() {
     struct OneByteReader;
     impl Read for OneByteReader {
-        fn read(&mut self, buf: &mut [u8]) -> crate::io::Result<usize> {
+        fn read(&mut self, buf: &mut [u8]) -> alloc::io::Result<usize> {
             if buf.len() > 0 {
                 buf[0] = 0;
                 Ok(1)
@@ -1079,7 +1082,7 @@ fn bufreader_full_initialize() {
 /// This is a regression test for https://github.com/rust-lang/rust/issues/127584.
 #[test]
 fn bufwriter_aliasing() {
-    use crate::io::{BufWriter, Cursor};
+    use alloc::io::{BufWriter, Cursor};
     let mut v = vec![0; 1024];
     let c = Cursor::new(&mut v);
     let w = BufWriter::new(Box::new(c));
