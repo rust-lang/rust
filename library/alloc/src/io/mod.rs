@@ -13,8 +13,8 @@ pub use core::io::const_error;
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use core::io::{
-    Chain, Cursor, Empty, Error, ErrorKind, IoSlice, IoSliceMut, Repeat, Result, Sink, Take, empty,
-    repeat, sink,
+    Chain, Cursor, Empty, Error, ErrorKind, IoSlice, IoSliceMut, Repeat, Result, SeekFrom, Sink,
+    Take, empty, repeat, sink,
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
