@@ -1,5 +1,5 @@
 #![warn(clippy::unused_async)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 use std::future::Future;
 use std::pin::Pin;

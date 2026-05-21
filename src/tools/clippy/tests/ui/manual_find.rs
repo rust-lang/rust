@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::manual_find)]
 //@no-rustfix
 fn vec_string(strings: Vec<String>) -> Option<String> {

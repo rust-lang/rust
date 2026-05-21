@@ -2,7 +2,8 @@
 #![expect(
     clippy::equatable_if_let,
     clippy::redundant_pattern_matching,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    todo_macro_calls
 )]
 //@no-rustfix
 // This tests the branches_sharing_code lint at the end of blocks

@@ -1,5 +1,5 @@
 #![warn(clippy::needless_bool)]
-#![allow(clippy::no_effect)]
+#![allow(clippy::no_effect, todo_macro_calls)]
 #![expect(clippy::needless_return)]
 
 use std::cell::Cell;

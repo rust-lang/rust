@@ -3,7 +3,8 @@
     clippy::collapsible_if,
     clippy::needless_return,
     clippy::no_effect,
-    clippy::single_match
+    clippy::single_match,
+    todo_macro_calls
 )]
 
 fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>) {

@@ -1,6 +1,6 @@
 #![feature(closure_lifetime_binder)]
 #![warn(clippy::explicit_auto_deref)]
-#![allow(clippy::redundant_field_names)]
+#![allow(clippy::redundant_field_names, todo_macro_calls)]
 #![expect(
     clippy::borrow_deref_ref,
     clippy::borrowed_box,

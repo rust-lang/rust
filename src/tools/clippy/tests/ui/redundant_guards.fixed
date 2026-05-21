@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::no_effect, unused, clippy::single_match, invalid_nan_comparisons)]
+#![allow(clippy::no_effect, unused, clippy::single_match, invalid_nan_comparisons, todo_macro_calls)]
 #![warn(clippy::redundant_guards)]
 
 #[macro_use]

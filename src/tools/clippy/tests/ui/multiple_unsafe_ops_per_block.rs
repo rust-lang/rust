@@ -4,7 +4,8 @@
 #![expect(
     dropping_copy_types,
     clippy::unnecessary_literal_unwrap,
-    clippy::unnecessary_operation
+    clippy::unnecessary_operation,
+    todo_macro_calls
 )]
 
 extern crate proc_macros;

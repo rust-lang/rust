@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 #![crate_type = "lib"]
 #![no_std]

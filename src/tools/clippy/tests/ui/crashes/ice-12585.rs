@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![expect(clippy::unit_arg)]
+#![allow(clippy::unit_arg, todo_macro_calls)]
 
 struct One {
     x: i32,

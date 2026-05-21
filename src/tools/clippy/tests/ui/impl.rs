@@ -1,4 +1,4 @@
-#![expect(clippy::extra_unused_lifetimes)]
+#![expect(clippy::extra_unused_lifetimes, todo_macro_calls)]
 #![warn(clippy::multiple_inherent_impl)]
 
 struct MyStruct;
@@ -143,3 +143,4 @@ impl<T: Debug + Clone> MultipleTraitBounds<T> {
 }
 
 fn main() {}
+´

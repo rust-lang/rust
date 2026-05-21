@@ -1,5 +1,5 @@
 #![warn(clippy::identity_op)]
-#![allow(clippy::eq_op, clippy::op_ref)]
+#![allow(clippy::eq_op, clippy::op_ref, todo_macro_calls)]
 #![expect(
     clippy::borrow_deref_ref,
     clippy::deref_addrof,
