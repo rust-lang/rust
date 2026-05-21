@@ -5,51 +5,10 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::query::QueryKey;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
-
-/// Emit diagnostic for calls to `#[inline(always)]`-annotated functions with a
-/// `#[target_feature]` attribute where the caller enables a different set of target features.
-pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    call_span: Span,
-    callee_def_id: DefId,
-    caller_def_id: DefId,
-    callee_only: &[&'a str],
-) {
-    tcx.emit_node_span_lint(
-        lint::builtin::INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
-        tcx.local_def_id_to_hir_id(caller_def_id.as_local().unwrap()),
-        call_span,
-        rustc_errors::DiagDecorator(|lint| {
-            let callee = tcx.def_path_str(callee_def_id);
-            let caller = tcx.def_path_str(caller_def_id);
-
-            lint.primary_message(format!(
-                "call to `#[inline(always)]`-annotated `{callee}` \
-                requires the same target features to be inlined"
-            ));
-            lint.note("function will not be inlined");
-
-            lint.note(format!(
-                "the following target features are on `{callee}` but missing from `{caller}`: {}",
-                callee_only.join(", ")
-            ));
-            lint.span_note(callee_def_id.default_span(tcx), format!("`{callee}` is defined here"));
-
-            let feats = callee_only.join(",");
-            lint.span_suggestion(
-                tcx.def_span(caller_def_id).shrink_to_lo(),
-                format!("add `#[target_feature]` attribute to `{caller}`"),
-                format!("#[target_feature(enable = \"{feats}\")]\n"),
-                lint::Applicability::MaybeIncorrect,
-            );
-        }),
-    );
-}
 
 #[derive(Diagnostic)]
 #[diag("function cannot return without recursing")]
