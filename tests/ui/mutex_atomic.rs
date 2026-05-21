@@ -1,6 +1,5 @@
-#![warn(clippy::mutex_integer)]
-#![warn(clippy::mutex_atomic)]
-#![allow(clippy::borrow_as_ptr)]
+#![warn(clippy::mutex_atomic, clippy::mutex_integer)]
+#![expect(clippy::borrow_as_ptr)]
 
 use std::sync::Mutex;
 

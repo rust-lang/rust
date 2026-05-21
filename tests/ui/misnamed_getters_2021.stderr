@@ -1,5 +1,5 @@
 error: getter function appears to return the wrong field
-  --> tests/ui/misnamed_getters_2021.rs:15:5
+  --> tests/ui/misnamed_getters_2021.rs:13:5
    |
 LL | /     unsafe fn a(&self) -> &u8 {
 LL | |

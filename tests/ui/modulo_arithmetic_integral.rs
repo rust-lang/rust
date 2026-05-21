@@ -1,5 +1,5 @@
 #![warn(clippy::modulo_arithmetic)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::modulo_one)]
+#![expect(clippy::no_effect)]
 
 fn main() {
     // Lint on signed integral numbers

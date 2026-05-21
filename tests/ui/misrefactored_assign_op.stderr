@@ -1,5 +1,5 @@
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:6:5
+  --> tests/ui/misrefactored_assign_op.rs:7:5
    |
 LL |     a += a + 1;
    |     ^^^^^^^^^^
@@ -18,7 +18,7 @@ LL +     a = a + a + 1;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:9:5
+  --> tests/ui/misrefactored_assign_op.rs:10:5
    |
 LL |     a += 1 + a;
    |     ^^^^^^^^^^
@@ -35,7 +35,7 @@ LL +     a = a + 1 + a;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:12:5
+  --> tests/ui/misrefactored_assign_op.rs:13:5
    |
 LL |     a -= a - 1;
    |     ^^^^^^^^^^
@@ -52,7 +52,7 @@ LL +     a = a - (a - 1);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:15:5
+  --> tests/ui/misrefactored_assign_op.rs:16:5
    |
 LL |     a *= a * 99;
    |     ^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL +     a = a * a * 99;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:18:5
+  --> tests/ui/misrefactored_assign_op.rs:19:5
    |
 LL |     a *= 42 * a;
    |     ^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL +     a = a * 42 * a;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:21:5
+  --> tests/ui/misrefactored_assign_op.rs:22:5
    |
 LL |     a /= a / 2;
    |     ^^^^^^^^^^
@@ -103,7 +103,7 @@ LL +     a = a / (a / 2);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:24:5
+  --> tests/ui/misrefactored_assign_op.rs:25:5
    |
 LL |     a %= a % 5;
    |     ^^^^^^^^^^
@@ -120,7 +120,7 @@ LL +     a = a % (a % 5);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:27:5
+  --> tests/ui/misrefactored_assign_op.rs:28:5
    |
 LL |     a &= a & 1;
    |     ^^^^^^^^^^
@@ -137,7 +137,7 @@ LL +     a = a & a & 1;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/misrefactored_assign_op.rs:30:5
+  --> tests/ui/misrefactored_assign_op.rs:31:5
    |
 LL |     a *= a * a;
    |     ^^^^^^^^^^

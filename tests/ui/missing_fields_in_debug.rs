@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::missing_fields_in_debug)]
 
 use std::fmt;
