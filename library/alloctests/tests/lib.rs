@@ -9,6 +9,7 @@
 #![feature(binary_heap_pop_if)]
 #![feature(borrowed_buf_init)]
 #![feature(buf_read_has_data_left)]
+#![feature(can_vector)]
 #![feature(casefold)]
 #![feature(const_btree_len)]
 #![feature(const_heap)]

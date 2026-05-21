@@ -1,9 +1,9 @@
-use crate::fmt;
-use crate::io::prelude::*;
-use crate::io::{
-    BorrowedBuf, Empty, ErrorKind, IoSlice, IoSliceMut, Repeat, SeekFrom, Sink, empty, repeat, sink,
+use alloc::io::{
+    BorrowedBuf, Empty, ErrorKind, IoSlice, IoSliceMut, Read, Repeat, Seek, SeekFrom, Sink, Write,
+    empty, repeat, sink,
 };
-use crate::mem::MaybeUninit;
+use core::fmt;
+use core::mem::MaybeUninit;
 
 struct ErrorDisplay;
 
