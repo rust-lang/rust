@@ -1740,10 +1740,13 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Converts the Vec into a boxed array. This conversion will discard any spare capacity, if there is any, see [`Vec::shrink_to_fit`].
+    /// Converts the Vec into a boxed array. This conversion will discard any spare capacity,
+    /// if there is any, see [`Vec::shrink_to_fit`].
     /// If you merely wish for a reference to an array, use [`as_array`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_array).
     ///
-    /// If `N` is not exactly equal to [`Vec::len`], then this method returns `None`.
+    /// # Errors
+    ///
+    /// Returns the original `Vec<T>` in the `Err` variant if [`Vec::len`] does not equal `N`.
     ///
     /// # Examples
     ///
