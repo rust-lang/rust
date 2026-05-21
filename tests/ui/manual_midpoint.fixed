@@ -27,19 +27,19 @@ fn older_msrv() {
 #[clippy::msrv = "1.85"]
 fn main() {
     let a: u32 = 10;
-    let _ = u32::midpoint(a, 5); //~ ERROR: manual implementation of `midpoint`
-    let _ = u32::midpoint(a, 5); //~ ERROR: manual implementation of `midpoint`
+    let _ = u32::midpoint(a, 5); //~ manual_midpoint
+    let _ = u32::midpoint(a, 5); //~ manual_midpoint
 
     let f: f32 = 10.0;
-    let _ = f32::midpoint(f, 5.0); //~ ERROR: manual implementation of `midpoint`
-    let _ = f32::midpoint(f, 10.0); //~ ERROR: manual implementation of `midpoint`
-    let _ = f32::midpoint(f, 10.0); //~ ERROR: manual implementation of `midpoint`
+    let _ = f32::midpoint(f, 5.0); //~ manual_midpoint
+    let _ = f32::midpoint(f, 10.0); //~ manual_midpoint
+    let _ = f32::midpoint(f, 10.0); //~ manual_midpoint
 
-    let _: u32 = 5 + u32::midpoint(8, 8) + 2; //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = const { u32::midpoint(8, 8) }; //~ ERROR: manual implementation of `midpoint`
-    let _: f64 = const { f64::midpoint(8.0f64, 8.) }; //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = u32::midpoint(u32::default(), u32::default()); //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = u32::midpoint(two!(), two!()); //~ ERROR: manual implementation of `midpoint`
+    let _: u32 = 5 + u32::midpoint(8, 8) + 2; //~ manual_midpoint
+    let _: u32 = const { u32::midpoint(8, 8) }; //~ manual_midpoint
+    let _: f64 = const { f64::midpoint(8.0f64, 8.) }; //~ manual_midpoint
+    let _: u32 = u32::midpoint(u32::default(), u32::default()); //~ manual_midpoint
+    let _: u32 = u32::midpoint(two!(), two!()); //~ manual_midpoint
 
     // Do not lint in presence of an addition with more than 2 operands
     let _: u32 = (10 + 20 + 30) / 2;
@@ -62,8 +62,8 @@ fn main() {
     let _ = (1 + i) / 2;
 
     // But if we see (x+1.0)/2.0 or (x+1.0)/2.0, it is probably a midpoint operation
-    let _ = f32::midpoint(f, 1.0); //~ ERROR: manual implementation of `midpoint`
-    let _ = f32::midpoint(1.0, f); //~ ERROR: manual implementation of `midpoint`
+    let _ = f32::midpoint(f, 1.0); //~ manual_midpoint
+    let _ = f32::midpoint(1.0, f); //~ manual_midpoint
 }
 
 #[clippy::msrv = "1.86"]
@@ -74,5 +74,5 @@ fn older_signed_midpoint(i: i32) {
 
 #[clippy::msrv = "1.87"]
 fn signed_midpoint(i: i32) {
-    let _ = i32::midpoint(i, 10); //~ ERROR: manual implementation of `midpoint`
+    let _ = i32::midpoint(i, 10); //~ manual_midpoint
 }
