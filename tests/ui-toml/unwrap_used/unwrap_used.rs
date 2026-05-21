@@ -1,13 +1,7 @@
 //@compile-flags: --test
 
-#![allow(
-    unused_mut,
-    clippy::get_first,
-    clippy::from_iter_instead_of_collect,
-    clippy::useless_vec
-)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::get_unwrap)]
+#![allow(clippy::from_iter_instead_of_collect, clippy::get_first, clippy::useless_vec)]
+#![warn(clippy::get_unwrap, clippy::unwrap_used)]
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
