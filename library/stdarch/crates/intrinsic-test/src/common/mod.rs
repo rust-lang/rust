@@ -42,11 +42,11 @@ pub trait SupportedArchitectureTest {
     fn arch_flags(&self) -> Vec<&str>;
 
     fn generate_c_file(&self) {
-        let (chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
+        let (max_chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
 
         std::fs::create_dir_all("c_programs").unwrap();
         self.intrinsics()
-            .par_chunks(chunk_size)
+            .par_chunks(max_chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/wrapper_{i}.c");
@@ -62,13 +62,13 @@ pub trait SupportedArchitectureTest {
 
         std::fs::create_dir_all("rust_programs").unwrap();
 
-        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len());
+        let (max_chunk_size, chunk_count) = manual_chunk(self.intrinsics().len());
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
         write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
 
         self.intrinsics()
-            .chunks(chunk_size)
+            .chunks(max_chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 std::fs::create_dir_all(format!("rust_programs/mod_{i}/src"))?;
@@ -109,5 +109,7 @@ pub trait SupportedArchitectureTest {
 
 pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
     let ncores = std::thread::available_parallelism().unwrap().into();
-    (intrinsic_count.div_ceil(ncores), ncores)
+    let max_intrinsics_per_chunk = intrinsic_count.div_ceil(ncores);
+    let number_of_chunks = intrinsic_count.div_ceil(max_intrinsics_per_chunk);
+    (max_intrinsics_per_chunk, number_of_chunks)
 }
