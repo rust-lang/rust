@@ -2,22 +2,29 @@
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![feature(alloc_io)]
 #![feature(allocator_api)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_pop_if)]
+#![feature(borrowed_buf_init)]
+#![feature(buf_read_has_data_left)]
 #![feature(casefold)]
 #![feature(const_btree_len)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
 #![feature(cow_is_borrowed)]
+#![feature(cursor_split)]
 #![feature(deque_extend_front)]
 #![feature(downcast_unchecked)]
 #![feature(drain_keep_rest)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
@@ -27,6 +34,9 @@
 #![feature(map_try_insert)]
 #![feature(pattern)]
 #![feature(ptr_cast_slice)]
+#![feature(read_buf)]
+#![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(slice_partial_sort_unstable)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_ptr_get)]
@@ -45,6 +55,7 @@
 #![feature(vec_deque_retain_range)]
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
+#![feature(write_all_vectored)]
 // tidy-alphabetical-end
 
 extern crate alloc;
@@ -64,6 +75,7 @@ mod const_fns;
 mod cow_str;
 mod fmt;
 mod heap;
+mod io;
 mod linked_list;
 mod misc_tests;
 mod num;
