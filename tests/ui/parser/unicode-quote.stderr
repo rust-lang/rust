@@ -5,7 +5,7 @@ LL |     dbg!("\″"); //U+2033
    |            ^ unknown character escape
    |
    = help: \u{2033} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{2033}` for clarity
    |
 LL -     dbg!("\″"); //U+2033
 LL +     dbg!("\u{2033}"); //U+2033
@@ -18,7 +18,7 @@ LL |     dbg!("\ʺ"); //U+02BA
    |            ^ unknown character escape
    |
    = help: \u{2ba} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{2ba}` for clarity
    |
 LL -     dbg!("\ʺ"); //U+02BA
 LL +     dbg!("\u{2ba}"); //U+02BA
@@ -31,7 +31,7 @@ LL |     dbg!("\˝"); //U+02DD
    |            ^ unknown character escape
    |
    = help: \u{2dd} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{2dd}` for clarity
    |
 LL -     dbg!("\˝"); //U+02DD
 LL +     dbg!("\u{2dd}"); //U+02DD
@@ -44,7 +44,7 @@ LL |     dbg!("\̋"); //U+030B
    |            ^unknown character escape
    |
    = help: \u{30b} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{30b}` for clarity
    |
 LL -     dbg!("\̋"); //U+030B
 LL +     dbg!("\u{30b}"); //U+030B
@@ -57,7 +57,7 @@ LL |     dbg!("\̎"); //U+030E
    |            ^unknown character escape
    |
    = help: \u{30e} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{30e}` for clarity
    |
 LL -     dbg!("\̎"); //U+030E
 LL +     dbg!("\u{30e}"); //U+030E
@@ -70,7 +70,7 @@ LL |     dbg!("\״"); //U+05F4
    |            ^ unknown character escape
    |
    = help: \u{5f4} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{5f4}` for clarity
    |
 LL -     dbg!("\״"); //U+05F4
 LL +     dbg!("\u{5f4}"); //U+05F4
@@ -83,7 +83,7 @@ LL |     dbg!("\“"); //U+201C
    |            ^ unknown character escape
    |
    = help: \u{201c} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{201c}` for clarity
    |
 LL -     dbg!("\“"); //U+201C
 LL +     dbg!("\u{201c}"); //U+201C
@@ -96,7 +96,7 @@ LL |     dbg!("\”"); //U+201D
    |            ^ unknown character escape
    |
    = help: \u{201d} is not an ASCII quote, but may look like one in some fonts
-help: consider writing it in its escaped form for clarity
+help: consider writing it as `\u{201d}` for clarity
    |
 LL -     dbg!("\”"); //U+201D
 LL +     dbg!("\u{201d}"); //U+201D

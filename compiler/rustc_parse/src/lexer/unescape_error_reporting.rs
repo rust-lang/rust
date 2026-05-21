@@ -164,7 +164,7 @@ pub(crate) fn emit_unescape_error(
                 ));
                 diag.span_suggestion_verbose(
                     err_span,
-                    "consider writing it in its escaped form for clarity",
+                    format!("consider writing it as `{ec}` for clarity"),
                     &ec,
                     Applicability::MaybeIncorrect,
                 );
