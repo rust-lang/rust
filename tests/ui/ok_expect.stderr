@@ -1,5 +1,5 @@
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:16:5
+  --> tests/ui/ok_expect.rs:17:5
    |
 LL |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     res.expect("disaster!");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:19:5
+  --> tests/ui/ok_expect.rs:20:5
    |
 LL | /     res.ok()
 LL | |         .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
@@ -27,7 +27,7 @@ LL +     res.expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:24:5
+  --> tests/ui/ok_expect.rs:25:5
    |
 LL | /     resres
 LL | |         .ok()
@@ -43,7 +43,7 @@ LL +     resres.expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:30:5
+  --> tests/ui/ok_expect.rs:31:5
    |
 LL | /     std::process::Command::new("rustc")
 LL | |         .arg("-vV")
@@ -61,7 +61,7 @@ LL +         .output().expect("failed to get rustc version");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:42:5
+  --> tests/ui/ok_expect.rs:43:5
    |
 LL |     res3.ok().expect("whoof");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     res3.expect("whoof");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:46:5
+  --> tests/ui/ok_expect.rs:47:5
    |
 LL |     res4.ok().expect("argh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     res4.expect("argh");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:50:5
+  --> tests/ui/ok_expect.rs:51:5
    |
 LL |     res5.ok().expect("oops");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     res5.expect("oops");
    |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:54:5
+  --> tests/ui/ok_expect.rs:55:5
    |
 LL |     res6.ok().expect("meh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
