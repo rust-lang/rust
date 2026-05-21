@@ -311,7 +311,7 @@ pub use alloc_crate::io::const_error;
 pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::io::{
-    Chain, Empty, Error, ErrorKind, Repeat, Result, Sink, Take, empty, repeat, sink,
+    Chain, Empty, Error, ErrorKind, Repeat, Result, SeekFrom, Sink, Take, empty, repeat, sink,
 };
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
@@ -1885,34 +1885,6 @@ pub(crate) fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64>
     }
 
     Ok(len)
-}
-
-/// Enumeration of possible methods to seek within an I/O object.
-///
-/// It is used by the [`Seek`] trait.
-#[derive(Copy, PartialEq, Eq, Clone, Debug)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "SeekFrom")]
-pub enum SeekFrom {
-    /// Sets the offset to the provided number of bytes.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Start(#[stable(feature = "rust1", since = "1.0.0")] u64),
-
-    /// Sets the offset to the size of this object plus the specified number of
-    /// bytes.
-    ///
-    /// It is possible to seek beyond the end of an object, but it's an error to
-    /// seek before byte 0.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    End(#[stable(feature = "rust1", since = "1.0.0")] i64),
-
-    /// Sets the offset to the current position plus the specified number of
-    /// bytes.
-    ///
-    /// It is possible to seek beyond the end of an object, but it's an error to
-    /// seek before byte 0.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Current(#[stable(feature = "rust1", since = "1.0.0")] i64),
 }
 
 fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> Result<usize> {

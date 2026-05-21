@@ -5,6 +5,7 @@ mod cursor;
 mod error;
 mod impls;
 mod io_slice;
+mod seek;
 mod size_hint;
 mod util;
 
@@ -21,6 +22,7 @@ pub use self::{
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
     io_slice::{IoSlice, IoSliceMut},
+    seek::SeekFrom,
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
 };
 #[doc(hidden)]
