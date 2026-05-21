@@ -348,4 +348,3 @@ mod impls;
 mod pipe;
 pub mod prelude;
 mod stdio;
-mod util;
