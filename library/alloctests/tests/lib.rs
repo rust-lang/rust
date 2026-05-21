@@ -45,6 +45,7 @@
 #![feature(alloc_io)]
 #![feature(borrowed_buf_init)]
 #![feature(buf_read_has_data_left)]
+#![feature(can_vector)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_internals)]
 #![feature(cursor_split)]
