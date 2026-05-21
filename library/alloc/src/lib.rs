@@ -91,6 +91,7 @@
 #![feature(ascii_char)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
+#![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(can_vector)]

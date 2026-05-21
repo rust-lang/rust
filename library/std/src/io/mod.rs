@@ -313,7 +313,11 @@ pub use alloc_crate::io::{
     Chain, Empty, Error, ErrorKind, Repeat, Result, Seek, SeekFrom, Sink, Take, Write, empty,
     repeat, sink,
 };
-pub(crate) use alloc_crate::io::{IoHandle, default_write_vectored, stream_len_default};
+#[allow(unused_imports, reason = "only used by certain target configurations")]
+pub(crate) use alloc_crate::io::{DEFAULT_BUF_SIZE, default_read_buf};
+pub(crate) use alloc_crate::io::{
+    IoHandle, default_read_vectored, default_write_vectored, stream_len_default,
+};
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
 use alloc_crate::io::{OsFunctions, SizeHint};
@@ -350,8 +354,6 @@ mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
-
-const DEFAULT_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
 
 pub(crate) use stdio::cleanup;
 
@@ -542,14 +544,6 @@ pub(crate) fn default_read_to_string<R: Read + ?Sized>(
     unsafe { append_to_string(buf, |b| default_read_to_end(r, b, size_hint)) }
 }
 
-pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
-where
-    F: FnOnce(&mut [u8]) -> Result<usize>,
-{
-    let buf = bufs.iter_mut().find(|b| !b.is_empty()).map_or(&mut [][..], |b| &mut **b);
-    read(buf)
-}
-
 pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
     while !buf.is_empty() {
         match this.read(buf) {
@@ -562,15 +556,6 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() { Err(Error::READ_EXACT_EOF) } else { Ok(()) }
-}
-
-pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_>) -> Result<()>
-where
-    F: FnOnce(&mut [u8]) -> Result<usize>,
-{
-    let n = read(cursor.ensure_init())?;
-    cursor.advance_checked(n);
-    Ok(())
 }
 
 pub(crate) fn default_read_buf_exact<R: Read + ?Sized>(
