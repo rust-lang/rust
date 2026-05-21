@@ -5,8 +5,7 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{
-    self, BorrowedCursor, BufRead, Empty, IoSlice, IoSliceMut, Read, Repeat, Seek, SeekFrom, Sink,
-    Write,
+    self, BorrowedCursor, BufRead, Empty, IoSlice, IoSliceMut, Read, Repeat, Sink, Write,
 };
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -80,24 +79,6 @@ impl BufRead for Empty {
 
     #[inline]
     fn read_line(&mut self, _buf: &mut String) -> io::Result<usize> {
-        Ok(0)
-    }
-}
-
-#[stable(feature = "empty_seek", since = "1.51.0")]
-impl Seek for Empty {
-    #[inline]
-    fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
-        Ok(0)
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        Ok(0)
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
         Ok(0)
     }
 }
