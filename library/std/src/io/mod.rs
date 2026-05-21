@@ -1265,6 +1265,72 @@ pub trait Read {
         assert_eq!(borrowed_buf.len(), N);
         Ok(unsafe { MaybeUninit::array_assume_init(buf) })
     }
+
+    /// Read and return a type (e.g. an integer) in little-endian order.
+    ///
+    /// You can specify the type with turbofish (`reader.read_le::<u64>()`), or let type inference
+    /// determine the type based on how the return value gets used.
+    ///
+    /// Like `read_exact`, if this function encounters an "end of file" before reading the desired
+    /// number of bytes, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    ///
+    /// ```
+    /// #![feature(read_le)]
+    /// use std::io::Cursor;
+    /// use std::io::prelude::*;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buf = Cursor::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2]);
+    ///     let x: u64 = buf.read_le()?;
+    ///     let y: u32 = buf.read_le()?;
+    ///     let z = buf.read_le::<u16>()?;
+    ///     assert_eq!(x, 0x807060504030201);
+    ///     assert_eq!(y, 0x6070809);
+    ///     assert_eq!(z, 0x405);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "read_le", issue = "156983")]
+    #[inline]
+    fn read_le<T: FromEndianBytes>(&mut self) -> Result<T>
+    where
+        Self: Sized,
+    {
+        T::read_le_from(self)
+    }
+
+    /// Read and return a type (e.g. an integer) in big-endian order.
+    ///
+    /// You can specify the type with turbofish (`reader.read_be::<u64>()`), or let type inference
+    /// determine the type based on how the return value gets used.
+    ///
+    /// Like `read_exact`, if this function encounters an "end of file" before reading the desired
+    /// number of bytes, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    ///
+    /// ```
+    /// #![feature(read_le)]
+    /// use std::io::Cursor;
+    /// use std::io::prelude::*;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buf = Cursor::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2]);
+    ///     let x: u64 = buf.read_be()?;
+    ///     let y: u32 = buf.read_be()?;
+    ///     let z = buf.read_be::<u16>()?;
+    ///     assert_eq!(x, 0x102030405060708);
+    ///     assert_eq!(y, 0x9080706);
+    ///     assert_eq!(z, 0x504);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "read_le", issue = "156983")]
+    #[inline]
+    fn read_be<T: FromEndianBytes>(&mut self) -> Result<T>
+    where
+        Self: Sized,
+    {
+        T::read_be_from(self)
+    }
 }
 
 /// Reads all bytes from a [reader][Read] into a new [`String`].
@@ -3157,3 +3223,34 @@ impl<B: BufRead> Iterator for Lines<B> {
         }
     }
 }
+
+/// Trait for types that can be converted from a fixed-size byte array with a specified endianness
+#[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
+// Once we can use associated consts in the types of method parameters, rewrite this to have
+// `from_le_bytes` and `from_be_bytes` methods, move it to `core`, and make it public.
+pub trait FromEndianBytes: crate::sealed::Sealed + Sized {
+    #[doc(hidden)]
+    fn read_le_from(r: &mut impl Read) -> Result<Self>;
+
+    #[doc(hidden)]
+    fn read_be_from(r: &mut impl Read) -> Result<Self>;
+}
+
+macro_rules! impl_from_endian_bytes {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
+        impl FromEndianBytes for $t {
+            #[inline]
+            fn read_le_from(r: &mut impl Read) -> Result<Self> {
+                Ok(<$t>::from_le_bytes(r.read_array()?))
+            }
+
+            #[inline]
+            fn read_be_from(r: &mut impl Read) -> Result<Self> {
+                Ok(<$t>::from_be_bytes(r.read_array()?))
+            }
+        }
+    )*};
+}
+
+impl_from_endian_bytes!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64);
