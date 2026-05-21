@@ -1149,7 +1149,7 @@ impl ::core::cmp::PartialOrd for Fieldless1 {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless1)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
 }
 #[automatically_derived]

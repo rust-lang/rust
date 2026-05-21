@@ -59,7 +59,14 @@ pub(crate) fn expand_deriving_partial_ord(
         Annotatable::Item(annitem) => match &annitem.kind {
             // For unit structs/zero-variant enums, the default generated code is better.
             ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
+            // Also for single fieldless variant enum
             ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => {
+                (false, default_substructure)
+            }
+            ItemKind::Enum(.., enum_def)
+                if enum_def.variants.len() == 1
+                    && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
+            {
                 (false, default_substructure)
             }
             ItemKind::Struct(_, ast::Generics { params, .. }, _)
