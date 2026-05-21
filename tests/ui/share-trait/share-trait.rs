@@ -2,7 +2,9 @@
 
 #![feature(share_trait)]
 
-use std::clone::Share;
+extern crate core;
+
+use core::clone::Share;
 
 #[derive(Debug, PartialEq)]
 struct Alias(u8);
@@ -23,6 +25,7 @@ fn main() {
     let value = Alias(1);
 
     assert_eq!(Share::share(&value), Alias(2));
+    assert_eq!(std::clone::Share::share(&value), Alias(2));
     assert_eq!(value.share(), Alias(2));
     assert_eq!(share_generic(&value), Alias(2));
 
@@ -31,10 +34,11 @@ fn main() {
     let shared_again = shared.share();
     let shared_fqs: &i32 = Share::share(&shared);
     let shared_generic: &i32 = share_generic(&shared);
+
     assert!(std::ptr::eq(shared, shared_again));
     assert!(std::ptr::eq(shared_fqs, shared));
     assert!(std::ptr::eq(shared_generic, shared));
 
-    let text: &str = "text";
-    assert!(std::ptr::eq(text, text.share()));
+    let slice: &[i32] = &[1, 2, 3];
+    assert!(std::ptr::eq(slice, slice.share()));
 }
