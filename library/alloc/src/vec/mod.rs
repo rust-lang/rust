@@ -1761,7 +1761,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
-        if self.len() == N { Ok(self.into_boxed_slice().into_array().unwrap()) } else { Err(self) }
+        if self.len() == N {
+            Ok(self.into_boxed_slice().into_array().ok().unwrap())
+        } else {
+            Err(self)
+        }
     }
 
     /// Shortens the vector, keeping the first `len` elements and dropping
