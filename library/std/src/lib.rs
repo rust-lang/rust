@@ -372,6 +372,7 @@
 #![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(share_trait)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]

@@ -22,13 +22,14 @@ pub use self::{
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
     io_slice::{IoSlice, IoSliceMut},
-    seek::SeekFrom,
+    seek::{Seek, SeekFrom},
     util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink},
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
     error::{Custom, CustomOwner, OsFunctions},
+    seek::stream_len_default,
     size_hint::SizeHint,
     util::{chain, take},
 };

@@ -150,6 +150,7 @@
 #![feature(ptr_metadata)]
 #![feature(raw_os_error_ty)]
 #![feature(rev_into_inner)]
+#![feature(seek_stream_len)]
 #![feature(set_ptr_value)]
 #![feature(share_trait)]
 #![feature(sized_type_properties)]

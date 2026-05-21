@@ -3,7 +3,7 @@ mod tests;
 
 use crate::alloc::Allocator;
 use crate::collections::VecDeque;
-use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Write};
 use crate::sync::Arc;
 use crate::{cmp, fmt, mem, str};
 
@@ -87,33 +87,6 @@ impl<W: Write + ?Sized> Write for &mut W {
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Seek + ?Sized> Seek for &mut S {
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -226,33 +199,6 @@ impl<W: Write + ?Sized> Write for Box<W> {
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Seek + ?Sized> Seek for Box<S> {
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -802,36 +748,5 @@ where
     #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (&**self).write_fmt(fmt)
-    }
-}
-#[stable(feature = "io_traits_arc", since = "1.73.0")]
-impl<S: Seek + ?Sized> Seek for Arc<S>
-where
-    for<'a> &'a S: Seek,
-    S: crate::io::IoHandle,
-{
-    #[inline]
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        (&**self).seek(pos)
-    }
-
-    #[inline]
-    fn rewind(&mut self) -> io::Result<()> {
-        (&**self).rewind()
-    }
-
-    #[inline]
-    fn stream_len(&mut self) -> io::Result<u64> {
-        (&**self).stream_len()
-    }
-
-    #[inline]
-    fn stream_position(&mut self) -> io::Result<u64> {
-        (&**self).stream_position()
-    }
-
-    #[inline]
-    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
-        (&**self).seek_relative(offset)
     }
 }
