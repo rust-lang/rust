@@ -1,10 +1,5 @@
-#![allow(
-    clippy::missing_safety_doc,
-    clippy::extra_unused_lifetimes,
-    clippy::extra_unused_type_parameters,
-    clippy::needless_lifetimes
-)]
 #![warn(clippy::new_without_default)]
+#![expect(clippy::extra_unused_lifetimes, clippy::missing_safety_doc)]
 
 pub struct Foo;
 
