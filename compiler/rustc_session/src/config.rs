@@ -16,7 +16,7 @@ use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtFlags};
+use rustc_errors::{ColorConfig, Diag, DiagCtxtFlags, FatalAbort};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
@@ -1919,6 +1919,28 @@ pub fn get_cmd_lint_options(
     });
 
     (lint_opts, describe_lints, lint_cap)
+}
+
+/// Build a fatal "unknown {label}: ..." diagnostic listing the valid values.
+///
+/// Use this whenever a command-line argument expects one of a fixed set of
+/// string values (typically the `STR_VARIANTS` of an enum declared via
+/// [`rustc_data_structures::string_enum!`]) and the user supplied something
+/// else. The returned [`Diag`] is left un-emitted so the caller can attach
+/// further help notes; call `.emit()` to abort.
+///
+/// `label` is the singular noun phrase for the value (e.g. `"print request"`,
+/// `"lint level"`); the help line pluralises it by appending `"s"`.
+pub fn build_unknown_arg_value_diag<'a>(
+    early_dcx: &'a EarlyDiagCtxt,
+    label: &str,
+    bad_value: &str,
+    valid_values: &[&str],
+) -> Diag<'a, FatalAbort> {
+    let valid = valid_values.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
+    let mut diag = early_dcx.early_struct_fatal(format!("unknown {label}: `{bad_value}`"));
+    diag.help(format!("valid {label}s are: {valid}"));
+    diag
 }
 
 /// Parses the `--color` flag.

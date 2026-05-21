@@ -76,6 +76,7 @@ pub mod sso;
 pub mod stable_hash;
 pub mod stack;
 pub mod steal;
+mod string_enum;
 pub mod svh;
 pub mod sync;
 pub mod tagged_ptr;
