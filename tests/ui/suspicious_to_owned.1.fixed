@@ -1,6 +1,5 @@
-#![warn(clippy::suspicious_to_owned)]
-#![warn(clippy::implicit_clone)]
-#![allow(clippy::redundant_clone)]
+#![warn(clippy::implicit_clone, clippy::suspicious_to_owned)]
+#![expect(clippy::redundant_clone)]
 use std::borrow::Cow;
 use std::ffi::{CStr, c_char};
 

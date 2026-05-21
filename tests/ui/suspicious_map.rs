@@ -1,5 +1,5 @@
-#![allow(clippy::map_with_unused_argument_over_ranges)]
 #![warn(clippy::suspicious_map)]
+#![expect(clippy::map_with_unused_argument_over_ranges)]
 
 fn main() {
     let _ = (0..3).map(|x| x + 2).count();
