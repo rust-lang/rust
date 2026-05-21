@@ -1007,7 +1007,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Err(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+            // If scrutinee is String and pattern is &str, suggest .as_str()
+            let expected = self.resolve_vars_with_obligations(expected);
+            if let ty::Adt(adt, _) = expected.kind()
+                && self.tcx.is_lang_item(adt.did(), LangItem::String)
+                && pat_ty.is_ref()
+                && pat_ty.peel_refs().is_str()
+                && let Some(origin_expr) = ti.origin_expr
+            {
+                err.span_suggestion_verbose(
+                    origin_expr.span.shrink_to_hi(),
+                    "consider converting the `String` to a `&str` using `.as_str()`",
+                    ".as_str()",
+                    Applicability::MachineApplicable,
+                );
+            }
             err.emit();
         }
 
