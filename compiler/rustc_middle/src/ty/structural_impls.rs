@@ -253,6 +253,8 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::ParamTy,
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
+    rustc_hir::def_id::VisibilityDefId,
+    rustc_hir::def_id::VisibilityModId,
     // tidy-alphabetical-end
 }
 
