@@ -4,7 +4,7 @@ use crate::{cmp, fmt};
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].
 ///
-/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Write`]: crate::io::Write
 /// [`Read`]: ../../std/io/trait.Read.html
 ///
 /// This struct is generally created by calling [`empty()`]. Please
@@ -129,7 +129,7 @@ impl Seek for Empty {
 /// [`Ok(buf.len())`]: Ok
 /// [`Ok(0)`]: Ok
 ///
-/// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+/// [`write`]: crate::io::Write::write
 /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
 ///
 /// # Examples
@@ -303,7 +303,7 @@ impl Write for &Sink {
 /// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
 /// and the contents of the buffer will not be inspected.
 ///
-/// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+/// [`write`]: crate::io::Write::write
 /// [`Ok(buf.len())`]: Ok
 ///
 /// # Examples

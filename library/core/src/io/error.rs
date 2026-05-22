@@ -71,7 +71,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`ErrorKind`].
 ///
 /// [Read]: ../../std/io/trait.Read.html
-/// [Write]: ../../std/io/trait.Write.html
+/// [Write]: crate::io::Write
 /// [Seek]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_has_incoherent_inherent_impls]
@@ -841,7 +841,7 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [write]: ../../std/io/trait.Write.html#tymethod.write
+    /// [write]: crate::io::Write::write
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,

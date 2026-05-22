@@ -22,7 +22,7 @@ use crate::io::{self, ErrorKind, IoSlice, SeekFrom, Write};
 /// [bytes]: crate::slice "slice"
 /// [`File`]: ../../std/fs/struct.File.html
 /// [`Read`]: ../../std/io/trait.Read.html
-/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Write`]: crate::io::Write
 /// [`Seek`]: crate::io::Seek
 /// [Vec]: ../../alloc/vec/struct.Vec.html
 ///

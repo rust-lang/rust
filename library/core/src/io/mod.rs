@@ -54,7 +54,7 @@ pub use self::{
 ///
 /// [file]: ../../std/fs/struct.File.html
 /// [arc]: ../../alloc/sync/struct.Arc.html
-/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Write`]: crate::io::Write
 /// [`Seek`]: crate::io::Seek
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
