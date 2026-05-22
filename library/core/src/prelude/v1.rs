@@ -30,8 +30,6 @@ pub use crate::mem::{align_of, align_of_val, size_of, size_of_val};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::clone::Clone;
-// FIXME(share_trait): Whether `Share` belongs in the prelude is unresolved; do not re-export it
-// here until that API question is decided.
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::cmp::{Eq, Ord, PartialEq, PartialOrd};

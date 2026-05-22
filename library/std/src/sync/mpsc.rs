@@ -647,9 +647,6 @@ impl<T> Clone for Sender<T> {
     }
 }
 
-// FIXME(share_trait): The sender-like `Share` impl set is still being confirmed in
-// rust-lang/rust#156756. This assumes cloning `Sender` creates a clone-as-alias
-// value because both handles send to the same receiving endpoint.
 #[unstable(feature = "share_trait", issue = "156756")]
 impl<T> Share for Sender<T> {}
 
@@ -782,9 +779,6 @@ impl<T> Clone for SyncSender<T> {
     }
 }
 
-// FIXME(share_trait): The sender-like `Share` impl set is still being confirmed in
-// rust-lang/rust#156756. This assumes cloning `SyncSender` creates a clone-as-alias
-// value because both handles send to the same receiving endpoint.
 #[unstable(feature = "share_trait", issue = "156756")]
 impl<T> Share for SyncSender<T> {}
 

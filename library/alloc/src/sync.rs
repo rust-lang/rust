@@ -2436,9 +2436,6 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T: ?Sized, A: Allocator + Clone> UseCloned for Arc<T, A> {}
 
-// FIXME(share_trait): The initial `Share` impl set is still being confirmed in
-// rust-lang/rust#156756. This assumes cloning `Arc` creates a clone-as-alias
-// value because the new handle points to the same allocation.
 #[unstable(feature = "share_trait", issue = "156756")]
 impl<T: ?Sized, A: Allocator + Clone> Share for Arc<T, A> {}
 

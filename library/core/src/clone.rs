@@ -299,16 +299,12 @@ pub macro Clone($item:item) {
 ///
 /// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone) for
 /// implementors.
-// FIXME(share_trait): The public location of `Share` is still unresolved; if libs-api confirms a
-// different home, move this trait and update tests.
 #[unstable(feature = "share_trait", issue = "156756")]
 pub trait Share: Clone {
     /// Creates another alias to the same underlying value.
     ///
     /// This is equivalent to calling [`Clone::clone`].
     #[unstable(feature = "share_trait", issue = "156756")]
-    // FIXME(share_trait): The default method body form is unresolved; keep the explicit
-    // `Clone::clone(self)` spelling until the tracking issue decides it.
     fn share(&self) -> Self {
         Clone::clone(self)
     }
@@ -716,8 +712,6 @@ mod impls {
     #[unstable(feature = "share_trait", issue = "156756")]
     impl<T: PointeeSized> Share for &T {}
 
-    // FIXME(share_trait): Whether mutable references are non-candidates is unresolved; keep
-    // `Share` unimplemented for `&mut T` until that API question is decided.
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: PointeeSized> !Clone for &mut T {}
