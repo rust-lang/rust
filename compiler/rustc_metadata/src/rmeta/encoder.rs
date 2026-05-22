@@ -28,6 +28,8 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::hir::map::compute_hir_hash;
 use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::middle::resolve::ModChild;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
@@ -68,6 +70,7 @@ pub(super) mod public_api_hasher;
 pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
     type EncodedDefId: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
     type EncodedLocalDefId: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    const HASH_PUBLIC_API: bool;
     fn encoded_def_id(
         tcx: TyCtxt<'_>,
         remapping: &LocalDefsRemapping,
@@ -180,6 +183,7 @@ struct DefPathHashDefIdEncoder<'tcx> {
 impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
     type EncodedDefId = (u32, Hash64);
     type EncodedLocalDefId = RemappedLocalDefId;
+    const HASH_PUBLIC_API: bool = true;
     fn encoded_def_id(
         tcx: TyCtxt<'_>,
         _remapping: &LocalDefsRemapping,
@@ -238,6 +242,7 @@ struct DefIndexDefIdEncoder;
 impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     type EncodedDefId = RemappedRawDefId;
     type EncodedLocalDefId = RemappedLocalDefId;
+    const HASH_PUBLIC_API: bool = false;
     #[inline(always)]
     fn encoded_def_id(
         _tcx: TyCtxt<'_>,
@@ -1035,6 +1040,7 @@ where
             for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefId>>,
         EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefId>>>,
     {
+        assert_eq!(M::HASH_PUBLIC_API, self.hcx.enabled());
         let tcx = self.tcx();
 
         // We set it here as we need it only for metadata encoding,
@@ -1858,6 +1864,17 @@ where
     H: PublicApiHashState<'h>,
     M: MetadataEncoder<'tcx>,
 {
+    fn public_module_children_local(
+        &self,
+        def_id: LocalDefId,
+    ) -> impl Iterator<Item = &'tcx ModChild> + use<'tcx, M, H> + Clone {
+        let effective_visibilities = self.tcx().effective_visibilities(());
+        let remove_private_children = M::HASH_PUBLIC_API;
+        self.tcx().module_children_local(def_id).iter().filter(move |child| {
+            is_public_mod_child(remove_private_children, effective_visibilities, child)
+        })
+    }
+
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
         let mut state = AnalyzeAttrState {
@@ -2010,10 +2027,10 @@ where
                     local_id,
                     tcx.explicit_implied_clauses_of(def_id).skip_binder(),
                 );
-                let module_children = tcx.module_children_local(local_id);
+                let module_children = self.public_module_children_local(local_id);
                 self.table_writer().module_children_non_reexports(
                     local_id,
-                    module_children.iter().map(|child| child.res.def_id().expect_local()),
+                    module_children.map(|child| child.res.def_id().expect_local()),
                 );
                 if tcx.is_const_trait(def_id) {
                     self.table_writer().explicit_implied_const_bounds(
@@ -2260,26 +2277,42 @@ where
             self.table_writer()
                 .expn_that_defined(local_def_id, tcx.expn_that_defined(local_def_id));
         } else {
-            let module_children = tcx.module_children_local(local_def_id);
+            let module_children = self.public_module_children_local(local_def_id);
 
             self.table_writer().module_children_non_reexports(
                 local_def_id,
                 module_children
-                    .iter()
+                    .clone()
                     .filter(|child| child.reexport_chain.is_empty())
                     .map(|child| child.res.def_id().expect_local()),
             );
 
             self.table_writer().module_children_reexports(
                 local_def_id,
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()),
+                module_children.filter(|child| !child.reexport_chain.is_empty()),
             );
 
+            let effective_visibilities = self.tcx().effective_visibilities(());
+            let remove_private_children = M::HASH_PUBLIC_API;
             let ambig_module_children = tcx
                 .resolutions(())
                 .ambig_module_children
                 .get(&local_def_id)
-                .map_or_default(|v| &v[..]);
+                .map_or_default(|v| &v[..])
+                .iter()
+                // only ambiguities where both main and second are public can cause actual
+                // ambiguity.
+                .filter(|ambig| {
+                    is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.main,
+                    ) && is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.second,
+                    )
+                });
             self.table_writer().ambig_module_children(local_def_id, ambig_module_children);
         }
     }
@@ -3482,4 +3515,25 @@ fn dylib_dependency_formats(
             )
         })
     })
+}
+
+#[inline(always)]
+fn is_public_mod_child(
+    remove_private_children: bool,
+    effective_visibilities: &EffectiveVisibilities,
+    child: &ModChild,
+) -> bool {
+    if !remove_private_children {
+        return true;
+    }
+    if child.reexport_chain.is_empty() {
+        effective_visibilities.is_reachable(child.res.def_id().expect_local())
+    } else {
+        child.vis.is_public()
+            && child.reexport_chain.iter().all(|reexport| {
+                reexport.id().is_none_or(|id| {
+                    !id.is_local() || effective_visibilities.is_reachable(id.expect_local())
+                })
+            })
+    }
 }
