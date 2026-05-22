@@ -159,7 +159,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // Furthermore, `align >= unsized_align`, and therefore we only need to do:
             // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
 
-            let full_size = bx.add(unsized_offset_unadjusted, unsized_size);
+            let unrounded_size = bx.unchecked_suadd(unsized_offset_unadjusted, unsized_size);
 
             // Issue #27023: must add any necessary padding to `size`
             // (to make it a multiple of `align`) before returning it.
@@ -173,9 +173,13 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             //   `(size + (align-1)) & -align`
             let one = bx.const_usize(1);
             let addend = bx.sub(full_align, one);
-            let add = bx.add(full_size, addend);
+            let add = bx.add(unrounded_size, addend);
             let neg = bx.neg(full_align);
             let full_size = bx.and(add, neg);
+
+            // `round_up(x, a) >= x` for pow2 `a` (#152788).
+            let size_ge = bx.icmp(IntPredicate::IntUGE, full_size, unrounded_size);
+            bx.assume(size_ge);
 
             (full_size, full_align)
         }
