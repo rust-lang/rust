@@ -182,6 +182,7 @@ fn check_fail(#[rust_analyzer::rust_fixture] ra_fixture: &str, e: LayoutError) {
     assert_eq!(r, Err(e));
 }
 
+#[rust_analyzer::macro_style(braces)]
 macro_rules! size_and_align {
     (minicore: $($x:tt),*;$($t:tt)*) => {
         {
@@ -535,6 +536,15 @@ fn non_zero_and_non_null() {
         use core::{num::NonZeroU8, ptr::NonNull};
         struct Goal(Option<NonZeroU8>, Option<NonNull<i32>>);
     }
+    check_size_and_align(
+        r#"
+const END: usize = 10;
+struct Goal(core::pattern_type!(usize is 0..=END));
+    "#,
+        "//- minicore: pat\n",
+        8,
+        8,
+    );
 }
 
 #[test]
