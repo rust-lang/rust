@@ -200,6 +200,7 @@ impl<T> fmt::Debug for GraphHashed<T> {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct Unhashed<T>(pub(crate) T);
 impl<T> StableHash for Unhashed<T> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {}
@@ -262,7 +263,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) header: HashableCrateHeader,
     pub(crate) required_panic_strategy: Option<PanicStrategy>,
     pub(crate) panic_in_drop_strategy: PanicStrategy,
-    pub(crate) stripped_cfg_items: Hashed<LazyArray<StrippedCfgItem<LocalDefId>>>,
     pub(crate) dylib_dependency_formats: Hashed<LazyArray<Option<LinkagePreference>>>,
     pub(crate) lib_features: Hashed<LazyArray<(Symbol, FeatureStability)>>,
     pub(crate) stability_implications: Hashed<LazyArray<(Symbol, Symbol)>>,
@@ -375,6 +375,10 @@ pub(crate) struct HashableCrateRoot {
     // The introduction of the option to store the DefIndex part of DefId-s as DefPathHash in the
     // metadata was done to remove this from the public hash.
     pub(crate) def_path_hash_map: Unhashed<LazyValue<DefPathHashMapRef<'static>>>,
+    // Only used for diagnostics when the compilation session errors
+    // FIXME: this is currently removed from the metadata when public api hashing is enabled. We
+    // should add a safe way to access this when the compilation session errors.
+    pub(crate) stripped_cfg_items: Unhashed<LazyArray<StrippedCfgItem<LocalDefId>>>,
 }
 
 pub(super) fn crate_hashes<'tcx, 'h>(
@@ -440,7 +444,7 @@ impl HashableCrateRoot {
             stability_implications: self.stability_implications.value,
             lang_items: self.lang_items.value,
             lang_items_missing: self.lang_items_missing.value,
-            stripped_cfg_items: self.stripped_cfg_items.value,
+            stripped_cfg_items: self.stripped_cfg_items.0,
             diagnostic_items: self.diagnostic_items.value,
             canonical_symbols: self.canonical_symbols.value,
             fake_doc_items: self.fake_doc_items.value,

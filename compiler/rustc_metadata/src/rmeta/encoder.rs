@@ -2771,12 +2771,22 @@ where
         self.hashed_lazy_array(&tcx.lang_items().missing)
     }
 
-    fn encode_stripped_cfg_items(&mut self) -> Hashed<LazyArray<StrippedCfgItem<LocalDefId>>> {
-        self.hashed_lazy_array(
-            self.tcx()
-                .stripped_cfg_items(LOCAL_CRATE)
-                .into_iter()
-                .map(|item| item.clone().map_scope_id(|def_id| def_id.expect_local())),
+    fn encode_stripped_cfg_items(&mut self) -> Unhashed<LazyArray<StrippedCfgItem<LocalDefId>>> {
+        if self.hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            // NOTE: When readded, the reachability graph recording must be disabled during the encoding
+            // of this lazy array.
+            return Unhashed(LazyArray::default());
+        }
+        Unhashed(
+            self.lazy_array(
+                self.tcx()
+                    .stripped_cfg_items(LOCAL_CRATE)
+                    .into_iter()
+                    .map(|item| item.clone().map_scope_id(|def_id| def_id.expect_local())),
+            ),
         )
     }
 
