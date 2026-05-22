@@ -36,7 +36,7 @@ use crate::ty::{
     TypingEnv, UserTypeAnnotationIndex,
 };
 
-mod basic_blocks;
+pub mod basic_blocks;
 mod consts;
 pub mod coverage;
 mod generic_graph;

@@ -15,44 +15,72 @@ use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK};
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     /// Use an `Arc` so we can share the cache when we clone the MIR body, as borrowck does.
-    cache: Arc<Cache>,
+    cache: Arc<CfgCache>,
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
-type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
+pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
 #[derive(Clone, Default, Debug)]
-struct Cache {
+pub struct CfgCache {
     predecessors: OnceLock<Predecessors>,
-    reverse_postorder: OnceLock<Vec<BasicBlock>>,
+    reverse_postorder: OnceLock<IndexVec<BasicBlock, BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
+}
+
+impl CfgCache {
+    #[inline]
+    pub fn dominators(&self, bbs: &'_ BasicBlocks<'_>) -> &Dominators<BasicBlock> {
+        self.dominators.get_or_init(|| dominators(bbs))
+    }
+
+    #[inline]
+    pub fn reverse_postorder(
+        &self,
+        bbs: &'_ BasicBlocks<'_>,
+    ) -> &IndexSlice<BasicBlock, BasicBlock> {
+        self.reverse_postorder.get_or_init(|| {
+            let mut rpo: IndexVec<BasicBlock, BasicBlock> =
+                Postorder::new(&bbs.basic_blocks, START_BLOCK, None).collect();
+            rpo.raw.reverse();
+            rpo
+        })
+    }
+
+    #[inline]
+    pub fn predecessors(&self, bbs: &'_ BasicBlocks<'_>) -> &Predecessors {
+        self.predecessors.get_or_init(|| {
+            let mut preds = IndexVec::from_elem(SmallVec::new(), &bbs.basic_blocks);
+            for (bb, data) in bbs.basic_blocks.iter_enumerated() {
+                for succ in data.terminator().successors() {
+                    preds[succ].push(bb);
+                }
+            }
+            preds
+        })
+    }
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        BasicBlocks { basic_blocks, cache: Arc::new(Cache::default()) }
+        BasicBlocks { basic_blocks, cache: Arc::new(CfgCache::default()) }
+    }
+
+    #[inline]
+    pub fn cfg_cache(&self) -> Arc<CfgCache> {
+        self.cache.clone()
     }
 
     #[inline]
     pub fn dominators(&self) -> &Dominators<BasicBlock> {
-        self.cache.dominators.get_or_init(|| dominators(self))
+        self.cache.dominators(self)
     }
 
     /// Returns predecessors for each basic block.
     #[inline]
     pub fn predecessors(&self) -> &Predecessors {
-        self.cache.predecessors.get_or_init(|| {
-            let mut preds = IndexVec::from_elem(SmallVec::new(), &self.basic_blocks);
-            for (bb, data) in self.basic_blocks.iter_enumerated() {
-                if let Some(term) = &data.terminator {
-                    for succ in term.successors() {
-                        preds[succ].push(bb);
-                    }
-                }
-            }
-            preds
-        })
+        self.cache.predecessors(self)
     }
 
     /// Returns basic blocks in a reverse postorder.
@@ -61,12 +89,8 @@ impl<'tcx> BasicBlocks<'tcx> {
     ///
     /// [`traversal::reverse_postorder`]: crate::mir::traversal::reverse_postorder
     #[inline]
-    pub fn reverse_postorder(&self) -> &[BasicBlock] {
-        self.cache.reverse_postorder.get_or_init(|| {
-            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK, None).collect();
-            rpo.reverse();
-            rpo
-        })
+    pub fn reverse_postorder(&self) -> &IndexSlice<BasicBlock, BasicBlock> {
+        self.cache.reverse_postorder(self)
     }
 
     /// Returns mutable reference to basic blocks. Invalidates CFG cache.
@@ -100,11 +124,11 @@ impl<'tcx> BasicBlocks<'tcx> {
     pub fn invalidate_cfg_cache(&mut self) {
         if let Some(cache) = Arc::get_mut(&mut self.cache) {
             // If we only have a single reference to this cache, clear it.
-            *cache = Cache::default();
+            *cache = CfgCache::default();
         } else {
             // If we have several references to this cache, overwrite the pointer itself so other
             // users can continue to use their (valid) cache.
-            self.cache = Arc::new(Cache::default());
+            self.cache = Arc::new(CfgCache::default());
         }
     }
 }
@@ -149,21 +173,21 @@ impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
 }
 
 // Done here instead of in `structural_impls.rs` because `Cache` is private, as is `basic_blocks`.
-TrivialTypeTraversalImpls! { Cache }
+TrivialTypeTraversalImpls! { CfgCache }
 
-impl<S: Encoder> Encodable<S> for Cache {
+impl<S: Encoder> Encodable<S> for CfgCache {
     #[inline]
     fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: Decoder> Decodable<D> for Cache {
+impl<D: Decoder> Decodable<D> for CfgCache {
     #[inline]
     fn decode(_: &mut D) -> Self {
         Default::default()
     }
 }
 
-impl StableHash for Cache {
+impl StableHash for CfgCache {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {}
 }

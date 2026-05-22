@@ -13,7 +13,7 @@ use rustc_abi::WrappingRange;
 use rustc_const_eval::interpret::Scalar;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::basic_blocks::Predecessors;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{BasicBlock, Body, Location, Operand, Place, TerminatorKind, *};
 use rustc_middle::ty::{TyCtxt, TypingEnv};
@@ -31,13 +31,13 @@ impl<'tcx> crate::MirPass<'tcx> for SsaRangePropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
-        // Clone dominators because we need them while mutating the body.
-        let dominators = body.basic_blocks.dominators().clone();
+        let cfg_cache = body.basic_blocks.cfg_cache();
+        let dominators = cfg_cache.dominators(&body.basic_blocks);
+        let predecessors = cfg_cache.predecessors(&body.basic_blocks);
         let mut range_set =
-            RangeSet::new(tcx, typing_env, body, &ssa, &body.local_decls, dominators);
+            RangeSet::new(tcx, typing_env, &ssa, &body.local_decls, dominators, predecessors);
 
-        let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-        for bb in reverse_postorder {
+        for &bb in cfg_cache.reverse_postorder(&body.basic_blocks) {
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             range_set.visit_basic_block_data(bb, data);
         }
@@ -53,29 +53,21 @@ struct RangeSet<'tcx, 'body, 'a> {
     typing_env: TypingEnv<'tcx>,
     ssa: &'a SsaLocals,
     local_decls: &'body LocalDecls<'tcx>,
-    dominators: Dominators<BasicBlock>,
+    dominators: &'a Dominators<BasicBlock>,
     /// Known ranges at each locations.
     ranges: FxHashMap<Place<'tcx>, Vec<(Location, WrappingRange)>>,
-    /// Determines if the basic block has a single unique predecessor.
-    unique_predecessors: DenseBitSet<BasicBlock>,
+    predecessors: &'a Predecessors,
 }
 
 impl<'tcx, 'body, 'a> RangeSet<'tcx, 'body, 'a> {
     fn new(
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
-        body: &Body<'tcx>,
         ssa: &'a SsaLocals,
         local_decls: &'body LocalDecls<'tcx>,
-        dominators: Dominators<BasicBlock>,
+        dominators: &'a Dominators<BasicBlock>,
+        predecessors: &'a Predecessors,
     ) -> Self {
-        let predecessors = body.basic_blocks.predecessors();
-        let mut unique_predecessors = DenseBitSet::new_empty(body.basic_blocks.len());
-        for bb in body.basic_blocks.indices() {
-            if predecessors[bb].len() == 1 {
-                unique_predecessors.insert(bb);
-            }
-        }
         RangeSet {
             tcx,
             typing_env,
@@ -83,8 +75,12 @@ impl<'tcx, 'body, 'a> RangeSet<'tcx, 'body, 'a> {
             local_decls,
             dominators,
             ranges: FxHashMap::default(),
-            unique_predecessors,
+            predecessors,
         }
+    }
+
+    fn has_unique_predecessor(&self, bb: BasicBlock) -> bool {
+        self.predecessors[bb].len() == 1
     }
 
     /// Create a new known range at the location.
@@ -186,7 +182,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                         continue;
                     }
                     let successor = Location { block: target, statement_index: 0 };
-                    if self.unique_predecessors.contains(successor.block) {
+                    if self.has_unique_predecessor(successor.block) {
                         assert_ne!(location.block, successor.block);
                         let range = WrappingRange { start: val, end: val };
                         self.insert_range(place, successor, range);
@@ -198,7 +194,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                 let otherwise = Location { block: targets.otherwise(), statement_index: 0 };
                 if place.ty(self.local_decls, self.tcx).ty.is_bool()
                     && let [val] = targets.all_values()
-                    && self.unique_predecessors.contains(otherwise.block)
+                    && self.has_unique_predecessor(otherwise.block)
                 {
                     assert_ne!(location.block, otherwise.block);
                     let range = if val.get() == 0 {
