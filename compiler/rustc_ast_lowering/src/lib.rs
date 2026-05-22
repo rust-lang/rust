@@ -1197,8 +1197,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                     } else {
                         self.emit_bad_parenthesized_trait_in_assoc_ty(data);
-                        // FIXME(return_type_notation): we could issue a feature error
-                        // if the parens are empty and there's no return type.
                         self.lower_angle_bracketed_parameter_data(
                             &data.as_angle_bracketed_args(),
                             ParamMode::Explicit,
