@@ -23,7 +23,7 @@ use tracing::debug;
 ///
 /// This also expects that `trait_ref` is fully normalized.
 ///
-/// When `use_const` is set, we assume the new trait solver is enabled and use
+/// When `use_const` is set, we use the new trait solver to prove
 /// `HostEffectPredicate` with `constness` set to `Const`.
 pub(crate) fn codegen_select_candidate_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -36,7 +36,13 @@ pub(crate) fn codegen_select_candidate_inner<'tcx>(
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
+    let mut infcx_builder = tcx.infer_ctxt().ignoring_regions();
+    if use_const {
+        // next trait solver is used unconditionally here, because only const code that use trait methods
+        // are effected (nightly code)
+        infcx_builder = infcx_builder.with_next_trait_solver(true);
+    }
+    let (infcx, param_env) = infcx_builder.build_with_typing_env(typing_env);
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();
@@ -45,7 +51,6 @@ pub(crate) fn codegen_select_candidate_inner<'tcx>(
         let host_predicate =
             ty::HostEffectPredicate { trait_ref, constness: ty::BoundConstness::Const };
         let obligation = Obligation::new(tcx, obligation_cause, param_env, host_predicate);
-
         infcx.select_host_effect_predicate_in_new_trait_solver(&obligation)
     } else {
         let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);

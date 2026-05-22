@@ -114,7 +114,7 @@ fn resolve_associated_item<'tcx>(
     let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
     let input = typing_env.as_query_input(trait_ref);
-    let candidate = if constness == Constness::Const && tcx.next_trait_solver_globally() {
+    let candidate = if constness == Constness::Const {
         tcx.codegen_select_candidate_for_ctfe(input)
     } else {
         tcx.codegen_select_candidate(input)
