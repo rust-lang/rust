@@ -22,8 +22,10 @@ use crate::vec::Vec;
 /// trait.
 ///
 /// Please note that each call to [`read()`] may involve a system call, and
-/// therefore, using something that implements `BufRead`, such as
 /// `BufReader`, will be more efficient.
+/// therefore, using something that implements [`BufRead`], such as
+///
+/// [`BufRead`]: crate::io::BufRead
 ///
 /// Repeated calls to the reader use the same cursor, so for example
 /// calling `read_to_end` twice on a `File` will only return the file's
