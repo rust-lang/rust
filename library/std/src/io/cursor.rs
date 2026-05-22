@@ -4,7 +4,7 @@ mod tests;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::io::Cursor;
 
-use alloc_crate::io::{slice_write, slice_write_vectored};
+use alloc_crate::io::{slice_write, slice_write_all, slice_write_vectored};
 
 use crate::alloc::Allocator;
 use crate::io::prelude::*;
@@ -143,12 +143,6 @@ impl<W: WriteThroughCursor> Write for Cursor<W> {
     fn flush(&mut self) -> io::Result<()> {
         WriteThroughCursor::flush(self)
     }
-}
-
-#[inline]
-fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<()> {
-    let n = slice_write(pos_mut, slice, buf)?;
-    if n < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
 }
 
 #[inline]
