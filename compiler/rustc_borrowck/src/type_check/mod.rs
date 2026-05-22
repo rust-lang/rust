@@ -41,6 +41,7 @@ use tracing::{debug, instrument, trace};
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
+use crate::generic_reborrow::{GenericReborrowKind, generic_reborrow_info};
 use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::region_infer::TypeTest;
@@ -2487,11 +2488,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             ConstraintCategory::Boring
         };
 
-        let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
-
-        let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { bug!() };
-        let [dest_arg, ..] = ***dest_args else { bug!() };
-        let ty::GenericArgKind::Lifetime(dest_region) = dest_arg.kind() else { bug!() };
+        let reborrow =
+            generic_reborrow_info(tcx, body, location, dest_ty, mutability, *borrowed_place);
+        let borrowed_ty = reborrow.source_ty;
+        let dest_adt = reborrow.target_adt;
+        let dest_args = reborrow.target_args;
+        let dest_region = reborrow.target_region;
         constraints.liveness_constraints.add_location(dest_region.as_var(), location);
 
         // In Polonius mode, we also push a `loan_issued_at` fact
@@ -2508,15 +2510,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        if mutability.is_not() {
+        if reborrow.kind == GenericReborrowKind::CoerceShared {
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
             // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
             // Field-by-field relate_types is expected to work based on the wf-checks that the
             // CoerceShared trait performs.
-            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
+            let borrowed_fields = reborrow.source_adt.all_fields().collect::<Vec<_>>();
             for dest_field in dest_adt.all_fields() {
                 let Some(borrowed_field) =
                     borrowed_fields.iter().find(|f| f.name == dest_field.name)
@@ -2524,7 +2525,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     continue;
                 };
                 let dest_ty = dest_field.ty(tcx, dest_args).skip_norm_wip();
-                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args).skip_norm_wip();
+                let borrowed_ty = borrowed_field.ty(tcx, reborrow.source_args).skip_norm_wip();
                 if let (
                     ty::Ref(borrow_region, _, Mutability::Mut),
                     ty::Ref(ref_region, _, Mutability::Not),

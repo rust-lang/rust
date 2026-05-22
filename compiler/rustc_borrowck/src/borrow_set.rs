@@ -2,16 +2,16 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_hir::Mutability;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_middle::{bug, span_bug, ty};
 use rustc_mir_dataflow::move_paths::MoveData;
 use tracing::debug;
 
 use crate::BorrowIndex;
+use crate::generic_reborrow::generic_reborrow_info;
 use crate::place_ext::PlaceExt;
 
 pub struct BorrowSet<'tcx> {
@@ -303,37 +303,16 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(target, mutability, borrowed_place) = rvalue {
-            let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
-            let &ty::Adt(reborrowed_adt, _reborrowed_args) = borrowed_place_ty.kind() else {
-                unreachable!()
-            };
-            let &ty::Adt(target_adt, assigned_args) = target.kind() else { unreachable!() };
-            let Some(ty::GenericArgKind::Lifetime(region)) = assigned_args.get(0).map(|r| r.kind())
-            else {
-                bug!(
-                    "hir-typeck passed but {} does not have a lifetime argument",
-                    if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
-                );
-            };
-            let region = region.as_var();
-            let kind = if mutability == Mutability::Mut {
-                // Reborrow
-                if target_adt.did() != reborrowed_adt.did() {
-                    bug!(
-                        "hir-typeck passed but Reborrow involves mismatching types at {location:?}"
-                    )
-                }
-
-                mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
-            } else {
-                // CoerceShared
-                if target_adt.did() == reborrowed_adt.did() {
-                    bug!(
-                        "hir-typeck passed but CoerceShared involves matching types at {location:?}"
-                    )
-                }
-                mir::BorrowKind::Shared
-            };
+            let reborrow = generic_reborrow_info(
+                self.tcx,
+                self.body,
+                location,
+                target,
+                mutability,
+                borrowed_place,
+            );
+            let region = reborrow.target_region.as_var();
+            let kind = reborrow.kind.borrow_kind();
             let borrow = BorrowData {
                 kind,
                 region,

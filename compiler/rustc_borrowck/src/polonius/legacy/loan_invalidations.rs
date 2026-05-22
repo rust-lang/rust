@@ -9,6 +9,7 @@ use tracing::debug;
 
 use super::{PoloniusFacts, PoloniusLocationTable};
 use crate::borrow_set::BorrowSet;
+use crate::generic_reborrow::GenericReborrowKind;
 use crate::path_utils::*;
 use crate::{
     AccessDepth, Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read,
@@ -273,14 +274,18 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             }
 
             &Rvalue::Reborrow(_target, mutability, place) => {
+                let reborrow_kind = GenericReborrowKind::from_mutability(mutability);
                 let access_kind = (
                     Deep,
-                    if mutability == Mutability::Mut {
-                        Reservation(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: MutBorrowKind::TwoPhaseBorrow,
-                        }))
-                    } else {
-                        Read(ReadKind::Borrow(BorrowKind::Shared))
+                    match reborrow_kind {
+                        GenericReborrowKind::Reborrow => {
+                            Reservation(WriteKind::MutableBorrow(BorrowKind::Mut {
+                                kind: MutBorrowKind::TwoPhaseBorrow,
+                            }))
+                        }
+                        GenericReborrowKind::CoerceShared => {
+                            Read(ReadKind::Borrow(reborrow_kind.borrow_kind()))
+                        }
                     },
                 );
 

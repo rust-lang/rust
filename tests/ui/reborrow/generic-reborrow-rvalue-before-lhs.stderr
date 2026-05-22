@@ -1,0 +1,34 @@
+error[E0499]: cannot borrow `value` as mutable more than once at a time
+  --> $DIR/generic-reborrow-rvalue-before-lhs.rs:19:17
+   |
+LL | fn rvalue_reborrow_is_live_while_lhs_is_evaluated<'a>(
+   |                                                   -- lifetime `'a` defined here
+...
+LL |     slots[index(value)] = value;
+   |     ------------^^^^^----------
+   |     |           |         |
+   |     |           |         first mutable borrow occurs here
+   |     |           second mutable borrow occurs here
+   |     assignment requires that `value` is borrowed for `'a`
+
+error[E0597]: `value` does not live long enough
+  --> $DIR/generic-reborrow-rvalue-before-lhs.rs:19:27
+   |
+LL | fn rvalue_reborrow_is_live_while_lhs_is_evaluated<'a>(
+   |                                                   -- lifetime `'a` defined here
+LL |     value: CustomMut<'a>,
+   |     ----- binding `value` declared here
+...
+LL |     slots[index(value)] = value;
+   |     ----------------------^^^^^
+   |     |                     |
+   |     |                     borrowed value does not live long enough
+   |     assignment requires that `value` is borrowed for `'a`
+...
+LL | }
+   |  - `value` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0499, E0597.
+For more information about an error, try `rustc --explain E0499`.

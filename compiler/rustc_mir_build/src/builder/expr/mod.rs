@@ -67,4 +67,5 @@ mod as_rvalue;
 mod as_temp;
 pub(crate) mod category;
 mod into;
+mod reborrow;
 mod stmt;

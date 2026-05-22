@@ -909,13 +909,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Reborrow { source, mutability, target } => {
-                let place = unpack!(block = this.as_place(block, source));
-                this.cfg.push_assign(
-                    block,
-                    source_info,
-                    destination,
-                    Rvalue::Reborrow(target, mutability, place.into()),
+                let rvalue = unpack!(
+                    block =
+                        this.reborrow_rvalue_from_source_place(block, source, mutability, target)
                 );
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
         };

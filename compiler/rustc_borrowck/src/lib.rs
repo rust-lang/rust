@@ -57,6 +57,7 @@ use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
+use crate::generic_reborrow::GenericReborrowKind;
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
@@ -78,6 +79,7 @@ mod constraints;
 mod dataflow;
 mod def_use;
 mod diagnostics;
+mod generic_reborrow;
 mod handle_placeholders;
 mod nll;
 mod path_utils;
@@ -1515,14 +1517,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
 
             &Rvalue::Reborrow(_target, mutability, place) => {
+                let reborrow_kind = GenericReborrowKind::from_mutability(mutability);
                 let access_kind = (
                     Deep,
-                    if mutability == Mutability::Mut {
-                        Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: MutBorrowKind::Default,
-                        }))
-                    } else {
-                        Read(ReadKind::Borrow(BorrowKind::Shared))
+                    match reborrow_kind {
+                        GenericReborrowKind::Reborrow => {
+                            Write(WriteKind::MutableBorrow(reborrow_kind.borrow_kind()))
+                        }
+                        GenericReborrowKind::CoerceShared => {
+                            Read(ReadKind::Borrow(reborrow_kind.borrow_kind()))
+                        }
                     },
                 );
 
