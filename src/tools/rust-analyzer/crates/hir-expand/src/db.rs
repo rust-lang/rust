@@ -43,6 +43,7 @@ pub enum TokenExpander<'db> {
     BuiltInAttr(BuiltinAttrExpander),
     /// `derive(Copy)` and such.
     BuiltInDerive(BuiltinDeriveExpander),
+    UnimplementedBuiltIn,
     /// The thing we love the most here in rust-analyzer -- procedural macros.
     ProcMacro(CustomProcMacroExpander),
 }
@@ -311,6 +312,7 @@ pub fn expand_speculative(
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
         MacroDefKind::BuiltInAttr(_, it) => it.expand(db, actual_macro_call, &tt, span),
+        MacroDefKind::UnimplementedBuiltIn(_) => expand_unimplemented_builtin_macro(span),
     };
 
     let expand_to = loc.expand_to();
@@ -333,6 +335,13 @@ pub fn expand_speculative(
         })
         .collect();
     Some((node.syntax_node(), token))
+}
+
+fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree> {
+    ExpandResult::new(
+        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+        ExpandError::other(span, "this built-in macro is not implemented"),
+    )
 }
 
 #[salsa::tracked(lru = 1024, returns(ref))]
@@ -538,6 +547,7 @@ impl<'db> TokenExpander<'db> {
             MacroDefKind::BuiltInDerive(_, expander) => TokenExpander::BuiltInDerive(expander),
             MacroDefKind::BuiltInEager(_, expander) => TokenExpander::BuiltInEager(expander),
             MacroDefKind::ProcMacro(_, expander, _) => TokenExpander::ProcMacro(expander),
+            MacroDefKind::UnimplementedBuiltIn(_) => TokenExpander::UnimplementedBuiltIn,
         }
     }
 }
@@ -571,6 +581,9 @@ fn macro_expand<'db>(
                 }
                 MacroDefKind::BuiltInDerive(_, it) => {
                     it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
+                }
+                MacroDefKind::UnimplementedBuiltIn(_) => {
+                    expand_unimplemented_builtin_macro(span).zip_val(None)
                 }
                 MacroDefKind::BuiltInEager(_, it) => {
                     // This might look a bit odd, but we do not expand the inputs to eager macros here.

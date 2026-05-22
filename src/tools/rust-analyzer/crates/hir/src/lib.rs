@@ -3612,6 +3612,7 @@ impl Macro {
                 }
                 MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
                 MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
+                MacroExpander::UnimplementedBuiltIn => MacroKind::Declarative,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db).expander {
                 MacroExpander::Declarative { .. } => MacroKind::Declarative,
@@ -3620,6 +3621,7 @@ impl Macro {
                 }
                 MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
                 MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
+                MacroExpander::UnimplementedBuiltIn => MacroKind::Declarative,
             },
             MacroId::ProcMacroId(it) => match it.lookup(db).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,

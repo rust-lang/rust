@@ -850,6 +850,7 @@ pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> M
         MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroCallStyles::FN_LIKE,
         MacroExpander::BuiltInAttr(_) => MacroCallStyles::ATTR,
         MacroExpander::BuiltInDerive(_) => MacroCallStyles::DERIVE,
+        MacroExpander::UnimplementedBuiltIn => MacroCallStyles::all(), // Unknown.
     }
 }
 
