@@ -7,7 +7,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 MINGW_ARCHIVE_32="i686-14.1.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z"
-MINGW_ARCHIVE_64="x86_64-16.1.0-release-posix-seh-ucrt-rt_v14-rev0.7z"
+MINGW_ARCHIVE_64="x86_64-15.2.0-release-posix-seh-ucrt-rt_v13-rev1.7z"
 LLVM_MINGW_ARCHIVE_AARCH64="llvm-mingw-20251104-ucrt-aarch64.zip"
 LLVM_MINGW_ARCHIVE_X86_64="llvm-mingw-20251104-ucrt-x86_64.zip"
 
@@ -56,7 +56,7 @@ if isWindows && isKnownToBeMingwBuild; then
     case "${mingw_archive}" in
     *.7z)
         foo="https://github.com/niXman/mingw-builds-binaries"
-        MIRRORS_BASE="$foo/releases/download/16.1.0-rt_v14-rev0"
+        MIRRORS_BASE="$foo/releases/download/15.2.0-rt_v13-rev1"
         curl -L -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
         7z x -y mingw.7z >/dev/null
         ;;
