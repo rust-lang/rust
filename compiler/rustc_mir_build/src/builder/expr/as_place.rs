@@ -583,18 +583,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. }
             | ExprKind::ByUse { .. }
+            // A reborrow is an rvalue. If a place is needed for it, materialize
+            // the rvalue in a temporary instead of treating the reborrow
+            // expression itself as an assignable place.
+            | ExprKind::Reborrow { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
                 let temp_lifetime = this.region_scope_tree.temporary_scope(expr.temp_scope_id);
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
-            }
-            ExprKind::Reborrow { .. } => {
-                // FIXME(reborrow): it should currently be impossible to end up evaluating a
-                // Reborrow expression as a place. That might not in the future, but what this then
-                // evaluates to requires further thought.
-                unreachable!();
             }
         }
     }

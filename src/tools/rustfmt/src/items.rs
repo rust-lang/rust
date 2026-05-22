@@ -960,6 +960,7 @@ fn format_impl_ref_and_type(
 
     if let Some(of_trait) = of_trait.as_deref() {
         result.push_str(format_defaultness(of_trait.defaultness));
+        result.push_str(format_constness(*constness));
         result.push_str(format_safety(of_trait.safety));
     } else {
         result.push_str(format_constness(*constness));
@@ -980,7 +981,6 @@ fn format_impl_ref_and_type(
 
     let trait_ref_overhead;
     if let Some(of_trait) = of_trait.as_deref() {
-        result.push_str(format_constness_right(*constness));
         let polarity_str = match of_trait.polarity {
             ast::ImplPolarity::Negative(_) => "!",
             ast::ImplPolarity::Positive => "",

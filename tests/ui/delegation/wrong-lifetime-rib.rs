@@ -29,4 +29,14 @@ mod ice_156758 {
     }
 }
 
+mod ice_156806 {
+    trait X {}
+
+    impl X { //~ ERROR: expected a type, found a trait
+        reuse Iterator::fold { //~ ERROR: `()` is not an iterator
+            let _: &X; //~ ERROR: expected a type, found a trait
+        }
+    }
+}
+
 fn main() {}

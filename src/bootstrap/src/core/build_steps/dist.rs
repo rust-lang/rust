@@ -2587,6 +2587,12 @@ pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection
     // statically.
     if builder.llvm_link_shared() {
         maybe_install_llvm(builder, target, &dst_libdir, false);
+
+        // To workaround lack of rpath on Windows, we bundle another copy of
+        // the LLVM DLL to make rust-lld and llvm-tools work when `sysroot/bin`
+        //  is missing from PATH, i.e. when they not launched by rustc.
+        let dst_libdir = sysroot.join("lib/rustlib").join(target).join("bin");
+        maybe_install_llvm(builder, target, &dst_libdir, false);
     }
 }
 
