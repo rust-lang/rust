@@ -22,7 +22,9 @@ use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::ich::StableHashState;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
@@ -86,6 +88,7 @@ macro_rules! hashed_lazy_array {
 
 pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
     type EncodedDefIndex: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    const HASH_PUBLIC_API: bool;
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex;
     fn into_raw_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> RawDefId;
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
@@ -165,6 +168,7 @@ impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
     /// The encoding of the DefIndex in DefId-s in the metadata. All DefId-s should use this
     /// encoding, but it is not necessary to encode LocalDefId-s with this encoding.
     type EncodedDefIndex = Hash64;
+    const HASH_PUBLIC_API: bool = true;
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex {
         tcx.def_path_hash(def_id).local_hash()
     }
@@ -207,6 +211,7 @@ struct DefIndexDefIdEncoder;
 impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
     type EncodedDefIndex = DefIndex;
 
+    const HASH_PUBLIC_API: bool = false;
     #[inline(always)]
     fn encoded_def_index(_tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex {
         def_id.index
@@ -927,6 +932,8 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
             for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefIndex>>,
         EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefIndex>>>,
     {
+        assert_eq!(M::HASH_PUBLIC_API, hcx.enabled());
+
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -1729,6 +1736,17 @@ fn assoc_item_has_value<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
 }
 
 impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
+    fn public_module_children_local(
+        &self,
+        def_id: LocalDefId,
+    ) -> impl Iterator<Item = &'tcx ModChild> + use<'tcx, M> + Clone {
+        let effective_visibilities = self.tcx.effective_visibilities(());
+        let remove_private_children = M::HASH_PUBLIC_API;
+        self.tcx.module_children_local(def_id).iter().filter(move |child| {
+            is_public_mod_child(remove_private_children, effective_visibilities, child)
+        })
+    }
+
     fn encode_attrs<'h>(&mut self, def_id: LocalDefId, hcx: &mut impl PublicApiHashState<'h>) {
         let tcx = self.tcx;
         let mut state = AnalyzeAttrState {
@@ -1881,9 +1899,9 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder(), hcx);
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder(), hcx);
-                let module_children = self.tcx.module_children_local(local_id);
+                let module_children = self.public_module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
-                    module_children.iter().map(|child| child.res.def_id()), hcx,
+                    module_children.map(|child| child.res.def_id()), hcx,
                     |def_id| def_id.index);
                 if self.tcx.is_const_trait(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
@@ -2111,22 +2129,38 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id), hcx);
         } else {
-            let module_children = tcx.module_children_local(local_def_id);
+            let module_children = self.public_module_children_local(local_def_id);
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
-                module_children.iter().filter(|child| child.reexport_chain.is_empty())
+                module_children.clone().filter(|child| child.reexport_chain.is_empty())
                     .map(|child| child.res.def_id()), hcx, |def_id| def_id.index
             );
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()), hcx
+                module_children.filter(|child| !child.reexport_chain.is_empty()), hcx
             );
 
+            let effective_visibilities = self.tcx.effective_visibilities(());
+            let remove_private_children = M::HASH_PUBLIC_API;
             let ambig_module_children = tcx
                 .resolutions(())
                 .ambig_module_children
                 .get(&local_def_id)
-                .map_or_default(|v| &v[..]);
+                .map_or_default(|v| &v[..])
+                .iter()
+                // only ambiguities where both main and second are public can cause actual
+                // ambiguity.
+                .filter(|ambig| {
+                    is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.main,
+                    ) && is_public_mod_child(
+                        remove_private_children,
+                        effective_visibilities,
+                        &ambig.second,
+                    )
+                });
             record_defaulted_array!(self.tables.ambig_module_children[def_id] <-
                 ambig_module_children, hcx);
         }
@@ -3284,4 +3318,25 @@ fn dylib_dependency_formats(
             )
         })
     })
+}
+
+#[inline(always)]
+fn is_public_mod_child(
+    remove_private_children: bool,
+    effective_visibilities: &EffectiveVisibilities,
+    child: &ModChild,
+) -> bool {
+    if !remove_private_children {
+        return true;
+    }
+    if child.reexport_chain.is_empty() {
+        effective_visibilities.is_reachable(child.res.def_id().expect_local())
+    } else {
+        child.vis.is_public()
+            && child.reexport_chain.iter().all(|reexport| {
+                reexport.id().is_none_or(|id| {
+                    !id.is_local() || effective_visibilities.is_reachable(id.expect_local())
+                })
+            })
+    }
 }
