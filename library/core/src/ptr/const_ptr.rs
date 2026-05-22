@@ -183,6 +183,7 @@ impl<T: PointeeSized> *const T {
     /// [`with_exposed_provenance`]: with_exposed_provenance
     #[inline(always)]
     #[stable(feature = "exposed_provenance", since = "1.84.0")]
+    #[expect(lossy_provenance_casts, reason = "this *is* the replacement")]
     pub fn expose_provenance(self) -> usize {
         self.cast::<()>() as usize
     }

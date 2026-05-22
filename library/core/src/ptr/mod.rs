@@ -2588,21 +2588,21 @@ impl<F: FnPtr> Ord for F {
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> hash::Hash for F {
     fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
-        state.write_usize(self.addr() as _)
+        state.write_usize(self.addr().addr())
     }
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> fmt::Pointer for F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::pointer_fmt_inner(self.addr() as _, f)
+        fmt::pointer_fmt_inner(self.addr().addr(), f)
     }
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
 impl<F: FnPtr> fmt::Debug for F {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::pointer_fmt_inner(self.addr() as _, f)
+        fmt::pointer_fmt_inner(self.addr().addr(), f)
     }
 }
 

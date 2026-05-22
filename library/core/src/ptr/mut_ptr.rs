@@ -174,6 +174,7 @@ impl<T: PointeeSized> *mut T {
     /// [`with_exposed_provenance_mut`]: with_exposed_provenance_mut
     #[inline(always)]
     #[stable(feature = "exposed_provenance", since = "1.84.0")]
+    #[expect(lossy_provenance_casts, reason = "this *is* the replacement")]
     pub fn expose_provenance(self) -> usize {
         self.cast::<()>() as usize
     }

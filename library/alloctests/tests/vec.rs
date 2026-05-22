@@ -1110,7 +1110,7 @@ fn test_into_iter_zst() {
     struct AlignedZstWithDrop([u64; 0]);
     impl Drop for AlignedZstWithDrop {
         fn drop(&mut self) {
-            let addr = self as *mut _ as usize;
+            let addr = (self as *mut Self).addr();
             assert!(hint::black_box(addr) % align_of::<u64>() == 0);
         }
     }
@@ -1356,10 +1356,10 @@ fn overaligned_allocations() {
     for i in 0..0x1000 {
         v.reserve_exact(i);
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
         v.shrink_to_fit();
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
     }
 }
 
@@ -2574,7 +2574,7 @@ fn test_box_zero_allocator() {
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             if layout.size() == 0 {
-                let addr = ptr.as_ptr() as usize;
+                let addr = ptr.as_ptr().addr();
                 let mut state = self.state.borrow_mut();
                 std::println!("freeing {addr}");
                 assert!(state.0.remove(&addr), "ZST free that wasn't allocated");
