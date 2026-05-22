@@ -233,7 +233,7 @@ pub trait LintLevelsProvider {
         &self,
         attr_id: AttrId,
         attr_index: usize,
-        lint_index: Option<u16>,
+        lint_index: u16,
     ) -> Self::LintExpectationId;
 }
 
@@ -258,7 +258,7 @@ impl LintLevelsProvider for TopDown {
         &self,
         attr_id: AttrId,
         _attr_index: usize,
-        lint_index: Option<u16>,
+        lint_index: u16,
     ) -> Self::LintExpectationId {
         UnstableLintExpectationId { attr_id, lint_index }
     }
@@ -296,7 +296,7 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
         &self,
         _attr_id: AttrId,
         attr_index: usize,
-        lint_index: Option<u16>,
+        lint_index: u16,
     ) -> Self::LintExpectationId {
         let attr_index = attr_index.try_into().unwrap();
         StableLintExpectationId { hir_id: self.cur, attr_index, lint_index }
@@ -740,11 +740,7 @@ where
                 // `Expect` is the only lint level with a `LintExpectationId` that can be created
                 // from an attribute.
                 let lint_id = (level == Level::Expect).then(|| {
-                    self.provider.mk_lint_expectation_id(
-                        attr.id(),
-                        attr_index,
-                        Some(lint_index as u16),
-                    )
+                    self.provider.mk_lint_expectation_id(attr.id(), attr_index, lint_index as u16)
                 });
 
                 let sp = li.span();
