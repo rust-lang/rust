@@ -292,13 +292,75 @@ pub macro Clone($item:item) {
 
 /// A trait for types whose [`Clone`] operation creates another alias to the same value.
 ///
-/// `Share` marks types where cloning preserves the identity of the underlying value instead of
-/// creating an independent owned copy. The distinction is semantic, not cost-based: implementing
-/// `Share` does not merely mean that cloning is cheap, constant-time, allocation-free, or
-/// harmless.
+/// `Share` marks types where cloning creates another handle or reference to the same logical
+/// resource or shared state, rather than an independent owned value. The distinction is semantic,
+/// not cost-based: implementing `Share` does not merely mean that cloning is cheap, constant-time,
+/// allocation-free, or convenient.
 ///
 /// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone) for
-/// implementors.
+/// implementors, but communicates that the resulting value aliases the same underlying resource.
+///
+/// Shared references, [`Rc`](std::rc::Rc), [`Arc`](std::sync::Arc),
+/// [`Sender`](std::sync::mpsc::Sender), and [`SyncSender`](std::sync::mpsc::SyncSender) are
+/// examples of types that can be shared this way. Types such as [`Vec`](std::vec::Vec),
+/// [`String`](std::string::String), and [`Box`](std::boxed::Box) are not `Share` even though they
+/// implement `Clone`, because cloning them creates another owned value rather than another handle
+/// to the same logical resource.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(share_trait)]
+///
+/// use std::cell::Cell;
+/// use std::clone::Share;
+/// use std::rc::Rc;
+/// use std::sync::{
+///     Arc,
+///     atomic::{AtomicUsize, Ordering},
+/// };
+///
+/// let value = 1;
+/// let reference = &value;
+/// assert!(std::ptr::eq(reference, reference.share()));
+///
+/// let rc = Rc::new(Cell::new(2));
+/// let shared_rc = rc.share();
+/// assert!(Rc::ptr_eq(&rc, &shared_rc));
+/// shared_rc.set(3);
+/// assert_eq!(rc.get(), 3);
+///
+/// let arc = Arc::new(AtomicUsize::new(4));
+/// let shared_arc = arc.share();
+/// assert!(Arc::ptr_eq(&arc, &shared_arc));
+/// shared_arc.store(5, Ordering::Relaxed);
+/// assert_eq!(arc.load(Ordering::Relaxed), 5);
+/// ```
+///
+/// ```
+/// #![feature(share_trait)]
+///
+/// use std::clone::Share;
+/// use std::sync::mpsc::{channel, sync_channel};
+///
+/// let (sender, receiver) = channel();
+/// let shared_sender = sender.share();
+/// sender.send(1).unwrap();
+/// shared_sender.send(2).unwrap();
+///
+/// let mut received = [receiver.recv().unwrap(), receiver.recv().unwrap()];
+/// received.sort();
+/// assert_eq!(received, [1, 2]);
+///
+/// let (sync_sender, sync_receiver) = sync_channel(2);
+/// let shared_sync_sender = sync_sender.share();
+/// sync_sender.send(3).unwrap();
+/// shared_sync_sender.send(4).unwrap();
+///
+/// let mut received = [sync_receiver.recv().unwrap(), sync_receiver.recv().unwrap()];
+/// received.sort();
+/// assert_eq!(received, [3, 4]);
+/// ```
 #[unstable(feature = "share_trait", issue = "156756")]
 pub trait Share: Clone {
     /// Creates another alias to the same underlying value.
