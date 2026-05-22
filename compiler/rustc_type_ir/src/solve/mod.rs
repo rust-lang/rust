@@ -145,7 +145,7 @@ impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
 /// | never                   | no    | no                                                                                                                   |
 /// | always                  | yes   | yes                                                                                                                  |
 /// | [defid in storage]      | no    | only if any of the defids in the list is in the opaque type storage OR if TypingMode::PostAnalysis                   |
-/// | opaque with hidden type | no    | only if any of the the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Analysis |
+/// | opaque with hidden type | no    | only if any of the opaques in the opaque type storage has a hidden type in this list AND if TypingMode::Analysis |
 ///
 /// - "bail" is implemented with [`should_bail`](Self::should_bail).
 ///   If true, we're abandoning our attempt to canonicalize in [`TypingMode::ErasedNotCoherence`],
