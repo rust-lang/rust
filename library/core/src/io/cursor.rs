@@ -1,5 +1,5 @@
 use crate::cmp;
-use crate::io::{self, ErrorKind, SeekFrom};
+use crate::io::{self, ErrorKind, IoSlice, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -304,6 +304,25 @@ pub fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Resul
     dst[..amt].copy_from_slice(&buf[..amt]);
     *pos_mut += amt as u64;
     Ok(amt)
+}
+
+#[inline]
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub fn slice_write_vectored(
+    pos_mut: &mut u64,
+    slice: &mut [u8],
+    bufs: &[IoSlice<'_>],
+) -> io::Result<usize> {
+    let mut nwritten = 0;
+    for buf in bufs {
+        let n = slice_write(pos_mut, slice, buf)?;
+        nwritten += n;
+        if n < buf.len() {
+            break;
+        }
+    }
+    Ok(nwritten)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
