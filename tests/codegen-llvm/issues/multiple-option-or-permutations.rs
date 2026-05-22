@@ -153,12 +153,12 @@ pub fn if_some_slice_u8(opta: Option<[u8; 1]>, optb: Option<[u8; 1]>) -> Option<
 // Test a niche optimization case of `NonZero<u8>`
 
 // CHECK-LABEL: @or_match_nz_u8
-// CHECK-SAME: (i8{{.+}}%0, i8{{.+}}%optb)
+// CHECK-SAME: (i8{{.+}}%opta, i8{{.+}}%optb)
 #[no_mangle]
 pub fn or_match_nz_u8(opta: Option<NonZero<u8>>, optb: Option<NonZero<u8>>) -> Option<NonZero<u8>> {
     // CHECK: start:
-    // CHECK-NEXT: [[NOT_A:%.+]] = icmp eq i8 %0, 0
-    // CHECK-NEXT: [[R:%.+]] = select i1 [[NOT_A]], i8 %optb, i8 %0
+    // CHECK-NEXT: [[NOT_A:%.+]] = icmp eq i8 %opta, 0
+    // CHECK-NEXT: [[R:%.+]] = select i1 [[NOT_A]], i8 %optb, i8 %opta
     // CHECK: ret i8 [[R]]
     match opta {
         Some(x) => Some(x),

@@ -347,8 +347,34 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         bx: &mut Bx,
         i: usize,
     ) -> Self {
-        let field = self.layout.field(bx.cx(), i);
-        let offset = self.layout.fields.offset(i);
+        self.extract_field_inner(fx, bx, None, i)
+    }
+
+    fn extract_variant_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        bx: &mut Bx,
+        variant_idx: Option<VariantIdx>,
+        field_idx: FieldIdx,
+    ) -> Self {
+        self.extract_field_inner(fx, bx, variant_idx, field_idx.as_usize())
+    }
+
+    fn extract_field_inner<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        bx: &mut Bx,
+        variant_idx: Option<VariantIdx>,
+        i: usize,
+    ) -> Self {
+        let layout = if let Some(variant_idx) = variant_idx {
+            self.layout.for_variant(bx.cx(), variant_idx)
+        } else {
+            self.layout
+        };
+
+        let field = layout.field(bx.cx(), i);
+        let offset = layout.fields.offset(i);
 
         if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
             // Part of https://github.com/rust-lang/compiler-team/issues/838
@@ -391,7 +417,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                             self
                         )
                     };
-                    if in_scalar != out_scalar {
+                    if variant_idx.is_some() {
+                        // If there was a downcast involved, we need to worry about
+                        // more than just `i1` since `Result<usize, *const()>` needs
+                        // to correct for the `usize` being stored in a pointer.
+                        transmute_scalar(bx, imm, in_scalar, out_scalar)
+                    } else if in_scalar != out_scalar {
                         // If the backend and backend_immediate types might differ,
                         // flip back to the backend type then to the new immediate.
                         // This avoids nop truncations, but still handles things like
@@ -972,23 +1003,46 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(mut o) => {
                 // We only need to handle the projections that
                 // `LocalAnalyzer::process_place` let make it here.
+
+                // Track whether the previous projection was a non-trivial downcast,
+                let mut downcast_variant = None;
                 for elem in place_ref.projection {
                     match *elem {
-                        mir::ProjectionElem::Field(f, _) => {
+                        mir::ProjectionElem::Field(fidx, field_ty) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
                                 "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
-                                 but tried to access field {f:?} of pointer {o:?}",
+                                 but tried to access field {fidx:?} of pointer {o:?}",
                             );
-                            o = o.extract_field(self, bx, f.index());
+                            let vidx = downcast_variant.take();
+                            o = o.extract_variant_field(self, bx, vidx, fidx);
+                            debug_assert!(
+                                {
+                                    let field_ty = self.monomorphize(field_ty);
+                                    let field_layout = bx.cx().layout_of(field_ty);
+                                    field_ty == o.layout.ty && field_layout == o.layout
+                                },
+                                "Mismatch with field type {field_ty:?}",
+                            );
                         }
                         mir::PlaceElem::Downcast(_, vidx) => {
-                            debug_assert_eq!(
-                                o.layout.variants,
-                                abi::Variants::Single { index: vidx },
-                            );
-                            let layout = o.layout.for_variant(bx.cx(), vidx);
-                            o = OperandRef { layout, ..o }
+                            if let abi::Variants::Single { index } = o.layout.variants {
+                                // When the downcast is just to the only only possible variant,
+                                // we can treat it the same as a struct (which doesn't get a
+                                // downcast projection) to avoid extra work in the field later.
+                                debug_assert_eq!(index, vidx);
+                                let layout = o.layout.for_variant(bx.cx(), vidx);
+                                o = OperandRef { layout, ..o }
+                            } else {
+                                // For a non-trivial downcast, we just record it to handle later.
+                                //
+                                // It's tempting to try to just transmute to the variant layout,
+                                // but that turns out not to work because while it does handle the
+                                // `i8`-vs-`i1` cases in `Option<bool>`, it doesn't handle the
+                                // `ptr`-vs-`i64` cases in `Result<usize, *const _>`. Delaying it
+                                // means `extract_variant_field` deals with both complications.
+                                downcast_variant = Some(vidx);
+                            };
                         }
                         _ => return None,
                     }
