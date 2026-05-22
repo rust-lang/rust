@@ -7,6 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_session::config::HardenSls;
 use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_span::{Span, Symbol, edit_distance, sym};
@@ -308,12 +309,18 @@ pub fn cfg_target_feature<'a, const N: usize>(
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some((_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
-                        sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
+                    if let Stability::Forbidden { reason, hard_error } = stability {
+                        let diag = errors::ForbiddenCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
                             reason,
-                        });
+                        };
+
+                        if *hard_error {
+                            sess.dcx().emit_err(diag);
+                        } else {
+                            sess.dcx().emit_warn(diag);
+                        }
                     } else if stability.requires_nightly(/* in_cfg */ false).is_some() {
                         // An unstable feature. Warn about using it. It makes little sense
                         // to hard-error here since we just warn about fully unknown
@@ -485,6 +492,18 @@ pub fn sanitizer_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     // clang behavior.
     if sess.sanitizers().contains(SanitizerSet::HWADDRESS) {
         features.push("+tagged-globals".into());
+    }
+}
+
+pub fn sls_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    match &sess.opts.unstable_opts.harden_sls {
+        HardenSls::None => (),
+        HardenSls::All => {
+            features.push("+harden-sls-ijmp".into());
+            features.push("+harden-sls-ret".into());
+        }
+        HardenSls::Return => features.push("+harden-sls-ret".into()),
+        HardenSls::IndirectJmp => features.push("+harden-sls-ijmp".into()),
     }
 }
 

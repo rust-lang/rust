@@ -3050,10 +3050,11 @@ pub(crate) mod dep_tracking {
     use super::{
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
-        OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+        HardenSls, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3156,6 +3157,7 @@ pub(crate) mod dep_tracking {
         Polonius,
         InliningThreshold,
         FunctionReturn,
+        HardenSls,
         Align,
     );
 
@@ -3368,6 +3370,16 @@ pub enum FunctionReturn {
 
     /// Replace returns with jumps to thunk, without emitting the thunk.
     ThunkExtern,
+}
+
+/// The different settings that the `-Zharden-sls` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub enum HardenSls {
+    #[default]
+    None,
+    All,
+    Return,
+    IndirectJmp,
 }
 
 /// Whether extra span comments are included when dumping MIR, via the `-Z mir-include-spans` flag.
