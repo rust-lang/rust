@@ -591,6 +591,10 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedNameValueAsLastArgument {
+        span: Span,
+        name_value_key: Symbol,
+    },
 }
 
 /// A description of a thing that can be parsed using an attribute parser.
@@ -857,6 +861,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+            }
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key } => {
+                diag.span_label(
+                    *span,
+                    format!("expected {name_value_key} = \"...\" to be the last argument"),
+                );
             }
         }
 
@@ -1162,4 +1172,15 @@ pub(crate) enum InvalidMachoSectionReason {
     MissingSection,
     #[note("section name `{$section}` is longer than 16 bytes")]
     SectionTooLong { section: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$full_lint_name}`", code = E0710)]
+pub(crate) struct UnknownToolInScopedLint {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub tool_name: Symbol,
+    pub full_lint_name: Symbol,
+    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
+    pub is_nightly_build: bool,
 }

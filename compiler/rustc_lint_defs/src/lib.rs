@@ -109,7 +109,7 @@ pub enum LintExpectationId {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub struct UnstableLintExpectationId {
     pub attr_id: AttrId,
-    pub lint_index: Option<u16>,
+    pub lint_index: u16,
 }
 
 impl From<UnstableLintExpectationId> for LintExpectationId {
@@ -125,17 +125,17 @@ impl From<UnstableLintExpectationId> for LintExpectationId {
 pub struct StableLintExpectationId {
     pub hir_id: HirId,
     pub attr_index: u16,
-    pub lint_index: Option<u16>,
+    pub lint_index: u16,
 }
 
 impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+        let StableLintExpectationId { hir_id, attr_index, lint_index, .. } = self;
 
         hir_id.stable_hash(hcx, hasher);
         attr_index.stable_hash(hcx, hasher);
-        lint_index.expect("must be filled to call `stable_hash`").stable_hash(hcx, hasher);
+        lint_index.stable_hash(hcx, hasher);
     }
 }
 
@@ -209,6 +209,11 @@ impl Level {
         }
     }
 
+    /// Converts an `Attribute` to a level.
+    pub fn from_attr(attr_name: Option<Symbol>) -> Option<Self> {
+        attr_name.and_then(Self::from_symbol)
+    }
+
     /// Converts an `Option<Symbol>` to a level.
     pub fn from_opt_symbol(s: Option<Symbol>) -> Option<Self> {
         s.and_then(Self::from_symbol)
@@ -218,10 +223,10 @@ impl Level {
     pub fn from_symbol(s: Symbol) -> Option<Self> {
         match s {
             sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect),
-            sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
+            sym::expect => Some(Level::Expect),
             sym::forbid => Some(Level::Forbid),
+            sym::warn => Some(Level::Warn),
             _ => None,
         }
     }
@@ -535,6 +540,50 @@ impl Lint {
             .map(|(_, l)| l)
             .unwrap_or(self.default_level)
     }
+}
+
+/// The target of the `by_name` map, which accounts for renaming/deprecation.
+#[derive(Debug)]
+pub enum TargetLint {
+    /// A direct lint target
+    Id(LintId),
+
+    /// Temporary renaming, used for easing migration pain; see #16545
+    Renamed(String, LintId),
+
+    /// Lint with this name existed previously, but has been removed/deprecated.
+    /// The string argument is the reason for removal.
+    Removed(String),
+
+    /// A lint name that should give no warnings and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
+    Ignored,
+}
+
+#[derive(Debug)]
+pub enum CheckLintNameResult<'a> {
+    Ok(&'a [LintId]),
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<(Symbol, bool)>),
+    /// The lint refers to a tool that has not been registered.
+    NoTool,
+    /// The lint has been renamed to a new name.
+    Renamed(Symbol),
+    RenamedToolLint(Symbol),
+    /// The lint has been removed due to the given reason.
+    Removed(String),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<String>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
 }
 
 /// Identifies a lint known to the compiler.

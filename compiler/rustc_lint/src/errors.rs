@@ -45,36 +45,6 @@ impl Subdiagnostic for OverruledAttributeSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed lint attribute input", code = E0452)]
-pub(crate) struct MalformedAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: MalformedAttributeSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedAttributeSub {
-    #[label("bad attribute argument")]
-    BadAttributeArgument(#[primary_span] Span),
-    #[label("reason must be a string literal")]
-    ReasonMustBeStringLiteral(#[primary_span] Span),
-    #[label("reason in lint attribute must come last")]
-    ReasonMustComeLast(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`", code = E0710)]
-pub(crate) struct UnknownToolInScopedLint {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub tool_name: Symbol,
-    pub lint_name: String,
-    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
-    pub is_nightly_build: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("`...` range patterns are deprecated", code = E0783)]
 pub(crate) struct BuiltinEllipsisInclusiveRangePatterns {
     #[primary_span]

@@ -42,7 +42,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
-use crate::lint::LintId;
+use crate::lint::{CheckLintNameResult, LintId, RegisteredTools};
 use crate::parse::ParseSess;
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -83,6 +83,15 @@ pub struct CompilerIO {
 pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+
+    fn check_lint_name(
+        &self,
+        lint_name: &str,
+        tool_name: Option<Symbol>,
+        registered_tools: &RegisteredTools,
+    ) -> CheckLintNameResult<'_>;
+
+    fn find_lints(&self, lint_name: &str) -> Option<&[LintId]>;
 }
 
 /// Represents the data associated with a compilation

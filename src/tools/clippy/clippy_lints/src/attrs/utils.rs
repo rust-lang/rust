@@ -1,5 +1,5 @@
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use rustc_ast::MetaItemInner;
+use rustc_ast::{MetaItemInner};
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
