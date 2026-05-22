@@ -216,13 +216,16 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         if a.kind.def_id() != b.kind.def_id() {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.kind.into(), b.kind.into())))
         } else {
+            // Users shouldn't know about this so the mismatch should be caught
+            // during development rather than presented as type error.
+            debug_assert_eq!(a.is_rigid, b.is_rigid, "{a:?} != {b:?}");
             let cx = relation.cx();
             let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
             };
-            Ok(ty::AliasTy::new_from_args(cx, a.kind, args))
+            Ok(ty::AliasTy::with_args_and_rigidness(relation.cx(), a.kind, args, a.is_rigid))
         }
     }
 }
@@ -240,12 +243,15 @@ impl<I: Interner> Relate<I> for ty::UnevaluatedConst<I> {
                 Const::new_unevaluated(cx, b),
             )))
         } else {
+            // Users shouldn't know about this so the mismatch should be caught
+            // during development rather than presented as type error.
+            debug_assert_eq!(a.is_rigid, b.is_rigid, "{a:?} != {b:?}");
             // FIXME(mgca): remove this
             debug_assert_eq!(a.type_of(cx).skip_norm_wip(), b.type_of(cx).skip_norm_wip());
 
             let args = relate_args_invariantly(relation, a.args, b.args)?;
 
-            Ok(ty::UnevaluatedConst::new(cx, a.kind, args))
+            Ok(ty::UnevaluatedConst::with_rigidness(cx, a.kind, args, a.is_rigid))
         }
     }
 }

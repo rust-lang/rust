@@ -363,6 +363,16 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     fn has_non_region_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_NON_REGION_ERROR)
     }
+
+    /// True if an alias has `IsRigid::Yes`. Used for skipping normalization.
+    fn has_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RIGID_ALIAS)
+    }
+
+    /// True if an alias has `IsRigid::No`.
+    fn has_non_rigid_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_RIGID_ALIAS)
+    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {

@@ -80,6 +80,9 @@ pub struct UnevaluatedConst<I: Interner> {
     pub kind: UnevaluatedConstKind<I>,
     pub args: I::GenericArgs,
 
+    #[lift(identity)]
+    pub is_rigid: ty::IsRigid,
+
     /// This field exists to prevent the creation of `UnevaluatedConst` without using [`UnevaluatedConst::new`].
     #[derive_where(skip(Debug))]
     pub(crate) _use_unevaluated_const_new_instead: (),
@@ -94,6 +97,16 @@ impl<I: Interner> UnevaluatedConst<I> {
         kind: UnevaluatedConstKind<I>,
         args: I::GenericArgs,
     ) -> UnevaluatedConst<I> {
+        Self::with_rigidness(interner, kind, args, ty::IsRigid::No)
+    }
+
+    #[inline]
+    pub fn with_rigidness(
+        interner: I,
+        kind: UnevaluatedConstKind<I>,
+        args: I::GenericArgs,
+        is_rigid: ty::IsRigid,
+    ) -> UnevaluatedConst<I> {
         if cfg!(debug_assertions) {
             let def_id = match kind {
                 ty::UnevaluatedConstKind::Projection { def_id } => def_id.into(),
@@ -103,7 +116,7 @@ impl<I: Interner> UnevaluatedConst<I> {
             };
             interner.debug_assert_args_compatible(def_id, args);
         }
-        UnevaluatedConst { kind, args, _use_unevaluated_const_new_instead: () }
+        UnevaluatedConst { kind, args, is_rigid, _use_unevaluated_const_new_instead: () }
     }
 
     pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
