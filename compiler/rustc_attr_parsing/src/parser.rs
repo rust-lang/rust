@@ -141,10 +141,27 @@ impl ArgParser {
                 }
 
                 if args.delim != Delimiter::Parenthesis {
-                    should_emit.emit_err(psess.dcx().create_err(MetaBadDelim {
-                        span: args.dspan.entire(),
-                        sugg: MetaBadDelimSugg { open: args.dspan.open, close: args.dspan.close },
-                    }));
+                    // FIXME we need a way to just turn off delayed bugs during early parsing of certain attrs,
+                    // in the case that they are parsed before expansion
+                    if !(matches!(should_emit, ShouldEmit::Nothing)
+                        && matches!(
+                            parts,
+                            [sym::allow]
+                                | [sym::deny]
+                                | [sym::expect]
+                                | [sym::forbid]
+                                | [sym::warn]
+                        ))
+                    {
+                        should_emit.emit_err(psess.dcx().create_err(MetaBadDelim {
+                            span: args.dspan.entire(),
+                            sugg: MetaBadDelimSugg {
+                                open: args.dspan.open,
+                                close: args.dspan.close,
+                            },
+                        }));
+                    }
+
                     return None;
                 }
 

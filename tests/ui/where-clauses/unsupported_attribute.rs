@@ -18,8 +18,8 @@ where
     #[should_panic] 'a: 'static, //~ ERROR attribute cannot be used on
     #[macro_use] T: Trait, //~ ERROR attribute cannot be used on
     #[macro_use] 'a: 'static, //~ ERROR attribute cannot be used on
-    #[allow(unused)] T: Trait, //~ ERROR most attributes are not supported in `where` clauses
-    #[allow(unused)] 'a: 'static, //~ ERROR most attributes are not supported in `where` clauses
+    #[allow(unused)] T: Trait, //~ ERROR attribute cannot be used on
+    #[allow(unused)] 'a: 'static, //~ ERROR attribute cannot be used on
     #[deprecated] T: Trait, //~ ERROR attribute cannot be used on
     #[deprecated] 'a: 'static, //~ ERROR attribute cannot be used on
     #[automatically_derived] T: Trait, //~ ERROR attribute cannot be used on

@@ -13,6 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_macros::{Diagnostic, Subdiagnostic};
+pub(crate) use rustc_middle::error::lint_lints::*;
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
@@ -23,7 +24,6 @@ use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
 use crate::lifetime_syntax::LifetimeSyntaxCategories;
-
 // array_into_iter.rs
 #[derive(Diagnostic)]
 #[diag(
@@ -1250,15 +1250,6 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName<'a> {
-    pub name: String,
-    #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
-    pub suggestion: Span,
-    pub replace: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
 #[help("change it to {$replace}")]
 pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
     pub name: String,
@@ -1269,41 +1260,13 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint<'a> {
-    pub name: &'a str,
-    pub replace: &'a str,
-    #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion<'a> {
-    #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replace: &'a str,
-    },
-    #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: &'a str },
-}
-
-#[derive(Diagnostic)]
-#[diag("lint `{$name}` has been renamed to `{$replace}`")]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
-    pub replace: &'a str,
+    pub replace: Symbol,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint `{$name}` has been removed: {$reason}")]
-pub(crate) struct RemovedLint<'a> {
-    pub name: &'a str,
-    pub reason: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -1316,39 +1279,6 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown lint: `{$name}`")]
-pub(crate) struct UnknownLint {
-    pub name: String,
-    #[subdiagnostic]
-    pub suggestion: Option<UnknownLintSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnknownLintSuggestion {
-    #[suggestion(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints
-            *[false] did you mean
-        }",
-        code = "{replace}",
-        applicability = "maybe-incorrect"
-    )]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replace: Symbol,
-        from_rustc: bool,
-    },
-    #[help(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints: `{$replace}`
-            *[false] did you mean: `{$replace}`
-        }"
-    )]
-    WithoutSpan { replace: Symbol, from_rustc: bool },
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`", code = E0602)]
 pub(crate) struct UnknownLintFromCommandLine<'a> {
     pub name: String,
@@ -1356,13 +1286,6 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
     pub suggestion: Option<UnknownLintSuggestion>,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag("{$level}({$name}) is ignored unless specified at crate level")]
-pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
-    pub level: &'a str,
-    pub name: Symbol,
 }
 
 // dangling.rs

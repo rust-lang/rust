@@ -1,12 +1,13 @@
+#![attr = Feature([pin_ergonomics#0])]
+#![attr = LintAttributes([LintAttribute {kind: Allow, attr_style: Inner,
+lint_instances: [dead_code, incomplete_features]}])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir
 //@ pp-exact:pin-ergonomics-hir.pp
 
-#![allow(dead_code, incomplete_features)]
-#![attr = Feature([pin_ergonomics#0])]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 use std::pin::Pin;
 

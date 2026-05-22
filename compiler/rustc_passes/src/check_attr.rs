@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::slice;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::{AttrStyle, MetaItemKind, ast};
+use rustc_ast::ast;
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
@@ -17,8 +17,8 @@ use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    ReprAttr, SanitizerSet,
+    AttributeKind, CrateType, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution,
+    InlineAttr, LintAttribute, ReprAttr, SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -35,7 +35,6 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
@@ -126,13 +125,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match attr {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attrs, attr_kind);
-                    self.check_unused_attribute(hir_id, attr, None);
+                    self.check_unused_attribute(hir_id, attr);
                 }
-                Attribute::Unparsed(attr_item) => {
+                Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
-                        // ok
-                        [sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid, ..] => {}
-
                         [name, rest @ ..] => {
                             if let Some(_) = BUILTIN_ATTRIBUTE_MAP.get(name) {
                                 if rest.len() > 0
@@ -155,7 +151,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [] => unreachable!(),
                     }
 
-                    self.check_unused_attribute(hir_id, attr, Some(attr_item.style));
+                    self.check_unused_attribute(hir_id, attr);
                 }
             }
         }
@@ -234,6 +230,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
             }
+
             AttributeKind::RustcLegacyConstGenerics { attr_span, fn_indexes } => {
                 self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
             }
@@ -251,6 +248,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
             }
+            AttributeKind::LintAttributes(sub_attrs) => self.check_lint_attr(hir_id, sub_attrs),
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
@@ -1457,70 +1455,50 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute, style: Option<AttrStyle>) {
-        // Warn on useless empty attributes.
-        // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
-        let note =
-            if attr.has_any_name(&[sym::allow, sym::expect, sym::warn, sym::deny, sym::forbid])
-                && attr.meta_item_list().is_some_and(|list| list.is_empty())
-            {
-                errors::UnusedNote::EmptyList { name: attr.name().unwrap() }
-            } else if attr.has_any_name(&[
-                sym::allow,
-                sym::warn,
-                sym::deny,
-                sym::forbid,
-                sym::expect,
-            ]) && let Some(meta) = attr.meta_item_list()
-                && let [meta] = meta.as_slice()
-                && let Some(item) = meta.meta_item()
-                && let MetaItemKind::NameValue(_) = &item.kind
-                && item.path == sym::reason
-            {
-                errors::UnusedNote::NoLints { name: attr.name().unwrap() }
-            } else if attr.has_any_name(&[
-                sym::allow,
-                sym::warn,
-                sym::deny,
-                sym::forbid,
-                sym::expect,
-            ]) && let Some(meta) = attr.meta_item_list()
-                && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| {
-                        item.path == sym::linker_messages || item.path == sym::linker_info
-                    })
+    fn check_lint_attr(&self, hir_id: HirId, sub_attrs: &[LintAttribute]) {
+        for LintAttribute { attr_span, lint_instances, attr_style, .. } in sub_attrs {
+            let dead_code_lint_in_instances =
+                lint_instances.iter().any(|id| id.lint_name() == sym::dead_code_pub_in_binary);
+            if !dead_code_lint_in_instances
+                && !lint_instances.iter().any(|id| {
+                    id.lint_name() == sym::linker_messages || id.lint_name() == sym::linker_info
                 })
             {
-                if hir_id != CRATE_HIR_ID {
-                    match style {
-                        Some(ast::AttrStyle::Outer) => {
-                            let attr_span = attr.span();
-                            let bang_position = self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .span_until_char(attr_span, '[')
-                                .shrink_to_hi();
+                continue;
+            };
+            if hir_id != CRATE_HIR_ID {
+                match attr_style {
+                    ast::AttrStyle::Outer => {
+                        let attr_span = attr_span;
+                        let bang_position = self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_until_char(*attr_span, '[')
+                            .shrink_to_hi();
 
-                            self.tcx.emit_node_span_lint(
-                                UNUSED_ATTRIBUTES,
-                                hir_id,
-                                attr_span,
-                                errors::OuterCrateLevelAttr {
-                                    suggestion: errors::OuterCrateLevelAttrSuggestion {
-                                        bang_position,
-                                    },
-                                },
-                            )
-                        }
-                        Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
+                        self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            attr.span(),
-                            errors::InnerCrateLevelAttr,
-                        ),
-                    };
-                    return;
+                            *attr_span,
+                            errors::OuterCrateLevelAttr {
+                                suggestion: errors::OuterCrateLevelAttrSuggestion { bang_position },
+                            },
+                        )
+                    }
+                    ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *attr_span,
+                        errors::InnerCrateLevelAttr,
+                    ),
+                };
+                continue;
+            } else {
+                let note = if dead_code_lint_in_instances
+                    && !self.tcx.crate_types().contains(&CrateType::Executable)
+                {
+                    errors::UnusedNote::NoEffectDeadCodePubInBinary
                 } else {
                     let never_needs_link = self
                         .tcx
@@ -1530,23 +1508,31 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     if never_needs_link {
                         errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                     } else {
-                        return;
+                        continue;
                     }
-                }
-            } else if hir_id == CRATE_HIR_ID
-                && attr.has_any_name(&[sym::allow, sym::warn, sym::deny, sym::forbid, sym::expect])
-                && let Some(meta) = attr.meta_item_list()
-                && meta.iter().any(|meta| {
-                    meta.meta_item().is_some_and(|item| item.path == sym::dead_code_pub_in_binary)
-                })
-                && !self.tcx.crate_types().contains(&CrateType::Executable)
-            {
-                errors::UnusedNote::NoEffectDeadCodePubInBinary
-            } else if attr.has_name(sym::default_method_body_is_const) {
-                errors::UnusedNote::DefaultMethodBodyConst
-            } else {
-                return;
+                };
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    *attr_span,
+                    errors::Unused { attr_span: *attr_span, note },
+                );
             };
+        }
+    }
+
+    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute) {
+        // Warn on useless empty attributes.
+        // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
+        let note = if attr.has_any_name(&[sym::feature])
+            && attr.meta_item_list().is_some_and(|list| list.is_empty())
+        {
+            errors::UnusedNote::EmptyList { name: attr.name().unwrap() }
+        } else if attr.has_name(sym::default_method_body_is_const) {
+            errors::UnusedNote::DefaultMethodBodyConst
+        } else {
+            return;
+        };
 
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
