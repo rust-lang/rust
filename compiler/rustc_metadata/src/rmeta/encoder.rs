@@ -19,7 +19,9 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
@@ -1584,6 +1586,17 @@ fn assoc_item_has_value<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn public_module_children_local(
+        &self,
+        def_id: LocalDefId,
+    ) -> impl Iterator<Item = &'tcx ModChild> + use<'tcx> + Clone {
+        let effective_visibilities = self.tcx.effective_visibilities(());
+        let remove_private_children = self.tcx.sess.opts.unstable_opts.public_api_hash;
+        self.tcx.module_children_local(def_id).iter().filter(move |child| {
+            is_public_mod_child(remove_private_children, effective_visibilities, child)
+        })
+    }
+
     fn encode_attrs(&mut self, def_id: LocalDefId, hcx: &mut PublicApiHashingContext<'_>) {
         let tcx = self.tcx;
         let mut state = AnalyzeAttrState {
@@ -1736,9 +1749,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tcx.explicit_super_predicates_of(def_id).skip_binder(), hcx);
                 record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
                     self.tcx.explicit_implied_predicates_of(def_id).skip_binder(), hcx);
-                let module_children = self.tcx.module_children_local(local_id);
+                let module_children = self.public_module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
-                    module_children.iter().map(|child| child.res.def_id()), hcx,
+                    module_children.map(|child| child.res.def_id()), hcx,
                     |def_id| def_id.index);
                 if self.tcx.is_const_trait(def_id) {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
@@ -1962,22 +1975,38 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id), hcx);
         } else {
-            let module_children = tcx.module_children_local(local_def_id);
+            let module_children = self.public_module_children_local(local_def_id);
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
-                module_children.iter().filter(|child| child.reexport_chain.is_empty())
+                module_children.clone().filter(|child| child.reexport_chain.is_empty())
                     .map(|child| child.res.def_id()), hcx, |def_id| def_id.index
             );
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()), hcx
+                module_children.filter(|child| !child.reexport_chain.is_empty()), hcx
             );
 
+            let effective_visibilities = self.tcx.effective_visibilities(());
+            let remove_private_children = self.tcx.sess.opts.unstable_opts.public_api_hash;
             let ambig_module_children = tcx
                 .resolutions(())
                 .ambig_module_children
                 .get(&local_def_id)
-                .map_or_default(|v| &v[..]);
+                .map_or_default(|v| &v[..])
+                .iter()
+                // only ambiguities where both main and second are public can cause actual
+                // ambiguity.
+                .filter(|ambig| {
+                    is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.main,
+                    ) && is_public_mod_child(
+                        remove_private_children,
+                        effective_visibilities,
+                        &ambig.second,
+                    )
+                });
             record_defaulted_array!(self.tables.ambig_module_children[def_id] <-
                 ambig_module_children, hcx);
         }
@@ -3099,4 +3128,24 @@ fn dylib_dependency_formats(
             )
         })
     })
+}
+
+fn is_public_mod_child(
+    remove_private_children: bool,
+    effective_visibilities: &EffectiveVisibilities,
+    child: &ModChild,
+) -> bool {
+    if !remove_private_children {
+        return true;
+    }
+    if child.reexport_chain.is_empty() {
+        effective_visibilities.is_reachable(child.res.def_id().expect_local())
+    } else {
+        child.vis.is_public()
+            && child.reexport_chain.iter().all(|reexport| {
+                reexport.id().is_none_or(|id| {
+                    !id.is_local() || effective_visibilities.is_reachable(id.expect_local())
+                })
+            })
+    }
 }
