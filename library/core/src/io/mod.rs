@@ -29,6 +29,7 @@ pub use self::{
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
+    cursor::slice_write,
     error::{Custom, CustomOwner, OsFunctions},
     seek::stream_len_default,
     size_hint::SizeHint,

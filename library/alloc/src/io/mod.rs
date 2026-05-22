@@ -19,5 +19,6 @@ pub use core::io::{
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use core::io::{
-    IoHandle, OsFunctions, SizeHint, chain, default_write_vectored, stream_len_default, take,
+    IoHandle, OsFunctions, SizeHint, chain, default_write_vectored, slice_write,
+    stream_len_default, take,
 };

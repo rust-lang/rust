@@ -1,3 +1,4 @@
+use crate::cmp;
 use crate::io::{self, ErrorKind, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
@@ -290,6 +291,19 @@ where
         self.inner.clone_from(&other.inner);
         self.pos = other.pos;
     }
+}
+
+// Non-resizing write implementation
+#[inline]
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
+    let pos = cmp::min(*pos_mut, slice.len() as u64);
+    let dst = &mut slice[(pos as usize)..];
+    let amt = cmp::min(buf.len(), dst.len());
+    dst[..amt].copy_from_slice(&buf[..amt]);
+    *pos_mut += amt as u64;
+    Ok(amt)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

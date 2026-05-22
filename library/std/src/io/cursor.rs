@@ -4,8 +4,9 @@ mod tests;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::io::Cursor;
 
+use alloc_crate::io::slice_write;
+
 use crate::alloc::Allocator;
-use crate::cmp;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 
@@ -142,15 +143,6 @@ impl<W: WriteThroughCursor> Write for Cursor<W> {
     fn flush(&mut self) -> io::Result<()> {
         WriteThroughCursor::flush(self)
     }
-}
-
-// Non-resizing write implementation
-#[inline]
-fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
-    let pos = cmp::min(*pos_mut, slice.len() as u64);
-    let amt = (&mut slice[(pos as usize)..]).write(buf)?;
-    *pos_mut += amt as u64;
-    Ok(amt)
 }
 
 #[inline]
