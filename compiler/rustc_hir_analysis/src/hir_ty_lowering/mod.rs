@@ -30,7 +30,7 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, VisibilityDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
@@ -117,7 +117,7 @@ pub enum RegionInferReason<'a> {
 pub struct InherentAssocCandidate {
     pub impl_: DefId,
     pub assoc_item: DefId,
-    pub scope: DefId,
+    pub scope: VisibilityDefId,
 }
 
 pub struct ResolvedStructPath<'tcx> {
@@ -1882,7 +1882,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_tag: ty::AssocTag,
         block: HirId,
         scope: DefId,
-    ) -> Option<(ty::AssocItem, /*scope*/ DefId)> {
+    ) -> Option<(ty::AssocItem, /*scope*/ VisibilityDefId)> {
         let tcx = self.tcx();
 
         let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, block);
@@ -1902,7 +1902,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         item_def_id: DefId,
         ident: Ident,
-        scope: DefId,
+        scope: VisibilityDefId,
         block: HirId,
         span: Span,
     ) {

@@ -818,7 +818,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None => generic_param_scope,
                     },
                 };
-                match self.tcx.is_descendant_of(type_scope.into(), lifetime_scope.into()) {
+                match self.tcx.is_descendant_of(type_scope, lifetime_scope) {
                     true => type_scope,
                     false => lifetime_scope,
                 }

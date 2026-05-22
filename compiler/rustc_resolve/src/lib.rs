@@ -56,7 +56,9 @@ use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
     PerNS,
 };
-use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{
+    CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap, VisibilityDefId,
+};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
@@ -2389,7 +2391,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.pat_span_map.insert(node, span);
     }
 
-    fn is_accessible_from(&self, vis: Visibility<impl Into<DefId>>, module: Module<'ra>) -> bool {
+    fn is_accessible_from(
+        &self,
+        vis: Visibility<impl Into<VisibilityDefId>>,
+        module: Module<'ra>,
+    ) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 

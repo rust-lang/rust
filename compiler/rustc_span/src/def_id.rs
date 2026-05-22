@@ -564,3 +564,13 @@ impl LocalModDefId {
         self.0.is_top_level_module()
     }
 }
+
+/// DefId which can only be used to check visibilities.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, Encodable, Decodable, Debug)]
+pub struct VisibilityDefId(pub DefId);
+
+impl<T: Into<DefId>> From<T> for VisibilityDefId {
+    fn from(value: T) -> Self {
+        Self(value.into())
+    }
+}
