@@ -20,5 +20,5 @@ pub use core::io::{
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use core::io::{
     IoHandle, OsFunctions, SizeHint, chain, default_write_vectored, slice_write, slice_write_all,
-    slice_write_vectored, stream_len_default, take,
+    slice_write_all_vectored, slice_write_vectored, stream_len_default, take,
 };
