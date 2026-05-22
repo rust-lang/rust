@@ -388,15 +388,11 @@ fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 // Used by `BufReader::spec_read_byte`, for which the `inline(never)` is
 // important.
 #[inline(never)]
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
+pub(in crate::io) fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
     inlined_slow_read_byte(reader)
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub const fn bytes<R>(inner: R) -> Bytes<R> {
+pub(in crate::io) const fn bytes<R>(inner: R) -> Bytes<R> {
     Bytes { inner }
 }
 
@@ -434,9 +430,7 @@ impl<B: BufRead> Iterator for Split<B> {
     }
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub const fn split<B>(buf: B, delim: u8) -> Split<B> {
+pub(in crate::io) const fn split<B>(buf: B, delim: u8) -> Split<B> {
     Split { buf, delim }
 }
 
@@ -475,8 +469,6 @@ impl<B: BufRead> Iterator for Lines<B> {
     }
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub const fn lines<B>(buf: B) -> Lines<B> {
+pub(in crate::io) const fn lines<B>(buf: B) -> Lines<B> {
     Lines { buf }
 }
