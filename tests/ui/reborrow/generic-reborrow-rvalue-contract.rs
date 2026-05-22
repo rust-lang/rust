@@ -1,12 +1,12 @@
 //@ check-pass
+// Regression test for rust-lang/rust#156482.
+// This used to ICE in MIR building when a THIR `ExprKind::Reborrow`
+// was categorized as a place but `expr_as_place` treated it as unreachable.
 
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
 
-// Regression test for rust-lang/rust#156482.
-// This used to ICE in MIR building when a THIR `ExprKind::Reborrow`
-// was categorized as a place but `expr_as_place` treated it as unreachable.
 struct Thing<'a>(&'a ());
 
 impl<'a> Reborrow for Thing<'a> {}
