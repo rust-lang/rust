@@ -290,7 +290,7 @@ pub(crate) enum UnusedVariableSugg {
         shorthands: Vec<Span>,
         #[suggestion_part(code = "_")]
         non_shorthands: Vec<Span>,
-        name: Symbol,
+        name: String,
     },
 
     #[multipart_suggestion(
