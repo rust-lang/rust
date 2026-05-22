@@ -72,7 +72,7 @@ pub type Result<T> = result::Result<T, Error>;
 ///
 /// [Read]: ../../std/io/trait.Read.html
 /// [Write]: ../../std/io/trait.Write.html
-/// [Seek]: ../../std/io/trait.Seek.html
+/// [Seek]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_has_incoherent_inherent_impls]
 pub struct Error {
