@@ -333,6 +333,22 @@ pub fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::R
     if n < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
 }
 
+#[inline]
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub fn slice_write_all_vectored(
+    pos_mut: &mut u64,
+    slice: &mut [u8],
+    bufs: &[IoSlice<'_>],
+) -> io::Result<()> {
+    for buf in bufs {
+        let n = slice_write(pos_mut, slice, buf)?;
+        if n < buf.len() {
+            return Err(io::Error::WRITE_ALL_EOF);
+        }
+    }
+    Ok(())
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> io::Seek for Cursor<T>
 where
