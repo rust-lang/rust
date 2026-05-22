@@ -22,7 +22,7 @@ use crate::io::{self, ErrorKind, SeekFrom};
 /// [`File`]: ../../std/fs/struct.File.html
 /// [`Read`]: ../../std/io/trait.Read.html
 /// [`Write`]: ../../std/io/trait.Write.html
-/// [`Seek`]: ../../std/io/trait.Seek.html
+/// [`Seek`]: crate::io::Seek
 /// [Vec]: ../../alloc/vec/struct.Vec.html
 ///
 /// ```no_run
