@@ -1,4 +1,3 @@
-//@ run-pass
 //@ revisions:rpass1 rpass2
 
 #![feature(decl_macro)]

@@ -1,4 +1,3 @@
-//@ run-pass
 //@ revisions:rpass1 rpass2
 
 #![feature(fn_delegation)]
