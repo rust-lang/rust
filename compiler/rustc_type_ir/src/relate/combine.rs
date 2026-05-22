@@ -115,6 +115,14 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
+        (ty::Alias(alias_a), ty::Alias(alias_b))
+            if infcx.next_trait_solver()
+                && alias_a.is_rigid == ty::IsRigid::Yes
+                && alias_b.is_rigid == ty::IsRigid::Yes =>
+        {
+            structurally_relate_tys(relation, a, b)
+        }
+
         (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
             match relation.structurally_relate_aliases() {
                 StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
@@ -199,6 +207,14 @@ where
         (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
             infcx.instantiate_const_var_raw(relation, false, vid, a)?;
             Ok(a)
+        }
+
+        (ty::ConstKind::Unevaluated(uv_a), ty::ConstKind::Unevaluated(uv_b))
+            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver())
+                && uv_a.is_rigid == ty::IsRigid::Yes
+                && uv_b.is_rigid == ty::IsRigid::Yes =>
+        {
+            structurally_relate_consts(relation, a, b)
         }
 
         (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))

@@ -697,6 +697,19 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
+    pub fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(alias_ty) => alias_ty.is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => uv.is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+        }
+    }
+
     pub fn is_infer(&self) -> bool {
         match self.kind() {
             TermKind::Ty(ty) => ty.is_ty_var(),

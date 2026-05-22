@@ -1242,7 +1242,7 @@ where
             // variant to `StructurallyRelateAliases`.
             let identity_args = self.fresh_args_for_item(alias.def_id());
             let rigid_ctor = alias.with_args(cx, identity_args);
-            let ctor_term = rigid_ctor.to_term(cx);
+            let ctor_term = rigid_ctor.to_rigid_term(cx);
             let obligations = self.delegate.eq_structurally_relating_aliases(
                 param_env,
                 term,
