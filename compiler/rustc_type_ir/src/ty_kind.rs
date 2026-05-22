@@ -88,6 +88,17 @@ impl<I: Interner> AliasTyKind<I> {
     }
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub enum IsRigid {
+    Yes,
+    No,
+}
+
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get
@@ -459,6 +470,11 @@ pub struct AliasTy<I: Interner> {
     #[type_visitable(ignore)]
     pub kind: AliasTyKind<I>,
 
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    #[lift(identity)]
+    pub is_rigid: IsRigid,
+
     /// This field exists to prevent the creation of `AliasTy` without using [`AliasTy::new_from_args`].
     #[derive_where(skip(Debug))]
     pub(crate) _use_alias_ty_new_instead: (),
@@ -468,8 +484,17 @@ impl<I: Interner> Eq for AliasTy<I> {}
 
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
+        Self::with_args_and_rigidness(interner, kind, args, IsRigid::No)
+    }
+
+    pub fn with_args_and_rigidness(
+        interner: I,
+        kind: AliasTyKind<I>,
+        args: I::GenericArgs,
+        is_rigid: IsRigid,
+    ) -> AliasTy<I> {
         interner.debug_assert_args_compatible(kind.def_id(), args);
-        AliasTy { kind, args, _use_alias_ty_new_instead: () }
+        AliasTy { kind, args, is_rigid, _use_alias_ty_new_instead: () }
     }
 
     pub fn new(
@@ -477,8 +502,17 @@ impl<I: Interner> AliasTy<I> {
         kind: AliasTyKind<I>,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> AliasTy<I> {
+        Self::with_rigidness(interner, kind, args, IsRigid::No)
+    }
+
+    pub fn with_rigidness(
+        interner: I,
+        kind: AliasTyKind<I>,
+        args: impl IntoIterator<Item: Into<I::GenericArg>>,
+        is_rigid: IsRigid,
+    ) -> AliasTy<I> {
         let args = interner.mk_args_from_iter(args.into_iter().map(Into::into));
-        Self::new_from_args(interner, kind, args)
+        Self::with_args_and_rigidness(interner, kind, args, is_rigid)
     }
 
     /// Whether this alias type is an opaque.
@@ -488,6 +522,14 @@ impl<I: Interner> AliasTy<I> {
 
     pub fn to_ty(self, interner: I) -> I::Ty {
         Ty::new_alias(interner, self)
+    }
+
+    pub fn to_rigid(self) -> AliasTy<I> {
+        AliasTy { is_rigid: IsRigid::Yes, ..self }
+    }
+
+    pub fn to_non_rigid(self) -> AliasTy<I> {
+        AliasTy { is_rigid: IsRigid::No, ..self }
     }
 }
 
@@ -499,10 +541,11 @@ impl<I: Interner> AliasTy<I> {
     }
 
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
-        AliasTy::new(
+        AliasTy::with_rigidness(
             interner,
             self.kind,
             [self_ty.into()].into_iter().chain(self.args.iter().skip(1)),
+            self.is_rigid,
         )
     }
 
