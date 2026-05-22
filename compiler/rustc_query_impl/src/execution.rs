@@ -7,17 +7,17 @@ use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
-use crate::job::find_cycle_in_stack;
+use crate::job::_find_cycle_in_stack;
 use crate::plumbing::{loadable_from_disk, start_query};
 
 #[inline]
-fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
+fn _equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
 }
 
 #[cold]
 #[inline(never)]
-fn find_and_handle_cycle<'a, 'tcx, C: QueryCache>(
+fn _find_and_handle_cycle<'a, 'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -25,7 +25,7 @@ fn find_and_handle_cycle<'a, 'tcx, C: QueryCache>(
     span: Span,
 ) -> (C::Value, Option<DepNodeIndex>) {
     tls::with_related_context(tcx, |icx| {
-        let cycle = find_cycle_in_stack(try_execute, icx.query, span);
+        let cycle = _find_cycle_in_stack(try_execute, icx.query, span);
         ((query.handle_cycle_error_fn)(tcx, key, cycle), None)
     })
 }

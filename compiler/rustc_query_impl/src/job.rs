@@ -10,7 +10,7 @@ use rustc_middle::query::{Cycle, QueryJob, QueryJobRef, QueryStackFrame, QueryWa
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
-pub(crate) fn find_cycle_in_stack<'a, 'tcx>(
+pub(crate) fn _find_cycle_in_stack<'a, 'tcx>(
     top_job: QueryJobRef<'a, 'tcx>,
     mut current_job: Option<QueryJobRef<'a, 'tcx>>,
     span: Span,
