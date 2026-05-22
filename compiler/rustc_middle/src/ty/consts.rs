@@ -107,8 +107,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_unevaluated(tcx: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Const<'tcx> {
-        Const::new(tcx, ty::ConstKind::Unevaluated(uv))
+    pub fn new_unevaluated(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Unevaluated(is_rigid, uv))
     }
 
     #[inline]
@@ -190,8 +194,12 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_placeholder(tcx, placeholder)
     }
 
-    fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
-        Const::new_unevaluated(interner, uv)
+    fn new_unevaluated(
+        interner: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> Self {
+        Const::new_unevaluated(interner, is_rigid, uv)
     }
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {

@@ -194,7 +194,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-            ty::Alias(ty::AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. }) => {}
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. }) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
                     obligation.cause.span,
@@ -681,7 +681,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
                 | ty::Dynamic(_, _)
-                | ty::Alias(_)
+                | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
                 | ty::Bound(_, _) => {}
@@ -784,10 +784,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::Param(..)
-                | ty::Alias(ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                    ..
-                })
+                | ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                        ..
+                    },
+                )
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
@@ -838,7 +841,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
 
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                     if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.

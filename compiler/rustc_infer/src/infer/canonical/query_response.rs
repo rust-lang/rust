@@ -519,7 +519,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.at(cause, param_env)
                     .eq(
                         DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
+                        Ty::new_opaque(self.tcx, ty::IsRigid::No, a.def_id.to_def_id(), a.args),
                         b,
                     )?
                     .obligations,

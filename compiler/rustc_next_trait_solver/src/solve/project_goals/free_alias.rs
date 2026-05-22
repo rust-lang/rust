@@ -29,17 +29,20 @@ where
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
-        );
+        )?;
 
         let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {
-                cx.type_of(def_id.into()).instantiate(cx, free_alias.args).skip_norm_wip().into()
+                let free = cx.type_of(def_id.into()).instantiate(cx, free_alias.args);
+                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+                free.into()
             }
-            ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id.into()) => cx
-                .const_of_item(def_id.into())
-                .instantiate(cx, free_alias.args)
-                .skip_norm_wip()
-                .into(),
+            ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id.into()) => {
+                let free = cx.const_of_item(def_id.into()).instantiate(cx, free_alias.args);
+                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+
+                free.into()
+            }
             ty::AliasTermKind::FreeConst { .. } => {
                 return self.evaluate_const_and_instantiate_projection_term(
                     goal.param_env,
@@ -51,7 +54,7 @@ where
             kind => panic!("expected free alias, found {kind:?}"),
         };
 
-        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.projection_term, actual);
+        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.projection_term, actual)?;
         self.eq(goal.param_env, goal.predicate.term, actual)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }

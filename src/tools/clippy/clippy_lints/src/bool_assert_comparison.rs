@@ -63,7 +63,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
             )
         })
         .is_some_and(|assoc_item| {
-            let proj = Ty::new_projection(cx.tcx, assoc_item.def_id, cx.tcx.mk_args_trait(ty, []));
+            let proj = Ty::new_projection(cx.tcx, ty::IsRigid::No, assoc_item.def_id, cx.tcx.mk_args_trait(ty, []));
             let nty = cx
                 .tcx
                 .normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj));

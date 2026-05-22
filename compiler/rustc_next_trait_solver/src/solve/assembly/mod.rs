@@ -68,7 +68,7 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
             for (nested_source, goal) in requirements {
-                ecx.add_goal(nested_source, goal);
+                ecx.add_goal(nested_source, goal)?;
             }
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -113,7 +113,7 @@ where
                 bounds,
             ) {
                 Ok(requirements) => {
-                    ecx.add_goals(GoalSource::ImplWhereBound, requirements);
+                    ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 Err(_) => {
@@ -789,13 +789,21 @@ where
                 return Ok(());
             }
 
-            ty::Alias(alias_ty @ AliasTy { kind: ty::Projection { def_id }, .. }) => {
+            ty::Alias(
+                ty::IsRigid::Yes,
+                alias_ty @ AliasTy { kind: ty::Projection { def_id }, .. },
+            ) => (alias_ty, def_id.into()),
+
+            ty::Alias(ty::IsRigid::Yes, alias_ty @ AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 (alias_ty, def_id.into())
             }
-            ty::Alias(alias_ty @ AliasTy { kind: ty::Opaque { def_id }, .. }) => {
-                (alias_ty, def_id.into())
-            }
-            ty::Alias(AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. }) => {
+
+            ty::Alias(ty::IsRigid::No, _) => unreachable!("non-rigid self type: {self_ty:?}"),
+
+            ty::Alias(
+                ty::IsRigid::Yes,
+                AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. },
+            ) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
             }
@@ -971,7 +979,7 @@ where
                     elaborate::elaborate(cx, [predicate])
                         .skip(1)
                         .map(|predicate| goal.with(cx, predicate)),
-                );
+                )?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
         })
@@ -1088,9 +1096,10 @@ where
                     self.cx
                 }
                 fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(alias_ty) = ty.kind()
+                    if let ty::Alias(is_rigid, alias_ty) = ty.kind()
                         && let Some(opaque_ty) = alias_ty.try_to_opaque()
                     {
+                        debug_assert_eq!(is_rigid, ty::IsRigid::No);
                         if opaque_ty == self.opaque_ty {
                             return self.self_ty;
                         }

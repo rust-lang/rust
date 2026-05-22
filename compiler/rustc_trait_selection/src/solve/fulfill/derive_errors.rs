@@ -34,7 +34,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         }
         ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
             let ct_ty = match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
+                ty::ConstKind::Unevaluated(_, uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                 ty::ConstKind::Param(param_ct) => {
                     param_ct.find_const_ty_from_env(obligation.param_env)
                 }
@@ -300,7 +300,7 @@ impl<'tcx> BestObligation<'tcx> {
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         assert!(!self.consider_ambiguities);
         let tcx = goal.infcx().tcx;
-        if let ty::Alias(alias) = *self_ty.kind() {
+        if let ty::Alias(_, alias) = *self_ty.kind() {
             let infer_term = goal.infcx().next_ty_var(self.obligation.cause.span);
             let pred =
                 ty::ProjectionPredicate { projection_term: alias.into(), term: infer_term.into() };

@@ -761,7 +761,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     Ok(ty) => ty,
                     Err(guar) => Ty::new_error(tcx, guar),
                 };
-                remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
+                remapped_types.insert(def_id, ty::EarlyBinder::bind(tcx, ty));
             }
             Err(err) => {
                 // This code path is not reached in any tests, but may be
@@ -783,11 +783,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         if !remapped_types.contains_key(assoc_item) {
             remapped_types.insert(
                 *assoc_item,
-                ty::EarlyBinder::bind(Ty::new_error_with_message(
+                ty::EarlyBinder::bind(
                     tcx,
-                    return_span,
-                    "missing synthetic item for RPITIT",
-                )),
+                    Ty::new_error_with_message(
+                        tcx,
+                        return_span,
+                        "missing synthetic item for RPITIT",
+                    ),
+                ),
             );
         }
     }
@@ -826,7 +829,7 @@ where
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args: proj_args, .. }) =
+        if let &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args: proj_args, .. }) =
             ty.kind()
             && self.cx().is_impl_trait_in_trait(def_id)
         {
@@ -930,10 +933,10 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         } else {
             let guar = match region.opt_param_def_id(self.tcx, self.impl_m_def_id) {
                 Some(def_id) => {
-                    let return_span = if let &ty::Alias(ty::AliasTy {
-                        kind: ty::Opaque { def_id: opaque_ty_def_id },
-                        ..
-                    }) = self.ty.kind()
+                    let return_span = if let &ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Opaque { def_id: opaque_ty_def_id }, .. },
+                    ) = self.ty.kind()
                     {
                         self.tcx.def_span(opaque_ty_def_id)
                     } else {
@@ -2721,7 +2724,7 @@ fn param_env_with_gat_bounds<'tcx>(
         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
 
         match normalize_impl_ty.kind() {
-            &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == trait_ty.def_id && args == rebased_args =>
             {
                 // Don't include this predicate if the projected type is
@@ -2764,7 +2767,7 @@ fn try_report_async_mismatch<'tcx>(
         return Ok(());
     }
 
-    let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id: async_future_def_id }, .. }) =
+    let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id: async_future_def_id }, .. }) =
         *tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
     else {
         bug!("expected `async fn` to return an RPITIT");

@@ -19,8 +19,8 @@ impl<T> Trait for T {
 
 struct Foo {
     field: Box<<u8 as Trait>::Diverges<u8>>,
-    //[current]~^ ERROR: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
-    //[next]~^^ ERROR: type mismatch resolving `<u8 as Trait>::Diverges<u8> == _`
+    //~^ ERROR: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
+    //[next]~^^ ERROR: overflow evaluating whether `Box<<u8 as Trait>::Diverges<u8>>` is well-formed
 }
 
 fn main() {}

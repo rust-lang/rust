@@ -782,7 +782,7 @@ impl<'tcx> GATArgsCollector<'tcx> {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == self.gat =>
             {
                 for (idx, arg) in args.iter().enumerate() {
@@ -1509,7 +1509,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     | ty::ConstKind::Bound(_, _) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
-                    ty::ConstKind::Unevaluated(uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
+                    ty::ConstKind::Unevaluated(_, uv) => uv.type_of(infcx.tcx).skip_norm_wip(),
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }
@@ -1585,7 +1585,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let instantiated_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
+            let instantiated_pred = ty::EarlyBinder::bind(tcx, pred).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if instantiated_pred.skip_normalization().has_non_region_param()

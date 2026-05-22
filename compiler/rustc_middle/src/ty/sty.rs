@@ -166,7 +166,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
                     layout.field_tys[*field].ty
                 } else {
-                    ty::EarlyBinder::bind(layout.field_tys[*field].ty)
+                    ty::EarlyBinder::bind(tcx, layout.field_tys[*field].ty)
                         .instantiate(tcx, self.args)
                         .skip_norm_wip()
                 }
@@ -481,7 +481,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+    pub fn new_alias(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) -> Ty<'tcx> {
         if cfg!(debug_assertions) {
             match alias_ty.kind {
                 ty::AliasTyKind::Projection { def_id } => {
@@ -498,7 +502,7 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         }
-        Ty::new(tcx, Alias(alias_ty))
+        Ty::new(tcx, Alias(is_rigid, alias_ty))
     }
 
     #[inline]
@@ -537,8 +541,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     #[instrument(level = "debug", skip(tcx))]
-    pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
+    pub fn new_opaque(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new_alias(tcx, is_rigid, AliasTy::new_from_args(tcx, ty::Opaque { def_id }, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -791,11 +800,13 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_projection_from_args(
         tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
         item_def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         Ty::new_alias(
             tcx,
+            is_rigid,
             AliasTy::new_from_args(tcx, ty::Projection { def_id: item_def_id }, args),
         )
     }
@@ -803,10 +814,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_projection(
         tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
         item_def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        Ty::new_alias(tcx, AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args))
+        Ty::new_alias(
+            tcx,
+            is_rigid,
+            AliasTy::new(tcx, ty::Projection { def_id: item_def_id }, args),
+        )
     }
 
     #[inline]
@@ -982,8 +998,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_canonical_bound(tcx, var)
     }
 
-    fn new_alias(interner: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Self {
-        Ty::new_alias(interner, alias_ty)
+    fn new_alias(
+        interner: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) -> Self {
+        Ty::new_alias(interner, is_rigid, alias_ty)
     }
 
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
@@ -1622,7 +1642,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_opaque(self) -> bool {
-        matches!(self.kind(), Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
+        matches!(self.kind(), Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }))
     }
 
     #[inline]
@@ -1704,7 +1724,12 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
                 );
-                Ty::new_projection_from_args(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
+                Ty::new_projection_from_args(
+                    tcx,
+                    ty::IsRigid::No,
+                    assoc_items[0],
+                    tcx.mk_args(&[self.into()]),
+                )
             }
 
             ty::Pat(ty, _) => ty.discriminant_ty(tcx),
@@ -1837,7 +1862,7 @@ impl<'tcx> Ty<'tcx> {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
                     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, DUMMY_SP);
-                    Ty::new_projection(tcx, metadata_def_id, [tail_ty])
+                    Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [tail_ty])
                 }
             }
         }

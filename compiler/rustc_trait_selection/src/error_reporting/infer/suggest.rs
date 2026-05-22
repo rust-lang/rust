@@ -769,20 +769,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 StatementAsExpression::CorrectType
             }
             (
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
-                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: last_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: exp_def_id }, .. }),
             ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
             (
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: last_def_id },
-                    args: last_bounds,
-                    ..
-                }),
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { def_id: exp_def_id },
-                    args: exp_bounds,
-                    ..
-                }),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: last_def_id }, args: last_bounds, ..
+                    },
+                ),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { def_id: exp_def_id }, args: exp_bounds, ..
+                    },
+                ),
             ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
