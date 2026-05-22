@@ -290,21 +290,23 @@ pub macro Clone($item:item) {
     /* compiler built-in */
 }
 
-/// A trait for types whose [`Clone`] operation creates another alias to the same value.
+/// A trait for types whose [`Clone`] operation creates another alias to the same
+/// logical resource or shared state.
 ///
-/// `Share` marks types where cloning creates another handle or reference to the same logical
-/// resource or shared state, rather than an independent owned value. The distinction is semantic,
-/// not cost-based: implementing `Share` does not merely mean that cloning is cheap, constant-time,
-/// allocation-free, or convenient.
+/// `Share` marks types where cloning creates another handle, reference, or alias
+/// to the same logical resource or shared state, rather than an independent owned
+/// value. The distinction is semantic, not cost-based: implementing `Share` does
+/// not merely mean that cloning is cheap, constant-time, allocation-free, or
+/// convenient.
 ///
-/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone) for
-/// implementors, but communicates that the resulting value aliases the same underlying resource.
+/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone)
+/// for implementors, but communicates that the resulting value aliases the same
+/// underlying resource.
 ///
-/// Shared references, [`Rc`](std::rc::Rc), [`Arc`](std::sync::Arc),
-/// [`Sender`](std::sync::mpsc::Sender), and [`SyncSender`](std::sync::mpsc::SyncSender) are
-/// examples of types that can be shared this way. Types such as [`Vec`](std::vec::Vec),
-/// [`String`](std::string::String), and [`Box`](std::boxed::Box) are not `Share` even though they
-/// implement `Clone`, because cloning them creates another owned value rather than another handle
+/// Shared references, `Rc<T>`, `Arc<T>`, `Sender<T>`, and `SyncSender<T>` are
+/// examples of types that can be shared this way. Types such as `Vec<T>`,
+/// `String`, and `Box<T>` are not `Share` even though they implement `Clone`,
+/// because cloning them creates another owned value rather than another handle
 /// to the same logical resource.
 ///
 /// # Examples
@@ -363,7 +365,7 @@ pub macro Clone($item:item) {
 /// ```
 #[unstable(feature = "share_trait", issue = "156756")]
 pub trait Share: Clone {
-    /// Creates another alias to the same underlying value.
+    /// Creates another alias to the same underlying resource or shared state.
     ///
     /// This is equivalent to calling [`Clone::clone`].
     #[unstable(feature = "share_trait", issue = "156756")]
