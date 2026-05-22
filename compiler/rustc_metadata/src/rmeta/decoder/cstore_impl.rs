@@ -2,6 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
@@ -451,20 +452,24 @@ provide! { tcx, def_id, other, cdata,
     anon_const_kind => { table }
     const_of_item => { table }
     extern_def_public_hash => {
-        cdata
-            .root
-            .rdr_hashes
-            .local
-            .get(cdata, def_id.index)
-            .unwrap_or_else(|| bug!("Trying to read public hash of definition categoriazed as private!"))
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .local
+                .get(cdata, def_id.index)
+                .unwrap_or_else(|| bug!("Trying to read public hash of definition {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
     }
     extern_expn_public_hash => {
-        cdata
-            .root
-            .rdr_hashes
-            .expn
-            .get(cdata, def_id.local_id)
-            .unwrap_or_else(|| bug!("Trying to read public hash of expnasion categoriazed as private!"))
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .expn
+                .get(cdata, def_id.local_id)
+                .unwrap_or_else(|| bug!("Trying to read public hash of expnasion {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
     }
 }
 

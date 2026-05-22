@@ -442,19 +442,23 @@ impl HashableCrateRoot {
         let (rdr_hashes, hashes) = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
             let graph = ecx.index_graph_builder.take().unwrap().build_graph(&mut hcx.hcx);
-            let public_hashes = build_public_hashes(&graph, &hcx.def_id_hashes, ecx.tcx);
+            let public_hashes =
+                build_public_hashes(&graph, &hcx.def_id_hashes, ecx.tcx, &mut hcx.hcx);
 
-            let rdr_hashes = public_hashes.encode(ecx, hcx);
             let mut hasher = StableHasher::default();
             self.stable_hash(&mut hcx.hcx, &mut hasher);
+            public_hashes.stable_hash(&mut hcx.hcx, &mut hasher);
+            let rdr_hashes = public_hashes.value.encode(ecx, hcx);
             let public_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_hash);
-            (rdr_hashes, CrateHashes { public_hash, private_hash: tcx.crate_hash(LOCAL_CRATE) })
+            (
+                Some(rdr_hashes),
+                CrateHashes { public_hash, private_hash: tcx.crate_hash(LOCAL_CRATE) },
+            )
         } else {
             let hash = tcx.crate_hash(LOCAL_CRATE);
-            let rdr_hashes = ItemPublicHashesBuilder::default().encode(ecx, hcx);
-            (rdr_hashes, CrateHashes { public_hash: hash, private_hash: hash })
+            (None, CrateHashes { public_hash: hash, private_hash: hash })
         };
         let header = self.header;
         let header = CrateHeader {
@@ -853,10 +857,12 @@ fn build_public_hashes<'tcx>(
     graph: &IndexGraph<'tcx>,
     hashes: &IndexGraphHashes,
     tcx: TyCtxt<'tcx>,
-) -> ItemPublicHashesBuilder {
+    hcx: &mut StableHashingContext<'_>,
+) -> Hashed<ItemPublicHashesBuilder> {
     let mut annotations = FingerprintAnnotations::new(graph, hashes, tcx);
     let sccs = Sccs::<_, SccIdx>::new_with_annotation(graph, &mut annotations);
     let mut public_hashes = ItemPublicHashesBuilder::default();
+    let mut hasher = StableHasher::new();
     for (node_index, reachable) in graph.reachable_set().iter_enumerated() {
         if !reachable {
             continue;
@@ -864,18 +870,16 @@ fn build_public_hashes<'tcx>(
         match graph.nodes.get_index(node_index).unwrap().0 {
             Node::DefId(id) => {
                 if let Some(local) = id.as_local() {
-                    public_hashes.local.set_some_unhashed(
-                        local.local_def_index,
-                        annotations.scc_fingerprints[sccs.scc(node_index)],
-                    );
+                    let fingerprint = annotations.scc_fingerprints[sccs.scc(node_index)];
+                    (local, fingerprint).stable_hash(hcx, &mut hasher);
+                    public_hashes.local.set_some_unhashed(local.local_def_index, fingerprint);
                 }
             }
             Node::ExpnId(id) => {
                 if let Some(local) = id.as_local() {
-                    public_hashes.expn.set_some_unhashed(
-                        local.as_raw(),
-                        annotations.scc_fingerprints[sccs.scc(node_index)],
-                    );
+                    let fingerprint = annotations.scc_fingerprints[sccs.scc(node_index)];
+                    (local, fingerprint).stable_hash(hcx, &mut hasher);
+                    public_hashes.expn.set_some_unhashed(local.as_raw(), fingerprint);
                 }
             }
             Node::SyntaxContext(_) => (),
@@ -884,7 +888,7 @@ fn build_public_hashes<'tcx>(
             Node::Span(_) => (),
         }
     }
-    public_hashes
+    Hashed { value: public_hashes, hash: Some(hasher.finish()) }
 }
 
 #[derive(Default)]
