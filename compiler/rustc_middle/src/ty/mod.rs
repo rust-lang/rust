@@ -38,7 +38,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, VisibilityDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{IndexVec, static_assert_size};
 pub use rustc_lint_defs::RegisteredTools;
@@ -48,7 +48,7 @@ use rustc_macros::{
 };
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
-use rustc_span::def_id::{LocalModId, ModId};
+use rustc_span::def_id::{LocalModId, ModId, VisibilityModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
@@ -372,7 +372,13 @@ impl TyCtxt<'_> {
     /// Compare def-ids based on their position in def-id tree, ancestor def-ids are considered
     /// larger than descendant def-ids, and two different def-ids are considered unordered if
     /// neither of them is an ancestor of the other.
-    pub fn def_id_partial_cmp(self, lhs: DefId, rhs: DefId) -> Option<Ordering> {
+    pub fn def_id_partial_cmp(
+        self,
+        lhs: impl Into<VisibilityDefId>,
+        rhs: impl Into<VisibilityDefId>,
+    ) -> Option<Ordering> {
+        let lhs = lhs.into().0;
+        let rhs = rhs.into().0;
         // Def-ids from different crates are always unordered.
         if lhs.krate != rhs.krate {
             return None;
@@ -399,8 +405,8 @@ impl TyCtxt<'_> {
 
     pub fn is_descendant_of(
         self,
-        descendant: impl Into<DefId>,
-        ancestor: impl Into<DefId>,
+        descendant: impl Into<VisibilityDefId>,
+        ancestor: impl Into<VisibilityDefId>,
     ) -> bool {
         matches!(
             self.def_id_partial_cmp(descendant.into(), ancestor.into()),
@@ -428,9 +434,9 @@ impl Visibility<LocalModId> {
     }
 }
 
-impl<Id: Into<DefId>> Visibility<Id> {
+impl<Id: Into<VisibilityDefId>> Visibility<Id> {
     /// Returns `true` if an item with this visibility is accessible from the given module.
-    pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
+    pub fn is_accessible_from(self, module: impl Into<VisibilityDefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
@@ -2186,12 +2192,12 @@ impl<'tcx> TyCtxt<'tcx> {
         mut ident: Ident,
         scope: DefId,
         item_id: LocalDefId,
-    ) -> (Ident, ModId) {
+    ) -> (Ident, VisibilityModId) {
         let scope = ident
             .span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
-            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_mod_id());
+            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_mod_id().into());
         (ident, scope)
     }
 
