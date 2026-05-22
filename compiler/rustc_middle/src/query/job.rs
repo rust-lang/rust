@@ -78,12 +78,14 @@ impl<'a, 'tcx> Unparker for &'a WorkerParkingArea<'tcx> {
         debug_assert_eq!(
             thread_bitmask
                 & !(u32::MAX >> (u32::BITS - u32::try_from(self.registry.num_threads()).unwrap())),
-                0
+            0
         );
         let mut waiters = [(); rustc_thread_pool::max_num_threads()].map(|()| None);
         for i in 0..self.registry.num_threads() {
             if thread_bitmask & (1 << i) != 0 {
-                waiters[i] = Some(self.lots[i].0.lock_waiter().expect("trying to unpark a non-parked thread"));
+                waiters[i] = Some(
+                    self.lots[i].0.lock_waiter().expect("trying to unpark a non-parked thread"),
+                );
             }
         }
         rustc_thread_pool::mark_unblocked(&self.registry, thread_bitmask.count_ones() as usize);
