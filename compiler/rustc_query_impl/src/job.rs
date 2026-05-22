@@ -96,7 +96,7 @@ fn abstracted_waiters_of<'a, 'tcx>(
     // Add the explicit waiters which use condvars and are resumable
     let worker_threads = query.entry_status.waiter_threads();
     if worker_threads != 0 {
-        for i in 0..u32::BITS {
+        for i in 0..rustc_thread_pool::max_num_threads() {
             if worker_threads & (1 << i) != 0 {
                 let waiter = waiters[i as usize].as_ref().unwrap();
                 result.push(AbstractedWaiter {

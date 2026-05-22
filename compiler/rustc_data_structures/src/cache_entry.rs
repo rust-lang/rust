@@ -52,8 +52,8 @@ impl Status {
             thread_mask,
             current_num_threads()
         );
+        let mut status = self.0.load(atomic::Ordering::Relaxed);
         loop {
-            let status = self.0.load(atomic::Ordering::Relaxed);
             assert!(status & Self::IN_PROGRESS_BIT != 0);
             assert!(status & thread_mask == thread_mask);
             let res = self.0.compare_exchange_weak(
@@ -62,12 +62,22 @@ impl Status {
                 atomic::Ordering::Relaxed,
                 atomic::Ordering::Relaxed,
             );
-            if res.is_ok() {
+            if let Err(new_status) = res {
+                status = new_status;
+            } else {
                 break;
             }
         }
     }
 }
+
+const _: () = {
+    if Status::IN_PROGRESS_THREAD_INDEX_MASK.count_ones() as usize
+        != rustc_thread_pool::max_num_threads()
+    {
+        panic!();
+    }
+};
 
 pub struct CacheEntry<V> {
     status: Status,
