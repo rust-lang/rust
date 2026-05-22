@@ -61,29 +61,6 @@ impl SlotIndex {
         SlotIndex { bucket_idx, index_in_bucket }
     }
 
-    // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
-    // `self` comes from SlotIndex::from_index
-    #[inline]
-    unsafe fn get<'a, V: Copy>(
-        &self,
-        buckets: &'a [AtomicPtr<CacheEntry<V>>; 21],
-    ) -> Option<&'a CacheEntry<V>> {
-        let bucket = &buckets[self.bucket_idx];
-        let ptr = bucket.load(Ordering::Acquire);
-        // Bucket is not yet initialized: then we obviously won't find this entry in that bucket.
-        if ptr.is_null() {
-            return None;
-        }
-        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
-        // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
-        // must be inbounds.
-        let entry_ptr = unsafe { ptr.add(self.index_in_bucket) };
-
-        // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
-        // CacheEntry access.
-        Some(unsafe { &*entry_ptr })
-    }
-
     fn bucket_ptr<V>(&self, bucket: &AtomicPtr<CacheEntry<V>>) -> *mut CacheEntry<V> {
         let ptr = bucket.load(Ordering::Acquire);
         if ptr.is_null() { Self::initialize_bucket(bucket, self.bucket_idx) } else { ptr }
