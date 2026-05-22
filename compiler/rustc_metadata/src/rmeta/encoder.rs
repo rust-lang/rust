@@ -6,6 +6,7 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
@@ -2463,6 +2464,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         &mut self,
         hcx: &mut PublicApiHashingContext<'_>,
     ) -> Hashed<LazyArray<StrippedCfgItem<DefIndex>>> {
+        if hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            return Hashed { value: LazyArray::default(), hash: Some(Fingerprint::ZERO) };
+        }
         hashed_lazy_array!(
             self,
             self.tcx.stripped_cfg_items(LOCAL_CRATE),

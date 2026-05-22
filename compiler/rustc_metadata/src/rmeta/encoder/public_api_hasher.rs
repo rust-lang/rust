@@ -101,6 +101,9 @@ pub(crate) struct PublicApiHashingContext<'a> {
 }
 
 impl<'a> PublicApiHashingContext<'a> {
+    pub(crate) fn enabled(&self) -> bool {
+        self.hash_public_api
+    }
     pub(crate) fn new(hash_public_api: bool, hcx: StableHashingContext<'a>) -> Self {
         Self { hash_public_api, hcx, def_id_hashes: Default::default() }
     }
