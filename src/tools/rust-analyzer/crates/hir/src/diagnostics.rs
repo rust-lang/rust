@@ -101,6 +101,7 @@ macro_rules! diagnostics {
 }
 
 diagnostics![AnyDiagnostic<'db> ->
+    ArrayPatternWithoutFixedLength,
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CannotBeDereferenced<'db>,
@@ -304,6 +305,11 @@ pub struct MismatchedArrayPatLen {
     pub expected: u128,
     pub found: u128,
     pub has_rest: bool,
+}
+
+#[derive(Debug)]
+pub struct ArrayPatternWithoutFixedLength {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
@@ -835,6 +841,10 @@ impl<'db> AnyDiagnostic<'db> {
             &InferenceDiagnostic::MismatchedArrayPatLen { pat, expected, found, has_rest } => {
                 let pat = pat_syntax(pat)?.map(Into::into);
                 MismatchedArrayPatLen { pat, expected, found, has_rest }.into()
+            }
+            &InferenceDiagnostic::ArrayPatternWithoutFixedLength { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                ArrayPatternWithoutFixedLength { pat }.into()
             }
             InferenceDiagnostic::ExpectedArrayOrSlicePat { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);

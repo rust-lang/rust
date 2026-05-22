@@ -297,6 +297,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         has_rest: bool,
     },
+    ArrayPatternWithoutFixedLength {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     ExpectedArrayOrSlicePat {
         #[type_visitable(ignore)]
         pat: PatId,
