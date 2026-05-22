@@ -19,6 +19,21 @@ help: you might have intended to implement this trait for a given type
 LL |     impl X for /* Type */ {
    |            ++++++++++++++
 
+error[E0782]: expected a type, found a trait
+  --> $DIR/wrong-lifetime-rib.rs:35:10
+   |
+LL |     impl X {
+   |          ^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     impl dyn X {
+   |          +++
+help: you might have intended to implement this trait for a given type
+   |
+LL |     impl X for /* Type */ {
+   |            ++++++++++++++
+
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/wrong-lifetime-rib.rs:9:5
    |
@@ -40,7 +55,28 @@ LL -         reuse<<<&Project> :: Ty> :: Ty as Iterator>::next;
 LL +         reuse<<<&() as Example>::Ty> :: Ty as Iterator>::next;
    |
 
-error: aborting due to 4 previous errors
+error[E0782]: expected a type, found a trait
+  --> $DIR/wrong-lifetime-rib.rs:37:21
+   |
+LL |             let _: &X;
+   |                     ^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |             let _: &dyn X;
+   |                     +++
 
-Some errors have detailed explanations: E0116, E0223, E0423, E0782.
+error[E0599]: `()` is not an iterator
+  --> $DIR/wrong-lifetime-rib.rs:36:25
+   |
+LL |         reuse Iterator::fold {
+   |                         ^^^^ `()` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `(): Iterator`
+           which is required by `&mut (): Iterator`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0116, E0223, E0423, E0599, E0782.
 For more information about an error, try `rustc --explain E0116`.
