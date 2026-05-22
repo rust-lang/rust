@@ -149,7 +149,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
 }
 
 fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    if let ty::Alias(ty::AliasTy {
+    if let ty::Alias(_, ty::AliasTy {
         kind: ty::Opaque { def_id },
         ..
     }) = *ty.kind()

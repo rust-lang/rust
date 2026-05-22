@@ -323,7 +323,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         IsFreeze::from_fields(tys.iter().map(|ty| self.is_ty_freeze(tcx, typing_env, ty)))
                     },
                     // Treat type parameters as though they were `Freeze`.
-                    ty::Param(_) | ty::Alias(..) => return IsFreeze::Yes,
+                    ty::Param(_) | ty::Alias(_, ..) => return IsFreeze::Yes,
                     // TODO: check other types.
                     _ => {
                         *e = IsFreeze::No;
@@ -384,7 +384,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         e: &'tcx Expr<'tcx>,
     ) -> bool {
         // Make sure to instantiate all types coming from `typeck` with `gen_args`.
-        let ty = EarlyBinder::bind(typeck.expr_ty(e)).instantiate(tcx, gen_args);
+        let ty = EarlyBinder::bind(tcx, typeck.expr_ty(e)).instantiate(tcx, gen_args);
         let ty = tcx
             .try_normalize_erasing_regions(typing_env, ty)
             .unwrap_or(ty.skip_norm_wip());
@@ -401,7 +401,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 },
                 ExprKind::Path(ref p) => {
                     let res = typeck.qpath_res(p, e.hir_id);
-                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id))
+                    let gen_args = EarlyBinder::bind(tcx, typeck.node_args(e.hir_id))
                         .instantiate(tcx, gen_args)
                         .skip_norm_wip();
                     match res {
@@ -599,7 +599,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         init_expr = next_init;
                     },
                     ExprKind::Path(ref init_path) => {
-                        let next_init_args = EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id))
+                        let next_init_args = EarlyBinder::bind(tcx, init_typeck.node_args(init_expr.hir_id))
                             .instantiate(tcx, init_args)
                             .skip_norm_wip();
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
@@ -904,6 +904,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAssocFolder<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(
+            _,
             ty @ ty::AliasTy {
                 kind: ty::Projection { .. },
                 ..
