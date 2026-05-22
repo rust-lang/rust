@@ -114,12 +114,12 @@ impl Sleep {
 
     /// Mark a previously blocked Rayon worker thread as unblocked
     #[inline]
-    pub(super) fn mark_unblocked(&self) {
+    pub(super) fn mark_unblocked(&self, thread_count: usize) {
         let mut data = self.data.lock().unwrap();
-        debug_assert!(data.active_threads < data.worker_count);
-        debug_assert!(data.blocked_threads > 0);
-        data.active_threads += 1;
-        data.blocked_threads -= 1;
+        debug_assert!(data.active_threads + thread_count <= data.worker_count);
+        debug_assert!(data.blocked_threads >= thread_count);
+        data.active_threads += thread_count;
+        data.blocked_threads -= thread_count;
     }
 
     #[inline]

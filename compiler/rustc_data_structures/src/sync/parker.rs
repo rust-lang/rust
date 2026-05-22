@@ -5,5 +5,5 @@ pub trait Parker {
 }
 
 pub trait Unparker: Copy {
-    fn unpark(self, thread_index: usize);
+    fn unpark(self, thread_bitmask: u32);
 }

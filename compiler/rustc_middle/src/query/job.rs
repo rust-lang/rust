@@ -74,12 +74,24 @@ impl<'a, 'tcx> Parker for WorkerParker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Unparker for &'a WorkerParkingArea<'tcx> {
-    fn unpark(self, thread_index: usize) {
-        self.lots[thread_index]
-            .0
-            .lock_waiter()
-            .expect("trying to unpark a non-parked thread")
-            .unpark(&self.registry);
+    fn unpark(self, thread_bitmask: u32) {
+        debug_assert_eq!(
+            thread_bitmask
+                & !(u32::MAX >> (u32::BITS - u32::try_from(self.registry.num_threads()).unwrap())),
+                0
+        );
+        let mut waiters = [(); rustc_thread_pool::max_num_threads()].map(|()| None);
+        for i in 0..self.registry.num_threads() {
+            if thread_bitmask & (1 << i) != 0 {
+                waiters[i] = Some(self.lots[i].0.lock_waiter().expect("trying to unpark a non-parked thread"));
+            }
+        }
+        rustc_thread_pool::mark_unblocked(&self.registry, thread_bitmask.count_ones() as usize);
+        for waiter in waiters.iter_mut() {
+            if let Some(waiter) = waiter.take() {
+                waiter.unpark();
+            }
+        }
     }
 }
 
@@ -175,11 +187,10 @@ impl<'a, 'tcx> QueryWaiterGuard<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn unpark(mut self, registry: &Registry) {
+    fn unpark(mut self) {
         debug_assert!(matches!(*self.guard, WorkerStatus::Waiting(_)));
         *self.guard = WorkerStatus::Free;
         drop(self.guard);
-        rustc_thread_pool::mark_unblocked(registry);
         assert!(self.condvar.notify_one());
     }
 
@@ -187,8 +198,8 @@ impl<'a, 'tcx> QueryWaiterGuard<'a, 'tcx> {
     pub fn unpark_with_cycle(mut self, cycle: Cycle<'tcx>, registry: &Registry) {
         debug_assert!(matches!(*self.guard, WorkerStatus::Waiting(_)));
         *self.guard = WorkerStatus::Cycle(cycle);
+        rustc_thread_pool::mark_unblocked(registry, 1);
         drop(self.guard);
-        rustc_thread_pool::mark_unblocked(registry);
         assert!(self.condvar.notify_one());
     }
 }

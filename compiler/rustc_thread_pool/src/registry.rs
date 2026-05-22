@@ -633,8 +633,8 @@ pub fn mark_blocked() {
 
 /// Mark a previously blocked Rayon worker thread as unblocked
 #[inline]
-pub fn mark_unblocked(registry: &Registry) {
-    registry.sleep.mark_unblocked()
+pub fn mark_unblocked(registry: &Registry, thread_count: usize) {
+    registry.sleep.mark_unblocked(thread_count)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

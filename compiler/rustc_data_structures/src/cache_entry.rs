@@ -284,11 +284,7 @@ impl<V> CacheEntry<V> {
         debug_assert!(status & Status::IN_PROGRESS_BIT != 0);
         let waiters = status & !Status::IN_PROGRESS_BIT;
         if waiters != 0 {
-            for i in 0..(u32::BITS - 2) {
-                if waiters & (1 << i) != 0 {
-                    unparker.unpark(i as usize);
-                }
-            }
+            unparker.unpark(waiters);
         }
         value
     }
