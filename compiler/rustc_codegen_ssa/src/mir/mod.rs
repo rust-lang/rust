@@ -3,9 +3,9 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
+use rustc_middle::mir::{Local, UnwindTerminateReason, traversal};
 use rustc_middle::mono::{InstantiationMode, MonoItem};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::ErrorGuaranteed;
@@ -194,7 +194,7 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mut mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
+    let mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
         InstantiationMode::LocalCopy => tcx.build_codegen_mir(instance),
         InstantiationMode::GloballyShared { .. } => {
             rustc_mir_transform::build_codegen_mir(tcx, instance)
@@ -206,10 +206,6 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
-
-    if tcx.features().ergonomic_clones() {
-        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, mir.clone()));
-    }
 
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);
 
@@ -323,65 +319,6 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     for bb in traversal_order {
         fx.codegen_block(bb);
     }
-}
-
-/// Replace `clone` calls that come from `use` statements with direct copies if possible.
-// FIXME: Move this function to mir::transform when post-mono MIR passes land.
-fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    mut mir: Body<'tcx>,
-) -> Body<'tcx> {
-    let tcx = cx.tcx();
-
-    if tcx.features().ergonomic_clones() {
-        for bb in mir.basic_blocks.as_mut() {
-            let mir::TerminatorKind::Call {
-                args,
-                destination,
-                target,
-                call_source: mir::CallSource::Use,
-                ..
-            } = &bb.terminator().kind
-            else {
-                continue;
-            };
-
-            // CallSource::Use calls always use 1 argument.
-            assert_eq!(args.len(), 1);
-            let arg = &args[0];
-
-            // These types are easily available from locals, so check that before
-            // doing DefId lookups to figure out what we're actually calling.
-            let arg_ty = arg.node.ty(&mir.local_decls, tcx);
-
-            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
-
-            if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
-                continue;
-            }
-
-            let Some(arg_place) = arg.node.place() else { continue };
-
-            let destination_block = target.unwrap();
-
-            bb.statements.push(mir::Statement::new(
-                bb.terminator().source_info,
-                mir::StatementKind::Assign(Box::new((
-                    *destination,
-                    mir::Rvalue::Use(
-                        mir::Operand::Copy(
-                            arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
-                        ),
-                        mir::WithRetag::Yes,
-                    ),
-                ))),
-            ));
-
-            bb.terminator_mut().kind = mir::TerminatorKind::Goto { target: destination_block };
-        }
-    }
-
-    mir
 }
 
 /// Produces, for each argument, a `Value` pointing at the
