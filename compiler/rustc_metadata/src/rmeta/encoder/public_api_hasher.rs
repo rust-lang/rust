@@ -48,18 +48,6 @@ impl PublicApiHasher {
             value.stable_hash(hcx.hcx_mut(), &mut self.0);
         }
     }
-    #[inline(always)]
-    pub(crate) fn digest_iter<'a, I>(&mut self, values: I, hcx: &mut impl PublicApiHashState<'a>)
-    where
-        I: IntoIterator,
-        I::Item: StableHash,
-    {
-        if hcx.enabled() {
-            for value in values {
-                self.digest(value, hcx);
-            }
-        }
-    }
 }
 
 pub(crate) trait TablePublicApiHasher<I: Idx>: Default {
@@ -192,6 +180,17 @@ impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
     #[inline(always)]
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then_some(Fingerprint::ZERO)
+    }
+}
+
+pub(crate) struct Unhashed<T>(pub(crate) T);
+impl<T> StableHash for Unhashed<T> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {}
+}
+
+impl<T> fmt::Debug for Unhashed<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "unhashed".fmt(f)
     }
 }
 
@@ -366,8 +365,9 @@ pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
     pub(crate) expn_hashes: Hashed<ExpnHashTable>,
 
-    // FIXME do we need to hash this?
-    pub(crate) def_path_hash_map: Hashed<LazyValue<DefPathHashMapRef<'static>>>,
+    // The introduction of the option to store the DefIndex part of DefId-s as DefPathHash in the
+    // metadata was done to remove this from the public hash.
+    pub(crate) def_path_hash_map: Unhashed<LazyValue<DefPathHashMapRef<'static>>>,
 
     // FIXME do we need to hash this?
     pub(crate) source_map: Hashed<LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>>,
@@ -464,7 +464,7 @@ impl HashableCrateRoot {
             expn_data: self.expn_data.value,
             expn_hashes: self.expn_hashes.value,
 
-            def_path_hash_map: self.def_path_hash_map.value,
+            def_path_hash_map: self.def_path_hash_map.0,
 
             source_map: self.source_map.value,
             target_modifiers: self.target_modifiers.value,

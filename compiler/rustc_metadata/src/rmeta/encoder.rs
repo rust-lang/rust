@@ -45,7 +45,7 @@ use self::public_api_hasher::{
 };
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
-use crate::rmeta::encoder::public_api_hasher::PublicApiHashState;
+use crate::rmeta::encoder::public_api_hasher::{PublicApiHashState, Unhashed};
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
@@ -676,19 +676,10 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
         }
     }
 
-    fn encode_def_path_hash_map<'h>(
-        &mut self,
-        hcx: &mut impl PublicApiHashState<'h>,
-    ) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
+    fn encode_def_path_hash_map(&mut self) -> Unhashed<LazyValue<DefPathHashMapRef<'static>>> {
         let value = self
             .lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()));
-        // an ordered hash of all local defids encapsulates all information contained in a reverse
-        // mapping as well.
-        let mut hasher = PublicApiHasher::default();
-        if hcx.enabled() {
-            hasher.digest_iter(self.tcx.iter_local_def_id(), hcx);
-        }
-        Hashed { hash: hasher.finish(hcx), value }
+        Unhashed(value)
     }
 
     fn encode_source_map<'h>(
@@ -921,7 +912,7 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
         let (syntax_contexts, expn_data, expn_hashes) =
             stat!("hygiene", || self.encode_hygiene(hcx));
 
-        let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map(hcx));
+        let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map());
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
