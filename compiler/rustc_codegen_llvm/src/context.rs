@@ -25,7 +25,7 @@ use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
@@ -936,6 +936,17 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // #[no_mangle] extern "C" fn main(..) {..}
             None
         }
+    }
+
+    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
+        matches!(
+            name,
+            sym::autodiff
+                | sym::catch_unwind
+                | sym::volatile_load
+                | sym::unaligned_volatile_load
+                | sym::black_box
+        )
     }
 }
 
