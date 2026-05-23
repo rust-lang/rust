@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
 use rustc_session::config::{DebugInfo, OptLevel};
@@ -298,7 +298,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub(crate) fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
-        let ty = self.monomorphize(self.mir.local_decls[local].ty);
+        let ty = self.mir.local_decls[local].ty;
         let layout = bx.cx().layout_of(ty);
         let to_backend_ty = bx.cx().immediate_backend_type(layout);
         let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
@@ -342,10 +342,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         |(dbg_scope, _, span)| {
                             // FIXME(eddyb) is this `+ 1` needed at all?
                             let kind = VariableKind::ArgumentVariable(arg_index + 1);
-
-                            let arg_ty = self.monomorphize(decl.ty);
-
-                            bx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
+                            bx.create_dbg_var(name, decl.ty, dbg_scope, kind, span)
                         },
                     )
                 } else {
@@ -589,13 +586,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             };
 
             let var_ty = if let Some(ref fragment) = var.composite {
-                self.monomorphize(fragment.ty)
+                fragment.ty
             } else {
                 match var.value {
-                    mir::VarDebugInfoContents::Place(place) => {
-                        self.monomorphized_place_ty(place.as_ref())
-                    }
-                    mir::VarDebugInfoContents::Const(c) => self.monomorphize(c.ty()),
+                    mir::VarDebugInfoContents::Place(place) => place.ty(self.mir, self.cx.tcx()).ty,
+                    mir::VarDebugInfoContents::Const(c) => c.ty(),
                 }
             };
 
@@ -763,19 +758,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let dbg_scope = match scope_data.inlined {
-            Some((callee, _)) => {
-                let callee = self.monomorphize(callee);
-                *self
-                    .debug_context
-                    .as_mut()
-                    .unwrap()
-                    .inlined_function_scopes
-                    .entry(callee)
-                    .or_insert_with(|| {
-                        let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
-                        bx.dbg_scope_fn(callee, callee_fn_abi, None)
-                    })
-            }
+            Some((callee, _)) => *self
+                .debug_context
+                .as_mut()
+                .unwrap()
+                .inlined_function_scopes
+                .entry(callee)
+                .or_insert_with(|| {
+                    let callee_fn_abi = self.cx.fn_abi_of_instance(callee, ty::List::empty());
+                    bx.dbg_scope_fn(callee, callee_fn_abi, None)
+                }),
             None => bx.dbg_create_lexical_block(scope_data.span.lo(), parent_scope.dbg_scope),
         };
 

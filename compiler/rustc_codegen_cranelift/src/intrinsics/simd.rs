@@ -180,7 +180,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             // Make sure this is actually a SIMD vector.
-            let idx_ty = fx.monomorphize(idx.node.ty(fx.mir, fx.tcx));
+            let idx_ty = idx.node.ty(fx.mir, fx.tcx);
             if !idx_ty.is_simd()
                 || !matches!(idx_ty.simd_size_and_type(fx.tcx).1.kind(), ty::Uint(ty::UintTy::U32))
             {
