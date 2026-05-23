@@ -530,7 +530,6 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // method of calling a catch panic whilst juggling ownership.
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let data_ptr = (&raw mut data) as *mut u8;
     // SAFETY:
     //
     // Access to the union's fields: this is `std` and we know that the `catch_unwind`
@@ -541,10 +540,10 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // - `do_catch`, the second argument, can be called with the `data_ptr` as well.
     // See their safety preconditions for more information
     unsafe {
-        return if intrinsics::catch_unwind(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
-            Ok(ManuallyDrop::into_inner(data.r))
-        } else {
+        return if intrinsics::catch_unwind(do_call, &raw mut data, do_catch) {
             Err(ManuallyDrop::into_inner(data.p))
+        } else {
+            Ok(ManuallyDrop::into_inner(data.r))
         };
     }
 
@@ -568,17 +567,12 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // data must be non-NUL, correctly aligned, and a pointer to a `Data<F, R>`
     // Its must contains a valid `f` (type: F) value that can be use to fill
     // `data.r`.
-    //
-    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
-    // expects normal function pointers.
     #[inline]
-    fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
+    unsafe fn do_call<F: FnOnce() -> R, R>(data: *mut Data<F, R>) {
         // SAFETY: this is the responsibility of the caller, see above.
         unsafe {
-            let data = data as *mut Data<F, R>;
-            let data = &mut (*data);
-            let f = ManuallyDrop::take(&mut data.f);
-            data.r = ManuallyDrop::new(f());
+            let f = ManuallyDrop::take(&mut (*data).f);
+            (*data).r = ManuallyDrop::new(f());
         }
     }
 
@@ -590,22 +584,17 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // data must be non-NUL, correctly aligned, and a pointer to a `Data<F, R>`
     // Since this uses `cleanup` it also hinges on a correct implementation of
     // `__rustc_panic_cleanup`.
-    //
-    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
-    // expects normal function pointers.
     #[inline]
     #[rustc_nounwind] // `intrinsic::catch_unwind` requires catch fn to be nounwind
-    fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
+    unsafe fn do_catch<F: FnOnce() -> R, R>(data: *mut Data<F, R>, payload: *mut u8) {
         // SAFETY: this is the responsibility of the caller, see above.
         //
         // When `__rustc_panic_cleaner` is correctly implemented we can rely
         // on `obj` being the correct thing to pass to `data.p` (after wrapping
         // in `ManuallyDrop`).
         unsafe {
-            let data = data as *mut Data<F, R>;
-            let data = &mut (*data);
             let obj = cleanup(payload);
-            data.p = ManuallyDrop::new(obj);
+            (*data).p = ManuallyDrop::new(obj);
         }
     }
 }

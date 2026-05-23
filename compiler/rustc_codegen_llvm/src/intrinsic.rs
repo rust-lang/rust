@@ -288,18 +288,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
             sym::catch_unwind => {
-                let result = PlaceRef {
-                    val: result_place.unwrap(),
-                    layout: result_layout,
-                };
                 catch_unwind_intrinsic(
                     self,
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
-                    result,
-                );
-                return IntrinsicResult::WroteIntoPlace;
+                )
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
@@ -1351,22 +1345,21 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: PlaceRef<'tcx, &'ll Value>,
-) {
+) -> &'ll Value {
     if !bx.sess().panic_strategy().unwinds() {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.call(try_func_ty, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
-        OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
+        bx.const_bool(false)
     } else if wants_msvc_seh(bx.sess()) {
-        codegen_msvc_try(bx, try_func, data, catch_func, dest);
+        codegen_msvc_try(bx, try_func, data, catch_func)
     } else if wants_wasm_eh(bx.sess()) {
-        codegen_wasm_try(bx, try_func, data, catch_func, dest);
+        codegen_wasm_try(bx, try_func, data, catch_func)
     } else if bx.sess().target.os == Os::Emscripten {
-        codegen_emcc_try(bx, try_func, data, catch_func, dest);
+        codegen_emcc_try(bx, try_func, data, catch_func)
     } else {
-        codegen_gnu_try(bx, try_func, data, catch_func, dest);
+        codegen_gnu_try(bx, try_func, data, catch_func)
     }
 }
 
@@ -1382,8 +1375,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: PlaceRef<'tcx, &'ll Value>,
-) {
+) -> &'ll Value {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
 
@@ -1399,12 +1391,12 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
         // We're generating an IR snippet that looks like:
         //
-        //   declare i32 @rust_try(%try_func, %data, %catch_func) {
+        //   declare bool @rust_try(%try_func, %data, %catch_func) {
         //      %slot = alloca i8*
         //      invoke %try_func(%data) to label %normal unwind label %catchswitch
         //
         //   normal:
-        //      ret i32 0
+        //      ret i1 false
         //
         //   catchswitch:
         //      %cs = catchswitch within none [%catchpad_rust, %catchpad_foreign] unwind to caller
@@ -1421,7 +1413,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         //      catchret from %tok to label %caught
         //
         //   caught:
-        //      ret i32 1
+        //      ret i1 true
         //   }
         //
         // This structure follows the basic usage of throw/try/catch in LLVM.
@@ -1459,7 +1451,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
 
         bx.switch_to_block(normal);
-        bx.ret(bx.const_i32(0));
+        bx.ret(bx.const_bool(false));
 
         bx.switch_to_block(catchswitch);
         let cs = bx.catch_switch(None, None, &[catchpad_rust, catchpad_foreign]);
@@ -1516,13 +1508,13 @@ fn codegen_msvc_try<'ll, 'tcx>(
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
-        bx.ret(bx.const_i32(1));
+        bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    OperandValue::Immediate(ret).store(bx, dest);
+    ret
 }
 
 // WASM's definition of the `rust_try` function.
@@ -1531,8 +1523,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: PlaceRef<'tcx, &'ll Value>,
-) {
+) -> &'ll Value {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
 
@@ -1547,12 +1538,12 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
         // We're generating an IR snippet that looks like:
         //
-        //   declare i32 @rust_try(%try_func, %data, %catch_func) {
+        //   declare i1 @rust_try(%try_func, %data, %catch_func) {
         //      %slot = alloca i8*
         //      invoke %try_func(%data) to label %normal unwind label %catchswitch
         //
         //   normal:
-        //      ret i32 0
+        //      ret i1 false
         //
         //   catchswitch:
         //      %cs = catchswitch within none [%catchpad] unwind to caller
@@ -1565,14 +1556,14 @@ fn codegen_wasm_try<'ll, 'tcx>(
         //      catchret from %tok to label %caught
         //
         //   caught:
-        //      ret i32 1
+        //      ret i1 true
         //   }
         //
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
 
         bx.switch_to_block(normal);
-        bx.ret(bx.const_i32(0));
+        bx.ret(bx.const_bool(false));
 
         bx.switch_to_block(catchswitch);
         let cs = bx.catch_switch(None, None, &[catchpad]);
@@ -1589,13 +1580,13 @@ fn codegen_wasm_try<'ll, 'tcx>(
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
-        bx.ret(bx.const_i32(1));
+        bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    OperandValue::Immediate(ret).store(bx, dest);
+    ret
 }
 
 // Definition of the standard `try` function for Rust using the GNU-like model
@@ -1614,8 +1605,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: PlaceRef<'tcx, &'ll Value>,
-) {
+) -> &'ll Value {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         // Codegens the shims described above:
         //
@@ -1639,7 +1629,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
         bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
 
         bx.switch_to_block(then);
-        bx.ret(bx.const_i32(0));
+        bx.ret(bx.const_bool(false));
 
         // Type indicator for the exception being thrown.
         //
@@ -1655,13 +1645,13 @@ fn codegen_gnu_try<'ll, 'tcx>(
         let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
-        bx.ret(bx.const_i32(1));
+        bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    OperandValue::Immediate(ret).store(bx, dest);
+    ret
 }
 
 // Variant of codegen_gnu_try used for emscripten where Rust panics are
@@ -1672,8 +1662,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
-    dest: PlaceRef<'tcx, &'ll Value>,
-) {
+) -> &'ll Value {
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         // Codegens the shims described above:
         //
@@ -1702,7 +1691,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
 
         bx.switch_to_block(then);
-        bx.ret(bx.const_i32(0));
+        bx.ret(bx.const_bool(false));
 
         // Type indicator for the exception being thrown.
         //
@@ -1737,13 +1726,13 @@ fn codegen_emcc_try<'ll, 'tcx>(
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, catch_data], None, None);
-        bx.ret(bx.const_i32(1));
+        bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    OperandValue::Immediate(ret).store(bx, dest);
+    ret
 }
 
 // Helper function to give a Block to a closure to codegen a shim function.
@@ -1782,20 +1771,20 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
     let i8p = Ty::new_mut_ptr(tcx, tcx.types.i8);
-    // `unsafe fn(*mut i8) -> ()`
+    // `unsafe fn(*mut Data) -> ()`
     let try_fn_ty = Ty::new_fn_ptr(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig_rust_abi([i8p], tcx.types.unit, hir::Safety::Unsafe)),
     );
-    // `unsafe fn(*mut i8, *mut i8) -> ()`
+    // `unsafe fn(*mut Data, *mut i8) -> ()`
     let catch_fn_ty = Ty::new_fn_ptr(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig_rust_abi([i8p, i8p], tcx.types.unit, hir::Safety::Unsafe)),
     );
-    // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
+    // `unsafe fn(unsafe fn(*mut Data) -> (), *mut Data, unsafe fn(*mut Data, *mut i8) -> ()) -> bool`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig_rust_abi(
         [try_fn_ty, i8p, catch_fn_ty],
-        tcx.types.i32,
+        tcx.types.bool,
         hir::Safety::Unsafe,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
