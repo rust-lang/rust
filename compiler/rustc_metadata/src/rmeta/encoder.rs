@@ -36,7 +36,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, TargetModifier};
-use rustc_span::def_id::CRATE_MOD_ID;
+use rustc_span::def_id::{CRATE_MOD_ID, VisibilityDefId};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
@@ -366,6 +366,14 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> SpanEncoder for EncodeContext<'a, 'tcx,
         def_id.krate.encode(self);
         M::encoded_def_index(self.tcx, def_id).encode(self);
         self.record_encoded_index(def_id)
+    }
+
+    fn encode_visibility_def_id(&mut self, def_id: VisibilityDefId) {
+        // we don't record VisibilityDefId-s with `record_encoded_index` into the publicly reachable
+        // graph, as it cannot be used to query more data. Only to check visibility from other DefId-s
+
+        def_id.0.krate.encode(self);
+        M::encoded_def_index(self.tcx, def_id.0).encode(self);
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
