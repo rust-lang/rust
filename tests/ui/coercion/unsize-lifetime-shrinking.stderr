@@ -1,0 +1,218 @@
+error[E0308]: mismatched types
+  --> $DIR/unsize-lifetime-shrinking.rs:66:5
+   |
+LL | fn mut_to_ref_sized_to_sized<'a: 'b, 'b>(x: Cell<&'a mut Thing>) -> Cell<&'b Thing> {
+   |                                                                     --------------- expected `Cell<&'b Thing>` because of return type
+LL |     x
+   |     ^ types differ in mutability
+   |
+   = note: expected struct `Cell<&'b Thing>`
+              found struct `Cell<&'a mut Thing>`
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:24:5
+   |
+LL | fn ref_to_ref_sized_to_sized<'a: 'b, 'b>(x: Cell<&'a Thing>) -> Cell<&'b Thing> {
+   |                              --      -- lifetime `'b` defined here
+   |                              |
+   |                              lifetime `'a` defined here
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&Thing>`, which makes the generic argument `&Thing` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:111:5
+   |
+LL | fn mut_to_mut_sized_to_sized<'a: 'b, 'b>(x: Cell<&'a mut Thing>) -> Cell<&'b mut Thing> {
+   |                              --      -- lifetime `'b` defined here
+   |                              |
+   |                              lifetime `'a` defined here
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&mut Thing>`, which makes the generic argument `&mut Thing` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:120:5
+   |
+LL | fn mut_to_mut_sized_to_dyn<'a: 'b, 'b>(
+   |                            --      -- lifetime `'b` defined here
+   |                            |
+   |                            lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&mut dyn Trait>`, which makes the generic argument `&mut dyn Trait` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:128:5
+   |
+LL | fn mut_to_mut_upcast<'a: 'b, 'b>(
+   |                      --      -- lifetime `'b` defined here
+   |                      |
+   |                      lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&mut dyn Trait>`, which makes the generic argument `&mut dyn Trait` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:136:5
+   |
+LL | fn mut_to_mut_dyn_same<'a: 'b, 'b>(
+   |                        --      -- lifetime `'b` defined here
+   |                        |
+   |                        lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&mut dyn Trait>`, which makes the generic argument `&mut dyn Trait` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:161:5
+   |
+LL | fn cell_ref_sized_to_sized<'a: 'b, 'b>(x: Cell<Ref<'a, Thing>>) -> Cell<Ref<'b, Thing>> {
+   |                            --      -- lifetime `'b` defined here
+   |                            |
+   |                            lifetime `'a` defined here
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<Ref<'_, Thing>>`, which makes the generic argument `Ref<'_, Thing>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:170:5
+   |
+LL | fn cell_ref_sized_to_dyn<'a: 'b, 'b>(
+   |                          --      -- lifetime `'b` defined here
+   |                          |
+   |                          lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<Ref<'_, dyn Trait>>`, which makes the generic argument `Ref<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:178:5
+   |
+LL | fn cell_ref_upcast<'a: 'b, 'b>(
+   |                    --      -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<Ref<'_, dyn Trait>>`, which makes the generic argument `Ref<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:186:5
+   |
+LL | fn cell_ref_dyn_same<'a: 'b, 'b>(
+   |                      --      -- lifetime `'b` defined here
+   |                      |
+   |                      lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<Ref<'_, dyn Trait>>`, which makes the generic argument `Ref<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:213:5
+   |
+LL | fn cell_ref_mut_sized_to_sized<'a: 'b, 'b>(x: Cell<RefMut<'a, Thing>>) -> Cell<RefMut<'b, Thing>> {
+   |                                --      -- lifetime `'b` defined here
+   |                                |
+   |                                lifetime `'a` defined here
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<RefMut<'_, Thing>>`, which makes the generic argument `RefMut<'_, Thing>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:222:5
+   |
+LL | fn cell_ref_mut_sized_to_dyn<'a: 'b, 'b>(
+   |                              --      -- lifetime `'b` defined here
+   |                              |
+   |                              lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<RefMut<'_, dyn Trait>>`, which makes the generic argument `RefMut<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:230:5
+   |
+LL | fn cell_ref_mut_upcast<'a: 'b, 'b>(
+   |                        --      -- lifetime `'b` defined here
+   |                        |
+   |                        lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<RefMut<'_, dyn Trait>>`, which makes the generic argument `RefMut<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/unsize-lifetime-shrinking.rs:238:5
+   |
+LL | fn cell_ref_mut_dyn_same<'a: 'b, 'b>(
+   |                          --      -- lifetime `'b` defined here
+   |                          |
+   |                          lifetime `'a` defined here
+...
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<RefMut<'_, dyn Trait>>`, which makes the generic argument `RefMut<'_, dyn Trait>` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
