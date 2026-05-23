@@ -20,10 +20,11 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, MonomorphicPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
-    START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
+    Location, MirPhase, MonomorphicPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase,
+    Rvalue, START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
 use rustc_middle::ty::{
     self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, Unnormalized,
@@ -160,7 +161,7 @@ declare_passes! {
     mod impossible_predicates : ImpossiblePredicates;
     mod instsimplify :
         InstSimplify { BeforeInline, AfterSimplifyCfg },
-        SimplifyUbChecks;
+        SimplifyUbChecks { AfterSimplifyCfg, PostMono };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
     mod large_enums : EnumSizeOpt;
@@ -192,7 +193,8 @@ declare_passes! {
             PreOptimizations,
             Final,
             MakeShim,
-            AfterUnreachableEnumBranching
+            AfterUnreachableEnumBranching,
+            PostMono
         },
         SimplifyLocals {
             BeforeConstProp,
@@ -202,7 +204,8 @@ declare_passes! {
     mod simplify_branches : SimplifyConstCondition {
         AfterInstSimplify,
         AfterConstProp,
-        Final
+        Final,
+        PostMono
     };
     mod simplify_comparison_integral : SimplifyComparisonIntegral;
     mod single_use_consts : SingleUseConsts;
@@ -700,11 +703,11 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 }
 
-pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    fn o1<T>(x: T) -> WithMinOptLevel<T> {
-        WithMinOptLevel(1, x)
-    }
+fn o1<T>(x: T) -> WithMinOptLevel<T> {
+    WithMinOptLevel(1, x)
+}
 
+pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.def_id();
     let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
         && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
@@ -753,7 +756,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
-            &instsimplify::SimplifyUbChecks,
+            &instsimplify::SimplifyUbChecks::AfterSimplifyCfg,
             // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`, simplify
             // ```
             // _13 = const false;
@@ -865,15 +868,41 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         return body;
     }
 
+    // If the body contains the UB check intrinsic that is only to be monomorphized at codegen
+    // time, we cannot generate codegen MIR early. We want post-mono optimizations to optimize on
+    // whether UB checks are enabled or disabled at codegen time.
+    let mut vis = MonoCompatVisitor { contains_runtime_check: false };
+    vis.visit_body(&body);
+    if vis.contains_runtime_check {
+        return body;
+    }
+
     if body.visit_with(&mut Normalizable { tcx }).is_break() {
         return body;
     }
 
     // Monomorphizing this body won't reveal any new information that is useful for
     // optimizations, so we just run passes that make the MIR ready for codegen backends.
-    let instance = Instance::mono(tcx, did.to_def_id());
-    body = transform_to_codegen_mir(tcx, instance, body);
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[&add_call_guards::CriticalCallEdges],
+        Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
+        pm::Optimizations::Allowed,
+    );
     return body;
+
+    struct MonoCompatVisitor {
+        contains_runtime_check: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
+        fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+            if let Operand::RuntimeChecks(_) = operand {
+                self.contains_runtime_check = true;
+            }
+            self.super_operand(operand, location);
+        }
+    }
 
     struct Normalizable<'tcx> {
         tcx: TyCtxt<'tcx>,
@@ -928,7 +957,12 @@ fn transform_to_codegen_mir<'tcx>(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&add_call_guards::CriticalCallEdges],
+        &[
+            &instsimplify::SimplifyUbChecks::PostMono,
+            &o1(simplify_branches::SimplifyConstCondition::PostMono),
+            &o1(simplify::SimplifyCfg::PostMono),
+            &add_call_guards::CriticalCallEdges,
+        ],
         Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
         pm::Optimizations::Allowed,
     );

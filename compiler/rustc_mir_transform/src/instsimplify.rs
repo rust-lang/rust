@@ -445,11 +445,17 @@ fn resolve_rust_intrinsic<'tcx>(
     Some((intrinsic.name, args))
 }
 
-pub(super) struct SimplifyUbChecks;
+pub(super) enum SimplifyUbChecks {
+    AfterSimplifyCfg,
+    PostMono,
+}
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyUbChecks {
     fn name(&self) -> &'static str {
-        "SimplifyUbChecks"
+        match self {
+            SimplifyUbChecks::AfterSimplifyCfg => "SimplifyUbChecks-after-simplifycfg",
+            SimplifyUbChecks::PostMono => "SimplifyUbChecks-post-mono",
+        }
     }
 
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -457,7 +463,12 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyUbChecks {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let preserve_ub_checks = find_attr!(tcx.hir_krate_attrs(), RustcPreserveUbChecks);
+        let preserve_ub_checks = match self {
+            SimplifyUbChecks::PostMono => false,
+            SimplifyUbChecks::AfterSimplifyCfg => {
+                find_attr!(tcx.hir_krate_attrs(), RustcPreserveUbChecks)
+            }
+        };
         if !preserve_ub_checks {
             SimplifyUbCheckVisitor { tcx }.visit_body(body);
         }

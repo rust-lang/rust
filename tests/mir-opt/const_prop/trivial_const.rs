@@ -1,5 +1,5 @@
 //@ test-mir-pass: SimplifyConstCondition-after-inst-simplify
-//@ compile-flags: -Zmir-enable-passes=+SimplifyUbChecks -Zub_checks=false -Zinline-mir
+//@ compile-flags: -Zmir-enable-passes=+SimplifyUbChecks-after-simplifycfg -Zub_checks=false -Zinline-mir
 
 #![crate_type = "lib"]
 
