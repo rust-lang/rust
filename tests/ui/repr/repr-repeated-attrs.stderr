@@ -1,0 +1,9 @@
+error[E0566]: conflicting representation hints
+  --> $DIR/repr-repeated-attrs.rs:29:8
+   |
+LL | #[repr(Rust, u8, u8)]
+   |        ^^^^  ^^  ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0566`.
