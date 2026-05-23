@@ -445,6 +445,7 @@ impl HashableCrateRoot {
         let (rdr_hashes, hashes) = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
             let graph = ecx.index_graph_builder.take().unwrap().build_graph(&mut hcx.hcx);
+            debug!("Hash graph {graph:?}");
             let public_hashes =
                 build_public_hashes(&graph, &hcx.def_id_hashes, ecx.tcx, &mut hcx.hcx);
 
@@ -547,6 +548,25 @@ struct IndexGraph<'tcx> {
     nodes: IndexMap<Node<'tcx>, Fingerprint>,
     edges: IndexVec<NodeIdx, Vec<NodeIdx>>,
     roots: Vec<NodeIdx>,
+}
+
+impl fmt::Debug for IndexGraph<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let node = |idx| self.nodes.get_index(idx).unwrap().0;
+        let fingerprint = |idx| self.nodes.get_index(idx).unwrap().1;
+        writeln!(f, "roots:")?;
+        for root in &self.roots {
+            writeln!(f, "   {:?}", node(*root))?;
+        }
+        writeln!(f, "nodes:")?;
+        for (from, edges) in self.edges.iter_enumerated() {
+            writeln!(f, "{:?}: {:x?}", node(from), fingerprint(from))?;
+            for to in edges {
+                writeln!(f, "   {:?}", node(*to))?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<'tcx> IndexGraph<'tcx> {
@@ -700,7 +720,7 @@ pub(super) enum LocalNode<'tcx> {
     Predicate(PredicateKind<'tcx>),
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash, StableHash)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, StableHash, Debug)]
 pub(super) enum Node<'tcx> {
     DefId(DefId),
     ExpnId(ExpnId),
