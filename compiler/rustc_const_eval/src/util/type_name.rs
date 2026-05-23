@@ -203,6 +203,12 @@ impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
         // `std::any::type_name` should never print verbose type names
         false
     }
+
+    // `type_name` output is user-observable; keep it byte-stable here even
+    // though the docs permit drift.
+    fn add_disambiguating_parens_in_prefix_position(&self) -> bool {
+        false
+    }
 }
 
 impl Write for TypeNamePrinter<'_> {

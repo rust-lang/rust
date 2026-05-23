@@ -352,6 +352,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// will always be printed.)
     fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool;
 
+    /// Whether `pretty_print_type` should wrap a multi-bound `impl` / `dyn`
+    /// inner in parens after a prefix type constructor (`&`, `&mut`, `*const`,
+    /// `*mut`), so the output is `&(impl A + B)` rather than the parser-
+    /// ambiguous `&impl A + B`. Byte-stable printers (mangling, `type_name`)
+    /// override this to `false`.
+    fn add_disambiguating_parens_in_prefix_position(&self) -> bool {
+        true
+    }
+
     fn reset_type_limit(&mut self) {}
 
     // Defaults (should not be overridden):
@@ -723,7 +732,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;
-                ty.print(self)?;
+                self.print_inner_with_disambiguating_parens(ty)?;
             }
             ty::Ref(r, ty, mutbl) => {
                 write!(self, "&")?;
@@ -731,7 +740,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     r.print(self)?;
                     write!(self, " ")?;
                 }
-                ty::TypeAndMut { ty, mutbl }.print(self)?;
+                // `&mut (impl A + B)`, not `&(mut impl A + B)`: emit `mut ` before the parens.
+                write!(self, "{}", mutbl.prefix_str())?;
+                self.print_inner_with_disambiguating_parens(ty)?;
             }
             ty::Never => write!(self, "!")?,
             ty::Tuple(tys) => {
@@ -1069,6 +1080,121 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         Ok(())
+    }
+
+    /// Prints `ty` after a prefix type constructor, wrapping in parens iff
+    /// [`Self::inner_needs_disambiguating_parens`] returns `true`.
+    fn print_inner_with_disambiguating_parens(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
+        let need_paren = self.inner_needs_disambiguating_parens(ty);
+        if need_paren {
+            write!(self, "(")?;
+        }
+        ty.print(self)?;
+        if need_paren {
+            write!(self, ")")?;
+        }
+        Ok(())
+    }
+
+    /// Whether `ty`, sitting right after a prefix type constructor, would
+    /// print with a top-level `+`. Without the wrap, `&impl A + B` parses as
+    /// the ambiguous `(&impl A) + B`.
+    fn inner_needs_disambiguating_parens(&self, ty: Ty<'tcx>) -> bool {
+        if !self.add_disambiguating_parens_in_prefix_position() || self.should_print_verbose() {
+            return false;
+        }
+        match ty.kind() {
+            // RPITIT trait-side appears as `Projection`, not `Opaque`.
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                self.opaque_has_multiple_bounds(*def_id, args)
+            }
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+                if self.tcx().is_impl_trait_in_trait(*def_id) =>
+            {
+                self.opaque_has_multiple_bounds(*def_id, args)
+            }
+            ty::Dynamic(predicates, region) => {
+                if self.should_print_optional_region(*region) {
+                    // `ty::Dynamic` self-wraps when it has an explicit region.
+                    false
+                } else {
+                    // Projections inline into the principal as `<Item = X>`;
+                    // only principal/auto traits produce a top-level `+`.
+                    predicates
+                        .iter()
+                        .filter(|pred| {
+                            matches!(
+                                pred.skip_binder(),
+                                ty::ExistentialPredicate::Trait(_)
+                                    | ty::ExistentialPredicate::AutoTrait(_)
+                            )
+                        })
+                        .count()
+                        > 1
+                }
+            }
+            _ => false,
+        }
+    }
+
+    /// Whether `Alias(Opaque)` would print with more than one top-level
+    /// `+`-joined component. Must stay in sync with
+    /// `pretty_print_opaque_impl_type`'s sized-bound handling. `?Sized` and
+    /// the synthetic `Sized` / `?Sized` / `MetaSized` / `PointeeSized` suffix
+    /// each contribute one top-level joinable component. Regressions land in
+    /// `tests/ui/impl-trait/in-trait/refine-rustfix-parens.rs`.
+    fn opaque_has_multiple_bounds(&self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> bool {
+        let tcx = self.tcx();
+        let bounds = tcx.explicit_item_bounds(def_id);
+
+        // Mirror `pretty_print_opaque_impl_type`'s sized-bound handling:
+        // positive `Sized` and `MetaSized` are absorbed into the synthetic
+        // suffix below; negative `Sized` (`?Sized`) falls through and is
+        // printed inline.
+        let mut trait_emits = 0usize;
+        let mut lifetimes_count = 0usize;
+        let mut has_sized_bound = false;
+        let mut has_negative_sized_bound = false;
+        let mut has_meta_sized_bound = false;
+
+        for (predicate, _) in
+            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
+        {
+            match predicate.kind().skip_binder() {
+                ty::ClauseKind::Trait(pred) => match tcx.as_lang_item(pred.def_id()) {
+                    Some(LangItem::Sized) => match pred.polarity {
+                        ty::PredicatePolarity::Positive => {
+                            has_sized_bound = true;
+                        }
+                        ty::PredicatePolarity::Negative => {
+                            has_negative_sized_bound = true;
+                            trait_emits += 1;
+                        }
+                    },
+                    Some(LangItem::MetaSized) => {
+                        has_meta_sized_bound = true;
+                    }
+                    Some(LangItem::PointeeSized) => {}
+                    _ => trait_emits += 1,
+                },
+                ty::ClauseKind::TypeOutlives(_) => lifetimes_count += 1,
+                _ => {}
+            }
+        }
+
+        // The synthetic suffix in `pretty_print_opaque_impl_type` emits at most
+        // one extra bound (`Sized` / `?Sized` / `MetaSized` / `PointeeSized`).
+        let using_sized_hierarchy = tcx.features().sized_hierarchy();
+        let add_sized = has_sized_bound && (trait_emits == 0 || has_negative_sized_bound);
+        let add_maybe_sized =
+            has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
+        let has_pointee_sized =
+            !has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound;
+        let synthetic = add_sized
+            || add_maybe_sized
+            || (using_sized_hierarchy && (has_meta_sized_bound || has_pointee_sized));
+
+        trait_emits + lifetimes_count + usize::from(synthetic) > 1
     }
 
     fn pretty_print_opaque_impl_type(
