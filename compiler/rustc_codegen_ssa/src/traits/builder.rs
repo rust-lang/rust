@@ -238,7 +238,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn alloca_with_ty(&mut self, layout: TyAndLayout<'tcx>) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
-    fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
+    fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn atomic_load(
         &mut self,
         ty: Self::Type,
