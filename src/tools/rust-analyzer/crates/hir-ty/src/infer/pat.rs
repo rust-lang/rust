@@ -1247,13 +1247,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
                 self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
-            let missing_fields =
-                unmentioned_fields.iter().map(|(field_id, _)| *field_id).collect();
-            self.push_diagnostic(InferenceDiagnostic::RecordPatMissingFields {
-                pat,
-                variant,
-                missing_fields,
-            });
+            // FIXME: Emit an error.
         }
     }
 

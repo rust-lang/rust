@@ -32,9 +32,9 @@ union Bird {
 fn main(bird: Bird) {
     unsafe {
         let Bird {} = bird;
-            // ^^^^^^^ error: union patterns should have exactly one field
+          //^^^^^^^ error: union patterns should have exactly one field
         let Bird { pigeon: 0, turtledove: 1 } = bird;
-            // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: union patterns should have exactly one field
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: union patterns should have exactly one field
     }
 }
 "#,

@@ -176,7 +176,6 @@ diagnostics![AnyDiagnostic<'db> ->
     UnionExprMustHaveExactlyOneField,
     UnionPatMustHaveExactlyOneField,
     UnionPatHasRest,
-    RecordPatMissingFields,
     UnimplementedTrait<'db>,
 ];
 
@@ -639,12 +638,6 @@ pub struct UnionPatHasRest {
 }
 
 #[derive(Debug)]
-pub struct RecordPatMissingFields {
-    pub pat: InFile<ExprOrPatPtr>,
-    pub missed_fields: Vec<Name>,
-}
-
-#[derive(Debug)]
 pub struct InvalidLhsOfAssignment {
     pub lhs: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 }
@@ -968,15 +961,6 @@ impl<'db> AnyDiagnostic<'db> {
             &InferenceDiagnostic::UnionPatHasRest { pat } => {
                 let pat = pat_syntax(pat)?.map(Into::into);
                 UnionPatHasRest { pat }.into()
-            }
-            InferenceDiagnostic::RecordPatMissingFields { pat, variant, missing_fields } => {
-                let pat = pat_syntax(*pat)?.map(Into::into);
-                let variant_data = variant.fields(db);
-                let missed_fields = missing_fields
-                    .iter()
-                    .map(|field_id| variant_data.fields()[*field_id].name.clone())
-                    .collect();
-                RecordPatMissingFields { pat, missed_fields }.into()
             }
             &InferenceDiagnostic::FunctionalRecordUpdateOnNonStruct { base_expr } => {
                 FunctionalRecordUpdateOnNonStruct { base_expr: expr_syntax(base_expr)? }.into()

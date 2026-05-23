@@ -32,7 +32,7 @@ union Bird {
 fn main(bird: Bird) {
     unsafe {
         let Bird { pigeon: 0, .. } = bird;
-            // ^^^^^^^^^^^^^^^^^^^^^ error: union patterns cannot use `..`
+          //^^^^^^^^^^^^^^^^^^^^^^ error: union patterns cannot use `..`
     }
 }
 "#,

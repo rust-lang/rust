@@ -158,6 +158,17 @@ impl<'db> ExprValidator<'db> {
             }
         }
 
+        for (id, pat) in body.pats() {
+            if let Some((variant, missed_fields)) =
+                record_pattern_missing_fields(db, self.infer, id, pat)
+            {
+                self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
+                    record: Either::Right(id),
+                    variant,
+                    missed_fields,
+                });
+            }
+        }
     }
 
     fn validate_call(
