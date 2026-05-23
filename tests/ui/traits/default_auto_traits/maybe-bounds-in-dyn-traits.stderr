@@ -14,7 +14,7 @@ help: the trait `bounds_check::LeakTr` is implemented for `LeakS`
    |
 LL |     impl LeakTr for LeakS {}
    |     ^^^^^^^^^^^^^^^^^^^^^
-   = note: required for the cast from `&NonLeakS` to `&dyn bounds_check::LeakTr + Leak`
+   = note: required for the cast from `&NonLeakS` to `&(dyn bounds_check::LeakTr + Leak)`
 
 error[E0038]: the trait `DynCompatCheck2` is not dyn compatible
   --> $DIR/maybe-bounds-in-dyn-traits.rs:90:17

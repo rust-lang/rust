@@ -1,0 +1,178 @@
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:34:22
+   |
+LL |     fn bar(&self) -> &(impl BarA + BarB);
+   |                      ------------------- return type from trait method defined here
+...
+LL |     fn bar(&self) -> &Fool {
+   |                      ^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/refine-rustfix-parens.rs:12:9
+   |
+LL | #![deny(refining_impl_trait)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(refining_impl_trait_reachable)]` implied by `#[deny(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar(&self) -> &Fool {
+LL +     fn bar(&self) -> &(impl BarA + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:45:30
+   |
+LL |     fn bar_unsized(&self) -> &(impl BarA + ?Sized);
+   |                              --------------------- return type from trait method defined here
+...
+LL |     fn bar_unsized(&self) -> &Fool {
+   |                              ^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_unsized(&self) -> &Fool {
+LL +     fn bar_unsized(&self) -> &(impl BarA + ?Sized) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:56:30
+   |
+LL |     fn bar_mut(&mut self) -> &mut (impl BarA + BarB);
+   |                              ----------------------- return type from trait method defined here
+...
+LL |     fn bar_mut(&mut self) -> &mut Fool {
+   |                              ^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_mut(&mut self) -> &mut Fool {
+LL +     fn bar_mut(&mut self) -> &mut (impl BarA + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:67:28
+   |
+LL |     fn bar_lt(&'a self) -> &'a (impl BarA + 'a);
+   |                            -------------------- return type from trait method defined here
+...
+LL |     fn bar_lt(&'a self) -> &'a Fool {
+   |                            ^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_lt(&'a self) -> &'a Fool {
+LL +     fn bar_lt(&'a self) -> &'a (impl BarA + 'a) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:78:33
+   |
+LL |     fn bar_proj_trait(&self) -> &(impl Iter<Item = u8> + BarB);
+   |                                 ------------------------------ return type from trait method defined here
+...
+LL |     fn bar_proj_trait(&self) -> &Fool {
+   |                                 ^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_proj_trait(&self) -> &Fool {
+LL +     fn bar_proj_trait(&self) -> &(impl Iter<Item = u8> + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:89:32
+   |
+LL |     fn bar_proj_only(&self) -> &impl Iter<Item = u8>;
+   |                                --------------------- return type from trait method defined here
+...
+LL |     fn bar_proj_only(&self) -> &Fool {
+   |                                ^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_proj_only(&self) -> &Fool {
+LL +     fn bar_proj_only(&self) -> &impl Iter<Item = u8> {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:100:29
+   |
+LL |     fn bar_nested(&self) -> &&(impl BarA + BarB);
+   |                             -------------------- return type from trait method defined here
+...
+LL |     fn bar_nested(&self) -> &&Fool {
+   |                             ^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar_nested(&self) -> &&Fool {
+LL +     fn bar_nested(&self) -> &&(impl BarA + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:111:21
+   |
+LL |     fn baz_raw() -> *const (impl BarA + BarB);
+   |                     ------------------------- return type from trait method defined here
+...
+LL |     fn baz_raw() -> *const Fool {
+   |                     ^^^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn baz_raw() -> *const Fool {
+LL +     fn baz_raw() -> *const (impl BarA + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:122:25
+   |
+LL |     fn baz_raw_mut() -> *mut (impl BarA + BarB);
+   |                         ----------------------- return type from trait method defined here
+...
+LL |     fn baz_raw_mut() -> *mut Fool {
+   |                         ^^^^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn baz_raw_mut() -> *mut Fool {
+LL +     fn baz_raw_mut() -> *mut (impl BarA + BarB) {
+   |
+
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/refine-rustfix-parens.rs:133:17
+   |
+LL |     fn baz() -> impl BarA + BarB;
+   |                 ---------------- return type from trait method defined here
+...
+LL |     fn baz() -> Fool {
+   |                 ^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+help: replace the return type so that it matches the trait
+   |
+LL -     fn baz() -> Fool {
+LL +     fn baz() -> impl BarA + BarB {
+   |
+
+error: aborting due to 10 previous errors
+
