@@ -507,7 +507,7 @@ impl MiniCore {
                 active_regions.drain(active_regions.len() - active_line_region..);
             }
             if inactive_line_region > 0 {
-                inactive_regions.drain(inactive_regions.len() - active_line_region..);
+                inactive_regions.drain(inactive_regions.len() - inactive_line_region..);
             }
         }
 
