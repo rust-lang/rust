@@ -460,7 +460,7 @@ define_tables! {
     // Note also that this table is fully populated (no gaps) as every DefIndex should have a
     // corresponding DefPathHash.
     //
-    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
+    // We don't need to include this in the hash since we are saving DefIndex as its stable hash
     def_path_hashes: Table<RDRHashNone, DefIndex, u64>,
     explicit_item_bounds: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_item_self_bounds: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
@@ -537,7 +537,7 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     //
-    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
+    // We don't need to include this in the hash since we are saving DefIndex as its stable hash
     def_keys: Table<RDRHashNone, DefIndex, LazyValue<DefKey>>,
     proc_macro_quoted_spans: Table<RDRHashAll, usize, LazyValue<Span>>,
     variant_data: Table<RDRHashAll, DefIndex, LazyValue<VariantData>>,
