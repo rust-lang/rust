@@ -705,8 +705,8 @@ pub(crate) struct IncoherentImpls {
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
     (
-        - defaulted: $($name1:ident: Table<$T1:ty>,)+
-        - optional: $($name2:ident: Table<$T2:ty>,)+
+        - defaulted: $($name1:ident: Table<$H1:ident, $T1:ty>,)+
+        - optional: $($name2:ident: Table<$H2:ident, $T2:ty>,)+
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
@@ -716,8 +716,8 @@ macro_rules! define_tables {
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<RDRHashAll<LocalDefId>, LocalDefId, $T1>,)+
-            $($name2: TableBuilder<RDRHashAll<LocalDefId>, LocalDefId, Option<$T2>>,)+
+            $($name1: TableBuilder<$H1<LocalDefId>, LocalDefId, $T1>,)+
+            $($name2: TableBuilder<$H2<LocalDefId>, LocalDefId, Option<$T2>>,)+
         }
 
         impl TableBuilders {
@@ -799,110 +799,110 @@ define_tables! {
 // If the compiler complains about `EncodeFrom` or `ParameterizedOverTcx` bounds when calling a
 // function generated in this macro, add them to parameterized.rs
 - defaulted:
-    intrinsic: Table<Option<LazyValue<ty::IntrinsicDef>>>,
-    is_macro_rules: Table<bool>,
-    type_alias_is_checked: Table<bool>,
-    attr_flags: Table<AttrFlags>,
+    intrinsic: Table<RDRHashAll, Option<LazyValue<ty::IntrinsicDef>>>,
+    is_macro_rules: Table<RDRHashAll, bool>,
+    type_alias_is_checked: Table<RDRHashAll, bool>,
+    attr_flags: Table<RDRHashAll, AttrFlags>,
     // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
     // StableCrateId, so we omit encoding those into the table.
     //
     // Note also that this table is fully populated (no gaps) as every DefIndex should have a
     // corresponding DefPathHash.
     //
-    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
-    def_path_hashes: Table<u64>,
-    explicit_item_bounds: Table<LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_item_self_bounds: Table<LazyArray<(ty::Clause<'static>, Span)>>,
-    inferred_outlives_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_super_clauses_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_clauses_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_const_bounds: Table<LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
-    inherent_impls: Table<LazyArray<LocalDefId>>,
-    opt_item_name: Table<Option<LazyValue<Symbol>>>,
+    // We don't need to include this in the hash since we are saving DefIndex as its stable hash
+    def_path_hashes: Table<RDRHashNone, u64>,
+    explicit_item_bounds: Table<RDRHashAll, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_item_self_bounds: Table<RDRHashAll, LazyArray<(ty::Clause<'static>, Span)>>,
+    inferred_outlives_of: Table<RDRHashAll, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_super_clauses_of: Table<RDRHashAll, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_implied_clauses_of: Table<RDRHashAll, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_implied_const_bounds: Table<RDRHashAll, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
+    inherent_impls: Table<RDRHashAll, LazyArray<LocalDefId>>,
+    opt_item_name: Table<RDRHashAll, Option<LazyValue<Symbol>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
-    module_children_reexports: Table<LazyArray<ModChild>>,
-    ambig_module_children: Table<LazyArray<AmbigModChild>>,
-    cross_crate_inlinable: Table<bool>,
-    asyncness: Table<ty::Asyncness>,
-    constness: Table<hir::Constness>,
-    safety: Table<hir::Safety>,
-    defaultness: Table<hir::Defaultness>,
-    impl_is_fully_generic_for_reflection: Table<bool>,
+    module_children_reexports: Table<RDRHashAll, LazyArray<ModChild>>,
+    ambig_module_children: Table<RDRHashAll, LazyArray<AmbigModChild>>,
+    cross_crate_inlinable: Table<RDRHashAll, bool>,
+    asyncness: Table<RDRHashAll, ty::Asyncness>,
+    constness: Table<RDRHashAll, hir::Constness>,
+    safety: Table<RDRHashAll, hir::Safety>,
+    defaultness: Table<RDRHashAll, hir::Defaultness>,
+    impl_is_fully_generic_for_reflection: Table<RDRHashAll, bool>,
 
 - optional:
-    opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,
-    attributes: Table<LazyArray<Attribute>>,
+    opt_rpitit_info: Table<RDRHashAll, LazyValue<ty::ImplTraitInTraitData>>,
+    attributes: Table<RDRHashAll, LazyArray<Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
-    module_children_non_reexports: Table<LazyArray<LocalDefId>>,
-    associated_item_or_field_def_ids: Table<LazyArray<LocalDefId>>,
-    def_kind: Table<DefKind>,
-    visibility: Table<LazyValue<ty::Visibility<LocalDefId>>>,
-    def_span: Table<LazyValue<Span>>,
-    def_ident_span: Table<LazyValue<Span>>,
-    lookup_stability: Table<LazyValue<Stability>>,
-    lookup_const_stability: Table<LazyValue<ConstStability>>,
-    lookup_default_body_stability: Table<LazyValue<DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<LazyValue<Deprecation>>,
-    explicit_clauses_of: Table<LazyValue<ty::GenericClauses<'static>>>,
-    generics_of: Table<LazyValue<ty::Generics>>,
-    type_of: Table<LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
-    variances_of: Table<LazyArray<ty::Variance>>,
-    fn_sig: Table<LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
-    codegen_fn_attrs: Table<LazyValue<CodegenFnAttrs>>,
-    impl_trait_header: Table<LazyValue<ty::ImplTraitHeader<'static>>>,
-    const_param_default: Table<LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
-    object_lifetime_default: Table<LazyValue<ObjectLifetimeDefault>>,
-    optimized_mir: Table<LazyValue<mir::Body<'static>>>,
-    mir_for_ctfe: Table<LazyValue<mir::Body<'static>>>,
-    trivial_const: Table<LazyValue<(ConstValue, Ty<'static>)>>,
-    closure_saved_names_of_captured_variables: Table<LazyValue<IndexVec<FieldIdx, Symbol>>>,
-    mir_coroutine_witnesses: Table<LazyValue<mir::CoroutineLayout<'static>>>,
-    promoted_mir: Table<LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    thir_abstract_const: Table<LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
-    impl_parent: Table<RemappedWideRawDefId>,
-    const_conditions: Table<LazyValue<ty::ConstConditions<'static>>>,
+    module_children_non_reexports: Table<RDRHashAll, LazyArray<LocalDefId>>,
+    associated_item_or_field_def_ids: Table<RDRHashAll, LazyArray<LocalDefId>>,
+    def_kind: Table<RDRHashAll, DefKind>,
+    visibility: Table<RDRHashAll, LazyValue<ty::Visibility<LocalDefId>>>,
+    def_span: Table<RDRHashAll, LazyValue<Span>>,
+    def_ident_span: Table<RDRHashAll, LazyValue<Span>>,
+    lookup_stability: Table<RDRHashAll, LazyValue<Stability>>,
+    lookup_const_stability: Table<RDRHashAll, LazyValue<ConstStability>>,
+    lookup_default_body_stability: Table<RDRHashAll, LazyValue<DefaultBodyStability>>,
+    lookup_deprecation_entry: Table<RDRHashAll, LazyValue<Deprecation>>,
+    explicit_clauses_of: Table<RDRHashAll, LazyValue<ty::GenericClauses<'static>>>,
+    generics_of: Table<RDRHashAll, LazyValue<ty::Generics>>,
+    type_of: Table<RDRHashAll, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
+    variances_of: Table<RDRHashAll, LazyArray<ty::Variance>>,
+    fn_sig: Table<RDRHashAll, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
+    codegen_fn_attrs: Table<RDRHashAll, LazyValue<CodegenFnAttrs>>,
+    impl_trait_header: Table<RDRHashAll, LazyValue<ty::ImplTraitHeader<'static>>>,
+    const_param_default: Table<RDRHashAll, LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
+    object_lifetime_default: Table<RDRHashAll, LazyValue<ObjectLifetimeDefault>>,
+    optimized_mir: Table<RDRHashAll, LazyValue<mir::Body<'static>>>,
+    mir_for_ctfe: Table<RDRHashAll, LazyValue<mir::Body<'static>>>,
+    trivial_const: Table<RDRHashAll, LazyValue<(ConstValue, Ty<'static>)>>,
+    closure_saved_names_of_captured_variables: Table<RDRHashAll, LazyValue<IndexVec<FieldIdx, Symbol>>>,
+    mir_coroutine_witnesses: Table<RDRHashAll, LazyValue<mir::CoroutineLayout<'static>>>,
+    promoted_mir: Table<RDRHashAll, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
+    thir_abstract_const: Table<RDRHashAll, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
+    impl_parent: Table<RDRHashAll, RemappedWideRawDefId>,
+    const_conditions: Table<RDRHashAll, LazyValue<ty::ConstConditions<'static>>>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
-    coerce_unsized_info: Table<LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
-    mir_const_qualif: Table<LazyValue<mir::ConstQualifs>>,
-    rendered_const: Table<LazyValue<String>>,
-    rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    fn_arg_idents: Table<LazyArray<Option<Ident>>>,
-    coroutine_kind: Table<hir::CoroutineKind>,
-    coroutine_for_closure: Table<RemappedWideRawDefId>,
-    adt_destructor: Table<LazyValue<ty::Destructor>>,
-    adt_async_destructor: Table<LazyValue<ty::AsyncDestructor>>,
-    coroutine_by_move_body_def_id: Table<RemappedWideRawDefId>,
-    eval_static_initializer: Table<LazyValue<mir::interpret::ConstAllocation<'static>>>,
-    trait_def: Table<LazyValue<ty::TraitDef>>,
-    expn_that_defined: Table<LazyValue<ExpnId>>,
-    default_fields: Table<LazyValue<DefId>>,
-    params_in_repr: Table<LazyValue<DenseBitSet<u32>>>,
-    repr_options: Table<LazyValue<ReprOptions>>,
+    coerce_unsized_info: Table<RDRHashAll, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
+    mir_const_qualif: Table<RDRHashAll, LazyValue<mir::ConstQualifs>>,
+    rendered_const: Table<RDRHashAll, LazyValue<String>>,
+    rendered_precise_capturing_args: Table<RDRHashAll, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
+    fn_arg_idents: Table<RDRHashAll, LazyArray<Option<Ident>>>,
+    coroutine_kind: Table<RDRHashAll, hir::CoroutineKind>,
+    coroutine_for_closure: Table<RDRHashAll, RemappedWideRawDefId>,
+    adt_destructor: Table<RDRHashAll, LazyValue<ty::Destructor>>,
+    adt_async_destructor: Table<RDRHashAll, LazyValue<ty::AsyncDestructor>>,
+    coroutine_by_move_body_def_id: Table<RDRHashAll, RemappedWideRawDefId>,
+    eval_static_initializer: Table<RDRHashAll, LazyValue<mir::interpret::ConstAllocation<'static>>>,
+    trait_def: Table<RDRHashAll, LazyValue<ty::TraitDef>>,
+    expn_that_defined: Table<RDRHashAll, LazyValue<ExpnId>>,
+    default_fields: Table<RDRHashAll, LazyValue<DefId>>,
+    params_in_repr: Table<RDRHashAll, LazyValue<DenseBitSet<u32>>>,
+    repr_options: Table<RDRHashAll, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     //
-    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
-    def_keys: Table<LazyValue<DefKey>>,
-    variant_data: Table<LazyValue<VariantData>>,
-    assoc_container: Table<LazyValue<ty::AssocContainer>>,
-    macro_definition: Table<LazyValue<ast::DelimArgs>>,
-    deduced_param_attrs: Table<LazyArray<DeducedParamAttrs>>,
-    collect_return_position_impl_trait_in_trait_tys: Table<LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
-    doc_link_resolutions: Table<LazyValue<DocLinkResMap>>,
-    doc_link_traits_in_scope: Table<LazyArray<DefId>>,
-    assumed_wf_types_for_rpitit: Table<LazyArray<(Ty<'static>, Span)>>,
-    opaque_ty_origin: Table<LazyValue<hir::OpaqueTyOrigin<DefId>>>,
-    anon_const_kind: Table<LazyValue<ty::AnonConstKind>>,
-    const_of_item: Table<LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
-    associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
-    args_known_to_outlive_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
-    mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
+    // We don't need to include this in the hash since we are saving DefIndex as its stable hash
+    def_keys: Table<RDRHashNone, LazyValue<DefKey>>,
+    variant_data: Table<RDRHashAll, LazyValue<VariantData>>,
+    assoc_container: Table<RDRHashAll, LazyValue<ty::AssocContainer>>,
+    macro_definition: Table<RDRHashAll, LazyValue<ast::DelimArgs>>,
+    deduced_param_attrs: Table<RDRHashAll, LazyArray<DeducedParamAttrs>>,
+    collect_return_position_impl_trait_in_trait_tys: Table<RDRHashAll, LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
+    doc_link_resolutions: Table<RDRHashAll, LazyValue<DocLinkResMap>>,
+    doc_link_traits_in_scope: Table<RDRHashAll, LazyArray<DefId>>,
+    assumed_wf_types_for_rpitit: Table<RDRHashAll, LazyArray<(Ty<'static>, Span)>>,
+    opaque_ty_origin: Table<RDRHashAll, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
+    anon_const_kind: Table<RDRHashAll, LazyValue<ty::AnonConstKind>>,
+    const_of_item: Table<RDRHashAll, LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<RDRHashAll, LazyValue<DefIdMap<Vec<DefId>>>>,
+    args_known_to_outlive_alias_params: Table<RDRHashAll, LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
+    mut_restriction: Table<RDRHashAll, LazyValue<ty::RestrictionKind>>,
 }
 
 #[derive(TyEncodable, TyDecodable, StableHash)]

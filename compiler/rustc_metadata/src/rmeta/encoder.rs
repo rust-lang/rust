@@ -56,7 +56,7 @@ use self::public_api_hasher::{
 };
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
-use crate::rmeta::encoder::public_api_hasher::PublicApiHashState;
+use crate::rmeta::encoder::public_api_hasher::{PublicApiHashState, Unhashed};
 use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
 use crate::rmeta::*;
 
@@ -784,14 +784,11 @@ where
         }
     }
 
-    fn encode_def_path_hash_map(&mut self) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
-        Hashed {
-            // FIXME remove this when we start stroing DefId-s as DefPathHash
-            hash: Some(Fingerprint::ZERO),
-            value: self.encoder.lazy(DefPathHashMapRef::BorrowedFromTcx(
-                self.tcx().def_path_hash_to_def_index_map(),
-            )),
-        }
+    fn encode_def_path_hash_map(&mut self) -> Unhashed<LazyValue<DefPathHashMapRef<'static>>> {
+        let value = self
+            .encoder
+            .lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx().def_path_hash_to_def_index_map()));
+        Unhashed(value)
     }
 
     fn encode_source_map(
