@@ -395,6 +395,10 @@ pub struct CommonLayouts<'tcx> {
     pub i64: Layout<'tcx>,
     pub u128: Layout<'tcx>,
     pub i128: Layout<'tcx>,
+    pub f16: Layout<'tcx>,
+    pub f32: Layout<'tcx>,
+    pub f64: Layout<'tcx>,
+    pub f128: Layout<'tcx>,
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -470,11 +474,17 @@ impl<'tcx> CommonTypes<'tcx> {
 
 impl<'tcx> CommonLayouts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, dl: &TargetDataLayout) -> CommonLayouts<'tcx> {
-        use rustc_abi::{Integer, Primitive, Scalar, WrappingRange};
+        use rustc_abi::{Float, Integer, Primitive, Scalar, WrappingRange};
 
         let mk_int = |int: Integer, signed: bool| {
             let primitive = Primitive::Int(int, signed);
             let size = int.size();
+            Scalar::Initialized { value: primitive, valid_range: WrappingRange::full(size) }
+        };
+
+        let mk_float = |float: Float| -> Scalar {
+            let primitive = Primitive::Float(float);
+            let size = float.size();
             Scalar::Initialized { value: primitive, valid_range: WrappingRange::full(size) }
         };
 
@@ -502,6 +512,10 @@ impl<'tcx> CommonLayouts<'tcx> {
             i64: mk_scalar(mk_int(Integer::I64, true)),
             u128: mk_scalar(mk_int(Integer::I128, false)),
             i128: mk_scalar(mk_int(Integer::I128, true)),
+            f16: mk_scalar(mk_float(Float::F16)),
+            f32: mk_scalar(mk_float(Float::F32)),
+            f64: mk_scalar(mk_float(Float::F64)),
+            f128: mk_scalar(mk_float(Float::F128)),
         }
     }
 }

@@ -1,7 +1,7 @@
 use hir::def_id::DefId;
 use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
-use rustc_abi::Primitive::{self, Float, Int, Pointer};
+use rustc_abi::Primitive::{self, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
     LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
@@ -15,7 +15,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
+    HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -411,7 +411,12 @@ fn layout_of_uncached<'tcx>(
             ty::UintTy::U128 => tcx.layouts.u128,
             ty::UintTy::Usize => tcx.layouts.usize,
         },
-        ty::Float(fty) => scalar(Float(abi::Float::from_float_ty(fty))),
+        ty::Float(fty) => match fty {
+            ty::FloatTy::F16 => tcx.layouts.f16,
+            ty::FloatTy::F32 => tcx.layouts.f32,
+            ty::FloatTy::F64 => tcx.layouts.f64,
+            ty::FloatTy::F128 => tcx.layouts.f128,
+        },
         ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;

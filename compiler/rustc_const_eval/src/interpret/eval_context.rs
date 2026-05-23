@@ -148,6 +148,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(TyAndLayout { ty: self.tcx.types.u64, layout: self.tcx.layouts.u64 })
         } else if ty == self.tcx.types.i64 {
             Ok(TyAndLayout { ty: self.tcx.types.i64, layout: self.tcx.layouts.i64 })
+        } else if ty == self.tcx.types.f16 {
+            Ok(TyAndLayout { ty: self.tcx.types.f16, layout: self.tcx.layouts.f16 })
+        } else if ty == self.tcx.types.f32 {
+            Ok(TyAndLayout { ty: self.tcx.types.f32, layout: self.tcx.layouts.f32 })
+        } else if ty == self.tcx.types.f64 {
+            Ok(TyAndLayout { ty: self.tcx.types.f64, layout: self.tcx.layouts.f64 })
+        } else if ty == self.tcx.types.f128 {
+            Ok(TyAndLayout { ty: self.tcx.types.f128, layout: self.tcx.layouts.f128 })
         } else {
             LayoutOf::layout_of(self, ty)
         }
