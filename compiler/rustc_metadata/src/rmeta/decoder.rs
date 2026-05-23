@@ -782,11 +782,15 @@ impl MetadataBlob {
             "features".to_owned(),
             "items".to_owned(),
             "target_modifiers".to_owned(),
+            "public_hash".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
         for kind in ls_kinds {
             match &**kind {
+                "public_hash" => {
+                    writeln!(out, "Public hash: {}", root.public_hash())?;
+                }
                 "root" => {
                     writeln!(out, "Crate info:")?;
                     writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
