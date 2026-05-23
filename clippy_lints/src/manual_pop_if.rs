@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// deque.pop_back_if(|x| *x > 5);
     /// deque.pop_front_if(|x| *x > 5);
     /// ```
-    #[clippy::version = "1.95.0"]
+    #[clippy::version = "1.96.0"]
     pub MANUAL_POP_IF,
     complexity,
     "manual implementation of `pop_if` methods"
