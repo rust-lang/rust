@@ -1701,7 +1701,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.
-            // FIXME: Emit an error: cannot pattern-match on an array without a fixed length.
+            self.push_diagnostic(InferenceDiagnostic::ArrayPatternWithoutFixedLength { pat });
         };
 
         // If we get here, we must have emitted an error.

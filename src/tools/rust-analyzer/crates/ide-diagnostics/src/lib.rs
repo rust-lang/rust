@@ -29,6 +29,7 @@
 extern crate rustc_driver as _;
 
 mod handlers {
+    pub(crate) mod array_pattern_without_fixed_length;
     pub(crate) mod await_outside_of_async;
     pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
@@ -437,6 +438,11 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::CannotBeDereferenced(d) => handlers::cannot_be_dereferenced::cannot_be_dereferenced(&ctx, &d),
             AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
+            AnyDiagnostic::ArrayPatternWithoutFixedLength(d) => {
+                handlers::array_pattern_without_fixed_length::array_pattern_without_fixed_length(
+                    &ctx, &d,
+                )
+            }
             AnyDiagnostic::ExpectedArrayOrSlicePat(d) => handlers::expected_array_or_slice_pat::expected_array_or_slice_pat(&ctx, &d),
             AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
             AnyDiagnostic::FunctionalRecordUpdateOnNonStruct(d) => handlers::functional_record_update_on_non_struct::functional_record_update_on_non_struct(&ctx, &d),
