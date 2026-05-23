@@ -169,6 +169,7 @@ declare_passes! {
     mod lint_and_remove_uninhabited : LintAndRemoveUninhabited;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
+    mod optimize_use_clone : OptimizeUseClone;
     mod match_branches : MatchBranchSimplification;
     mod mentioned_items : MentionedItems;
     mod multiple_return_terminators : MultipleReturnTerminators;
@@ -965,6 +966,7 @@ fn transform_to_codegen_mir<'tcx>(
             &instsimplify::SimplifyUbChecks::PostMono,
             &o1(simplify_branches::SimplifyConstCondition::PostMono),
             &o1(simplify::SimplifyCfg::PostMono),
+            &optimize_use_clone::OptimizeUseClone,
             &add_call_guards::CriticalCallEdges,
             &deduce_param_attrs::RecoverDeducedParamAttrs,
         ],
