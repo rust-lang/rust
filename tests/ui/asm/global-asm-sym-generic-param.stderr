@@ -1,0 +1,18 @@
+error: type parameters are not allowed in `global_asm!` `sym`
+  --> $DIR/global-asm-sym-generic-param.rs:13:27
+   |
+LL | fn fun_ty<T: Trait>() {
+   |           - type parameter declared here
+LL |     global_asm!("{}", sym<T>::pure);
+   |                           ^
+
+error: const parameters are not allowed in `global_asm!` `sym`
+  --> $DIR/global-asm-sym-generic-param.rs:26:45
+   |
+LL | fn fun_const<const N: usize>() {
+   |              -------------- const parameter declared here
+LL |     global_asm!("{}", sym <() as ConstTrait<N>>::pure);
+   |                                             ^
+
+error: aborting due to 2 previous errors
+

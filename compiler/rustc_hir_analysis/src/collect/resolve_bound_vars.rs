@@ -1653,7 +1653,29 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     self.rbv.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
                     return;
                 }
-                Scope::Root { .. } => break,
+                Scope::Root { .. } => {
+                    if let Node::Item(item) = self.tcx.hir_node_by_def_id(hir_id.owner.def_id)
+                        && let hir::ItemKind::GlobalAsm { .. } = item.kind
+                    {
+                        let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
+                            DefKind::TyParam => errors::InvalidGenericParamInGlobalAsm::Type {
+                                span: self.tcx.hir_span(hir_id),
+                                param_span: self.tcx.def_span(param_def_id),
+                            },
+                            DefKind::ConstParam => errors::InvalidGenericParamInGlobalAsm::Const {
+                                span: self.tcx.hir_span(hir_id),
+                                param_span: self.tcx.def_span(param_def_id),
+                            },
+                            kind => bug!(
+                                "unexpected def-kind: {}",
+                                kind.descr(param_def_id.to_def_id())
+                            ),
+                        });
+                        self.rbv.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
+                        return;
+                    }
+                    break;
+                }
                 Scope::Binder { s, .. }
                 | Scope::Body { s, .. }
                 | Scope::Opaque { s, .. }

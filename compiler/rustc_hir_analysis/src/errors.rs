@@ -1140,6 +1140,24 @@ pub(crate) enum LateBoundInApit {
 }
 
 #[derive(Diagnostic)]
+pub(crate) enum InvalidGenericParamInGlobalAsm {
+    #[diag("type parameters are not allowed in `global_asm!` `sym`")]
+    Type {
+        #[primary_span]
+        span: Span,
+        #[label("type parameter declared here")]
+        param_span: Span,
+    },
+    #[diag("const parameters are not allowed in `global_asm!` `sym`")]
+    Const {
+        #[primary_span]
+        span: Span,
+        #[label("const parameter declared here")]
+        param_span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
 #[diag("unnecessary associated type bound for dyn-incompatible associated type")]
 #[note(
     "this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`"
