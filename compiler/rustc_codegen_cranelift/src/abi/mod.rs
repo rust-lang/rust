@@ -269,7 +269,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         .mir
         .args_iter()
         .map(|local| {
-            let arg_ty = fx.monomorphize(fx.mir.local_decls[local].ty);
+            let arg_ty = fx.mir.local_decls[local].ty;
 
             // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
             if Some(local) == fx.mir.spread_arg {
@@ -372,7 +372,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     for local in fx.mir.vars_and_temps_iter() {
-        let ty = fx.monomorphize(fx.mir.local_decls[local].ty);
+        let ty = fx.mir.local_decls[local].ty;
         let layout = fx.layout_of(ty);
 
         let is_ssa = ssa_analyzed[local].is_ssa(fx, ty);
@@ -481,9 +481,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     };
 
     let extra_args = &args[fn_sig.inputs().skip_binder().len()..];
-    let extra_args = fx.tcx.mk_type_list_from_iter(
-        extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.node.ty(fx.mir, fx.tcx))),
-    );
+    let extra_args = fx
+        .tcx
+        .mk_type_list_from_iter(extra_args.iter().map(|op_arg| op_arg.node.ty(fx.mir, fx.tcx)));
     let fn_abi = if let Some(instance) = instance {
         FullyMonomorphizedLayoutCx(fx.tcx).fn_abi_of_instance(instance, extra_args)
     } else {

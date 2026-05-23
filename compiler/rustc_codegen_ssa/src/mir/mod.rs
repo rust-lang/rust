@@ -6,7 +6,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::ErrorGuaranteed;
 use rustc_target::callconv::{FnAbi, PassMode};
@@ -126,15 +126,6 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
-}
-
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn monomorphize<T>(&self, value: T) -> T
-    where
-        T: Copy + TypeFoldable<TyCtxt<'tcx>>,
-    {
-        value
-    }
 }
 
 enum LocalRef<'tcx, V> {
@@ -281,7 +272,7 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let mut allocate_local = |local: Local| {
             let decl = &mir.local_decls[local];
-            let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
+            let layout = start_bx.layout_of(decl.ty);
             assert!(!layout.ty.has_erasable_regions());
 
             if local == mir::RETURN_PLACE {
@@ -417,7 +408,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .enumerate()
         .map(|(arg_index, local)| {
             let arg_decl = &mir.local_decls[local];
-            let arg_ty = fx.monomorphize(arg_decl.ty);
+            let arg_ty = arg_decl.ty;
 
             if Some(local) == mir.spread_arg {
                 // This argument (e.g., the last argument in the "rust-call" ABI)

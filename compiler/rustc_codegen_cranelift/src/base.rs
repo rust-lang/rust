@@ -281,10 +281,8 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
 }
 
 fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
-    let arg_uninhabited = fx
-        .mir
-        .args_iter()
-        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).is_uninhabited());
+    let arg_uninhabited =
+        fx.mir.args_iter().any(|arg| fx.layout_of(fx.mir.local_decls[arg].ty).is_uninhabited());
     if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
@@ -688,8 +686,8 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     ref operand,
                     to_ty,
                 ) => {
-                    let from_ty = fx.monomorphize(operand.ty(&fx.mir.local_decls, fx.tcx));
-                    let to_layout = fx.layout_of(fx.monomorphize(to_ty));
+                    let from_ty = operand.ty(&fx.mir.local_decls, fx.tcx);
+                    let to_layout = fx.layout_of(to_ty);
                     match *from_ty.kind() {
                         ty::FnDef(def_id, args) => {
                             let func_ref = fx.get_function_ref(
@@ -712,7 +710,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     ref operand,
                     to_ty,
                 ) => {
-                    let to_layout = fx.layout_of(fx.monomorphize(to_ty));
+                    let to_layout = fx.layout_of(to_ty);
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
@@ -742,7 +740,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 ) => {
                     let operand = codegen_operand(fx, operand);
                     let from_ty = operand.layout().ty;
-                    let to_ty = fx.monomorphize(to_ty);
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true).is_some_and(|pointee_ty| {
@@ -814,8 +811,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 }
                 Rvalue::Repeat(ref operand, times) => {
                     let operand = codegen_operand(fx, operand);
-                    let times = fx
-                        .monomorphize(times)
+                    let times = times
                         .try_to_target_usize(fx.tcx)
                         .expect("expected monomorphic const in codegen");
                     if operand.layout().size.bytes() == 0 {
@@ -852,7 +848,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     if matches!(**kind, AggregateKind::RawPtr(..)) =>
                 {
                     let ty = to_place_and_rval.1.ty(&fx.mir.local_decls, fx.tcx);
-                    let layout = fx.layout_of(fx.monomorphize(ty));
+                    let layout = fx.layout_of(ty);
                     let [data, meta] = &*operands.raw else {
                         bug!("RawPtr fields: {operands:?}");
                     };
@@ -947,8 +943,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
 fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {
     match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
-            let len = fx
-                .monomorphize(len)
+            let len = len
                 .try_to_target_usize(fx.tcx)
                 .expect("expected monomorphic const in codegen") as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
@@ -971,7 +966,7 @@ pub(crate) fn codegen_place<'tcx>(
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
             PlaceElem::UnwrapUnsafeBinder(ty) => {
-                cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
+                cplace = cplace.place_transmute_type(fx, ty);
             }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);

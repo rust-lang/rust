@@ -111,7 +111,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                         .span_err(span, "asm! and global_asm! sym operands are not yet supported");
                 }
 
-                let const_ = fx.monomorphize(value.const_);
+                let const_ = value.const_;
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
