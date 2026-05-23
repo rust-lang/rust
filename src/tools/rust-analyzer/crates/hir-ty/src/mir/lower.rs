@@ -314,8 +314,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             closures: vec![],
         };
         let store_owner = owner.expression_store_owner(db);
-        let resolver = store_owner.resolver(db);
-        let env = db.trait_environment(store_owner);
+        let resolver = owner.resolver(db);
+        let env = db.trait_environment(owner.generic_def(db));
         let interner = DbInterner::new_with(db, resolver.krate());
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());

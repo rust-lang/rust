@@ -3120,8 +3120,8 @@ fn bar() {
 }
         "#,
         expect![[r#"
-            en Option                             Option<{unknown}>
-            en Result                  Result<{unknown}, {unknown}>
+            en Option                                     Option<T>
+            en Result                                  Result<T, E>
             fn bar()                                           fn()
             lc i                                                i32
             ma const_format_args!(…) macro_rules! const_format_args

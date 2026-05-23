@@ -1745,11 +1745,7 @@ impl<'db> SemanticsImpl<'db> {
         analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
-                    let target = Type::new_with_resolver(
-                        self.db,
-                        &analyzer.resolver,
-                        adjust.target.as_ref(),
-                    );
+                    let target = analyzer.ty(adjust.target.as_ref());
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
@@ -1840,10 +1836,10 @@ impl<'db> SemanticsImpl<'db> {
         let substs =
             hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
-                subst.next().expect("too few subst").ty.into()
+                subst.next().expect("too few subst").ty.skip_binder().into()
             });
         assert!(subst.next().is_none(), "too many subst");
-        Some(match self.db.lookup_impl_method(env.env, func, substs).0 {
+        Some(match self.db.lookup_impl_method(env.param_env(self.db), func, substs).0 {
             Either::Left(it) => it.into(),
             Either::Right((impl_, method)) => {
                 Function { id: AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } }

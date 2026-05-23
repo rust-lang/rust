@@ -685,7 +685,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
             db,
             random_state: oorandom::Rand64::new(0),
             param_env: trait_env.unwrap_or_else(|| ParamEnvAndCrate {
-                param_env: db.trait_environment(owner.expression_store_owner(db)),
+                param_env: db.trait_environment(owner.generic_def(db)),
                 krate: crate_id,
             }),
             crate_id,

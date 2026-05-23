@@ -76,7 +76,7 @@ fn render(
         completion.edition,
     );
 
-    let ret_type = func.ret_type(db);
+    let ret_type = ctx.completion.rebase_ty(&func.ret_type(db));
     let assoc_item = func.as_assoc_item(db);
 
     let trait_info =
@@ -107,6 +107,7 @@ fn render(
 
     let function = assoc_item
         .and_then(|assoc_item| assoc_item.implementing_ty(db))
+        .map(|self_type| ctx.completion.rebase_ty(&self_type))
         .map(|self_type| compute_return_type_match(db, &ctx, self_type, &ret_type))
         .map(|return_type| CompletionRelevanceFn {
             has_params: has_self_param || func.num_params(db) > 0,
@@ -118,7 +119,7 @@ fn render(
         type_match: if has_call_parens || complete_call_parens.is_some() {
             compute_type_match(completion, &ret_type)
         } else {
-            compute_type_match(completion, &func.ty(db))
+            compute_type_match(completion, &ctx.completion.rebase_ty(&func.ty(db)))
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
@@ -287,7 +288,7 @@ pub(super) fn add_call_parens<'b>(
 }
 
 fn ref_of_param(ctx: &CompletionContext<'_, '_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
-    if let Some(derefed_ty) = ty.remove_ref() {
+    if let Some(derefed_ty) = ty.as_reference_inner() {
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
                 return if local.ty(ctx.db) == derefed_ty {

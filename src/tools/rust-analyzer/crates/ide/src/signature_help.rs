@@ -535,7 +535,7 @@ fn signature_help_for_tuple_struct_pat(
         pat.syntax(),
         token,
         pat.fields(),
-        fields.into_iter().map(|it| it.ty(db).to_type(db)),
+        fields.into_iter().map(|it| it.ty(db)),
         display_target,
     ))
 }

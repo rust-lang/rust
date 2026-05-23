@@ -293,7 +293,7 @@ pub(crate) fn relevance_score(
         if let Some(ty) = ty {
             if ty == *expected {
                 score = 100000;
-            } else if ty.could_unify_with(ctx.db(), expected) {
+            } else if ty.could_unify_with(ctx.db(), &expected.instantiate_with_errors()) {
                 score = 10000;
             }
         }

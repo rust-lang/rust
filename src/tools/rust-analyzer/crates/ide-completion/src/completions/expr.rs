@@ -182,6 +182,9 @@ pub(crate) fn complete_expr_path(
                         }
                         _ => return,
                     };
+                    // Note: this is not *required* here, we do it to also find methods that require
+                    // the type to be instantiated with specific types.
+                    let ty = ty.instantiate_with_errors();
 
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                         cov_mark::hit!(completes_variant_through_alias);

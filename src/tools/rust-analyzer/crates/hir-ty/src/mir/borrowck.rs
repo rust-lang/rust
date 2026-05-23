@@ -141,7 +141,7 @@ pub fn borrowck_query(
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
     let interner = DbInterner::new_with(db, module.krate(db));
-    let env = db.trait_environment(def.expression_store_owner(db));
+    let env = db.trait_environment(def.generic_def(db));
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
     let typing_mode = TypingMode::borrowck(interner, def.into());
     let res = all_mir_bodies(
