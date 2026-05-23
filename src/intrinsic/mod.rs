@@ -5,7 +5,7 @@ mod simd;
 use std::iter;
 
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
-use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
+use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
@@ -368,8 +368,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let ptr = args[0].immediate();
-                let load = self.volatile_load(result.layout.gcc_type(self), ptr);
-                // FIXME(antoyo): set alignment.
+                let abi_align = result_layout.align.abi;
+                let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
+                let load = self.volatile_load(result.layout.gcc_type(self), ptr, ptr_align);
                 if let BackendRepr::Scalar(scalar) = result.layout.backend_repr {
                     self.to_immediate_scalar(load, scalar)
                 } else {
