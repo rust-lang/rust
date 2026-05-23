@@ -329,6 +329,17 @@ fn foo(x: Foo) -> Foo {
 "#,
         expect![[r#"ty: u32, name: ?"#]],
     );
+
+    check_expected_type_and_name(
+        r#"
+//- minicore: option
+struct Foo<T>(T);
+fn foo(x: Foo<Option<i32>>) -> Foo {
+   match x { Foo($0) => () }
+}
+"#,
+        expect![[r#"ty: Option<i32>, name: ?"#]],
+    );
 }
 
 #[test]
