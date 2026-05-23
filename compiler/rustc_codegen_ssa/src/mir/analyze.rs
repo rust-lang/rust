@@ -24,8 +24,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .local_decls
         .iter()
         .map(|decl| {
-            let ty = fx.monomorphize(decl.ty);
-            let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+            let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
             if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
         .collect();
@@ -81,8 +80,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             LocalKind::ZST => {}
             LocalKind::Memory => {}
             LocalKind::Unused => {
-                let ty = fx.monomorphize(decl.ty);
-                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+                let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
                 *kind =
                     if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
                         LocalKind::SSA(location)
@@ -138,7 +136,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
 
             // Scan through to ensure the only projections are those which
             // `FunctionCx::maybe_codegen_consume_direct` can handle.
-            let base_ty = self.fx.monomorphized_place_ty(mir::PlaceRef::from(place_ref.local));
+            let base_ty = self.fx.mir.local_decls[place_ref.local].ty;
             let mut layout = self.fx.cx.layout_of(base_ty);
             for elem in place_ref.projection {
                 layout = match *elem {
@@ -256,7 +254,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 let kind = &mut self.locals[local];
                 if *kind != LocalKind::Memory {
                     let ty = self.fx.mir.local_decls[local].ty;
-                    let ty = self.fx.monomorphize(ty);
                     if self.fx.cx.type_needs_drop(ty) {
                         // Only need the place if we're actually dropping it.
                         *kind = LocalKind::Memory;

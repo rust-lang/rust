@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::{Span, Spanned, sym};
 use tracing::debug;
@@ -31,7 +31,6 @@ impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref args, ref fn_span } => {
                 let callee_ty = func.ty(self.body, self.tcx);
-                let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
             }
             _ => {}
@@ -47,13 +46,6 @@ impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
 }
 
 impl<'tcx> MoveCheckVisitor<'tcx> {
-    fn monomorphize<T>(&self, value: T) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        value
-    }
-
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         let limit = self.tcx.move_size_limit();
         if limit.0 == 0 {
@@ -115,7 +107,6 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         operand: &mir::Operand<'tcx>,
     ) -> Option<Size> {
         let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
         let Ok(layout) =
             self.tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
         else {
