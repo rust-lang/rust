@@ -1841,7 +1841,6 @@ symbols! {
         sha512_sm_x86,
         shadow_call_stack,
         shallow,
-        share_trait,
         shl,
         shl_assign,
         shorter_tail_lifetimes,
