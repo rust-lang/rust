@@ -154,7 +154,9 @@ declare_passes! {
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
     mod impossible_predicates : ImpossiblePredicates;
-    mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
+    mod instsimplify :
+        InstSimplify { BeforeInline, AfterSimplifyCfg },
+        SimplifyUbChecks;
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
     mod large_enums : EnumSizeOpt;
@@ -746,6 +748,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
+            &instsimplify::SimplifyUbChecks,
             // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`, simplify
             // ```
             // _13 = const false;
