@@ -73,7 +73,6 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             });
 
             builder.add_file_edits(ctx.vfs_file_id(), editor);
-            builder.rename();
         },
     )
 }
