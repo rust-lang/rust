@@ -706,17 +706,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_hash_map(
-        &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
-    ) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
+    fn encode_def_path_hash_map(&mut self) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
         let value = self
             .lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()));
-        // an ordered hash of all local defids encapsulates all information contained in a reverse
-        // mapping as well.
-        let mut hasher = PublicApiHasher::default();
-        hasher.digest_iter(self.tcx.iter_local_def_id(), hcx);
-        Hashed { hash: hasher.finish(hcx), value }
+        Hashed { hash: Some(Fingerprint::ZERO), value }
     }
 
     fn encode_source_map(
@@ -911,7 +904,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (syntax_contexts, expn_data, expn_hashes) =
             stat!("hygiene", || self.encode_hygiene(hcx));
 
-        let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map(hcx));
+        let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map());
 
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.

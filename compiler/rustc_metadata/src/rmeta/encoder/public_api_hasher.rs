@@ -55,17 +55,6 @@ impl PublicApiHasher {
             value.stable_hash(&mut hcx.hcx, &mut self.0);
         }
     }
-    pub(crate) fn digest_iter<'a, I>(&mut self, values: I, hcx: &mut PublicApiHashingContext<'a>)
-    where
-        I: IntoIterator,
-        I::Item: StableHash,
-    {
-        if hcx.hash_public_api {
-            for value in values {
-                self.digest(value, hcx);
-            }
-        }
-    }
 }
 
 pub(crate) trait TablePublicApiHasher<I: Idx>: Default {
