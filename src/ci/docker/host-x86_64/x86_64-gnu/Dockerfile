@@ -20,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   libzstd-dev \
   clang \
-  lld \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Intel SDE for AVX-512 emulation

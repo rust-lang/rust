@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   llvm-21-tools \
   llvm-21-dev \
   clang \
-  lld \
   libedit-dev \
   libssl-dev \
   pkg-config \

@@ -1016,25 +1016,25 @@ impl Step for IntrinsicTest {
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
 
-        let (input_file, skip_file, runner, cppflags) = if host.contains("x86_64-unknown-linux") {
+        let (input_file, skip_file, cflags, sde_runner) = if host.contains("x86_64-unknown-linux") {
             let cpuid_def =
                 builder.src.join("library/stdarch/ci/docker/x86_64-unknown-linux-gnu/cpuid.def");
-            let runner = format!(
+            let sde_runner = format!(
                 "/intel-sde/sde64 -cpuid-in {} -rtm-mode full -tsx --",
                 cpuid_def.display()
             );
             (
                 builder.src.join("library/stdarch/intrinsics_data/x86-intel.xml"),
                 builder.src.join("library/stdarch/crates/intrinsic-test/missing_x86.txt"),
-                runner,
-                String::from("-fuse-ld=lld -I/usr/include/x86_64-linux-gnu/"),
+                "-I/usr/include/x86_64-linux-gnu/",
+                Some(sde_runner),
             )
         } else if host.contains("aarch64-unknown-linux") {
             (
                 builder.src.join("library/stdarch/intrinsics_data/arm_intrinsics.json"),
                 builder.src.join("library/stdarch/crates/intrinsic-test/missing_aarch64.txt"),
-                String::from("env"),
-                String::from(""),
+                "-I/usr/aarch64-linux-gnu/include/",
+                None,
             )
         } else {
             return;
@@ -1047,22 +1047,25 @@ impl Step for IntrinsicTest {
         cmd.current_dir(&out_dir);
         cmd.arg(&input_file);
         cmd.arg("--target").arg(&*host.triple);
-        cmd.arg("--cppcompiler").arg("clang++");
-        cmd.arg("--runner").arg(&runner);
         cmd.arg("--skip").arg(&skip_file);
         cmd.arg("--sample-percentage").arg("10");
-        cmd.env("CPPFLAGS", &cppflags);
+        cmd.env("CC", "clang");
+        cmd.env("CFLAGS", cflags);
+        cmd.run(builder);
 
-        if let Some(cargo_dir) = builder.initial_cargo.parent() {
-            let old_path = env::var_os("PATH").unwrap_or_default();
-            let new_path = env::join_paths(
-                iter::once(cargo_dir.to_path_buf()).chain(env::split_paths(&old_path)),
-            )
-            .expect("Could not prepend cargo bin path to PATH");
-            cmd.env("PATH", new_path);
+        let manifest = out_dir.join("rust_programs/Cargo.toml");
+        let mut cargo = command(&builder.initial_cargo);
+        cargo.arg("test");
+        cargo.arg("--manifest-path").arg(&manifest);
+        cargo.arg("--target").arg(&*host.triple);
+        cargo.arg("--profile").arg("release");
+        cargo.env("CC", "clang");
+        cargo.env("CFLAGS", cflags);
+        cargo.env("RUSTC", &builder.initial_rustc);
+        if let Some(runner) = sde_runner {
+            cargo.env("CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER", runner);
         }
-
-        cmd.delay_failure().run(builder);
+        cargo.delay_failure().run(builder);
     }
 }
 

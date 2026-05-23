@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   xz-utils \
   clang \
-  lld \
   && rm -rf /var/lib/apt/lists/*
   
   
