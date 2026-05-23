@@ -32,4 +32,12 @@ enum RustAndPrimDisallowed {
     Variant(u8),
 }
 
+#[repr(u8, u8)]
+//~^ ERROR conflicting representation hints [E0566]
+//~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+#[repr(u16)]
+enum ConflictingPrimReprs {
+    Variant,
+}
+
 fn main() {}
