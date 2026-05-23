@@ -1244,6 +1244,10 @@ In this directory, multiple crates are compiled, but some of them have `inline` 
 
 Tests on name shadowing.
 
+## `tests/ui/share-trait`
+
+Tests for the unstable `Share` trait.
+
 ## `tests/ui/shell-argfiles/`: `-Z shell-argfiles` command line flag
 
 The `-Zshell-argfiles` compiler flag allows argfiles to be parsed using POSIX "shell-style" quoting. When enabled, the compiler will use shlex to parse the arguments from argfiles specified with `@shell:<path>`.
