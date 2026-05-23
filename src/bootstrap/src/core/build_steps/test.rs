@@ -1067,6 +1067,7 @@ impl Step for IntrinsicTest {
         cargo.arg("--profile").arg("release");
         cargo.env("CC", "clang");
         cargo.env("CFLAGS", cflags);
+        cargo.env("RUSTC", &builder.initial_rustc);
         cargo.env("RUSTC_BOOTSTRAP", "1");
         if let Some(runner) = sde_runner {
             cargo.env("CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER", runner);
