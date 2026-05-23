@@ -40,7 +40,7 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, OutputType, TargetModifier};
-use rustc_span::def_id::CRATE_MOD_ID;
+use rustc_span::def_id::{CRATE_MOD_ID, VisibilityDefId};
 use rustc_span::hygiene::{
     HygieneEncodeContext, HygieneRemapper, HygieneRemappingResults, LocalExpnIdRemapper,
     SyntaxContextRemapper,
@@ -447,6 +447,13 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> SpanEncoder for EncodeContext<'a, 'tcx,
     fn encode_def_id(&mut self, def_id: DefId) {
         M::encoded_def_id(self.tcx, &self.local_defs_remapping, def_id).encode(self);
         self.record_encoded_index(def_id)
+    }
+
+    fn encode_visibility_def_id(&mut self, def_id: VisibilityDefId) {
+        // we don't record VisibilityDefId-s with `record_encoded_index` into the publicly reachable
+        // graph, as it cannot be used to query more data. Only to check visibility from other DefId-s
+
+        M::encoded_def_id(self.tcx, &self.local_defs_remapping, def_id.0).encode(self);
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {

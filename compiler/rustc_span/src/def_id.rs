@@ -579,7 +579,7 @@ impl From<LocalModId> for DefId {
 }
 
 /// DefId which can only be used to check visibilities.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, Decodable, Debug)]
 pub struct VisibilityDefId(pub DefId);
 
 impl<T: Into<DefId>> From<T> for VisibilityDefId {
