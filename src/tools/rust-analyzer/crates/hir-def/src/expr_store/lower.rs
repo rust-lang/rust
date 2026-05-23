@@ -2570,9 +2570,9 @@ impl<'db> ExprCollector<'db> {
     }
 
     fn collect_extern_fn_param(&mut self, pat: Option<ast::Pat>) -> PatId {
-        // `extern` functions cannot have pattern-matched parameters, and furthermore, the identifiers
-        // in their parameters are always interpreted as bindings, even if in a normal function they
-        // won't be, because they would refer to a path pattern.
+        // parameters of functions in `extern` blocks can only be simple identifiers and wildcards.
+        // Furthermore, the identifiers in their parameters are always interpreted as bindings, even
+        // if in a normal function they won't be, because they would refer to a path pattern.
         let Some(pat) = pat else { return self.missing_pat() };
 
         match &pat {
@@ -2588,6 +2588,7 @@ impl<'db> ExprCollector<'db> {
                 self.add_definition_to_binding(binding, pat);
                 pat
             }
+            ast::Pat::WildcardPat(_) => self.alloc_pat(Pat::Wild, AstPtr::new(&pat)),
             _ => {
                 self.store.diagnostics.push(ExpressionStoreDiagnostics::PatternArgInExternFn {
                     node: self.expander.in_file(AstPtr::new(&pat)),
