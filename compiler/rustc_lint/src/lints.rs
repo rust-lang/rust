@@ -2932,3 +2932,27 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
+
+#[derive(Diagnostic)]
+#[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
+#[help(
+    "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
+)]
+pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub sugg: Option<LossyProvenanceInt2PtrSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address",
+    applicability = "has-placeholders"
+)]
+pub(crate) struct LossyProvenanceInt2PtrSuggestion {
+    #[suggestion_part(code = "(...).with_addr(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}

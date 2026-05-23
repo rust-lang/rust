@@ -869,10 +869,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 Ok(CastKind::FnPtrAddrCast)
             }
             // addr-ptr-cast
-            (Int(_), Ptr(mt)) => {
-                self.fuzzy_provenance_int2ptr_lint(fcx);
-                self.check_addr_ptr_cast(fcx, mt)
-            }
+            (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt),
             // fn-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
 
@@ -1162,24 +1159,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
         fcx.tcx.emit_node_span_lint(
             lint::builtin::LOSSY_PROVENANCE_CASTS,
-            self.expr.hir_id,
-            self.span,
-            lint,
-        );
-    }
-
-    fn fuzzy_provenance_int2ptr_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let sugg = self.span.can_be_used_for_suggestions().then(|| {
-            errors::LossyProvenanceInt2PtrSuggestion {
-                lo: self.expr_span.shrink_to_lo(),
-                hi: self.expr_span.shrink_to_hi().to(self.cast_span),
-            }
-        });
-        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_node_span_lint(
-            lint::builtin::FUZZY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
             lint,
