@@ -1043,6 +1043,12 @@ impl Step for IntrinsicTest {
         let out_dir = builder.out.join(host).join("intrinsic-test");
         t!(fs::create_dir_all(&out_dir));
 
+        let crates_link = out_dir.join("crates");
+        if !crates_link.exists() {
+            std::os::unix::fs::symlink(builder.src.join("library/stdarch/crates"), &crates_link)
+                .unwrap();
+        }
+
         let mut cmd = builder.tool_cmd(Tool::IntrinsicTest);
         cmd.current_dir(&out_dir);
         cmd.arg(&input_file);
