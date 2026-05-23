@@ -1213,7 +1213,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_explicit_rust = false;
         let mut is_c = false;
         let mut is_simd = false;
-        let mut is_transparent = false;
+        let mut transparents = 0;
+        let mut last_int_repr = None;
+        let mut int_reprs_different = false;
 
         for (repr, repr_span) in reprs {
             match repr {
@@ -1284,7 +1286,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 }
                 ReprAttr::ReprTransparent => {
-                    is_transparent = true;
+                    transparents += 1;
                     match target {
                         Target::Struct | Target::Union | Target::Enum => continue,
                         _ => {
@@ -1295,8 +1297,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
                 }
-                ReprAttr::ReprInt(_) => {
+                ReprAttr::ReprInt(int_type) => {
                     int_reprs += 1;
+                    if let Some(previous_int) = last_int_repr
+                        && previous_int != int_type
+                    {
+                        int_reprs_different = true;
+                    }
+                    last_int_repr = Some(int_type);
                     if target != Target::Enum {
                         self.dcx().emit_err(errors::AttrApplication::Enum {
                             hint_span: *repr_span,
@@ -1336,8 +1344,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
         let hint_spans = reprs.iter().map(|(_, span)| *span);
 
-        // Error on repr(transparent, <anything else>).
-        if is_transparent && reprs.len() > 1 {
+        // Error if repr(transparent) is combined with any other repr apart from additional
+        // repr(transparent)s.
+        if transparents > 0 && reprs.len() != transparents {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::TransparentIncompatible {
                 hint_spans,
@@ -1346,7 +1355,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
         // Error on `#[repr(transparent)]` in combination with
         // `#[rustc_pass_indirectly_in_non_rustic_abis]`
-        if is_transparent
+        if transparents > 0
             && let Some(&pass_indirectly_span) =
                 find_attr!(attrs, RustcPassIndirectlyInNonRusticAbis(span) => span)
         {
@@ -1358,9 +1367,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::ReprConflicting { hint_spans });
+            return;
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
-        if (int_reprs > 1)
+        if (int_reprs > 1 && int_reprs_different)
             || (is_simd && is_c)
             || (int_reprs == 1
                 && is_c
