@@ -439,9 +439,10 @@ impl HashableCrateRoot {
                 build_public_hashes(&graph, &hcx.def_id_hashes, ecx.tcx, &mut hcx.hcx);
 
             let mut hasher = StableHasher::default();
-            self.stable_hash(&mut hcx.hcx, &mut hasher);
+            let public_global_hash = stable_hash(&mut hcx.hcx, &self);
+            public_global_hash.stable_hash(&mut hcx.hcx, &mut hasher);
             public_hashes.stable_hash(&mut hcx.hcx, &mut hasher);
-            let rdr_hashes = public_hashes.value.encode(ecx, hcx);
+            let rdr_hashes = public_hashes.value.encode(ecx, hcx, public_global_hash);
             let public_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_hash);
@@ -928,10 +929,12 @@ impl ItemPublicHashesBuilder {
         &self,
         ecx: &mut EncodeContext<'a, 'tcx>,
         hcx: &mut PublicApiHashingContext<'_>,
+        public_global_hash: Fingerprint,
     ) -> ItemPublicHashes {
         ItemPublicHashes {
             local: self.local.encode(&mut ecx.opaque, hcx).value,
             expn: self.expn.encode(&mut ecx.opaque, hcx).value,
+            public_global_hash,
         }
     }
 }
@@ -940,4 +943,5 @@ impl ItemPublicHashesBuilder {
 pub(crate) struct ItemPublicHashes {
     pub(crate) local: LazyTable<DefIndex, Option<Fingerprint>>,
     pub(crate) expn: LazyTable<ExpnIndex, Option<Fingerprint>>,
+    pub(crate) public_global_hash: Fingerprint,
 }

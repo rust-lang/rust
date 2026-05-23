@@ -471,6 +471,13 @@ provide! { tcx, def_id, other, cdata,
             Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
         }
     }
+    public_global_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes.public_global_hash
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {

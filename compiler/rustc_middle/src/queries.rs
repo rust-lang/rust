@@ -2065,6 +2065,21 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the global part of the public api hash. This covers the items in the rmeta which
+    /// requires a recompile of all down crates.
+    ///
+    /// For example adding lang items requires all downstream crates to check that there are no
+    /// conflicing implementations for that lang item. But adding a regular public item only
+    /// requires the direct downstream crates to recompile, since those need to reexport it for
+    /// the change to be visible to their dependents.
+    ///
+    /// Panics for the local crate.
+    query public_global_hash(_: CrateNum) -> Fingerprint {
+        eval_always
+        desc { "looking up the hash a crate" }
+        separate_provide_extern
+    }
+
     /// Gets the hash for the host proc macro. Used to support -Z dual-proc-macro.
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
         eval_always

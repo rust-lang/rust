@@ -2402,7 +2402,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         {
             // Sanity-check the crate numbers
             let mut expected_cnum = 1;
-            for &(n, _) in &deps {
+            for &(n, _, _) in &deps {
                 assert_eq!(n, CrateNum::new(expected_cnum));
                 expected_cnum += 1;
             }
@@ -2412,7 +2412,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // the assumption that they are numbered 1 to n.
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
-        hashed_lazy_array!(self, deps.iter().map(|(_, dep)| dep), hcx)
+        let mut hasher = PublicApiHasher::default();
+        let array = self.lazy_array(deps.into_iter().map(|(cnum, dep, public_global_hash)| {
+            let CrateDep { name, hash, host_hash, kind, extra_filename, is_private } = &dep;
+            hasher.digest(cnum, hcx);
+            hasher.digest(name, hcx);
+            // We only include the global part of dependency hashes, not the full public hash.
+            // The remaining, item specific, part of public_hash should only be included when those
+            // items are reachable in the public hash graph.
+            let _ = hash;
+            hasher.digest(public_global_hash, hcx);
+            hasher.digest(host_hash, hcx);
+            hasher.digest(kind, hcx);
+            hasher.digest(extra_filename, hcx);
+            hasher.digest(is_private, hcx);
+            dep
+        }));
+        Hashed { value: array, hash: hasher.finish(hcx) }
     }
 
     fn encode_target_modifiers(
@@ -3100,7 +3116,7 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
     }
 }
 
-fn crate_deps(tcx: TyCtxt<'_>) -> impl Iterator<Item = (CrateNum, CrateDep)> + '_ {
+fn crate_deps(tcx: TyCtxt<'_>) -> impl Iterator<Item = (CrateNum, CrateDep, Fingerprint)> + '_ {
     tcx.crates(()).iter().map(move |&cnum| {
         let dep = CrateDep {
             name: tcx.crate_name(cnum),
@@ -3110,7 +3126,7 @@ fn crate_deps(tcx: TyCtxt<'_>) -> impl Iterator<Item = (CrateNum, CrateDep)> + '
             extra_filename: tcx.extra_filename(cnum).clone(),
             is_private: tcx.is_private_dep(cnum),
         };
-        (cnum, dep)
+        (cnum, dep, tcx.public_global_hash(cnum))
     })
 }
 

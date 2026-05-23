@@ -21,8 +21,7 @@ use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, StableHash, TyDecodable,
-    TyEncodable,
+    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
 use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -347,7 +346,7 @@ impl RawDefId {
     }
 }
 
-#[derive(Encodable, BlobDecodable, StableHash)]
+#[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
