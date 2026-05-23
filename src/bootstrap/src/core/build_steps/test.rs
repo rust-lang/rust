@@ -1062,6 +1062,7 @@ impl Step for IntrinsicTest {
         let manifest = out_dir.join("rust_programs/Cargo.toml");
         let mut cargo = command(&builder.initial_cargo);
         cargo.arg("test");
+        cargo.arg("--tests");
         cargo.arg("--manifest-path").arg(&manifest);
         cargo.arg("--target").arg(&*host.triple);
         cargo.arg("--profile").arg("release");
