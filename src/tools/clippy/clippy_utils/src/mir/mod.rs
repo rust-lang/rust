@@ -36,7 +36,7 @@ pub fn visit_local_usage<const N: usize>(
         }
     }; N];
 
-    traversal::Postorder::new(&mir.basic_blocks, location.block, None)
+    traversal::Postorder::new(&mir.basic_blocks, location.block)
         .collect::<Vec<_>>()
         .into_iter()
         .rev()

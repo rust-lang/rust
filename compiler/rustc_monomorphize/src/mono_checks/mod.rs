@@ -11,7 +11,7 @@ mod move_check;
 fn check_mono_item<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let body = tcx.build_codegen_mir(instance);
     abi_check::check_feature_dependent_abi(tcx, instance, body);
-    move_check::check_moves(tcx, instance, body);
+    move_check::check_moves(tcx, body);
 }
 
 pub(super) fn provide(providers: &mut Providers) {

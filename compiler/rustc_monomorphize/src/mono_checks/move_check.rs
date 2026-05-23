@@ -3,8 +3,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::limit::Limit;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::mir::{self, Location};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::{Span, Spanned, sym};
 use tracing::debug;
@@ -18,13 +18,9 @@ struct MoveCheckVisitor<'tcx> {
     move_size_spans: Vec<Span>,
 }
 
-pub(crate) fn check_moves<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-    body: &'tcx mir::Body<'tcx>,
-) {
+pub(crate) fn check_moves<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx mir::Body<'tcx>) {
     let mut visitor = MoveCheckVisitor { tcx, body, move_size_spans: vec![] };
-    for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data)
     }
 }
