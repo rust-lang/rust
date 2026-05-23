@@ -41,7 +41,7 @@ use tracing::{debug, instrument, trace};
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
-use crate::generic_reborrow::{GenericReborrowKind, generic_reborrow_info};
+use crate::generic_reborrow::generic_reborrow_info;
 use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::region_infer::TypeTest;
@@ -2510,7 +2510,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        if reborrow.kind == GenericReborrowKind::CoerceShared {
+        if mutability == Mutability::Not {
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as

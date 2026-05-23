@@ -312,7 +312,10 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 borrowed_place,
             );
             let region = reborrow.target_region.as_var();
-            let kind = reborrow.kind.borrow_kind();
+            let kind = match mutability {
+                mir::Mutability::Mut => mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
+                mir::Mutability::Not => mir::BorrowKind::Shared,
+            };
             let borrow = BorrowData {
                 kind,
                 region,

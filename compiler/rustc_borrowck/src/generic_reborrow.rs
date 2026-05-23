@@ -1,39 +1,16 @@
 use rustc_hir::Mutability;
-use rustc_middle::mir::{Body, BorrowKind, Location, MutBorrowKind, Place};
+use rustc_middle::mir::{Body, Location, Place};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum GenericReborrowKind {
-    Reborrow,
-    CoerceShared,
-}
-
-impl GenericReborrowKind {
-    pub(crate) fn from_mutability(mutability: Mutability) -> Self {
-        match mutability {
-            Mutability::Mut => GenericReborrowKind::Reborrow,
-            Mutability::Not => GenericReborrowKind::CoerceShared,
-        }
-    }
-
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            GenericReborrowKind::Reborrow => "Reborrow",
-            GenericReborrowKind::CoerceShared => "CoerceShared",
-        }
-    }
-
-    pub(crate) fn borrow_kind(self) -> BorrowKind {
-        match self {
-            GenericReborrowKind::Reborrow => BorrowKind::Mut { kind: MutBorrowKind::Default },
-            GenericReborrowKind::CoerceShared => BorrowKind::Shared,
-        }
+fn generic_reborrow_name(mutability: Mutability) -> &'static str {
+    match mutability {
+        Mutability::Mut => "Reborrow",
+        Mutability::Not => "CoerceShared",
     }
 }
 
 pub(crate) struct GenericReborrowInfo<'tcx> {
-    pub(crate) kind: GenericReborrowKind,
     pub(crate) source_ty: Ty<'tcx>,
     pub(crate) source_adt: AdtDef<'tcx>,
     pub(crate) source_args: GenericArgsRef<'tcx>,
@@ -51,13 +28,13 @@ pub(crate) fn generic_reborrow_info<'tcx>(
     source_place: Place<'tcx>,
 ) -> GenericReborrowInfo<'tcx> {
     let span = body.source_info(location).span;
-    let kind = GenericReborrowKind::from_mutability(mutability);
+    let name = generic_reborrow_name(mutability);
     let source_ty = source_place.ty(body, tcx).ty;
     let &ty::Adt(source_adt, source_args) = source_ty.kind() else {
-        span_bug!(span, "{} source must be an ADT, found `{source_ty}`", kind.name());
+        span_bug!(span, "{name} source must be an ADT, found `{source_ty}`");
     };
     let &ty::Adt(target_adt, target_args) = target_ty.kind() else {
-        span_bug!(span, "{} target must be an ADT, found `{target_ty}`", kind.name());
+        span_bug!(span, "{name} target must be an ADT, found `{target_ty}`");
     };
 
     // The current model supports a single relevant lifetime, carried in the first target
@@ -65,27 +42,26 @@ pub(crate) fn generic_reborrow_info<'tcx>(
     let Some(ty::GenericArgKind::Lifetime(target_region)) =
         target_args.get(0).map(|arg| arg.kind())
     else {
-        span_bug!(span, "{} target `{target_ty}` does not start with a lifetime", kind.name());
+        span_bug!(span, "{name} target `{target_ty}` does not start with a lifetime");
     };
 
-    match kind {
-        GenericReborrowKind::Reborrow if source_adt.did() != target_adt.did() => {
+    match mutability {
+        Mutability::Mut if source_adt.did() != target_adt.did() => {
             span_bug!(
                 span,
                 "Reborrow source `{source_ty}` and target `{target_ty}` have different ADTs",
             );
         }
-        GenericReborrowKind::CoerceShared if source_adt.did() == target_adt.did() => {
+        Mutability::Not if source_adt.did() == target_adt.did() => {
             span_bug!(
                 span,
                 "CoerceShared source `{source_ty}` and target `{target_ty}` have the same ADT",
             );
         }
-        GenericReborrowKind::Reborrow | GenericReborrowKind::CoerceShared => {}
+        Mutability::Mut | Mutability::Not => {}
     }
 
     GenericReborrowInfo {
-        kind,
         source_ty,
         source_adt,
         source_args,
