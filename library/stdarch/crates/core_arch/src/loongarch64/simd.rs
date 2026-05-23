@@ -14,6 +14,7 @@ pub(super) const trait SimdExt: Sized {
     unsafe fn splat(v: i64) -> Self;
 }
 
+#[rustfmt::skip] // FIXME: https://github.com/rust-lang/stdarch/pull/2133#issuecomment-4524350350
 macro_rules! impl_simd_ext {
     ($v:ident, $e:ty) => {
         #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
