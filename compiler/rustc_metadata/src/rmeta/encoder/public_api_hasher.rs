@@ -24,7 +24,7 @@ use rustc_middle::ty::{PredicateKind, Ty, TyCtxt};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
-use rustc_span::def_id::{DefId, LOCAL_CRATE, LocalDefId, StableCrateId};
+use rustc_span::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnIndex;
 use rustc_span::{ExpnId, LocalExpnId, Span, Symbol, SyntaxContext};
@@ -601,7 +601,14 @@ fn stable_hash<'a, T: StableHash + ?Sized>(
 }
 
 impl<'tcx> IndexGraphBuilder<'tcx> {
-    fn build_graph(self, hcx: &mut StableHashingContext<'_>) -> IndexGraph<'tcx> {
+    fn build_graph(mut self, hcx: &mut StableHashingContext<'_>) -> IndexGraph<'tcx> {
+        // ExpnId::root() contains CRATE_DEF_ID as its macro_def_id, but that isn't used for
+        // anything.
+        // TODO add newtype that ensures it really isn't used
+        self.edges
+            .get_mut(&LocalNode::ExpnId(LocalExpnId::ROOT))
+            .unwrap()
+            .remove(&Node::DefId(CRATE_DEF_ID.into()));
         let mut hashes = IndexMap::default();
         // iterating over FxHashSet and FxHashMap is fine here, as it is only used to build the
         // hashes map, which is never returned or iterated
