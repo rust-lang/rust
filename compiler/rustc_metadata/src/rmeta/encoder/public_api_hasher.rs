@@ -543,13 +543,20 @@ impl fmt::Debug for IndexGraph<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let node = |idx| self.nodes.get_index(idx).unwrap().0;
         let fingerprint = |idx| self.nodes.get_index(idx).unwrap().1;
+        let reachable = self.reachable_set();
         writeln!(f, "roots:")?;
         for root in &self.roots {
             writeln!(f, "   {:?}", node(*root))?;
         }
         writeln!(f, "nodes:")?;
         for (from, edges) in self.edges.iter_enumerated() {
-            writeln!(f, "{:?}: {:x?}", node(from), fingerprint(from))?;
+            writeln!(
+                f,
+                "{:?}: {:x?} reachable: {}",
+                node(from),
+                fingerprint(from),
+                reachable[from]
+            )?;
             for to in edges {
                 writeln!(f, "   {:?}", node(*to))?;
             }
