@@ -1594,7 +1594,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         let max = 1i128 << (dest_bits - 1);
                         (max - 1, -max)
                     } else {
-                        (1i128 << dest_bits, 0)
+                        ((1i128 << dest_bits) - 1, 0)
                     };
                     let value = (value as i128).min(max).max(min);
                     let result = value.to_le_bytes();
