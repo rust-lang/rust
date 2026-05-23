@@ -140,6 +140,8 @@ impl CollapsibleIf {
 
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
+                    // Note: We intentionally use char::is_whitespace instead of rustc_lexer::is_whitespace here to
+                    // avoid visual issues with zero-width spaces. See ui tests.
                     let requires_space = snippet(cx, up_to_else, "..").ends_with(|c: char| !c.is_whitespace());
                     let mut applicability = Applicability::MachineApplicable;
                     diag.span_suggestion(
