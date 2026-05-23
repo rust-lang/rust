@@ -32,6 +32,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_span::def_id::VisibilityDefId;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanEncoder, StableSourceFileId, Symbol,
@@ -167,6 +168,15 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         // this must not be encoded as a DefIndex, as that would record it as a LocalDefId
         self.emit_u32(def_id.index.as_u32());
         self.record_encoded_index(def_id);
+    }
+
+    fn encode_visibility_def_id(&mut self, def_id: VisibilityDefId) {
+        // we don't record VisibilityDefId-s with `record_encoded_index` into the publicly reachable
+        // graph, as it cannot be used to query more data. Only to check visibility from other DefId-s
+
+        def_id.0.krate.encode(self);
+        // this must not be encoded as a DefIndex, as that would record it as a LocalDefId
+        self.emit_u32(def_id.0.index.as_u32());
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {

@@ -44,6 +44,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::def_id::VisibilityDefId;
 use crate::fatal_error::FatalError;
 
 pub mod edition;
@@ -1348,7 +1349,7 @@ rustc_index::newtype_index! {
 
 /// This trait is used to allow encoder specific encodings of certain types.
 /// It is similar to rustc_type_ir's TyEncoder.
-pub trait SpanEncoder: Encoder {
+pub trait SpanEncoder: Encoder + Sized {
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, sym: Symbol);
     fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol);
@@ -1359,6 +1360,9 @@ pub trait SpanEncoder: Encoder {
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
+    fn encode_visibility_def_id(&mut self, def_id: VisibilityDefId) {
+        def_id.0.encode(self);
+    }
 }
 
 impl SpanEncoder for FileEncoder {
@@ -1443,6 +1447,12 @@ impl<E: SpanEncoder> Encodable<E> for DefIndex {
 impl<E: SpanEncoder> Encodable<E> for DefId {
     fn encode(&self, s: &mut E) {
         s.encode_def_id(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for VisibilityDefId {
+    fn encode(&self, s: &mut E) {
+        s.encode_visibility_def_id(*self)
     }
 }
 
