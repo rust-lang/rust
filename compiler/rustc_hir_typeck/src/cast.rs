@@ -28,7 +28,6 @@
 //! expression, `e as U2` is not necessarily so (in fact it will only be valid if
 //! `U1` coerces to `U2`).
 
-use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
@@ -860,10 +859,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
 
             // ptr-addr-cast
-            (Ptr(m_expr), Int(t_c)) => {
-                self.lossy_provenance_ptr2int_lint(fcx, t_c);
-                self.check_ptr_addr_cast(fcx, m_expr)
-            }
+            (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr),
+
             (FnPtr, Int(_)) => {
                 // FIXME(#95489): there should eventually be a lint for these casts
                 Ok(CastKind::FnPtrAddrCast)
@@ -1128,41 +1125,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
         }
-    }
-
-    fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-        let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-
-        let sugg = self.span.can_be_used_for_suggestions().then(|| {
-            let expr_prec = fcx.precedence(self.expr);
-            let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
-            let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
-            let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
-            let expr_span = self.expr_span.shrink_to_lo();
-            match (needs_parens, needs_cast) {
-                (true, true) => errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast {
-                    expr_span,
-                    cast_span,
-                    cast_ty,
-                },
-                (true, false) => {
-                    errors::LossyProvenancePtr2IntSuggestion::NeedsParens { expr_span, cast_span }
-                }
-                (false, true) => {
-                    errors::LossyProvenancePtr2IntSuggestion::NeedsCast { cast_span, cast_ty }
-                }
-                (false, false) => errors::LossyProvenancePtr2IntSuggestion::Other { cast_span },
-            }
-        });
-
-        let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_node_span_lint(
-            lint::builtin::LOSSY_PROVENANCE_CASTS,
-            self.expr.hir_id,
-            self.span,
-            lint,
-        );
     }
 
     /// Attempt to suggest using `.is_empty` when trying to cast from a
