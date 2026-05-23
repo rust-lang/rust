@@ -2,6 +2,8 @@ pub(crate) mod cache;
 pub(crate) mod item_type;
 pub(crate) mod renderer;
 
+use std::alloc::Allocator;
+
 pub(crate) use renderer::{FormatRenderer, run_format};
 use rustc_hir::def_id::DefId;
 
@@ -43,7 +45,7 @@ impl Impl {
     // Returns true if this is an implementation on a "local" type, meaning:
     // the type is in the current crate, or the type and the trait are both
     // re-exported by the current crate.
-    pub(crate) fn is_on_local_type(&self, cx: &Context<'_>) -> bool {
+    pub(crate) fn is_on_local_type<A: Allocator + Copy>(&self, cx: &Context<'_, A>) -> bool {
         let cache = cx.cache();
         let for_type = &self.inner_impl().for_;
         if let Some(for_type_did) = for_type.def_id(cache) {

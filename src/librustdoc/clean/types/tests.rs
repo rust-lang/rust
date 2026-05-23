@@ -1,3 +1,5 @@
+use std::alloc::Global;
+
 use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_resolve::rustdoc::unindent_doc_fragments;
 use rustc_span::create_default_session_globals_then;
@@ -74,7 +76,7 @@ fn is_same_generic() {
     use crate::clean::types::{PrimitiveType, Type};
     use crate::formats::cache::Cache;
     create_default_session_globals_then(|| {
-        let cache = Cache::new(false, false);
+        let cache = Cache::new(false, false, Global);
         let generic = Type::Generic(sym::character('T'));
         let unit = Type::Primitive(PrimitiveType::Unit);
         assert!(!generic.is_doc_subtype_of(&unit, &cache));

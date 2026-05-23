@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 pub use std::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
 use std::sync::LazyLock as Lazy;
@@ -35,7 +36,7 @@ use crate::formats::item_type::ItemType;
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn krate<A: Allocator + Copy>(cx: &mut DocContext<'_, A>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
@@ -87,8 +88,8 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, external_traits: Box::new(mem::take(&mut cx.external_traits)) }
 }
 
-pub(crate) fn clean_middle_generic_args<'tcx>(
-    cx: &mut DocContext<'tcx>,
+pub(crate) fn clean_middle_generic_args<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
@@ -206,8 +207,8 @@ fn can_elide_generic_arg<'tcx>(
     actual.skip_binder() == default.skip_binder()
 }
 
-fn clean_middle_generic_args_with_constraints<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_middle_generic_args_with_constraints<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     did: DefId,
     has_self: bool,
     mut constraints: ThinVec<AssocItemConstraint>,
@@ -236,8 +237,8 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     GenericArgs::AngleBracketed { args, constraints }
 }
 
-pub(super) fn clean_middle_path<'tcx>(
-    cx: &mut DocContext<'tcx>,
+pub(super) fn clean_middle_path<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     did: DefId,
     has_self: bool,
     constraints: ThinVec<AssocItemConstraint>,
@@ -263,8 +264,8 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     join_path_idents(segments.iter().map(|seg| seg.ident))
 }
 
-pub(crate) fn build_deref_target_impls(
-    cx: &mut DocContext<'_>,
+pub(crate) fn build_deref_target_impls<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     items: &[Item],
     ret: &mut Vec<Item>,
 ) {
@@ -459,7 +460,7 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
+pub(crate) fn resolve_type<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, path: Path) -> Type {
     debug!("resolve_type({path:?})");
 
     match path.res {
@@ -475,10 +476,10 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     }
 }
 
-pub(crate) fn synthesize_auto_trait_and_blanket_impls(
-    cx: &mut DocContext<'_>,
+pub(crate) fn synthesize_auto_trait_and_blanket_impls<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     item_def_id: DefId,
-) -> impl Iterator<Item = Item> + use<> {
+) -> impl Iterator<Item = Item> + use<A> {
     let auto_impls = cx
         .sess()
         .prof
@@ -497,7 +498,7 @@ pub(crate) fn synthesize_auto_trait_and_blanket_impls(
 /// This is later used by [`href()`] to determine the HTML link for the item.
 ///
 /// [`href()`]: crate::html::format::href
-pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
+pub(crate) fn register_res<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, res: Res) -> DefId {
     use DefKind::*;
     debug!("register_res({res:?})");
 
@@ -531,16 +532,22 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     did
 }
 
-pub(crate) fn resolve_use_source(cx: &mut DocContext<'_>, path: Path) -> ImportSource {
+pub(crate) fn resolve_use_source<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    path: Path,
+) -> ImportSource {
     ImportSource {
         did: if path.res.opt_def_id().is_none() { None } else { Some(register_res(cx, path.res)) },
         path,
     }
 }
 
-pub(crate) fn enter_impl_trait<'tcx, F, R>(cx: &mut DocContext<'tcx>, f: F) -> R
+pub(crate) fn enter_impl_trait<'tcx, F, R, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
+    f: F,
+) -> R
 where
-    F: FnOnce(&mut DocContext<'tcx>) -> R,
+    F: FnOnce(&mut DocContext<'tcx, A>) -> R,
 {
     let old_bounds = mem::take(&mut cx.impl_trait_bounds);
     let r = f(cx);

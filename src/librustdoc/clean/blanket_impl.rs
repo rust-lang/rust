@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
@@ -15,8 +17,8 @@ use crate::clean::{
 use crate::core::DocContext;
 
 #[instrument(level = "debug", skip(cx))]
-pub(crate) fn synthesize_blanket_impls(
-    cx: &mut DocContext<'_>,
+pub(crate) fn synthesize_blanket_impls<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;

@@ -2,6 +2,8 @@
 //! the `clean` types but with some fields removed or stringified to simplify the output and not
 //! expose unstable compiler internals.
 
+use std::alloc::Allocator;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -22,7 +24,7 @@ use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-impl JsonRenderer<'_> {
+impl<A: Allocator + Copy> JsonRenderer<'_, A> {
     pub(super) fn convert_item(&self, item: &clean::Item) -> Option<Item> {
         let deprecation = item.deprecation(self.tcx);
         let links = self
@@ -103,18 +105,18 @@ impl JsonRenderer<'_> {
 }
 
 pub(crate) trait FromClean<T> {
-    fn from_clean(f: &T, renderer: &JsonRenderer<'_>) -> Self;
+    fn from_clean<A: Allocator + Copy>(f: &T, renderer: &JsonRenderer<'_, A>) -> Self;
 }
 
 pub(crate) trait IntoJson<T> {
-    fn into_json(&self, renderer: &JsonRenderer<'_>) -> T;
+    fn into_json<A: Allocator + Copy>(&self, renderer: &JsonRenderer<'_, A>) -> T;
 }
 
 impl<T, U> IntoJson<U> for T
 where
     U: FromClean<T>,
 {
-    fn into_json(&self, renderer: &JsonRenderer<'_>) -> U {
+    fn into_json<A: Allocator + Copy>(&self, renderer: &JsonRenderer<'_, A>) -> U {
         U::from_clean(self, renderer)
     }
 }
@@ -123,7 +125,7 @@ impl<T, U> FromClean<Box<T>> for U
 where
     U: FromClean<T>,
 {
-    fn from_clean(opt: &Box<T>, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(opt: &Box<T>, renderer: &JsonRenderer<'_, A>) -> Self {
         opt.as_ref().into_json(renderer)
     }
 }
@@ -132,7 +134,7 @@ impl<T, U> FromClean<Option<T>> for Option<U>
 where
     U: FromClean<T>,
 {
-    fn from_clean(opt: &Option<T>, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(opt: &Option<T>, renderer: &JsonRenderer<'_, A>) -> Self {
         opt.as_ref().map(|x| x.into_json(renderer))
     }
 }
@@ -141,7 +143,7 @@ impl<T, U> FromClean<Vec<T>> for Vec<U>
 where
     U: FromClean<T>,
 {
-    fn from_clean(items: &Vec<T>, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(items: &Vec<T>, renderer: &JsonRenderer<'_, A>) -> Self {
         items.iter().map(|i| i.into_json(renderer)).collect()
     }
 }
@@ -150,13 +152,13 @@ impl<T, U> FromClean<ThinVec<T>> for Vec<U>
 where
     U: FromClean<T>,
 {
-    fn from_clean(items: &ThinVec<T>, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(items: &ThinVec<T>, renderer: &JsonRenderer<'_, A>) -> Self {
         items.iter().map(|i| i.into_json(renderer)).collect()
     }
 }
 
 impl FromClean<clean::Span> for Option<Span> {
-    fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(span: &clean::Span, renderer: &JsonRenderer<'_, A>) -> Self {
         match span.filename(renderer.sess()) {
             rustc_span::FileName::Real(name) => {
                 if let Some(local_path) = name.into_local_path() {
@@ -177,7 +179,10 @@ impl FromClean<clean::Span> for Option<Span> {
 }
 
 impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
-    fn from_clean(v: &Option<ty::Visibility<DefId>>, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        v: &Option<ty::Visibility<DefId>>,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         match v {
             None => Visibility::Default,
             Some(ty::Visibility::Public) => Visibility::Public,
@@ -191,7 +196,10 @@ impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
 }
 
 impl FromClean<attrs::Deprecation> for Deprecation {
-    fn from_clean(deprecation: &attrs::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        deprecation: &attrs::Deprecation,
+        _renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
         let since = match since {
             DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
@@ -204,7 +212,10 @@ impl FromClean<attrs::Deprecation> for Deprecation {
 }
 
 impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
-    fn from_clean(generic_args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        generic_args: &clean::GenericArgs,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::GenericArgs::*;
         match generic_args {
             AngleBracketed { args, constraints } => {
@@ -227,7 +238,10 @@ impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
 }
 
 impl FromClean<clean::GenericArg> for GenericArg {
-    fn from_clean(arg: &clean::GenericArg, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        arg: &clean::GenericArg,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::GenericArg::*;
         match arg {
             Lifetime(l) => GenericArg::Lifetime(l.into_json(renderer)),
@@ -240,7 +254,10 @@ impl FromClean<clean::GenericArg> for GenericArg {
 
 impl FromClean<clean::ConstantKind> for Constant {
     // FIXME(generic_const_items): Add support for generic const items.
-    fn from_clean(constant: &clean::ConstantKind, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        constant: &clean::ConstantKind,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let tcx = renderer.tcx;
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
@@ -250,7 +267,10 @@ impl FromClean<clean::ConstantKind> for Constant {
 }
 
 impl FromClean<clean::AssocItemConstraint> for AssocItemConstraint {
-    fn from_clean(constraint: &clean::AssocItemConstraint, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        constraint: &clean::AssocItemConstraint,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         AssocItemConstraint {
             name: constraint.assoc.name.to_string(),
             args: constraint.assoc.args.into_json(renderer),
@@ -260,7 +280,10 @@ impl FromClean<clean::AssocItemConstraint> for AssocItemConstraint {
 }
 
 impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
-    fn from_clean(kind: &clean::AssocItemConstraintKind, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        kind: &clean::AssocItemConstraintKind,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::AssocItemConstraintKind::*;
         match kind {
             Equality { term } => AssocItemConstraintKind::Equality(term.into_json(renderer)),
@@ -269,7 +292,10 @@ impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
     }
 }
 
-fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
+fn from_clean_item<A: Allocator + Copy>(
+    item: &clean::Item,
+    renderer: &JsonRenderer<'_, A>,
+) -> ItemEnum {
     use clean::ItemKind::*;
     let name = item.name;
     let is_crate = item.is_crate();
@@ -360,7 +386,10 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
 }
 
 impl FromClean<clean::Struct> for Struct {
-    fn from_clean(struct_: &clean::Struct, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        struct_: &clean::Struct,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let has_stripped_fields = struct_.has_stripped_entries();
         let clean::Struct { ctor_kind, generics, fields } = struct_;
 
@@ -382,7 +411,10 @@ impl FromClean<clean::Struct> for Struct {
 }
 
 impl FromClean<clean::Union> for Union {
-    fn from_clean(union_: &clean::Union, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        union_: &clean::Union,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let has_stripped_fields = union_.has_stripped_entries();
         let clean::Union { generics, fields } = union_;
         Union {
@@ -395,7 +427,10 @@ impl FromClean<clean::Union> for Union {
 }
 
 impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
-    fn from_clean(header: &rustc_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        header: &rustc_hir::FnHeader,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let is_unsafe = match header.safety {
             HeaderSafety::SafeTargetFeatures => {
                 // The type system's internal implementation details consider
@@ -418,7 +453,7 @@ impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
 }
 
 impl FromClean<ExternAbi> for Abi {
-    fn from_clean(a: &ExternAbi, _renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(a: &ExternAbi, _renderer: &JsonRenderer<'_, A>) -> Self {
         match *a {
             ExternAbi::Rust => Abi::Rust,
             ExternAbi::C { unwind } => Abi::C { unwind },
@@ -435,13 +470,19 @@ impl FromClean<ExternAbi> for Abi {
 }
 
 impl FromClean<clean::Lifetime> for String {
-    fn from_clean(l: &clean::Lifetime, _renderer: &JsonRenderer<'_>) -> String {
+    fn from_clean<A: Allocator + Copy>(
+        l: &clean::Lifetime,
+        _renderer: &JsonRenderer<'_, A>,
+    ) -> String {
         l.0.to_string()
     }
 }
 
 impl FromClean<clean::Generics> for Generics {
-    fn from_clean(generics: &clean::Generics, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        generics: &clean::Generics,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         Generics {
             params: generics.params.into_json(renderer),
             where_predicates: generics.where_predicates.into_json(renderer),
@@ -450,7 +491,10 @@ impl FromClean<clean::Generics> for Generics {
 }
 
 impl FromClean<clean::GenericParamDef> for GenericParamDef {
-    fn from_clean(generic_param: &clean::GenericParamDef, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        generic_param: &clean::GenericParamDef,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         GenericParamDef {
             name: generic_param.name.to_string(),
             kind: generic_param.kind.into_json(renderer),
@@ -459,7 +503,10 @@ impl FromClean<clean::GenericParamDef> for GenericParamDef {
 }
 
 impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
-    fn from_clean(kind: &clean::GenericParamDefKind, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        kind: &clean::GenericParamDefKind,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::GenericParamDefKind::*;
         match kind {
             Lifetime { outlives } => {
@@ -479,7 +526,10 @@ impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
 }
 
 impl FromClean<clean::WherePredicate> for WherePredicate {
-    fn from_clean(predicate: &clean::WherePredicate, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        predicate: &clean::WherePredicate,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::WherePredicate::*;
         match predicate {
             BoundPredicate { ty, bounds, bound_params } => WherePredicate::BoundPredicate {
@@ -509,7 +559,10 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
 }
 
 impl FromClean<clean::GenericBound> for GenericBound {
-    fn from_clean(bound: &clean::GenericBound, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        bound: &clean::GenericBound,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::GenericBound::*;
         match bound {
             TraitBound(clean::PolyTrait { trait_, generic_params }, modifier) => {
@@ -537,9 +590,9 @@ impl FromClean<clean::GenericBound> for GenericBound {
 }
 
 impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
-    fn from_clean(
+    fn from_clean<A: Allocator + Copy>(
         modifiers: &rustc_hir::TraitBoundModifiers,
-        _renderer: &JsonRenderer<'_>,
+        _renderer: &JsonRenderer<'_, A>,
     ) -> Self {
         use rustc_hir as hir;
         let hir::TraitBoundModifiers { constness, polarity } = modifiers;
@@ -556,7 +609,7 @@ impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
 }
 
 impl FromClean<clean::Type> for Type {
-    fn from_clean(ty: &clean::Type, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(ty: &clean::Type, renderer: &JsonRenderer<'_, A>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
             RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
@@ -603,7 +656,7 @@ impl FromClean<clean::Type> for Type {
 }
 
 impl FromClean<clean::Path> for Path {
-    fn from_clean(path: &clean::Path, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(path: &clean::Path, renderer: &JsonRenderer<'_, A>) -> Self {
         Path {
             path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
@@ -626,7 +679,10 @@ impl FromClean<clean::Path> for Path {
 }
 
 impl FromClean<clean::QPathData> for Type {
-    fn from_clean(qpath: &clean::QPathData, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        qpath: &clean::QPathData,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let clean::QPathData { assoc, self_type, should_fully_qualify: _, trait_ } = qpath;
 
         Self::QualifiedPath {
@@ -639,7 +695,7 @@ impl FromClean<clean::QPathData> for Type {
 }
 
 impl FromClean<clean::Term> for Term {
-    fn from_clean(term: &clean::Term, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(term: &clean::Term, renderer: &JsonRenderer<'_, A>) -> Self {
         match term {
             clean::Term::Type(ty) => Term::Type(ty.into_json(renderer)),
             clean::Term::Constant(c) => Term::Constant(c.into_json(renderer)),
@@ -648,7 +704,10 @@ impl FromClean<clean::Term> for Term {
 }
 
 impl FromClean<clean::BareFunctionDecl> for FunctionPointer {
-    fn from_clean(bare_decl: &clean::BareFunctionDecl, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        bare_decl: &clean::BareFunctionDecl,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let clean::BareFunctionDecl { safety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
             header: FunctionHeader {
@@ -664,7 +723,10 @@ impl FromClean<clean::BareFunctionDecl> for FunctionPointer {
 }
 
 impl FromClean<clean::FnDecl> for FunctionSignature {
-    fn from_clean(decl: &clean::FnDecl, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        decl: &clean::FnDecl,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let clean::FnDecl { inputs, output, c_variadic } = decl;
         FunctionSignature {
             inputs: inputs
@@ -683,7 +745,10 @@ impl FromClean<clean::FnDecl> for FunctionSignature {
 }
 
 impl FromClean<clean::Trait> for Trait {
-    fn from_clean(trait_: &clean::Trait, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        trait_: &clean::Trait,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let tcx = renderer.tcx;
         let is_auto = trait_.is_auto(tcx);
         let is_unsafe = trait_.safety(tcx).is_unsafe();
@@ -702,9 +767,9 @@ impl FromClean<clean::Trait> for Trait {
 }
 
 impl FromClean<clean::PolyTrait> for PolyTrait {
-    fn from_clean(
+    fn from_clean<A: Allocator + Copy>(
         clean::PolyTrait { trait_, generic_params }: &clean::PolyTrait,
-        renderer: &JsonRenderer<'_>,
+        renderer: &JsonRenderer<'_, A>,
     ) -> Self {
         PolyTrait {
             trait_: trait_.into_json(renderer),
@@ -714,7 +779,10 @@ impl FromClean<clean::PolyTrait> for PolyTrait {
 }
 
 impl FromClean<clean::Impl> for Impl {
-    fn from_clean(impl_: &clean::Impl, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        impl_: &clean::Impl,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(renderer.tcx);
         let clean::Impl { safety, generics, trait_, for_, items, polarity, kind, is_deprecated: _ } =
             impl_;
@@ -745,11 +813,11 @@ impl FromClean<clean::Impl> for Impl {
     }
 }
 
-pub(crate) fn from_clean_function(
+pub(crate) fn from_clean_function<A: Allocator + Copy>(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
-    renderer: &JsonRenderer<'_>,
+    renderer: &JsonRenderer<'_, A>,
 ) -> Function {
     Function {
         sig: decl.into_json(renderer),
@@ -760,7 +828,10 @@ pub(crate) fn from_clean_function(
 }
 
 impl FromClean<clean::Enum> for Enum {
-    fn from_clean(enum_: &clean::Enum, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        enum_: &clean::Enum,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let has_stripped_variants = enum_.has_stripped_entries();
         let clean::Enum { variants, generics } = enum_;
         Enum {
@@ -773,7 +844,10 @@ impl FromClean<clean::Enum> for Enum {
 }
 
 impl FromClean<clean::Variant> for Variant {
-    fn from_clean(variant: &clean::Variant, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        variant: &clean::Variant,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::VariantKind::*;
 
         let discriminant = variant.discriminant.into_json(renderer);
@@ -792,7 +866,10 @@ impl FromClean<clean::Variant> for Variant {
 }
 
 impl FromClean<clean::Discriminant> for Discriminant {
-    fn from_clean(disr: &clean::Discriminant, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        disr: &clean::Discriminant,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let tcx = renderer.tcx;
         Discriminant {
             // expr is only none if going through the inlining path, which gets
@@ -805,7 +882,10 @@ impl FromClean<clean::Discriminant> for Discriminant {
 }
 
 impl FromClean<clean::Import> for Use {
-    fn from_clean(import: &clean::Import, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        import: &clean::Import,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use clean::ImportKind::*;
         let (name, is_glob) = match import.kind {
             Simple(s) => (s.to_string(), false),
@@ -821,7 +901,10 @@ impl FromClean<clean::Import> for Use {
 }
 
 impl FromClean<clean::ProcMacro> for ProcMacro {
-    fn from_clean(mac: &clean::ProcMacro, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        mac: &clean::ProcMacro,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         ProcMacro {
             kind: mac.kind.into_json(renderer),
             helpers: mac.helpers.iter().map(|x| x.to_string()).collect(),
@@ -830,7 +913,10 @@ impl FromClean<clean::ProcMacro> for ProcMacro {
 }
 
 impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
-    fn from_clean(kind: &rustc_span::hygiene::MacroKind, _renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        kind: &rustc_span::hygiene::MacroKind,
+        _renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         use rustc_span::hygiene::MacroKind::*;
         match kind {
             Bang => MacroKind::Bang,
@@ -841,16 +927,19 @@ impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
 }
 
 impl FromClean<clean::TypeAlias> for TypeAlias {
-    fn from_clean(type_alias: &clean::TypeAlias, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        type_alias: &clean::TypeAlias,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         let clean::TypeAlias { type_, generics, item_type: _, inner_type: _ } = type_alias;
         TypeAlias { type_: type_.into_json(renderer), generics: generics.into_json(renderer) }
     }
 }
 
-fn from_clean_static(
+fn from_clean_static<A: Allocator + Copy>(
     stat: &clean::Static,
     safety: rustc_hir::Safety,
-    renderer: &JsonRenderer<'_>,
+    renderer: &JsonRenderer<'_, A>,
 ) -> Static {
     let tcx = renderer.tcx;
     Static {
@@ -865,7 +954,10 @@ fn from_clean_static(
 }
 
 impl FromClean<clean::TraitAlias> for TraitAlias {
-    fn from_clean(alias: &clean::TraitAlias, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(
+        alias: &clean::TraitAlias,
+        renderer: &JsonRenderer<'_, A>,
+    ) -> Self {
         TraitAlias {
             generics: alias.generics.into_json(renderer),
             params: alias.bounds.into_json(renderer),
@@ -874,7 +966,7 @@ impl FromClean<clean::TraitAlias> for TraitAlias {
 }
 
 impl FromClean<ItemType> for ItemKind {
-    fn from_clean(kind: &ItemType, _renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean<A: Allocator + Copy>(kind: &ItemType, _renderer: &JsonRenderer<'_, A>) -> Self {
         use ItemType::*;
         match kind {
             Module => ItemKind::Module,

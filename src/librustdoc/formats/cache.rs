@@ -1,5 +1,7 @@
+use std::alloc::Allocator;
 use std::mem;
 
+use bumpalo::Bump;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
@@ -18,6 +20,25 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
+pub(crate) trait AllocatorExt: Allocator + Copy {
+    fn can_leak_memory() -> bool;
+}
+
+impl<T> AllocatorExt for T
+where
+    T: Allocator + Copy,
+{
+    default fn can_leak_memory() -> bool {
+        false
+    }
+}
+
+impl<'a> AllocatorExt for &'a Bump {
+    fn can_leak_memory() -> bool {
+        true
+    }
+}
+
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
@@ -27,8 +48,7 @@ use crate::visit_lib::RustdocEffectiveVisibilities;
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in an `Arc` instance and shared among the various
 /// rendering threads.
-#[derive(Default)]
-pub(crate) struct Cache {
+pub(crate) struct Cache<A: AllocatorExt> {
     /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate [`clean::Type::Path`]s, and is used to print
     /// out extra documentation on the page of an enum/struct.
@@ -102,7 +122,7 @@ pub(crate) struct Cache {
     parent_stack: Vec<ParentStackItem>,
     stripped_mod: bool,
 
-    pub(crate) search_index: Vec<IndexItem>,
+    pub(crate) search_index: Vec<IndexItem<A>, A>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -131,18 +151,52 @@ pub(crate) struct Cache {
     pub(crate) inlined_items: DefIdSet,
 }
 
+impl<A: AllocatorExt> Drop for Cache<A> {
+    fn drop(&mut self) {
+        let alloc = *self.search_index.allocator();
+        let can_leak = A::can_leak_memory();
+        let search_index = mem::replace(&mut self.search_index, Vec::new_in(alloc));
+
+        if can_leak {
+            mem::forget(search_index);
+        }
+    }
+}
+
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
-struct CacheBuilder<'a, 'tcx> {
-    cache: &'a mut Cache,
+struct CacheBuilder<'a, 'tcx, A: Allocator + Copy> {
+    cache: &'a mut Cache<A>,
     /// This field is used to prevent duplicated impl blocks.
     impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
     is_json_output: bool,
 }
 
-impl Cache {
-    pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
-        Cache { document_private, document_hidden, ..Cache::default() }
+impl<A: Allocator + Copy> Cache<A> {
+    pub(crate) fn new(document_private: bool, document_hidden: bool, alloc: A) -> Self {
+        Cache {
+            document_private,
+            document_hidden,
+            impls: Default::default(),
+            paths: Default::default(),
+            external_paths: Default::default(),
+            exact_paths: Default::default(),
+            traits: Default::default(),
+            implementors: Default::default(),
+            extern_locations: Default::default(),
+            primitive_locations: Default::default(),
+            effective_visibilities: Default::default(),
+            crate_version: Default::default(),
+            masked_crates: Default::default(),
+            stack: Default::default(),
+            parent_stack: Default::default(),
+            stripped_mod: Default::default(),
+            search_index: Vec::new_in(alloc),
+            orphan_impl_items: Default::default(),
+            orphan_trait_impls: Default::default(),
+            intra_doc_links: Default::default(),
+            inlined_items: Default::default(),
+        }
     }
 
     fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {
@@ -156,7 +210,7 @@ impl Cache {
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
     pub(crate) fn populate(
-        cx: &mut DocContext<'_>,
+        cx: &mut DocContext<'_, A>,
         mut krate: clean::Crate,
         render_options: &RenderOptions,
     ) -> clean::Crate {
@@ -209,13 +263,14 @@ impl Cache {
 
         let (krate, mut impl_ids) = {
             let is_json_output = cx.is_json_output();
+            let alloc = *cx.cache.search_index.allocator();
             let mut cache_builder = CacheBuilder {
                 tcx,
                 cache: &mut cx.cache,
                 impl_ids: Default::default(),
                 is_json_output,
             };
-            krate = cache_builder.fold_crate(krate);
+            krate = cache_builder.fold_crate(krate, alloc);
             (krate, cache_builder.impl_ids)
         };
 
@@ -233,8 +288,8 @@ impl Cache {
     }
 }
 
-impl DocFolder for CacheBuilder<'_, '_> {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+impl<A: Allocator + Copy> DocFolder<A> for CacheBuilder<'_, '_, A> {
+    fn fold_item(&mut self, item: clean::Item, alloc: A) -> Option<clean::Item> {
         if item.item_id.is_local() {
             debug!(
                 "folding {} (stripped: {:?}) \"{:?}\", id {:?}",
@@ -255,7 +310,11 @@ impl DocFolder for CacheBuilder<'_, '_> {
         };
 
         #[inline]
-        fn is_from_private_dep(tcx: TyCtxt<'_>, cache: &Cache, def_id: DefId) -> bool {
+        fn is_from_private_dep<A: Allocator + Copy>(
+            tcx: TyCtxt<'_>,
+            cache: &Cache<A>,
+            def_id: DefId,
+        ) -> bool {
             let krate = def_id.krate;
 
             cache.masked_crates.contains(&krate) || tcx.is_private_dep(krate)
@@ -306,7 +365,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             None
         };
         if let Some(name) = search_name {
-            add_item_to_search_index(self.tcx, self.cache, &item, name)
+            add_item_to_search_index(self.tcx, self.cache, &item, name, alloc)
         }
 
         // Keep track of the fully qualified path for this item.
@@ -402,9 +461,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::TypeAliasItem(..)
             | clean::ImplItem(..) => {
                 self.cache.parent_stack.push(ParentStackItem::new(&item));
-                (self.fold_item_recur(item), true)
+                (self.fold_item_recur(item, alloc), true)
             }
-            _ => (self.fold_item_recur(item), false),
+            _ => (self.fold_item_recur(item, alloc), false),
         };
 
         // Once we've recursively found all the generics, hoard off all the
@@ -484,7 +543,13 @@ impl DocFolder for CacheBuilder<'_, '_> {
     }
 }
 
-fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::Item, name: Symbol) {
+fn add_item_to_search_index<A: Allocator + Copy>(
+    tcx: TyCtxt<'_>,
+    cache: &mut Cache<A>,
+    item: &clean::Item,
+    name: Symbol,
+    alloc: A,
+) {
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
@@ -596,6 +661,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         parent_did,
         clean_impl_generics(cache.parent_stack.last()).as_ref(),
         types.next().unwrap(),
+        alloc,
     );
     let index_item = IndexItem {
         defid: Some(defid),
@@ -620,7 +686,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
 /// We have a parent, but we don't know where they're
 /// defined yet. Wait for later to index this item.
 /// See [`Cache::orphan_impl_items`].
-fn handle_orphan_impl_child(cache: &mut Cache, item: &clean::Item, parent_did: DefId) {
+fn handle_orphan_impl_child<A: Allocator + Copy>(
+    cache: &mut Cache<A>,
+    item: &clean::Item,
+    parent_did: DefId,
+) {
     let impl_generics = clean_impl_generics(cache.parent_stack.last());
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
     let orphan_item = OrphanImplItem {

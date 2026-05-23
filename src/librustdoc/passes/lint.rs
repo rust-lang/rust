@@ -7,26 +7,29 @@ mod html_tags;
 mod redundant_explicit_links;
 mod unescaped_backticks;
 
+use std::alloc::Allocator;
+
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
-pub(crate) const RUN_LINTS: Pass =
-    Pass { name: "run-lints", run: Some(run_lints), description: "runs some of rustdoc's lints" };
-
-struct Linter<'a, 'tcx> {
-    cx: &'a mut DocContext<'tcx>,
+pub(crate) fn run_lints_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass { name: "run-lints", run: Some(run_lints), description: "runs some of rustdoc's lints" }
 }
 
-pub(crate) fn run_lints(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+struct Linter<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut DocContext<'tcx, A>,
+}
+
+pub(crate) fn run_lints<A: Allocator + Copy>(krate: Crate, cx: &mut DocContext<'_, A>) -> Crate {
     Linter { cx }.visit_crate(&krate);
     krate
 }
 
-impl DocVisitor<'_> for Linter<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for Linter<'_, '_, A> {
     fn visit_item(&mut self, item: &Item) {
-        let Some(hir_id) = DocContext::as_local_hir_id(self.cx.tcx, item.item_id) else {
+        let Some(hir_id) = DocContext::<A>::as_local_hir_id(self.cx.tcx, item.item_id) else {
             // If non-local, no need to check anything.
             return;
         };

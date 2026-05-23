@@ -5,6 +5,8 @@
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.
 //! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doctests.
 
+use std::alloc::Allocator;
+
 use rustc_hir as hir;
 use rustc_macros::Diagnostic;
 use rustc_middle::lint::LintLevelSource;
@@ -18,23 +20,28 @@ use crate::core::DocContext;
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code};
 use crate::visit::DocVisitor;
 
-pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
-    name: "check_doc_test_visibility",
-    run: Some(check_doc_test_visibility),
-    description: "run various visibility-related lints on doctests",
-};
-
-struct DocTestVisibilityLinter<'a, 'tcx> {
-    cx: &'a mut DocContext<'tcx>,
+pub(crate) fn check_doc_test_visibility_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "check_doc_test_visibility",
+        run: Some(check_doc_test_visibility),
+        description: "run various visibility-related lints on doctests",
+    }
 }
 
-pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+struct DocTestVisibilityLinter<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut DocContext<'tcx, A>,
+}
+
+pub(crate) fn check_doc_test_visibility<A: Allocator + Copy>(
+    krate: Crate,
+    cx: &mut DocContext<'_, A>,
+) -> Crate {
     let mut coll = DocTestVisibilityLinter { cx };
     coll.visit_crate(&krate);
     krate
 }
 
-impl DocVisitor<'_> for DocTestVisibilityLinter<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for DocTestVisibilityLinter<'_, '_, A> {
     fn visit_item(&mut self, item: &Item) {
         look_for_tests(self.cx, &item.doc_value(), item);
 
@@ -54,7 +61,10 @@ impl crate::doctest::DocTestVisitor for Tests {
     }
 }
 
-pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
+pub(crate) fn should_have_doc_example<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    item: &clean::Item,
+) -> bool {
     if !(cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || item.is_exported_macro())
         || matches!(
@@ -116,7 +126,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     !level_spec.is_allow() || matches!(level_spec.src, LintLevelSource::Default)
 }
 
-pub(crate) fn look_for_tests(cx: &DocContext<'_>, dox: &str, item: &Item) {
+pub(crate) fn look_for_tests<A: Allocator + Copy>(cx: &DocContext<'_, A>, dox: &str, item: &Item) {
     #[derive(Diagnostic)]
     #[diag("missing code example in this documentation")]
     struct MissingCodeExample;
@@ -125,7 +135,7 @@ pub(crate) fn look_for_tests(cx: &DocContext<'_>, dox: &str, item: &Item) {
     #[diag("documentation test in private item")]
     struct DoctestInPrivateItem;
 
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
+    let Some(hir_id) = DocContext::<A>::as_local_hir_id(cx.tcx, item.item_id) else {
         // If non-local, no need to check anything.
         return;
     };

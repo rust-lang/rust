@@ -373,9 +373,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.19.0"
+version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
+checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
 name = "bytecheck"
@@ -4922,6 +4922,7 @@ dependencies = [
  "arrayvec",
  "askama",
  "base64",
+ "bumpalo",
  "expect-test",
  "indexmap",
  "itertools",
@@ -4931,6 +4932,7 @@ dependencies = [
  "regex",
  "rustdoc-json-types",
  "serde",
+ "serde_alloc",
  "serde_json",
  "sha2",
  "smallvec",
@@ -5179,6 +5181,15 @@ checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
 dependencies = [
  "ordered-float",
  "serde",
+]
+
+[[package]]
+name = "serde_alloc"
+version = "0.1.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "727f51fdf8729c8fbd227ab2a5745c54c76e8771c63ce1282fd9ba894a7eff78"
+dependencies = [
+ "serde_core",
 ]
 
 [[package]]

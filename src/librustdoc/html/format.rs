@@ -7,6 +7,7 @@
 //! some of them support an alternate format that emits text, but that should
 //! not be used external to this module.
 
+use std::alloc::Allocator;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::{iter, slice};
@@ -36,9 +37,9 @@ use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-pub(crate) fn print_generic_bounds(
+pub(crate) fn print_generic_bounds<A: Allocator + Copy>(
     bounds: &[clean::GenericBound],
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
@@ -51,9 +52,9 @@ pub(crate) fn print_generic_bounds(
     })
 }
 
-pub(crate) fn print_generic_param_def(
+pub(crate) fn print_generic_param_def<A: Allocator + Copy>(
     generic_param: &clean::GenericParamDef,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| match &generic_param.kind {
         clean::GenericParamDefKind::Lifetime { outlives } => {
@@ -99,7 +100,10 @@ pub(crate) fn print_generic_param_def(
     })
 }
 
-pub(crate) fn print_generics(generics: &clean::Generics, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_generics<A: Allocator + Copy>(
+    generics: &clean::Generics,
+    cx: &Context<'_, A>,
+) -> impl Display {
     let mut real_params = generics.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
     if real_params.peek().is_none() {
         None
@@ -117,7 +121,10 @@ pub(crate) enum Ending {
     NoNewline,
 }
 
-fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) -> impl Display {
+fn print_where_predicate<A: Allocator + Copy>(
+    predicate: &clean::WherePredicate,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         match predicate {
             clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
@@ -155,9 +162,9 @@ fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) ->
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
-pub(crate) fn print_where_clause(
+pub(crate) fn print_where_clause<A: Allocator + Copy>(
     gens: &clean::Generics,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     indent: usize,
     ending: Ending,
 ) -> Option<impl Display> {
@@ -248,16 +255,19 @@ pub(crate) fn print_constant_kind(
     )
 }
 
-fn print_poly_trait(poly_trait: &clean::PolyTrait, cx: &Context<'_>) -> impl Display {
+fn print_poly_trait<A: Allocator + Copy>(
+    poly_trait: &clean::PolyTrait,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         print_higher_ranked_params_with_space(&poly_trait.generic_params, cx, "for").fmt(f)?;
         print_path(&poly_trait.trait_, cx).fmt(f)
     })
 }
 
-pub(crate) fn print_generic_bound(
+pub(crate) fn print_generic_bound<A: Allocator + Copy>(
     generic_bound: &clean::GenericBound,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| match generic_bound {
         clean::GenericBound::Outlives(lt) => f.write_str(print_lifetime(lt)),
@@ -280,7 +290,10 @@ pub(crate) fn print_generic_bound(
     })
 }
 
-fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> impl Display {
+fn print_generic_args<A: Allocator + Copy>(
+    generic_args: &clean::GenericArgs,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         match generic_args {
             clean::GenericArgs::AngleBracketed { args, constraints } => {
@@ -360,9 +373,9 @@ pub(crate) struct HrefInfo {
 
 /// This function is to get the external macro path because they are not in the cache used in
 /// `href_with_root_path`.
-fn generate_macro_def_id_path(
+fn generate_macro_def_id_path<A: Allocator + Copy>(
     def_id: DefId,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
@@ -421,10 +434,10 @@ fn generate_macro_def_id_path(
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
-fn generate_item_def_id_path(
+fn generate_item_def_id_path<A: Allocator + Copy>(
     mut def_id: DefId,
     original_def_id: DefId,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     use rustc_middle::traits::ObligationCause;
@@ -508,8 +521,8 @@ fn remote_url_prefix(url: &str, is_absolute: bool, depth: usize) -> UrlPartsBuil
     }
 }
 
-fn url_parts(
-    cache: &Cache,
+fn url_parts<A: Allocator + Copy>(
+    cache: &Cache<A>,
     def_id: DefId,
     module_fqp: &[Symbol],
     relative_to: &[Symbol],
@@ -550,9 +563,9 @@ fn make_href(
     url_parts.finish()
 }
 
-pub(crate) fn href_with_root_path(
+pub(crate) fn href_with_root_path<A: Allocator + Copy>(
     original_did: DefId,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
@@ -632,7 +645,10 @@ pub(crate) fn href_with_root_path(
     })
 }
 
-pub(crate) fn href(did: DefId, cx: &Context<'_>) -> Result<HrefInfo, HrefError> {
+pub(crate) fn href<A: Allocator + Copy>(
+    did: DefId,
+    cx: &Context<'_, A>,
+) -> Result<HrefInfo, HrefError> {
     href_with_root_path(did, cx, None)
 }
 
@@ -667,10 +683,10 @@ pub(crate) fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[Symbol]) ->
     }
 }
 
-pub(crate) fn link_tooltip(
+pub(crate) fn link_tooltip<A: Allocator + Copy>(
     did: DefId,
     fragment: &Option<UrlFragment>,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let cache = cx.cache();
@@ -699,13 +715,13 @@ pub(crate) fn link_tooltip(
 }
 
 /// Used to render a [`clean::Path`].
-fn resolved_path(
+fn resolved_path<A: Allocator + Copy>(
     w: &mut fmt::Formatter<'_>,
     did: DefId,
     path: &clean::Path,
     print_all: bool,
     use_absolute: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> fmt::Result {
     let last = path.segments.last().unwrap();
 
@@ -738,21 +754,21 @@ fn resolved_path(
     Ok(())
 }
 
-fn primitive_link(
+fn primitive_link<A: Allocator + Copy>(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
     name: fmt::Arguments<'_>,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> fmt::Result {
     primitive_link_fragment(f, prim, name, "", cx)
 }
 
-fn primitive_link_fragment(
+fn primitive_link_fragment<A: Allocator + Copy>(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
     name: fmt::Arguments<'_>,
     fragment: &str,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> fmt::Result {
     let m = &cx.cache();
     let mut needs_termination = false;
@@ -814,10 +830,10 @@ fn primitive_link_fragment(
     Ok(())
 }
 
-fn print_tybounds(
+fn print_tybounds<A: Allocator + Copy>(
     bounds: &[clean::PolyTrait],
     lt: &Option<clean::Lifetime>,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         bounds.iter().map(|bound| print_poly_trait(bound, cx)).joined(" + ", f)?;
@@ -830,9 +846,9 @@ fn print_tybounds(
     })
 }
 
-fn print_higher_ranked_params_with_space(
+fn print_higher_ranked_params_with_space<A: Allocator + Copy>(
     params: &[clean::GenericParamDef],
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     keyword: &'static str,
 ) -> impl Display {
     fmt::from_fn(move |f| {
@@ -872,7 +888,11 @@ pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
     })
 }
 
-pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_anchor<A: Allocator + Copy>(
+    did: DefId,
+    text: Symbol,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         if let Ok(HrefInfo { url, kind, rust_path }) = href(did, cx) {
             write!(
@@ -888,11 +908,11 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
     })
 }
 
-fn fmt_type(
+fn fmt_type<A: Allocator + Copy>(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
     use_absolute: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
@@ -1052,15 +1072,24 @@ fn fmt_type(
     }
 }
 
-pub(crate) fn print_type(type_: &clean::Type, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_type<A: Allocator + Copy>(
+    type_: &clean::Type,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| fmt_type(type_, f, false, cx))
 }
 
-pub(crate) fn print_path(path: &clean::Path, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_path<A: Allocator + Copy>(
+    path: &clean::Path,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| resolved_path(f, path.def_id(), path, false, false, cx))
 }
 
-fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Display {
+fn print_qpath_data<A: Allocator + Copy>(
+    qpath_data: &clean::QPathData,
+    cx: &Context<'_, A>,
+) -> impl Display {
     let clean::QPathData { ref assoc, ref self_type, should_fully_qualify, ref trait_ } =
         *qpath_data;
 
@@ -1131,10 +1160,10 @@ fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Dis
     })
 }
 
-pub(crate) fn print_impl(
+pub(crate) fn print_impl<A: Allocator + Copy>(
     impl_: &clean::Impl,
     use_absolute: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         f.write_str("impl")?;
@@ -1175,12 +1204,12 @@ pub(crate) fn print_impl(
 }
 
 impl clean::Impl {
-    fn print_type(
+    fn print_type<A: Allocator + Copy>(
         &self,
         type_: &clean::Type,
         f: &mut fmt::Formatter<'_>,
         use_absolute: bool,
-        cx: &Context<'_>,
+        cx: &Context<'_, A>,
     ) -> Result<(), fmt::Error> {
         if let clean::Type::Tuple(types) = type_
             && let [clean::Type::Generic(name)] = &types[..]
@@ -1241,7 +1270,10 @@ impl clean::Impl {
     }
 }
 
-pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_params<A: Allocator + Copy>(
+    params: &[clean::Parameter],
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         params
             .iter()
@@ -1280,7 +1312,10 @@ impl Display for Indent {
     }
 }
 
-fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::Display {
+fn print_parameter<A: Allocator + Copy>(
+    parameter: &clean::Parameter,
+    cx: &Context<'_, A>,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if let Some(self_ty) = parameter.to_receiver() {
             match self_ty {
@@ -1309,7 +1344,10 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
     })
 }
 
-fn print_fn_decl(fn_decl: &clean::FnDecl, cx: &Context<'_>) -> impl Display {
+fn print_fn_decl<A: Allocator + Copy>(
+    fn_decl: &clean::FnDecl,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         let ellipsis = if fn_decl.c_variadic { ", ..." } else { "" };
         Wrapped::with_parens()
@@ -1328,11 +1366,11 @@ fn print_fn_decl(fn_decl: &clean::FnDecl, cx: &Context<'_>) -> impl Display {
 ///   are preserved.
 /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
 ///   necessary.
-pub(crate) fn full_print_fn_decl(
+pub(crate) fn full_print_fn_decl<A: Allocator + Copy>(
     fn_decl: &clean::FnDecl,
     header_len: usize,
     indent: usize,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
@@ -1347,13 +1385,13 @@ pub(crate) fn full_print_fn_decl(
 }
 
 impl clean::FnDecl {
-    fn inner_full_print(
+    fn inner_full_print<A: Allocator + Copy>(
         &self,
         // For None, the declaration will not be line-wrapped. For Some(n),
         // the declaration will be line-wrapped, with an indent of n spaces.
         line_wrapping_indent: Option<usize>,
         f: &mut fmt::Formatter<'_>,
-        cx: &Context<'_>,
+        cx: &Context<'_, A>,
     ) -> fmt::Result {
         Wrapped::with_parens()
             .wrap_fn(|f| {
@@ -1397,7 +1435,7 @@ impl clean::FnDecl {
         self.print_output(cx).fmt(f)
     }
 
-    fn print_output(&self, cx: &Context<'_>) -> impl Display {
+    fn print_output<A: Allocator + Copy>(&self, cx: &Context<'_, A>) -> impl Display {
         fmt::from_fn(move |f| {
             if self.output.is_unit() {
                 return Ok(());
@@ -1409,7 +1447,10 @@ impl clean::FnDecl {
     }
 }
 
-pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
+pub(crate) fn visibility_print_with_space<A: Allocator + Copy>(
+    item: &clean::Item,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         let Some(vis) = item.visibility(cx.tcx()) else {
             return Ok(());
@@ -1513,7 +1554,10 @@ pub(crate) fn print_constness_with_space(
     }
 }
 
-pub(crate) fn print_import(import: &clean::Import, cx: &Context<'_>) -> impl Display {
+pub(crate) fn print_import<A: Allocator + Copy>(
+    import: &clean::Import,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| match import.kind {
         clean::ImportKind::Simple(name) => {
             if name == import.source.path.last() {
@@ -1536,7 +1580,10 @@ pub(crate) fn print_import(import: &clean::Import, cx: &Context<'_>) -> impl Dis
     })
 }
 
-fn print_import_source(import_source: &clean::ImportSource, cx: &Context<'_>) -> impl Display {
+fn print_import_source<A: Allocator + Copy>(
+    import_source: &clean::ImportSource,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| match import_source.did {
         Some(did) => resolved_path(f, did, &import_source.path, true, false, cx),
         _ => {
@@ -1554,9 +1601,9 @@ fn print_import_source(import_source: &clean::ImportSource, cx: &Context<'_>) ->
     })
 }
 
-fn print_assoc_item_constraint(
+fn print_assoc_item_constraint<A: Allocator + Copy>(
     assoc_item_constraint: &clean::AssocItemConstraint,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         f.write_str(assoc_item_constraint.assoc.name.as_str())?;
@@ -1587,7 +1634,10 @@ pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
     })
 }
 
-fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl Display {
+fn print_generic_arg<A: Allocator + Copy>(
+    generic_arg: &clean::GenericArg,
+    cx: &Context<'_, A>,
+) -> impl Display {
     fmt::from_fn(move |f| match generic_arg {
         clean::GenericArg::Lifetime(lt) => f.write_str(print_lifetime(lt)),
         clean::GenericArg::Type(ty) => print_type(ty, cx).fmt(f),
@@ -1596,7 +1646,7 @@ fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl 
     })
 }
 
-fn print_term(term: &clean::Term, cx: &Context<'_>) -> impl Display {
+fn print_term<A: Allocator + Copy>(term: &clean::Term, cx: &Context<'_, A>) -> impl Display {
     fmt::from_fn(move |f| match term {
         clean::Term::Type(ty) => print_type(ty, cx).fmt(f),
         clean::Term::Constant(ct) => print_constant_kind(ct, cx.tcx()).fmt(f),

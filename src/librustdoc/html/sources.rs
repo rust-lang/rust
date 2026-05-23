@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
@@ -19,7 +20,10 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::visit::DocVisitor;
 
-pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
+pub(crate) fn render<A: Allocator + Copy>(
+    cx: &mut Context<'_, A>,
+    krate: &clean::Crate,
+) -> Result<(), Error> {
     info!("emitting source files");
 
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
@@ -108,8 +112,8 @@ impl DocVisitor<'_> for LocalSourcesCollector<'_, '_> {
 }
 
 /// Helper struct to render all source code to HTML pages
-struct SourceCollector<'a, 'tcx> {
-    cx: &'a mut Context<'tcx>,
+struct SourceCollector<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut Context<'tcx, A>,
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
@@ -118,7 +122,7 @@ struct SourceCollector<'a, 'tcx> {
     crate_name: &'a str,
 }
 
-impl DocVisitor<'_> for SourceCollector<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for SourceCollector<'_, '_, A> {
     fn visit_item(&mut self, item: &clean::Item) {
         if !self.cx.info.include_sources {
             return;
@@ -163,7 +167,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
     }
 }
 
-impl SourceCollector<'_, '_> {
+impl<A: Allocator + Copy> SourceCollector<'_, '_, A> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(
         &mut self,
@@ -325,11 +329,11 @@ pub(crate) enum SourceContext<'a> {
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-pub(crate) fn print_src(
+pub(crate) fn print_src<A: Allocator + Copy>(
     mut writer: impl fmt::Write,
     s: &str,
     file_span: rustc_span::Span,
-    context: &Context<'_>,
+    context: &Context<'_, A>,
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,
     source_context: &SourceContext<'_>,

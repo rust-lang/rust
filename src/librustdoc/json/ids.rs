@@ -5,6 +5,8 @@
 //! [`rustdoc_json_types::Item`] doesn't correspond exactly to what
 //! other phases think of as an "item".
 
+use std::alloc::Allocator;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
@@ -65,7 +67,7 @@ pub(super) struct FullItemId {
     name: Option<Symbol>,
 }
 
-impl JsonRenderer<'_> {
+impl<A: Allocator + Copy> JsonRenderer<'_, A> {
     pub(crate) fn id_from_item_default(&self, item_id: clean::ItemId) -> types::Id {
         self.id_from_item_inner(item_id, None, None)
     }

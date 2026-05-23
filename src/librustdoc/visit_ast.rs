@@ -1,6 +1,7 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
+use std::alloc::Allocator;
 use std::mem;
 
 use rustc_ast::attr::AttributeExt;
@@ -119,8 +120,8 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-pub(crate) struct RustdocVisitor<'a, 'tcx> {
-    cx: &'a mut core::DocContext<'tcx>,
+pub(crate) struct RustdocVisitor<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut core::DocContext<'tcx, A>,
     view_item_stack: LocalDefIdSet,
     inlining: bool,
     /// Are the current module and all of its parents public?
@@ -131,8 +132,8 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     inside_body: bool,
 }
 
-impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
+impl<'a, 'tcx, A: Allocator + Copy> RustdocVisitor<'a, 'tcx, A> {
+    pub(crate) fn new(cx: &'a mut core::DocContext<'tcx, A>) -> RustdocVisitor<'a, 'tcx, A> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = LocalDefIdSet::default();
         stack.insert(CRATE_DEF_ID);
@@ -619,7 +620,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
 // We need to implement this visitor so it'll go everywhere and retrieve items we're interested in
 // such as impl blocks in const blocks.
-impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
+impl<'tcx, A: Allocator + Copy> Visitor<'tcx> for RustdocVisitor<'_, 'tcx, A> {
     type NestedFilter = nested_filter::All;
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {

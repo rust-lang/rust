@@ -8,6 +8,7 @@ mod conversions;
 mod ids;
 mod import_finder;
 
+use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::fs::{File, create_dir_all};
 use std::io::{BufWriter, Write, stdout};
@@ -32,10 +33,11 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
+// use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
-pub(crate) struct JsonRenderer<'tcx> {
+pub(crate) struct JsonRenderer<'tcx, A: Allocator + Copy> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
@@ -44,12 +46,12 @@ pub(crate) struct JsonRenderer<'tcx> {
     ///
     /// If this is `None`, the blob will be printed to `stdout` instead.
     out_dir: Option<PathBuf>,
-    cache: Rc<Cache>,
+    cache: Rc<Cache<A>>,
     imported_items: DefIdSet,
     id_interner: RefCell<ids::IdInterner>,
 }
 
-impl<'tcx> JsonRenderer<'tcx> {
+impl<'tcx, A: Allocator + Copy> JsonRenderer<'tcx, A> {
     fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }
@@ -106,11 +108,11 @@ impl<'tcx> JsonRenderer<'tcx> {
     }
 }
 
-impl<'tcx> JsonRenderer<'tcx> {
+impl<'tcx, A: Allocator + Copy> JsonRenderer<'tcx, A> {
     pub(crate) fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        cache: Cache,
+        cache: Cache<A>,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
@@ -131,7 +133,7 @@ impl<'tcx> JsonRenderer<'tcx> {
     }
 }
 
-impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
+impl<'tcx, A: Allocator + Copy> FormatRenderer<'tcx> for JsonRenderer<'tcx, A> {
     const DESCR: &'static str = "json";
     const RUN_ON_MODULE: bool = false;
     const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::JsonFiles;

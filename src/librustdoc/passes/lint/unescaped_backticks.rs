@@ -1,5 +1,6 @@
 //! Detects unescaped backticks (\`) in doc comments.
 
+use std::alloc::Allocator;
 use std::ops::Range;
 
 use rustc_errors::Diag;
@@ -12,7 +13,12 @@ use crate::clean::Item;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
+pub(crate) fn visit_item<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    item: &Item,
+    hir_id: HirId,
+    dox: &str,
+) {
     let tcx = cx.tcx;
 
     let link_names = item.link_names(&cx.cache);
@@ -409,8 +415,8 @@ fn clamp_end(index: usize, ranges: &[Range<usize>]) -> Option<usize> {
 /// Try to emit a span suggestion and fall back to help messages if we can't find a suitable span.
 ///
 /// This helps finding backticks in huge macro-generated docs.
-fn suggest_insertion(
-    cx: &DocContext<'_>,
+fn suggest_insertion<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &Item,
     dox: &str,
     lint: &mut Diag<'_, ()>,

@@ -1,5 +1,6 @@
 //! This module analyzes crates to find call sites that can serve as examples in the documentation.
 
+use std::alloc::Allocator;
 use std::fs;
 use std::path::PathBuf;
 
@@ -109,15 +110,15 @@ pub(crate) type FnCallLocations = FxIndexMap<PathBuf, CallData>;
 pub(crate) type AllCallLocations = FxIndexMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
-struct FindCalls<'a, 'tcx> {
-    cx: Context<'tcx>,
+struct FindCalls<'a, 'tcx, A: Allocator + Copy> {
+    cx: Context<'tcx, A>,
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
     bin_crate: bool,
     call_ident_spans: FxHashSet<Span>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
+impl<'a, 'tcx, A: Allocator + Copy> Visitor<'tcx> for FindCalls<'a, 'tcx, A>
 where
     'tcx: 'a,
 {
@@ -269,10 +270,10 @@ where
     }
 }
 
-pub(crate) fn run(
+pub(crate) fn run<A: Allocator + Copy>(
     krate: clean::Crate,
     mut renderopts: config::RenderOptions,
-    cache: formats::cache::Cache,
+    cache: formats::cache::Cache<A>,
     tcx: TyCtxt<'_>,
     options: ScrapeExamplesOptions,
     bin_crate: bool,

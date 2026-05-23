@@ -2,6 +2,7 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::mem;
@@ -38,13 +39,14 @@ use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" };
+pub(crate) fn collect_intra_doc_links_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" }
+}
 
-pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
+pub(crate) fn collect_intra_doc_links<'a, 'tcx, A: Allocator + Copy>(
     krate: Crate,
-    cx: &'a mut DocContext<'tcx>,
-) -> (Crate, LinkCollector<'a, 'tcx>) {
+    cx: &'a mut DocContext<'tcx, A>,
+) -> (Crate, LinkCollector<'a, 'tcx, A>) {
     let mut collector = LinkCollector {
         cx,
         visited_links: FxHashMap::default(),
@@ -251,8 +253,8 @@ impl OwnedDiagnosticInfo {
     }
 }
 
-pub(crate) struct LinkCollector<'a, 'tcx> {
-    pub(crate) cx: &'a mut DocContext<'tcx>,
+pub(crate) struct LinkCollector<'a, 'tcx, A: Allocator + Copy> {
+    pub(crate) cx: &'a mut DocContext<'tcx, A>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
     pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
@@ -275,7 +277,7 @@ pub(crate) struct AmbiguousLinks {
     resolved: Vec<(Res, Option<UrlFragment>)>,
 }
 
-impl<'tcx> LinkCollector<'_, 'tcx> {
+impl<'tcx, A: Allocator + Copy> LinkCollector<'_, 'tcx, A> {
     /// Given a full link, parse it as an [enum struct variant].
     ///
     /// In particular, this will return an error whenever there aren't three
@@ -889,7 +891,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailu
     }
 }
 
-impl DocVisitor<'_> for LinkCollector<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for LinkCollector<'_, '_, A> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_links(item);
         self.visit_item_recur(item)
@@ -904,7 +906,7 @@ enum PreprocessingError {
 }
 
 impl PreprocessingError {
-    fn report(&self, cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
+    fn report<A: Allocator + Copy>(&self, cx: &DocContext<'_, A>, diag_info: DiagnosticInfo<'_>) {
         match self {
             PreprocessingError::MultipleAnchors => report_multiple_anchors(cx, diag_info),
             PreprocessingError::Disambiguator(range, msg) => {
@@ -1066,7 +1068,7 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
     })
 }
 
-impl LinkCollector<'_, '_> {
+impl<A: Allocator + Copy> LinkCollector<'_, '_, A> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
@@ -1919,7 +1921,7 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diag<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
-    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
+    let Some(hir_id) = DocContext::<std::alloc::Global>::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
         info!("ignoring warning from parent crate: {msg}");
         return;
@@ -1998,8 +2000,8 @@ fn report_diagnostic(
 /// This also tries to resolve any intermediate path segments that weren't
 /// handled earlier. For example, if passed `Item::Crate(std)` and `path_str`
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
-fn resolution_failure(
-    collector: &LinkCollector<'_, '_>,
+fn resolution_failure<A: Allocator + Copy>(
+    collector: &LinkCollector<'_, '_, A>,
     diag_info: DiagnosticInfo<'_>,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
@@ -2272,20 +2274,27 @@ fn resolution_failure(
     );
 }
 
-fn report_multiple_anchors(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>) {
+fn report_multiple_anchors<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    diag_info: DiagnosticInfo<'_>,
+) {
     let msg = format!("`{}` contains multiple anchors", diag_info.ori_link);
     anchor_failure(cx, diag_info, msg, 1)
 }
 
-fn report_anchor_conflict(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, def_id: DefId) {
+fn report_anchor_conflict<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    diag_info: DiagnosticInfo<'_>,
+    def_id: DefId,
+) {
     let (link, kind) = (diag_info.ori_link, Res::from_def_id(cx.tcx, def_id).descr());
     let msg = format!("`{link}` contains an anchor, but links to {kind}s are already anchored");
     anchor_failure(cx, diag_info, msg, 0)
 }
 
 /// Report an anchor failure.
-fn anchor_failure(
-    cx: &DocContext<'_>,
+fn anchor_failure<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     diag_info: DiagnosticInfo<'_>,
     msg: String,
     anchor_idx: usize,
@@ -2303,8 +2312,8 @@ fn anchor_failure(
 }
 
 /// Report an error in the link disambiguator.
-fn disambiguator_error(
-    cx: &DocContext<'_>,
+fn disambiguator_error<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     mut diag_info: DiagnosticInfo<'_>,
     disambiguator_range: MarkdownLinkRange,
     msg: impl Into<DiagMessage> + Display,
@@ -2319,8 +2328,8 @@ fn disambiguator_error(
     });
 }
 
-fn report_malformed_generics(
-    cx: &DocContext<'_>,
+fn report_malformed_generics<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     diag_info: DiagnosticInfo<'_>,
     err: MalformedGenerics,
     path_str: &str,
@@ -2358,8 +2367,8 @@ fn report_malformed_generics(
 /// If all `candidates` have the same kind, it's not possible to disambiguate so in this case,
 /// the function won't emit an error and will return `false`. Otherwise, it'll emit the error and
 /// return `true`.
-fn ambiguity_error(
-    cx: &DocContext<'_>,
+fn ambiguity_error<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     diag_info: &DiagnosticInfo<'_>,
     path_str: &str,
     candidates: &[(Res, Option<DefId>)],
@@ -2472,7 +2481,11 @@ fn suggest_disambiguator(
 }
 
 /// Report a link from a public item to a private one.
-fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: &str) {
+fn privacy_error<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    diag_info: &DiagnosticInfo<'_>,
+    path_str: &str,
+) {
     let sym;
     let item_name = match diag_info.item.name {
         Some(name) => {

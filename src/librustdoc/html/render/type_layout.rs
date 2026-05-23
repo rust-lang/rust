@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::fmt;
 
 use askama::Template;
@@ -24,7 +25,10 @@ struct TypeLayoutSize {
     size: u64,
 }
 
-pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl fmt::Display {
+pub(crate) fn document_type_layout<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    ty_def_id: DefId,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());

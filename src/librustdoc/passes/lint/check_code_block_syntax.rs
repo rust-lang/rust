@@ -1,5 +1,6 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::sync::Arc;
 
@@ -18,7 +19,11 @@ use crate::clean;
 use crate::core::DocContext;
 use crate::html::markdown::{self, RustCodeBlock};
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item, dox: &str) {
+pub(crate) fn visit_item<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    item: &clean::Item,
+    dox: &str,
+) {
     if let Some(def_id) = item.item_id.as_local_def_id() {
         let sp = item.attr_span(cx.tcx);
         let extra = crate::html::markdown::ExtraInfo::new(cx.tcx, def_id, sp);
@@ -28,8 +33,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &clean::Item, dox: &str) {
     }
 }
 
-fn check_rust_syntax(
-    cx: &DocContext<'_>,
+fn check_rust_syntax<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &clean::Item,
     dox: &str,
     code_block: RustCodeBlock,

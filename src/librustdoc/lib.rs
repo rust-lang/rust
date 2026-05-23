@@ -3,13 +3,16 @@
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
 )]
+#![feature(allocator_api)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
+#![feature(iter_collect_into)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(min_specialization)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
@@ -66,11 +69,13 @@ extern crate test;
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys as _;
 
+use std::alloc::Allocator;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::path::Path;
 use std::process::ExitCode;
 
+use bumpalo::Bump;
 use rustc_ast::ast;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -726,20 +731,21 @@ pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) {
 fn run_renderer<
     'tcx,
     T: formats::FormatRenderer<'tcx>,
+    A: Allocator + Copy,
     F: FnOnce(
         clean::Crate,
         config::RenderOptions,
-        Cache,
+        Cache<A>,
         TyCtxt<'tcx>,
     ) -> Result<(T, clean::Crate), Error>,
 >(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
-    cache: formats::cache::Cache,
+    cache: formats::cache::Cache<A>,
     tcx: TyCtxt<'tcx>,
     init: F,
 ) {
-    match formats::run_format::<T, F>(krate, renderopts, cache, tcx, init) {
+    match formats::run_format::<T, F, A>(krate, renderopts, cache, tcx, init) {
         Ok(_) => tcx.dcx().abort_if_errors(),
         Err(e) => {
             let mut msg =
@@ -758,7 +764,10 @@ fn run_renderer<
 /// Renders and writes cross-crate info files, like the search index. This function exists so that
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--include-parts-dir` are combined and written to the doc root.
-fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
+fn run_merge_finalize<A: Allocator + Copy>(
+    opt: config::RenderOptions,
+    alloc: A,
+) -> Result<(), error::Error> {
     assert!(
         opt.should_merge.write_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
@@ -767,7 +776,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
         !opt.should_merge.read_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
-    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
+    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir, alloc)?;
     let include_sources = !opt.html_no_source;
     html::render::write_not_crate_specific(
         &crates,
@@ -777,6 +786,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
         opt.extension_css.as_deref(),
         &opt.resource_suffix,
         include_sources,
+        alloc,
     )?;
     Ok(())
 }
@@ -820,10 +830,11 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let input = match input {
         config::InputMode::HasFile(input) => input,
         config::InputMode::NoInputMergeFinalize => {
+            let alloc = Bump::new();
             return wrap_return(
                 dcx,
                 rustc_span::create_session_globals_then(options.edition, &[], None, || {
-                    run_merge_finalize(render_options)
+                    run_merge_finalize(render_options, &alloc)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
             );
@@ -931,9 +942,11 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
+            let alloc = Bump::new();
+
             let (krate, render_opts, mut cache, expanded_macros) = sess
                 .time("run_global_ctxt", || {
-                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format, &alloc)
                 });
             info!("finished with rustc");
 

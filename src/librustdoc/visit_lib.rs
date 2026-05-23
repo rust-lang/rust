@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
@@ -28,7 +30,10 @@ impl RustdocEffectiveVisibilities {
     define_method!(is_reachable);
 }
 
-pub(crate) fn lib_embargo_visit_item(cx: &mut DocContext<'_>, def_id: DefId) {
+pub(crate) fn lib_embargo_visit_item<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    def_id: DefId,
+) {
     assert!(!def_id.is_local());
     let document_hidden = cx.document_hidden();
     LibEmbargoVisitor {

@@ -1,3 +1,4 @@
+use std::alloc::{Allocator, Global};
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
@@ -35,7 +36,7 @@ use crate::passes;
 use crate::passes::Condition::*;
 use crate::passes::collect_intra_doc_links::LinkCollector;
 
-pub(crate) struct DocContext<'tcx> {
+pub(crate) struct DocContext<'tcx, A: Allocator + Copy> {
     pub(crate) tcx: TyCtxt<'tcx>,
     /// Used for normalization.
     ///
@@ -61,7 +62,7 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
     pub(crate) auto_traits: Vec<DefId>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
-    pub(crate) cache: Cache,
+    pub(crate) cache: Cache<A>,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
@@ -70,7 +71,7 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) show_coverage: bool,
 }
 
-impl<'tcx> DocContext<'tcx> {
+impl<'tcx, A: Allocator + Copy> DocContext<'tcx, A> {
     pub(crate) fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }
@@ -325,12 +326,13 @@ pub(crate) fn create_config(
     }
 }
 
-pub(crate) fn run_global_ctxt(
+pub(crate) fn run_global_ctxt<A: Allocator + Copy>(
     tcx: TyCtxt<'_>,
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
+    alloc: A,
+) -> (clean::Crate, RenderOptions, Cache<A>, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -371,7 +373,7 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(render_options.document_private, render_options.document_hidden),
+        cache: Cache::new(render_options.document_private, render_options.document_hidden, alloc),
         inlined: FxHashSet::default(),
         output_format,
         show_coverage,
@@ -399,7 +401,7 @@ pub(crate) fn run_global_ctxt(
         );
         tcx.emit_node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
-            DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
+            DocContext::<Global>::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
             rustc_errors::DiagDecorator(|lint| {
                 if let Some(local_def_id) = krate.module.item_id.as_local_def_id() {
                     lint.span(tcx.def_span(local_def_id));
