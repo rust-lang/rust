@@ -1365,8 +1365,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
             {
                 fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 0), layout);
                 ret.write_cvalue(fx, ret_val);
 
                 fx.bcx.ins().jump(ret_block, &[]);
@@ -1399,8 +1399,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
                 fx.bcx.seal_block(fallthrough_block);
                 fx.bcx.switch_to_block(fallthrough_block);
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 0), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 0), layout);
                 ret.write_cvalue(fx, ret_val);
                 fx.bcx.ins().jump(ret_block, &[]);
 
@@ -1409,8 +1409,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 fx.bcx.set_cold_block(catch_block);
                 let exception = fx.bcx.append_block_param(catch_block, pointer_ty(fx.tcx));
                 fx.bcx.ins().call_indirect(catch_fn_sig, catch_fn, &[data, exception]);
-                let layout = fx.layout_of(fx.tcx.types.i32);
-                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I32, 1), layout);
+                let layout = fx.layout_of(fx.tcx.types.bool);
+                let ret_val = CValue::by_val(fx.bcx.ins().iconst(types::I8, 1), layout);
                 ret.write_cvalue(fx, ret_val);
                 fx.bcx.ins().jump(ret_block, &[]);
             }
