@@ -134,31 +134,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[inline(always)]
     pub fn layout_of(&self, ty: Ty<'tcx>) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {
         let _trace = enter_trace_span!(M, layouting::layout_of, ty = ?ty.kind());
-        if ty == self.tcx.types.usize {
-            self.layout_of_usize()
-        } else if ty == self.tcx.types.u16 {
-            Ok(TyAndLayout { ty: self.tcx.types.u16, layout: self.tcx.layouts.u16 })
-        } else if ty == self.tcx.types.i16 {
-            Ok(TyAndLayout { ty: self.tcx.types.i16, layout: self.tcx.layouts.i16 })
-        } else if ty == self.tcx.types.u32 {
-            Ok(TyAndLayout { ty: self.tcx.types.u32, layout: self.tcx.layouts.u32 })
-        } else if ty == self.tcx.types.i32 {
-            Ok(TyAndLayout { ty: self.tcx.types.i32, layout: self.tcx.layouts.i32 })
-        } else if ty == self.tcx.types.u64 {
-            Ok(TyAndLayout { ty: self.tcx.types.u64, layout: self.tcx.layouts.u64 })
-        } else if ty == self.tcx.types.i64 {
-            Ok(TyAndLayout { ty: self.tcx.types.i64, layout: self.tcx.layouts.i64 })
-        } else if ty == self.tcx.types.f16 {
-            Ok(TyAndLayout { ty: self.tcx.types.f16, layout: self.tcx.layouts.f16 })
-        } else if ty == self.tcx.types.f32 {
-            Ok(TyAndLayout { ty: self.tcx.types.f32, layout: self.tcx.layouts.f32 })
-        } else if ty == self.tcx.types.f64 {
-            Ok(TyAndLayout { ty: self.tcx.types.f64, layout: self.tcx.layouts.f64 })
-        } else if ty == self.tcx.types.f128 {
-            Ok(TyAndLayout { ty: self.tcx.types.f128, layout: self.tcx.layouts.f128 })
-        } else {
-            LayoutOf::layout_of(self, ty)
-        }
+        LayoutOf::layout_of(self, ty)
     }
 
     pub fn layout_of_usize(&self) -> Result<TyAndLayout<'tcx>, InterpErrorKind<'tcx>> {

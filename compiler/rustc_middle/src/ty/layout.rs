@@ -23,7 +23,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TyKind, TypeVisitableExt, Unnormalized};
 
 #[extension(pub trait IntegerExt)]
 impl abi::Integer {
@@ -708,7 +708,53 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::LayoutOfResult {
-        self.spanned_layout_of(ty, DUMMY_SP)
+        let simple_layout = match ty.kind() {
+            TyKind::Uint(inner) => {
+                let tcx = self.tcx();
+
+                match inner {
+                    ty::UintTy::U8 => TyAndLayout { ty: tcx.types.u8, layout: tcx.layouts.u8 },
+                    ty::UintTy::U16 => TyAndLayout { ty: tcx.types.u16, layout: tcx.layouts.u16 },
+                    ty::UintTy::U32 => TyAndLayout { ty: tcx.types.u32, layout: tcx.layouts.u32 },
+                    ty::UintTy::U64 => TyAndLayout { ty: tcx.types.u64, layout: tcx.layouts.u64 },
+                    ty::UintTy::U128 => {
+                        TyAndLayout { ty: tcx.types.u128, layout: tcx.layouts.u128 }
+                    }
+                    ty::UintTy::Usize => {
+                        TyAndLayout { ty: tcx.types.usize, layout: tcx.layouts.usize }
+                    }
+                }
+            }
+            TyKind::Int(inner) => {
+                let tcx = self.tcx();
+
+                match inner {
+                    ty::IntTy::I8 => TyAndLayout { ty: tcx.types.i8, layout: tcx.layouts.i8 },
+                    ty::IntTy::I16 => TyAndLayout { ty: tcx.types.i16, layout: tcx.layouts.i16 },
+                    ty::IntTy::I32 => TyAndLayout { ty: tcx.types.i32, layout: tcx.layouts.i32 },
+                    ty::IntTy::I64 => TyAndLayout { ty: tcx.types.i64, layout: tcx.layouts.i64 },
+                    ty::IntTy::I128 => TyAndLayout { ty: tcx.types.i128, layout: tcx.layouts.i128 },
+                    ty::IntTy::Isize => {
+                        TyAndLayout { ty: tcx.types.isize, layout: tcx.layouts.isize }
+                    }
+                }
+            }
+            TyKind::Float(inner) => {
+                let tcx = self.tcx();
+
+                match inner {
+                    ty::FloatTy::F16 => TyAndLayout { ty: tcx.types.f16, layout: tcx.layouts.f16 },
+                    ty::FloatTy::F32 => TyAndLayout { ty: tcx.types.f32, layout: tcx.layouts.f32 },
+                    ty::FloatTy::F64 => TyAndLayout { ty: tcx.types.f64, layout: tcx.layouts.f64 },
+                    ty::FloatTy::F128 => {
+                        TyAndLayout { ty: tcx.types.f128, layout: tcx.layouts.f128 }
+                    }
+                }
+            }
+            _ => return self.spanned_layout_of(ty, DUMMY_SP),
+        };
+
+        <Self::LayoutOfResult as MaybeResult<_>>::from(Ok(simple_layout))
     }
 
     /// Computes the layout of a type, at `span`. Note that this implicitly
