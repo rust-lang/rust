@@ -50,6 +50,7 @@
 - [About the compiler team](./compiler-team.md)
 - [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
+- [Running LLMs](./llm-guidance.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [Implementing new language features](./implementing-new-features.md)
 - [Stability guarantees](./stability-guarantees.md)
