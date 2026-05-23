@@ -1419,6 +1419,21 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             )
         };
 
+        if let Some(callee_instance) = callee_instance {
+            // Attributes on the function definition being called
+            let callee_attrs = self.cx.tcx.codegen_fn_attrs(callee_instance.def_id());
+
+            if let Some(inlining_rule) =
+                attributes::inline_attr(&self.cx, self.cx.tcx, callee_instance, callee_attrs)
+            {
+                attributes::apply_to_callsite(
+                    call,
+                    llvm::AttributePlace::Function,
+                    &[inlining_rule],
+                );
+            }
+        }
+
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, call);
         }

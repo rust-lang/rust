@@ -5,7 +5,7 @@ use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs, TargetFeature,
 };
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -42,22 +42,31 @@ pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
 
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
-fn inline_attr<'ll>(
+pub(crate) fn inline_attr<'tcx, 'll>(
     cx: &SimpleCx<'ll>,
-    sess: &Session,
-    inline: InlineAttr,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    codegen_fn_attrs: &CodegenFnAttrs,
 ) -> Option<&'ll Attribute> {
-    if !sess.opts.unstable_opts.inline_llvm {
+    if !tcx.sess.opts.unstable_opts.inline_llvm {
         // disable LLVM inlining
         return Some(AttributeKind::NoInline.create_attr(cx.llcx));
     }
+
+    // `optnone` requires `noinline`
+    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
+        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
+        (InlineAttr::None, _) if instance.def.requires_inline(tcx) => InlineAttr::Hint,
+        (inline, _) => inline,
+    };
+
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
         InlineAttr::Always | InlineAttr::Force { .. } => {
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
         }
         InlineAttr::Never => {
-            if sess.target.arch != Arch::AmdGpu {
+            if tcx.sess.target.arch != Arch::AmdGpu {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
             } else {
                 None
@@ -412,14 +421,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     }
 
     if let Some(instance) = instance {
-        // `optnone` requires `noinline`
-        let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
-            (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
-            (InlineAttr::None, _) if instance.def.requires_inline(tcx) => InlineAttr::Hint,
-            (inline, _) => inline,
-        };
-
-        to_add.extend(inline_attr(cx, sess, inline));
+        to_add.extend(inline_attr(cx, tcx, instance, codegen_fn_attrs));
     }
 
     if sess.must_emit_unwind_tables() {
