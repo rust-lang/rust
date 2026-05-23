@@ -30,11 +30,11 @@ const fn size_of<T>() -> usize {
 }
 
 #[rustc_intrinsic]
-unsafe fn catch_unwind(
-    try_fn: fn(_: *mut u8),
-    data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8),
-) -> i32;
+unsafe fn catch_unwind<Data>(
+    try_fn: unsafe fn(_: *mut Data),
+    data: *mut Data,
+    catch_fn: unsafe fn(_: *mut Data, _: *mut u8),
+) -> bool;
 
 // CHECK-LABEL: @ptr_size
 #[no_mangle]
@@ -46,10 +46,10 @@ pub fn ptr_size() -> usize {
 // CHECK-LABEL: @test_catch_unwind
 #[no_mangle]
 pub unsafe fn test_catch_unwind(
-    try_fn: fn(_: *mut u8),
+    try_fn: unsafe fn(_: *mut u8),
     data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8),
-) -> i32 {
+    catch_fn: unsafe fn(_: *mut u8, _: *mut u8),
+) -> bool {
     // CHECK: start:
     // CHECK: [[ALLOCA:%.*]] = alloca
 

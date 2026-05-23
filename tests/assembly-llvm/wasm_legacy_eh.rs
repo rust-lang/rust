@@ -58,7 +58,7 @@ pub fn test_rtry() {
             |_| {
                 may_panic();
             },
-            core::ptr::null_mut(),
+            core::ptr::null_mut::<u8>(),
             |data, exception| {
                 log_number(data as usize);
                 log_number(exception as usize);
