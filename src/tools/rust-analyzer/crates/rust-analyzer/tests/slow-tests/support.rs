@@ -372,18 +372,15 @@ impl Server {
                 Message::Request(req) => {
                     if req.method == "client/registerCapability" {
                         let params = req.params.to_string();
-                        if [
-                            "workspace/diagnostic/refresh",
-                            "workspace/didChangeWatchedFiles",
-                            "textDocument/didSave",
-                        ]
-                        .into_iter()
-                        .any(|it| params.contains(it))
+                        if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
+                            .into_iter()
+                            .any(|it| params.contains(it))
                         {
                             continue;
                         }
+                    } else if req.method != "workspace/diagnostic/refresh" {
+                        panic!("unexpected request: {req:?}")
                     }
-                    panic!("unexpected request: {req:?}")
                 }
                 Message::Notification(_) => (),
                 Message::Response(res) => {
