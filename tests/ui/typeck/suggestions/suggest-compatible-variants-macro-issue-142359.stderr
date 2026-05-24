@@ -1,12 +1,12 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/suggest-compatible-variants-macro-issue-142359.rs:13:19
+  --> $DIR/suggest-compatible-variants-macro-issue-142359.rs:13:20
    |
 LL |       let _ = match x {
    |  _____________-
 LL | |         Err(r) => ControlFlow::Break(r),
    | |                   --------------------- this is found to be of type `ControlFlow<i32, _>`
-LL | |         Ok(r) => {ext::unit!()}
-   | |                   ^^^^^^^^^^^^ expected `ControlFlow<i32, _>`, found `()`
+LL | |         Ok(r) => { ext::unit!() }
+   | |                    ^^^^^^^^^^^^ expected `ControlFlow<i32, _>`, found `()`
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
@@ -15,10 +15,9 @@ LL | |     };
            found unit type `()`
    = note: this error originates in the macro `ext::unit` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try wrapping the expression in `std::ops::ControlFlow::Continue`
-  --> $DIR/auxiliary/suggest-compatible-variants-macro-issue-142359.rs:4:9
    |
-LL |         std::ops::ControlFlow::Continue(())
-   |         ++++++++++++++++++++++++++++++++  +
+LL |         Ok(r) => std::ops::ControlFlow::Continue({ ext::unit!() })
+   |                  ++++++++++++++++++++++++++++++++                +
 
 error: aborting due to 1 previous error
 
