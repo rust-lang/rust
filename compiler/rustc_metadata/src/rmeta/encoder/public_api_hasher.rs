@@ -378,11 +378,31 @@ pub(crate) struct HashableCrateRoot {
     // what is this extactly, used for diagnostics
     pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(DefIndex, usize)>>,
     // FIXME do we need to hash this?
-    // what is this
+    // exported_non_generic_symbols and exported_symbols are used by the linker, which likely means
+    // that we should put them behind the private hash
     pub(crate) exported_non_generic_symbols:
         Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+
     // FIXME do we need to hash this?
-    // i think this is used to find upstream_monomorphizations or what
+    // I think this is used to find upstream_monomorphizations or what
+    // So this is tricky, and kind of makes this feature useless. For example, using a
+    // Vec::<u32>::push in private code will add that monomorphized function to
+    // exported_generic_symbols.
+    // On one hand, removing this will slow down the codegen for the current crate, as it needs to
+    // codegen these generics. On the other hand, keeping this forces a rebuild of all upstream
+    // crates when any new monomorphized item (where the monomorphized generic is public or from
+    // another crate).
+    // Let's review this from an incremental recompilation perspecitve. The goal of
+    // relink-dont-rebuild is mostly speeding that up.
+    // Let's say we remove this, the first build was done
+    // 1. recompile of a dependency that contains a monomorphization which could be used upstream.
+    //    What changes? Nothing, we don't have to export the monomorphization for
+    //    `upstream_monomorphizations`, but its is also used by the linker, so it has to be included
+    //    anyways
+    // 2. recompile of crate that could use an upstream monomorphization. Since it is disabled, the
+    //    monomorphization is already in its local incremental cache. It will be pulled from there.
+    // Given these two points, if the goal is fast incremental recompiles, then disabling upstream
+    // monomorphizations, and moving this behind private_hash might be the best (maybe linking_hash)
     pub(crate) exported_generic_symbols:
         Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
 
