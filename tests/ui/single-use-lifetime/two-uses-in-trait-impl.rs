@@ -19,18 +19,4 @@ impl<'f> Iterator for Foo<'f> {
     }
 }
 
-trait BoundTrait<'a> {
-    fn foo(self, handler: &Handler<'a>);
-}
-
-struct Handler<'a>(fn(&'a u32));
-struct Bar<'b>(&'b u32);
-
-// https://github.com/rust-lang/rust/issues/153836
-impl<'a, 'b: 'a> BoundTrait<'a> for Bar<'b> {
-    fn foo(self, handler: &Handler<'a>) {
-        (handler.0)(self.0);
-    }
-}
-
 fn main() {}
