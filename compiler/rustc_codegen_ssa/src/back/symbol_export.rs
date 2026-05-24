@@ -395,7 +395,9 @@ fn exported_generic_symbols_provider_local<'tcx>(
             let item_is_offload = is_offload_instance(mono_item);
 
             if !item_is_offload && !tcx.sess.opts.share_generics() {
-                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == InlineAttr::Never {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == InlineAttr::Never
+                    && !tcx.sess.opts.unstable_opts.public_api_hash
+                {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {
