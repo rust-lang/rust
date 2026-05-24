@@ -3,8 +3,9 @@ use crate::fmt;
 
 pub struct Args {}
 
+#[cfg(target_os = "qurt")]
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-    // No-op for unsupported platforms
+    // No-op: QuRT initializes args through the unix PAL but has no args to process
 }
 
 pub fn args() -> Args {
