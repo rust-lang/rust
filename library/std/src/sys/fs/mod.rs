@@ -129,7 +129,7 @@ pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
 pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
     use crate::fs::OpenOptions;
 
-    #[cfg_attr(any(target_os = "espidf", target_os = "horizon"), allow(unused_mut))]
+    #[cfg_attr(any(target_os = "espidf", target_os = "horizon"), expect(unused_mut))]
     let mut options = OpenOptions::new();
 
     // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
