@@ -2967,18 +2967,18 @@ fn flyimport_excluded_mod_items_from_flyimport() {
     check_with_config(
         CompletionConfig {
             exclude_flyimport: vec![(
-                "ra_test_fixture::pack::module2".to_owned(),
+                "ra_test_fixture::xpack::xmodule2".to_owned(),
                 AutoImportExclusionType::SubItems,
             )],
             ..TEST_CONFIG
         },
         r#"
-mod pack {
-    mod module1 {
+mod xpack {
+    mod xmodule1 {
         pub struct XOther;
     }
-    pub mod module2 {
-        pub use super::module1::*;
+    pub mod xmodule2 {
+        pub use super::xmodule1::*;
         pub struct XStruct;
         pub fn xfn() {}
     }
@@ -2989,20 +2989,21 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                   Unit
-            en Enum                    Enum
-            fn foo()                   fn()
-            fn function()              fn()
-            ma makro!(…) macro_rules! makro
+            ct CONST                       Unit
+            en Enum                        Enum
+            fn foo()                       fn()
+            fn function()                  fn()
+            ma makro!(…)     macro_rules! makro
             md module::
-            md pack::
-            sc STATIC                  Unit
-            st Record                Record
-            st Tuple                  Tuple
-            st Unit                    Unit
-            un Union                  Union
-            ev TupleV(…)        TupleV(u32)
-            bt u32                      u32
+            md xmodule2:: (use xpack::xmodule2)
+            md xpack::
+            sc STATIC                      Unit
+            st Record                    Record
+            st Tuple                      Tuple
+            st Unit                        Unit
+            un Union                      Union
+            ev TupleV(…)            TupleV(u32)
+            bt u32                          u32
             kw async
             kw const
             kw crate::
