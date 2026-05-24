@@ -1,0 +1,38 @@
+error: `#[no_mangle]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:4:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[export_name]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:9:1
+   |
+LL | #[unsafe(export_name = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[link_name]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:14:1
+   |
+LL | #[link_name = "baz"]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[no_mangle]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:22:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[export_name]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:30:1
+   |
+LL | #[unsafe(export_name = "corge_impl")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[link_name]` cannot be used on externally implementable items
+  --> $DIR/forbidden_attrs.rs:38:1
+   |
+LL | #[link_name = "garply_impl"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

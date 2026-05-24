@@ -1179,6 +1179,14 @@ pub(crate) struct EiiOnlyOnce {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$name}]` cannot be used on externally implementable items")]
+pub(crate) struct EiiForbiddenAttr {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`")]
 pub(crate) struct EiiMacroExpectedMaxOneArgument {
     #[primary_span]

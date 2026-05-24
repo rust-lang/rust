@@ -11,9 +11,9 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors::{
     EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
-    EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
-    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault,
-    EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiForbiddenAttr, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
+    EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
+    EiiStaticDefault, EiiStaticMultipleImplementations, EiiStaticMutable,
 };
 
 /// ```rust
@@ -126,8 +126,7 @@ fn eii_(
     let attrs = attrs.clone();
     let vis = vis.clone();
 
-    let attrs_from_decl =
-        filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
+    let attrs_from_decl = filter_attrs_for_eii_decl(ecx, attrs, eii_attr_span, &meta_item.path);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, &meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
@@ -196,8 +195,9 @@ fn name_for_impl_macro(
     }
 }
 
-/// Ensure that in the list of attrs, there's only a single `eii` attribute.
-fn filter_attrs_for_multiple_eii_attr(
+/// Reject attributes that cannot be used with externally implementable items,
+/// and ensure that in the list of attrs, there's only a single `eii` attribute.
+fn filter_attrs_for_eii_decl(
     ecx: &mut ExtCtxt<'_>,
     attrs: ThinVec<Attribute>,
     eii_attr_span: Span,
@@ -212,6 +212,11 @@ fn filter_attrs_for_multiple_eii_attr(
                     first_span: eii_attr_span,
                     name: path_to_string(eii_attr_path),
                 });
+                false
+            } else if let Some(name @ (sym::export_name | sym::link_name | sym::no_mangle)) =
+                i.name()
+            {
+                ecx.dcx().emit_err(EiiForbiddenAttr { span: i.span, name });
                 false
             } else {
                 true
@@ -510,6 +515,15 @@ pub(crate) fn eii_shared_macro(
         ecx.dcx().emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
         return vec![item];
     };
+
+    i.attrs.retain(|attr| {
+        if let Some(name @ (sym::export_name | sym::link_name | sym::no_mangle)) = attr.name() {
+            ecx.dcx().emit_err(EiiForbiddenAttr { span: attr.span, name });
+            false
+        } else {
+            true
+        }
+    });
 
     let eii_impls = match &mut i.kind {
         ItemKind::Fn(func) => &mut func.eii_impls,
