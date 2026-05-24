@@ -59,18 +59,33 @@ pub fn enable() {
 
             // Now we need to set this key to be used by everyone else.
             // If we won the race, our key is the right one and we can set it to non-null value.
-            // If we lost, we'll use the winning key.
-            // Note: we are not freeing our losing key since according to the docs
-            // > It is expected that DLLs call [the FlsFree] function (if at all) only during DLL_PROCESS_DETACH.
+            // If we lost, we'll use the winning key and free our losing key.
             match KEY.compare_exchange(current_key, new_key, Ordering::Release, Ordering::Acquire) {
                 Ok(_) => new_key,
-                Err(other_key) => other_key,
+                Err(other_key) => {
+                    unsafe { c::FlsFree(new_key) };
+                    other_key
+                }
             }
         };
 
+        // If the current DLL is unloaded, the registered `cleanup` hook will not be available later during thread exit,
+        // triggering a `STATUS_ACCESS_VIOLATION`. To avoid this, we use the `atexit` hook, which is called during DLL unload
+        // to manually free the FLS slot, triggering the destructors. This hook will also be called during normal process exit,
+        // which is fine because this is the correct time to run the destructors anyway.
+        let _ = unsafe { c::atexit(free_fls_key_at_exit) };
+
         // Setting the key's value to non-zero will cause the dtor callback to be called when the thread exits.
-        // We only set the key once per thread, so the destructors are guaranteed to run at most once (fibers cannot be moved between threads).
         unsafe { set(key, ptr::without_provenance(1)) };
+    }
+}
+
+extern "C" fn free_fls_key_at_exit() {
+    let current_key = KEY.swap(c::FLS_OUT_OF_INDEXES, Ordering::AcqRel);
+    if current_key != c::FLS_OUT_OF_INDEXES {
+        // Calling `FlsFree` will invoke the `cleanup` hook, in the current thread, *for each thread* with a value in this FLS slot.
+        // The callback is safe to run repeatedly: it only drains the current thread's TLS destructor list.
+        unsafe { c::FlsFree(current_key) };
     }
 }
 

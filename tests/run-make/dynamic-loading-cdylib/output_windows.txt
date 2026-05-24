@@ -1,0 +1,7 @@
+loaded library
+extern_fn_1
+result of extern_fn_1(2, 3): 5
+extern_fn_2
+result of extern_fn_2(2, 3): 6
+drop
+unloaded library

@@ -690,7 +690,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
-            
+
             // Fiber-local storage - similar to TLS but supports destructors.
             "FlsAlloc" => {
                 // Create key and return it.
@@ -742,6 +742,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
+            "FlsFree" => {
+                let [key] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                let tls_entry = this.machine.tls.delete_tls_key(key)?;
+
+                // FIXME: We should run the destructor here *for all threads*. But that's non-trivial and std doesn't need it so we bail out with an "unsupported" error.
+                if !tls_entry.data.is_empty() && tls_entry.dtor.is_some() {
+                    throw_unsup_format!(
+                        "calling `FlsFree` on a key with an associated dtor is not supported"
+                    );
+                }
+
+                // Return success (`1`).
+                this.write_int(1, dest)?;
+            }
             "IsThreadAFiber" => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
@@ -749,7 +769,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     abi,
                     args,
                 )?;
-                
+
                 // Return FALSE, as Miri does not support fibers.
                 this.write_int(0, dest)?;
             }
@@ -1379,6 +1399,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
+            }
+            "atexit" if this.frame_in_std() => {
+                let [_value] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*const _) -> winapi::c_int),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                // We do not support registering atexit handlers, so we return a error code.
+                // This is ignored by the thread-local destructor implementation in std,
+                // and because we also do not support manually unloading DLLs, it has no visible effect.
+                this.write_int(1, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

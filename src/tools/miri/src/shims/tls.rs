@@ -17,8 +17,8 @@ pub type TlsKey = u128;
 pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    data: BTreeMap<ThreadId, Scalar>,
-    dtor: Option<(ty::Instance<'tcx>, Span)>,
+    pub data: BTreeMap<ThreadId, Scalar>,
+    pub dtor: Option<(ty::Instance<'tcx>, Span)>,
 }
 
 #[derive(Default, Debug)]
@@ -81,11 +81,11 @@ impl<'tcx> TlsData<'tcx> {
         interp_ok(new_key)
     }
 
-    pub fn delete_tls_key(&mut self, key: TlsKey) -> InterpResult<'tcx> {
+    pub fn delete_tls_key(&mut self, key: TlsKey) -> InterpResult<'tcx, TlsEntry<'tcx>> {
         match self.keys.remove(&key) {
-            Some(_) => {
+            Some(entry) => {
                 trace!("TLS key {} removed", key);
-                interp_ok(())
+                interp_ok(entry)
             }
             None => throw_ub_format!("removing a nonexistent TLS key: {}", key),
         }

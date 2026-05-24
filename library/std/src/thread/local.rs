@@ -101,8 +101,13 @@ use crate::fmt;
 ///    If a thread is [converted into a fiber], destructors will not be run unless
 ///    the fiber is [converted back into a thread] before the underlying thread exits.
 ///
+///    If a `cdylib` that uses TLS is dynamically unloaded, TLS destructors will
+///    run during DLL unload. This can cause deadlocks because the [loader lock]
+///    is held when the destructors are run.
+///
 /// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
 /// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
+/// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`with`]: LocalKey::with
 #[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]

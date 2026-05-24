@@ -16,6 +16,7 @@ extern "system" {
     fn FlsAlloc(lpcallback: Option<unsafe extern "system" fn(lpflsdata: *mut c_void)>) -> u32;
     fn FlsSetValue(key: u32, val: *mut c_void) -> BOOL;
     fn FlsGetValue(key: u32) -> *mut c_void;
+    fn FlsFree(key: u32) -> BOOL;
 
     fn IsThreadAFiber() -> BOOL;
 }
@@ -36,7 +37,7 @@ fn fls_1_dtor_simple() {
     extern "system" fn dtor(val: *mut c_void) {
         assert!(!val.is_null());
         println!("fls_1_dtor_simple");
-        
+
         // Keys are freed in-order. Without a dtor, the early key's value is not zeroed out.
         let early_key = val as u32;
         assert_eq!(unsafe { FlsGetValue(early_key).addr() }, 1);
@@ -50,7 +51,10 @@ fn fls_1_dtor_simple() {
 
     assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
     // Will be used in the dtor to check early_key's value.
-    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) }, TRUE);
+    assert_eq!(
+        unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) },
+        TRUE
+    );
 }
 
 fn fls_2_dtor_update_value_ignored() {
@@ -64,17 +68,11 @@ fn fls_2_dtor_update_value_ignored() {
 
         // Updating a different fls slot's value doesn't cause their dtor to run, if it already did.
         let early_key = val as u32;
-        
-        // After the early key's dtor run, the key's value is zeroed out.
-        assert_eq!(
-            unsafe { FlsGetValue(early_key).addr() },
-            0
-        );
 
-        assert_eq!(
-            unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) },
-            TRUE
-        );
+        // After the early key's dtor run, the key's value is zeroed out.
+        assert_eq!(unsafe { FlsGetValue(early_key).addr() }, 0);
+
+        assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
 
         // Registering new fls slots doesn't cause their dtor to run.
         let a_new_key_in_dtor = unsafe { FlsAlloc(Some(dtor_unreachable)) };
@@ -84,7 +82,10 @@ fn fls_2_dtor_update_value_ignored() {
     let early_key = unsafe { FlsAlloc(Some(early_dtor)) };
     let later_key = unsafe { FlsAlloc(Some(later_dtor)) };
     assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
-    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) }, TRUE);
+    assert_eq!(
+        unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) },
+        TRUE
+    );
 }
 
 fn fls_3_dtor_update_value_skipped_ignored() {
@@ -93,16 +94,16 @@ fn fls_3_dtor_update_value_skipped_ignored() {
 
         // Updating a different fls slot's value doesn't cause their dtor to run, if it was already skipped.
         let early_key = val as u32;
-        assert_eq!(
-            unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) },
-            TRUE
-        );
+        assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
     }
 
     let early_key = unsafe { FlsAlloc(Some(dtor_unreachable)) };
     let later_key = unsafe { FlsAlloc(Some(later_dtor)) };
     assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(0)) }, TRUE);
-    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) }, TRUE);
+    assert_eq!(
+        unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) },
+        TRUE
+    );
 }
 
 fn fls_4_dtor_update_value_used() {
@@ -120,7 +121,10 @@ fn fls_4_dtor_update_value_used() {
 
     let early_key = unsafe { FlsAlloc(Some(early_dtor)) };
     let later_key = unsafe { FlsAlloc(Some(later_dtor)) };
-    assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(later_key as usize)) }, TRUE);
+    assert_eq!(
+        unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(later_key as usize)) },
+        TRUE
+    );
 
     // Setting to zero explicitly, dtor won't run unless `early_dtor` changes this value.
     assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(0)) }, TRUE);
@@ -130,7 +134,7 @@ fn fls_5_dtor_value() {
     extern "system" fn dtor(val: *mut c_void) {
         assert!(!val.is_null());
         println!("fls_5_dtor_value");
-        
+
         // When the key's dtor run, the key's value equals the destructor argument.
         let key = val as u32;
         assert_eq!(unsafe { FlsGetValue(key) }, val);
@@ -147,16 +151,30 @@ fn fls_6_no_dtor_does_not_zero_value() {
 
         // If an earlier fls slot doesn't have a dtor, the key's value is _not_ zeroed out.
         let early_key = val as u32;
-        assert_ne!(
-            unsafe { FlsGetValue(early_key).addr() },
-            0
-        );
+        assert_ne!(unsafe { FlsGetValue(early_key).addr() }, 0);
     }
 
     let early_key = unsafe { FlsAlloc(None) };
     let later_key = unsafe { FlsAlloc(Some(later_dtor)) };
     assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
-    assert_eq!(unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) }, TRUE);
+    assert_eq!(
+        unsafe { FlsSetValue(later_key, ptr::without_provenance_mut(early_key as usize)) },
+        TRUE
+    );
+}
+
+fn fls_7_free() {
+    // This dtor is not expected to be called.
+    extern "system" fn dtor_for_freed_key(_val: *mut c_void) {
+        println!("dtor_for_freed_key");
+    }
+    let key_with_dtor = unsafe { FlsAlloc(Some(dtor_for_freed_key)) };
+    assert_eq!(unsafe { FlsSetValue(key_with_dtor, ptr::without_provenance_mut(0)) }, TRUE);
+    assert_eq!(unsafe { FlsFree(key_with_dtor) }, TRUE);
+
+    let key_without_dtor = unsafe { FlsAlloc(None) };
+    assert_eq!(unsafe { FlsSetValue(key_without_dtor, ptr::without_provenance_mut(1)) }, TRUE);
+    assert_eq!(unsafe { FlsFree(key_without_dtor) }, TRUE);
 }
 
 fn fls() {
@@ -169,6 +187,7 @@ fn fls() {
     fls_4_dtor_update_value_used();
     fls_5_dtor_value();
     fls_6_no_dtor_does_not_zero_value();
+    fls_7_free();
 }
 
 fn main() {
