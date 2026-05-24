@@ -724,6 +724,8 @@ impl ProcMacroExpander for Expander {
 
                 Ok(SubResponse::SpanParentResult { parent_span: None })
             }
+            // FIXME: implement this
+            SubRequest::SpanJoin { .. } => Ok(SubResponse::SpanJoinResult { span: None }),
         };
         match self.0.expand(
             subtree.view(),
