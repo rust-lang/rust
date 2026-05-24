@@ -10,8 +10,8 @@ trait Trait {
 }
 
 fn fun_ty<T: Trait>() {
-    global_asm!("{}", sym <T>::pure);
-    //~^ ERROR can't use type parameters from outer item
+    global_asm!("{}", sym<T>::pure);
+    //~^ ERROR can't use generic parameters from outer item
 }
 
 trait TraitWithConstParam<const N: usize> {
@@ -24,7 +24,8 @@ impl<const N: usize> TraitWithConstParam<N> for () {
 
 fn fun_const<const N: usize>() {
     global_asm!("{}", sym <() as TraitWithConstParam<N>>::pure);
-    //~^ ERROR can't use const parameters from outer item
+    //~^ ERROR can't use generic parameters from outer item
+    //~| ERROR unresolved item provided when a constant was expected
 }
 
 fn main() {}
