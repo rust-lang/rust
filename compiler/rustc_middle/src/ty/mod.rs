@@ -1929,7 +1929,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
                 let proxy_layout = CoroutineLayout {
                     field_tys: [].into(),
-                    field_names: [].into(),
                     variant_fields,
                     variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),

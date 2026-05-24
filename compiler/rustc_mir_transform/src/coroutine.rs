@@ -1001,8 +1001,13 @@ fn compute_layout<'tcx>(
             ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
             _ => false,
         };
-        let decl =
-            CoroutineSavedTy { ty: decl.ty, source_info: decl.source_info, ignore_for_traits };
+        let decl = CoroutineSavedTy {
+            ty: decl.ty,
+            source_info: decl.source_info,
+            ignore_for_traits,
+            // Will be set later when walking debuginfo.
+            debuginfo_name: None,
+        };
         debug!(?decl);
 
         tys.push(decl);
@@ -1046,7 +1051,6 @@ fn compute_layout<'tcx>(
     debug!(?variant_fields);
     debug!(?storage_conflicts);
 
-    let mut field_names = IndexVec::from_elem(None, &tys);
     for var in &body.var_debug_info {
         let VarDebugInfoContents::Place(place) = &var.value else { continue };
         let Some(local) = place.as_local() else { continue };
@@ -1054,17 +1058,12 @@ fn compute_layout<'tcx>(
             continue;
         };
 
-        let saved_local = variant_fields[variant][field];
-        field_names.get_or_insert_with(saved_local, || var.name);
+        let saved_local: CoroutineSavedLocal = variant_fields[variant][field];
+        tys[saved_local].debuginfo_name.get_or_insert(var.name);
     }
 
-    let layout = CoroutineLayout {
-        field_tys: tys,
-        field_names,
-        variant_fields,
-        variant_source_info,
-        storage_conflicts,
-    };
+    let layout =
+        CoroutineLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
     debug!(?remap);
     debug!(?layout);
     debug!(?storage_liveness);
