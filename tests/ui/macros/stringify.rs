@@ -10,14 +10,17 @@
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
+#![feature(impl_restriction)]
 #![feature(macro_guard_matcher)]
 #![feature(more_qualified_paths)]
 #![feature(move_expr)]
+#![feature(mut_restriction)]
 #![feature(never_patterns)]
 #![feature(specialization)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![feature(unsafe_fields)]
 #![deny(unused_macros)]
 
 // These macros force the use of AST pretty-printing by converting the input to
@@ -921,6 +924,65 @@ fn test_impl_restriction() {
     assert_eq!(
         stringify!(pub const unsafe auto impl(in crate::path::to) trait Foo {}),
         "pub const unsafe auto impl(in crate::path::to) trait Foo {}"
+    );
+}
+
+#[test]
+fn test_mut_restriction() {
+    assert_eq!(
+        stringify!(pub struct Foo { pub mut(crate) x: u8, pub mut(self) unsafe y: u8 }),
+        "pub struct Foo { pub mut(crate) x: u8, pub mut(self) unsafe y: u8 }"
+    );
+    assert_eq!(
+        stringify!(pub struct Foo { pub mut(super) x: u8, pub mut(in path::to) unsafe y: u8 }),
+        "pub struct Foo { pub mut(super) x: u8, pub mut(in path::to) unsafe y: u8 }"
+    );
+    assert_eq!(
+        stringify!(pub struct Foo { pub mut(in crate::path::to) x: u8 }),
+        "pub struct Foo { pub mut(in crate::path::to) x: u8 }"
+    );
+
+    assert_eq!(
+        stringify!(pub struct Foo(pub mut(crate) u8, pub mut(self) u8, pub mut(super) u8)),
+        "pub struct Foo(pub mut(crate) u8, pub mut(self) u8, pub mut(super) u8)"
+    );
+    assert_eq!(
+        stringify!(pub struct Foo(pub mut(in path::to) u8, pub mut(in crate::path::to) u8)),
+        "pub struct Foo(pub mut(in path::to) u8, pub mut(in crate::path::to) u8)"
+    );
+
+    assert_eq!(
+        stringify!(pub enum Foo { Var{ pub mut(crate) x: u8, pub mut(self) unsafe y: u8 } }),
+        "pub enum Foo { Var{ pub mut(crate) x: u8, pub mut(self) unsafe y: u8 } }"
+    );
+    assert_eq!(
+        stringify!(pub enum Foo { Var{ pub mut(super) x: u8, pub mut(in path::to) y: u8 } }),
+        "pub enum Foo { Var{ pub mut(super) x: u8, pub mut(in path::to) y: u8 } }"
+    );
+    assert_eq!(
+        stringify!(pub enum Foo { Var{ pub mut(in crate::path::to) x: u8 } }),
+        "pub enum Foo { Var{ pub mut(in crate::path::to) x: u8 } }"
+    );
+    assert_eq!(
+        stringify!(pub enum Foo { Tup(pub mut(crate) u8, pub mut(self) u8, pub mut(super) u8) }),
+        "pub enum Foo { Tup(pub mut(crate) u8, pub mut(self) u8, pub mut(super) u8) }"
+    );
+    assert_eq!(
+        stringify!(pub enum Foo { Tup(pub mut(in path::to) u8, pub mut(in crate::path::to) u8) }),
+        "pub enum Foo { Tup(pub mut(in path::to) u8, pub mut(in crate::path::to) u8) }"
+    );
+
+    assert_eq!(
+        stringify!(pub union Foo { x: pub mut(crate) u8, y: pub mut(self) unsafe u8 }),
+        "pub union Foo { x: pub mut(crate) u8, y: pub mut(self) unsafe u8 }"
+    );
+    assert_eq!(
+        stringify!(pub union Foo { x: pub mut(super) u8, y: pub mut(in path::to) unsafe u8 }),
+        "pub union Foo { x: pub mut(super) u8, y: pub mut(in path::to) unsafe u8 }"
+    );
+    assert_eq!(
+        stringify!(pub union Foo { x: pub mut(in crate::path::to) u8 }),
+        "pub union Foo { x: pub mut(in crate::path::to) u8 }"
     );
 }
 
