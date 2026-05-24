@@ -15,7 +15,7 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+    fx: &FunctionCx<'_, 'a, 'tcx, Bx>,
     traversal_order: &[mir::BasicBlock],
 ) -> DenseBitSet<mir::Local> {
     let mir = fx.mir;
@@ -65,13 +65,13 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
-    fx: &'a FunctionCx<'b, 'tcx, Bx>,
+struct LocalAnalyzer<'a, 'mir, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
+    fx: &'a FunctionCx<'mir, 'b, 'tcx, Bx>,
     dominators: &'a Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'_, '_, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
         let fx = self.fx;
         let kind = &mut self.locals[local];
@@ -166,7 +166,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
     }
 }
 
-impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'a, 'b, 'tcx, Bx> {
+impl<'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer<'_, '_, 'b, 'tcx, Bx> {
     fn visit_assign(
         &mut self,
         place: &mir::Place<'tcx>,

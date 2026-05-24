@@ -9,7 +9,7 @@ use crate::errors;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     pub(crate) fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,
