@@ -18,7 +18,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
@@ -2679,8 +2679,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
-                        let variant_path =
-                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                        let variant_path = with_types_for_suggestion!(with_no_trimmed_paths!(
+                            self.tcx.def_path_str(variant.def_id)
+                        ));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
