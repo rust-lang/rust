@@ -80,8 +80,6 @@ pub(crate) fn opts() -> TargetOptions {
         os: Os::Windows,
         env: Env::Gnu,
         vendor: "pc".into(),
-        // FIXME(#13846) this should be enabled for windows
-        function_sections: false,
         linker: Some("gcc".into()),
         dynamic_linking: true,
         dll_tls_export: false,
