@@ -11,20 +11,20 @@ trait Trait {
 
 fn fun_ty<T: Trait>() {
     global_asm!("{}", sym <T>::pure);
-    //~^ ERROR type parameters are not allowed in `global_asm!` `sym`
+    //~^ ERROR can't use type parameters from outer item
 }
 
 trait TraitWithConstParam<const N: usize> {
     fn pure();
 }
 
-impl<const N: usize> ConstTrait<N> for () {
+impl<const N: usize> TraitWithConstParam<N> for () {
     fn pure() {}
 }
 
 fn fun_const<const N: usize>() {
-    global_asm!("{}", sym <() as ConstTrait<N>>::pure);
-    //~^ ERROR const parameters are not allowed in `global_asm!` `sym`
+    global_asm!("{}", sym <() as TraitWithConstParam<N>>::pure);
+    //~^ ERROR can't use const parameters from outer item
 }
 
 fn main() {}

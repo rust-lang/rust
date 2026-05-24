@@ -1,18 +1,22 @@
-error: type parameters are not allowed in `global_asm!` `sym`
-  --> $DIR/global-asm-sym-generic-param.rs:13:27
+error: can't use type parameters from outer item
+  --> $DIR/global-asm-sym-generic-param.rs:13:28
    |
 LL | fn fun_ty<T: Trait>() {
-   |           - type parameter declared here
-LL |     global_asm!("{}", sym<T>::pure);
-   |                           ^
+   |           - type parameter from outer item
+LL |     global_asm!("{}", sym <T>::pure);
+   |     -----------------------^-------- use of type parameter from inner item
+   |
+   = note: `global_asm!` is lifted to the top level and cannot depend on type parameters from an enclosing item
 
-error: const parameters are not allowed in `global_asm!` `sym`
-  --> $DIR/global-asm-sym-generic-param.rs:26:45
+error: can't use const parameters from outer item
+  --> $DIR/global-asm-sym-generic-param.rs:26:54
    |
 LL | fn fun_const<const N: usize>() {
-   |              -------------- const parameter declared here
-LL |     global_asm!("{}", sym <() as ConstTrait<N>>::pure);
-   |                                             ^
+   |              -------------- const parameter from outer item
+LL |     global_asm!("{}", sym <() as TraitWithConstParam<N>>::pure);
+   |     -------------------------------------------------^--------- use of const parameter from inner item
+   |
+   = note: `global_asm!` is lifted to the top level and cannot depend on const parameters from an enclosing item
 
 error: aborting due to 2 previous errors
 

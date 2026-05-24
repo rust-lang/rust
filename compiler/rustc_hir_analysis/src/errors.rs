@@ -1141,19 +1141,29 @@ pub(crate) enum LateBoundInApit {
 
 #[derive(Diagnostic)]
 pub(crate) enum InvalidGenericParamInGlobalAsm {
-    #[diag("type parameters are not allowed in `global_asm!` `sym`")]
+    #[diag("can't use type parameters from outer item")]
+    #[note(
+        "`global_asm!` is lifted to the top level and cannot depend on type parameters from an enclosing item"
+    )]
     Type {
         #[primary_span]
         span: Span,
-        #[label("type parameter declared here")]
+        #[label("type parameter from outer item")]
         param_span: Span,
+        #[label("use of type parameter from inner item")]
+        asm_span: Span,
     },
-    #[diag("const parameters are not allowed in `global_asm!` `sym`")]
+    #[diag("can't use const parameters from outer item")]
+    #[note(
+        "`global_asm!` is lifted to the top level and cannot depend on const parameters from an enclosing item"
+    )]
     Const {
         #[primary_span]
         span: Span,
-        #[label("const parameter declared here")]
+        #[label("const parameter from outer item")]
         param_span: Span,
+        #[label("use of const parameter from inner item")]
+        asm_span: Span,
     },
 }
 

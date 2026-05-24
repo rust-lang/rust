@@ -1658,14 +1658,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     if let Node::Item(item) = self.tcx.hir_node_by_def_id(hir_id.owner.def_id)
                         && let hir::ItemKind::GlobalAsm { .. } = item.kind
                     {
+                        let asm_span = item.span;
                         let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                             DefKind::TyParam => errors::InvalidGenericParamInGlobalAsm::Type {
                                 span: self.tcx.hir_span(hir_id),
                                 param_span: self.tcx.def_span(param_def_id),
+                                asm_span,
                             },
                             DefKind::ConstParam => errors::InvalidGenericParamInGlobalAsm::Const {
                                 span: self.tcx.hir_span(hir_id),
                                 param_span: self.tcx.def_span(param_def_id),
+                                asm_span,
                             },
                             kind => bug!(
                                 "unexpected def-kind: {}",
