@@ -2787,7 +2787,6 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
 
     let first = match unstable_opts.unpretty.as_deref()? {
         "normal" => Source(PpSourceMode::Normal),
-        "identified" => Source(PpSourceMode::Identified),
         "expanded" => Source(PpSourceMode::Expanded),
         "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
         "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
@@ -2803,7 +2802,7 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
         "stable-mir" => StableMir,
         "mir-cfg" => MirCFG,
         name => early_dcx.early_fatal(format!(
-            "argument to `unpretty` must be one of `normal`, `identified`, \
+            "argument to `unpretty` must be one of `normal`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
                             `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir`, `stable-mir`, or \
@@ -2933,8 +2932,6 @@ pub enum PpSourceMode {
     Normal,
     /// `-Zunpretty=expanded`
     Expanded,
-    /// `-Zunpretty=identified`
-    Identified,
     /// `-Zunpretty=expanded,identified`
     ExpandedIdentified,
     /// `-Zunpretty=expanded,hygiene`
@@ -2982,7 +2979,7 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            Source(Normal | Identified) | AstTree => false,
+            Source(Normal) | AstTree => false,
 
             Source(Expanded | ExpandedIdentified | ExpandedHygiene)
             | AstTreeExpanded
