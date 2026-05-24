@@ -2790,3 +2790,15 @@ fn const_make_global_empty_or_zst_regression() {
 
     assert_eq!(ZST_SLICE, &[(), (), ()]);
 }
+
+#[test]
+fn test_vec_partial_eq_array() {
+    let x = vec![1, 2, 3];
+    let mut y = [1, 2, 3];
+    assert_eq!(x, y);
+    assert_eq!(y, x);
+    assert_eq!(x, &y);
+    assert_eq!(&y, x);
+    assert_eq!(x, &mut y);
+    assert_eq!(&mut y, x);
+}

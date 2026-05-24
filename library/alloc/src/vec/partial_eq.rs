@@ -34,13 +34,13 @@ __impl_slice_eq1! { [] Cow<'_, [T]>, &[U] where T: Clone, #[stable(feature = "ru
 __impl_slice_eq1! { [] Cow<'_, [T]>, &mut [U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, [U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, &[U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, &mut [U; N], #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "partialeq_array_for_vec", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { const, [A: Allocator, const N: usize] [T; N], Vec<U, A>, #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "partialeq_array_for_vec", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { const, [A: Allocator, const N: usize] &[T; N], Vec<U, A>, #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "partialeq_array_for_vec", since = "CURRENT_RUSTC_VERSION")] }
+__impl_slice_eq1! { const, [A: Allocator, const N: usize] &mut [T; N], Vec<U, A>, #[rustc_const_unstable(feature = "const_cmp", issue = "143800")] #[stable(feature = "partialeq_array_for_vec", since = "CURRENT_RUSTC_VERSION")] }
 
 // NOTE: some less important impls are omitted to reduce code bloat
 // FIXME(Centril): Reconsider this?
-//__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], }
-//__impl_slice_eq1! { [const N: usize] [A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] &[A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] &mut [A; N], Vec<B>, }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], }
