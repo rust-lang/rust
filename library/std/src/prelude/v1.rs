@@ -50,8 +50,8 @@ pub use crate::result::Result::{self, Err, Ok};
 pub use core::prelude::v1::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq,
     debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches,
-    module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write,
-    writeln, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
+    module_path, option_env, panic_handler, stringify, todo, r#try, unimplemented, unreachable,
+    write, writeln, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
