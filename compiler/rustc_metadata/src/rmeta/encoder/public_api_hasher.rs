@@ -339,6 +339,18 @@ pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
     // the traits impls in this crate. Definitely not needed in everything_downstream as is
     // how is it needed?
+    //
+    // this is exposed as a full query with `trait_impls_of_crate`. Which is only used in
+    // rustc_public. Otherwise the `implementations_of_trait` is the only other consumer of this
+    // field. `implementations_of_trait` works as a map. You need to provide a trait DefId to get
+    // its impls, so this should be intergrated into the IndexGraph.
+    //
+    // When a trait is local:
+    //      if it isn't reachable, the impls can should be left out from the hash
+    // When a trait is from another crate:
+    //      even if this crate does not reexport that trait, a downstream dependency can import it
+    //      from another crate, then invoke its methods. So all of those impls must be included, but
+    //      only the ones that can be applied to publicly reachable types
     pub(crate) impls: Hashed<LazyArray<TraitImpls>>,
     // FIXME do we need to hash this?
     // what is this used for
