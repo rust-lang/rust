@@ -532,11 +532,6 @@ pub fn set_name(name: &CStr) {
     debug_assert_eq!(res, libc::OK);
 }
 
-#[cfg(target_os = "qurt")]
-pub fn set_name(_name: &CStr) {
-    // QuRT doesn't support pthread_setname_np
-}
-
 #[cfg(not(target_os = "espidf"))]
 pub fn sleep(dur: Duration) {
     cfg_select! {
@@ -783,8 +778,13 @@ pub fn sleep_until(deadline: crate::time::Instant) {
 }
 
 pub fn yield_now() {
-    let ret = unsafe { libc::sched_yield() };
-    debug_assert_eq!(ret, 0);
+    #[cfg(not(target_os = "qurt"))]
+    {
+        let ret = unsafe { libc::sched_yield() };
+        debug_assert_eq!(ret, 0);
+    }
+    #[cfg(target_os = "qurt")]
+    sleep(Duration::ZERO);
 }
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
