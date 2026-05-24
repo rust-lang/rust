@@ -138,9 +138,15 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     })
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     run_with_cstr(n.as_bytes(), &|nbuf| {
         let _guard = ENV_LOCK.write();
         cvt(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)
     })
+}
+
+#[cfg(target_os = "qurt")]
+pub unsafe fn unsetenv(_n: &OsStr) -> io::Result<()> {
+    panic!("remove_var is not supported on this platform")
 }
