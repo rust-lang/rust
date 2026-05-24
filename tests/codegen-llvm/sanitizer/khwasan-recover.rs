@@ -5,8 +5,7 @@
 //@ needs-llvm-components: aarch64
 //@ revisions: KHWASAN KHWASAN-RECOVER
 //@ no-prefer-dynamic
-//@ compile-flags: -Copt-level=0
-//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ compile-flags: -Copt-level=0 -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-hwaddress --target aarch64-unknown-none
 //@[KHWASAN-RECOVER] compile-flags: -Zsanitizer-recover=kernel-hwaddress
 
 #![feature(no_core, sanitize, lang_items)]

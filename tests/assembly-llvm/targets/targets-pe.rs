@@ -1,5 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
+//@ compile-flags: -Zunstable-options
 // ignore-tidy-linelength
 //@ revisions: aarch64_pc_windows_msvc
 //@ [aarch64_pc_windows_msvc] compile-flags: --target aarch64-pc-windows-msvc

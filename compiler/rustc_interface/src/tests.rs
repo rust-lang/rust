@@ -634,6 +634,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
+    tracked!(sanitize, SanitizerSet::ADDRESS);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
@@ -851,7 +852,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(regparm, Some(3));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
-    tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
     tracked!(sanitizer_cfi_normalize_integers, Some(true));

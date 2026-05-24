@@ -173,8 +173,7 @@
 //@ [r84] needs-llvm-components: x86
 //@ [r85] compile-flags: --target x86_64-unknown-redox
 //@ [r85] needs-llvm-components: x86
-//@ compile-flags: -Z stack-protector=all -Cpanic=abort
-//@ compile-flags: -C opt-level=2
+//@ compile-flags: -Cpanic=abort -Zunstable-options -Zstack-protector=all -Copt-level=2
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

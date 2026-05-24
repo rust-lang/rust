@@ -11,18 +11,18 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-address
 
-//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitize
 
 use run_make_support::{cc, extra_c_flags, extra_cxx_flags, run_fail, rustc, static_lib_name};
 
 fn main() {
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("staticlib").input("library.rs").run();
+    rustc().arg("-g").arg("-Csanitize=address").crate_type("staticlib").input("library.rs").run();
     cc().input("program.c")
         .arg(static_lib_name("library"))
         .out_exe("program")
         .args(extra_c_flags())
         .args(extra_cxx_flags())
         .run_fail();
-    rustc().arg("-g").arg("-Zsanitizer=address").crate_type("bin").input("program.rs").run();
+    rustc().arg("-g").arg("-Csanitize=address").crate_type("bin").input("program.rs").run();
     run_fail("program").assert_stderr_contains("stack-buffer-overflow");
 }

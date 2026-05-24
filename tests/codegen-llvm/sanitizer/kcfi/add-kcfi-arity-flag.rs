@@ -4,7 +4,7 @@
 //@ revisions: x86_64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
-//@ compile-flags: -Ctarget-feature=-crt-static -Cpanic=abort -Zsanitizer=kcfi -Zsanitizer-kcfi-arity
+//@ compile-flags: -Cpanic=abort -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kcfi -Zsanitizer-kcfi-arity -Copt-level=0 -Ctarget-feature=-crt-static
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

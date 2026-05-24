@@ -1,4 +1,4 @@
-//@ compile-flags: -Zsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer -Ccodegen-units=1 -Clto
+//@ compile-flags: -Ccodegen-units=1 -Clto -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=cfi
 //@ needs-rustc-debug-assertions
 //@ needs-sanitizer-cfi
 //@ build-pass

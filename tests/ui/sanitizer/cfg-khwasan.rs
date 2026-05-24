@@ -1,9 +1,9 @@
-// Verifies that when compiling with -Zsanitizer=kernel-hwaddress,
+// Verifies that when compiling with -Csanitize=kernel-hwaddress,
 // the `#[cfg(sanitize = "hwaddress")]` attribute is configured.
 
 //@ add-minicore
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-hwaddress --target aarch64-unknown-none
+//@ compile-flags: -Cunsafe-allow-abi-mismatch=sanitize -Zunstable-options -Csanitize=kernel-hwaddress --target aarch64-unknown-none
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 

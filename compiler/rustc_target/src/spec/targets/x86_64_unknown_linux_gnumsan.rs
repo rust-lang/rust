@@ -11,6 +11,7 @@ pub(crate) fn target() -> Target {
         std: Some(true),
     };
     base.supported_sanitizers = SanitizerSet::MEMORY;
+    base.stable_sanitizers = SanitizerSet::empty();
     base.default_sanitizers = SanitizerSet::MEMORY;
     base
 }
