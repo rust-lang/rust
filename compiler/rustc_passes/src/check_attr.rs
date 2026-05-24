@@ -1372,7 +1372,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1 && int_reprs_different)
             || (is_simd && is_c)
-            || (int_reprs == 1
+            || (int_reprs >= 1
                 && is_c
                 && item.is_some_and(|item| {
                     if let ItemLike::Item(item) = item { is_c_like_enum(item) } else { false }
