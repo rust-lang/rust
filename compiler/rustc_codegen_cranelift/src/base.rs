@@ -8,6 +8,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
+use rustc_middle::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv as _};
@@ -45,6 +46,10 @@ pub(crate) fn codegen_fn<'tcx>(
     let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
 
     let mir = tcx.build_codegen_mir(instance);
+    let mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
+        InstantiationMode::LocalCopy => &*mir.borrow(),
+        InstantiationMode::GloballyShared { .. } => &*mir.steal(),
+    };
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({

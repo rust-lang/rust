@@ -8,6 +8,7 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use hir::ConstContext;
@@ -923,7 +924,10 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     }
 }
 
-pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx Body<'tcx> {
+pub fn build_codegen_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> Steal<Cow<'tcx, Body<'tcx>>> {
     let body = tcx.instance_mir(instance.def);
 
     // If we have generic params, assert that we didn't get codegen MIR out of instance_mir
@@ -933,12 +937,12 @@ pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &
 
     let body = if !matches!(body.phase, MirPhase::Monomorphic(MonomorphicPhase::Codegen)) {
         let body = transform_to_codegen_mir(tcx, instance, body.clone());
-        tcx.arena.alloc(body)
+        Cow::Owned(body)
     } else {
-        body
+        Cow::Borrowed(body)
     };
 
-    body
+    Steal::new(body)
 }
 
 fn transform_to_codegen_mir<'tcx>(
@@ -949,7 +953,7 @@ fn transform_to_codegen_mir<'tcx>(
     let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
         tcx,
         ty::TypingEnv::fully_monomorphized(),
-        ty::EarlyBinder::bind(body.clone()),
+        ty::EarlyBinder::bind(body),
     );
     body.phase = MirPhase::Monomorphic(MonomorphicPhase::Initial);
     body.pass_count = 0;

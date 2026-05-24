@@ -11,21 +11,21 @@ use tracing::debug;
 
 use crate::errors::LargeAssignmentsLint;
 
-struct MoveCheckVisitor<'tcx> {
+struct MoveCheckVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body: &'tcx mir::Body<'tcx>,
+    body: &'a mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
 }
 
-pub(crate) fn check_moves<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx mir::Body<'tcx>) {
+pub(crate) fn check_moves<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
     let mut visitor = MoveCheckVisitor { tcx, body, move_size_spans: vec![] };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data)
     }
 }
 
-impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
+impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
@@ -45,7 +45,7 @@ impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
     }
 }
 
-impl<'tcx> MoveCheckVisitor<'tcx> {
+impl<'tcx> MoveCheckVisitor<'_, 'tcx> {
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         let limit = self.tcx.move_size_limit();
         if limit.0 == 0 {

@@ -360,7 +360,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
@@ -432,7 +432,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     #[instrument(level = "trace", skip(fx, bx))]
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         cast_to: Ty<'tcx>,
     ) -> V {
@@ -978,7 +978,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,

@@ -266,7 +266,7 @@ pub(crate) fn create_wrapper_function(
     module.define_function(wrapper_func_id, &mut ctx).unwrap();
 }
 
-pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
     pub(crate) module: &'m mut dyn Module,
     pub(crate) debug_context: Option<&'clif mut DebugContext>,
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -278,7 +278,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) cgu_name: Symbol,
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: String,
-    pub(crate) mir: &'tcx Body<'tcx>,
+    pub(crate) mir: &'m Body<'tcx>,
     pub(crate) fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
 
     pub(crate) bcx: FunctionBuilder<'clif>,

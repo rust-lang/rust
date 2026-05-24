@@ -46,17 +46,17 @@ enum CallKind {
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
-struct TerminatorCodegenHelper<'tcx> {
+struct TerminatorCodegenHelper<'mir, 'tcx> {
     bb: mir::BasicBlock,
-    terminator: &'tcx mir::Terminator<'tcx>,
+    terminator: &'mir mir::Terminator<'tcx>,
 }
 
-impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
+impl<'a, 'tcx> TerminatorCodegenHelper<'_, 'tcx> {
     /// Returns the appropriate `Funclet` for the current funclet, if on MSVC,
     /// either already previously cached, or newly created, by `landing_pad_for`.
     fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &'b mut FunctionCx<'_, 'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
         let cleanup_kinds = fx.cleanup_kinds.as_ref()?;
         let funclet_bb = cleanup_kinds[self.bb].funclet_bb(self.bb)?;
@@ -82,7 +82,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// stuff in it or next to it.
     fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
@@ -106,7 +106,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
         if let Some(ref cleanup_kinds) = fx.cleanup_kinds {
@@ -131,7 +131,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
@@ -160,7 +160,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// return destination `destination` and the unwind action `unwind`.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
@@ -302,7 +302,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     /// Generates inline assembly with optional `destination` and `unwind`.
     fn do_inlineasm<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
         bx: &mut Bx,
         template: &[InlineAsmTemplatePiece],
         operands: &[InlineAsmOperandRef<'tcx, Bx>],
@@ -369,9 +369,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 }
 
 /// Codegen implementations for some terminator variants.
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'_, 'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
+    fn codegen_resume_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
+        bx: &mut Bx,
+    ) {
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
@@ -388,7 +392,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_switchint_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
@@ -600,7 +604,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[tracing::instrument(level = "trace", skip(self, helper, bx))]
     fn codegen_drop_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         source_info: &mir::SourceInfo,
         location: mir::Place<'tcx>,
@@ -698,7 +702,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_assert_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
@@ -799,7 +803,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_terminate_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         reason: UnwindTerminateReason,
@@ -830,7 +834,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Returns `Some` if this is indeed a panic intrinsic and codegen is done.
     fn codegen_panic_intrinsic(
         &mut self,
-        helper: &TerminatorCodegenHelper<'tcx>,
+        helper: &TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         intrinsic: ty::IntrinsicDef,
         instance: Instance<'tcx>,
@@ -897,7 +901,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_call_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
@@ -1399,7 +1403,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_asm_terminator(
         &mut self,
-        helper: TerminatorCodegenHelper<'tcx>,
+        helper: TerminatorCodegenHelper<'_, 'tcx>,
         bx: &mut Bx,
         asm_macro: InlineAsmMacro,
         terminator: &mir::Terminator<'tcx>,
@@ -1524,7 +1528,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         bb: mir::BasicBlock,
-        terminator: &'tcx mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
     ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 

@@ -45,6 +45,7 @@
 
 #![allow(unused_parens)]
 
+use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -713,8 +714,9 @@ rustc_queries! {
 
     /// MIR for a specific Instance ready for codegen. This is `optimized_mir` but monomorphized
     /// and with extra transforms applied.
-    query build_codegen_mir(key: ty::Instance<'tcx>) -> &'tcx mir::Body<'tcx> {
+    query build_codegen_mir(key: ty::Instance<'tcx>) -> &'tcx Steal<Cow<'tcx, mir::Body<'tcx>>> {
         desc { "finalizing codegen MIR for `{}`", tcx.def_path_str_with_args(key.def_id(), key.args) }
+        arena_cache
         no_hash
     }
 
