@@ -89,7 +89,13 @@ fn json_to_intrinsic(
         .into_iter()
         .enumerate()
         .map(|(i, arg)| {
-            let (type_name, arg_name) = Argument::<ArmIntrinsicType>::type_and_name_from_c(&arg);
+            let (type_name, arg_name) = {
+                let split_index = arg
+                    .rfind([' ', '*'])
+                    .expect("Couldn't split type and argname");
+
+                (arg[..split_index + 1].trim_end(), &arg[split_index + 1..])
+            };
 
             let arg_ty = parse_intrinsic_type(type_name)
                 .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
