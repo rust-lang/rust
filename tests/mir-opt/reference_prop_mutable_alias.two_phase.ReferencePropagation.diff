@@ -1,0 +1,51 @@
+- // MIR for `two_phase` before ReferencePropagation
++ // MIR for `two_phase` after ReferencePropagation
+  
+  fn two_phase() -> () {
+      let mut _0: ();
+      let mut _1: Foo;
+      let mut _3: &mut u64;
+      let mut _4: u64;
+      let mut _5: &mut Foo;
+      let mut _6: u64;
+      scope 1 {
+          debug f => _1;
+          let _2: *mut u64;
+          scope 2 {
+-             debug alias => _2;
++             debug alias => _3;
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = Foo(const 0_u64);
+-         StorageLive(_2);
+-         StorageLive(_3);
+          _3 = &mut (_1.0: u64);
+-         _2 = &raw mut (*_3);
+-         StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = &mut _1;
+          StorageLive(_6);
+-         (*_2) = const 42_u64;
++         (*_3) = const 42_u64;
+          _6 = const 0_u64;
+-         _4 = Foo::add(move _5, move _6) -> [return: bb1, unwind continue];
++         _4 = Foo::add(copy _5, move _6) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+-         StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -173,6 +173,11 @@ fn compute_replacement<'tcx>(
 
     let fully_replaceable_locals = fully_replaceable_locals(&ssa);
 
+    // Number of borrows that *directly* borrow each local (a borrow whose place is rooted at the
+    // local with no `Deref` in its projection). Used to keep mutable-reference propagation sound;
+    // see `count_direct_borrows` and rust-lang/rust#132898.
+    let direct_borrow_count = count_direct_borrows(body);
+
     // Returns true iff we can use `place` as a pointee.
     //
     // Note that we only need to verify that there is a single `StorageLive` statement, and we do
@@ -276,7 +281,15 @@ fn compute_replacement<'tcx>(
                     place = target.project_deeper(rest, tcx);
                 }
                 assert_ne!(place.local, local);
-                if is_constant_place(place) {
+                // rust-lang/rust#132898: propagating a mutable reference whose referent's root
+                // local has another independent direct borrow can shorten a reborrow's provenance
+                // and introduce UB (the "uniqueness" guard is necessary but not sufficient). Only
+                // block the mutable case where the target is a direct place (no `Deref`); reborrow
+                // targets (`*x`) are unaffected.
+                let blocked_by_aliasing = needs_unique
+                    && !place.projection.iter().any(|e| matches!(e, PlaceElem::Deref))
+                    && direct_borrow_count[place.local] > 1;
+                if is_constant_place(place) && !blocked_by_aliasing {
                     targets[local] = Value::Pointer(place, needs_unique);
                 }
             }
@@ -375,6 +388,26 @@ fn fully_replaceable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
     ssa.meet_copy_equivalence(&mut replaceable);
 
     replaceable
+}
+
+/// Count, for each local, how many borrows *directly* borrow it: a borrow whose place is rooted at
+/// the local with no `Deref` in its projection (`_1`, `_1.0` — but not `*_1`). When a local has more
+/// than one such borrow, a mutable reference to one of its (sub-)places is not the unique path to
+/// that memory, so propagating it through a reborrow can change pointer provenance and introduce UB.
+/// See rust-lang/rust#132898.
+fn count_direct_borrows<'tcx>(body: &Body<'tcx>) -> IndexVec<Local, u32> {
+    let mut counts = IndexVec::from_elem(0u32, &body.local_decls);
+    for bb in body.basic_blocks.iter() {
+        for stmt in &bb.statements {
+            if let Some((_, rvalue)) = stmt.kind.as_assign()
+                && let Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) = rvalue
+                && !place.projection.iter().any(|e| matches!(e, PlaceElem::Deref))
+            {
+                counts[place.local] += 1;
+            }
+        }
+    }
+    counts
 }
 
 /// Utility to help performing substitution of `*pattern` by `target`.
