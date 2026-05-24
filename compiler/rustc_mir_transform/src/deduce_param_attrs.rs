@@ -262,8 +262,16 @@ impl<'tcx> MirPass<'tcx> for RecoverDeducedParamAttrs {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // Only run this for MIR that has `optimized_mir`.
+        let ty::InstanceKind::Item(..) = body.source.instance else { return };
+        let Some(def_id) = body.source.def_id().as_local() else { return };
+        match tcx.hir_body_const_context(def_id) {
+            Some(hir::ConstContext::ConstFn) | None => {}
+            Some(_) => return,
+        };
+
         // If we deduced nothing, there is no fixup to perform.
-        let deduced_param_attrs = tcx.deduced_param_attrs(body.source.def_id());
+        let deduced_param_attrs = tcx.deduced_param_attrs(def_id);
         if deduced_param_attrs.is_empty() {
             return;
         }
