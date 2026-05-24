@@ -50,10 +50,10 @@ type PerLocalVarDebugInfoIndexVec<'tcx, V> =
     IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, V>>>;
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'tcx mir::Body<'tcx>,
+    mir: &'mir mir::Body<'tcx>,
 
     debug_context: Option<FunctionDebugContext<'tcx, Bx::DIScope, Bx::DILocation>>,
 
@@ -194,12 +194,13 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
+    tcx.ensure_done().check_mono_item(instance);
+    let mir = tcx.build_codegen_mir(instance);
     let mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
-        InstantiationMode::LocalCopy => tcx.build_codegen_mir(instance),
-        InstantiationMode::GloballyShared { .. } => {
-            rustc_mir_transform::build_codegen_mir(tcx, instance)
-        }
+        InstantiationMode::LocalCopy => &*mir.borrow(),
+        InstantiationMode::GloballyShared { .. } => &*mir.steal(),
     };
+
     // Note that the ABI logic has deduced facts about the functions' parameters based on the MIR we
     // got here (`deduce_param_attrs`). That means we can *not* apply arbitrary further MIR
     // transforms as that may invalidate those deduced facts!
@@ -326,7 +327,7 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// indirect.
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'_, 'a, 'tcx, Bx>,
     memory_locals: &DenseBitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
