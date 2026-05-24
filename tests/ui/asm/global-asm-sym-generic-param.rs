@@ -14,7 +14,7 @@ fn fun_ty<T: Trait>() {
     //~^ ERROR type parameters are not allowed in `global_asm!` `sym`
 }
 
-trait ConstTrait<const N: usize> {
+trait TraitWithConstParam<const N: usize> {
     fn pure();
 }
 
