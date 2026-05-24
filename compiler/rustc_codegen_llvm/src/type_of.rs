@@ -20,6 +20,11 @@ fn uncached_llvm_type<'a, 'tcx>(
 ) -> &'a Type {
     match layout.backend_repr {
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
+        BackendRepr::ScalarPair(a, b) if a.size(cx) == b.size(cx) => {
+            let a_llty = layout.scalar_llvm_type_at(cx, a);
+            let b_llty = layout.scalar_llvm_type_at(cx, b);
+            return cx.type_struct(&[a_llty, b_llty], false);
+        }
         BackendRepr::SimdVector { element, count } => {
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);

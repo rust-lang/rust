@@ -6,7 +6,9 @@
 
 #![crate_type = "lib"]
 
-struct Foo(i32, i32);
+struct Foo(i32, i16, i8, u8);
+
+struct Pair(i32, i32);
 
 // CHECK-LABEL: @index_on_struct(
 #[no_mangle]
@@ -19,6 +21,20 @@ fn index_on_struct(a: &[Foo], index: usize) -> &Foo {
 #[no_mangle]
 fn offset_on_struct(a: *const Foo, index: usize) -> *const Foo {
     // CHECK: getelementptr inbounds{{( nuw)?}} {{%Foo|\[8 x i8\]}}, ptr %a, {{i64|i32}} %index
+    unsafe { a.add(index) }
+}
+
+// CHECK-LABEL: @index_on_pair(
+#[no_mangle]
+fn index_on_pair(a: &[Pair], index: usize) -> &Pair {
+    // CHECK: getelementptr inbounds{{( nuw)?}} {{%Pair|{ i32, i32 }}}, ptr %a.0, {{i64|i32}} %index
+    &a[index]
+}
+
+// CHECK-LABEL: @offset_on_pair(
+#[no_mangle]
+fn offset_on_pair(a: *const Pair, index: usize) -> *const Pair {
+    // CHECK: getelementptr inbounds{{( nuw)?}} {{%Pair|{ i32, i32 }}}, ptr %a, {{i64|i32}} %index
     unsafe { a.add(index) }
 }
 

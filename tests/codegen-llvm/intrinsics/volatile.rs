@@ -33,6 +33,14 @@ pub unsafe fn volatile_load(a: *const u8) -> u8 {
     intrinsics::volatile_load(a)
 }
 
+// CHECK-LABEL: @volatile_load_pair
+#[no_mangle]
+pub unsafe fn volatile_load_pair(a: *const (u16, u16)) -> (u16, u16) {
+    // CHECK: load volatile { i16, i16 }
+    // CHECK-SAME: align 2{{,|$}}
+    intrinsics::volatile_load(a)
+}
+
 // CHECK-LABEL: @volatile_store
 #[no_mangle]
 pub unsafe fn volatile_store(a: *mut u8, b: u8) {
@@ -44,6 +52,14 @@ pub unsafe fn volatile_store(a: *mut u8, b: u8) {
 #[no_mangle]
 pub unsafe fn unaligned_volatile_load(a: *const u8) -> u8 {
     // CHECK: load volatile
+    intrinsics::unaligned_volatile_load(a)
+}
+
+// CHECK-LABEL: @unaligned_volatile_load_pair
+#[no_mangle]
+pub unsafe fn unaligned_volatile_load_pair(a: *const (u16, u16)) -> (u16, u16) {
+    // CHECK: load volatile { i16, i16 }
+    // CHECK-SAME: align 1{{,|$}}
     intrinsics::unaligned_volatile_load(a)
 }
 
