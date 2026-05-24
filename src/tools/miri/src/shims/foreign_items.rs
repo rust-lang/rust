@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 
-use rustc_abi::{Align, CanonAbi, ExternAbi, Size};
+use rustc_abi::{Align, CanonAbi, Endian, ExternAbi, Size};
 use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::either::Either;
 use rustc_hir::attrs::Linkage;
@@ -817,7 +817,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the x86 `_mm{,256,512}_popcnt_epi{8,16,32,64}` and wasm
             // `{i,u}8x16_popcnt` functions.
-            name if name.starts_with("llvm.ctpop.v") => {
+            name if name.starts_with("llvm.ctpop.v")
+                && this.tcx.sess.target.endian == Endian::Little =>
+            {
                 let [op] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (op, op_len) = this.project_to_simd(op)?;
@@ -840,14 +842,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Target-specific shims
             name if name.starts_with("llvm.x86.")
-                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64) =>
+                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
+                && this.tcx.sess.target.endian == Endian::Little =>
             {
                 return shims::x86::EvalContextExt::emulate_x86_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
             name if name.starts_with("llvm.aarch64.")
-                && this.tcx.sess.target.arch == Arch::AArch64 =>
+                && this.tcx.sess.target.arch == Arch::AArch64
+                && this.tcx.sess.target.endian == Endian::Little =>
             {
                 return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
                     this, link_name, abi, args, dest,
