@@ -662,8 +662,8 @@ config_data! {
         /// For traits the type "methods" can be used to only exclude the methods but not the trait
         /// itself.
         ///
-        /// For modules the type "subItems" can be used to only exclude the sub items but not the module
-        /// itself.
+        /// For modules the type "subItems" can be used to only exclude the all items in it but not the module
+        /// itself. This does not include items defined in nested modules.
         ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
         completion_autoimport_exclude: Vec<AutoImportExclusion> = vec![
@@ -4138,8 +4138,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                                 "enum": ["always", "methods", "subItems"],
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                    "Do not show this traits methods in auto-import completions.",
-                                    "Do not show this modules sub items in auto-import completions."
+                                    "Do not show this trait's methods in auto-import completions.",
+                                    "Do not show this module's all items in it in auto-import completions."
                                 ],
                             },
                         }
