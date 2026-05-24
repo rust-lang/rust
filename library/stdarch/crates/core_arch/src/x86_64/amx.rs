@@ -60,7 +60,7 @@ pub unsafe fn _tile_storeconfig(mem_addr: *mut u8) {
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_loadd<const DST: i32>(base: *const u8, stride: usize) {
     static_assert_uimm_bits!(DST, 3);
-    tileloadd64(DST as i8, base, stride);
+    tileloadd64(DST as i8, base, stride as u64);
 }
 
 /// Release the tile configuration to return to the init state, which releases all storage it currently holds.
@@ -84,7 +84,7 @@ pub unsafe fn _tile_release() {
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
     static_assert_uimm_bits!(DST, 3);
-    tilestored64(DST as i8, base, stride);
+    tilestored64(DST as i8, base, stride as u64);
 }
 
 /// Load tile rows from memory specified by base address and stride into destination tile dst using the tile configuration
@@ -99,7 +99,7 @@ pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_stream_loadd<const DST: i32>(base: *const u8, stride: usize) {
     static_assert_uimm_bits!(DST, 3);
-    tileloaddt164(DST as i8, base, stride);
+    tileloaddt164(DST as i8, base, stride as u64);
 }
 
 /// Zero the tile specified by `tdest`.
@@ -354,7 +354,7 @@ pub unsafe fn _tile_dphf8ps<const DST: i32, const A: i32, const B: i32>() {
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
     static_assert_uimm_bits!(DST, 3);
-    tileloaddrs64(DST as i8, base, stride);
+    tileloaddrs64(DST as i8, base, stride as u64);
 }
 
 /// Load tile rows from memory specified by base address and stride into destination tile dst
@@ -374,7 +374,7 @@ pub unsafe fn _tile_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
 #[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
 pub unsafe fn _tile_stream_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
     static_assert_uimm_bits!(DST, 3);
-    tileloaddrst164(DST as i8, base, stride);
+    tileloaddrst164(DST as i8, base, stride as u64);
 }
 
 /// Perform matrix multiplication of two tiles a and b, containing packed single precision (32-bit)
@@ -601,13 +601,13 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.sttilecfg"]
     fn sttilecfg(mem_addr: *mut u8);
     #[link_name = "llvm.x86.tileloadd64"]
-    fn tileloadd64(dst: i8, base: *const u8, stride: usize);
+    fn tileloadd64(dst: i8, base: *const u8, stride: u64);
     #[link_name = "llvm.x86.tileloaddt164"]
-    fn tileloaddt164(dst: i8, base: *const u8, stride: usize);
+    fn tileloaddt164(dst: i8, base: *const u8, stride: u64);
     #[link_name = "llvm.x86.tilerelease"]
     fn tilerelease();
     #[link_name = "llvm.x86.tilestored64"]
-    fn tilestored64(dst: i8, base: *mut u8, stride: usize);
+    fn tilestored64(dst: i8, base: *mut u8, stride: u64);
     #[link_name = "llvm.x86.tilezero"]
     fn tilezero(dst: i8);
     #[link_name = "llvm.x86.tdpbf16ps"]
@@ -635,9 +635,9 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.tdphf8ps"]
     fn tdphf8ps(dst: i8, a: i8, b: i8);
     #[link_name = "llvm.x86.tileloaddrs64"]
-    fn tileloaddrs64(dst: i8, base: *const u8, stride: usize);
+    fn tileloaddrs64(dst: i8, base: *const u8, stride: u64);
     #[link_name = "llvm.x86.tileloaddrst164"]
-    fn tileloaddrst164(dst: i8, base: *const u8, stride: usize);
+    fn tileloaddrst164(dst: i8, base: *const u8, stride: u64);
     #[link_name = "llvm.x86.tmmultf32ps"]
     fn tmmultf32ps(dst: i8, a: i8, b: i8);
     #[link_name = "llvm.x86.tcvtrowd2ps"]
