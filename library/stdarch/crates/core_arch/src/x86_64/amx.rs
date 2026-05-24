@@ -670,7 +670,7 @@ unsafe extern "C" {
 mod tests {
     use crate::core_arch::x86::_mm_cvtness_sbh;
     use crate::core_arch::x86_64::*;
-    use core::{array, mem::transmute};
+    use core::array;
     use stdarch_test::simd_test;
     #[cfg(target_os = "linux")]
     use syscalls::{Sysno, syscall};
@@ -723,19 +723,23 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[target_feature(enable = "amx-tile")]
     #[inline]
-    unsafe fn _init_amx() {
+    fn _init_amx() {
         let mut ret: usize;
         let mut xfeatures: usize = 0;
-        ret = syscall!(Sysno::arch_prctl, 0x1022, &mut xfeatures as *mut usize)
-            .expect("arch_prctl ARCH_GET_XCOMP_PERM syscall failed");
+        ret = unsafe {
+            syscall!(Sysno::arch_prctl, 0x1022, &raw mut xfeatures)
+                .expect("arch_prctl ARCH_GET_XCOMP_PERM syscall failed")
+        };
         if ret != 0 {
             panic!("Failed to get XFEATURES");
         } else {
             match 0b11 & (xfeatures >> 17) {
                 0 => panic!("AMX is not available"),
                 1 => {
-                    ret = syscall!(Sysno::arch_prctl, 0x1023, 18)
-                        .expect("arch_prctl ARCH_REQ_XCOMP_PERM syscall failed");
+                    ret = unsafe {
+                        syscall!(Sysno::arch_prctl, 0x1023, 18)
+                            .expect("arch_prctl ARCH_REQ_XCOMP_PERM syscall failed")
+                    };
                     if ret != 0 {
                         panic!("Failed to enable AMX");
                     }
@@ -778,7 +782,7 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mut out = [[1_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[0; 64]; 16]);
         }
@@ -795,7 +799,7 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mut out = [[1_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[0; 64]; 16]);
         }
@@ -812,9 +816,9 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mat = [1_i8; 1024];
-            _tile_loadd::<0>(&mat as *const i8 as *const u8, 64);
+            _tile_loadd::<0>(mat.as_ptr().cast(), 64);
             let mut out = [[0_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[1; 64]; 16]);
         }
@@ -831,9 +835,9 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mat = [1_i8; 1024];
-            _tile_stream_loadd::<0>(&mat as *const i8 as *const u8, 64);
+            _tile_stream_loadd::<0>(mat.as_ptr().cast(), 64);
             let mut out = [[0_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[1; 64]; 16]);
         }
@@ -846,14 +850,15 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "amx-bf16,avx512f")]
+    const BF16_1: u16 = 0x3f80;
+    const BF16_2: u16 = 0x4000;
+
+    #[simd_test(enable = "amx-bf16")]
     fn test_tile_dpbf16ps() {
         unsafe {
             _init_amx();
-            let bf16_1: u16 = _mm_cvtness_sbh(1.0).to_bits();
-            let bf16_2: u16 = _mm_cvtness_sbh(2.0).to_bits();
-            let ones: [u8; 1024] = transmute([bf16_1; 512]);
-            let twos: [u8; 1024] = transmute([bf16_2; 512]);
+            let ones = [BF16_1; 512];
+            let twos = [BF16_2; 512];
             let mut res = [[0f32; 16]; 16];
             let mut config = __tilecfg::default();
             config.palette = 1;
@@ -863,10 +868,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_dpbf16ps::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[64f32; 16]; 16]);
         }
@@ -887,10 +892,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const i8 as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const i8 as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_dpbssd::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [i32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[128_i32; 16]; 16]);
         }
@@ -911,10 +916,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const i8 as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dpbsud::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [i32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[-128_i32; 16]; 16]);
         }
@@ -935,10 +940,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const i8 as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_dpbusd::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [i32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[-128_i32; 16]; 16]);
         }
@@ -959,10 +964,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dpbuud::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [i32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[128_i32; 16]; 16]);
         }
@@ -983,10 +988,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const f16 as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const f16 as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_dpfp16ps::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[64f32; 16]; 16]);
         }
@@ -1007,10 +1012,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const f16 as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const f16 as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_cmmimfp16ps::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[64f32; 16]; 16]);
         }
@@ -1031,10 +1036,10 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const f16 as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const f16 as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr().cast(), 64);
+            _tile_loadd::<2>(twos.as_ptr().cast(), 64);
             _tile_cmmrlfp16ps::<0, 1, 2>();
-            _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
+            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(res, [[0f32; 16]; 16]);
         }
@@ -1060,8 +1065,8 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dpbf8ps::<0, 1, 2>();
             _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
@@ -1084,8 +1089,8 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dpbhf8ps::<0, 1, 2>();
             _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
@@ -1108,8 +1113,8 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dphbf8ps::<0, 1, 2>();
             _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
@@ -1132,8 +1137,8 @@ mod tests {
             });
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
-            _tile_loadd::<1>(&ones as *const u8, 64);
-            _tile_loadd::<2>(&twos as *const u8, 64);
+            _tile_loadd::<1>(ones.as_ptr(), 64);
+            _tile_loadd::<2>(twos.as_ptr(), 64);
             _tile_dphf8ps::<0, 1, 2>();
             _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
             _tile_release();
@@ -1152,9 +1157,9 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mat = [1_i8; 1024];
-            _tile_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+            _tile_loaddrs::<0>(mat.as_ptr().cast(), 64);
             let mut out = [[0_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[1; 64]; 16]);
         }
@@ -1171,9 +1176,9 @@ mod tests {
             _tile_loadconfig(config.as_ptr());
             _tile_zero::<0>();
             let mat = [1_i8; 1024];
-            _tile_stream_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+            _tile_stream_loaddrs::<0>(mat.as_ptr().cast(), 64);
             let mut out = [[0_i8; 64]; 16];
-            _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+            _tile_stored::<0>(out.as_mut_ptr().cast(), 64);
             _tile_release();
             assert_eq!(out, [[1; 64]; 16]);
         }
