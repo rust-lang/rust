@@ -1654,6 +1654,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     return;
                 }
                 Scope::Root { .. } => {
+                    // A `global_asm!` is always lifted to the top-level, and cannot depend on type/const parameters of an inner scope.
                     if let Node::Item(item) = self.tcx.hir_node_by_def_id(hir_id.owner.def_id)
                         && let hir::ItemKind::GlobalAsm { .. } = item.kind
                     {
