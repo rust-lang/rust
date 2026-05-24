@@ -195,7 +195,7 @@ impl IntoRawFd for fs::File {
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
-#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
+#[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::Stdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -204,7 +204,6 @@ impl AsRawFd for io::Stdin {
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
-#[cfg(not(target_os = "qurt"))]
 impl AsRawFd for io::Stdout {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -213,7 +212,6 @@ impl AsRawFd for io::Stdout {
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
-#[cfg(not(target_os = "qurt"))]
 impl AsRawFd for io::Stderr {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -222,7 +220,7 @@ impl AsRawFd for io::Stderr {
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
-#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
+#[cfg(not(target_os = "trusty"))]
 impl<'a> AsRawFd for io::StdinLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -231,7 +229,6 @@ impl<'a> AsRawFd for io::StdinLock<'a> {
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
-#[cfg(not(target_os = "qurt"))]
 impl<'a> AsRawFd for io::StdoutLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -240,7 +237,6 @@ impl<'a> AsRawFd for io::StdoutLock<'a> {
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
-#[cfg(not(target_os = "qurt"))]
 impl<'a> AsRawFd for io::StderrLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
