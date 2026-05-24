@@ -7,17 +7,13 @@
 //! - writing, and
 //! - borrowing.
 //!
-//! This is part of the language experiment for field projections
-//! <https://github.com/rust-lang/rust/issues/145383>. The specific design that
-//! is currently being implemented is explained in detail in the latest [design
-//! meeting document](https://hackmd.io/H5d2-83ER2ymNPZVIWCYWg?view). Note that
-//! several types and traits have been renamed. Further modifications pending
-//! experiment results are expected to occur.
+//! This module is part of the language experiment for field projections
+//! <https://github.com/rust-lang/rust/issues/145383>.
 //!
 //! ## Places
 //!
-//! A *place* in Rust is a particular location in memory. They are represented
-//! by [*place expressions*][ref-place-exprs], which take on the following form:
+//! A *place* in Rust is a particular location in memory. Places are represented
+//! by [*place expressions*][ref-place-exprs], which have the following form:
 //! - `$path`: paths that refer to locals variables (also parameters) and
 //!   statics,
 //! - `*$place`: dereferences of another place expression,
@@ -78,7 +74,7 @@
 //! ### Implicit Operations
 //!
 //! In addition to the three visible operations, there are several other
-//! *implicit* operations that can be implemented for place proxies:
+//! *implicitnia* operations that can be implemented for place proxies:
 //!
 //! - moving out of a subplace [`MovePlace`],
 //! - dropping a subplace [`DropPlace`] and dropping a fully moved-out pointer
@@ -132,6 +128,78 @@
 
 use crate::ptr::Pointee;
 
+/// Marks a type as a place proxy.
+///
+/// A place proxy "contains" a place (with or without indirection) and provides
+/// a [`PlaceHandle`] with which to operate on the place.
+///
+/// This trait is expected to be implemented for pointers (both smart and dumb).
+/// The handle associated with a pointer is intended to only be used by the
+/// compiler.
+#[unstable(feature = "field_projections", issue = "145383")]
+#[lang = "place_proxy"]
+pub trait PlaceProxy {
+    /// The handle used to operate on this proxy's place.
+    #[lang = "place_proxy_handle"]
+    type Handle: PlaceHandle;
+}
+
+/// A handle to a place.
+///
+/// This type is an internal representation of a [`PlaceProxy`] that supports
+/// the pointee being in a state that the original proxy would consider invalid.
+/// For example:
+/// - some fields are moved out,
+/// - some fields are borrowed by other pointers.
+///
+/// It is the responsibility of the borrow checker to ensure that place
+/// operations on handles do not conflict with each other.
+#[lang = "place_handle"]
+pub trait PlaceHandle {
+    /// The type of the place that this handle points at.
+    #[lang = "place_handle_target"]
+    type Target: ?Sized;
+}
+
+/// Deref
+///
+/// When `x: Self`, then nested dereferences `let _ = **x;` are desugared into a
+/// combination of the corresponding operation and [`DerefPlace::deref`].
+///
+/// # Safety
+///
+/// See the module-level section on [safety](crate::ops::place#safety).
+#[unstable(feature = "field_projections", issue = "145383")]
+#[lang = "deref_place"]
+pub trait DerefPlace: PlaceHandle
+where
+    Self::Target: PlaceProxy,
+{
+    /// Obtain a handle to the nested pointee.
+    ///
+    /// # Safety
+    ///
+    /// See the module-level section on [safety](crate::ops::place#safety).
+    #[lang = "deref_place_deref_place"]
+    unsafe fn deref_place(self) -> Self::Target::Handle;
+}
+
+/// Project a handle to a subplace.
+///
+///
+#[unstable(feature = "field_projections", issue = "145383")]
+#[lang = "project_place"]
+pub trait ProjectPlace<S>: PlaceHandle
+where
+    S: Subplace<Source = Self::Target>,
+{
+    #[lang = "project_place_projected"]
+    type Projected: PlaceHandle<Target = S::Target>;
+
+    #[lang = "project_place_project_place"]
+    unsafe fn project_place(self, subplace: S) -> Self::Projected;
+}
+
 /// A subplace of [`Self::Source`] with the type [`Self::Target`].
 ///
 /// A subplace is always within the same allocation as the base place. A
@@ -165,34 +233,6 @@ pub unsafe trait Subplace: Sized {
     ) -> (usize, <Self::Target as Pointee>::Metadata);
 }
 
-/// Marks a type as a place proxy.
-///
-/// A place proxy can be dereferenced (`*val`). This results in a place for
-/// which any place operation is implemented by this type. The operation is
-/// available only if the corresponding place operation trait is implemented:
-///
-/// - [`ReadPlace`]
-/// - [`WritePlace`]
-/// - [`BorrowPlace`]
-///
-/// Furthermore, there are implicit place operations that can be supported by
-/// types implementing this trait:
-///
-/// - [`MovePlace`]
-/// - [`DropPlace`]
-/// - [`DropHusk`]
-/// - [`DerefPlace`]
-/// - [`WrapPlace`]
-///
-/// Read the [module](self) description for more information.
-#[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_proxy"]
-pub trait PlaceProxy {
-    /// The type of the contained place.
-    #[lang = "place_proxy_target"]
-    type Target: ?Sized;
-}
-
 /// Reading a place `let val = *x;`.
 ///
 /// When `x: Self`, then `let val = *x;` will be desugared into [`ReadPlace::read`].
@@ -202,11 +242,7 @@ pub trait PlaceProxy {
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "read_place"]
-pub unsafe trait ReadPlace<S>: PlaceProxy
-where
-    S: Subplace<Source = Self::Target>,
-    S::Target: Sized,
-{
+pub trait ReadPlace: PlaceHandle {
     /// Whether the read operation is safe when used through the operator.
     ///
     /// When the operator is used, the borrow checker follows its usual rules to
@@ -220,8 +256,8 @@ where
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "read_place_read"]
-    unsafe fn read(this: *const Self, sub: S) -> S::Target;
+    #[lang = "read_place_read_place"]
+    unsafe fn read_place(self) -> Self::Target;
 }
 
 /// Writing a place `*x = val;`.
@@ -237,11 +273,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "write_place"]
-pub unsafe trait WritePlace<S>: PlaceProxy
-where
-    S: Subplace<Source = Self::Target>,
-    S::Target: Sized,
-{
+pub trait WritePlace: PlaceHandle {
     /// Whether the write operation is safe when used through the operator.
     ///
     /// When the operator is used, the borrow checker follows its usual rules to
@@ -250,13 +282,13 @@ where
     #[lang = "write_place_safe"]
     const SAFE: bool;
 
-    /// Writes to the subplace pointed to by `this`.
+    /// Write `value` to the place represented by `self`.
     ///
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "write_place_write"]
-    unsafe fn write(this: *const Self, sub: S, value: S::Target);
+    #[lang = "write_place_write_place"]
+    unsafe fn write_place(self, value: Self::Target);
 }
 
 /// Borrowing a place with `X`.
@@ -269,9 +301,8 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "borrow_place"]
-pub unsafe trait BorrowPlace<S, X>: PlaceProxy
+pub unsafe trait BorrowPlace<X>: PlaceHandle
 where
-    S: Subplace<Source = Self::Target>,
     X: PlaceProxy<Target = S::Target>,
 {
     /// Whether the borrow operation is safe when used through the operator.
@@ -290,8 +321,8 @@ where
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "borrow_place_borrow"]
-    unsafe fn borrow(this: *const Self, sub: S) -> X;
+    #[lang = "borrow_place_borrow_place"]
+    unsafe fn borrow_place(self) -> X;
 }
 
 /// Moving out of a place.
@@ -306,12 +337,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "move_place"]
-pub unsafe trait MovePlace<S>: ReadPlace<S>
-where
-    S: Subplace<Source = Self::Target>,
-    S::Target: Sized,
-{
-}
+pub unsafe trait MovePlace: ReadPlace {}
 
 /// Dropping a place.
 ///
@@ -325,17 +351,14 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_place"]
-pub unsafe trait DropPlace<S>: PlaceProxy
-where
-    S: Subplace<Source = Self::Target>,
-{
+pub unsafe trait DropPlace: PlaceProxy {
     /// Drop the subplace pointed to by `this`.
     ///
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "drop_place_drop"]
-    unsafe fn drop(this: *const Self, sub: S);
+    #[lang = "drop_place_drop_place"]
+    unsafe fn drop_place(self);
 }
 
 /// Dropping an empty place proxy.
@@ -360,38 +383,14 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_husk"]
-pub unsafe trait DropHusk: PlaceProxy {
-    /// Drops the
+pub trait DropHusk: PlaceProxy {
+    /// Drops a fully moved-out pointer.
     ///
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "drop_husk_drop_husk"]
-    unsafe fn drop_husk(this: *const Self);
-}
-
-/// Accessing a nested proxy.
-///
-/// When `x: Self`, then nested dereferences `let _ = **x;` are desugared into a
-/// combination of the corresponding operation and [`DerefPlace::deref`].
-///
-/// # Safety
-///
-/// See the module-level section on [safety](crate::ops::place#safety).
-#[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "deref_place"]
-pub unsafe trait DerefPlace<S>: PlaceProxy
-where
-    S: Subplace<Source = Self::Target>,
-    S::Target: PlaceProxy,
-{
-    /// Obtain a raw pointer to the subplace contained by `this`.
-    ///
-    /// # Safety
-    ///
-    /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "deref_place_deref"]
-    unsafe fn deref(this: *const Self, sub: S) -> *const S::Target;
+    unsafe fn drop_husk(this: Self::Handle);
 }
 
 /// Forwards the subplace `S` of the place contained by this.
@@ -417,4 +416,28 @@ where
     /// Turn a subplace of type `S` into [`Self::Wrapped`].
     #[lang = "wrap_place_wrap"]
     fn wrap(sub: S) -> Self::Wrapped;
+}
+
+#[unstable(feature = "field_projections", issue = "145383")]
+#[lang = "local_handle"]
+pub struct LocalHandle<T: ?Sized> {
+    ptr: NonNull<T>,
+}
+
+impl<T: ?Sized> Clone for LocalHandle<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Copy for LocalHandle<T> {}
+
+impl<T: ?Sized> LocalHandle<T> {
+    pub unsafe fn new(ptr: *mut T) -> Self {
+        Self { ptr: unsafe { NonNull::new_unchecked(ptr) } }
+    }
+
+    pub fn as_ptr(self) -> *mut T {
+        self.ptr.as_ptr()
+    }
 }
