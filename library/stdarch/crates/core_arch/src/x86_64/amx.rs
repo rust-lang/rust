@@ -3,11 +3,30 @@ use crate::core_arch::{simd::*, x86::*};
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-/// Load tile configuration from a 64-byte memory location specified by mem_addr.
+/// Load tile configuration from a 64-byte memory location specified by `mem_addr`.
 /// The tile configuration format is specified below, and includes the tile type pallette,
 /// the number of bytes per row, and the number of rows. If the specified pallette_id is zero,
 /// that signifies the init state for both the tile config and the tile data, and the tiles are zeroed.
 /// Any invalid configurations will result in #GP fault.
+///
+/// ```intel
+/// //	format of memory payload. each field is a byte.
+///		 0: palette
+///		 1: start_row
+///	  2-15: reserved, must be zero
+///	 16-17: tile0.colsb
+///	 18-19: tile1.colsb
+///	 20-21: tile2.colsb
+///			...
+///	 30-31: tile7.colsb
+///	 32-47: reserved, must be zero
+///		48: tile0.rows
+///		49: tile1.rows
+///		50: tile2.rows
+///			 ...
+///		55: tile7.rows
+///	 56-63: reserved, must be zero
+/// ```
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_loadconfig&ig_expand=6875)
 #[inline]
@@ -18,8 +37,8 @@ pub unsafe fn _tile_loadconfig(mem_addr: *const u8) {
     ldtilecfg(mem_addr);
 }
 
-/// Stores the current tile configuration to a 64-byte memory location specified by mem_addr.
-/// The tile configuration format is specified below, and includes the tile type pallette,
+/// Stores the current tile configuration to a 64-byte memory location specified by `mem_addr`.
+/// The tile configuration format is as specified in [`_tile_loadconfig`], and includes the tile type pallette,
 /// the number of bytes per row, and the number of rows. If tiles are not configured, all zeroes will be stored to memory.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_storeconfig&ig_expand=6879)
@@ -31,7 +50,7 @@ pub unsafe fn _tile_storeconfig(mem_addr: *mut u8) {
     sttilecfg(mem_addr);
 }
 
-/// Load tile rows from memory specifieid by base address and stride into destination tile dst using the tile configuration previously configured via _tile_loadconfig.
+/// Load tile rows from memory specified by base address and stride into destination tile dst using the tile configuration previously configured via [`_tile_loadconfig`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_loadd&ig_expand=6877)
 #[inline]
@@ -55,7 +74,7 @@ pub unsafe fn _tile_release() {
     tilerelease();
 }
 
-/// Store the tile specified by src to memory specifieid by base address and stride using the tile configuration previously configured via _tile_loadconfig.
+/// Store the tile specified by src to memory specified by base address and stride using the tile configuration previously configured via [`_tile_loadconfig`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stored&ig_expand=6881)
 #[inline]
@@ -68,8 +87,8 @@ pub unsafe fn _tile_stored<const DST: i32>(base: *mut u8, stride: usize) {
     tilestored64(DST as i8, base, stride);
 }
 
-/// Load tile rows from memory specifieid by base address and stride into destination tile dst using the tile configuration
-/// previously configured via _tile_loadconfig. This intrinsic provides a hint to the implementation that the data will
+/// Load tile rows from memory specified by base address and stride into destination tile dst using the tile configuration
+/// previously configured via [`_tile_loadconfig`]. This intrinsic provides a hint to the implementation that the data will
 /// likely not be reused in the near future and the data caching can be optimized accordingly.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_stream_loadd&ig_expand=6883)
@@ -83,7 +102,7 @@ pub unsafe fn _tile_stream_loadd<const DST: i32>(base: *const u8, stride: usize)
     tileloaddt164(DST as i8, base, stride);
 }
 
-/// Zero the tile specified by tdest.
+/// Zero the tile specified by `tdest`.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tile_zero&ig_expand=6885)
 #[inline]
@@ -321,7 +340,7 @@ pub unsafe fn _tile_dphf8ps<const DST: i32, const A: i32, const B: i32>() {
 }
 
 /// Load tile rows from memory specified by base address and stride into destination tile dst
-/// using the tile configuration previously configured via _tile_loadconfig.
+/// using the tile configuration previously configured via [`_tile_loadconfig`].
 /// Additionally, this intrinsic indicates the source memory location is likely to become
 /// read-shared by multiple processors, i.e., read in the future by at least one other processor
 /// before it is written, assuming it is ever written in the future.
@@ -339,7 +358,7 @@ pub unsafe fn _tile_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
 }
 
 /// Load tile rows from memory specified by base address and stride into destination tile dst
-/// using the tile configuration previously configured via _tile_loadconfig.
+/// using the tile configuration previously configured via [`_tile_loadconfig`].
 /// Provides a hint to the implementation that the data would be reused but does not need
 /// to be resident in the nearest cache levels.
 /// Additionally, this intrinsic indicates the source memory location is likely to become
