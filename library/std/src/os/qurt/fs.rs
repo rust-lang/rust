@@ -8,8 +8,6 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
-#[allow(deprecated)]
-use crate::os::qurt::raw;
 use crate::sys::AsInner;
 
 /// OS-specific extensions to [`fs::Metadata`].
@@ -23,15 +21,6 @@ use crate::sys::AsInner;
 /// - `st_atime_nsec`, `st_mtime_nsec`, `st_ctime_nsec`: QuRT only has second-level precision (returns 0)
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
-    #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[deprecated(
-        since = "1.8.0",
-        note = "deprecated in favor of the accessor \
-                methods of this trait"
-    )]
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat;
-
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_dev(&self) -> u64;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -75,10 +64,6 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat {
-        unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
-    }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
     }
