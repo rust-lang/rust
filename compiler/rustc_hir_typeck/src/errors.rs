@@ -386,7 +386,7 @@ pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
-    pub sugg: LossyProvenanceInt2PtrSuggestion,
+    pub sugg: Option<LossyProvenanceInt2PtrSuggestion>,
 }
 
 #[derive(Diagnostic)]
@@ -427,7 +427,7 @@ pub(crate) struct LossyProvenancePtr2Int<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
-    pub sugg: LossyProvenancePtr2IntSuggestion<'tcx>,
+    pub sugg: Option<LossyProvenancePtr2IntSuggestion<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]
