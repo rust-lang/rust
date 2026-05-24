@@ -573,13 +573,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "inline_always_mismatching_target_features",
-        description: r##"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"##,
-        default_severity: Severity::Warning,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "inline_no_sanitize",
         description: r##"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"##,
         default_severity: Severity::Warning,
@@ -4653,22 +4646,6 @@ Allows `cfg(target_has_atomic_load_store = "...")`.
 The tracking issue for this feature is: [#94039]
 
 [#94039]: https://github.com/rust-lang/rust/issues/94039
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "cfg_target_has_atomic_equal_alignment",
-        description: r##"# `cfg_target_has_atomic_equal_alignment`
-
-Allows `cfg(target_has_atomic_equal_alignment = "...")`.
-
-The tracking issue for this feature is: [#93822]
-
-[#93822]: https://github.com/rust-lang/rust/issues/93822
 
 ------------------------
 "##,
@@ -12101,6 +12078,20 @@ The tracking issue for this feature is: [#118485]
         deny_since: None,
     },
     Lint {
+        label: "os_str_split_at",
+        description: r##"# `os_str_split_at`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "os_string_truncate",
         description: r##"# `os_string_truncate`
 
@@ -14975,22 +14966,6 @@ The tracking issue for this feature is: [#95439]
         deny_since: None,
     },
     Lint {
-        label: "target_feature_inline_always",
-        description: r##"# `target_feature_inline_always`
-
-Allows the use of target_feature when a function is marked inline(always).
-
-The tracking issue for this feature is: [#145574]
-
-[#145574]: https://github.com/rust-lang/rust/issues/145574
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "tcp_deferaccept",
         description: r##"# `tcp_deferaccept`
 
@@ -15721,22 +15696,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
     Lint {
         label: "trusted_len",
         description: r##"# `trusted_len`
-
-
-
-The tracking issue for this feature is: [#37572]
-
-[#37572]: https://github.com/rust-lang/rust/issues/37572
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "trusted_len_next_unchecked",
-        description: r##"# `trusted_len_next_unchecked`
 
 
 
