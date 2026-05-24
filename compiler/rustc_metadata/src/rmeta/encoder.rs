@@ -2830,10 +2830,20 @@ where
         )
     }
 
-    fn encode_traits(&mut self) -> Hashed<LazyArray<LocalDefId>> {
+    fn encode_traits(&mut self) -> Unhashed<LazyArray<LocalDefId>> {
+        if self.hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            // NOTE: When readded, the reachability graph recording must be disabled during the encoding
+            // of this lazy array.
+            return Unhashed(LazyArray::default());
+        }
         empty_proc_macro!(self);
-        self.hashed_lazy_array(
-            self.tcx().traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
+        Unhashed(
+            self.lazy_array(
+                self.tcx().traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
+            ),
         )
     }
 
