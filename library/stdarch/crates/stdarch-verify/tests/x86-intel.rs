@@ -62,6 +62,7 @@ static MM_CMPINT_ENUM: Type = Type::MM_CMPINT_ENUM;
 static MM_MANTISSA_NORM_ENUM: Type = Type::MM_MANTISSA_NORM_ENUM;
 static MM_MANTISSA_SIGN_ENUM: Type = Type::MM_MANTISSA_SIGN_ENUM;
 static MM_PERM_ENUM: Type = Type::MM_PERM_ENUM;
+static TILE1024I: Type = Type::TILE1024I;
 
 static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
@@ -102,6 +103,7 @@ enum Type {
     CpuidResult,
     Never,
     Ordering,
+    TILE1024I,
 }
 
 stdarch_verify::x86_functions!(static FUNCTIONS);
@@ -774,6 +776,7 @@ fn equate(
         (&Type::MMASK32, "__mmask32") => {}
         (&Type::MMASK16, "__mmask16") => {}
         (&Type::MMASK8, "__mmask8") => {}
+        (&Type::TILE1024I, "__tile1024i") => {}
 
         (&Type::MutPtr(_type), "void*") | (&Type::ConstPtr(_type), "void const*") => {
             let pointed_type = pointed_type(intrinsic)?;
@@ -812,6 +815,7 @@ fn equate(
         (&Type::MutPtr(&Type::M512BH), "__m512bh*") => {}
         (&Type::MutPtr(&Type::M512I), "__m512i*") => {}
         (&Type::MutPtr(&Type::M512D), "__m512d*") => {}
+        (&Type::MutPtr(&Type::TILE1024I), "__tile1024i*") => {}
 
         (&Type::ConstPtr(&Type::PrimFloat(16)), "_Float16 const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(32)), "float const*") => {}
