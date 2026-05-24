@@ -124,7 +124,7 @@ fn main() {
     println!("cargo:rustc-link-arg=-Wl,--section-start=.start=0x40000");
 
     // Stub symbols not available on QuRT
-    for sym in ["sched_yield", "unsetenv", "_Unwind_Backtrace", "_Unwind_GetIPInfo"] {
+    for sym in ["_Unwind_Backtrace", "_Unwind_GetIPInfo"] {
         println!("cargo:rustc-link-arg=-Wl,--defsym={sym}=abort");
     }
 
@@ -181,8 +181,6 @@ rustc program.rs \
     -C "link-args=-nostdlib" \
     -C "link-args=${QURTLIB}/crt1.o ${HEXLIB}/crt0.o ${HEXLIB}/init.o ${QURTLIB}/debugmon.o" \
     -C "link-args=-Wl,--section-start=.start=0x40000" \
-    -C "link-args=-Wl,--defsym=sched_yield=abort" \
-    -C "link-args=-Wl,--defsym=unsetenv=abort" \
     -C "link-args=-Wl,--defsym=_Unwind_Backtrace=abort" \
     -C "link-args=-Wl,--defsym=_Unwind_GetIPInfo=abort" \
     -C "link-args=-L${QURTLIB} -L${HEXLIB}" \
@@ -341,13 +339,12 @@ The following `std` features are expected to work:
 - **Thread stack size**: QuRT's default heap is limited (~512 KB); use
   `thread::Builder::new().stack_size(8192)` or similar small values to
   avoid out-of-memory failures
-- **Environment variables**: `env::set_var` and `env::remove_var` are not
-  functional; `env::var` works for reading pre-set variables
+- **Environment variables**: `env::set_var` is not functional; `env::var` works
+  for reading pre-set variables; `env::remove_var` panics
 - **File I/O quirks**: QuRT's CFS (cosim filesystem) has known issues:
   `write()` may report one extra byte written, `read()` may return 0 bytes
   in the emulator, and `stat()` is not supported
-- **`thread::yield_now()`**: Calls `sched_yield` which is stubbed to `abort`;
-  use `thread::sleep(Duration::from_millis(0))` as an alternative
+
 - **`_Unwind_Backtrace`**: Stubbed to `abort`; backtraces are not available
 
 ## Cross-compilation toolchains and C code
