@@ -1126,6 +1126,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
 
+                if this.machine.thread_cpu_affinity.is_none() {
+                    throw_unsup_format!(
+                        "`sched_getaffinity` is not supported on #![no_core] programs"
+                    )
+                }
+
                 let thread_id = if pid == 0 {
                     this.active_thread()
                 } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
@@ -1149,7 +1155,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
                     // we only copy whole chunks of size_of::<c_ulong>()
                     this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
-                } else if let Some(cpuset) = this.machine.thread_cpu_affinity.get(&thread_id) {
+                } else if let Some(cpuset) =
+                    this.machine.thread_cpu_affinity.as_ref().unwrap().get(&thread_id)
+                {
                     let cpuset = cpuset.clone();
                     // we only copy whole chunks of size_of::<c_ulong>()
                     let byte_count =
@@ -1170,6 +1178,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let pid = this.read_scalar(pid)?.to_u32()?;
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
+
+                if this.machine.thread_cpu_affinity.is_none() {
+                    throw_unsup_format!(
+                        "`sched_setaffinity` is not supported on #![no_core] programs"
+                    )
+                }
 
                 let thread_id = if pid == 0 {
                     this.active_thread()
@@ -1199,7 +1213,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         std::array::from_fn(|i| bits_slice.get(i).copied().unwrap_or(0));
                     match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
                         Some(cpuset) => {
-                            this.machine.thread_cpu_affinity.insert(thread_id, cpuset);
+                            this.machine
+                                .thread_cpu_affinity
+                                .as_mut()
+                                .unwrap()
+                                .insert(thread_id, cpuset);
                             this.write_null(dest)?;
                         }
                         None => {

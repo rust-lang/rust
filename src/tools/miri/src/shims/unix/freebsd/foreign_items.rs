@@ -75,6 +75,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let set_size = this.read_target_usize(set_size)?; // measured in bytes
                 let mask = this.read_pointer(mask)?;
 
+                if this.machine.thread_cpu_affinity.is_none() {
+                    throw_unsup_format!(
+                        "`cpuset_getaffinity` is not supported on #![no_core] programs"
+                    )
+                }
+
                 let _level_root = this.eval_libc_i32("CPU_LEVEL_ROOT");
                 let _level_cpuset = this.eval_libc_i32("CPU_LEVEL_CPUSET");
                 let level_which = this.eval_libc_i32("CPU_LEVEL_WHICH");
@@ -104,7 +110,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!(
                         "`cpuset_getaffinity` is only supported with `level` set to CPU_LEVEL_WHICH and `which` set to CPU_WHICH_PID."
                     );
-                } else if let Some(cpuset) = this.machine.thread_cpu_affinity.get(&id) {
+                } else if let Some(cpuset) =
+                    this.machine.thread_cpu_affinity.as_ref().unwrap().get(&id)
+                {
                     // `cpusetsize` must be large enough to contain the entire CPU mask.
                     // FreeBSD only uses `cpusetsize` to verify that it's sufficient for the kernel's CPU mask.
                     // If it's too small, the syscall returns ERANGE.
