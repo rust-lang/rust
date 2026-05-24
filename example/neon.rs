@@ -260,6 +260,122 @@ unsafe fn test_vrndnq_f32() {
 }
 
 #[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaeseq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aese
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = u8x16::from([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let e = u8x16::from([
+        0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca,
+        0xca,
+    ]);
+    let r: u8x16 = unsafe { transmute(vaeseq_u8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesdq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesd
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = u8x16::from([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let e = u8x16::from([
+        0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c,
+        0x7c,
+    ]);
+    let r: u8x16 = unsafe { transmute(vaesdq_u8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesmcq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesmc
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u8x16::from([2, 7, 0, 5, 6, 3, 4, 1, 10, 15, 8, 13, 14, 11, 12, 9]);
+    let r: u8x16 = unsafe { transmute(vaesmcq_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesimcq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesimc
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u8x16::from([10, 15, 8, 13, 14, 11, 12, 9, 2, 7, 0, 5, 6, 3, 4, 1]);
+    let r: u8x16 = unsafe { transmute(vaesimcq_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256hq_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256h
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x27bb4ae0, 0xd8f61f7c, 0xb7c1ecdc, 0x10800215]);
+    let r: u32x4 = unsafe { transmute(vsha256hq_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256h2q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256h2
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x6989ee0d, 0x4b055920, 0x52800a12, 0x00000014]);
+    let r: u32x4 = unsafe { transmute(vsha256h2q_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256su0q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256su0
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let e = u32x4::from([0x02004000, 0x04008001, 0x0600c002, 0x08010003]);
+    let r: u32x4 = unsafe { transmute(vsha256su0q_u32(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256su1q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256su1
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x00044005, 0x0004e007, 0xa802211b, 0xec036145]);
+    let r: u32x4 = unsafe { transmute(vsha256su1q_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+fn test_vmull_p64() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.pmull64
+    let a: u64 = 3;
+    let b: u64 = 6;
+    let e: u128 = 10;
+    let r: u128 = vmull_p64(a, b);
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vmull_p8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.pmull.v8i16
+    let a = u8x8::from([0, 1, 2, 3, 4, 5, 6, 7]);
+    let b = u8x8::from([8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u16x8::from([0x0000, 0x0009, 0x0014, 0x001d, 0x0030, 0x0039, 0x0024, 0x002d]);
+    let r: u16x8 = unsafe { transmute(vmull_p8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -293,6 +409,19 @@ fn main() {
         test_vrndnq_f32();
 
         test_crc32();
+
+        test_vaeseq_u8();
+        test_vaesdq_u8();
+        test_vaesmcq_u8();
+        test_vaesimcq_u8();
+
+        test_vsha256hq_u32();
+        test_vsha256h2q_u32();
+        test_vsha256su0q_u32();
+        test_vsha256su1q_u32();
+
+        test_vmull_p64();
+        test_vmull_p8();
     }
 }
 

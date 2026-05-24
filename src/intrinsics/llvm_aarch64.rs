@@ -544,6 +544,249 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.crypto.aese" | "llvm.aarch64.crypto.aesd" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.aese" => "aese v0.16b, v1.16b",
+                "llvm.aarch64.crypto.aesd" => "aesd v0.16b, v1.16b",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.aesmc" | "llvm.aarch64.crypto.aesimc" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.aesmc" => "aesmc v0.16b, v0.16b",
+                "llvm.aarch64.crypto.aesimc" => "aesimc v0.16b, v0.16b",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                        AArch64InlineAsmReg::v0,
+                    )),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha256h" | "llvm.aarch64.crypto.sha256h2" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.sha256h" => "sha256h q0, q1, v2.4s",
+                "llvm.aarch64.crypto.sha256h2" => "sha256h2 q0, q1, v2.4s",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        value: c,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha256su0" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256su0 v0.4s, v1.4s".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha256su1" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256su1 v0.4s, v1.4s, v2.4s".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        value: c,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.neon.pmull64" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "fmov    d0, x0
+                     fmov    d1, x1
+                     pmull   v0.1q, v0.1d, v1.1d"
+                        .into(),
+                )],
+                &[
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        late: true,
+                        place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x0,
+                        )),
+                        value: a,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.neon.pmull.v8i16" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("pmull v0.8h, v0.8b, v1.8b".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         _ => {
             fx.tcx.dcx().warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
