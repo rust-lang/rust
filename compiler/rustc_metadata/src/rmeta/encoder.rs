@@ -2696,14 +2696,17 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
     fn encode_traits<'h>(
         &mut self,
         hcx: &mut impl PublicApiHashState<'h>,
-    ) -> Hashed<LazyArray<DefIndex>> {
+    ) -> Unhashed<LazyArray<DefIndex>> {
+        if hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            // NOTE: When readded, the reachability graph recording must be disabled during the encoding
+            // of this lazy array.
+            return Unhashed(LazyArray::default());
+        }
         empty_proc_macro!(self);
-        hashed_lazy_array!(
-            self,
-            self.tcx.traits(LOCAL_CRATE).iter().copied(),
-            hcx,
-            |def_id: DefId| def_id.index
-        )
+        Unhashed(self.lazy_array(self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| def_id.index)))
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.

@@ -320,7 +320,6 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) diagnostic_items: Hashed<LazyArray<(Symbol, DefIndex)>>,
     pub(crate) native_libraries: Hashed<LazyArray<NativeLib>>,
     pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
-    pub(crate) traits: Hashed<LazyArray<DefIndex>>,
     pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
     pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
     pub(crate) exportable_items: Hashed<LazyArray<DefIndex>>,
@@ -427,6 +426,14 @@ pub(crate) struct HashableCrateRoot {
     // FIXME: this is currently removed from the metadata when public api hashing is enabled. We
     // should add a safe way to access this when the compilation session errors.
     pub(crate) stripped_cfg_items: Unhashed<LazyArray<StrippedCfgItem<DefIndex>>>,
+
+    // The traits defined in this crate.
+    // According to the docs, and some personal digging, this is used by rustdoc and error reporting
+    // error reporting: this should not be included in the public hash, as it is only read when the
+    // compiler session finishes with an error. Just like stripped_cfg_items.
+    // FIXME: this is currently removed from the metadata when public api hashing is enabled. We
+    // should ensure that this is not misused before readding it.
+    pub(crate) traits: Unhashed<LazyArray<DefIndex>>,
 }
 
 pub(super) fn crate_hashes<'tcx, 'h>(
@@ -491,7 +498,7 @@ impl HashableCrateRoot {
             diagnostic_items: self.diagnostic_items.value,
             native_libraries: self.native_libraries.value,
             foreign_modules: self.foreign_modules.value,
-            traits: self.traits.value,
+            traits: self.traits.0,
             impls: self.impls.0,
             incoherent_impls: self.incoherent_impls.value,
             interpret_alloc_index: self.interpret_alloc_index.0,
