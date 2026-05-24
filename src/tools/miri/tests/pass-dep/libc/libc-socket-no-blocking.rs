@@ -10,8 +10,8 @@
 mod libc_utils;
 
 use std::io::ErrorKind;
-use std::thread;
 use std::time::Duration;
+use std::{ptr, thread};
 
 use libc_utils::*;
 
@@ -50,6 +50,8 @@ fn main() {
     ))]
     test_send_recv_dontwait();
     test_write_read_nonblock();
+    test_readv_nonblock_err();
+    test_writev_nonblock_err();
 
     test_getsockname_ipv4_connect_nonblock();
 
@@ -560,6 +562,86 @@ fn test_write_read_nonblock() {
     }
 
     server_thread.join().unwrap();
+}
+
+/// Test that Miri's internal temporary read buffer gets correctly deallocated when the
+/// vectored read produces an error due to the socket read buffer being empty.
+fn test_readv_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let err = unsafe {
+        errno_result(libc::readv(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+}
+
+/// Test that Miri's internal temporary write buffer gets correctly deallocated when the
+/// vectored write produces an error due to the socket write buffer being full.
+fn test_writev_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut write_buffer = [1u8; 32_000];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(15_000);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    loop {
+        let result = unsafe {
+            errno_result(libc::writev(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+        };
+
+        match result {
+            Ok(_) => { /* continue filling buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
 }
 
 /// Test the `getsockname` syscall on a connecting IPv4 socket
