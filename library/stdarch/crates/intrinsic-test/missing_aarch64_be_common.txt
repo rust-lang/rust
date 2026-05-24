@@ -1,43 +1,3 @@
-# Bad LLVM codegen for BE in O2 in clang, and release in rust (https://github.com/llvm/llvm-project/issues/166190)
-vcmla_lane_f16
-vcmla_laneq_f16
-vcmla_rot180_lane_f16
-vcmla_rot180_laneq_f16
-vcmla_rot270_lane_f16
-vcmla_rot270_laneq_f16
-vcmla_rot90_lane_f16
-vcmla_rot90_laneq_f16
-vcmlaq_lane_f16
-vcmlaq_laneq_f16
-vcmlaq_laneq_f32
-vcmlaq_rot180_lane_f16
-vcmlaq_rot180_laneq_f16
-vcmlaq_rot180_laneq_f32
-vcmlaq_rot270_lane_f16
-vcmlaq_rot270_laneq_f16
-vcmlaq_rot270_laneq_f32
-vcmlaq_rot90_lane_f16
-vcmlaq_rot90_laneq_f16
-vcmlaq_rot90_laneq_f32
-# Bad codegen for BE in O2 in clang, correct in rust. Same cause as above issue.
-vdot_lane_s32
-vdot_lane_u32
-vdot_laneq_s32
-vdot_laneq_u32
-vdotq_lane_s32
-vdotq_lane_u32
-vdotq_laneq_s32
-vdotq_laneq_u32
-vsudot_lane_s32
-vsudot_laneq_s32
-vsudotq_lane_s32
-vsudotq_laneq_s32
-vusdot_lane_s32
-vusdot_laneq_s32
-vusdotq_lane_s32
-vusdotq_laneq_s32
-
-# Below are in common to missing_aarch64.txt
 # Not supported by qemu (will throw illegal instruction)
 vamin_f16
 vaminq_f16
@@ -119,6 +79,3 @@ vcvtns_s64_f32
 vcvtns_u64_f32
 vcvtps_s64_f32
 vcvtps_u64_f32
-
-# Broken in Clang
-vcvth_s16_f16
