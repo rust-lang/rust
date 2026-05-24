@@ -1,209 +1,20 @@
+use std::collections::HashMap;
+
 use crate::common::{
     Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
 };
-use crate::directives::{DirectiveLine, IgnoreDecision};
+use crate::directives::{DirectiveLine, IgnoreDecision, KNOWN_DIRECTIVE_NAMES_SET};
 
 pub(super) fn handle_needs(
-    cache: &CachedNeedsConditions,
+    conditions: &PreparedNeedsConditions,
     config: &Config,
     ln: &DirectiveLine<'_>,
 ) -> IgnoreDecision {
-    // Note that we intentionally still put the needs- prefix here to make the file show up when
-    // grepping for a directive name, even though we could technically strip that.
-    let needs = &[
-        Need {
-            name: "needs-asm-support",
-            condition: config.has_asm_support(),
-            ignore_reason: "ignored on targets without inline assembly support",
-        },
-        Need {
-            name: "needs-sanitizer-support",
-            condition: cache.sanitizer_support,
-            ignore_reason: "ignored on targets without sanitizers support",
-        },
-        Need {
-            name: "needs-sanitizer-address",
-            condition: cache.sanitizer_address,
-            ignore_reason: "ignored on targets without address sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-cfi",
-            condition: cache.sanitizer_cfi,
-            ignore_reason: "ignored on targets without CFI sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-dataflow",
-            condition: cache.sanitizer_dataflow,
-            ignore_reason: "ignored on targets without dataflow sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-kcfi",
-            condition: cache.sanitizer_kcfi,
-            ignore_reason: "ignored on targets without kernel CFI sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-kasan",
-            condition: cache.sanitizer_kasan,
-            ignore_reason: "ignored on targets without kernel address sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-khwasan",
-            condition: cache.sanitizer_khwasan,
-            ignore_reason: "ignored on targets without kernel hardware-assisted address sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-leak",
-            condition: cache.sanitizer_leak,
-            ignore_reason: "ignored on targets without leak sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-memory",
-            condition: cache.sanitizer_memory,
-            ignore_reason: "ignored on targets without memory sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-thread",
-            condition: cache.sanitizer_thread,
-            ignore_reason: "ignored on targets without thread sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-hwaddress",
-            condition: cache.sanitizer_hwaddress,
-            ignore_reason: "ignored on targets without hardware-assisted address sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-memtag",
-            condition: cache.sanitizer_memtag,
-            ignore_reason: "ignored on targets without memory tagging sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-realtime",
-            condition: cache.sanitizer_realtime,
-            ignore_reason: "ignored on targets without realtime sanitizer",
-        },
-        Need {
-            name: "needs-sanitizer-shadow-call-stack",
-            condition: cache.sanitizer_shadow_call_stack,
-            ignore_reason: "ignored on targets without shadow call stacks",
-        },
-        Need {
-            name: "needs-sanitizer-safestack",
-            condition: cache.sanitizer_safestack,
-            ignore_reason: "ignored on targets without SafeStack support",
-        },
-        Need {
-            name: "needs-enzyme",
-            condition: config.has_enzyme && config.default_codegen_backend.is_llvm(),
-            ignore_reason: "ignored when LLVM Enzyme is disabled or LLVM is not the default codegen backend",
-        },
-        Need {
-            name: "needs-offload",
-            condition: config.has_offload && config.default_codegen_backend.is_llvm(),
-            ignore_reason: "ignored when LLVM Offload is disabled or LLVM is not the default codegen backend",
-        },
-        Need {
-            name: "needs-run-enabled",
-            condition: config.run_enabled(),
-            ignore_reason: "ignored when running the resulting test binaries is disabled",
-        },
-        Need {
-            name: "needs-threads",
-            condition: config.has_threads(),
-            ignore_reason: "ignored on targets without threading support",
-        },
-        Need {
-            name: "needs-subprocess",
-            condition: config.has_subprocess_support(),
-            ignore_reason: "ignored on targets without subprocess support",
-        },
-        Need {
-            name: "needs-unwind",
-            condition: config.can_unwind(),
-            ignore_reason: "ignored on targets without unwinding support",
-        },
-        Need {
-            name: "needs-profiler-runtime",
-            condition: config.profiler_runtime,
-            ignore_reason: "ignored when the profiler runtime is not available",
-        },
-        Need {
-            name: "needs-force-clang-based-tests",
-            condition: config.run_clang_based_tests_with.is_some(),
-            ignore_reason: "ignored when RUSTBUILD_FORCE_CLANG_BASED_TESTS is not set",
-        },
-        Need {
-            name: "needs-xray",
-            condition: cache.xray,
-            ignore_reason: "ignored on targets without xray tracing",
-        },
-        Need {
-            name: "needs-rust-lld",
-            condition: cache.rust_lld,
-            ignore_reason: "ignored on targets without Rust's LLD",
-        },
-        Need {
-            name: "needs-dlltool",
-            condition: cache.dlltool,
-            ignore_reason: "ignored when dlltool for the current architecture is not present",
-        },
-        Need {
-            name: "needs-git-hash",
-            condition: config.git_hash,
-            ignore_reason: "ignored when git hashes have been omitted for building",
-        },
-        Need {
-            name: "needs-dynamic-linking",
-            condition: config.target_cfg().dynamic_linking,
-            ignore_reason: "ignored on targets without dynamic linking",
-        },
-        Need {
-            name: "needs-relocation-model-pic",
-            condition: config.target_cfg().relocation_model == "pic",
-            ignore_reason: "ignored on targets without PIC relocation model",
-        },
-        Need {
-            name: "needs-deterministic-layouts",
-            condition: !config.rust_randomized_layout,
-            ignore_reason: "ignored when randomizing layouts",
-        },
-        Need {
-            name: "needs-wasmtime",
-            condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
-            ignore_reason: "ignored when wasmtime runner is not available",
-        },
-        Need {
-            name: "needs-symlink",
-            condition: cache.symlinks,
-            ignore_reason: "ignored if symlinks are unavailable",
-        },
-        Need {
-            name: "needs-llvm-zstd",
-            condition: cache.llvm_zstd && config.default_codegen_backend.is_llvm(),
-            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression or LLVM is not the default codegen backend",
-        },
-        Need {
-            name: "needs-rustc-debug-assertions",
-            condition: config.with_rustc_debug_assertions,
-            ignore_reason: "ignored if rustc wasn't built with debug assertions",
-        },
-        Need {
-            name: "needs-std-debug-assertions",
-            condition: config.with_std_debug_assertions,
-            ignore_reason: "ignored if std wasn't built with debug assertions",
-        },
-        Need {
-            name: "needs-std-remap-debuginfo",
-            condition: config.with_std_remap_debuginfo,
-            ignore_reason: "ignored if std wasn't built with remapping of debuginfo",
-        },
-        Need {
-            name: "needs-target-std",
-            condition: build_helper::targets::target_supports_std(&config.target),
-            ignore_reason: "ignored if target does not support std",
-        },
-    ];
-
     let &DirectiveLine { name, .. } = ln;
+
+    if !name.starts_with("needs-") {
+        return IgnoreDecision::Continue;
+    }
 
     if name == "needs-target-has-atomic" {
         let Some(rest) = ln.value_after_colon() else {
@@ -307,8 +118,8 @@ pub(super) fn handle_needs(
 
         let mnemonic = rest.trim();
         let has_mnemonic = match mnemonic {
-            "ret" => cache.has_ret_mnemonic,
-            "nop" => cache.has_nop_mnemonic,
+            "ret" => conditions.has_ret_mnemonic,
+            "nop" => conditions.has_nop_mnemonic,
             _ => has_mnemonic(config, mnemonic),
         };
 
@@ -321,35 +132,23 @@ pub(super) fn handle_needs(
         }
     }
 
-    if !name.starts_with("needs-") {
-        return IgnoreDecision::Continue;
-    }
-
     // Handled elsewhere.
     if name == "needs-llvm-components" || name == "needs-backends" {
         return IgnoreDecision::Continue;
     }
 
-    let mut found_valid = false;
-    for need in needs {
-        if need.name == name {
-            if need.condition {
-                found_valid = true;
-                break;
-            } else {
-                return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = ln.remark_after_space() {
-                        format!("{} ({})", need.ignore_reason, comment.trim())
-                    } else {
-                        need.ignore_reason.into()
-                    },
-                };
+    if let Some(need) = conditions.simple_needs.get(name) {
+        if need.condition {
+            IgnoreDecision::Continue
+        } else {
+            IgnoreDecision::Ignore {
+                reason: if let Some(comment) = ln.remark_after_space() {
+                    format!("{} ({})", need.ignore_reason, comment.trim())
+                } else {
+                    need.ignore_reason.into()
+                },
             }
         }
-    }
-
-    if found_valid {
-        IgnoreDecision::Continue
     } else {
         IgnoreDecision::Error { message: format!("invalid needs directive: {name}") }
     }
@@ -361,82 +160,248 @@ struct Need {
     ignore_reason: &'static str,
 }
 
-pub(super) struct CachedNeedsConditions {
-    sanitizer_support: bool,
-    sanitizer_address: bool,
-    sanitizer_cfi: bool,
-    sanitizer_dataflow: bool,
-    sanitizer_kcfi: bool,
-    sanitizer_kasan: bool,
-    sanitizer_khwasan: bool,
-    sanitizer_leak: bool,
-    sanitizer_memory: bool,
-    sanitizer_thread: bool,
-    sanitizer_hwaddress: bool,
-    sanitizer_memtag: bool,
-    sanitizer_realtime: bool,
-    sanitizer_shadow_call_stack: bool,
-    sanitizer_safestack: bool,
-    xray: bool,
-    rust_lld: bool,
-    dlltool: bool,
-    symlinks: bool,
-    /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
-    llvm_zstd: bool,
+pub(crate) struct PreparedNeedsConditions {
+    /// The `//@ needs-*` conditions that can be treated as a simple name->boolean mapping.
+    simple_needs: HashMap<&'static str, Need>,
+
     /// Might add particular other mnemonics heavily needed by tests here.
     /// Otherwise call into llvm for every check
     has_ret_mnemonic: bool,
     has_nop_mnemonic: bool,
 }
 
-impl CachedNeedsConditions {
-    pub(super) fn load(config: &Config) -> Self {
-        let target = &&*config.target;
-        let sanitizers = &config.target_cfg().sanitizers;
-        Self {
-            sanitizer_support: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
-            sanitizer_address: sanitizers.contains(&Sanitizer::Address),
-            sanitizer_cfi: sanitizers.contains(&Sanitizer::Cfi),
-            sanitizer_dataflow: sanitizers.contains(&Sanitizer::Dataflow),
-            sanitizer_kcfi: sanitizers.contains(&Sanitizer::Kcfi),
-            sanitizer_kasan: sanitizers.contains(&Sanitizer::KernelAddress),
-            sanitizer_khwasan: sanitizers.contains(&Sanitizer::KernelHwaddress),
-            sanitizer_leak: sanitizers.contains(&Sanitizer::Leak),
-            sanitizer_memory: sanitizers.contains(&Sanitizer::Memory),
-            sanitizer_thread: sanitizers.contains(&Sanitizer::Thread),
-            sanitizer_hwaddress: sanitizers.contains(&Sanitizer::Hwaddress),
-            sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
-            sanitizer_realtime: sanitizers.contains(&Sanitizer::Realtime),
-            sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
-            sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
-            xray: config.target_cfg().xray,
+pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditions {
+    let target = config.target.as_str();
+    let sanitizers = config.target_cfg().sanitizers.as_slice();
 
-            // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),
-            // we need to find whether `rust-lld` is present in the compiler under test.
-            //
-            // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
-            // example:
-            // - on linux, it can be <sysroot>/lib
-            // - on windows, it can be <sysroot>/bin
-            //
-            // However, `rust-lld` is only located under the lib path, so we look for it there.
-            rust_lld: config
-                .host_compile_lib_path
-                .parent()
-                .expect("couldn't traverse to the parent of the specified --compile-lib-path")
-                .join("lib")
-                .join("rustlib")
-                .join(target)
-                .join("bin")
-                .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
-                .exists(),
+    // Note that we intentionally still put the needs- prefix here to make the file show up when
+    // grepping for a directive name, even though we could technically strip that.
+    let simple_needs = vec![
+        Need {
+            name: "needs-asm-support",
+            condition: config.has_asm_support(),
+            ignore_reason: "ignored on targets without inline assembly support",
+        },
+        Need {
+            name: "needs-sanitizer-support",
+            condition: std::env::var_os("RUSTC_SANITIZER_SUPPORT").is_some(),
+            ignore_reason: "ignored on targets without sanitizers support",
+        },
+        Need {
+            name: "needs-sanitizer-address",
+            condition: sanitizers.contains(&Sanitizer::Address),
+            ignore_reason: "ignored on targets without address sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-cfi",
+            condition: sanitizers.contains(&Sanitizer::Cfi),
+            ignore_reason: "ignored on targets without CFI sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-dataflow",
+            condition: sanitizers.contains(&Sanitizer::Dataflow),
+            ignore_reason: "ignored on targets without dataflow sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-kcfi",
+            condition: sanitizers.contains(&Sanitizer::Kcfi),
+            ignore_reason: "ignored on targets without kernel CFI sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-kasan",
+            condition: sanitizers.contains(&Sanitizer::KernelAddress),
+            ignore_reason: "ignored on targets without kernel address sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-khwasan",
+            condition: sanitizers.contains(&Sanitizer::KernelHwaddress),
+            ignore_reason: "ignored on targets without kernel hardware-assisted address sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-leak",
+            condition: sanitizers.contains(&Sanitizer::Leak),
+            ignore_reason: "ignored on targets without leak sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-memory",
+            condition: sanitizers.contains(&Sanitizer::Memory),
+            ignore_reason: "ignored on targets without memory sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-thread",
+            condition: sanitizers.contains(&Sanitizer::Thread),
+            ignore_reason: "ignored on targets without thread sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-hwaddress",
+            condition: sanitizers.contains(&Sanitizer::Hwaddress),
+            ignore_reason: "ignored on targets without hardware-assisted address sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-memtag",
+            condition: sanitizers.contains(&Sanitizer::Memtag),
+            ignore_reason: "ignored on targets without memory tagging sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-realtime",
+            condition: sanitizers.contains(&Sanitizer::Realtime),
+            ignore_reason: "ignored on targets without realtime sanitizer",
+        },
+        Need {
+            name: "needs-sanitizer-shadow-call-stack",
+            condition: sanitizers.contains(&Sanitizer::ShadowCallStack),
+            ignore_reason: "ignored on targets without shadow call stacks",
+        },
+        Need {
+            name: "needs-sanitizer-safestack",
+            condition: sanitizers.contains(&Sanitizer::Safestack),
+            ignore_reason: "ignored on targets without SafeStack support",
+        },
+        Need {
+            name: "needs-enzyme",
+            condition: config.has_enzyme && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored when LLVM Enzyme is disabled or LLVM is not the default codegen backend",
+        },
+        Need {
+            name: "needs-offload",
+            condition: config.has_offload && config.default_codegen_backend.is_llvm(),
+            ignore_reason: "ignored when LLVM Offload is disabled or LLVM is not the default codegen backend",
+        },
+        Need {
+            name: "needs-run-enabled",
+            condition: config.run_enabled(),
+            ignore_reason: "ignored when running the resulting test binaries is disabled",
+        },
+        Need {
+            name: "needs-threads",
+            condition: config.has_threads(),
+            ignore_reason: "ignored on targets without threading support",
+        },
+        Need {
+            name: "needs-subprocess",
+            condition: config.has_subprocess_support(),
+            ignore_reason: "ignored on targets without subprocess support",
+        },
+        Need {
+            name: "needs-unwind",
+            condition: config.can_unwind(),
+            ignore_reason: "ignored on targets without unwinding support",
+        },
+        Need {
+            name: "needs-profiler-runtime",
+            condition: config.profiler_runtime,
+            ignore_reason: "ignored when the profiler runtime is not available",
+        },
+        Need {
+            name: "needs-force-clang-based-tests",
+            condition: config.run_clang_based_tests_with.is_some(),
+            ignore_reason: "ignored when RUSTBUILD_FORCE_CLANG_BASED_TESTS is not set",
+        },
+        Need {
+            name: "needs-xray",
+            condition: config.target_cfg().xray,
+            ignore_reason: "ignored on targets without xray tracing",
+        },
+        Need {
+            name: "needs-rust-lld",
+            condition: {
+                // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),
+                // we need to find whether `rust-lld` is present in the compiler under test.
+                //
+                // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
+                // example:
+                // - on linux, it can be <sysroot>/lib
+                // - on windows, it can be <sysroot>/bin
+                //
+                // However, `rust-lld` is only located under the lib path, so we look for it there.
+                config
+                    .host_compile_lib_path
+                    .parent()
+                    .expect("couldn't traverse to the parent of the specified --compile-lib-path")
+                    .join("lib")
+                    .join("rustlib")
+                    .join(target)
+                    .join("bin")
+                    .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
+                    .exists()
+            },
+            ignore_reason: "ignored on targets without Rust's LLD",
+        },
+        Need {
+            name: "needs-dlltool",
+            condition: find_dlltool(config),
+            ignore_reason: "ignored when dlltool for the current architecture is not present",
+        },
+        Need {
+            name: "needs-git-hash",
+            condition: config.git_hash,
+            ignore_reason: "ignored when git hashes have been omitted for building",
+        },
+        Need {
+            name: "needs-dynamic-linking",
+            condition: config.target_cfg().dynamic_linking,
+            ignore_reason: "ignored on targets without dynamic linking",
+        },
+        Need {
+            name: "needs-relocation-model-pic",
+            condition: config.target_cfg().relocation_model == "pic",
+            ignore_reason: "ignored on targets without PIC relocation model",
+        },
+        Need {
+            name: "needs-deterministic-layouts",
+            condition: !config.rust_randomized_layout,
+            ignore_reason: "ignored when randomizing layouts",
+        },
+        Need {
+            name: "needs-wasmtime",
+            condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
+            ignore_reason: "ignored when wasmtime runner is not available",
+        },
+        Need {
+            name: "needs-symlink",
+            condition: has_symlinks(),
+            ignore_reason: "ignored if symlinks are unavailable",
+        },
+        Need {
+            name: "needs-llvm-zstd",
+            condition: config.default_codegen_backend.is_llvm() && llvm_has_zstd(config),
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression or LLVM is not the default codegen backend",
+        },
+        Need {
+            name: "needs-rustc-debug-assertions",
+            condition: config.with_rustc_debug_assertions,
+            ignore_reason: "ignored if rustc wasn't built with debug assertions",
+        },
+        Need {
+            name: "needs-std-debug-assertions",
+            condition: config.with_std_debug_assertions,
+            ignore_reason: "ignored if std wasn't built with debug assertions",
+        },
+        Need {
+            name: "needs-std-remap-debuginfo",
+            condition: config.with_std_remap_debuginfo,
+            ignore_reason: "ignored if std wasn't built with remapping of debuginfo",
+        },
+        Need {
+            name: "needs-target-std",
+            condition: build_helper::targets::target_supports_std(&config.target),
+            ignore_reason: "ignored if target does not support std",
+        },
+    ];
+    let simple_needs = simple_needs
+        .into_iter()
+        .map(|need| {
+            let name = need.name;
+            assert!(name.starts_with("needs-"), "must start with `needs-`: {name:?}");
+            assert!(KNOWN_DIRECTIVE_NAMES_SET.contains(name), "unknown directive name: {name:?}");
+            (name, need)
+        })
+        .collect::<HashMap<_, _>>();
 
-            llvm_zstd: llvm_has_zstd(&config),
-            dlltool: find_dlltool(&config),
-            symlinks: has_symlinks(),
-            has_ret_mnemonic: has_mnemonic(config, "ret"),
-            has_nop_mnemonic: has_mnemonic(config, "nop"),
-        }
+    PreparedNeedsConditions {
+        simple_needs,
+        has_ret_mnemonic: has_mnemonic(config, "ret"),
+        has_nop_mnemonic: has_mnemonic(config, "nop"),
     }
 }
 
