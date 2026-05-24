@@ -10,7 +10,7 @@ trait Trait {
 }
 
 fn fun_ty<T: Trait>() {
-    global_asm!("{}", sym<T>::pure);
+    global_asm!("{}", sym <T>::pure);
     //~^ ERROR type parameters are not allowed in `global_asm!` `sym`
 }
 
