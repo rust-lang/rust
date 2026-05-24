@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
-    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path,
-    RestrictionKind, Visibility, VisibilityKind,
+    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, MutRestriction,
+    NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
@@ -79,6 +79,13 @@ pub(crate) fn format_impl_restriction(
     impl_restriction: &ImplRestriction,
 ) -> String {
     format_restriction("impl", context, &impl_restriction.kind)
+}
+
+pub(crate) fn format_mut_restriction(
+    context: &RewriteContext<'_>,
+    mut_restriction: &MutRestriction,
+) -> String {
+    format_restriction("mut", context, &mut_restriction.kind)
 }
 
 fn format_restriction(

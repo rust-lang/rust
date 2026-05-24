@@ -1479,6 +1479,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             ty,
             is_placeholder: _,
             default,
+            mut_restriction: _,
             safety: _,
         } = f;
         walk_list!(self, visit_attribute, attrs);
