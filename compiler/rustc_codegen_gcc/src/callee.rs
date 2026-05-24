@@ -107,6 +107,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
                 if !(cx.tcx.sess.opts.share_generics()
                     || tcx.codegen_instance_attrs(instance.def).inline
                         == rustc_hir::attrs::InlineAttr::Never)
+                    || tcx.sess.opts.unstable_opts.public_api_hash
                 {
                     // When not sharing generics, all instances are in the same
                     // crate and have hidden visibility.

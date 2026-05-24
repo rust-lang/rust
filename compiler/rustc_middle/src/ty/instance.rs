@@ -209,6 +209,7 @@ impl<'tcx> Instance<'tcx> {
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
             && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_hir::attrs::InlineAttr::Never
+            || tcx.sess.opts.unstable_opts.public_api_hash
         {
             return None;
         }
