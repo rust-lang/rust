@@ -2530,6 +2530,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         &mut self,
         hcx: &mut PublicApiHashingContext<'_>,
     ) -> Hashed<LazyArray<DefIndex>> {
+        if hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            return Hashed { value: LazyArray::default(), hash: Some(Fingerprint::ZERO) };
+        }
         empty_proc_macro!(self);
         hashed_lazy_array!(
             self,

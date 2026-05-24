@@ -331,6 +331,10 @@ pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
     // the traits defined in this crate. Definitely not needed in everything_downstream as is
     // maybe we can leak private traits through MIR?
+    // According to the docs, and some personal digging, this is used by rustdoc and error reporting
+    // rustdoc - problem for another day
+    // error reporting: this should not be included in the public hash, as it is only read when the
+    // compiler errors. Just like stripped_cfg_items
     pub(crate) traits: Hashed<LazyArray<DefIndex>>,
     // FIXME do we need to hash this?
     // the traits impls in this crate. Definitely not needed in everything_downstream as is
