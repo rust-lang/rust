@@ -475,6 +475,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<RDRHashAll, DefIndex, bool>,
     is_exportable: Table<RDRHashAll, DefIndex, bool>,
     is_reachable_non_generic: Table<RDRHashAll, DefIndex, bool>,
+    is_reachable_non_generic_with_export_level_c: Table<RDRHashAll, DefIndex, bool>,
 
 - optional:
     attributes: Table<RDRHashAll, DefIndex, LazyArray<hir::Attribute>>,
