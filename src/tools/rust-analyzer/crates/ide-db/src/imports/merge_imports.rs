@@ -4,12 +4,12 @@ use std::cmp::Ordering;
 use itertools::{EitherOrBoth, Itertools};
 use parser::T;
 use syntax::{
-    Direction, SyntaxElement, ToSmolStr, algo,
+    ToSmolStr,
     ast::{
-        self, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind, edit_in_place::Removable,
-        make,
+        self, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind,
+        syntax_factory::SyntaxFactory,
     },
-    ted::{self, Position},
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -39,8 +39,8 @@ impl MergeBehavior {
 }
 
 /// Merge `rhs` into `lhs` keeping both intact.
-/// Returned AST is mutable.
 pub fn try_merge_imports(
+    editor: &SyntaxEditor,
     lhs: &ast::Use,
     rhs: &ast::Use,
     merge_behavior: MergeBehavior,
@@ -53,39 +53,41 @@ pub fn try_merge_imports(
         return None;
     }
 
-    let lhs = lhs.clone_subtree().clone_for_update();
-    let rhs = rhs.clone_subtree().clone_for_update();
+    let make = editor.make();
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
-    try_merge_trees_mut(&lhs_tree, &rhs_tree, merge_behavior)?;
+    let merged_tree = try_merge_trees_with_factory(lhs_tree, rhs_tree, merge_behavior, make)?;
 
     // Ignore `None` result because normalization should not affect the merge result.
-    try_normalize_use_tree_mut(&lhs_tree, merge_behavior.into());
+    let use_tree = try_normalize_use_tree(merged_tree.clone(), merge_behavior.into(), make)
+        .unwrap_or(merged_tree);
 
-    Some(lhs)
+    make_use_with_tree(lhs, use_tree)
 }
 
 /// Merge `rhs` into `lhs` keeping both intact.
-/// Returned AST is mutable.
 pub fn try_merge_trees(
+    editor: &SyntaxEditor,
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
     merge: MergeBehavior,
 ) -> Option<ast::UseTree> {
-    let lhs = lhs.clone_subtree().clone_for_update();
-    let rhs = rhs.clone_subtree().clone_for_update();
-    try_merge_trees_mut(&lhs, &rhs, merge)?;
+    let make = editor.make();
+    let merged = try_merge_trees_with_factory(lhs.clone(), rhs.clone(), merge, make)?;
 
     // Ignore `None` result because normalization should not affect the merge result.
-    try_normalize_use_tree_mut(&lhs, merge.into());
-
-    Some(lhs)
+    Some(try_normalize_use_tree(merged.clone(), merge.into(), make).unwrap_or(merged))
 }
 
-fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
+fn try_merge_trees_with_factory(
+    mut lhs: ast::UseTree,
+    mut rhs: ast::UseTree,
+    merge: MergeBehavior,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
     if merge == MergeBehavior::One {
-        lhs.wrap_in_tree_list();
-        rhs.wrap_in_tree_list();
+        lhs = wrap_in_tree_list(&lhs, make).unwrap_or(lhs);
+        rhs = wrap_in_tree_list(&rhs, make).unwrap_or(rhs);
     } else {
         let lhs_path = lhs.path()?;
         let rhs_path = rhs.path()?;
@@ -98,48 +100,59 @@ fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehav
         {
             // we can't merge if the renames are different (`A as a` and `A as b`),
             // and we can safely return here
-            let lhs_name = lhs.rename().and_then(|lhs_name| lhs_name.name());
-            let rhs_name = rhs.rename().and_then(|rhs_name| rhs_name.name());
+            let lhs_name = lhs
+                .rename()
+                .and_then(|lhs_name| lhs_name.name())
+                .map(|name| name.text().to_string());
+            let rhs_name = rhs
+                .rename()
+                .and_then(|rhs_name| rhs_name.name())
+                .map(|name| name.text().to_string());
             if lhs_name != rhs_name {
                 return None;
             }
 
-            ted::replace(lhs.syntax(), rhs.syntax());
-            // we can safely return here, in this case `recursive_merge` doesn't do anything
-            return Some(());
+            return Some(rhs);
         } else {
-            lhs.split_prefix(&lhs_prefix);
-            rhs.split_prefix(&rhs_prefix);
+            lhs = split_prefix(&lhs, &lhs_prefix, make)?;
+            rhs = split_prefix(&rhs, &rhs_prefix, make)?;
         }
     }
-    recursive_merge(lhs, rhs, merge)
+    recursive_merge(lhs, rhs, merge, make)
 }
 
 /// Recursively merges rhs to lhs
 #[must_use]
-fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
+fn recursive_merge(
+    lhs: ast::UseTree,
+    rhs: ast::UseTree,
+    merge: MergeBehavior,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
     let mut use_trees: Vec<ast::UseTree> = lhs
-        .use_tree_list()
-        .into_iter()
-        .flat_map(|list| list.use_trees())
-        // We use Option here to early return from this function(this is not the
-        // same as a `filter` op).
+        .use_tree_list()?
+        .use_trees()
+        // We use Option here to early return from this function. This is not the
+        // same as a `filter` op.
         .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
+
     // Sorts the use trees similar to rustfmt's algorithm for ordering imports
     // (see `use_tree_cmp` doc).
     use_trees.sort_unstable_by(use_tree_cmp);
-    for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
+
+    for rhs_t in rhs.use_tree_list()?.use_trees() {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
         }
 
         match use_trees.binary_search_by(|lhs_t| use_tree_cmp_bin_search(lhs_t, &rhs_t)) {
             Ok(idx) => {
-                let lhs_t = &mut use_trees[idx];
+                let mut lhs_t = use_trees[idx].clone();
                 let lhs_path = lhs_t.path()?;
                 let rhs_path = rhs_t.path()?;
                 let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
+
                 if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
                     let tree_is_self = |tree: &ast::UseTree| {
                         tree.path().as_ref().map(path_is_self).unwrap_or(false)
@@ -157,20 +170,20 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                     };
 
                     if lhs_t.rename().and_then(|x| x.underscore_token()).is_some() {
-                        ted::replace(lhs_t.syntax(), rhs_t.syntax());
-                        *lhs_t = rhs_t;
+                        use_trees[idx] = rhs_t;
                         continue;
                     }
 
-                    match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
+                    match (tree_contains_self(&lhs_t), tree_contains_self(&rhs_t)) {
                         (Some(true), None) => {
-                            remove_subtree_if_only_self(lhs_t);
+                            lhs_t = remove_subtree_if_only_self(lhs_t, make)?;
+                            use_trees[idx] = lhs_t;
                             continue;
                         }
                         (None, Some(true)) => {
-                            ted::replace(lhs_t.syntax(), rhs_t.syntax());
-                            *lhs_t = rhs_t;
-                            remove_subtree_if_only_self(lhs_t);
+                            lhs_t = rhs_t;
+                            lhs_t = remove_subtree_if_only_self(lhs_t, make)?;
+                            use_trees[idx] = lhs_t;
                             continue;
                         }
                         _ => (),
@@ -180,9 +193,11 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                         continue;
                     }
                 }
-                lhs_t.split_prefix(&lhs_prefix);
-                rhs_t.split_prefix(&rhs_prefix);
-                recursive_merge(lhs_t, &rhs_t, merge)?;
+
+                lhs_t = split_prefix(&lhs_t, &lhs_prefix, make)?;
+                let rhs_t = split_prefix(&rhs_t, &rhs_prefix, make)?;
+                lhs_t = recursive_merge(lhs_t, rhs_t, merge, make)?;
+                use_trees[idx] = lhs_t;
             }
             Err(_)
                 if merge == MergeBehavior::Module
@@ -192,15 +207,12 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                 return None;
             }
             Err(insert_idx) => {
-                use_trees.insert(insert_idx, rhs_t.clone());
-                // We simply add the use tree to the end of tree list. Ordering of use trees
-                // and imports is done by the `try_normalize_*` functions. The sorted `use_trees`
-                // vec is only used for binary search.
-                lhs.get_or_create_use_tree_list().add_use_tree(rhs_t);
+                use_trees.insert(insert_idx, rhs_t);
             }
         }
     }
-    Some(())
+
+    with_use_tree_list(&lhs, use_trees, make)
 }
 
 /// Style to follow when normalizing a use tree.
@@ -250,241 +262,217 @@ impl From<MergeBehavior> for NormalizationStyle {
 /// - `foo::{bar::Qux, bar::{self}}` -> `{foo::bar::{self, Qux}}`
 /// - `foo::bar::{self}` -> `{foo::bar}`
 /// - `foo::bar` -> `{foo::bar}`
-pub fn try_normalize_import(use_item: &ast::Use, style: NormalizationStyle) -> Option<ast::Use> {
-    let use_item = use_item.clone_subtree().clone_for_update();
-    try_normalize_use_tree_mut(&use_item.use_tree()?, style)?;
-    Some(use_item)
+pub fn try_normalize_import(
+    editor: &SyntaxEditor,
+    use_item: &ast::Use,
+    style: NormalizationStyle,
+) -> Option<ast::Use> {
+    let make = editor.make();
+    let use_tree = try_normalize_use_tree(use_item.use_tree()?, style, make)?;
+
+    make_use_with_tree(use_item, use_tree)
 }
 
-fn try_normalize_use_tree_mut(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
+fn try_normalize_use_tree(
+    use_tree: ast::UseTree,
+    style: NormalizationStyle,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
     if style == NormalizationStyle::One {
+        let mut use_tree = use_tree;
         let mut modified = false;
-        modified |= use_tree.wrap_in_tree_list().is_some();
-        modified |= recursive_normalize(use_tree, style).is_some();
-        if !modified {
-            // Either the use tree was already normalized or its semantically empty.
-            return None;
+        if let Some(wrapped) = wrap_in_tree_list(&use_tree, make) {
+            use_tree = wrapped;
+            modified = true;
         }
-    } else {
-        recursive_normalize(use_tree, NormalizationStyle::Default)?;
+        if let Some(normalized) = recursive_normalize(use_tree.clone(), style, make) {
+            use_tree = normalized;
+            modified = true;
+        }
+        return modified.then_some(use_tree);
     }
-    Some(())
+
+    recursive_normalize(use_tree, NormalizationStyle::Default, make)
 }
 
 /// Recursively normalizes a use tree and its subtrees (if any).
-fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Option<()> {
+fn recursive_normalize(
+    use_tree: ast::UseTree,
+    style: NormalizationStyle,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
     let use_tree_list = use_tree.use_tree_list()?;
-    let merge_subtree_into_parent_tree = |single_subtree: &ast::UseTree| {
-        let subtree_is_only_self = single_subtree.path().as_ref().is_some_and(path_is_self);
-
-        let merged_path = match (use_tree.path(), single_subtree.path()) {
-            // If the subtree is `{self}` then we cannot merge: `use
-            // foo::bar::{self}` is not equivalent to `use foo::bar`. See
-            // https://github.com/rust-lang/rust-analyzer/pull/17140#issuecomment-2079189725.
-            _ if subtree_is_only_self => None,
-
-            (None, None) => None,
-            (Some(outer), None) => Some(outer),
-            (None, Some(inner)) => Some(inner),
-            (Some(outer), Some(inner)) => Some(make::path_concat(outer, inner).clone_for_update()),
-        };
-
-        if merged_path.is_some()
-            || single_subtree.use_tree_list().is_some()
-            || single_subtree.star_token().is_some()
-        {
-            ted::remove_all_iter(use_tree.syntax().children_with_tokens());
-            if let Some(path) = merged_path {
-                ted::insert_raw(Position::first_child_of(use_tree.syntax()), path.syntax());
-                if single_subtree.use_tree_list().is_some() || single_subtree.star_token().is_some()
-                {
-                    ted::insert_raw(
-                        Position::last_child_of(use_tree.syntax()),
-                        make::token(T![::]),
-                    );
-                }
-            }
-            if let Some(inner_use_tree_list) = single_subtree.use_tree_list() {
-                ted::insert_raw(
-                    Position::last_child_of(use_tree.syntax()),
-                    inner_use_tree_list.syntax(),
-                );
-            } else if single_subtree.star_token().is_some() {
-                ted::insert_raw(Position::last_child_of(use_tree.syntax()), make::token(T![*]));
-            } else if let Some(rename) = single_subtree.rename() {
-                ted::insert_raw(
-                    Position::last_child_of(use_tree.syntax()),
-                    make::tokens::single_space(),
-                );
-                ted::insert_raw(Position::last_child_of(use_tree.syntax()), rename.syntax());
-            }
-            Some(())
-        } else {
-            // Bail on semantically empty use trees.
-            None
-        }
-    };
-    let one_style_tree_list = |subtree: &ast::UseTree| match (
-        subtree.path().is_none() && subtree.star_token().is_none() && subtree.rename().is_none(),
-        subtree.use_tree_list(),
-    ) {
-        (true, tree_list) => tree_list,
-        _ => None,
-    };
-    let add_element_to_list = |elem: SyntaxElement, elements: &mut Vec<SyntaxElement>| {
-        if !elements.is_empty() {
-            elements.push(make::token(T![,]).into());
-            elements.push(make::tokens::single_space().into());
-        }
-        elements.push(elem);
-    };
-    if let Some((single_subtree,)) = use_tree_list.use_trees().collect_tuple() {
+    let mut subtrees = use_tree_list.use_trees().collect::<Vec<_>>();
+    if subtrees.len() == 1 {
         if style == NormalizationStyle::One {
-            // Only normalize descendant subtrees if the normalization style is "one".
-            recursive_normalize(&single_subtree, NormalizationStyle::Default)?;
+            let subtree = subtrees.pop()?;
+            let normalized = recursive_normalize(subtree, NormalizationStyle::Default, make)?;
+            return with_use_tree_list(&use_tree, vec![normalized], make);
+        }
+
+        let merged = merge_single_subtree_into_parent_tree(use_tree, make)?;
+        return Some(recursive_normalize(merged.clone(), style, make).unwrap_or(merged));
+    }
+
+    let mut modified = false;
+    let mut new_use_tree_list = Vec::new();
+    for subtree in subtrees {
+        if one_style_tree_list(&subtree).is_some() {
+            let mut elements = Vec::new();
+            flatten_one_style_tree(subtree, &mut elements, &mut modified, make);
+            new_use_tree_list.extend(elements);
+            modified = true;
+        } else if let Some(normalized) =
+            recursive_normalize(subtree.clone(), NormalizationStyle::Default, make)
+        {
+            new_use_tree_list.push(normalized);
+            modified = true;
         } else {
-            // Otherwise, merge the single subtree into it's parent (if possible)
-            // and then normalize the result.
-            merge_subtree_into_parent_tree(&single_subtree)?;
-            recursive_normalize(use_tree, style);
-        }
-    } else {
-        // Tracks whether any changes have been made to the use tree.
-        let mut modified = false;
-
-        // Recursively un-nests (if necessary) and then normalizes each subtree in the tree list.
-        for subtree in use_tree_list.use_trees() {
-            if let Some(one_tree_list) = one_style_tree_list(&subtree) {
-                let mut elements = Vec::new();
-                let mut one_tree_list_iter = one_tree_list.use_trees();
-                let mut prev_skipped = Vec::new();
-                loop {
-                    let mut prev_skipped_iter = prev_skipped.into_iter();
-                    let mut curr_skipped = Vec::new();
-
-                    while let Some(sub_sub_tree) =
-                        one_tree_list_iter.next().or(prev_skipped_iter.next())
-                    {
-                        if let Some(sub_one_tree_list) = one_style_tree_list(&sub_sub_tree) {
-                            curr_skipped.extend(sub_one_tree_list.use_trees());
-                        } else {
-                            modified |=
-                                recursive_normalize(&sub_sub_tree, NormalizationStyle::Default)
-                                    .is_some();
-                            add_element_to_list(
-                                sub_sub_tree.syntax().clone().into(),
-                                &mut elements,
-                            );
-                        }
-                    }
-
-                    if curr_skipped.is_empty() {
-                        // Un-nesting is complete.
-                        break;
-                    }
-                    prev_skipped = curr_skipped;
-                }
-
-                // Either removes the subtree (if its semantically empty) or replaces it with
-                // the un-nested elements.
-                if elements.is_empty() {
-                    subtree.remove();
-                } else {
-                    ted::replace_with_many(subtree.syntax(), elements);
-                }
-                // Silence unused assignment warning on `modified`.
-                let _ = modified;
-                modified = true;
-            } else {
-                modified |= recursive_normalize(&subtree, NormalizationStyle::Default).is_some();
-            }
-        }
-
-        // Merge all merge-able subtrees.
-        let mut tree_list_iter = use_tree_list.use_trees();
-        let mut anchor = tree_list_iter.next()?;
-        let mut prev_skipped = Vec::new();
-        loop {
-            let mut has_merged = false;
-            let mut prev_skipped_iter = prev_skipped.into_iter();
-            let mut next_anchor = None;
-            let mut curr_skipped = Vec::new();
-
-            while let Some(candidate) = tree_list_iter.next().or(prev_skipped_iter.next()) {
-                let result = try_merge_trees_mut(&anchor, &candidate, MergeBehavior::Crate);
-                if result.is_some() {
-                    // Remove merged subtree.
-                    candidate.remove();
-                    has_merged = true;
-                } else if next_anchor.is_none() {
-                    next_anchor = Some(candidate);
-                } else {
-                    curr_skipped.push(candidate);
-                }
-            }
-
-            if has_merged {
-                // Normalize the merge result.
-                recursive_normalize(&anchor, NormalizationStyle::Default);
-                modified = true;
-            }
-
-            let (Some(next_anchor), true) = (next_anchor, !curr_skipped.is_empty()) else {
-                // Merging is complete.
-                break;
-            };
-
-            // Try to merge the remaining subtrees in the next iteration.
-            anchor = next_anchor;
-            prev_skipped = curr_skipped;
-        }
-
-        let mut subtrees: Vec<_> = use_tree_list.use_trees().collect();
-        // Merge the remaining subtree into its parent, if its only one and
-        // the normalization style is not "one".
-        if subtrees.len() == 1 && style != NormalizationStyle::One {
-            modified |= merge_subtree_into_parent_tree(&subtrees[0]).is_some();
-        }
-        // Order the remaining subtrees (if necessary).
-        if subtrees.len() > 1 {
-            let mut did_sort = false;
-            subtrees.sort_unstable_by(|a, b| {
-                let order = use_tree_cmp_bin_search(a, b);
-                if !did_sort && order == Ordering::Less {
-                    did_sort = true;
-                }
-                order
-            });
-            if did_sort {
-                let start = use_tree_list
-                    .l_curly_token()
-                    .and_then(|l_curly| algo::non_trivia_sibling(l_curly.into(), Direction::Next))
-                    .filter(|it| it.kind() != T!['}']);
-                let end = use_tree_list
-                    .r_curly_token()
-                    .and_then(|r_curly| algo::non_trivia_sibling(r_curly.into(), Direction::Prev))
-                    .filter(|it| it.kind() != T!['{']);
-                if let Some((start, end)) = start.zip(end) {
-                    // Attempt to insert elements while preserving preceding and trailing trivia.
-                    let mut elements = Vec::new();
-                    for subtree in subtrees {
-                        add_element_to_list(subtree.syntax().clone().into(), &mut elements);
-                    }
-                    ted::replace_all(start..=end, elements);
-                } else {
-                    let new_use_tree_list = make::use_tree_list(subtrees).clone_for_update();
-                    ted::replace(use_tree_list.syntax(), new_use_tree_list.syntax());
-                }
-                modified = true;
-            }
-        }
-
-        if !modified {
-            // Either the use tree was already normalized or its semantically empty.
-            return None;
+            new_use_tree_list.push(subtree);
         }
     }
-    Some(())
+
+    let mut use_tree =
+        if modified { with_use_tree_list(&use_tree, new_use_tree_list, make)? } else { use_tree };
+
+    let mut use_tree_list = use_tree.use_tree_list()?.use_trees().collect::<Vec<_>>();
+    let mut anchor_idx = 0;
+    let mut merged_any = false;
+    while anchor_idx < use_tree_list.len() {
+        let mut candidate_idx = anchor_idx + 1;
+        while candidate_idx < use_tree_list.len() {
+            if let Some(mut merged) = try_merge_trees_with_factory(
+                use_tree_list[anchor_idx].clone(),
+                use_tree_list[candidate_idx].clone(),
+                MergeBehavior::Crate,
+                make,
+            ) {
+                if let Some(normalized) =
+                    recursive_normalize(merged.clone(), NormalizationStyle::Default, make)
+                {
+                    merged = normalized;
+                }
+
+                use_tree_list[anchor_idx] = merged;
+                use_tree_list.remove(candidate_idx);
+                merged_any = true;
+            } else {
+                candidate_idx += 1;
+            }
+        }
+
+        anchor_idx += 1;
+    }
+    if merged_any {
+        use_tree = with_use_tree_list(&use_tree, use_tree_list, make)?;
+        modified = true;
+    }
+
+    if style != NormalizationStyle::One {
+        let subtrees = use_tree.use_tree_list()?.use_trees().collect::<Vec<_>>();
+        if subtrees.len() == 1
+            && let Some(merged) = merge_single_subtree_into_parent_tree(use_tree.clone(), make)
+        {
+            use_tree = merged;
+            modified = true;
+        }
+    }
+
+    if let Some(list) = use_tree.use_tree_list() {
+        let mut use_tree_list = list.use_trees().collect::<Vec<_>>();
+        if use_tree_list
+            .windows(2)
+            .any(|trees| use_tree_cmp_bin_search(&trees[0], &trees[1]).is_gt())
+        {
+            use_tree_list.sort_unstable_by(use_tree_cmp_bin_search);
+            use_tree = with_use_tree_list(&use_tree, use_tree_list, make)?;
+            modified = true;
+        }
+    }
+
+    modified.then_some(use_tree)
+}
+
+fn flatten_one_style_tree(
+    subtree: ast::UseTree,
+    elements: &mut Vec<ast::UseTree>,
+    modified: &mut bool,
+    make: &SyntaxFactory,
+) {
+    let Some(one_tree_list) = one_style_tree_list(&subtree) else { return };
+    let mut one_tree_list_iter = one_tree_list.use_trees();
+    let mut prev_skipped = Vec::new();
+    loop {
+        let mut prev_skipped_iter = prev_skipped.into_iter();
+        let mut curr_skipped = Vec::new();
+
+        while let Some(sub_sub_tree) =
+            one_tree_list_iter.next().or_else(|| prev_skipped_iter.next())
+        {
+            if let Some(sub_one_tree_list) = one_style_tree_list(&sub_sub_tree) {
+                curr_skipped.extend(sub_one_tree_list.use_trees());
+            } else if let Some(normalized) =
+                recursive_normalize(sub_sub_tree.clone(), NormalizationStyle::Default, make)
+            {
+                *modified = true;
+                elements.push(normalized);
+            } else {
+                elements.push(sub_sub_tree);
+            }
+        }
+
+        if curr_skipped.is_empty() {
+            break;
+        }
+        prev_skipped = curr_skipped;
+    }
+}
+
+fn merge_single_subtree_into_parent_tree(
+    use_tree: ast::UseTree,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
+    let single_subtree = get_single_subtree(&use_tree)?;
+    let subtree_is_only_self = single_subtree.path().as_ref().is_some_and(path_is_self);
+
+    let merged_path = match (use_tree.path(), single_subtree.path()) {
+        _ if subtree_is_only_self => None,
+        (None, None) => None,
+        (Some(outer), None) => Some(outer),
+        (None, Some(inner)) => Some(inner),
+        (Some(outer), Some(inner)) => Some(make.path_concat(outer, inner)),
+    };
+
+    let list = single_subtree.use_tree_list();
+    let list_is_none = list.is_none();
+    let star = single_subtree.star_token().is_some();
+    if merged_path.is_some() || list.is_some() || star {
+        let rename = (!star && list_is_none).then(|| single_subtree.rename()).flatten();
+        make_use_tree_from_parts(make, merged_path, list, rename, star)
+    } else {
+        None
+    }
+}
+
+fn one_style_tree_list(subtree: &ast::UseTree) -> Option<ast::UseTreeList> {
+    (subtree.path().is_none() && subtree.star_token().is_none() && subtree.rename().is_none())
+        .then(|| subtree.use_tree_list())
+        .flatten()
+}
+
+fn remove_subtree_if_only_self(
+    use_tree: ast::UseTree,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
+    let Some(single_subtree) = get_single_subtree(&use_tree) else {
+        return Some(use_tree);
+    };
+    match (use_tree.path(), single_subtree.path()) {
+        (Some(path), Some(inner)) if path_is_self(&inner) => {
+            Some(make.use_tree(path, None, use_tree.rename(), false))
+        }
+        _ => Some(use_tree),
+    }
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -513,10 +501,9 @@ pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast
 fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
     let lhs_is_simple_path = lhs.is_simple_path() && lhs.rename().is_none();
     let rhs_is_simple_path = rhs.is_simple_path() && rhs.rename().is_none();
-    match (
-        lhs.path().as_ref().and_then(ast::Path::first_segment),
-        rhs.path().as_ref().and_then(ast::Path::first_segment),
-    ) {
+    let lhs_segment = lhs.path().and_then(|path| path.first_segment());
+    let rhs_segment = rhs.path().and_then(|path| path.first_segment());
+    match (lhs_segment, rhs_segment) {
         (None, None) => match (lhs_is_simple_path, rhs_is_simple_path) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Less,
@@ -701,14 +688,164 @@ fn get_single_subtree(use_tree: &ast::UseTree) -> Option<ast::UseTree> {
         .map(|(single_subtree,)| single_subtree)
 }
 
-fn remove_subtree_if_only_self(use_tree: &ast::UseTree) {
-    let Some(single_subtree) = get_single_subtree(use_tree) else { return };
-    match (use_tree.path(), single_subtree.path()) {
-        (Some(_), Some(inner)) if path_is_self(&inner) => {
-            ted::remove_all_iter(single_subtree.syntax().children_with_tokens());
-        }
-        _ => (),
+fn make_use_with_tree(original: &ast::Use, use_tree: ast::UseTree) -> Option<ast::Use> {
+    let (editor, use_item) = SyntaxEditor::with_ast_node(original);
+    let original_tree = use_item.use_tree()?;
+    editor.replace(original_tree.syntax(), use_tree.syntax());
+    let edit = editor.finish();
+    ast::Use::cast(edit.new_root().clone())
+}
+
+fn make_use_tree_list(
+    make: &SyntaxFactory,
+    use_trees: Vec<ast::UseTree>,
+    style_source: Option<&ast::UseTreeList>,
+) -> Option<ast::UseTreeList> {
+    let use_tree_list = make.use_tree_list(use_trees);
+    let Some(style_source) = style_source else {
+        return Some(use_tree_list);
+    };
+
+    let source_l_curly = style_source.l_curly_token()?;
+    let source_r_curly = style_source.r_curly_token()?;
+
+    let leading_ws = source_l_curly.next_token().filter(|token| token.kind().is_trivia());
+
+    let trailing_ws = source_r_curly.prev_token().filter(|token| token.kind().is_trivia());
+
+    let source_trailing_token = trailing_ws
+        .as_ref()
+        .and_then(|token| token.prev_token())
+        .or_else(|| source_r_curly.prev_token());
+
+    let source_has_trailing_comma =
+        source_trailing_token.is_some_and(|token| token.kind() == T![,]);
+
+    let (editor, use_tree_list) = SyntaxEditor::with_ast_node(&use_tree_list);
+    let make = editor.make();
+
+    if let Some(leading_ws) = leading_ws {
+        editor.insert(
+            Position::after(use_tree_list.l_curly_token()?),
+            make.whitespace(leading_ws.text()),
+        );
     }
+
+    let r_curly = use_tree_list.r_curly_token()?;
+
+    let generated_has_trailing_comma = r_curly
+        .prev_token()
+        .and_then(|token| if token.kind().is_trivia() { token.prev_token() } else { Some(token) })
+        .is_some_and(|token| token.kind() == T![,]);
+
+    let mut trailing = Vec::new();
+
+    if source_has_trailing_comma
+        && !generated_has_trailing_comma
+        && use_tree_list.use_trees().next().is_some()
+    {
+        trailing.push(make.token(T![,]).into());
+    }
+
+    if let Some(trailing_ws) = trailing_ws {
+        trailing.push(make.whitespace(trailing_ws.text()).into());
+    }
+
+    if !trailing.is_empty() {
+        editor.insert_all(Position::before(r_curly), trailing);
+    }
+
+    let edit = editor.finish();
+    ast::UseTreeList::cast(edit.new_root().clone())
+}
+
+fn make_use_tree_from_list(make: &SyntaxFactory, list: ast::UseTreeList) -> Option<ast::UseTree> {
+    let placeholder = make.use_tree_glob();
+    let (editor, use_tree) = SyntaxEditor::with_ast_node(&placeholder);
+    let first_child = use_tree.syntax().first_child_or_token()?;
+    let last_child = use_tree.syntax().last_child_or_token()?;
+    editor.replace_all(first_child..=last_child, vec![list.syntax().clone().into()]);
+    let edit = editor.finish();
+    ast::UseTree::cast(edit.new_root().clone())
+}
+
+fn make_use_tree_from_parts(
+    make: &SyntaxFactory,
+    path: Option<ast::Path>,
+    list: Option<ast::UseTreeList>,
+    rename: Option<ast::Rename>,
+    star: bool,
+) -> Option<ast::UseTree> {
+    match (path, list, star) {
+        (Some(path), list, star) => Some(make.use_tree(path, list, rename, star)),
+        (None, Some(list), false) if rename.is_none() => make_use_tree_from_list(make, list),
+        (None, None, true) if rename.is_none() => Some(make.use_tree_glob()),
+        (None, None, false) if rename.is_none() => None,
+        _ => None,
+    }
+}
+
+fn with_use_tree_list(
+    use_tree: &ast::UseTree,
+    use_trees: Vec<ast::UseTree>,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
+    let list = make_use_tree_list(make, use_trees, use_tree.use_tree_list().as_ref())?;
+    make_use_tree_from_parts(
+        make,
+        use_tree.path(),
+        Some(list),
+        use_tree.rename(),
+        use_tree.star_token().is_some(),
+    )
+}
+
+pub(crate) fn wrap_in_tree_list(
+    use_tree: &ast::UseTree,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
+    if use_tree.path().is_none()
+        && use_tree.use_tree_list().is_some()
+        && use_tree.rename().is_none()
+        && use_tree.star_token().is_none()
+    {
+        return None;
+    }
+
+    let list = make_use_tree_list(make, vec![use_tree.clone()], None)?;
+    make_use_tree_from_list(make, list)
+}
+
+fn split_prefix(
+    use_tree: &ast::UseTree,
+    prefix: &ast::Path,
+    make: &SyntaxFactory,
+) -> Option<ast::UseTree> {
+    let path = use_tree.path()?;
+    if path == *prefix && use_tree.use_tree_list().is_some() {
+        return Some(use_tree.clone());
+    }
+
+    let suffix = if path == *prefix {
+        if use_tree.star_token().is_some() {
+            make.use_tree_glob()
+        } else {
+            let self_path = make.path_unqualified(make.path_segment_self());
+            make.use_tree(self_path, None, use_tree.rename(), false)
+        }
+    } else {
+        let suffix_segments = path.segments().skip(prefix.segments().count());
+        let suffix_path = make.path_from_segments(suffix_segments, false);
+        make.use_tree(
+            suffix_path,
+            use_tree.use_tree_list(),
+            use_tree.rename(),
+            use_tree.star_token().is_some(),
+        )
+    };
+
+    let list = make_use_tree_list(make, vec![suffix], None)?;
+    Some(make.use_tree(prefix.clone(), Some(list), None, false))
 }
 
 // Taken from rustfmt
