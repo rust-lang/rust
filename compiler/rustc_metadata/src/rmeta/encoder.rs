@@ -907,6 +907,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             expn_hashes,
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+            public_api_hash_opt_enabled: hcx.enabled(),
         };
         let crate_root = crate_root.into_crate_root(self.tcx, hcx);
         let hashes = crate_root.header.hashes;

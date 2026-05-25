@@ -301,6 +301,7 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+    public_api_hash_opt_enabled: bool,
 }
 
 /// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.
