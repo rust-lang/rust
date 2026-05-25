@@ -3007,6 +3007,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let LitKind::Err(guar) = *kind {
             return ty::Const::new_error(tcx, guar);
         }
+
+        if let Some(ty) = ty
+            && !const_lit_matches_ty(tcx, kind, ty, neg)
+        {
+            let input = LitToConstInput { lit: *kind, ty: None, neg };
+            let found_ty = tcx.at(span).lit_to_const(input).map(|v| v.ty);
+            let mut diag = tcx.dcx().struct_span_err(
+                span,
+                format!("the literal is not of type `{ty}`"),
+            );
+            let label = match found_ty {
+                Some(found_ty) => format!("expected `{ty}`, found `{found_ty}`"),
+                None => format!("expected `{ty}`"),
+            };
+            diag.span_label(span, label);
+            return ty::Const::new_error(tcx, diag.emit());
+        }
+
         let input = LitToConstInput { lit: *kind, ty, neg };
         match tcx.at(span).lit_to_const(input) {
             Some(value) => ty::Const::new_value(tcx, value.valtree, value.ty),

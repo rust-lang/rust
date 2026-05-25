@@ -15,7 +15,8 @@ RUN wget https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-22.1.4-x86_64
 RUN mkdir llvm
 RUN tar -xvf llvm.tar.xz --strip-components=1 -C llvm
 
-ENV PATH="/llvm/bin:$PATH"
+ENV CLANG_PATH="/llvm/bin/clang"
+ENV GCC_PATH=aarch64-linux-gnu-gcc
 
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64 -cpu max -L /usr/aarch64-linux-gnu" \
