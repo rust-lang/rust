@@ -157,7 +157,6 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
-            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
     }
@@ -320,11 +319,6 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.ub_checks() {
         ins_none!(sym::ub_checks);
-    }
-
-    // Nightly-only implementation detail for the `panic_unwind` and `unwind` crates.
-    if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
-        ins_none!(sym::emscripten_wasm_eh);
     }
 
     if sess.contract_checks() {

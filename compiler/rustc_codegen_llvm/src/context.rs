@@ -26,7 +26,6 @@ use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
-use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
     Target, TlsModel,
@@ -136,7 +135,6 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
-    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
     intrinsics:
@@ -672,7 +670,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 coverage_cx,
                 dbg_cx,
                 eh_personality: Cell::new(None),
-                eh_catch_typeinfo: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
                 local_gen_sym_counter: Cell::new(0),
@@ -1041,23 +1038,6 @@ impl<'ll> CodegenCx<'ll, '_> {
                 (self.get_type_of_global(f), f)
             }
         }
-    }
-
-    pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
-        if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
-            return eh_catch_typeinfo;
-        }
-        let tcx = self.tcx;
-        assert!(self.sess().target.os == Os::Emscripten);
-        let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
-            Some(def_id) => self.get_static(def_id),
-            _ => {
-                let ty = self.type_struct(&[self.type_ptr(), self.type_ptr()], false);
-                self.declare_global(&mangle_internal_symbol(self.tcx, "rust_eh_catch_typeinfo"), ty)
-            }
-        };
-        self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
-        eh_catch_typeinfo
     }
 }
 

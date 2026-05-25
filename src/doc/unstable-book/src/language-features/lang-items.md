@@ -27,8 +27,7 @@ Some features provided by lang items:
   failure mechanisms of the compiler. This is often mapped to GCC's personality
   function (see the [`std` implementation][personality] for more information),
   but programs which don't trigger a panic can be assured that this function is
-  never called. Additionally, a `eh_catch_typeinfo` static is needed for certain
-  targets which implement Rust panics on top of C++ exceptions.
+  never called.
 - the traits in `core::marker` used to indicate types of
   various kinds; e.g. lang items `sized`, `sync` and `copy`.
 - memory allocation, see below.
