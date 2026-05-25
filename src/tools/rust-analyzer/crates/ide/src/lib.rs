@@ -41,6 +41,7 @@ mod matching_brace;
 mod moniker;
 mod move_item;
 mod parent_module;
+mod predicate_eval;
 mod references;
 mod rename;
 mod runnables;
@@ -122,7 +123,7 @@ pub use crate::{
     },
     test_explorer::{TestItem, TestItemKind},
 };
-pub use hir::Semantics;
+pub use hir::{PredicateEvaluationResult, PredicateEvaluationStatus, Semantics};
 pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
@@ -389,6 +390,14 @@ impl Analysis {
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
         self.with_db(|db| view_hir::view_hir(db, position))
+    }
+
+    pub fn evaluate_predicate(
+        &self,
+        text: String,
+        position: FilePosition,
+    ) -> Cancellable<PredicateEvaluationResult> {
+        self.with_db(|db| predicate_eval::evaluate_predicate(db, text, position))
     }
 
     pub fn view_mir(&self, position: FilePosition) -> Cancellable<String> {

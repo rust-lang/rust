@@ -1,12 +1,15 @@
 //! Trait solving using next trait solver.
 
-use std::hash::Hash;
+use std::{cell::OnceCell, hash::Hash};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AssocItemId, HasModule, ImplId, Lookup, TraitId,
+    AdtId, AssocItemId, ExpressionStoreOwnerId, GenericDefId, HasModule, ImplId, Lookup, TraitId,
+    expr_store::ExpressionStore,
+    hir::generics::WherePredicate,
     lang_item::LangItems,
     nameres::DefMap,
+    resolver::Resolver,
     signatures::{
         ConstFlags, ConstSignature, EnumFlags, EnumSignature, FnFlags, FunctionSignature,
         StructFlags, StructSignature, TraitFlags, TraitSignature, TypeAliasFlags,
@@ -16,13 +19,14 @@ use hir_def::{
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_type_ir::{
-    TypingMode,
+    TypeVisitableExt, TypingMode,
     inherent::{BoundExistentialPredicates, IntoKind},
 };
 
 use crate::{
-    Span,
+    LifetimeElisionKind, Span, TyLoweringContext,
     db::HirDatabase,
+    generics::Generics,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, StoredClauses, Ty, TyKind,
         infer::{
@@ -151,6 +155,69 @@ pub fn implements_trait_unique_with_infcx<'db>(
 
     let obligation = Obligation::new(interner, ObligationCause::dummy(), env.param_env, trait_ref);
     infcx.predicate_must_hold_modulo_regions(&obligation)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WherePredicateEvaluation {
+    Holds,
+    NotProven,
+    HasErrors,
+    NoObligations,
+}
+
+/// This should not be used in `hir-ty`, only in `hir`.
+/// This is exposed to allow the IDE to evaluate arbitrary predicates.
+pub fn where_predicate_must_hold<'db>(
+    db: &'db dyn HirDatabase,
+    resolver: &Resolver<'db>,
+    store: &ExpressionStore,
+    def: ExpressionStoreOwnerId,
+    generic_def: GenericDefId,
+    env: ParamEnvAndCrate<'db>,
+    predicate: &WherePredicate,
+) -> WherePredicateEvaluation {
+    let interner = DbInterner::new_with(db, env.krate);
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let generics = OnceCell::<Generics<'db>>::new();
+    let mut ctx = TyLoweringContext::new(
+        db,
+        resolver,
+        store,
+        def,
+        generic_def,
+        &generics,
+        LifetimeElisionKind::Infer,
+    );
+    let clauses =
+        ctx.lower_where_predicate(predicate, false).map(|(clause, _)| clause).collect::<Vec<_>>();
+
+    if !ctx.diagnostics.is_empty()
+        || clauses.iter().any(|clause| clause.as_predicate().references_error())
+    {
+        return WherePredicateEvaluation::HasErrors;
+    }
+
+    if clauses.is_empty() {
+        return if ctx.unsized_types.is_empty() {
+            WherePredicateEvaluation::HasErrors
+        } else {
+            WherePredicateEvaluation::NoObligations
+        };
+    }
+
+    for clause in clauses {
+        let obligation = Obligation::new(
+            interner,
+            ObligationCause::dummy(),
+            env.param_env,
+            clause.as_predicate(),
+        );
+        if !infcx.predicate_must_hold_modulo_regions(&obligation) {
+            return WherePredicateEvaluation::NotProven;
+        }
+    }
+
+    WherePredicateEvaluation::Holds
 }
 
 pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id: ImplId) -> bool {

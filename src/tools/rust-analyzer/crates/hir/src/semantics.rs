@@ -2564,6 +2564,20 @@ impl<'db> SemanticsImpl<'db> {
         Some(locals)
     }
 
+    pub fn evaluate_where_clause_at(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+        where_clause: ast::WhereClause,
+    ) -> crate::PredicateEvaluationResult {
+        let Some(analyzer) = self.analyze_with_offset_no_infer(node, offset) else {
+            return crate::PredicateEvaluationResult::unsupported(
+                "predicate evaluation is only supported in files that belong to a crate",
+            );
+        };
+        analyzer.evaluate_where_clause(self.db, where_clause)
+    }
+
     pub fn get_failed_obligations(&self, token: SyntaxToken) -> Option<String> {
         let node = token.parent()?;
         let node = self.find_file(&node);

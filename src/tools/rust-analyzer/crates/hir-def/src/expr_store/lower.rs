@@ -204,7 +204,7 @@ pub(crate) fn lower_type_ref(
     (store, source_map, type_ref)
 }
 
-pub(crate) fn lower_generic_params(
+pub fn lower_generic_params(
     db: &dyn DefDatabase,
     module: ModuleId,
     def: GenericDefId,
