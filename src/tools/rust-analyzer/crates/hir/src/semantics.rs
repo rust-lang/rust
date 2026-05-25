@@ -1947,6 +1947,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
     }
 
+    // FIXME: Remove this from https://github.com/rust-lang/rust-analyzer/pull/22449#discussion_r3299763452
     pub fn resolve_tuple_struct_pat_fields(
         &self,
         tuple_struct_pat: &ast::TupleStructPat,
