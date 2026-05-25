@@ -12,7 +12,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::Attribute;
-use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
+use rustc_hir::attrs::{
+    self, AttributeKind, CfgEntry, CfgHideShow, DocCfgHideShowValue, HideOrShow,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
@@ -685,7 +687,7 @@ impl<'a> From<&'a attrs::CfgInfo> for NameValueCfg {
 pub(crate) struct CfgInfo {
     /// List of currently active `doc(auto_cfg(hide(...)))` cfgs, minus currently active
     /// `doc(auto_cfg(show(...)))` cfgs.
-    hidden_cfg: FxHashSet<NameValueCfg>,
+    hidden_cfg: FxHashMap<Symbol, DocCfgHideShowValue>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
     current_cfg: Cfg,
@@ -700,10 +702,10 @@ pub(crate) struct CfgInfo {
 impl Default for CfgInfo {
     fn default() -> Self {
         Self {
-            hidden_cfg: FxHashSet::from_iter([
-                NameValueCfg::new(sym::test),
-                NameValueCfg::new(sym::doc),
-                NameValueCfg::new(sym::doctest),
+            hidden_cfg: FxHashMap::from_iter([
+                (sym::test, DocCfgHideShowValue::All),
+                (sym::doc, DocCfgHideShowValue::All),
+                (sym::doctest, DocCfgHideShowValue::All),
             ]),
             current_cfg: Cfg(CfgEntry::Bool(true, DUMMY_SP)),
             auto_cfg_active: true,

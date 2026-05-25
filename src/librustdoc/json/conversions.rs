@@ -1138,6 +1138,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                         // characters surrounding the string.
                         out.push_str(&format!(" = {:?}", value.as_str()));
                     }
+                    out.push(')');
                 }
                 out.push_str(")))]");
                 ret.push(Attribute::Other(out));
