@@ -33,6 +33,9 @@ postcard.workspace = true
 semver.workspace = true
 rayon.workspace = true
 
+[dev-dependencies]
+span.workspace = true
+
 [features]
 sysroot-abi = ["proc-macro-srv", "proc-macro-srv/sysroot-abi"]
 default = []
