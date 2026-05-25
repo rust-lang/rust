@@ -342,7 +342,6 @@ pub use self::{
 
 mod copy;
 mod error;
-mod impls;
 mod pipe;
 pub mod prelude;
 mod stdio;
