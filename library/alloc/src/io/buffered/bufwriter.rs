@@ -62,6 +62,7 @@ use crate::vec::Vec;
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
+// FIXME(#74481): Hard-links required to link from `alloc` to `std`
 /// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 /// [`flush`]: BufWriter::flush

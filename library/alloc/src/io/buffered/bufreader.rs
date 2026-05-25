@@ -29,6 +29,7 @@ use crate::vec::Vec;
 /// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
+// FIXME(#74481): Hard-links required to link from `alloc` to `std`
 /// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///

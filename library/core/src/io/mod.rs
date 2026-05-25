@@ -54,6 +54,7 @@ pub use self::{
 /// `[u8]` fails, because any modification to `&mut &[u8]` would only affect a temporary
 /// and be lost after the method has been called.
 ///
+// FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [file]: ../../std/fs/struct.File.html
 /// [arc]: ../../alloc/sync/struct.Arc.html
 /// [`Write`]: crate::io::Write
