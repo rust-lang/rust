@@ -356,6 +356,7 @@ pub(crate) struct HashableCrateRoot {
 
     // FIXME do we need to hash this?
     pub(crate) specialization_enabled_in: bool,
+    pub(crate) public_api_hash_opt_enabled: bool,
 }
 
 impl HashableCrateRoot {
@@ -442,6 +443,7 @@ impl HashableCrateRoot {
             symbol_mangling_version: self.symbol_mangling_version,
 
             specialization_enabled_in: self.specialization_enabled_in,
+            public_api_hash_opt_enabled: self.public_api_hash_opt_enabled,
         }
     }
 }
