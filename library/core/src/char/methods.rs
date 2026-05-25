@@ -1050,7 +1050,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_is_control", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_is_control", since = "1.97.0")]
     #[inline]
     pub const fn is_control(self) -> bool {
         // According to
