@@ -413,10 +413,9 @@ provide! { tcx, def_id, other, cdata,
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
     crate_hash => {
         assert!(
-            // We could allow all binary targets, they should always get a rustc invocation for
-            // linking, but there is no reason to (yet).
             !tcx.sess.opts.unstable_opts.public_api_hash
-            || tcx.crate_types().contains(&CrateType::ProcMacro),
+            || !cdata.root.public_api_hash_opt_enabled
+            || will_have_link_step(tcx),
             "Calling the crate_hash query for dependencies outside of proc-macro crates is unsound!"
         );
         cdata.root.header.hashes.private_hash
@@ -837,4 +836,16 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             cdata.imported_source_file(tcx, file_index as u32);
         }
     };
+}
+
+fn will_have_link_step(tcx: TyCtxt<'_>) -> bool {
+    if !tcx.sess.opts.output_types.should_link() {
+        return false;
+    }
+    tcx.crate_types().iter().any(|ct| {
+        matches!(
+            ct,
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro
+        )
+    })
 }
