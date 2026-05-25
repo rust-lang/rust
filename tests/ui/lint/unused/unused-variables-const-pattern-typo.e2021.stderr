@@ -1,0 +1,95 @@
+error: unused variable: `x`
+  --> $DIR/unused-variables-const-pattern-typo.rs:17:18
+   |
+LL |         let Some(x) = x else { return };
+   |                  ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-variables-const-pattern-typo.rs:9:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+help: you might have meant to pattern match on the similarly named constant `X`
+   |
+LL -         let Some(x) = x else { return };
+LL +         let Some(crate::enclosed::X) = x else { return };
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let Some(_x) = x else { return };
+   |                  +
+
+error: unused variable: `x`
+  --> $DIR/unused-variables-const-pattern-typo.rs:27:13
+   |
+LL |         let x = system::Y;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `good`
+  --> $DIR/unused-variables-const-pattern-typo.rs:37:18
+   |
+LL |         let Some(good) = x else { return };
+   |                  ^^^^
+   |
+help: you might have meant to pattern match on the similarly named constant `GOOD`
+   |
+LL -         let Some(good) = x else { return };
+LL +         let Some(crate::same_module::GOOD) = x else { return };
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let Some(_good) = x else { return };
+   |                  +
+
+error: unused variable: `local`
+  --> $DIR/unused-variables-const-pattern-typo.rs:46:14
+   |
+LL |     let Some(local) = x else { return };
+   |              ^^^^^
+   |
+help: you might have meant to pattern match on the similarly named constant `LOCAL`
+   |
+LL -     let Some(local) = x else { return };
+LL +     let Some(LOCAL) = x else { return };
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |     let Some(_local) = x else { return };
+   |              +
+
+error: unused variable: `ready`
+  --> $DIR/unused-variables-const-pattern-typo.rs:60:18
+   |
+LL |         let Some(ready) = x else { return };
+   |                  ^^^^^
+   |
+help: you might have meant to pattern match on the similarly named variant `Ready`
+   |
+LL -         let Some(ready) = x else { return };
+LL +         let Some(crate::variants::State::Ready) = x else { return };
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         let Some(_ready) = x else { return };
+   |                  +
+
+error: unused variable: `x`
+  --> $DIR/unused-variables-const-pattern-typo.rs:80:14
+   |
+LL |     let Some(x) = x else { return };
+   |              ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: unused variable: `value`
+  --> $DIR/unused-variables-const-pattern-typo.rs:96:14
+   |
+LL |     let Some(value) = x else { return };
+   |              ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
+
+error: unused variable: `xyzzy`
+  --> $DIR/unused-variables-const-pattern-typo.rs:111:14
+   |
+LL |     let Some(xyzzy) = x else { return };
+   |              ^^^^^ help: if this is intentional, prefix it with an underscore: `_xyzzy`
+
+error: aborting due to 8 previous errors
+

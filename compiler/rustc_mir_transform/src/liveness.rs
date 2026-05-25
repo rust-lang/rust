@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::*;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
@@ -168,13 +168,15 @@ fn is_capture(place: PlaceRef<'_>) -> bool {
     }
 }
 
-/// Give a diagnostic when an unused variable may be a typo of a unit variant or a struct.
+/// Give a diagnostic when an unused variable may be a typo of a unit variant,
+/// unit struct, or const.
 fn maybe_suggest_unit_pattern_typo<'tcx>(
     tcx: TyCtxt<'tcx>,
     body_def_id: DefId,
     name: Symbol,
     span: Span,
     ty: Ty<'tcx>,
+    allow_consts: bool,
 ) -> Option<errors::PatternTypo> {
     if let ty::Adt(adt_def, _) = ty.peel_refs().kind() {
         let variant_names: Vec<_> = adt_def
@@ -191,11 +193,15 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
         {
             return Some(errors::PatternTypo {
                 span,
-                code: with_no_trimmed_paths!(tcx.def_path_str(variant.def_id)),
+                code: pattern_item_path(tcx, body_def_id, variant.def_id),
                 kind: tcx.def_descr(variant.def_id),
                 item_name: variant.name,
             });
         }
+    }
+
+    if !allow_consts {
+        return None;
     }
 
     // Look for consts of the same type with similar names as well,
@@ -203,7 +209,10 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     let constants = tcx
         .hir_body_owners()
         .filter(|&def_id| {
+            // `const _: T = ...` items have no name reachable from a pattern: writing
+            // `path::_` is not valid syntax, so they must never appear in a suggestion.
             matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+                && tcx.item_name(def_id.to_def_id()) != kw::Underscore
                 && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
@@ -215,13 +224,23 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     {
         return Some(errors::PatternTypo {
             span,
-            code: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
+            code: pattern_item_path(tcx, body_def_id, def_id.to_def_id()),
             kind: "constant",
             item_name,
         });
     }
 
     None
+}
+
+fn pattern_item_path(tcx: TyCtxt<'_>, body_def_id: DefId, item_def_id: DefId) -> String {
+    // A body-local const is in scope only by its bare name; everything else is a
+    // module-level item that `with_crate_prefix!` prints as a valid `crate::` path.
+    if tcx.is_descendant_of(item_def_id, body_def_id) {
+        return tcx.item_name(item_def_id).to_string();
+    }
+
+    with_crate_prefix!(tcx.def_path_str(item_def_id))
 }
 
 /// Return whether we should consider the current place as a drop guard and skip reporting.
@@ -977,15 +996,19 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
 
             let maybe_suggest_typo = || {
-                if let LocalKind::Arg = self.body.local_kind(local) {
+                if matches!(self.body.local_kind(local), LocalKind::Arg) {
                     None
                 } else {
+                    // In a bare `let x = ...`, replacing `x` with a const path would make the
+                    // pattern refutable. Keep the existing unit ADT typo behavior unchanged.
+                    let allow_consts = !matches!(binding.opt_match_place, Some((None, _)));
                     maybe_suggest_unit_pattern_typo(
                         tcx,
                         self.body.source.def_id(),
                         name,
                         def_span,
                         decl.ty,
+                        allow_consts,
                     )
                 }
             };
