@@ -1152,8 +1152,6 @@ where
 
         let exportable_items = stat!("exportable-items", || self.encode_exportable_items());
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.encoder.opaque));
-
         let stable_order_of_exportable_impls =
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
 
@@ -1165,6 +1163,18 @@ where
                     self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
                 )
             });
+
+        if M::HASH_PUBLIC_API {
+            for (symbol, _info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+                let def_id = match symbol {
+                    ExportedSymbol::NonGeneric(id) => id.expect_local(),
+                    _ => continue,
+                };
+                self.table_writer().is_reachable_non_generic(def_id, true);
+            }
+        }
+
+        let tables = stat!("tables", || self.tables.encode(&mut self.encoder.opaque));
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
