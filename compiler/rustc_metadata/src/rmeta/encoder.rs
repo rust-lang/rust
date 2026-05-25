@@ -887,10 +887,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (exported_non_generic_symbols, exported_generic_symbols) =
             stat!("exported-symbols", || {
                 (
-                    self.encode_exported_symbols(
-                        tcx.exported_non_generic_symbols(LOCAL_CRATE),
-                        hcx,
-                    ),
+                    {
+                        if tcx.sess.opts.unstable_opts.public_api_hash {
+                            for (symbol, _info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+                                let def_id = match symbol {
+                                    ExportedSymbol::NonGeneric(id) => id.expect_local(),
+                                    _ => continue,
+                                };
+                                self.tables
+                                    .is_reachable_non_generic
+                                    .set_local_hashed(def_id, true, hcx);
+                            }
+                        }
+                        self.encode_exported_symbols(
+                            tcx.exported_non_generic_symbols(LOCAL_CRATE),
+                            hcx,
+                        )
+                    },
                     self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
                 )
             });
