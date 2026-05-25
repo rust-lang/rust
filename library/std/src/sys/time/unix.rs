@@ -100,6 +100,32 @@ impl Instant {
     /// representable value.
     #[cfg(target_vendor = "apple")]
     pub fn into_mach_absolute_time_ceil(self) -> Option<u128> {
+        let secs = u64::try_from(self.t.tv_sec).ok()?;
+
+        let (numer, denom) = cached_timebase_info();
+
+        // Since `tv_sec` is 64-bit and `tv_nsec` is smaller than 1 billion,
+        // this cannot overflow. The resulting number needs at most 94 bits.
+        let nanos = 1_000_000_000 * u128::from(secs) + u128::from(self.t.tv_nsec.as_inner());
+        // This multiplication cannot overflow since multiplying a 94-bit
+        // number by a 32-bit number yields a number that needs at most
+        // 126 bits.
+        Some((nanos * u128::from(denom)).div_ceil(u128::from(numer)))
+    }
+}
+
+/// Returns the cached `(numer, denom)` pair from `mach_timebase_info`.
+///
+/// `mach_timebase_info` returns boot-time constants that never change for the
+/// lifetime of the process, so the Mach trap is only performed on the first
+/// call. Subsequent calls are a single relaxed atomic load via `OnceLock`.
+#[cfg(target_vendor = "apple")]
+fn cached_timebase_info() -> (u32, u32) {
+    use crate::sync::OnceLock;
+
+    static TIMEBASE: OnceLock<(u32, u32)> = OnceLock::new();
+
+    *TIMEBASE.get_or_init(|| {
         #[repr(C)]
         struct mach_timebase_info {
             numer: u32,
@@ -110,19 +136,10 @@ impl Instant {
             unsafe fn mach_timebase_info(info: *mut mach_timebase_info) -> libc::kern_return_t;
         }
 
-        let secs = u64::try_from(self.t.tv_sec).ok()?;
-
         let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
         assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
-
-        // Since `tv_sec` is 64-bit and `tv_nsec` is smaller than 1 billion,
-        // this cannot overflow. The resulting number needs at most 94 bits.
-        let nanos = 1_000_000_000 * u128::from(secs) + u128::from(self.t.tv_nsec.as_inner());
-        // This multiplication cannot overflow since multiplying a 94-bit
-        // number by a 32-bit number yields a number that needs at most
-        // 126 bits.
-        Some((nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer)))
-    }
+        (timebase.numer, timebase.denom)
+    })
 }
 
 impl AsInner<Timespec> for Instant {
