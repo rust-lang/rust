@@ -421,7 +421,7 @@ pub(crate) struct HashableCrateRoot {
     // =========== used during link time ==============
     // Only used during linking, so we can put this behind private hash.
     pub(crate) exported_non_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+        Unhashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
 
     // Only used during linking, so we can put this behind private hash.
     //
@@ -429,7 +429,7 @@ pub(crate) struct HashableCrateRoot {
     // hashing is enabled. If left enabled, adding or removing any private code can change the
     // available monomorphized generics, which would require a recompile of all downstream deps.
     pub(crate) exported_generic_symbols:
-        Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
+        Unhashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
 
     // =========== not needed in the public hash ==============
     // proc macro, ignored. We use the full crate hash as public hash for proc macros
@@ -524,8 +524,8 @@ impl HashableCrateRoot {
 
             exportable_items: self.exportable_items.0,
             stable_order_of_exportable_impls: self.stable_order_of_exportable_impls.value,
-            exported_non_generic_symbols: self.exported_non_generic_symbols.value,
-            exported_generic_symbols: self.exported_generic_symbols.value,
+            exported_non_generic_symbols: self.exported_non_generic_symbols.0,
+            exported_generic_symbols: self.exported_generic_symbols.0,
 
             syntax_contexts: self.syntax_contexts.0,
             expn_data: self.expn_data.0,

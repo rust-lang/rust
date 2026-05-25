@@ -1040,8 +1040,8 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let (exported_non_generic_symbols, exported_generic_symbols) =
             stat!("exported-symbols", || (
-                self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE), hcx),
-                self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
+                self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
+                self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
             ));
 
         if M::HASH_PUBLIC_API {
@@ -2862,14 +2862,15 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols<'h>(
+    fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-        hcx: &mut impl PublicApiHashState<'h>,
-    ) -> Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
+    ) -> Unhashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
-        hashed_lazy_array!(self, exported_symbols, hcx)
+        let array =
+            self.with_record_mode(RecordMode::None, |this| this.lazy_array(exported_symbols));
+        Unhashed(array)
     }
 
     fn encode_dylib_dependency_formats<'h>(
