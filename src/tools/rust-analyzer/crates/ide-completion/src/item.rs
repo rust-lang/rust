@@ -181,6 +181,9 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
+    /// This is missing variant in the patterns.
+    /// Maybe this can also be used for struct fields.
+    pub is_missing: bool,
     /// Populated when the completion item comes from a trait (impl).
     pub trait_: Option<CompletionRelevanceTraitInfo>,
     /// This is set when an import is suggested in a use item whose name is already imported.
@@ -286,6 +289,7 @@ impl CompletionRelevance {
             exact_name_match,
             type_match,
             is_local,
+            is_missing,
             is_name_already_imported,
             requires_import,
             is_private_editable,
@@ -304,6 +308,9 @@ impl CompletionRelevance {
         }
         // slightly prefer locals
         if is_local {
+            score += 1;
+        }
+        if is_missing {
             score += 1;
         }
 
