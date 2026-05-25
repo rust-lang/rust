@@ -15,6 +15,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 use tracing::{Level, debug, enabled, instrument};
 
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::diagnostics::{RegionErrorKind, RegionErrors};
 use crate::handle_placeholders::{RegionDefinitions, RegionTracker};
@@ -777,6 +778,7 @@ impl<'a, 'tcx> RegionInferenceContext<'a, 'tcx> {
         polonius_output: Option<Box<PoloniusOutput>>,
         location_map: Rc<DenseLocationMap>,
         placeholder_indices: PlaceholderIndices<'tcx>,
+        outlives_constraint_graph: &'a NormalConstraintGraph,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>, InferredRegions<'tcx>) {
         let num_external_vids =
             universal_region_relations.universal_regions.num_global_and_external_regions();
@@ -826,6 +828,7 @@ impl<'a, 'tcx> RegionInferenceContext<'a, 'tcx> {
             outlives_constraints,
             &scc_values,
             regioncx.liveness_constraints,
+            outlives_constraint_graph,
         )
         .check(polonius_output, propagated_outlives_requirements.as_mut());
 

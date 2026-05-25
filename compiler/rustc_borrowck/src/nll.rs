@@ -21,6 +21,7 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraintSet;
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::consumers::RustcFacts;
 use crate::diagnostics::{RegionErrors, UniverseInfo};
 use crate::handle_placeholders::{
@@ -53,6 +54,7 @@ pub(crate) struct NllOutput<'tcx> {
     pub(crate) liveness_constraints: LivenessValues,
     pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
+    pub(crate) outlives_constraint_graph: NormalConstraintGraph,
 
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
     /// localized typeck and liveness constraints.
@@ -100,7 +102,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     universal_region_relations: Rc<Frozen<UniversalRegionRelations<'tcx>>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> Option<ClosureRegionRequirements<'tcx>> {
-    let LoweredConstraints { constraint_sccs, definitions, scc_annotations } =
+    let LoweredConstraints { constraint_sccs, definitions, scc_annotations, constraint_graph } =
         compute_sccs_applying_placeholder_outlives_constraints(
             &mut constraints.liveness_constraints,
             &mut constraints.outlives_constraints,
@@ -122,6 +124,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
             None,
             location_map,
             constraints.placeholder_indices.clone(),
+            &constraint_graph,
         );
     closure_region_requirements
 }
@@ -175,7 +178,12 @@ pub(crate) fn compute_regions<'tcx>(
         &outlives_constraints,
     );
 
-    let LoweredConstraints { constraint_sccs, definitions, scc_annotations } = lowered_constraints;
+    let LoweredConstraints {
+        constraint_sccs,
+        definitions,
+        scc_annotations,
+        constraint_graph: outlives_constraint_graph,
+    } = lowered_constraints;
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
@@ -225,6 +233,7 @@ pub(crate) fn compute_regions<'tcx>(
             polonius_output.clone(),
             location_map,
             placeholder_indices,
+            &outlives_constraint_graph,
         );
 
     NllOutput {
@@ -239,6 +248,7 @@ pub(crate) fn compute_regions<'tcx>(
         outlives_constraints,
         universe_causes,
         live_loans,
+        outlives_constraint_graph,
     }
 }
 

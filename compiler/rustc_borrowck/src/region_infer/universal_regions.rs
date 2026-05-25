@@ -32,7 +32,7 @@ pub(crate) struct UniversalRegionChecker<'a, 'tcx> {
     constraints: &'a OutlivesConstraintSet<'tcx>,
     fr_static: RegionVid,
     values: &'a InferredRegions<'tcx>,
-    constraint_graph: NormalConstraintGraph,
+    constraint_graph: &'a NormalConstraintGraph,
     liveness_constraints: &'a LivenessValues,
 }
 
@@ -61,13 +61,14 @@ impl<'a, 'tcx> UniversalRegionChecker<'a, 'tcx> {
         constraints: &'a OutlivesConstraintSet<'tcx>,
         values: &'a InferredRegions<'tcx>,
         liveness_constraints: &'a LivenessValues,
+        constraint_graph: &'a NormalConstraintGraph,
     ) -> Self {
         Self {
             errors_buffer,
             region_definitions,
             constraints,
             fr_static: values.universal_region_relations.universal_regions.fr_static,
-            constraint_graph: constraints.graph(region_definitions.len()),
+            constraint_graph,
             values,
             liveness_constraints,
         }

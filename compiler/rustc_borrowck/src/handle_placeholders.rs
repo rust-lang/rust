@@ -10,6 +10,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, UniverseIndex};
 use tracing::{debug, trace};
 
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::region_infer::values::LivenessValues;
@@ -26,6 +27,7 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
     pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
     pub(crate) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
+    pub(crate) constraint_graph: NormalConstraintGraph,
 }
 
 pub(crate) type RegionDefinitions<'tcx> = IndexVec<RegionVid, RegionDefinition<'tcx>>;
@@ -243,17 +245,19 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         region_definitions(infcx, universal_regions, liveness_constraints);
 
     let fr_static = universal_regions.fr_static;
-    let compute_sccs =
-        |constraints: &OutlivesConstraintSet<'tcx>,
-         annotations: &mut SccAnnotations<'_, 'tcx, RegionTracker>| {
-            ConstraintSccs::new_with_annotation(
-                &constraints.graph(definitions.len()).region_graph(constraints, fr_static),
-                annotations,
-            )
-        };
+    let constraint_graph = outlives_constraints.graph(definitions.len());
+    let compute_sccs = |constraints: &OutlivesConstraintSet<'tcx>,
+                        annotations: &mut SccAnnotations<'_, 'tcx, RegionTracker>,
+                        constraint_graph: &NormalConstraintGraph| {
+        ConstraintSccs::new_with_annotation(
+            &constraint_graph.region_graph(constraints, fr_static),
+            annotations,
+        )
+    };
 
     let mut scc_annotations = SccAnnotations::init(&definitions);
-    let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
+    let constraint_sccs =
+        compute_sccs(&outlives_constraints, &mut scc_annotations, &constraint_graph);
 
     // This code structure is a bit convoluted because it allows for a planned
     // future change where the early return here has a different type of annotation
@@ -265,6 +269,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
             constraint_sccs,
             scc_annotations: scc_annotations.scc_to_annotation,
             definitions,
+            constraint_graph,
         };
     }
     debug!("Placeholders present; activating placeholder handling logic!");
@@ -276,21 +281,26 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         outlives_constraints,
     );
 
-    let (constraint_sccs, scc_annotations) = if added_constraints {
+    let (constraint_sccs, scc_annotations, constraint_graph) = if added_constraints {
         let mut annotations = SccAnnotations::init(&definitions);
+        let constraint_graph = outlives_constraints.graph(definitions.len());
 
         // We changed the constraint set and so must recompute SCCs.
         // Optimisation opportunity: if we can add them incrementally (and that's
         // possible because edges to 'static always only merge SCCs into 'static),
         // we would potentially save a lot of work here.
-        (compute_sccs(&outlives_constraints, &mut annotations), annotations.scc_to_annotation)
+        (
+            compute_sccs(&outlives_constraints, &mut annotations, &constraint_graph),
+            annotations.scc_to_annotation,
+            constraint_graph,
+        )
     } else {
         // If we didn't add any back-edges; no more work needs doing
         debug!("No constraints rewritten!");
-        (constraint_sccs, scc_annotations.scc_to_annotation)
+        (constraint_sccs, scc_annotations.scc_to_annotation, constraint_graph)
     };
 
-    LoweredConstraints { constraint_sccs, definitions, scc_annotations }
+    LoweredConstraints { constraint_sccs, definitions, scc_annotations, constraint_graph }
 }
 
 pub(crate) fn rewrite_placeholder_outlives<'tcx>(

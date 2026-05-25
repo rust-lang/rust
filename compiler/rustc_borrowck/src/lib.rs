@@ -440,6 +440,7 @@ fn borrowck_check_region_constraints<'tcx>(
         outlives_constraints,
         universe_causes,
         live_loans,
+        outlives_constraint_graph,
     } = nll::compute_regions(
         root_cx,
         &infcx,
@@ -528,7 +529,7 @@ fn borrowck_check_region_constraints<'tcx>(
             definitions: &definitions,
             universal_region_relations: &universal_region_relations,
             outlives_constraints: &outlives_constraints,
-            constraint_graph: outlives_constraints.graph(definitions.len()),
+            constraint_graph: &outlives_constraint_graph,
             liveness_constraints: &liveness_constraints,
             universe_causes: &universe_causes,
         };
@@ -573,7 +574,7 @@ fn borrowck_check_region_constraints<'tcx>(
         definitions: &definitions,
         universal_region_relations: &universal_region_relations,
         outlives_constraints: &outlives_constraints,
-        constraint_graph: outlives_constraints.graph(definitions.len()),
+        constraint_graph: &outlives_constraint_graph,
         liveness_constraints: &liveness_constraints,
         universe_causes: &universe_causes,
     };
@@ -841,7 +842,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     definitions: &'a IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
     universal_region_relations: &'a Frozen<UniversalRegionRelations<'tcx>>,
-    constraint_graph: NormalConstraintGraph,
+    constraint_graph: &'a NormalConstraintGraph,
     outlives_constraints: &'a OutlivesConstraintSet<'tcx>,
     liveness_constraints: &'a LivenessValues,
 
