@@ -1,25 +1,29 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, msg};
 use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
-    AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
+    AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
+    DocInline, HideOrShow,
 };
 use rustc_session::errors::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
-use thin_vec::ThinVec;
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
-    DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
-    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc,
+    DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
+    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
+    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
+    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
 };
-use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
+use crate::parser::{
+    ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
+};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
     DocAttributeNotAttribute, DocKeywordNotKeyword,
@@ -308,6 +312,85 @@ impl DocParser {
         }
     }
 
+    // Parses the `doc(auto_cfg(hide/show(..., values())))` attribute.
+    fn parse_auto_cfg_values(
+        &self,
+        cx: &mut AcceptContext<'_, '_>,
+        list: &MetaItemListParser,
+        values: &mut Option<DocCfgHideShow>,
+    ) {
+        let mut cfg_values = DocCfgHideShow::new();
+
+        let mut values_set = FxHashSet::default();
+        for item in list.mixed() {
+            match item {
+                // If it's a string literal, all good.
+                MetaItemOrLitParser::Lit(MetaItemLit {
+                    kind: LitKind::Str(symbol, _),
+                    span,
+                    ..
+                }) => match &mut cfg_values.values {
+                    DocCfgHideShowValue::Any(any_span) => {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            DocAutoCfgHideShowValuesMix { value_span: *span },
+                            *any_span,
+                        );
+                    }
+                    DocCfgHideShowValue::List(symbols) => {
+                        if values_set.insert(symbol) {
+                            symbols.push((*symbol, *span));
+                        }
+                    }
+                },
+                // If it's any other kind of literal, then it's wrong and we emit a lint.
+                MetaItemOrLitParser::Lit(lit) => cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    DocAutoCfgHideShowUnexpectedItem { attr_name: lit.symbol },
+                    lit.span,
+                ),
+                // If it's a list, then only `any()` and `none()` are allowed and they must not
+                // contain any item.
+                MetaItemOrLitParser::MetaItemParser(sub_item) => {
+                    if let Some(ident) = sub_item.ident()
+                        && [sym::any, sym::none].contains(&ident.name)
+                        && let ArgParser::List(list) = sub_item.args()
+                        && list.mixed().count() == 0
+                    {
+                        if ident.name == sym::any {
+                            if let DocCfgHideShowValue::List(values) = &cfg_values.values
+                                && let Some((_, span)) = values.first()
+                            {
+                                cx.emit_lint(
+                                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                    DocAutoCfgHideShowValuesMix { value_span: *span },
+                                    sub_item.span(),
+                                );
+                            } else {
+                                cfg_values.values = DocCfgHideShowValue::Any(sub_item.span());
+                            }
+                        } else {
+                            cfg_values.only_key = Some(sub_item.span());
+                        }
+                    } else {
+                        cx.emit_lint(
+                            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                            DocAutoCfgHideShowUnexpectedItem {
+                                attr_name: sub_item.ident().unwrap().name,
+                            },
+                            sub_item.span(),
+                        );
+                    }
+                }
+            }
+        }
+        // If `values()` is empty, then it means all values are be impacted.
+        if list.len() == 0 {
+            cfg_values.values = DocCfgHideShowValue::Any(list.span);
+        }
+        *values = Some(cfg_values);
+    }
+
     fn parse_auto_cfg(
         &mut self,
         cx: &mut AcceptContext<'_, '_>,
@@ -319,7 +402,7 @@ impl DocParser {
                 self.attribute.auto_cfg_change.push((true, path.span()));
             }
             ArgParser::List(list) => {
-                for meta in list.mixed() {
+                'main: for meta in list.mixed() {
                     let MetaItemOrLitParser::MetaItemParser(item) = meta else {
                         cx.emit_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
@@ -328,6 +411,8 @@ impl DocParser {
                         );
                         continue;
                     };
+                    // Only `hide` and `show` are allowed in `auto_cfg` if it's a list, and both
+                    // must be a list.
                     let (kind, attr_name) = match item.path().word_sym() {
                         Some(sym::hide) => (HideOrShow::Hide, sym::hide),
                         Some(sym::show) => (HideOrShow::Show, sym::show),
@@ -349,8 +434,10 @@ impl DocParser {
                         continue;
                     };
 
-                    let mut cfg_hide_show = CfgHideShow { kind, values: ThinVec::new() };
+                    let mut cfg_hide_show = CfgHideShow { kind, values: FxIndexMap::default() };
 
+                    let mut cfg_names = FxHashSet::default();
+                    let mut values = None;
                     for item in list.mixed() {
                         let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
                             cx.emit_lint(
@@ -358,47 +445,60 @@ impl DocParser {
                                 DocAutoCfgHideShowUnexpectedItem { attr_name },
                                 item.span(),
                             );
-                            continue;
+                            continue 'main;
                         };
                         match sub_item.args() {
-                            a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
+                            ArgParser::NoArgs if values.is_none() => {
                                 let Some(name) = sub_item.path().word_sym() else {
-                                    // FIXME: remove this method once merged and uncomment the line
-                                    // below instead.
-                                    // cx.expected_identifier(sub_item.path().span());
+                                    cx.adcx().expected_identifier(sub_item.path().span());
+                                    continue 'main;
+                                };
+                                cfg_names.insert(name);
+                            }
+                            // The only accepted list is `values()`.
+                            ArgParser::List(list) if values.is_none() => {
+                                let Some(sym::values) = sub_item.path().word_sym() else {
+                                    cx.adcx().expected_identifier(sub_item.path().span());
+                                    continue 'main;
+                                };
+                                if cfg_names.is_empty() {
                                     cx.emit_lint(
                                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                        MalformedDoc,
-                                        sub_item.path().span(),
-                                    );
-                                    continue;
-                                };
-                                if let Ok(CfgEntry::NameValue { name, value, .. }) =
-                                    super::cfg::parse_name_value(
-                                        name,
-                                        sub_item.path().span(),
-                                        a.as_name_value(),
+                                        DocAutoCfgHideShowNoIdentBeforeValues,
                                         sub_item.span(),
-                                        cx,
-                                    )
-                                {
-                                    cfg_hide_show.values.push(CfgInfo {
-                                        name,
-                                        name_span: sub_item.path().span(),
-                                        // If `value` is `Some`, `a.name_value()` will always return
-                                        // `Some` as well.
-                                        value: value
-                                            .map(|v| (v, a.as_name_value().unwrap().value_span)),
-                                    })
+                                    );
+                                    continue 'main;
                                 }
+                                self.parse_auto_cfg_values(cx, list, &mut values);
                             }
-                            _ => {
+                            // No `name = value` is allowed.
+                            ArgParser::NameValue(_) => {
                                 cx.emit_lint(
                                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                                     DocAutoCfgHideShowUnexpectedItem { attr_name },
                                     sub_item.span(),
                                 );
-                                continue;
+                            }
+                            // If `values()` was already used, no item should come after it.
+                            _ => {
+                                cx.emit_lint(
+                                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                    DocAutoCfgHideShowUnexpectedItemAfterValues,
+                                    sub_item.span(),
+                                );
+                            }
+                        }
+                    }
+
+                    let values = values.unwrap_or(DocCfgHideShow::new_with_only_key(item.span()));
+                    #[allow(rustc::potential_query_instability)]
+                    for cfg_name in &cfg_names {
+                        match cfg_hide_show.values.entry(*cfg_name) {
+                            IndexEntry::Vacant(v) => {
+                                v.insert(values.clone());
+                            }
+                            IndexEntry::Occupied(mut o) => {
+                                o.get_mut().merge_with(&values);
                             }
                         }
                     }

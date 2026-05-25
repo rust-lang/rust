@@ -499,19 +499,96 @@ pub enum HideOrShow {
     Show,
 }
 
-#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
-pub struct CfgInfo {
-    pub name: Symbol,
-    pub name_span: Span,
-    pub value: Option<(Symbol, Span)>,
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq)]
+pub enum DocCfgHideShowValue {
+    Any(Span),
+    List(ThinVec<(Symbol, Span)>),
 }
 
-impl CfgInfo {
-    pub fn span_for_name_and_value(&self) -> Span {
-        if let Some((_, value_span)) = self.value {
-            self.name_span.with_hi(value_span.hi())
-        } else {
-            self.name_span
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct DocCfgHideShow {
+    /// If `Some`, then `cfg` without values (like `cfg(windows)`) will be shown/hidden.
+    /// The `Span` comes from where this value was set.
+    pub only_key: Option<Span>,
+    /// The values of this `cfg` to shown/hidden.
+    pub values: DocCfgHideShowValue,
+}
+
+impl DocCfgHideShow {
+    pub fn new() -> Self {
+        Self { only_key: None, values: DocCfgHideShowValue::List(ThinVec::new()) }
+    }
+
+    pub fn new_with_only_key(span: Span) -> Self {
+        Self { only_key: Some(span), values: DocCfgHideShowValue::List(ThinVec::new()) }
+    }
+
+    pub fn merge_with(&mut self, other: &Self) {
+        if self.only_key.is_none()
+            && let Some(span) = other.only_key
+        {
+            self.only_key = Some(span);
+        }
+        match (&mut self.values, &other.values) {
+            (DocCfgHideShowValue::Any(_), DocCfgHideShowValue::Any(_)) => {
+                // Nothing to do.
+            }
+            (_, DocCfgHideShowValue::Any(span)) => {
+                // We "upgrade" the list values to "all".
+                self.values = DocCfgHideShowValue::Any(*span);
+            }
+            (DocCfgHideShowValue::List(values), DocCfgHideShowValue::List(other_values)) => {
+                // Having duplicates is not an issue, we simply ignore them. Would be more
+                // convenient to have a `set` type though. T_T
+                for (other_symbol, other_span) in other_values {
+                    if !values.iter().any(|(symbol, _)| symbol == other_symbol) {
+                        values.push((*other_symbol, *other_span));
+                    }
+                }
+            }
+            (DocCfgHideShowValue::Any(_), DocCfgHideShowValue::List(_)) => {
+                // Nothing to do here either, we already accept all values.
+            }
+        }
+    }
+
+    pub fn update_with(&mut self, other: &Self) {
+        if self.only_key.is_none()
+            && let Some(span) = other.only_key
+        {
+            self.only_key = Some(span);
+        }
+        match (&mut self.values, &other.values) {
+            (DocCfgHideShowValue::Any(_), _) => {}
+            (DocCfgHideShowValue::List(_), DocCfgHideShowValue::Any(span)) => {
+                self.values = DocCfgHideShowValue::Any(*span);
+            }
+            (DocCfgHideShowValue::List(values), DocCfgHideShowValue::List(other_values)) => {
+                // Having duplicates is not an issue, we simply ignore them. Would be more
+                // convenient to have a `set` type though. T_T
+                for (other_symbol, other_span) in other_values {
+                    if !values.iter().any(|(symbol, _)| symbol == other_symbol) {
+                        values.push((*other_symbol, *other_span));
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn remove_overlap(&mut self, other: &Self) {
+        if other.only_key.is_some() {
+            self.only_key = None;
+        }
+        match (&mut self.values, &other.values) {
+            (_, DocCfgHideShowValue::Any(_)) => {
+                self.values = DocCfgHideShowValue::List(ThinVec::new());
+            }
+            (DocCfgHideShowValue::Any(_), DocCfgHideShowValue::List(values)) => {
+                self.values = DocCfgHideShowValue::List(values.clone());
+            }
+            (DocCfgHideShowValue::List(current), DocCfgHideShowValue::List(values)) => {
+                current.retain(|(name, _)| !values.iter().any(|(other, _)| other == name));
+            }
         }
     }
 }
@@ -519,7 +596,7 @@ impl CfgInfo {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct CfgHideShow {
     pub kind: HideOrShow,
-    pub values: ThinVec<CfgInfo>,
+    pub values: FxIndexMap<Symbol, DocCfgHideShow>,
 }
 
 #[derive(Clone, Debug, Default, StableHash, Decodable, PrintAttribute)]
