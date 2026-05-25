@@ -161,10 +161,6 @@ fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: LocalDefId) 
     }
 }
 
-fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
-}
-
 fn exported_non_generic_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
@@ -491,7 +487,6 @@ pub(crate) fn provide(providers: &mut Providers) {
     providers.queries.upstream_drop_glue_for = upstream_drop_glue_for_provider;
     providers.queries.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
     providers.queries.wasm_import_module_map = wasm_import_module_map;
-    providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.extern_queries.upstream_monomorphizations_for =
         upstream_monomorphizations_for_provider;
 }

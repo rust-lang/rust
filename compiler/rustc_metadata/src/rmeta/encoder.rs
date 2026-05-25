@@ -1033,8 +1033,6 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
 
         let exportable_items = stat!("exportable-items", || self.encode_exportable_items(hcx));
 
-        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
-
         let stable_order_of_exportable_impls =
             stat!("exportable-items", || self.encode_stable_order_of_exportable_impls(hcx));
 
@@ -1049,6 +1047,18 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
                     self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
                 )
             });
+
+        if M::HASH_PUBLIC_API {
+            for (symbol, _info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+                let def_id = match symbol {
+                    ExportedSymbol::NonGeneric(id) => id.expect_local(),
+                    _ => continue,
+                };
+                self.tables.is_reachable_non_generic.set_local_hashed(def_id, true, hcx);
+            }
+        }
+
+        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The

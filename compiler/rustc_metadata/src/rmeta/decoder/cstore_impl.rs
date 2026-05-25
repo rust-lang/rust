@@ -387,6 +387,13 @@ provide! { tcx, def_id, other, cdata,
 
         reachable_non_generics
     }
+    is_reachable_non_generic => {
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_reachable_non_generic.get(cdata, def_id.index)
+        } else {
+            tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
+        }
+    }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
     crate_hash => {
