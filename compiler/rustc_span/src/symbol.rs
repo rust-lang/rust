@@ -1038,7 +1038,7 @@ symbols! {
         global_asm,
         global_registration,
         globs,
-        gpu_kernel,
+        gpu_kernel: "gpu-kernel",
         gpu_launch_sized_workgroup_mem,
         gt,
         guard,

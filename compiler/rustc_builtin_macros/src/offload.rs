@@ -1,11 +1,10 @@
-use crate::errors;
-use rustc_ast::{ForeignMod, ast};
-use rustc_expand::base::Annotatable;
-use rustc_expand::base::ExtCtxt;
+use rustc_ast::{AttrItem, ForeignMod, ast};
+use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
-use rustc_span::{DUMMY_SP, Ident};
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use thin_vec::thin_vec;
+
+use crate::errors;
 
 /*
 ```
@@ -106,9 +105,24 @@ pub(crate) fn expand_kernel(
         span,
     );
 
+    // unsafe(no_mangle) attr
+    let unsafe_item = AttrItem {
+        unsafety: ast::Safety::Unsafe(span),
+        path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
+        args: ast::AttrItemKind::Unparsed(ast::AttrArgs::Empty),
+        tokens: None,
+    };
+
+    let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
+    let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+    let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
+
     let device_item = {
-        let mut item =
-            ecx.item(span, thin_vec![rustc_offload_kernel], ast::ItemKind::Fn(device_fn));
+        let mut item = ecx.item(
+            span,
+            thin_vec![rustc_offload_kernel, unsafe_no_mangle],
+            ast::ItemKind::Fn(device_fn),
+        );
         item.vis = vis.clone();
         Annotatable::Item(item)
     };

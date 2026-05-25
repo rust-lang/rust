@@ -13,8 +13,8 @@
 use std::offload::offload_kernel;
 
 #[offload_kernel]
-fn foo(a: &[f32], b: &[f32], c: &mut [f32]) {
-    *c[0] = a[0] + b[0];
+fn foo(a: &[f32], b: &[f32], c: *mut f32) {
+    *c = a[0] + b[0];
 }
 
 fn main() {}
