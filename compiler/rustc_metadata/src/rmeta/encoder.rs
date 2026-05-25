@@ -28,6 +28,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::hir::map::compute_hir_hash;
 use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::resolve::ModChild;
 use rustc_middle::mir::interpret;
@@ -1165,11 +1166,14 @@ where
             });
 
         if M::HASH_PUBLIC_API {
-            for (symbol, _info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+            for (symbol, info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
                 let def_id = match symbol {
                     ExportedSymbol::NonGeneric(id) => id.expect_local(),
                     _ => continue,
                 };
+                if matches!(info, SymbolExportInfo { level: SymbolExportLevel::C, .. }) {
+                    self.table_writer().is_reachable_non_generic_with_export_level_c(def_id, true);
+                }
                 self.table_writer().is_reachable_non_generic(def_id, true);
             }
         }

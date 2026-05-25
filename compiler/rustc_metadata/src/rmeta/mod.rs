@@ -828,6 +828,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<RDRHashAll, bool>,
     is_exportable: Table<RDRHashAll, bool>,
     is_reachable_non_generic: Table<RDRHashAll, bool>,
+    is_reachable_non_generic_with_export_level_c: Table<RDRHashAll, bool>,
 
 - optional:
     opt_rpitit_info: Table<RDRHashAll, LazyValue<ty::ImplTraitInTraitData>>,
