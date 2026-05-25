@@ -239,6 +239,14 @@ lsx_vpickod_b
 lsx_vpickod_h
 lsx_vpickod_w
 lsx_vpickod_d
+lsx_vilvh_b
+lsx_vilvh_h
+lsx_vilvh_w
+lsx_vilvh_d
+lsx_vilvl_b
+lsx_vilvl_h
+lsx_vilvl_w
+lsx_vilvl_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -475,3 +483,11 @@ lasx_xvpickod_b
 lasx_xvpickod_h
 lasx_xvpickod_w
 lasx_xvpickod_d
+lasx_xvilvh_b
+lasx_xvilvh_h
+lasx_xvilvh_w
+lasx_xvilvh_d
+lasx_xvilvl_b
+lasx_xvilvl_h
+lasx_xvilvl_w
+lasx_xvilvl_d

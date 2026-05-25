@@ -79,6 +79,3 @@ vcvtns_s64_f32
 vcvtns_u64_f32
 vcvtps_s64_f32
 vcvtps_u64_f32
-
-# Broken in Clang (fixed in https://github.com/llvm/llvm-project/pull/156029)
-vcvth_s16_f16

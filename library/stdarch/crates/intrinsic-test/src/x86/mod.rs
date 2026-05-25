@@ -29,8 +29,11 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
 
-    fn arch_flags(&self) -> Vec<&str> {
+    fn arch_flags(&self, _cli_options: &ProcessedCli) -> Vec<&str> {
         vec![
+            "-maes",
+            "-mf16c",
+            "-mfma",
             "-mavx",
             "-mavx2",
             "-mavx512f",
@@ -66,7 +69,7 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
         ]
     }
 
-    fn create(cli_options: ProcessedCli) -> Self {
+    fn create(cli_options: &ProcessedCli) -> Self {
         let mut intrinsics =
             get_xml_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
