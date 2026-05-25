@@ -1158,12 +1158,10 @@ where
 
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let (exported_non_generic_symbols, exported_generic_symbols) =
-            stat!("exported-symbols", || {
-                (
-                    self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
-                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
-                )
-            });
+            stat!("exported-symbols", || (
+                self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
+                self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
+            ));
 
         if M::HASH_PUBLIC_API {
             for (symbol, info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
@@ -2991,10 +2989,12 @@ where
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-    ) -> Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
+    ) -> Unhashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
-        self.hashed_lazy_array(exported_symbols)
+        let array =
+            self.with_record_mode(RecordMode::None, |this| this.lazy_array(exported_symbols));
+        Unhashed(array)
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> Hashed<LazyArray<Option<LinkagePreference>>> {
