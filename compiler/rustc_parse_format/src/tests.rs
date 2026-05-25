@@ -553,6 +553,7 @@ fn asm_concat() {
     assert_eq!(parser.by_ref().collect::<Vec<Piece<'static>>>(), &[Lit(asm)]);
     assert_eq!(parser.line_spans, &[]);
 }
+
 #[test]
 fn diagnostic_format_flags() {
     let lit = "{thing:blah}";

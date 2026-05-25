@@ -942,7 +942,6 @@ impl<'input> Parser<'input> {
 
     fn suggest_format_missing_colon_for_sign(&mut self) {
         if let Some((range, _)) = self.consume_pos('+') {
-            let span = range.clone();
             self.errors.insert(
                 0,
                 ParseError {
@@ -952,7 +951,7 @@ impl<'input> Parser<'input> {
                     label: "expected `:` before `+` sign flag".to_owned(),
                     span: range,
                     secondary_label: None,
-                    suggestion: Suggestion::AddMissingColon(span),
+                    suggestion: Suggestion::None,
                 },
             );
         }

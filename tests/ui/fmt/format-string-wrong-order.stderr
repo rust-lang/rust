@@ -78,10 +78,7 @@ error: invalid format string: the `+` sign flag must appear after `:` in a forma
   --> $DIR/format-string-wrong-order.rs:23:15
    |
 LL |     format!("{+:}");
-   |               ^
-   |               |
-   |               expected `:` before `+` sign flag in format string
-   |               help: add a colon before the format specifier: `:?`
+   |               ^ expected `:` before `+` sign flag in format string
    |
    = note: `+` comes after `:`, try `{:+}` instead of `{+}`
 
@@ -89,10 +86,7 @@ error: invalid format string: the `+` sign flag must appear after `:` in a forma
   --> $DIR/format-string-wrong-order.rs:25:18
    |
 LL |     format!("{bar+:}");
-   |                  ^
-   |                  |
-   |                  expected `:` before `+` sign flag in format string
-   |                  help: add a colon before the format specifier: `:?`
+   |                  ^ expected `:` before `+` sign flag in format string
    |
    = note: `+` comes after `:`, try `{:+}` instead of `{+}`
 
