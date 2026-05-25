@@ -745,6 +745,11 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        unexpected.sort_by_key(|e| (e.line_num, e.column_num));
+        unimportant.sort_by_key(|e| (e.line_num, e.column_num));
+
+        // `not_found` are sorted because `expected_errors` are sorted as they are read from file
+        // line by line.
         let mut not_found = Vec::new();
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
