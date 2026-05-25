@@ -1163,7 +1163,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(..) => true,
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
+            ty::Tuple(fields) => {
+                // Large tuples are not "trivial".
+                fields.len() <= 1 && fields.first().copied().is_none_or(Self::is_trivially_freeze)
+            }
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_freeze(),
             ty::Adt(..)
             | ty::Bound(..)
@@ -1213,7 +1216,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(..) => true,
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
+            ty::Tuple(fields) => {
+                // Large tuples are not "trivial".
+                fields.len() <= 1 && fields.first().copied().is_none_or(Self::is_trivially_unpin)
+            }
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
@@ -1266,7 +1272,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnPtr(..) => true,
             // FIXME(unsafe_binders):
             ty::UnsafeBinder(_) => todo!(),
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_not_async_drop),
+            ty::Tuple(fields) => {
+                // Large tuples are not "trivial".
+                fields.len() <= 1
+                    && fields.first().copied().is_none_or(Self::is_trivially_not_async_drop)
+            }
             ty::Pat(elem_ty, _) | ty::Slice(elem_ty) | ty::Array(elem_ty, _) => {
                 elem_ty.is_trivially_not_async_drop()
             }
