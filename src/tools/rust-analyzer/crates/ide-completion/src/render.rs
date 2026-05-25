@@ -874,6 +874,7 @@ mod tests {
                 exact_name_match,
                 type_match,
                 is_local,
+                is_missing,
                 trait_,
                 is_name_already_imported: _,
                 requires_import,
@@ -889,6 +890,7 @@ mod tests {
                 (type_match == Some(CompletionRelevanceTypeMatch::CouldUnify), "type_could_unify"),
                 (exact_name_match, "name"),
                 (is_local, "local"),
+                (is_missing, "missing"),
                 (postfix_match == Some(CompletionRelevancePostfixMatch::Exact), "snippet"),
                 (trait_.is_some_and(|it| it.is_op_method), "op_method"),
                 (requires_import, "requires_import"),
@@ -1292,6 +1294,7 @@ fn main() { Foo::Fo$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1344,6 +1347,7 @@ fn main() { Foo::Fo$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1489,6 +1493,7 @@ fn main() { Foo::Fo$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1575,6 +1580,7 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1613,6 +1619,7 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1664,6 +1671,7 @@ fn main() { som$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1723,6 +1731,7 @@ fn main() { som$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1766,6 +1775,7 @@ fn main() { A$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1809,6 +1819,7 @@ fn main() { A$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1854,6 +1865,7 @@ fn main() { A::$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1890,6 +1902,7 @@ fn main() { A::$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1940,6 +1953,7 @@ fn main() { A$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -1983,6 +1997,7 @@ fn main() { A$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2023,6 +2038,7 @@ impl A$0
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2063,6 +2079,7 @@ fn main() { A$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2107,6 +2124,7 @@ fn main() { a$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2151,6 +2169,7 @@ fn main() { A { the$0 } }
                                 CouldUnify,
                             ),
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2206,6 +2225,7 @@ impl S {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2299,6 +2319,7 @@ use self::E::*;
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2371,6 +2392,7 @@ fn foo(s: S) { s.$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2591,6 +2613,7 @@ fn f() -> i32 {
                                 Exact,
                             ),
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2697,6 +2720,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: true,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2745,6 +2769,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: true,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -2856,6 +2881,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -3026,6 +3052,37 @@ mod b {
                 tt Foob  []
                 md a::  []
                 md b::  []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn score_patterns() {
+        check_relevance(
+            r#"
+struct Foo(Bar);
+struct Bar { field: i32 }
+fn go(Foo($0): Foo) {}
+"#,
+            expect![[r#"
+                bn Bar {…} Bar { field$1 }$0 [type]
+                st Bar  []
+                st Foo  []
+                bn Foo(…) Foo($1)$0 []
+            "#]],
+        );
+
+        check_relevance(
+            r#"
+struct Foo(Bar);
+enum Bar { Variant { field: i32 } }
+fn go(foo: Foo) { match foo { Foo($0) } }
+"#,
+            expect![[r#"
+                bn Bar::Variant {…} Bar::Variant { field$1 }$0 [type]
+                en Bar  []
+                st Foo  []
+                bn Foo(…) Foo($1)$0 []
             "#]],
         );
     }
@@ -3721,6 +3778,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -3816,6 +3874,7 @@ fn foo() {
                                 Exact,
                             ),
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -3870,6 +3929,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: None,
                             is_name_already_imported: false,
                             requires_import: false,
@@ -4362,6 +4422,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: Some(
                                 CompletionRelevanceTraitInfo {
                                     notable_trait: true,
@@ -4398,6 +4459,7 @@ fn main() {
                             exact_name_match: false,
                             type_match: None,
                             is_local: false,
+                            is_missing: false,
                             trait_: Some(
                                 CompletionRelevanceTraitInfo {
                                     notable_trait: true,

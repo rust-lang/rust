@@ -116,9 +116,8 @@ fn build_completion<'db>(
     let mut relevance = ctx.completion_relevance();
     let adt_ty = ctx.completion.rebase_ty(&adt_ty);
 
-    if is_variant_missing {
-        relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
-    }
+    relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);
+    relevance.is_missing = is_variant_missing;
 
     let mut item = CompletionItem::new(
         CompletionItemKind::Binding,
