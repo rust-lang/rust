@@ -51,7 +51,6 @@ declare_lint_pass! {
         FLOAT_LITERAL_F32_FALLBACK,
         FORBIDDEN_LINT_GROUPS,
         FUNCTION_ITEM_REFERENCES,
-        FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
@@ -67,7 +66,6 @@ declare_lint_pass! {
         LINKER_INFO,
         LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
-        LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         MACRO_USE_EXTERN_CRATE,
         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -2591,96 +2589,6 @@ declare_lint! {
         explain_reason: false
     };
     @edition Edition2024 => Warn;
-}
-
-declare_lint! {
-    /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
-    /// and a pointer.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(strict_provenance_lints)]
-    /// #![warn(fuzzy_provenance_casts)]
-    ///
-    /// fn main() {
-    ///     let _dangling = 16_usize as *const u8;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is part of the strict provenance effort, see [issue #95228].
-    /// Casting an integer to a pointer is considered bad style, as a pointer
-    /// contains, besides the *address* also a *provenance*, indicating what
-    /// memory the pointer is allowed to read/write. Casting an integer, which
-    /// doesn't have provenance, to a pointer requires the compiler to assign
-    /// (guess) provenance. The compiler assigns "all exposed valid" (see the
-    /// docs of [`ptr::with_exposed_provenance`] for more information about this
-    /// "exposing"). This penalizes the optimiser and is not well suited for
-    /// dynamic analysis/dynamic program verification (e.g. Miri or CHERI
-    /// platforms).
-    ///
-    /// It is much better to use [`ptr::with_addr`] instead to specify the
-    /// provenance you want. If using this function is not possible because the
-    /// code relies on exposed provenance then there is as an escape hatch
-    /// [`ptr::with_exposed_provenance`].
-    ///
-    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.with_addr
-    /// [`ptr::with_exposed_provenance`]: https://doc.rust-lang.org/core/ptr/fn.with_exposed_provenance.html
-    pub FUZZY_PROVENANCE_CASTS,
-    Allow,
-    "a fuzzy integer to pointer cast is used",
-    @feature_gate = strict_provenance_lints;
-}
-
-declare_lint! {
-    /// The `lossy_provenance_casts` lint detects an `as` cast between a pointer
-    /// and an integer.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(strict_provenance_lints)]
-    /// #![warn(lossy_provenance_casts)]
-    ///
-    /// fn main() {
-    ///     let x: u8 = 37;
-    ///     let _addr: usize = &x as *const u8 as usize;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is part of the strict provenance effort, see [issue #95228].
-    /// Casting a pointer to an integer is a lossy operation, because beyond
-    /// just an *address* a pointer may be associated with a particular
-    /// *provenance*. This information is used by the optimiser and for dynamic
-    /// analysis/dynamic program verification (e.g. Miri or CHERI platforms).
-    ///
-    /// Since this cast is lossy, it is considered good style to use the
-    /// [`ptr::addr`] method instead, which has a similar effect, but doesn't
-    /// "expose" the pointer provenance. This improves optimisation potential.
-    /// See the docs of [`ptr::addr`] and [`ptr::expose_provenance`] for more information
-    /// about exposing pointer provenance.
-    ///
-    /// If your code can't comply with strict provenance and needs to expose
-    /// the provenance, then there is [`ptr::expose_provenance`] as an escape hatch,
-    /// which preserves the behaviour of `as usize` casts while being explicit
-    /// about the semantics.
-    ///
-    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.addr
-    /// [`ptr::expose_provenance`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_provenance
-    pub LOSSY_PROVENANCE_CASTS,
-    Allow,
-    "a lossy pointer to integer cast is used",
-    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
