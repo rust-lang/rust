@@ -24,6 +24,7 @@ use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::ich::StableHashState;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
@@ -1038,22 +1039,22 @@ impl<'a, 'tcx, M: MetadataEncoder<'tcx>> EncodeContext<'a, 'tcx, M> {
 
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let (exported_non_generic_symbols, exported_generic_symbols) =
-            stat!("exported-symbols", || {
-                (
-                    self.encode_exported_symbols(
-                        tcx.exported_non_generic_symbols(LOCAL_CRATE),
-                        hcx,
-                    ),
-                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
-                )
-            });
+            stat!("exported-symbols", || (
+                self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE), hcx),
+                self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
+            ));
 
         if M::HASH_PUBLIC_API {
-            for (symbol, _info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+            for (symbol, info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
                 let def_id = match symbol {
                     ExportedSymbol::NonGeneric(id) => id.expect_local(),
                     _ => continue,
                 };
+                if matches!(info, SymbolExportInfo { level: SymbolExportLevel::C, .. }) {
+                    self.tables
+                        .is_reachable_non_generic_with_export_level_c
+                        .set_local_hashed(def_id, true, hcx);
+                }
                 self.tables.is_reachable_non_generic.set_local_hashed(def_id, true, hcx);
             }
         }

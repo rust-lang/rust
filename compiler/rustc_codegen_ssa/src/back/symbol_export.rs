@@ -161,6 +161,16 @@ fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: LocalDefId) 
     }
 }
 
+fn is_reachable_non_generic_with_export_level_c_provider(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> bool {
+    match tcx.reachable_non_generics(LOCAL_CRATE).get(&def_id.to_def_id()) {
+        Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => true,
+        _ => false,
+    }
+}
+
 fn exported_non_generic_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
@@ -487,6 +497,8 @@ pub(crate) fn provide(providers: &mut Providers) {
     providers.queries.upstream_drop_glue_for = upstream_drop_glue_for_provider;
     providers.queries.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
     providers.queries.wasm_import_module_map = wasm_import_module_map;
+    providers.queries.is_reachable_non_generic_with_export_level_c =
+        is_reachable_non_generic_with_export_level_c_provider;
     providers.extern_queries.upstream_monomorphizations_for =
         upstream_monomorphizations_for_provider;
 }

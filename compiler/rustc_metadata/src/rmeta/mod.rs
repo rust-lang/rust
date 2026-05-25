@@ -469,6 +469,7 @@ define_tables! {
     defaultness: Table<RDRHashAll, DefIndex, hir::Defaultness>,
     is_exportable: Table<RDRHashAll, DefIndex, bool>,
     is_reachable_non_generic: Table<RDRHashAll, DefIndex, bool>,
+    is_reachable_non_generic_with_export_level_c: Table<RDRHashAll, DefIndex, bool>,
 
 - optional:
     attributes: Table<RDRHashAll, DefIndex, LazyArray<hir::Attribute>>,
