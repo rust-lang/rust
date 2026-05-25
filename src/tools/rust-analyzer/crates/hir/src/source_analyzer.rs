@@ -933,6 +933,28 @@ impl<'db> SourceAnalyzer<'db> {
         ))
     }
 
+    pub(crate) fn resolve_tuple_struct_pat_fields(
+        &self,
+        db: &'db dyn HirDatabase,
+        tuple_struct_pat: &ast::TupleStructPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        let interner = DbInterner::new_no_crate(db);
+        let pat_id = self.pat_id(&tuple_struct_pat.clone().into())?;
+        let variant_id = self.infer()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
+        let (_adt, substs) = self.infer()?.pat_ty(pat_id.as_pat()?).as_adt()?;
+
+        Some(
+            db.field_types(variant_id)
+                .iter()
+                .map(|(local_id, ty)| {
+                    let def = Field { parent: variant_id.into(), id: local_id };
+                    let ty = ty.get().instantiate(interner, substs).skip_norm_wip();
+                    (def, self.ty(ty))
+                })
+                .collect(),
+        )
+    }
+
     pub(crate) fn resolve_bind_pat_to_const(
         &self,
         db: &'db dyn HirDatabase,
