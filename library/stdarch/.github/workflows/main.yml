@@ -281,10 +281,19 @@ jobs:
           - armv7-unknown-linux-gnueabihf
           - x86_64-unknown-linux-gnu
         profile: [dev, release]
+        cc: [clang, gcc]
         include:
           - target: aarch64_be-unknown-linux-gnu
             build_std: true
-
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: dev
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: release
+        exclude:
+          - target: armv7-unknown-linux-gnueabihf
+            cc: gcc
     steps:
     - uses: actions/checkout@v6
     - name: Install Rust
@@ -297,10 +306,11 @@ jobs:
         rustup component add rust-src
         echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
       if: ${{ matrix.build_std }}
+    - run: rustup component add rustfmt
 
     # Configure some env vars based on matrix configuration
     - run: echo "PROFILE=${{ matrix.profile }}" >> $GITHUB_ENV
-    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }}
+    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }} ${{ matrix.cc }}
       if: ${{ !startsWith(matrix.target, 'thumb') }}
       env:
         TARGET: ${{ matrix.target }}
@@ -308,7 +318,7 @@ jobs:
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
     needs: [style]
-    name: Check stdarch-gen-{arm, loongarch, hexagon} output
+    name: Check stdarch-gen-{arm, loongarch, hexagon, hexagon-scalar} output
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -329,6 +339,10 @@ jobs:
     - name: Check hexagon
       run: |
         cargo run -p stdarch-gen-hexagon --release
+        git diff --exit-code
+    - name: Check hexagon scalar
+      run: |
+        cargo run -p stdarch-gen-hexagon-scalar --release
         git diff --exit-code
 
   # Run some tests with Miri. Most stdarch functions use platform-specific intrinsics

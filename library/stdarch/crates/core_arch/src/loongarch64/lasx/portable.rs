@@ -67,6 +67,68 @@ const unsafe fn simd_pickod_h<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 3, 5, 7, 17, 19, 21, 23, 9, 11, 13, 15, 25, 27, 29, 31])
 }
 
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvh_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(
+        b,
+        a,
+        [
+            8, 40, 9, 41, 10, 42, 11, 43, 12, 44, 13, 45, 14, 46, 15, 47,
+            24, 56, 25, 57, 26, 58, 27, 59, 28, 60, 29, 61, 30, 62, 31, 63
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvh_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [4, 20, 5, 21, 6, 22, 7, 23, 12, 28, 13, 29, 14, 30, 15, 31])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvh_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [2, 10, 3, 11, 6, 14, 7, 15])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvh_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 5, 3, 7])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvl_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(
+        b,
+        a,
+        [
+            0, 32, 1, 33, 2, 34, 3, 35, 4, 36, 5, 37, 6, 38, 7, 39,
+            16, 48, 17, 49, 18, 50, 19, 51, 20, 52, 21, 53, 22, 54, 23, 55
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvl_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 16, 1, 17, 2, 18, 3, 19, 8, 24, 9, 25, 10, 26, 11, 27])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvl_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 8, 1, 9, 4, 12, 5, 13])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_ilvl_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 4, 2, 6])
+}
+
 impl_vv!("lasx", lasx_xvpcnt_b, is::simd_ctpop, m256i, i8x32);
 impl_vv!("lasx", lasx_xvpcnt_h, is::simd_ctpop, m256i, i16x16);
 impl_vv!("lasx", lasx_xvpcnt_w, is::simd_ctpop, m256i, i32x8);
@@ -230,6 +292,14 @@ impl_vvv!("lasx", lasx_xvpickod_b, simd_pickod_b, m256i, i8x32);
 impl_vvv!("lasx", lasx_xvpickod_h, simd_pickod_h, m256i, i16x16);
 impl_vvv!("lasx", lasx_xvpickod_w, simd_pickod_w, m256i, i32x8);
 impl_vvv!("lasx", lasx_xvpickod_d, simd_pickod_d, m256i, i64x4);
+impl_vvv!("lasx", lasx_xvilvh_b, simd_ilvh_b, m256i, i8x32);
+impl_vvv!("lasx", lasx_xvilvh_h, simd_ilvh_h, m256i, i16x16);
+impl_vvv!("lasx", lasx_xvilvh_w, simd_ilvh_w, m256i, i32x8);
+impl_vvv!("lasx", lasx_xvilvh_d, simd_ilvh_d, m256i, i64x4);
+impl_vvv!("lasx", lasx_xvilvl_b, simd_ilvl_b, m256i, i8x32);
+impl_vvv!("lasx", lasx_xvilvl_h, simd_ilvl_h, m256i, i16x16);
+impl_vvv!("lasx", lasx_xvilvl_w, simd_ilvl_w, m256i, i32x8);
+impl_vvv!("lasx", lasx_xvilvl_d, simd_ilvl_d, m256i, i64x4);
 
 impl_vuv!("lasx", lasx_xvslli_b, is::simd_shl, m256i, i8x32);
 impl_vuv!("lasx", lasx_xvslli_h, is::simd_shl, m256i, i16x16);

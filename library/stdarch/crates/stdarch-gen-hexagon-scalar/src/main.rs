@@ -513,9 +513,11 @@ fn generate_functions(intrinsics: &[ScalarIntrinsic]) -> String {
         }
 
         // Attributes
-        output.push_str("#[inline(always)]\n");
         if let Some(tf_attr) = info.arch_guard.target_feature_attr() {
+            output.push_str("#[inline]\n"); // https://github.com/rust-lang/rust/issues/145574
             output.push_str(&format!("{}\n", tf_attr));
+        } else {
+            output.push_str("#[inline(always)]\n");
         }
 
         // Immediate parameters become const generics but are passed as positional
