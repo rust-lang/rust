@@ -1134,28 +1134,30 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
-        let expr_prec = fcx.precedence(self.expr);
-        let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
-
-        let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
-        let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        let expr_span = self.expr_span.shrink_to_lo();
-        let sugg = match (needs_parens, needs_cast) {
-            (true, true) => errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast {
-                expr_span,
-                cast_span,
-                cast_ty,
-            },
-            (true, false) => {
-                errors::LossyProvenancePtr2IntSuggestion::NeedsParens { expr_span, cast_span }
+
+        let sugg = self.span.can_be_used_for_suggestions().then(|| {
+            let expr_prec = fcx.precedence(self.expr);
+            let needs_parens = expr_prec < ExprPrecedence::Unambiguous;
+            let needs_cast = !matches!(t_c, ty::cast::IntTy::U(ty::UintTy::Usize));
+            let cast_span = self.expr_span.shrink_to_hi().to(self.cast_span);
+            let expr_span = self.expr_span.shrink_to_lo();
+            match (needs_parens, needs_cast) {
+                (true, true) => errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast {
+                    expr_span,
+                    cast_span,
+                    cast_ty,
+                },
+                (true, false) => {
+                    errors::LossyProvenancePtr2IntSuggestion::NeedsParens { expr_span, cast_span }
+                }
+                (false, true) => {
+                    errors::LossyProvenancePtr2IntSuggestion::NeedsCast { cast_span, cast_ty }
+                }
+                (false, false) => errors::LossyProvenancePtr2IntSuggestion::Other { cast_span },
             }
-            (false, true) => {
-                errors::LossyProvenancePtr2IntSuggestion::NeedsCast { cast_span, cast_ty }
-            }
-            (false, false) => errors::LossyProvenancePtr2IntSuggestion::Other { cast_span },
-        };
+        });
 
         let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
         fcx.tcx.emit_node_span_lint(
@@ -1167,10 +1169,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn fuzzy_provenance_int2ptr_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let sugg = errors::LossyProvenanceInt2PtrSuggestion {
-            lo: self.expr_span.shrink_to_lo(),
-            hi: self.expr_span.shrink_to_hi().to(self.cast_span),
-        };
+        let sugg = self.span.can_be_used_for_suggestions().then(|| {
+            errors::LossyProvenanceInt2PtrSuggestion {
+                lo: self.expr_span.shrink_to_lo(),
+                hi: self.expr_span.shrink_to_hi().to(self.cast_span),
+            }
+        });
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
         let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
