@@ -1207,6 +1207,20 @@ fn f() {
     }
 
     #[test]
+    fn type_mismatch_in_condition() {
+        check_diagnostics(
+            r#"
+fn f() {
+    if 1 {}
+     //^ error: expected bool, found i32
+    match () { _ if 1 => (), _ => () }
+                  //^ error: expected bool, found i32
+}
+"#,
+        );
+    }
+
+    #[test]
     fn regression_14768() {
         check_diagnostics(
             r#"
