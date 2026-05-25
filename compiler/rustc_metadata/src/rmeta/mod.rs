@@ -341,6 +341,7 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+    public_api_hash_opt_enabled: bool,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]

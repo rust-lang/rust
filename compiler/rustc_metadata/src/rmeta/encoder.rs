@@ -929,6 +929,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
             expn_hashes,
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+            public_api_hash_opt_enabled: self.hcx.enabled(),
         };
         let (crate_root, public_hash) = crate_root.into_crate_root(self.hcx);
         let root = stat!("crate-root", || self.lazy(crate_root));
