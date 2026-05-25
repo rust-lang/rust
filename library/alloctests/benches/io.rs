@@ -1,4 +1,4 @@
-use crate::io::prelude::*;
+use std::io::prelude::*;
 
 #[bench]
 fn bench_read_slice(b: &mut test::Bencher) {
