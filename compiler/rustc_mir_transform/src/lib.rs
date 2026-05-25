@@ -233,9 +233,9 @@ pub fn provide(providers: &mut Providers) {
 
 fn remap_mir_for_const_eval_select<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut body: Body<'tcx>,
+    body: &mut Body<'tcx>,
     context: hir::Constness,
-) -> Body<'tcx> {
+) {
     for bb in body.basic_blocks.as_mut().iter_mut() {
         let terminator = bb.terminator.as_mut().expect("invalid terminator");
         match terminator.kind {
@@ -300,7 +300,6 @@ fn remap_mir_for_const_eval_select<'tcx>(
             _ => {}
         }
     }
-    body
 }
 
 fn take_array<T, const N: usize>(b: &mut Box<[T]>) -> Result<[T; N], Box<[T]>> {
@@ -381,19 +380,17 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // Delegate to the main MIR building code in the `rustc_mir_build` crate.
     // This is the one place that is allowed to call `build_mir_inner_impl`.
-    let mut body = tcx.build_mir_inner_impl(def);
+    let mut body = Box::new(tcx.build_mir_inner_impl(def));
+
+    pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     // Identifying trivial consts based on their mir_built is easy, but a little wasteful.
     // Trying to push this logic earlier in the compiler and never even produce the Body would
     // probably improve compile time.
-    if trivial_const::trivial_const(tcx, def, || &body).is_some() {
+    if trivial_const::trivial_const(tcx, def, || &*body).is_some() {
         // Skip all the passes below for trivial consts.
-        let body = tcx.alloc_steal_mir(body);
-        pass_manager::dump_mir_for_phase_change(tcx, &body.borrow());
-        return body;
+        return tcx.alloc_steal_mir(body);
     }
-
-    pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     pm::run_passes(
         tcx,
@@ -480,28 +477,28 @@ fn mir_promoted(
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
 fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &Body<'_> {
     debug_assert!(!tcx.is_trivial_const(def_id), "Tried to get mir_for_ctfe of a trivial const");
-    tcx.arena.alloc(inner_mir_for_ctfe(tcx, def_id))
+    &**tcx.arena.alloc(inner_mir_for_ctfe(tcx, def_id))
 }
 
-fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
+fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Box<Body<'_>> {
     if tcx.is_constructor(def.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
         // qualification and borrow checking the trouble of special casing
         // constructors.
-        return shim::build_adt_ctor(tcx, def.to_def_id());
+        return Box::new(shim::build_adt_ctor(tcx, def.to_def_id()));
     }
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def);
-    let body = match tcx.hir_body_const_context(def) {
+    let mut body = match tcx.hir_body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
         Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
-        Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
+        Some(hir::ConstContext::ConstFn) => Box::new(body.borrow().clone()),
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };
 
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
+    remap_mir_for_const_eval_select(tcx, &mut *body, hir::Constness::Const);
     pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
 
     body
@@ -779,10 +776,10 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
         return tcx.mir_for_ctfe(did);
     }
 
-    tcx.arena.alloc(inner_optimized_mir(tcx, did))
+    &**tcx.arena.alloc(inner_optimized_mir(tcx, did))
 }
 
-fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
+fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Box<Body<'_>> {
     match tcx.hir_body_const_context(did) {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
@@ -792,8 +789,8 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
     debug!("about to call mir_drops_elaborated...");
-    let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+    let mut body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
+    remap_mir_for_const_eval_select(tcx, &mut *body, hir::Constness::NotConst);
 
     if body.tainted_by_errors.is_some() {
         return body;
@@ -830,9 +827,9 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
-    for body in &mut promoted {
+    for body in promoted.iter_mut() {
         run_analysis_to_runtime_passes(tcx, body);
     }
 
-    tcx.arena.alloc(promoted)
+    tcx.arena.alloc(*promoted)
 }

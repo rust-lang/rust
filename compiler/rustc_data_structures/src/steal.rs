@@ -31,6 +31,10 @@ impl<T> Steal<T> {
         Steal { value: RwLock::new(Some(Box::new(value))) }
     }
 
+    pub fn new_from_box(value: Box<T>) -> Self {
+        Steal { value: RwLock::new(Some(value)) }
+    }
+
     #[track_caller]
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         let borrow = self.value.borrow();
@@ -41,10 +45,10 @@ impl<T> Steal<T> {
     }
 
     #[track_caller]
-    pub fn steal(&self) -> T {
+    pub fn steal(&self) -> Box<T> {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = value_ref.take();
-        *value.expect("attempt to steal from stolen value")
+        value.expect("attempt to steal from stolen value")
     }
 
     /// Writers of rustc drivers often encounter stealing issues. This function makes it possible to

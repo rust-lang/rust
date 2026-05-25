@@ -715,7 +715,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .resolver
             .disambiguators
             .get(&def_id)
-            .map(|s| s.steal())
+            .map(|s| *s.steal())
             .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
 
         let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);

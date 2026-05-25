@@ -13,6 +13,7 @@ macro_rules! arena_types {
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
             [decode] mir: rustc_middle::mir::Body<'tcx>,
+            [] mir_box: Box<rustc_middle::mir::Body<'tcx>>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
                     rustc_index::IndexVec<
