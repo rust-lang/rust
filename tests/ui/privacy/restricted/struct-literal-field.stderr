@@ -3,6 +3,12 @@ error[E0451]: field `x` of struct `S` is private
    |
 LL |     S { x: 0 };
    |         ^ private field
+   |
+help: initializer expressions cannot construct structs with private fields
+  --> $DIR/struct-literal-field.rs:19:5
+   |
+LL |     S { x: 0 };
+   |     ^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

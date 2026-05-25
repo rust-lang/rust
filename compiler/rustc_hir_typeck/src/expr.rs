@@ -2638,6 +2638,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         field_name,
                         Applicability::MaybeIncorrect,
                     );
+                } else if self.has_inaccessible_fields(variant, expr) {
+                    err.span_help(
+                        expr.span,
+                        format!(
+                            "initializer expressions cannot construct structs with private fields"
+                        ),
+                    );
                 } else {
                     match ty.kind() {
                         ty::Adt(adt, ..) => {
@@ -2667,6 +2674,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         err.emit()
+    }
+
+    fn has_inaccessible_fields(&self, variant: &'tcx ty::VariantDef, expr: &hir::Expr<'_>) -> bool {
+        variant.fields.iter().any(|field| {
+            !field.vis.is_accessible_from(self.tcx.parent_module(expr.hir_id), self.tcx)
+        })
     }
 
     fn available_field_names(

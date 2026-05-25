@@ -3,6 +3,12 @@ error[E0451]: field `c` of union `U` is private
    |
 LL |     let u = m::U { c: 0 };
    |                    ^ private field
+   |
+help: initializer expressions cannot construct unions with private fields
+  --> $DIR/union-field-privacy-1.rs:12:13
+   |
+LL |     let u = m::U { c: 0 };
+   |             ^^^^^^^^^^^^^
 
 error[E0451]: field `c` of union `U` is private
   --> $DIR/union-field-privacy-1.rs:16:16
