@@ -260,7 +260,7 @@ use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
-use core::pin::PinCoerceUnsized;
+use core::pin::PinSafePointer;
 use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
@@ -2444,12 +2444,19 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
     }
 }
 
+// The API of this pointer type enforces that if the `T` is pinned, then *all*
+// clones of this `Rc<T>` are wrapped as `Pin<Rc<T>>`. Since an `&Rc<T>` could
+// be used to obtain an `Rc<T>` that is not wrapped in `Pin` (and later used
+// with `Rc::get_mut`), this means that this type treats `&Rc<T>` as evidence
+// that the `T` is not pinned. The implementations of various traits are written
+// accordingly. Since this type is not fundamental, downstream crates cannot
+// provide malicious implementations of any of the traits relevant for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for UniqueRc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
