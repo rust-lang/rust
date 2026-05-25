@@ -343,7 +343,6 @@ pub use self::stdio::{set_output_capture, try_set_output_capture};
 
 mod copy;
 mod error;
-mod impls;
 mod pipe;
 pub mod prelude;
 mod stdio;
