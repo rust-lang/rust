@@ -102,7 +102,7 @@ pub enum ControlFlow<B, C = ()> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<B, C> ops::Try for ControlFlow<B, C> {
+const impl<B, C> ops::Branch for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, convert::Infallible>;
 
@@ -116,7 +116,7 @@ const impl<B, C> ops::Try for ControlFlow<B, C> {
 }
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<B, C> const ops::FromOutput for ControlFlow<B, C> {
+const impl<B, C> ops::FromOutput for ControlFlow<B, C> {
     #[inline]
     fn from_output(output: Self::Output) -> Self {
         ControlFlow::Continue(output)

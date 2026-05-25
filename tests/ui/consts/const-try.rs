@@ -21,7 +21,7 @@ const impl FromResidual<Error> for TryMe {
     }
 }
 
-const impl Try for TryMe {
+const impl Branch for TryMe {
     type Output = ();
     type Residual = Error;
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
@@ -33,7 +33,7 @@ impl Residual<()> for Error {
     type TryType = TryMe;
 }
 
-impl const FromOutput for TryMe {
+const impl FromOutput for TryMe {
     fn from_output(output: Self::Output) -> Self {
         TryMe
     }

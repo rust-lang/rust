@@ -595,7 +595,7 @@ impl<T> NeverShortCircuit<T> {
 pub(crate) enum NeverShortCircuitResidual {}
 
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-const impl<T> Try for NeverShortCircuit<T> {
+const impl<T> Branch for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -605,7 +605,7 @@ const impl<T> Try for NeverShortCircuit<T> {
     }
 }
 #[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T> const FromOutput for NeverShortCircuit<T> {
+const impl<T> FromOutput for NeverShortCircuit<T> {
     #[inline]
     fn from_output(x: T) -> Self {
         NeverShortCircuit(x)
