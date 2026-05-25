@@ -3,7 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import * as vscode from "vscode";
-import { Env, log, memoizeAsync, unwrapUndefinable } from "./util";
+import { Env, isWindows, log, memoizeAsync, unwrapUndefinable } from "./util";
 import type { CargoRunnableArgs } from "./lsp_ext";
 
 interface CompilationArtifact {
@@ -178,20 +178,22 @@ async function getPathForExecutableWithEnv(
     executableName: "cargo" | "rustc" | "rustup",
     env: Env,
 ): Promise<string> {
-    const envVar = env[executableName.toUpperCase()];
+    const envVar = getEnvVar(env, executableName.toUpperCase());
     if (envVar) {
         return envVar;
     }
 
-    if (await lookupInPath(executableName, env["PATH"] ?? "")) {
+    if (await lookupInPath(executableName, getEnvVar(env, "PATH") ?? "")) {
         return executableName;
     }
 
-    const cargoHome = getCargoHomeFromPath(env["CARGO_HOME"]);
+    const cargoHome = getCargoHomeFromPath(getEnvVar(env, "CARGO_HOME"));
     if (cargoHome) {
-        const standardPath = vscode.Uri.joinPath(cargoHome, "bin", executableName);
-        if (await isFileAtUri(standardPath)) {
-            return standardPath.fsPath;
+        for (const candidate of executableCandidates(executableName)) {
+            const standardPath = vscode.Uri.joinPath(cargoHome, "bin", candidate);
+            if (await isFileAtUri(standardPath)) {
+                return standardPath.fsPath;
+            }
         }
     }
 
@@ -211,8 +213,10 @@ const getPathForExecutable = memoizeAsync(
 
         const cargoHome = getCargoHome();
         if (cargoHome) {
-            const standardPath = vscode.Uri.joinPath(cargoHome, "bin", executableName);
-            if (await isFileAtUri(standardPath)) return standardPath.fsPath;
+            for (const candidate of executableCandidates(executableName)) {
+                const standardPath = vscode.Uri.joinPath(cargoHome, "bin", candidate);
+                if (await isFileAtUri(standardPath)) return standardPath.fsPath;
+            }
         }
         return executableName;
     },
@@ -220,8 +224,7 @@ const getPathForExecutable = memoizeAsync(
 
 async function lookupInPath(exec: string, paths: string): Promise<boolean> {
     const candidates = paths.split(path.delimiter).flatMap((dirInPath) => {
-        const candidate = path.join(dirInPath, exec);
-        return os.type() === "Windows_NT" ? [candidate, `${candidate}.exe`] : [candidate];
+        return executableCandidates(exec).map((candidate) => path.join(dirInPath, candidate));
     });
 
     for await (const isFile of candidates.map(isFileAtPath)) {
@@ -230,6 +233,22 @@ async function lookupInPath(exec: string, paths: string): Promise<boolean> {
         }
     }
     return false;
+}
+
+function executableCandidates(executableName: string): string[] {
+    // Keep the extension-side probe aligned with `crates/toolchain::probe_for_binary()`, which
+    // checks both the bare executable name and the platform suffix such as `.exe` on Windows.
+    // That matters for both PATH lookups and `$CARGO_HOME/bin/<tool>` fallbacks.
+    return isWindows ? [executableName, `${executableName}.exe`] : [executableName];
+}
+
+function getEnvVar(env: Env, name: string): string | undefined {
+    if (!isWindows) {
+        return env[name];
+    }
+
+    const foldedName = name.toLowerCase();
+    return Object.entries(env).find(([key]) => key.toLowerCase() === foldedName)?.[1];
 }
 
 function getCargoHome(): vscode.Uri | null {

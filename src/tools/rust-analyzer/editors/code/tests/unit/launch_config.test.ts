@@ -3,6 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
 import { Cargo, cargoPath } from "../../src/toolchain";
+import { isWindows, normalizeDriveLetter } from "../../src/util";
 import type { Context } from ".";
 
 export async function getTests(ctx: Context) {
@@ -109,13 +110,11 @@ export async function getTests(ctx: Context) {
         suite.addTest("resolves cargo from provided PATH", async () => {
             const tempDir = await mkdtemp(path.join(os.tmpdir(), "ra-cargo-path-"));
             try {
-                const cargoBinary = path.join(
-                    tempDir,
-                    process.platform === "win32" ? "cargo.exe" : "cargo",
-                );
+                const cargoBinary = path.join(tempDir, isWindows ? "cargo.exe" : "cargo");
                 await writeFile(cargoBinary, "");
 
-                assert.strictEqual(await cargoPath({ PATH: tempDir }), "cargo");
+                const pathKey = isWindows ? "Path" : "PATH";
+                assert.strictEqual(await cargoPath({ [pathKey]: tempDir }), "cargo");
             } finally {
                 await rm(tempDir, { recursive: true, force: true });
             }
@@ -126,19 +125,22 @@ export async function getTests(ctx: Context) {
             try {
                 const binDir = path.join(cargoHome, "bin");
                 await mkdir(binDir);
-                const cargoBinary = path.join(
-                    binDir,
-                    process.platform === "win32" ? "cargo.exe" : "cargo",
-                );
+                const cargoBinary = path.join(binDir, isWindows ? "cargo.exe" : "cargo");
                 await writeFile(cargoBinary, "");
 
                 assert.strictEqual(
-                    await cargoPath({ PATH: "", CARGO_HOME: cargoHome }),
-                    cargoBinary,
+                    normalizeComparablePath(await cargoPath({ PATH: "", CARGO_HOME: cargoHome })),
+                    normalizeComparablePath(cargoBinary),
                 );
             } finally {
                 await rm(cargoHome, { recursive: true, force: true });
             }
         });
     });
+}
+
+function normalizeComparablePath(filePath: string): string {
+    // Windows path comparisons should ignore drive-letter casing because `fsPath`
+    // may normalize it differently while still pointing to the same file.
+    return normalizeDriveLetter(filePath, isWindows);
 }
