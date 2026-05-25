@@ -1,3 +1,6 @@
+# This Dockerfile builds sysroot crates with the GCC backend and then run libcore tests
+# with it.
+
 FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -41,5 +44,4 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --set rust.codegen-backends=[\\\"gcc\\\"]"
 ENV SCRIPT="python3 ../x.py \
   --stage 1 \
-  test library/coretests \
-  --set rust.codegen-backends=[\\\"gcc\\\"]"
+  test library/coretests"
