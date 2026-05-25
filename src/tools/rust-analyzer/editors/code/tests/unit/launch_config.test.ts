@@ -109,7 +109,10 @@ export async function getTests(ctx: Context) {
         suite.addTest("resolves cargo from provided PATH", async () => {
             const tempDir = await mkdtemp(path.join(os.tmpdir(), "ra-cargo-path-"));
             try {
-                const cargoBinary = path.join(tempDir, process.platform === "win32" ? "cargo.exe" : "cargo");
+                const cargoBinary = path.join(
+                    tempDir,
+                    process.platform === "win32" ? "cargo.exe" : "cargo",
+                );
                 await writeFile(cargoBinary, "");
 
                 assert.strictEqual(await cargoPath({ PATH: tempDir }), "cargo");
