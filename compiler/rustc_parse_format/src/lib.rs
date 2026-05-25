@@ -491,6 +491,7 @@ impl<'input> Parser<'input> {
                 ('<' | '^' | '>', _) => self.suggest_format_align(c),
                 (',', _) => self.suggest_unsupported_python_numeric_grouping(),
                 ('=', '}') => self.suggest_rust_debug_printing_macro(),
+                ('+', _) => self.suggest_format_missing_colon_for_sign(),
                 _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
             }
         }
@@ -934,6 +935,24 @@ impl<'input> Parser<'input> {
                     span: range,
                     secondary_label: None,
                     suggestion: Suggestion::None,
+                },
+            );
+        }
+    }
+
+    fn suggest_format_missing_colon_for_sign(&mut self) {
+        if let Some((range, _)) = self.consume_pos('+') {
+            let span = range.clone();
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "the `+` sign flag must appear after `:` in a format string"
+                        .to_owned(),
+                    note: Some("`+` comes after `:`, try `{:+}` instead of `{+}`".to_owned()),
+                    label: "expected `:` before `+` sign flag".to_owned(),
+                    span: range,
+                    secondary_label: None,
+                    suggestion: Suggestion::AddMissingColon(span),
                 },
             );
         }

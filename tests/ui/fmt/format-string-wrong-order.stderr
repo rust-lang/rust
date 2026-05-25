@@ -74,5 +74,27 @@ error: invalid format string: expected alignment specifier after `:` in format s
 LL |     println!("{0:#X>18}", 12345);
    |                    ^ expected `>` to occur after `:` in format string
 
-error: aborting due to 10 previous errors
+error: invalid format string: the `+` sign flag must appear after `:` in a format string
+  --> $DIR/format-string-wrong-order.rs:23:15
+   |
+LL |     format!("{+:}");
+   |               ^
+   |               |
+   |               expected `:` before `+` sign flag in format string
+   |               help: add a colon before the format specifier: `:?`
+   |
+   = note: `+` comes after `:`, try `{:+}` instead of `{+}`
+
+error: invalid format string: the `+` sign flag must appear after `:` in a format string
+  --> $DIR/format-string-wrong-order.rs:25:18
+   |
+LL |     format!("{bar+:}");
+   |                  ^
+   |                  |
+   |                  expected `:` before `+` sign flag in format string
+   |                  help: add a colon before the format specifier: `:?`
+   |
+   = note: `+` comes after `:`, try `{:+}` instead of `{+}`
+
+error: aborting due to 12 previous errors
 
