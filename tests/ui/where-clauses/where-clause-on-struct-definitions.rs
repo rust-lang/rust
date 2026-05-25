@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17904>.
 //@ check-pass
 #![allow(dead_code)]
 // Test that we can parse where clauses on various forms of tuple
