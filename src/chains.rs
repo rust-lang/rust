@@ -572,8 +572,13 @@ impl Rewrite for Chain {
 
         formatter.format_root(&self.parent, context, shape)?;
         if let Some(result) = formatter.pure_root() {
-            return wrap_str(result, context.config.max_width(), shape)
-                .max_width_error(shape.width, self.parent.span);
+            return wrap_str(
+                result,
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            )
+            .max_width_error(shape.width, self.parent.span);
         }
 
         let first = self.children.first().unwrap_or(&self.parent);
@@ -588,7 +593,13 @@ impl Rewrite for Chain {
         formatter.format_last_child(context, shape, child_shape)?;
 
         let result = formatter.join_rewrites(context, child_shape)?;
-        wrap_str(result, context.config.max_width(), shape).max_width_error(shape.width, full_span)
+        wrap_str(
+            result,
+            context.config.max_width(),
+            context.config.tab_spaces(),
+            shape,
+        )
+        .max_width_error(shape.width, full_span)
     }
 }
 
@@ -724,7 +735,7 @@ impl<'a> ChainFormatterShared<'a> {
     ) -> Result<(), RewriteError> {
         let last = self.children.last().unknown_error()?;
         let extendable = may_extend && last_line_extendable(&self.rewrites[0]);
-        let prev_last_line_width = last_line_width(&self.rewrites[0]);
+        let prev_last_line_width = last_line_width(&self.rewrites[0], context.config.tab_spaces());
 
         // Total of all items excluding the last.
         let almost_total = if extendable {
@@ -964,7 +975,8 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
         let mut root_rewrite = parent.rewrite_result(context, parent_shape)?;
         let multiline = root_rewrite.contains('\n');
         self.offset = if multiline {
-            last_line_width(&root_rewrite).saturating_sub(shape.used_width())
+            last_line_width(&root_rewrite, context.config.tab_spaces())
+                .saturating_sub(shape.used_width())
         } else {
             trimmed_last_line_width(&root_rewrite)
         };
@@ -979,7 +991,12 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
                 .visual_indent(self.offset)
                 .sub_width(self.offset, item.span)?;
             let rewrite = item.rewrite_result(context, child_shape)?;
-            if filtered_str_fits(&rewrite, context.config.max_width(), shape) {
+            if filtered_str_fits(
+                &rewrite,
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            ) {
                 root_rewrite.push_str(&rewrite);
             } else {
                 // We couldn't fit in at the visual indent, try the last
