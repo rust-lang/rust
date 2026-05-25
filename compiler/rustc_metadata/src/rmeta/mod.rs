@@ -475,6 +475,8 @@ define_tables! {
     defaultness: Table<RDRHashAll, DefIndex, hir::Defaultness>,
     // FIXME do we need to hash this?
     is_reachable_non_generic: Table<RDRHashAll, DefIndex, bool>,
+    // FIXME do we need to hash this?
+    is_reachable_non_generic_with_export_level_c: Table<RDRHashAll, DefIndex, bool>,
 
 - optional:
     // FIXME do we need to hash this?

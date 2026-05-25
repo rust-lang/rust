@@ -393,6 +393,10 @@ provide! { tcx, def_id, other, cdata,
             tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
         }
     }
+    is_reachable_non_generic_with_export_level_c => {
+        assert!(tcx.sess.opts.unstable_opts.public_api_hash);
+        cdata.root.tables.is_reachable_non_generic_with_export_level_c.get(cdata, def_id.index)
+    }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
     crate_hash => {

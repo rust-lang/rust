@@ -1935,6 +1935,11 @@ rustc_queries! {
             tcx.def_path_str(def_id),
         }
     }
+    query is_reachable_non_generic_with_export_level_c(def_id: DefId) -> bool {
+        desc { "checking whether `{}` is an exported symbol with export level ExportLevel::C", tcx.def_path_str(def_id) }
+        cache_on_disk
+        separate_provide_extern
+    }
 
     /// The entire set of monomorphizations the local crate can safely
     /// link to because they are exported from upstream crates. Do
