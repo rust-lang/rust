@@ -718,7 +718,7 @@ fn compute_ref_match(
     ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionItemRefMode> {
-    if compute_type_match(ctx, completion_ty).is_some() {
+    if compute_type_match(ctx, completion_ty).is_some() || completion_ty.is_unit() {
         return None;
     }
     let expected_type = ctx.expected_type.as_ref()?;
@@ -3189,9 +3189,7 @@ fn main() {
                 lc ssss &mut i32 [type_could_unify+local]
                 md core::  []
                 fn foo(…) fn(&T) []
-                fn &foo(…) [type]
                 fn main() fn() []
-                fn &main() [type]
             "#]],
         );
     }
