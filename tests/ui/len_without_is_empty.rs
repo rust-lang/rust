@@ -351,6 +351,7 @@ impl AsyncResultLenWithoutIsEmpty {
 
     pub async fn len(&self) -> Result<usize, ()> {
         //~^ len_without_is_empty
+        //~| result_unit_err
 
         Err(())
     }
@@ -364,6 +365,7 @@ impl AsyncOptionLen {
     }
 
     pub async fn len(&self) -> Result<usize, ()> {
+        //~^ result_unit_err
         Err(())
     }
 

@@ -143,11 +143,27 @@ error: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `
 LL |     pub async fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: this returns a `Result<_, ()>`
+  --> tests/ui/len_without_is_empty.rs:352:5
+   |
+LL |     pub async fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
+error: this returns a `Result<_, ()>`
+  --> tests/ui/len_without_is_empty.rs:367:5
+   |
+LL |     pub async fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
 error: type `Alias2` has a public `len` method, but no `is_empty` method
-  --> tests/ui/len_without_is_empty.rs:469:5
+  --> tests/ui/len_without_is_empty.rs:471:5
    |
 LL |     pub fn len(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 18 previous errors
 
