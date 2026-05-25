@@ -306,7 +306,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
         } else {
             if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
-                _ = self.demand_eqtype(expr.into(), ty, expected_ty);
+                _ = self.demand_eqtype(expr.into(), expected_ty, ty);
             }
             ty
         }
