@@ -153,11 +153,16 @@ macro_rules! provide_one {
             // The `crate_hash` query must not depend on public_api_hash, since it might change when
             // the `public_api_hash` does not change.
             use rustc_middle::dep_graph::DepKind;
-            if ((DepKind::$name != DepKind::public_api_hash)
-                & (DepKind::$name != DepKind::crate_hash))
-                && $tcx.dep_graph.is_fully_enabled()
-            {
-                $tcx.ensure_ok().public_api_hash($def_id.krate);
+            match DepKind::$name {
+                DepKind::public_api_hash | DepKind::crate_hash => (),
+                DepKind::exported_generic_symbols | DepKind::exported_non_generic_symbols => {
+                    // FIXME should this be some kind of linking_hash? These should only be read
+                    // when we are doing linking
+                    $tcx.ensure_ok().crate_hash($def_id.krate);
+                }
+                _ => {
+                    $tcx.ensure_ok().public_api_hash($def_id.krate);
+                }
             }
 
             let cstore = CStore::from_tcx($tcx);

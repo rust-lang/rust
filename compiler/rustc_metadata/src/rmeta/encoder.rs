@@ -908,12 +908,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                     .set_local_hashed(def_id, true, hcx);
                             }
                         }
-                        self.encode_exported_symbols(
-                            tcx.exported_non_generic_symbols(LOCAL_CRATE),
-                            hcx,
-                        )
+                        self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE))
                     },
-                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE), hcx),
+                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
                 )
             });
 
@@ -2708,11 +2705,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-        hcx: &mut PublicApiHashingContext<'_>,
     ) -> Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
-        hashed_lazy_array!(self, exported_symbols, hcx)
+        let array = self.lazy_array(exported_symbols);
+        Hashed { value: array, hash: Some(Fingerprint::ZERO) }
     }
 
     fn encode_dylib_dependency_formats(
