@@ -377,6 +377,7 @@ provide! { tcx, def_id, other, cdata,
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
+        assert!(!tcx.sess.opts.unstable_opts.public_api_hash, "reachable_non_generics is not available while public_api_hash is enabled!");
         let reachable_non_generics = tcx
             .exported_non_generic_symbols(cdata.cnum)
             .iter()
