@@ -147,6 +147,8 @@ LL |         if let V = vec![] {}
    = note: `Vec<()>` is not usable in patterns
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+  --> $SRC_DIR/alloc/src/macros.rs:LL:COL
 
 error: constant of non-structural type `Vec<()>` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:28:13

@@ -1704,6 +1704,7 @@ impl<'test> TestCx<'test> {
                 compiler.arg("-Ccodegen-units=1");
                 // Hide line numbers to reduce churn
                 compiler.arg("-Zui-testing");
+                compiler.arg("-Zshow-suggestions-with-unavailable-source");
                 compiler.arg("-Zdeduplicate-diagnostics=no");
                 compiler.arg("-Zwrite-long-types-to-disk=no");
                 // FIXME: use this for other modes too, for perf?
