@@ -101,37 +101,6 @@ pub(super) fn handle_needs(
         }
     }
 
-    if name == "needs-asm-mnemonic" {
-        let Some(rest) = ln.value_after_colon() else {
-            return IgnoreDecision::Error {
-                message: "expected `needs-asm-mnemonic` to have a mnemonic name after colon"
-                    .to_string(),
-            };
-        };
-
-        if !config.default_codegen_backend.is_llvm() {
-            return IgnoreDecision::Ignore {
-                reason: "skipping test as non-LLVM backend does not support mnemonic queries"
-                    .to_string(),
-            };
-        }
-
-        let mnemonic = rest.trim();
-        let has_mnemonic = match mnemonic {
-            "ret" => conditions.has_ret_mnemonic,
-            "nop" => conditions.has_nop_mnemonic,
-            _ => has_mnemonic(config, mnemonic),
-        };
-
-        if has_mnemonic {
-            return IgnoreDecision::Continue;
-        } else {
-            return IgnoreDecision::Ignore {
-                reason: format!("skipping test as target does not have `{mnemonic}` mnemonic"),
-            };
-        }
-    }
-
     // Handled elsewhere.
     if name == "needs-llvm-components" || name == "needs-backends" {
         return IgnoreDecision::Continue;
@@ -163,11 +132,6 @@ struct Need {
 pub(crate) struct PreparedNeedsConditions {
     /// The `//@ needs-*` conditions that can be treated as a simple name->boolean mapping.
     simple_needs: HashMap<&'static str, Need>,
-
-    /// Might add particular other mnemonics heavily needed by tests here.
-    /// Otherwise call into llvm for every check
-    has_ret_mnemonic: bool,
-    has_nop_mnemonic: bool,
 }
 
 pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditions {
@@ -177,6 +141,14 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
     // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
     let simple_needs = vec![
+        // This used to be a more general `//@ needs-asm-mnemonic: ret` directive,
+        // but was simplified to just `//@ needs-asm-ret` because there are very
+        // few other mnemonics (`nop`?) that it could ever be useful with.
+        Need {
+            name: "needs-asm-ret",
+            condition: has_mnemonic(config, "ret"),
+            ignore_reason: "ignored on targets without a `ret` assembly instruction",
+        },
         Need {
             name: "needs-asm-support",
             condition: config.has_asm_support(),
@@ -398,11 +370,7 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
         })
         .collect::<HashMap<_, _>>();
 
-    PreparedNeedsConditions {
-        simple_needs,
-        has_ret_mnemonic: has_mnemonic(config, "ret"),
-        has_nop_mnemonic: has_mnemonic(config, "nop"),
-    }
+    PreparedNeedsConditions { simple_needs }
 }
 
 fn find_dlltool(config: &Config) -> bool {
