@@ -301,6 +301,7 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
     rdr_hashes: Option<ItemPublicHashes>,
+    public_api_hash_opt_enabled: bool,
 }
 
 /// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.

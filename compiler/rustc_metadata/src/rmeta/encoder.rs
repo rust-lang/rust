@@ -987,6 +987,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             expn_hashes,
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+            public_api_hash_opt_enabled: tcx.sess.opts.unstable_opts.public_api_hash,
         };
         let crate_root = stat!("public hashes", || crate_root.into_crate_root(self, hcx));
         let hashes = crate_root.header.hashes;

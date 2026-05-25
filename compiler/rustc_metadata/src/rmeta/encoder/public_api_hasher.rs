@@ -458,6 +458,7 @@ pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
     // everything_downstream?
     pub(crate) specialization_enabled_in: bool,
+    pub(crate) public_api_hash_opt_enabled: bool,
 }
 
 impl HashableCrateRoot {
@@ -556,6 +557,7 @@ impl HashableCrateRoot {
 
             specialization_enabled_in: self.specialization_enabled_in,
             rdr_hashes,
+            public_api_hash_opt_enabled: self.public_api_hash_opt_enabled,
         }
     }
 }

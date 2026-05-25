@@ -10,7 +10,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild};
-use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::queries::ExternProviders;
 use rustc_middle::query::LocalCrate;
@@ -377,7 +377,7 @@ provide! { tcx, def_id, other, cdata,
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
-        assert!(!tcx.sess.opts.unstable_opts.public_api_hash, "reachable_non_generics is not available while public_api_hash is enabled!");
+        assert!(!cdata.root.public_api_hash_opt_enabled, "reachable_non_generics is not available from rmeatas where public_api_hash is enabled!");
         let reachable_non_generics = tcx
             .exported_non_generic_symbols(cdata.cnum)
             .iter()
@@ -393,15 +393,21 @@ provide! { tcx, def_id, other, cdata,
         reachable_non_generics
     }
     is_reachable_non_generic => {
-        if tcx.sess.opts.unstable_opts.public_api_hash {
+        if cdata.root.public_api_hash_opt_enabled {
             cdata.root.tables.is_reachable_non_generic.get(cdata, def_id.index)
         } else {
             tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
         }
     }
     is_reachable_non_generic_with_export_level_c => {
-        assert!(tcx.sess.opts.unstable_opts.public_api_hash);
-        cdata.root.tables.is_reachable_non_generic_with_export_level_c.get(cdata, def_id.index)
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_reachable_non_generic_with_export_level_c.get(cdata, def_id.index)
+        } else {
+            match tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+                Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => true,
+                _ => false,
+            }
+        }
     }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
