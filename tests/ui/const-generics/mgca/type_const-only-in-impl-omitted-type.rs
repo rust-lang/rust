@@ -10,7 +10,7 @@ struct GoodS;
 impl BadTr for GoodS {
     type const NUM: = 84;
     //~^ ERROR: missing type for `const` item
-    //~| ERROR: type annotations needed for the literal
+    //~| ERROR: the literal is not of type `{type error}`
 
 }
 

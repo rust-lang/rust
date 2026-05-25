@@ -1,14 +1,14 @@
-error: type annotations needed for the literal
+error: the literal is not of type `<FreshTy(0) as A>::Ty`
   --> $DIR/dyn-compat-self-const-projections-in-assoc-const-ty.rs:32:33
    |
 LL |     let _: dyn A<Ty = i32, CT = 0>;
-   |                                 ^
+   |                                 ^ expected `<FreshTy(0) as A>::Ty`
 
-error: type annotations needed for the literal
+error: the literal is not of type `<FreshTy(0) as A>::Ty`
   --> $DIR/dyn-compat-self-const-projections-in-assoc-const-ty.rs:34:34
    |
 LL |     let _: &dyn A<Ty = i32, CT = 0> = &();
-   |                                  ^
+   |                                  ^ expected `<FreshTy(0) as A>::Ty`
 
 error: aborting due to 2 previous errors
 

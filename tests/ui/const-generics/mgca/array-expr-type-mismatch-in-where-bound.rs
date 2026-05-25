@@ -14,7 +14,7 @@ where
 
 fn bar<T>()
 where
-    T: Trait2<3>, //~ ERROR: type annotations needed for the literal
+    T: Trait2<3>, //~ ERROR: the literal is not of type `[u8; 3]`
 {
 }
 

@@ -28,17 +28,17 @@ error: negated literal must be an integer
 LL |     bar::<{ -"hi" }>();
    |             ^^^^^
 
-error: type annotations needed for the literal
+error: the literal is not of type `isize`
   --> $DIR/nonsensical-negated-literal.rs:16:26
    |
 LL |     foo::<{ Foo { field: -1_usize } }>();
-   |                          ^^^^^^^^
+   |                          ^^^^^^^^ expected `isize`
 
-error: type annotations needed for the literal
+error: the literal is not of type `isize`
   --> $DIR/nonsensical-negated-literal.rs:18:28
    |
 LL |     foo::<{ Foo { field: { -1_usize } } }>();
-   |                            ^^^^^^^^
+   |                            ^^^^^^^^ expected `isize`
 
 error: aborting due to 7 previous errors
 

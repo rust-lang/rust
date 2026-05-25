@@ -14,6 +14,6 @@ struct Foo<T> {
 }
 
 type const WRAP<T : ConstParamTy_> : T = Foo::<T>{field : 1};
-//~^ ERROR: type annotations needed for the literal
+//~^ ERROR: the literal is not of type `T`
 
 fn main() {}

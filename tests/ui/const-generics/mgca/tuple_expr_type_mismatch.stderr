@@ -1,26 +1,38 @@
-error: type annotations needed for the literal
+error: the literal is not of type `bool`
   --> $DIR/tuple_expr_type_mismatch.rs:13:14
    |
 LL |     foo::<{ (1, true) }>();
-   |              ^
+   |              ^ expected `bool`
+
+error: the literal is not of type `i32`
+  --> $DIR/tuple_expr_type_mismatch.rs:13:17
+   |
+LL |     foo::<{ (1, true) }>();
+   |                 ^^^^ expected `i32`, found `bool`
+
+error: the literal is not of type `[u8; 2]`
+  --> $DIR/tuple_expr_type_mismatch.rs:16:14
+   |
+LL |     bar::<{ (1_u32, [1, 2]) }>();
+   |              ^^^^^ expected `[u8; 2]`, found `u32`
 
 error: expected `i32`, found const array
-  --> $DIR/tuple_expr_type_mismatch.rs:15:21
+  --> $DIR/tuple_expr_type_mismatch.rs:16:21
    |
 LL |     bar::<{ (1_u32, [1, 2]) }>();
    |                     ^^^^^^
 
-error: the constant `1` is not of type `char`
-  --> $DIR/tuple_expr_type_mismatch.rs:17:13
+error: the literal is not of type `char`
+  --> $DIR/tuple_expr_type_mismatch.rs:19:14
    |
 LL |     qux::<{ (1i32, 'a') }>();
-   |             ^^^^^^^^^^^ expected `char`, found `i32`
+   |              ^^^^ expected `char`, found `i32`
 
-error: the constant `'a'` is not of type `i32`
-  --> $DIR/tuple_expr_type_mismatch.rs:17:13
+error: the literal is not of type `i32`
+  --> $DIR/tuple_expr_type_mismatch.rs:19:20
    |
 LL |     qux::<{ (1i32, 'a') }>();
-   |             ^^^^^^^^^^^ expected `i32`, found `char`
+   |                    ^^^ expected `i32`, found `char`
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 

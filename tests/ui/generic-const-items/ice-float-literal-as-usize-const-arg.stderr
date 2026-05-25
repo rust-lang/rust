@@ -1,0 +1,17 @@
+error: the literal is not of type `usize`
+  --> $DIR/ice-float-literal-as-usize-const-arg.rs:10:18
+   |
+LL | impl [(); ADD1::<1f64>] {}
+   |                  ^^^^ expected `usize`, found `f64`
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/ice-float-literal-as-usize-const-arg.rs:10:1
+   |
+LL | impl [(); ADD1::<1f64>] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0390`.

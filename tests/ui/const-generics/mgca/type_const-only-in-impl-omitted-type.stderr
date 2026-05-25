@@ -12,11 +12,11 @@ LL | fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
    |
    = note: the declaration in the trait must begin with `type const` not just `const` alone
 
-error: type annotations needed for the literal
+error: the literal is not of type `{type error}`
   --> $DIR/type_const-only-in-impl-omitted-type.rs:11:23
    |
 LL |     type const NUM: = 84;
-   |                       ^^
+   |                       ^^ expected `{type error}`
 
 error: aborting due to 3 previous errors
 

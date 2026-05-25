@@ -2,8 +2,7 @@
 #![expect(incomplete_features)]
 
 type const CONST: usize = 1_i32;
-//~^ ERROR the constant `1` is not of type `usize`
-//~| NOTE expected `usize`, found `i32`
+                        //~^ ERROR the literal is not of type `usize`
 
 fn main() {
     const { CONST };

@@ -22,5 +22,6 @@ trait Parent2 {
 
 fn take1(_: impl Trait1<C = "?">) {}
 //~^ ERROR ambiguous associated constant `C` in bounds of `Trait1`
+//~| ERROR the literal is not of type `i32`
 
 fn main() {}

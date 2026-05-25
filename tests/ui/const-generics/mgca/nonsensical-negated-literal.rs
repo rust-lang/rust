@@ -14,9 +14,9 @@ fn bar<const B: &'static str>() {}
 
 fn main() {
     foo::<{ Foo { field: -1_usize } }>();
-    //~^ ERROR: type annotations needed for the literal
+    //~^ ERROR: the literal is not of type `isize`
     foo::<{ Foo { field: { -1_usize } } }>();
-    //~^ ERROR: type annotations needed for the literal
+    //~^ ERROR: the literal is not of type `isize`
     foo::<{ Foo { field: -true } }>();
     //~^ ERROR negated literal must be an integer
     foo::<{ Foo { field: { -true } } }>();

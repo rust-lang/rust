@@ -11,10 +11,12 @@ fn qux<const Z: (char, i32)>() {}
 
 fn main() {
     foo::<{ (1, true) }>();
-    //~^ ERROR: type annotations needed for the literal
+    //~^ ERROR: the literal is not of type `bool`
+    //~| ERROR: the literal is not of type `i32`
     bar::<{ (1_u32, [1, 2]) }>();
-    //~^ ERROR: expected `i32`, found const array
+    //~^ ERROR: the literal is not of type `[u8; 2]`
+    //~| ERROR: expected `i32`, found const array
     qux::<{ (1i32, 'a') }>();
-    //~^ ERROR: the constant `1` is not of type `char`
-    //~| ERROR: the constant `'a'` is not of type `i32
+    //~^ ERROR: the literal is not of type `char`
+    //~| ERROR: the literal is not of type `i32`
 }
