@@ -34,7 +34,6 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 fn is_nightly_only(pkg: &PkgType) -> bool {
     match pkg {
         PkgType::Miri
-        | PkgType::JsonDocs
         | PkgType::RustcCodegenCranelift
         | PkgType::RustcCodegenGcc
         | PkgType::Gcc { .. }
@@ -49,6 +48,7 @@ fn is_nightly_only(pkg: &PkgType) -> bool {
         | PkgType::RustStd
         | PkgType::Cargo
         | PkgType::HtmlDocs
+        | PkgType::JsonDocs
         | PkgType::RustAnalysis
         | PkgType::RustAnalyzer
         | PkgType::Clippy
