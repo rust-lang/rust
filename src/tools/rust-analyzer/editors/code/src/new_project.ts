@@ -228,10 +228,10 @@ async function showNewProjectError(
     }
     const selection = await vscode.window.showErrorMessage(
         details ? `${message}\n${details}` : message,
-        "Open Logs",
+        "Open Extension Logs",
     );
-    if (selection === "Open Logs") {
-        await vscode.commands.executeCommand("rust-analyzer.openLogs");
+    if (selection === "Open Extension Logs") {
+        log.show();
     }
 }
 
