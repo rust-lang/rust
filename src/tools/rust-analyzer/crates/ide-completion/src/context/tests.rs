@@ -340,6 +340,16 @@ fn foo(x: Foo<Option<i32>>) -> Foo {
 "#,
         expect![[r#"ty: Option<i32>, name: ?"#]],
     );
+    check_expected_type_and_name(
+        r#"
+//- minicore: option
+enum Foo<T> { Var(T) };
+fn foo(x: Foo<Option<i32>>) -> Foo {
+   match x { Foo::Var($0) => () }
+}
+"#,
+        expect![[r#"ty: Option<i32>, name: ?"#]],
+    );
 }
 
 #[test]

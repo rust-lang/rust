@@ -1947,6 +1947,14 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
     }
 
+    pub fn resolve_tuple_struct_pat_fields(
+        &self,
+        tuple_struct_pat: &ast::TupleStructPat,
+    ) -> Option<Vec<(Field, Type<'db>)>> {
+        self.analyze(tuple_struct_pat.syntax())?
+            .resolve_tuple_struct_pat_fields(self.db, tuple_struct_pat)
+    }
+
     // FIXME: Replace this with `resolve_macro_call2`
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<Macro> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);

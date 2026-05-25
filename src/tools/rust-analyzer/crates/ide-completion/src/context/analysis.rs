@@ -801,7 +801,7 @@ fn expected_type_and_name<'db>(
                     (ty, None)
                 },
                 ast::TupleStructPat(it) => {
-                    let fields = sema.type_of_pat(&it.clone().into()).map(|ty| ty.original.fields(sema.db));
+                    let fields = sema.resolve_tuple_struct_pat_fields(&it);
                     let nr = it.fields().take_while(|it| it.syntax().text_range().end() <= token.text_range().start()).count();
                     let ty = fields.and_then(|fields| Some(rebase_ty(fields.get(nr)?.1.clone())));
                     (ty, None)
