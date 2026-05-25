@@ -659,7 +659,8 @@ pub(crate) fn trim_left_preserve_layout(
             let prefix_space_width = if is_empty_line(&line) {
                 None
             } else {
-                Some(get_prefix_space_width(&line, config.tab_spaces()))
+                let (prefix_width, _) = get_prefix_space_width_and_end(&line, config.tab_spaces());
+                Some(prefix_width)
             };
 
             // just InString{Commented} in order to allow the start of a string to be indented
@@ -735,16 +736,17 @@ pub(crate) fn is_empty_line(s: &str) -> bool {
     s.is_empty() || s.chars().all(char::is_whitespace)
 }
 
-fn get_prefix_space_width(s: &str, tab_spaces: usize) -> usize {
+fn get_prefix_space_width_and_end(s: &str, tab_spaces: usize) -> (usize, usize) {
     let mut width = 0;
-    for c in s.chars() {
+
+    for (i, c) in s.char_indices() {
         match c {
             ' ' => width += 1,
             '\t' => width += tab_spaces,
-            _ => return width,
+            _ => return (width, i),
         }
     }
-    width
+    (width, s.len())
 }
 
 pub(crate) trait NodeIdExt {
