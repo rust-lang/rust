@@ -195,7 +195,7 @@ impl Error for TryFromSliceError {}
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Infallible> for TryFromSliceError {
+const impl From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
@@ -203,7 +203,7 @@ impl const From<Infallible> for TryFromSliceError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const AsRef<[T]> for [T; N] {
+const impl<T, const N: usize> AsRef<[T]> for [T; N] {
     #[inline]
     fn as_ref(&self) -> &[T] {
         &self[..]
@@ -212,7 +212,7 @@ impl<T, const N: usize> const AsRef<[T]> for [T; N] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const AsMut<[T]> for [T; N] {
+const impl<T, const N: usize> AsMut<[T]> for [T; N] {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         &mut self[..]
@@ -221,7 +221,7 @@ impl<T, const N: usize> const AsMut<[T]> for [T; N] {
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const Borrow<[T]> for [T; N] {
+const impl<T, const N: usize> Borrow<[T]> for [T; N] {
     fn borrow(&self) -> &[T] {
         self
     }
@@ -229,7 +229,7 @@ impl<T, const N: usize> const Borrow<[T]> for [T; N] {
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
+const impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
     }
@@ -249,7 +249,7 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const TryFrom<&[T]> for [T; N]
+const impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
     T: Copy,
 {
@@ -275,7 +275,7 @@ where
 /// ```
 #[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, const N: usize> const TryFrom<&mut [T]> for [T; N]
+const impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
     T: Copy,
 {
@@ -301,7 +301,7 @@ where
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T, const N: usize> const TryFrom<&'a [T]> for &'a [T; N] {
+const impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
     #[inline]
@@ -324,7 +324,7 @@ impl<'a, T, const N: usize> const TryFrom<&'a [T]> for &'a [T; N] {
 /// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T, const N: usize> const TryFrom<&'a mut [T]> for &'a mut [T; N] {
+const impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
     #[inline]
@@ -380,7 +380,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I, const N: usize> const Index<I> for [T; N]
+const impl<T, I, const N: usize> Index<I> for [T; N]
 where
     [T]: [const] Index<I>,
 {
@@ -394,7 +394,7 @@ where
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I, const N: usize> const IndexMut<I> for [T; N]
+const impl<T, I, const N: usize> IndexMut<I> for [T; N]
 where
     [T]: [const] IndexMut<I>,
 {
@@ -407,7 +407,7 @@ where
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] PartialOrd, const N: usize> const PartialOrd for [T; N] {
+const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
         PartialOrd::partial_cmp(&&self[..], &&other[..])
@@ -433,7 +433,7 @@ impl<T: [const] PartialOrd, const N: usize> const PartialOrd for [T; N] {
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] Ord, const N: usize> const Ord for [T; N] {
+const impl<T: [const] Ord, const N: usize> Ord for [T; N] {
     #[inline]
     fn cmp(&self, other: &[T; N]) -> Ordering {
         Ord::cmp(&&self[..], &&other[..])
@@ -958,7 +958,7 @@ impl<T> Guard<'_, T> {
 }
 
 #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
-impl<T: [const] Destruct> const Drop for Guard<'_, T> {
+const impl<T: [const] Destruct> Drop for Guard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
@@ -993,7 +993,7 @@ pub(crate) const trait SpecNextChunk<T, const N: usize>: Iterator<Item = T> {
     fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>>;
 }
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<I: [const] Iterator<Item = T>, T, const N: usize> const SpecNextChunk<T, N> for I {
+const impl<I: [const] Iterator<Item = T>, T, const N: usize> SpecNextChunk<T, N> for I {
     #[inline]
     default fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
         let mut array = [const { MaybeUninit::uninit() }; N];
@@ -1011,7 +1011,7 @@ impl<I: [const] Iterator<Item = T>, T, const N: usize> const SpecNextChunk<T, N>
     }
 }
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<I: [const] Iterator<Item = T> + TrustedLen, T, const N: usize> const SpecNextChunk<T, N>
+const impl<I: [const] Iterator<Item = T> + TrustedLen, T, const N: usize> SpecNextChunk<T, N>
     for I
 {
     fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
