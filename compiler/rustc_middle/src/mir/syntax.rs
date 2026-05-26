@@ -873,8 +873,8 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// Like `Return` terminators in coroutine bodies, this computes `value` and then a
     /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned
-    /// to the return place of the function calling this one, and execution continues in the
-    /// calling function.
+    /// to the return place provided by the caller function, and execution continues in this caller
+    /// function.
     ///
     /// When the coroutine is polled, execution of this function continues at the `resume`
     /// basic block, the `resume_arg` place is evaluated and the second argument to `poll` is
