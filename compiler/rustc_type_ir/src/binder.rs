@@ -27,7 +27,7 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner, T)]
-#[derive(GenericTypeVisitable)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
@@ -35,23 +35,6 @@ pub struct Binder<I: Interner, T> {
 }
 
 impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
-
-// FIXME: We manually derive `Lift` because the `derive(Lift_Generic)` doesn't
-// understand how to turn `T` to `T::Lifted` in the output `type Lifted`.
-impl<I: Interner, U: Interner, T> Lift<U> for Binder<I, T>
-where
-    T: Lift<U>,
-    I::BoundVarKinds: Lift<U, Lifted = U::BoundVarKinds>,
-{
-    type Lifted = Binder<U, T::Lifted>;
-
-    fn lift_to_interner(self, cx: U) -> Self::Lifted {
-        Binder {
-            value: self.value.lift_to_interner(cx),
-            bound_vars: self.bound_vars.lift_to_interner(cx),
-        }
-    }
-}
 
 #[cfg(feature = "nightly")]
 macro_rules! impl_binder_encode_decode {
