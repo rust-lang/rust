@@ -660,8 +660,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -692,8 +692,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -720,8 +720,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -743,8 +743,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -1962,8 +1962,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "uint_bit_width", since = "1.97.0")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
