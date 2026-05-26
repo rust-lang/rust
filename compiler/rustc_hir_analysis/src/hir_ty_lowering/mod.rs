@@ -432,13 +432,16 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 diag.span_note(impl_.self_ty.span, "not a concrete type");
             }
         }
-        if matches!(self.context, ForbidParamContext::ConstArgument)
-            && self.tcx.features().min_generic_const_args()
-        {
-            if !self.tcx.features().generic_const_args() {
-                diag.help("add `#![feature(generic_const_args)]` to allow generic expressions as the RHS of const items");
-            } else {
+        if matches!(self.context, ForbidParamContext::ConstArgument) {
+            if self.tcx.features().generic_const_args() {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
+            } else if self.tcx.features().min_generic_const_args() {
+                diag.help("add `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
+            } else if self.tcx.sess.is_nightly_build() {
+                diag.help(
+                    "add `#![feature(generic_const_exprs)]` to allow generic const expressions",
+                );
+                diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
             }
         }
         diag.emit()
