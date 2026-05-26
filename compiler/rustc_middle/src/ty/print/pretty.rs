@@ -1105,13 +1105,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
         match ty.kind() {
             // RPITIT trait-side appears as `Projection`, not `Opaque`.
-            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                self.opaque_has_multiple_bounds(*def_id, args)
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                self.opaque_has_multiple_bounds(*def_id)
             }
-            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. })
                 if self.tcx().is_impl_trait_in_trait(*def_id) =>
             {
-                self.opaque_has_multiple_bounds(*def_id, args)
+                self.opaque_has_multiple_bounds(*def_id)
             }
             ty::Dynamic(predicates, region) => {
                 if self.should_print_optional_region(*region) {
@@ -1143,23 +1143,22 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// the synthetic `Sized` / `?Sized` / `MetaSized` / `PointeeSized` suffix
     /// each contribute one top-level joinable component. Regressions land in
     /// `tests/ui/impl-trait/in-trait/refine-rustfix-parens.rs`.
-    fn opaque_has_multiple_bounds(&self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> bool {
+    fn opaque_has_multiple_bounds(&self, def_id: DefId) -> bool {
         let tcx = self.tcx();
         let bounds = tcx.explicit_item_bounds(def_id);
 
         // Mirror `pretty_print_opaque_impl_type`'s sized-bound handling:
         // positive `Sized` and `MetaSized` are absorbed into the synthetic
         // suffix below; negative `Sized` (`?Sized`) falls through and is
-        // printed inline.
+        // printed inline. Only clause *kinds* are inspected here, so the
+        // identity-instantiated bounds carry all the information we need.
         let mut trait_emits = 0usize;
         let mut lifetimes_count = 0usize;
         let mut has_sized_bound = false;
         let mut has_negative_sized_bound = false;
         let mut has_meta_sized_bound = false;
 
-        for (predicate, _) in
-            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
-        {
+        for (predicate, _) in bounds.iter_identity_copied().map(Unnormalized::skip_norm_wip) {
             match predicate.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => match tcx.as_lang_item(pred.def_id()) {
                     Some(LangItem::Sized) => match pred.polarity {
