@@ -19,7 +19,7 @@ use tracing::warn;
 use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::handle_cycle_error;
 use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
-use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
+use crate::plumbing::{current_query_job, loadable_from_disk_incr, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
 
 #[inline]
@@ -604,7 +604,7 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
                 // for this key.
                 EnsureMode::Done => {
                     query.will_cache_on_disk_for_key(key)
-                        && loadable_from_disk(tcx, serialized_dep_node_index)
+                        && loadable_from_disk_incr(tcx, serialized_dep_node_index)
                 }
             }
         }

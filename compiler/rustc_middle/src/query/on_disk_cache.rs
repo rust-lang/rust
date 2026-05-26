@@ -91,6 +91,8 @@ pub struct OnDiskCache {
     // we try to map an `ExpnHash` to its value in the current
     // compilation session.
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
+
+    fresh: bool,
 }
 
 // This type is used only for serialization and deserialization.
@@ -175,6 +177,7 @@ impl OnDiskCache {
             expn_data: footer.expn_data,
             foreign_expn_data: footer.foreign_expn_data,
             hygiene_context: Default::default(),
+            fresh: false,
         })
     }
 
@@ -190,7 +193,12 @@ impl OnDiskCache {
             expn_data: UnhashMap::default(),
             foreign_expn_data: UnhashMap::default(),
             hygiene_context: Default::default(),
+            fresh: true,
         }
+    }
+
+    pub fn is_fresh(&self) -> bool {
+        self.fresh
     }
 
     /// Release the serialized backing `Mmap`.

@@ -173,8 +173,9 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
     }
 }
 
-pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeIndex) -> bool {
-    if let Some(cache) = tcx.query_system.on_disk_cache.as_ref() {
+pub(crate) fn loadable_from_disk_incr<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeIndex) -> bool {
+    let cache = tcx.query_system.on_disk_cache.as_ref().unwrap();
+    if !cache.is_fresh() {
         assert!(cache.loadable_from_disk(id));
         true
     } else {
