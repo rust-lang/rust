@@ -1,5 +1,5 @@
 error[E0392]: type parameter `T` is never used
-  --> $DIR/issue-17904-2.rs:4:12
+  --> $DIR/where-clause-on-unit-struct.rs:5:12
    |
 LL | struct Foo<T> where T: Copy;
    |            ^ unused type parameter
