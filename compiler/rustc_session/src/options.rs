@@ -892,6 +892,46 @@ pub mod parse {
         }
     }
 
+    /// Like [`parse_string_enum`], but also accepts boolean spellings
+    /// (`yes`/`no`/`y`/`n`/`on`/`off`/`true`/`false`) and the no-value case.
+    /// Each of `no_value`, `bool_true`, and `bool_false` is the variant the
+    /// caller wants that input shape to map to, or `None` to reject it.
+    pub(crate) fn parse_string_enum_with_bool<T: FromStr<Err = ()>>(
+        slot: &mut T,
+        v: Option<&str>,
+        no_value: Option<T>,
+        bool_true: Option<T>,
+        bool_false: Option<T>,
+    ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                let mapped = if bool_arg.unwrap() { bool_true } else { bool_false };
+                if let Some(value) = mapped {
+                    *slot = value;
+                    return true;
+                }
+            }
+        }
+        match v {
+            None => {
+                if let Some(value) = no_value {
+                    *slot = value;
+                    true
+                } else {
+                    false
+                }
+            }
+            Some(s) => match s.parse() {
+                Ok(value) => {
+                    *slot = value;
+                    true
+                }
+                Err(()) => false,
+            },
+        }
+    }
+
     /// This is for boolean options that don't take a value, and are true simply
     /// by existing on the command-line.
     ///
@@ -1291,40 +1331,23 @@ pub mod parse {
     }
 
     pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { CFGuard::Checks } else { CFGuard::Disabled };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None => CFGuard::Checks,
-            Some("checks") => CFGuard::Checks,
-            Some("nochecks") => CFGuard::NoChecks,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(CFGuard::Checks),
+            Some(CFGuard::Checks),
+            Some(CFGuard::Disabled),
+        )
     }
 
     pub(crate) fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None | Some("none") => CFProtection::None,
-            Some("branch") => CFProtection::Branch,
-            Some("return") => CFProtection::Return,
-            Some("full") => CFProtection::Full,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(CFProtection::None),
+            Some(CFProtection::Full),
+            Some(CFProtection::None),
+        )
     }
 
     pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {

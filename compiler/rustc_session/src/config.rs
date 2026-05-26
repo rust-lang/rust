@@ -61,33 +61,38 @@ rustc_data_structures::string_enum! {
     }
 }
 
-/// The different settings that the `-C control-flow-guard` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CFGuard {
-    /// Do not emit Control Flow Guard metadata or checks.
-    Disabled,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C control-flow-guard` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum CFGuard {
+        /// Do not emit Control Flow Guard metadata or checks. Reachable only
+        /// via boolean false (`no`, `off`, `false`, etc.).
+        Disabled,
 
-    /// Emit Control Flow Guard metadata but no checks.
-    NoChecks,
+        /// Emit Control Flow Guard metadata but no checks.
+        NoChecks => "nochecks",
 
-    /// Emit Control Flow Guard metadata and checks.
-    Checks,
+        /// Emit Control Flow Guard metadata and checks.
+        Checks => "checks",
+    }
 }
 
-/// The different settings that the `-Z cf-protection` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CFProtection {
-    /// Do not enable control-flow protection
-    None,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-Z cf-protection` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum CFProtection {
+        /// Do not enable control-flow protection
+        None => "none",
 
-    /// Emit control-flow protection for branches (enables indirect branch tracking).
-    Branch,
+        /// Emit control-flow protection for branches (enables indirect branch tracking).
+        Branch => "branch",
 
-    /// Emit control-flow protection for returns.
-    Return,
+        /// Emit control-flow protection for returns.
+        Return => "return",
 
-    /// Emit control-flow protection for both branches and returns.
-    Full,
+        /// Emit control-flow protection for both branches and returns.
+        Full => "full",
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, StableHash, Encodable, Decodable)]
