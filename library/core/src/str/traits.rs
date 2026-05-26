@@ -24,7 +24,7 @@ impl Ord for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialEq for str {
+const impl PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
         self.as_bytes() == other.as_bytes()
@@ -33,7 +33,7 @@ impl const PartialEq for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const Eq for str {}
+const impl Eq for str {}
 
 /// Implements comparison operations on strings.
 ///
@@ -52,7 +52,7 @@ impl PartialOrd for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<I> const ops::Index<I> for str
+const impl<I> ops::Index<I> for str
 where
     I: [const] SliceIndex<str>,
 {
@@ -66,7 +66,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<I> const ops::IndexMut<I> for str
+const impl<I> ops::IndexMut<I> for str
 where
     I: [const] SliceIndex<str>,
 {
@@ -90,7 +90,7 @@ where
 /// Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeFull {
+const unsafe impl SliceIndex<str> for ops::RangeFull {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -155,7 +155,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
 /// ```
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::Range<usize> {
+const unsafe impl SliceIndex<str> for ops::Range<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -260,7 +260,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
 
 #[stable(feature = "new_range_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::Range<usize> {
+const unsafe impl SliceIndex<str> for range::Range<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -432,7 +432,7 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 /// character (as defined by `is_char_boundary`), or if `end > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -501,7 +501,7 @@ unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
 /// a character (as defined by `is_char_boundary`), or if `begin > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -557,7 +557,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
 
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
+const unsafe impl SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -629,7 +629,7 @@ unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
 /// byte offset or equal to `len`), if `begin > end`, or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -687,7 +687,7 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
+const unsafe impl SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -733,7 +733,7 @@ unsafe impl const SliceIndex<str> for range::RangeInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
+const unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
@@ -779,7 +779,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `last >= len`.
 #[stable(feature = "new_range_to_inclusive_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
+const unsafe impl SliceIndex<str> for range::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {

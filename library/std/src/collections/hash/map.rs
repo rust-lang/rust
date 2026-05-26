@@ -1486,7 +1486,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<K, V, S> const Default for HashMap<K, V, S>
+const impl<K, V, S> Default for HashMap<K, V, S>
 where
     S: [const] Default,
 {

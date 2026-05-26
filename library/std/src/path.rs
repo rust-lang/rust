@@ -3690,7 +3690,7 @@ unsafe impl CloneToUninit for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<OsStr> for Path {
+const impl AsRef<OsStr> for Path {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         &self.inner
@@ -3861,7 +3861,7 @@ impl Ord for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for Path {
+const impl AsRef<Path> for Path {
     #[inline]
     fn as_ref(&self) -> &Path {
         self
@@ -3870,7 +3870,7 @@ impl const AsRef<Path> for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for OsStr {
+const impl AsRef<Path> for OsStr {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)

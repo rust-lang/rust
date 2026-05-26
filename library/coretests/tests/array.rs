@@ -770,7 +770,7 @@ const fn extra_const_array_ops() {
         { std::array::from_fn(const |i| i + 4).map(const |x| x * 2).map(const |x| x as _) };
     let y = 4;
     struct Z(u16);
-    impl const Drop for Z {
+    const impl Drop for Z {
         fn drop(&mut self) {}
     }
     let w = Z(2);

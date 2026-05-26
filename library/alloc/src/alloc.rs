@@ -442,7 +442,7 @@ impl Global {
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-unsafe impl const Allocator for Global {
+const unsafe impl Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {

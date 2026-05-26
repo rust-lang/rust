@@ -102,7 +102,7 @@ pub enum ControlFlow<B, C = ()> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<B, C> const ops::Try for ControlFlow<B, C> {
+const impl<B, C> ops::Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, convert::Infallible>;
 
@@ -124,7 +124,7 @@ impl<B, C> const ops::Try for ControlFlow<B, C> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
+const impl<B, C> ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
     #[inline]
     fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
         match residual {
@@ -135,7 +135,7 @@ impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for Cont
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
-impl<B, C> const ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+const impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
     type TryType = ControlFlow<B, C>;
 }
 
