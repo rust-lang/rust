@@ -16,6 +16,7 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
+use crate::attr::diagnostic::{Directive, Filter, NameValue, Predicate};
 use crate::tokenstream::*;
 use crate::visit::{AssocCtxt, BoundKind, FnCtxt, LifetimeCtxt, VisitorResult, try_visit};
 

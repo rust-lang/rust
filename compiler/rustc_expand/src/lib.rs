@@ -7,6 +7,7 @@
 #![feature(proc_macro_internals)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![recursion_limit = "256"] // For rustdoc
 // tidy-alphabetical-end
 
 mod build;

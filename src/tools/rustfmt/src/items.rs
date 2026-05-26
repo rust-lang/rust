@@ -1163,6 +1163,7 @@ pub(crate) fn format_trait(
         ref generics,
         ref bounds,
         ref items,
+        on_unimplemented: _,
     } = *trait_;
 
     let mut result = String::with_capacity(128);

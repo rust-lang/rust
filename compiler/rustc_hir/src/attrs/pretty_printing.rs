@@ -17,6 +17,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
+use crate::attrs::diagnostic::Directive;
 use crate::limit::Limit;
 
 /// This trait is used to print attributes in `rustc_hir_pretty`.
@@ -209,4 +210,5 @@ print_debug!(
     CfgEntry,
     DiffActivity,
     DiffMode,
+    Directive,
 );

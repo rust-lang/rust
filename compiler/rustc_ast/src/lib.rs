@@ -7,6 +7,7 @@
 // tidy-alphabetical-start
 #![doc(test(attr(deny(warnings), allow(internal_features))))]
 #![feature(associated_type_defaults)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(macro_metavar_expr)]

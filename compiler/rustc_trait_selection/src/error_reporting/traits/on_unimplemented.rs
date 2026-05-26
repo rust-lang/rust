@@ -2,8 +2,9 @@ use std::path::PathBuf;
 
 use rustc_hir as hir;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FilterOptions, FormatArgs};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
+use rustc_middle::query::QueryKey;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
 use rustc_span::Symbol;
@@ -61,8 +62,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let (def_id, args) = (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args);
         let trait_pred = trait_pred.skip_binder();
 
-        let mut self_types = vec![];
-        let mut generic_args: Vec<(Symbol, String)> = vec![];
+        let mut self_types: Vec<(String, Option<DefId>)> = vec![];
+        let mut generic_args: Vec<(Symbol, String, Option<DefId>)> = vec![];
         let mut crate_local = false;
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
@@ -93,37 +94,30 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
             let self_ty = trait_pred.self_ty();
-            self_types.push(self_ty.to_string());
+            self_types.push((self_ty.to_string(), self_ty.key_as_def_id()));
             if let Some(def) = self_ty.ty_adt_def() {
                 // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                self_types.push(
-                    self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip().to_string(),
-                );
+                let ty = self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip();
+                self_types.push((ty.to_string(), ty.key_as_def_id()));
             }
 
-            for GenericParamDef { name, kind, index, .. } in generics.own_params.iter() {
+            for GenericParamDef { name, def_id, kind, index, .. } in generics.own_params.iter() {
                 let value = match kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         args[*index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => continue,
                 };
-                generic_args.push((*name, value));
+                generic_args.push((*name, value, Some(*def_id)));
 
                 if let GenericParamDefKind::Type { .. } = kind {
                     let param_ty = args[*index as usize].expect_ty();
                     if let Some(def) = param_ty.ty_adt_def() {
                         // We also want to be able to select the parameter's
                         // original signature with no type arguments resolved
-                        generic_args.push((
-                            *name,
-                            self.tcx
-                                .type_of(def.did())
-                                .instantiate_identity()
-                                .skip_norm_wip()
-                                .to_string(),
-                        ));
+                        let ty = self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip();
+                        generic_args.push((*name, ty.to_string(), ty.key_as_def_id()));
                     }
                 }
             }
@@ -132,16 +126,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if adt.did().is_local() {
                     crate_local = true;
                 }
-                self_types.push(format!("{{{}}}", adt.descr()))
+                self_types.push((format!("{{{}}}", adt.descr()), Some(adt.did())));
             }
 
             // Allow targeting all integers using `{integral}`, even if the exact type was resolved
             if self_ty.is_integral() {
-                self_types.push("{integral}".to_owned());
+                self_types.push(("{integral}".to_owned(), None));
             }
 
             if self_ty.is_array_slice() {
-                self_types.push("&[]".to_owned());
+                self_types.push(("&[]".to_owned(), None));
             }
 
             if self_ty.is_fn() {
@@ -156,53 +150,59 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         hir::Safety::Unsafe => "unsafe fn",
                     }
                 };
-                self_types.push(shortname.to_owned());
+                self_types.push((shortname.to_owned(), None));
             }
 
             // Slices give us `[]`, `[{ty}]`
             if let ty::Slice(aty) = self_ty.kind() {
-                self_types.push("[]".to_owned());
+                self_types.push(("[]".to_owned(), None));
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    self_types.push(format!(
-                        "[{}]",
-                        self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip()
+                    self_types.push((
+                        format!(
+                            "[{}]",
+                            self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip()
+                        ),
+                        None,
                     ));
                 }
                 if aty.is_integral() {
-                    self_types.push("[{integral}]".to_string());
+                    self_types.push(("[{integral}]".to_string(), None));
                 }
             }
 
             // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
-                self_types.push("[]".to_string());
+                self_types.push(("[]".to_string(), None));
                 let len = len.try_to_target_usize(self.tcx);
-                self_types.push(format!("[{aty}; _]"));
+                self_types.push((format!("[{aty}; _]"), None));
                 if let Some(n) = len {
-                    self_types.push(format!("[{aty}; {n}]"));
+                    self_types.push((format!("[{aty}; {n}]"), None));
                 }
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
                     let def_ty = self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip();
-                    self_types.push(format!("[{def_ty}; _]"));
+                    self_types.push((format!("[{def_ty}; _]"), None));
                     if let Some(n) = len {
-                        self_types.push(format!("[{def_ty}; {n}]"));
+                        self_types.push((format!("[{def_ty}; {n}]"), None));
                     }
                 }
                 if aty.is_integral() {
-                    self_types.push("[{integral}; _]".to_string());
+                    self_types.push(("[{integral}; _]".to_string(), None));
                     if let Some(n) = len {
-                        self_types.push(format!("[{{integral}}; {n}]"));
+                        self_types.push((format!("[{{integral}}; {n}]"), None));
                     }
                 }
             }
             if let ty::Dynamic(traits, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
-                        self_types.push(self.tcx.def_path_str(trait_ref.def_id));
+                        self_types.push((
+                            self.tcx.def_path_str(trait_ref.def_id),
+                            Some(trait_ref.def_id),
+                        ));
                     }
                 }
             }
@@ -212,7 +212,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 && let ty::Slice(sty) = ref_ty.kind()
                 && sty.is_integral()
             {
-                self_types.push("&[{integral}]".to_owned());
+                self_types.push(("&[{integral}]".to_owned(), None));
             }
         }));
 

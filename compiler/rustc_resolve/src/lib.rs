@@ -1569,6 +1569,9 @@ pub struct Resolver<'ra, 'tcx> {
     // that were encountered during resolution. These names are used to generate item names
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
+
+    /// Stores "inert" attributes that must annotate the item they're on.
+    inert_attrs: FxHashMap<&'static [Symbol], &'ra  Arc<SyntaxExtension>> = default::fx_hash_map()
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is

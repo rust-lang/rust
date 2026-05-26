@@ -12,6 +12,7 @@ use std::debug_assert_matches;
 use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
 
+use rustc_ast::attr::diagnostic::Directive;
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
@@ -2879,9 +2880,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
-            ItemKind::Trait(Trait { generics, bounds, items, impl_restriction, .. }) => {
+            ItemKind::Trait(Trait {
+                impl_restriction,
+                constness: _,
+                safety: _,
+                is_auto: _,
+                ident: _,
+                generics,
+                bounds,
+                items,
+                on_unimplemented,
+            }) => {
                 // resolve paths for `impl` restrictions
                 self.resolve_impl_restriction_path(impl_restriction);
+
+                self.resolve_directive_paths(on_unimplemented);
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
@@ -4514,6 +4527,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         self.r.dcx().create_err(errors::RestrictionAncestorOnly(path.span)).emit();
                     }
                 }
+            }
+        }
+    }
+
+    fn resolve_directive_paths(&mut self, directive: &'ast Option<Directive>) {
+        if let Some(directive) = directive {
+            for (filter, _) in &directive.filters {
+                filter.pred.visit_predicates(&mut |id, path| {
+                    self.smart_resolve_path(id, &None, path, PathSource::Type);
+                })
             }
         }
     }

@@ -6,15 +6,7 @@ use ::std::prelude::rust_2015::*;
 //@ check-pass
 //@ edition: 2015
 
-#[attr = OnUnimplemented {directive: Directive {is_rustc_attr: false,
-filters: [],
-message: FormatString {input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",
-pieces: [Lit("My Message for `ImportantTrait<"),
-Arg(GenericParam {generic_param: "A"}), Lit(">` implemented for `"),
-Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",
-pieces: [Lit("My Label")]}, notes: [FormatString {input: "Note 1",
-pieces: [Lit("Note 1")]}, FormatString {input: "Note 2",
-pieces: [Lit("Note 2")]}]}}]
+#[attr = OnUnimplemented {directive: Directive { is_rustc_attr: false, filters: [], message: Some(($DIR/diagnostic-attr.rs:7:5: 7:78 (#0), FormatString { input: "My Message for `ImportantTrait<{A}>` implemented for `{Self}`", span: $DIR/diagnostic-attr.rs:7:15: 7:78 (#0), pieces: [Lit("My Message for `ImportantTrait<"), Arg(GenericParam { generic_param: "A", span: $DIR/diagnostic-attr.rs:7:48: 7:49 (#0) }), Lit(">` implemented for `"), Arg(SelfUpper), Lit("`")] })), label: Some(($DIR/diagnostic-attr.rs:8:5: 8:23 (#0), FormatString { input: "My Label", span: $DIR/diagnostic-attr.rs:8:13: 8:23 (#0), pieces: [Lit("My Label")] })), notes: [FormatString { input: "Note 1", span: $DIR/diagnostic-attr.rs:9:12: 9:20 (#0), pieces: [Lit("Note 1")] }, FormatString { input: "Note 2", span: $DIR/diagnostic-attr.rs:10:12: 10:20 (#0), pieces: [Lit("Note 2")] }], parent_label: None }}]
 trait ImportantTrait<A> { }
 
 #[attr = DoNotRecommend]
@@ -22,11 +14,5 @@ impl <T> ImportantTrait<T> for T where T: Clone { }
 
 struct X;
 
-#[attr = OnConst {directive: Directive {is_rustc_attr: false, filters: [],
-message: FormatString {input: "My Message for `ImportantTrait<u8>` implemented for `{Self}`",
-pieces: [Lit("My Message for `ImportantTrait<u8>` implemented for `"),
-Arg(SelfUpper), Lit("`")]}, label: FormatString {input: "My Label",
-pieces: [Lit("My Label")]}, notes: [FormatString {input: "Note 1",
-pieces: [Lit("Note 1")]}, FormatString {input: "Note 2",
-pieces: [Lit("Note 2")]}]}}]
+#[attr = OnConst {directive: Directive { is_rustc_attr: false, filters: [], message: Some(($DIR/diagnostic-attr.rs:20:5: 20:77 (#0), FormatString { input: "My Message for `ImportantTrait<u8>` implemented for `{Self}`", span: $DIR/diagnostic-attr.rs:20:15: 20:77 (#0), pieces: [Lit("My Message for `ImportantTrait<u8>` implemented for `"), Arg(SelfUpper), Lit("`")] })), label: Some(($DIR/diagnostic-attr.rs:21:5: 21:23 (#0), FormatString { input: "My Label", span: $DIR/diagnostic-attr.rs:21:13: 21:23 (#0), pieces: [Lit("My Label")] })), notes: [FormatString { input: "Note 1", span: $DIR/diagnostic-attr.rs:22:12: 22:20 (#0), pieces: [Lit("Note 1")] }, FormatString { input: "Note 2", span: $DIR/diagnostic-attr.rs:23:12: 23:20 (#0), pieces: [Lit("Note 2")] }], parent_label: None }}]
 impl ImportantTrait<u8> for X { }

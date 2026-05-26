@@ -565,6 +565,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol) {
         self.impl_trait_names.insert(id, name);
     }
+
+    fn insert_inert_attr(&mut self, path: &'static [Symbol], kind: SyntaxExtensionKind) {
+        let ext = self.arenas.alloc_macro(SyntaxExtension::default(kind, self.tcx.sess.edition()));
+        self.inert_attrs.insert(path, ext);
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -628,7 +633,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.dcx().emit_err(errors::AttributesStartingWithRustcAreReserved {
                         span: segment.ident.span,
                     });
-                } else {
+                } else if !self.tcx.features().rustc_attrs() {
                     self.dcx().emit_err(errors::AttributesContainingRustcAreReserved {
                         span: segment.ident.span,
                     });
@@ -720,6 +725,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (sym::on_const, Some(sym::diagnostic_on_const)),
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
             (sym::on_unmatch_args, Some(sym::diagnostic_on_unmatch_args)),
+            (sym::rustc_on_unimplemented, Some(sym::rustc_attrs)),
         ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
@@ -832,7 +838,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             self.multi_segment_macro_resolutions.borrow_mut(&self).push((
-                path,
+                path.clone(),
                 path_span,
                 kind,
                 *parent_scope,
@@ -878,20 +884,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let res = res?;
-        let ext = match deleg_impl {
-            Some((impl_def_id, star_span)) => match res {
-                Res::Def(DefKind::Trait, def_id) => {
-                    let edition = self.tcx.sess.edition();
-                    Some(self.arenas.alloc_macro(SyntaxExtension::glob_delegation(
-                        def_id,
-                        impl_def_id,
-                        star_span,
-                        edition,
-                    )))
+        let ext = 'ext: {
+            if let Some((impl_def_id, star_span)) = deleg_impl
+                && let Res::Def(DefKind::Trait, def_id) = res
+            {
+                let edition = self.tcx.sess.edition();
+                break 'ext Some(self.arenas.alloc_macro(SyntaxExtension::glob_delegation(
+                    def_id,
+                    impl_def_id,
+                    star_span,
+                    edition,
+                )));
+            }
+
+            if res == Res::NonMacroAttr(NonMacroAttrKind::Tool) {
+                let path: Vec<Symbol> = path.iter().map(|seg| seg.ident.name).collect();
+                if let Some(ext) = self.inert_attrs.get(&*path) {
+                    break 'ext Some(ext);
                 }
-                _ => None,
-            },
-            None => self.get_macro(res),
+            }
+
+            self.get_macro(res)
         };
         Ok((ext, res))
     }

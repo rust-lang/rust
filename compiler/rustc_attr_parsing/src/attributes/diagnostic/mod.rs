@@ -35,6 +35,11 @@ pub(crate) mod on_unmatch_args;
 pub(crate) enum Mode {
     /// `#[rustc_on_unimplemented]`
     RustcOnUnimplemented,
+    /// `#[diagnostic::rustc_on_unimplemented]`
+    ///
+    /// A version of `rustc_on_unimplemented` that compares types by defId
+    /// rather than stringly at error reporting time.
+    ResolvingOnUnimplemented,
     /// `#[diagnostic::on_unimplemented]`
     DiagnosticOnUnimplemented,
     /// `#[diagnostic::on_const]`
@@ -51,6 +56,7 @@ impl Mode {
     fn as_str(&self) -> &'static str {
         match self {
             Self::RustcOnUnimplemented => "rustc_on_unimplemented",
+            Self::ResolvingOnUnimplemented => "diagnostic::rustc_on_unimplemented",
             Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
             Self::DiagnosticOnConst => "diagnostic::on_const",
             Self::DiagnosticOnMove => "diagnostic::on_move",
@@ -63,7 +69,7 @@ impl Mode {
         const DEFAULT: &str =
             "at least one of the `message`, `note` and `label` options are expected";
         match self {
-            Self::RustcOnUnimplemented => {
+            Self::RustcOnUnimplemented | Self::ResolvingOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
             Self::DiagnosticOnUnimplemented => DEFAULT,
@@ -77,7 +83,7 @@ impl Mode {
     fn allowed_options(&self) -> &'static str {
         const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
         match self {
-            Self::RustcOnUnimplemented => {
+            Self::RustcOnUnimplemented | Self::ResolvingOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
             Self::DiagnosticOnUnimplemented => DEFAULT,
@@ -90,7 +96,7 @@ impl Mode {
 
     fn allowed_format_arguments(&self) -> &'static str {
         match self {
-            Self::RustcOnUnimplemented => {
+            Self::RustcOnUnimplemented | Self::ResolvingOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented> for allowed format arguments"
             }
             Self::DiagnosticOnUnimplemented => {
@@ -110,6 +116,15 @@ impl Mode {
             }
         }
     }
+}
+
+pub fn parse_rustc_on_unimplemented(
+    cx: &mut AcceptContext<'_, '_>,
+    args: &ArgParser,
+) -> Option<Directive> {
+    let items = parse_list(cx, args, Mode::ResolvingOnUnimplemented)?;
+
+    parse_directive_items(cx, Mode::ResolvingOnUnimplemented, items.mixed(), true)
 }
 
 fn merge_directives(
@@ -317,7 +332,7 @@ fn parse_directive_items<'p>(
                 let value = or_malformed!(value?);
                 notes.push(parse_format(value))
             }
-            (Mode::RustcOnUnimplemented, sym::parent_label) => {
+            (Mode::RustcOnUnimplemented | Mode::ResolvingOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
                 if parent_label.is_none() {
                     parent_label = Some(parse_format(value));
@@ -325,7 +340,7 @@ fn parse_directive_items<'p>(
                     duplicate!(name, span)
                 }
             }
-            (Mode::RustcOnUnimplemented, sym::on) => {
+            (Mode::RustcOnUnimplemented | Mode::ResolvingOnUnimplemented, sym::on) => {
                 if is_root {
                     let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
@@ -337,7 +352,8 @@ fn parse_directive_items<'p>(
                         }
                     };
 
-                    let filter = parse_filter(filter);
+                    let filter =
+                        parse_filter(filter, matches!(mode, Mode::ResolvingOnUnimplemented));
 
                     if items.len() < 2 {
                         // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
@@ -418,12 +434,16 @@ fn parse_arg(
     match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
-            (Mode::RustcOnUnimplemented, sym::ItemContext) => FormatArg::ItemContext,
+            (Mode::RustcOnUnimplemented | Mode::ResolvingOnUnimplemented, sym::ItemContext) => {
+                FormatArg::ItemContext
+            }
 
             // Like `{This}`, but sugared.
             // FIXME(mejrs) maybe rename/rework this or something
             // if we want to apply this to other attrs?
-            (Mode::RustcOnUnimplemented, sym::Trait) => FormatArg::Trait,
+            (Mode::RustcOnUnimplemented | Mode::ResolvingOnUnimplemented, sym::Trait) => {
+                FormatArg::Trait
+            }
 
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.
@@ -432,6 +452,7 @@ fn parse_arg(
             // that requires lang approval which is best kept for a standalone PR.
             (
                 Mode::RustcOnUnimplemented
+                | Mode::ResolvingOnUnimplemented
                 | Mode::DiagnosticOnUnknown
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnUnmatchArgs,
@@ -445,6 +466,7 @@ fn parse_arg(
             // - For everything else it doesn't make sense.
             (
                 Mode::RustcOnUnimplemented
+                | Mode::ResolvingOnUnimplemented
                 | Mode::DiagnosticOnUnimplemented
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnConst,
@@ -458,6 +480,7 @@ fn parse_arg(
             // We lint against that in `check_attr.rs` though.
             (
                 Mode::RustcOnUnimplemented
+                | Mode::ResolvingOnUnimplemented
                 | Mode::DiagnosticOnUnimplemented
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnConst,
@@ -509,13 +532,19 @@ fn slice_span(input: Span, Range { start, end }: Range<usize>, is_source_literal
     if is_source_literal { input.from_inner(InnerSpan { start, end }) } else { input }
 }
 
-pub(crate) fn parse_filter(input: &MetaItemOrLitParser) -> Result<Filter, InvalidOnClause> {
+pub(crate) fn parse_filter(
+    input: &MetaItemOrLitParser,
+    create_node_ids: bool,
+) -> Result<Filter, InvalidOnClause> {
     let span = input.span();
-    let pred = parse_predicate(input)?;
+    let pred = parse_predicate(input, create_node_ids)?;
     Ok(Filter { span, pred })
 }
 
-fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnClause> {
+fn parse_predicate(
+    input: &MetaItemOrLitParser,
+    create_node_ids: bool,
+) -> Result<Predicate, InvalidOnClause> {
     let Some(meta_item) = input.meta_item() else {
         return Err(InvalidOnClause::UnsupportedLiteral { span: input.span() });
     };
@@ -529,11 +558,11 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
 
     match meta_item.args() {
         ArgParser::List(mis) => match predicate.name {
-            sym::any => Ok(Predicate::Any(parse_predicate_sequence(mis)?)),
-            sym::all => Ok(Predicate::All(parse_predicate_sequence(mis)?)),
+            sym::any => Ok(Predicate::Any(parse_predicate_sequence(mis, create_node_ids)?)),
+            sym::all => Ok(Predicate::All(parse_predicate_sequence(mis, create_node_ids)?)),
             sym::not => {
                 if let Some(single) = mis.as_single() {
-                    Ok(Predicate::Not(Box::new(parse_predicate(single)?)))
+                    Ok(Predicate::Not(Box::new(parse_predicate(single, create_node_ids)?)))
                 } else {
                     Err(InvalidOnClause::ExpectedOnePredInNot { span: mis.span })
                 }
@@ -547,8 +576,26 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
                 return Err(InvalidOnClause::UnsupportedLiteral { span: p.args_span() });
             };
             let name = parse_name(predicate.name);
-            let value = parse_filter_format(value.name);
-            let kv = NameValue { name, value };
+
+            let kv = if create_node_ids && matches!(name, Name::SelfUpper | Name::GenericArg(_)) {
+                // FIXME(mejrs) Only identifiers "Foo", "String" etc are supported now.
+                // "std::string::String", "Bar<u8>" and the like are not - that'd be nice to have.
+                if rustc_lexer::is_ident(value.name.as_str()) {
+                    NameValue::Path {
+                        name,
+                        value: rustc_ast::Path::from_ident(value),
+                        id: rustc_ast::DUMMY_NODE_ID,
+                    }
+                } else {
+                    return Err(InvalidOnClause::ExpectedIdentifier {
+                        span: value.span,
+                        path: AttrPath { segments: [value.name].into(), span: value.span },
+                    });
+                }
+            } else {
+                let value = parse_filter_format(value.name);
+                NameValue::String { name, value }
+            };
             Ok(Predicate::Match(kv))
         }
         ArgParser::NoArgs => {
@@ -560,8 +607,9 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
 
 fn parse_predicate_sequence(
     sequence: &MetaItemListParser,
+    create_node_ids: bool,
 ) -> Result<ThinVec<Predicate>, InvalidOnClause> {
-    sequence.mixed().map(parse_predicate).collect()
+    sequence.mixed().map(|p| parse_predicate(p, create_node_ids)).collect()
 }
 
 fn parse_flag(Ident { name, span }: Ident) -> Result<Flag, InvalidOnClause> {

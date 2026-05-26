@@ -457,6 +457,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 items: lis,
+                on_unimplemented: _,
             }),
             Trait(box ast::Trait {
                 impl_restriction: riprt,
@@ -467,6 +468,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: rg,
                 bounds: rb,
                 items: ris,
+                on_unimplemented: _,
             }),
         ) => {
             eq_impl_restriction(liprt, riprt)

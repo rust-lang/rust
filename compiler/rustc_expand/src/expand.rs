@@ -897,6 +897,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
                     fragment_kind.expect_from_annotatables(iter::once(item))
+                } else if let SyntaxExtensionKind::InertAttr(expander) = ext {
+                    let mut item = item;
+                    expander.annotate(self.cx, &attr, &mut item);
+                    fragment_kind.expect_from_annotatables([item])
                 } else {
                     unreachable!();
                 }

@@ -118,6 +118,7 @@ pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
 };
 pub use attributes::cfg_select::*;
+pub use attributes::diagnostic::parse_rustc_on_unimplemented;
 pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::{OmitDoc, ShouldEmit};
 pub use interface::{AttributeParser, EmitAttribute};
