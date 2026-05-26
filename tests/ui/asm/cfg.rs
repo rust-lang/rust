@@ -67,6 +67,21 @@ fn clobber_abi() {
     }
 }
 
+fn reg_operand() -> u64 {
+    let x: u64;
+    unsafe {
+        asm!(
+            "mov {0}, {1}",
+            out(reg) x,
+            #[cfg(reva)]
+            in(reg) 5_u64,
+            #[cfg(revb)]
+            in(reg) 10_u64,
+        );
+    }
+    x
+}
+
 #[unsafe(naked)]
 extern "C" fn first_template() -> u64 {
     naked_asm!(
@@ -107,6 +122,7 @@ pub fn main() {
             assert_eq!(ignore_const_operand_cfg_attr(), 5);
             assert_eq!(ignore_const_operand(), 5);
             assert_eq!(first_template(), 5);
+            assert_eq!(reg_operand(), 5);
 
         }
         revb => {
@@ -114,6 +130,7 @@ pub fn main() {
             assert_eq!(ignore_const_operand_cfg_attr(), 10);
             assert_eq!(ignore_const_operand(), 10);
             assert_eq!(first_template(), 10);
+            assert_eq!(reg_operand(), 10);
 
         }
     }
