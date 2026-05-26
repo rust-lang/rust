@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17337>.
 #![feature(staged_api)]
 #![deny(deprecated)]
 

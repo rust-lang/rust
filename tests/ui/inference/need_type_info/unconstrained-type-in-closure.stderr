@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `B<_>`
-  --> $DIR/issue-17551.rs:6:9
+  --> $DIR/unconstrained-type-in-closure.rs:8:9
    |
 LL |     let foo = B(marker::PhantomData);
    |         ^^^     ------------------- type must be known at this point
