@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17954>.
 #![feature(thread_local)]
 
 #[thread_local]

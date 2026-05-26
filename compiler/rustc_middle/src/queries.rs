@@ -2710,12 +2710,6 @@ rustc_queries! {
         desc { "monomorphization-time checking" }
     }
 
-    /// Builds the set of functions that should be skipped for the move-size check.
-    query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
-        arena_cache
-        desc { "functions to skip for move-size check" }
-    }
-
     query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {
         desc { "collecting items used by `{}`", key.0 }
         cache_on_disk

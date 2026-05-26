@@ -1,8 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17662>.
 //@ run-pass
-//@ aux-build:issue-17662.rs
+//@ aux-build:dyn-trait-lifetime-infer-metadata.rs
 
-
-extern crate issue_17662 as i;
+extern crate dyn_trait_lifetime_infer_metadata as i;
 
 use std::marker;
 

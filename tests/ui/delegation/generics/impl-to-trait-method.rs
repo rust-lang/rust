@@ -36,7 +36,6 @@ mod unconstrained_parameter {
     struct S(F);
     impl S {
         reuse Trait::foo { &self.0 }
-        //~^ ERROR type annotations needed
     }
 }
 

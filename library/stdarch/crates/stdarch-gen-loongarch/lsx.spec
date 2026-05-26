@@ -1420,21 +1420,25 @@ asm-fmts = vd, vj, rk
 data-types = V2DI, V2DI, SI
 
 /// lsx_vreplvei_b
+impl = portable
 name = lsx_vreplvei_b
 asm-fmts = vd, vj, ui4
 data-types = V16QI, V16QI, UQI
 
 /// lsx_vreplvei_h
+impl = portable
 name = lsx_vreplvei_h
 asm-fmts = vd, vj, ui3
 data-types = V8HI, V8HI, UQI
 
 /// lsx_vreplvei_w
+impl = portable
 name = lsx_vreplvei_w
 asm-fmts = vd, vj, ui2
 data-types = V4SI, V4SI, UQI
 
 /// lsx_vreplvei_d
+impl = portable
 name = lsx_vreplvei_d
 asm-fmts = vd, vj, ui1
 data-types = V2DI, V2DI, UQI

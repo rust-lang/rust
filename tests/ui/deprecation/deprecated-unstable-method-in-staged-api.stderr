@@ -1,11 +1,11 @@
 error: use of deprecated method `Foo::foo`: text
-  --> $DIR/issue-17337.rs:16:6
+  --> $DIR/deprecated-unstable-method-in-staged-api.rs:17:6
    |
 LL |     .foo();
    |      ^^^
    |
 note: the lint level is defined here
-  --> $DIR/issue-17337.rs:2:9
+  --> $DIR/deprecated-unstable-method-in-staged-api.rs:3:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^

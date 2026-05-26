@@ -567,7 +567,7 @@ fn diagnostic_format_flags() {
         Argument {
             position: ArgumentNamed("thing"),
             position_span: 2..7,
-            format: FormatSpec { ty: ":blah", ty_span: Some(7..12), ..Default::default() },
+            format: FormatSpec { ty: "blah", ty_span: Some(7..12), ..Default::default() },
         }
     );
 
@@ -588,7 +588,7 @@ fn diagnostic_format_mod() {
         Argument {
             position: ArgumentNamed("thing"),
             position_span: 2..7,
-            format: FormatSpec { ty: ":+", ty_span: Some(7..9), ..Default::default() },
+            format: FormatSpec { ty: "+", ty_span: Some(7..9), ..Default::default() },
         }
     );
 

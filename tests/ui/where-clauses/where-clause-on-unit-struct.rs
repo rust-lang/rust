@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17904>.
 // Test that we can parse a unit struct with a where clause, even if
 // it leads to an error later on since `T` is unused.
 

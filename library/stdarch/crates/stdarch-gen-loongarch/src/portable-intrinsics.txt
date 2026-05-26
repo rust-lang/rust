@@ -247,6 +247,10 @@ lsx_vilvl_b
 lsx_vilvl_h
 lsx_vilvl_w
 lsx_vilvl_d
+lsx_vreplvei_b
+lsx_vreplvei_h
+lsx_vreplvei_w
+lsx_vreplvei_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -491,3 +495,12 @@ lasx_xvilvl_b
 lasx_xvilvl_h
 lasx_xvilvl_w
 lasx_xvilvl_d
+lasx_xvrepl128vei_b
+lasx_xvrepl128vei_h
+lasx_xvrepl128vei_w
+lasx_xvrepl128vei_d
+lasx_xvreplve0_b
+lasx_xvreplve0_h
+lasx_xvreplve0_w
+lasx_xvreplve0_d
+lasx_xvreplve0_q
