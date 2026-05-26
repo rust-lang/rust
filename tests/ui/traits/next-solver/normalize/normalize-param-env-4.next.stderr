@@ -1,3 +1,21 @@
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc == _`
+  --> $DIR/normalize-param-env-4.rs:17:1
+   |
+LL | / fn foo<T>()
+LL | | where
+LL | |     <T as Trait>::Assoc: Trait,
+   | |_______________________________^
+
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc == _`
+  --> $DIR/normalize-param-env-4.rs:17:1
+   |
+LL | / fn foo<T>()
+LL | | where
+LL | |     <T as Trait>::Assoc: Trait,
+   | |_______________________________^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
   --> $DIR/normalize-param-env-4.rs:19:26
    |
@@ -22,6 +40,6 @@ note: required by a bound in `impls_trait`
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

@@ -1,17 +1,22 @@
-error[E0119]: conflicting implementations of trait `Foo` for type `&_`
+error[E0391]: cycle detected when computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>`
   --> $DIR/next-solver-region-resolution.rs:18:1
    |
-LL | / impl<'a, T> Foo for &'a T
-LL | | where
-LL | |     Self::Item: 'a,
-   | |___________________- first implementation here
-...
 LL | / impl<'a, T> Foo for &T
 LL | |
 LL | | where
 LL | |     Self::Item: Baz,
-   | |____________________^ conflicting implementation for `&_`
+   | |____________________^
+   |
+   = note: ...which immediately requires computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>` again
+note: cycle used when computing whether impls specialize one another
+  --> $DIR/next-solver-region-resolution.rs:12:1
+   |
+LL | / impl<'a, T> Foo for &'a T
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0391`.
