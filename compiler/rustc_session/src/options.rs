@@ -1054,17 +1054,7 @@ pub mod parse {
 
     /// Parses whether polonius is enabled, and if so, which version.
     pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
-        match v {
-            Some("legacy") | None => {
-                *slot = Polonius::Legacy;
-                true
-            }
-            Some("next") => {
-                *slot = Polonius::Next;
-                true
-            }
-            _ => false,
-        }
+        parse_string_enum_with_bool(slot, v, Some(Polonius::Legacy), None, None)
     }
 
     pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
@@ -1632,27 +1622,13 @@ pub mod parse {
         slot: &mut InstrumentCoverage,
         v: Option<&str>,
     ) -> bool {
-        if v.is_some() {
-            let mut bool_arg = false;
-            if parse_bool(&mut bool_arg, v) {
-                *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
-                return true;
-            }
-        }
-
-        let Some(v) = v else {
-            *slot = InstrumentCoverage::Yes;
-            return true;
-        };
-
-        // Parse values that have historically been accepted by stable compilers,
-        // even though they're currently just aliases for boolean values.
-        *slot = match v {
-            "all" => InstrumentCoverage::Yes,
-            "0" => InstrumentCoverage::No,
-            _ => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(InstrumentCoverage::Yes),
+            Some(InstrumentCoverage::Yes),
+            Some(InstrumentCoverage::No),
+        )
     }
 
     pub(crate) fn parse_codegen_retag_options(
@@ -1806,21 +1782,13 @@ pub mod parse {
     }
 
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { LtoCli::Yes } else { LtoCli::No };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None => LtoCli::NoParam,
-            Some("thin") => LtoCli::Thin,
-            Some("fat") => LtoCli::Fat,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(LtoCli::NoParam),
+            Some(LtoCli::Yes),
+            Some(LtoCli::No),
+        )
     }
 
     pub(crate) fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
