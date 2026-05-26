@@ -6,6 +6,7 @@ LL |         let x: Option<S> = None;
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0392]: type parameter `S` is never used
   --> $DIR/issue-67945-3.rs:9:12
