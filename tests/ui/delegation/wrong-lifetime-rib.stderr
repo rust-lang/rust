@@ -66,17 +66,7 @@ help: you can add the `dyn` keyword if you want a trait object
 LL |             let _: &dyn X;
    |                     +++
 
-error[E0599]: `()` is not an iterator
-  --> $DIR/wrong-lifetime-rib.rs:36:25
-   |
-LL |         reuse Iterator::fold {
-   |                         ^^^^ `()` is not an iterator
-   |
-   = note: the following trait bounds were not satisfied:
-           `(): Iterator`
-           which is required by `&mut (): Iterator`
+error: aborting due to 6 previous errors
 
-error: aborting due to 7 previous errors
-
-Some errors have detailed explanations: E0116, E0223, E0423, E0599, E0782.
+Some errors have detailed explanations: E0116, E0223, E0423, E0782.
 For more information about an error, try `rustc --explain E0116`.
