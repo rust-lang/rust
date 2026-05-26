@@ -136,10 +136,10 @@ error[E0223]: ambiguous associated type
 LL |     <dyn std::any::Any>::downcast::mut_unchecked;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if there were a trait named `Example` with associated type `downcast` implemented for `(dyn Any + 'static)`, you could use the fully-qualified path
+help: if there were a trait named `Example` with associated type `downcast` implemented for `dyn Any + 'static`, you could use the fully-qualified path
    |
 LL -     <dyn std::any::Any>::downcast::mut_unchecked;
-LL +     <(dyn Any + 'static) as Example>::downcast::mut_unchecked;
+LL +     <dyn Any + 'static as Example>::downcast::mut_unchecked;
    |
 
 error: aborting due to 12 previous errors

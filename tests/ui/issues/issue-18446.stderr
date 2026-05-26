@@ -9,7 +9,7 @@ note: candidate #1 is defined in the trait `T`
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+note: candidate #2 is defined in an impl for the type `dyn T + 'a`
   --> $DIR/issue-18446.rs:9:5
    |
 LL |     fn foo(&self) {}

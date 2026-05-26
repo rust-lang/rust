@@ -2,14 +2,14 @@ error[E0308]: mismatched types
   --> $DIR/ice-trait-with-default-method-but-no-impl-broken-mir-109869-1.rs:16:9
    |
 LL |     fn from((from, ()): Spanned<F>) -> Self {
-   |                                        ---- expected `(dyn Span<T> + 'static)` because of return type
+   |                                        ---- expected `dyn Span<T> + 'static` because of return type
 LL |         (T::from(from), ())
    |         ^^^^^^^^^^^^^^^^^^^ expected `dyn Span`, found `(T, ())`
    |
-   = note: expected trait object `(dyn Span<T> + 'static)`
+   = note: expected trait object `dyn Span<T> + 'static`
                      found tuple `(T, ())`
    = help: `(T, ())` implements `Span` so you could box the found value and coerce it to the trait object `Box<dyn Span>`, you will have to change the expected type as well
-help: call `Into::into` on this expression to convert `(T, ())` into `(dyn Span<T> + 'static)`
+help: call `Into::into` on this expression to convert `(T, ())` into `dyn Span<T> + 'static`
    |
 LL |         (T::from(from), ()).into()
    |                            +++++++

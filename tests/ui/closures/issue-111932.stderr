@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Foo + 'static` cannot be known at compilation time
   --> $DIR/issue-111932.rs:4:20
    |
 LL |     foos.for_each(|foo| {
    |                    ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Foo + 'static`
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature
 

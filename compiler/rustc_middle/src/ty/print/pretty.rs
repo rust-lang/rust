@@ -353,11 +353,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool;
 
     /// Whether `pretty_print_type` should wrap a multi-bound `impl` / `dyn`
-    /// inner in parens after a prefix type constructor (`&`, `&mut`, `*const`,
-    /// `*mut`), so the output is `&(impl A + B)` rather than the parser-
-    /// ambiguous `&impl A + B`. Byte-stable printers (mangling, `type_name`)
-    /// override this to `false`.
-    fn add_disambiguating_parens_in_prefix_position(&self) -> bool {
+    /// inner in parens at positions where the bare form would be parser-
+    /// ambiguous: after a prefix type constructor (`&`, `&mut`, `*const`,
+    /// `*mut`) where `&T + B` parses as `(&T) + B`, and in the function-
+    /// pointer / `Fn(..) -> T` return position where `-> T + B` parses as
+    /// the outer signature picking up an extra bound. Byte-stable printers
+    /// (mangling, etc.) override this to `false`.
+    fn add_disambiguating_parens(&self) -> bool {
         true
     }
 
@@ -817,16 +819,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r) => {
-                let print_r = self.should_print_optional_region(r);
-                if print_r {
-                    write!(self, "(")?;
-                }
                 write!(self, "dyn ")?;
                 data.print(self)?;
-                if print_r {
+                if self.should_print_optional_region(r) {
                     write!(self, " + ")?;
                     r.print(self)?;
-                    write!(self, ")")?;
                 }
             }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
@@ -1100,7 +1097,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// print with a top-level `+`. Without the wrap, `&impl A + B` parses as
     /// the ambiguous `(&impl A) + B`.
     fn inner_needs_disambiguating_parens(&self, ty: Ty<'tcx>) -> bool {
-        if !self.add_disambiguating_parens_in_prefix_position() || self.should_print_verbose() {
+        if !self.add_disambiguating_parens() || self.should_print_verbose() {
             return false;
         }
         match ty.kind() {
@@ -1114,24 +1111,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 self.opaque_has_multiple_bounds(*def_id)
             }
             ty::Dynamic(predicates, region) => {
-                if self.should_print_optional_region(*region) {
-                    // `ty::Dynamic` self-wraps when it has an explicit region.
-                    false
-                } else {
-                    // Projections inline into the principal as `<Item = X>`;
-                    // only principal/auto traits produce a top-level `+`.
-                    predicates
-                        .iter()
-                        .filter(|pred| {
-                            matches!(
-                                pred.skip_binder(),
-                                ty::ExistentialPredicate::Trait(_)
-                                    | ty::ExistentialPredicate::AutoTrait(_)
-                            )
-                        })
-                        .count()
-                        > 1
-                }
+                // Projections inline into the principal as `<Item = X>`;
+                // only principal/auto traits produce a top-level `+`. An
+                // explicit (printable) region adds one more `+`-joined part.
+                let trait_count = predicates
+                    .iter()
+                    .filter(|pred| {
+                        matches!(
+                            pred.skip_binder(),
+                            ty::ExistentialPredicate::Trait(_)
+                                | ty::ExistentialPredicate::AutoTrait(_)
+                        )
+                    })
+                    .count();
+                let region_count = usize::from(self.should_print_optional_region(*region));
+                trait_count + region_count > 1
             }
             _ => false,
         }
@@ -1150,7 +1144,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // Mirror `pretty_print_opaque_impl_type`'s sized-bound handling:
         // positive `Sized` and `MetaSized` are absorbed into the synthetic
         // suffix below; negative `Sized` (`?Sized`) falls through and is
-        // printed inline. Only clause *kinds* are inspected here, so the
+        // printed inline. We only ever look at clause *kinds* here, so the
         // identity-instantiated bounds carry all the information we need.
         let mut trait_emits = 0usize;
         let mut lifetimes_count = 0usize;
@@ -1669,7 +1663,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         write!(self, ")")?;
         if !output.is_unit() {
             write!(self, " -> ")?;
-            output.print(self)?;
+            // `Fn(..) -> X + B` parses as if `+ B` extended the outer signature,
+            // so wrap if `X` would print with `+`-joined bounds. Same machinery
+            // as the `&T`, `*const T`, `*mut T` prefix arms.
+            self.print_inner_with_disambiguating_parens(output)?;
         }
 
         Ok(())

@@ -21,8 +21,8 @@ impl<T: ?Sized> Mirror for A {
 pub fn foo<'a>(
     x: &'a <dyn A + 'static as Mirror>::Assoc
 ) -> &'a <dyn B + 'static as Mirror>::Assoc {
-    //~^ ERROR the trait bound `(dyn B + 'static): Mirror` is not satisfied [E0277]
-    //~| ERROR the trait bound `(dyn B + 'static): Mirror` is not satisfied [E0277]
+    //~^ ERROR the trait bound `dyn B + 'static: Mirror` is not satisfied [E0277]
+    //~| ERROR the trait bound `dyn B + 'static: Mirror` is not satisfied [E0277]
     static
 } //~ ERROR expected identifier, found `}`
 

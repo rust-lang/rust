@@ -1,4 +1,4 @@
-error[E0321]: cross-crate traits with a default impl, like `Unpin`, can only be implemented for a struct/enum type, not `(dyn MyUnpinTrait + 'static)`
+error[E0321]: cross-crate traits with a default impl, like `Unpin`, can only be implemented for a struct/enum type, not `dyn MyUnpinTrait + 'static`
   --> $DIR/pin-dyn-dispatch-sound.rs:12:1
    |
 LL | impl Unpin for dyn MyUnpinTrait {}

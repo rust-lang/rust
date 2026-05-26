@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a` cannot be known at compilation time
   --> $DIR/issue-91801.rs:8:77
    |
 LL | fn or<'a>(first: &'static Validator<'a>, second: &'static Validator<'a>) -> Validator<'a> {
    |                                                                             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a)`
+   = help: the trait `Sized` is not implemented for `dyn Fn(&'a Something) -> Result<(), ()> + Send + Sync + 'a`
 note: this type alias is unsized
   --> $DIR/issue-91801.rs:3:1
    |

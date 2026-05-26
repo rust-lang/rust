@@ -36,24 +36,24 @@ LL | fn id<F>(f: Copy) -> usize {
    = note: for a trait to be dyn compatible it needs to allow building a vtable
            for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
-error[E0618]: expected function, found `(dyn Copy + 'static)`
+error[E0618]: expected function, found `dyn Copy + 'static`
   --> $DIR/avoid-ice-on-warning-2.rs:12:5
    |
 LL | fn id<F>(f: Copy) -> usize {
-   |          - `f` has type `(dyn Copy + 'static)`
+   |          - `f` has type `dyn Copy + 'static`
 ...
 LL |     f()
    |     ^--
    |     |
    |     call expression requires function
 
-error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Copy + 'static` cannot be known at compilation time
   --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Copy + 'static`
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |

@@ -24,13 +24,13 @@ LL | fn bar() where Vec<dyn Copy>:, {}
    = note: for a trait to be dyn compatible it needs to allow building a vtable
            for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
-error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Copy + 'static` cannot be known at compilation time
   --> $DIR/wf-fn-where-clause.rs:12:16
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
    |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Copy + 'static`
 note: required by an implicit `Sized` bound in `Vec`
   --> $DIR/wf-fn-where-clause.rs:16:12
    |

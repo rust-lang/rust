@@ -1,4 +1,4 @@
-error[E0609]: no field `ab` on type `(Box<(dyn Fn(Option<A>) -> Option<B> + 'static)>, Box<(dyn Fn(Option<B>) -> Option<A> + 'static)>)`
+error[E0609]: no field `ab` on type `(Box<dyn Fn(Option<A>) -> Option<B> + 'static>, Box<dyn Fn(Option<B>) -> Option<A> + 'static>)`
   --> $DIR/well-formed-recursion-limit.rs:12:23
    |
 LL |     let (ab, ba) = (i.ab, i.ba);
@@ -6,7 +6,7 @@ LL |     let (ab, ba) = (i.ab, i.ba);
    |
    = note: available fields are: `0`, `1`
 
-error[E0609]: no field `ba` on type `(Box<(dyn Fn(Option<A>) -> Option<B> + 'static)>, Box<(dyn Fn(Option<B>) -> Option<A> + 'static)>)`
+error[E0609]: no field `ba` on type `(Box<dyn Fn(Option<A>) -> Option<B> + 'static>, Box<dyn Fn(Option<B>) -> Option<A> + 'static>)`
   --> $DIR/well-formed-recursion-limit.rs:12:29
    |
 LL |     let (ab, ba) = (i.ab, i.ba);

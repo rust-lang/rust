@@ -479,7 +479,7 @@ impl<'tcx> PrettyPrinter<'tcx> for LegacySymbolMangler<'tcx> {
 
     // Mangled symbols are ABI-stable; don't pick up the default printer's
     // parser-disambiguating parens.
-    fn add_disambiguating_parens_in_prefix_position(&self) -> bool {
+    fn add_disambiguating_parens(&self) -> bool {
         false
     }
 

@@ -6,8 +6,8 @@ LL |     a(x);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Box<(dyn Foo + Send + 'static)>`
-              found struct `Box<(dyn Foo + Sync + 'static)>`
+   = note: expected struct `Box<dyn Foo + Send + 'static>`
+              found struct `Box<dyn Foo + Sync + 'static>`
 note: function defined here
   --> $DIR/sugar.rs:5:4
    |

@@ -8,7 +8,7 @@ struct RcFamily;
 
 impl PointerFamily for RcFamily {
     type Pointer<T> = dyn Deref<Target = T>;
-    //~^ ERROR the size for values of type `(dyn Deref<Target = T> + 'static)` cannot be known at compilation time
+    //~^ ERROR the size for values of type `dyn Deref<Target = T> + 'static` cannot be known at compilation time
 }
 
 enum Node<T, P: PointerFamily> {
