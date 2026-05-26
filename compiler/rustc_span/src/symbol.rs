@@ -167,7 +167,6 @@ symbols! {
         AssertParamIsClone,
         AssertParamIsCopy,
         AssertParamIsEq,
-        AsyncGenFinished,
         AsyncGenPending,
         AsyncGenReady,
         Atomic,
