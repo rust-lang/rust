@@ -11,7 +11,8 @@ where
     <T as Iterator>::Item: Default;
 
 fn foo<T>() -> Foo<T> {
-    //~^ ERROR: `T` is not an iterator
+    //[current]~^ ERROR `T` is not an iterator
+    //[next]~^^ ERROR: the type `Foo<T>` is not well-formed
     loop {}
 }
 

@@ -3,14 +3,7 @@ pub use rustc_type_ir::fast_reject::*;
 
 use super::TyCtxt;
 
-pub type DeepRejectCtxt<
-    'tcx,
-    const INSTANTIATE_LHS_WITH_INFER: bool,
-    const INSTANTIATE_RHS_WITH_INFER: bool,
-> = rustc_type_ir::fast_reject::DeepRejectCtxt<
-    TyCtxt<'tcx>,
-    INSTANTIATE_LHS_WITH_INFER,
-    INSTANTIATE_RHS_WITH_INFER,
->;
+pub type DeepRejectCtxt<'tcx, const HANDLE_LHS: u8, const HANDLE_RHS: u8> =
+    rustc_type_ir::fast_reject::DeepRejectCtxt<TyCtxt<'tcx>, HANDLE_LHS, HANDLE_RHS>;
 
 pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<DefId>;

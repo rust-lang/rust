@@ -1,6 +1,6 @@
 //! See also <https://github.com/rust-lang/rust/issues/153831>
 //@ check-fail
-//@compile-flags: -Znext-solver=globally --emit=obj
+//@ compile-flags: -Znext-solver=globally --emit=obj
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 
@@ -11,7 +11,7 @@ trait Trait {
 impl Trait for () {
     type const A: () = <() as Trait>::A;
     //~^ ERROR type mismatch resolving `<() as Trait>::A normalizes-to _`
-    //~| ERROR the constant `<() as Trait>::A` is not of type `()`
+    //~| ERROR type mismatch resolving `<() as Trait>::A normalizes-to _`
 }
 
 fn main() {

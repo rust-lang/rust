@@ -68,7 +68,7 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
             for (nested_source, goal) in requirements {
-                ecx.add_goal(nested_source, goal);
+                ecx.add_goal(nested_source, goal)?;
             }
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -113,7 +113,7 @@ where
                 bounds,
             ) {
                 Ok(requirements) => {
-                    ecx.add_goals(GoalSource::ImplWhereBound, requirements);
+                    ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
                 Err(_) => {
@@ -137,7 +137,7 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
-        match Self::fast_reject_assumption(ecx, goal, assumption) {
+        match Self::fast_reject_param_env(ecx, goal, assumption) {
             Ok(()) => {}
             Err(NoSolution) => return Ok(Err(CandidateHeadUsages::default())),
         }
@@ -192,6 +192,12 @@ where
         ecx.probe_trait_candidate(source)
             .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
     }
+
+    fn fast_reject_param_env(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution>;
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
     /// and `DefId`.
@@ -966,7 +972,7 @@ where
                     elaborate::elaborate(cx, [predicate])
                         .skip(1)
                         .map(|predicate| goal.with(cx, predicate)),
-                );
+                )?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
         })

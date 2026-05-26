@@ -53,7 +53,7 @@ where
             self.add_goal(
                 GoalSource::TypeRelating,
                 goal.with(cx, ty::NormalizesTo { alias, term }),
-            );
+            )?;
             term
         } else {
             lhs
@@ -65,7 +65,7 @@ where
             self.add_goal(
                 GoalSource::TypeRelating,
                 goal.with(cx, ty::NormalizesTo { alias, term }),
-            );
+            )?;
             term
         } else {
             rhs

@@ -4,11 +4,13 @@ error[E0271]: type mismatch resolving `A normalizes-to _`
 LL | type const A: () = A;
    | ^^^^^^^^^^^^^^^^ types differ
 
-error: the constant `A` is not of type `()`
+error[E0271]: type mismatch resolving `A normalizes-to _`
   --> $DIR/free-const-recursive.rs:7:1
    |
 LL | type const A: () = A;
-   | ^^^^^^^^^^^^^^^^ expected `()`, found a different `()`
+   | ^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 
