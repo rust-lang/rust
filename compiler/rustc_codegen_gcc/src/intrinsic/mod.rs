@@ -1358,7 +1358,10 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
     dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     if !bx.sess().panic_strategy().unwinds() {
-        bx.call(bx.type_void(), None, None, try_func, &[data], None, None);
+        let param_type = bx.u8_type.make_pointer();
+        let fn_type =
+            bx.context.new_function_pointer_type(None, bx.type_void(), &[param_type], false);
+        bx.call(fn_type, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
