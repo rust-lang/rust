@@ -459,4 +459,51 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         interp_ok(())
     }
+
+    /// Parse a `timespec` struct and return it as a [`Duration`]. It returns [`None`]
+    /// if the value in the `timespec` struct is invalid. Some libc functions will return
+    /// EINVAL in this case.
+    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let sec_field = this.project_field_named(tp, "tv_sec")?;
+        let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+        let nsec_field = this.project_field_named(tp, "tv_nsec")?;
+        let nsec = this.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
+
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = sec.try_into().ok()?;
+            // tv_nsec must be non-negative.
+            let nanoseconds: u32 = nsec.try_into().ok()?;
+            if nanoseconds >= 1_000_000_000 {
+                // tv_nsec must not be greater than 999,999,999.
+                None?
+            }
+            Duration::new(seconds, nanoseconds)
+        })
+    }
+
+    /// Parse a `timeval` struct and return it as a [`Duration`]. It returns [`None`]
+    /// if the value in the `timeval` struct is invalid. Some libc functions will return
+    /// EINVAL in this case.
+    fn read_timeval(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let sec_field = this.project_field_named(tp, "tv_sec")?;
+        let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
+
+        let usec_field = this.project_field_named(tp, "tv_usec")?;
+        let usec = this.read_scalar(&usec_field)?.to_int(usec_field.layout.size)?;
+
+        interp_ok(try {
+            // tv_sec must be non-negative.
+            let seconds: u64 = sec.try_into().ok()?;
+            // tv_usec must be non-negative.
+            let microseconds: u32 = usec.try_into().ok()?;
+            if microseconds >= 1_000_000 {
+                // tv_usec must not be greater than 999,999.
+                None?
+            }
+            Duration::new(seconds, microseconds.strict_mul(1000))
+        })
+    }
 }
