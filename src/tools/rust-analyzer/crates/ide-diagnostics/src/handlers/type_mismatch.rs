@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{
     AstNode, AstPtr, TextSize,
     ast::{
-        self, BlockExpr, Expr, ExprStmt, HasArgList,
+        self, BlockExpr, Expr, ExprStmt, HasArgList, RefExpr,
         edit::{AstNodeEdit, IndentLevel},
     },
 };
@@ -51,10 +51,10 @@ pub(crate) fn type_mismatch(
             format!(
                 "expected {}, found {}",
                 d.expected
-                    .display(ctx.sema.db, ctx.display_target)
+                    .display(ctx.db(), ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId),
                 d.actual
-                    .display(ctx.sema.db, ctx.display_target)
+                    .display(ctx.db(), ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId),
             ),
             display_range,
@@ -69,7 +69,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<
 
     if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
         let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr };
-        add_reference(ctx, d, expr_ptr, &mut fixes);
+        add_or_fix_reference(ctx, d, expr_ptr, &mut fixes);
         add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
         remove_unnecessary_wrapper(ctx, d, expr_ptr, &mut fixes);
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
@@ -79,7 +79,7 @@ fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<
     if fixes.is_empty() { None } else { Some(fixes) }
 }
 
-fn add_reference(
+fn add_or_fix_reference(
     ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
@@ -87,13 +87,40 @@ fn add_reference(
 ) -> Option<()> {
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
-    let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = d.actual.add_reference(ctx.db(), mutability);
-    if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
+    let (expected_with_ref_removed, expected_mutability) = d.expected.as_reference()?;
+
+    if let Some((actual_with_ref_removed, hir::Mutability::Shared)) = d.actual.as_reference()
+        && expected_mutability == hir::Mutability::Mut
+        && actual_with_ref_removed.could_coerce_to(ctx.db(), &expected_with_ref_removed)
+    {
+        // The actual type is `&T`, and the expected type is `&mut T`, (or `U` that `T` can be coerced to).
+        // It's likely that, instead of adding a reference, we should just change the mutability of
+        // the existing one.
+
+        let expr = expr_ptr.to_node(ctx.db());
+        // If the node comes from a macro expansion, then we shouldn't assist,
+        // as the suggestion would overwrite the macro _definition_ position
+        let expr = ctx.sema.original_ast_node(expr)?;
+        let expr_without_ref = RefExpr::cast(expr.syntax().clone())?.expr()?;
+
+        let pos = expr_without_ref.syntax().text_range().start();
+        let edit = TextEdit::insert(pos, expected_mutability.as_keyword_for_ref().to_owned());
+        let source_change = SourceChange::from_text_edit(range.file_id, edit);
+        acc.push(fix(
+            "make_reference_mutable",
+            "Make reference mutable",
+            source_change,
+            range.range,
+        ));
+        return Some(());
+    }
+
+    let actual_with_ref = d.actual.add_reference(ctx.db(), expected_mutability);
+    if !actual_with_ref.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
 
-    let ampersands = format!("&{}", mutability.as_keyword_for_ref());
+    let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
 
     let edit = TextEdit::insert(range.range.start(), ampersands);
     let source_change = SourceChange::from_text_edit(range.file_id, edit);
@@ -107,7 +134,7 @@ fn add_missing_ok_or_some(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range: expr_range } =
         ctx.sema.original_range_opt(expr.syntax())?;
@@ -126,14 +153,13 @@ fn add_missing_ok_or_some(
 
     let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
 
-    let wrapped_actual_ty =
-        expected_adt.ty(ctx.sema.db).instantiate(std::iter::once(d.actual.clone()));
+    let wrapped_actual_ty = expected_adt.ty(ctx.db()).instantiate([d.actual.clone()]);
 
-    if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
+    if !d.expected.could_unify_with(ctx.db(), &wrapped_actual_ty) {
         return None;
     }
 
-    let file_id = file_id.file_id(ctx.sema.db);
+    let file_id = file_id.file_id(ctx.db());
 
     if d.actual.is_unit() {
         if let Expr::BlockExpr(block) = &expr {
@@ -202,7 +228,7 @@ fn remove_unnecessary_wrapper(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let db = ctx.sema.db;
+    let db = ctx.db();
     let root = db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     // FIXME: support inside MacroCall?
@@ -233,7 +259,7 @@ fn remove_unnecessary_wrapper(
     let inner_arg = call_expr.arg_list()?.args().next()?;
 
     let file_id = expr_ptr.file_id.original_file(db);
-    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.sema.db));
+    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.db()));
     let editor;
     match inner_arg {
         // We're returning `()`
@@ -267,7 +293,7 @@ fn remove_unnecessary_wrapper(
         }
     }
 
-    builder.add_file_edits(file_id.file_id(ctx.sema.db), editor);
+    builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     let name = format!("Remove unnecessary {}() wrapper", variant.name(db).as_str());
     acc.push(fix(
         "remove_unnecessary_wrapper",
@@ -284,7 +310,7 @@ fn remove_semicolon(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     if !d.actual.is_unit() {
         return None;
@@ -294,14 +320,14 @@ fn remove_semicolon(
     let expr_before_semi =
         block.statements().last().and_then(|s| ExprStmt::cast(s.syntax().clone()))?;
     let type_before_semi = ctx.sema.type_of_expr(&expr_before_semi.expr()?)?.original();
-    if !type_before_semi.could_coerce_to(ctx.sema.db, &d.expected) {
+    if !type_before_semi.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
     let semicolon_range = expr_before_semi.semicolon_token()?.text_range();
 
     let edit = TextEdit::delete(semicolon_range);
     let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
+        expr_ptr.file_id.original_file(ctx.db()).file_id(ctx.db()),
         edit,
     );
 
@@ -315,21 +341,21 @@ fn str_ref_to_owned(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db, ctx.display_target);
+    let expected = d.expected.display(ctx.db(), ctx.display_target);
     // FIXME do this properly
     let is_applicable = d.actual.strip_reference().is_str() && expected.to_string() == "String";
     if !is_applicable {
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
     let to_owned = ".to_owned()".to_owned();
 
     let edit = TextEdit::insert(range.end(), to_owned);
-    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit);
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, range));
 
     Some(())
@@ -392,6 +418,96 @@ fn test(_arg: &mut i32) {}
     }
 
     #[test]
+    fn fix_reference_to_int() {
+        check_fix(
+            r#"
+fn main() {
+    test($0&123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut 123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&123));
+}
+fn test(_arg: &i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_mutable_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_paren_inside_ref() {
+        check_fix(
+            r#"
+fn main() {
+    test(&$0(123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut (123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_ref_inside_paren() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0&123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_array() {
         check_fix(
             r#"
@@ -406,6 +522,19 @@ fn main() {
     test(&[1, 2, 3]);
 }
 fn test(_arg: &[i32]) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_array() {
+        check_no_fix(
+            r#"
+//- minicore: coerce_unsized
+fn main() {
+    test($0&[1, 2, 3]);
+}
+fn test(_arg: &mut [i32]) {}
             "#,
         );
     }
@@ -439,6 +568,49 @@ fn main() {
     test(&Foo);
 }
 fn test(_arg: &Bar) {}
+            "#,
+        );
+    }
+
+    #[test]
+    // FIXME: this should suggest making the reference mutable instead: `&Foo -> &mut Foo`.
+    // Currently it doesn't, as the logic for that assist strips away references, and thus checks
+    // whether `Foo` can be coerced to `Bar` (which it can't), instead of checking `&mut Foo` to
+    // `&mut Bar` (which it can)
+    fn fix_reference_with_autoderef() {
+        check_fix(
+            r#"
+//- minicore: coerce_unsized, deref_mut
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test($0&Foo);
+}
+fn test(_arg: &mut Bar) {}
+            "#,
+            r#"
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test(&mut &Foo);
+}
+fn test(_arg: &mut Bar) {}
             "#,
         );
     }
@@ -484,6 +656,38 @@ fn main() {
     }
 
     #[test]
+    fn add_mutable_reference_to_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0&123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_macro_call() {
         check_fix(
             r#"
@@ -512,16 +716,50 @@ fn main() {
     }
 
     #[test]
-    fn add_mutable_reference_to_let_stmt() {
+    fn fix_reference_to_macro_call() {
         check_fix(
             r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
 fn main() {
-    let _test: &mut i32 = $0123;
+    test($0&thousand!());
 }
             "#,
             r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
 fn main() {
-    let _test: &mut i32 = &mut 123;
+    test(&mut thousand!());
+}
+            "#,
+        );
+    }
+
+    #[test]
+    // If the immutable reference comes from a macro expansion,
+    // we can't do anything to change it to a mutable one.
+    fn dont_fix_reference_inside_macro_call() {
+        check_no_fix(
+            r#"
+macro_rules! thousand {
+    () => {
+        &1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
+fn main() {
+    test($0thousand!());
 }
             "#,
         );
