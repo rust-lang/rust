@@ -498,7 +498,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     debug_assert!(dep_graph_data.is_index_green(prev_index));
 
     // First try to load the result from the on-disk cache. Some things are never cached on disk.
-    let try_value = if (query.will_cache_on_disk_for_key_fn)(key) {
+    let try_value = if query.will_cache_on_disk_for_key(key) {
         let prof_timer = tcx.prof.incr_cache_loading();
         let value = (query.try_load_from_disk_fn)(tcx, prev_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());

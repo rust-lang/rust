@@ -148,10 +148,6 @@ macro_rules! define_queries {
                         try_load_from_disk_fn: |tcx, prev_index| {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
-                            // Check the cache-on-disk condition for this key.
-                            #[cfg($separate_provide_extern)]
-                            QueryKey::as_local_key(&_key)?;
-
                             let loaded_value: ProvidedValue<'tcx> =
                                 $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
 
