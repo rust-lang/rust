@@ -227,7 +227,7 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry, type_length,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -664,10 +664,20 @@ fn check_recursion_limit<'tcx>(
         recursion_depth
     };
 
+    // Rust code can create exponentially-long types using only a
+    // polynomial recursion depth. Start checking the type length before
+    // the depth limit is reached, to avoid hanging on enormous instance
+    // arguments.
+    let type_length_check_depth = (recursion_limit / 8).0.max(4);
+    let recursive_type_growth_limit_reached = recursion_depth >= type_length_check_depth
+        && !tcx.type_length_limit().value_within_limit(type_length(instance.args));
+
     // Code that needs to instantiate the same function recursively
-    // more than the recursion limit is assumed to be causing an
-    // infinite expansion.
-    if !recursion_limit.value_within_limit(adjusted_recursion_depth) {
+    // more than the recursion limit, or with type arguments that exceed the
+    // type length limit, is assumed to be causing an infinite expansion.
+    if !recursion_limit.value_within_limit(adjusted_recursion_depth)
+        || recursive_type_growth_limit_reached
+    {
         let def_span = tcx.def_span(def_id);
         let def_path_str = tcx.def_path_str(def_id);
         tcx.dcx().emit_fatal(RecursionLimit { span, instance, def_span, def_path_str });
