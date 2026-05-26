@@ -2,12 +2,13 @@
 
 #![feature(fn_delegation)]
 
-trait Trait : Sized {
+trait Trait: Sized {
     fn by_value(self) -> i32 { 1 }
     fn by_mut_ref(&mut self) -> i32 { 2 }
     fn by_ref(&self) -> i32 { 3 }
 }
 
+#[derive(Default)]
 struct F;
 impl Trait for F {}
 
@@ -17,8 +18,19 @@ impl Trait for S {
     reuse Trait::{by_value, by_mut_ref, by_ref} { self.0 }
 }
 
+struct S1(Box<Box<Box<Box<Box<Box<F>>>>>>);
+
+impl Trait for S1 {
+    reuse Trait::{by_value, by_mut_ref, by_ref} { self.0 }
+}
+
 fn main() {
     let mut s = S(F);
+    assert_eq!(s.by_ref(), 3);
+    assert_eq!(s.by_mut_ref(), 2);
+    assert_eq!(s.by_value(), 1);
+
+    let mut s = S1(Default::default());
     assert_eq!(s.by_ref(), 3);
     assert_eq!(s.by_mut_ref(), 2);
     assert_eq!(s.by_value(), 1);
