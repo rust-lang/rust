@@ -184,6 +184,20 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
                 wc.push(parse_quote! { #param: ::rustc_type_ir::lift::Lift<J> });
             }
 
+            // `lift(ty, ...)` rewrites any bare generic params inside the
+            // field type to their lifted associated type, e.g;
+            // `T` becomes `<T as Lift<J>>::Lifted`.
+            //
+            // That, however, does not imply that the field type itself
+            // implements `Lift<J>`. The generated body calls `lift_to_interner`
+            // on each field value, so Rust needs a `Lift<J>` impl for that
+            // value's complete declared type, not just for generic parameters
+            // that appear somewhere inside it. For non parameter fields, the
+            // implementation must also produce the exact mapped field type:
+            //
+            // Example:
+            // `I::DefId: Lift<J, Lifted = J::DefId>`
+            // `Binder<I, T>: Lift<J, Lifted = Binder<J, <T as Lift<J>>::Lifted>>`
             if !is_type_param(&ty, &generic_parameters) {
                 let lifted_ty = lifted.ty;
                 wc.push(parse_quote! { #ty: ::rustc_type_ir::lift::Lift<J, Lifted = #lifted_ty> });
@@ -219,6 +233,8 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     )
 }
 
+/// Returns true only for bare generic parameters like `T`, not paths such as
+/// `I::Ty`, `Vec<T>`, or `Binder<I, T>`
 fn is_type_param(ty: &syn::Type, generic_parameters: &[syn::Ident]) -> bool {
     if let syn::Type::Path(ty) = ty
         && ty.path.segments.len() == 1
