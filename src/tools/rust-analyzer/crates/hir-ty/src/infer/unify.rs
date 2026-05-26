@@ -578,6 +578,7 @@ pub(super) mod resolve_completely {
                 self.resolve_completely(diagnostic);
 
                 if let InferenceDiagnostic::CannotBeDereferenced { found: ty, .. }
+                | InferenceDiagnostic::CannotImplicitlyDerefTraitObject { found: ty, .. }
                 | InferenceDiagnostic::CannotIndexInto { found: ty, .. }
                 | InferenceDiagnostic::ExpectedFunction { found: ty, .. }
                 | InferenceDiagnostic::ExpectedArrayOrSlicePat { found: ty, .. }
