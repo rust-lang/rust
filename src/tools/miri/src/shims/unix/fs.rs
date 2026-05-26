@@ -1624,18 +1624,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut fopts = OpenOptions::new();
         fopts.read(true).write(true).create_new(true);
 
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            // Do not allow others to read or modify this file.
-            fopts.mode(0o600);
-            fopts.custom_flags(libc::O_EXCL);
-        }
-        #[cfg(windows)]
-        {
-            use std::os::windows::fs::OpenOptionsExt;
-            // Do not allow others to read or modify this file.
-            fopts.share_mode(0);
+        cfg_select! {
+            unix =>
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                // Do not allow others to read or modify this file.
+                fopts.mode(0o600);
+                fopts.custom_flags(libc::O_EXCL);
+            }
+            windows =>
+            {
+                use std::os::windows::fs::OpenOptionsExt;
+                // Do not allow others to read or modify this file.
+                fopts.share_mode(0);
+            }
+            _ => {
+                throw_unsup_format!("`mkstemp` is not supported on this host OS");
+            }
         }
 
         // If the generated file already exists, we will try again `max_attempts` many times.
