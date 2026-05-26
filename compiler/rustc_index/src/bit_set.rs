@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
@@ -112,10 +113,10 @@ macro_rules! bit_relations_inherent_impls {
 /// will panic if the bitsets have differing domain sizes.
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
-#[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    // Lazily allocated. `None` represents a full set of zero words.
+    words: Option<Vec<Word>>,
     marker: PhantomData<T>,
 }
 
@@ -124,22 +125,42 @@ impl<T> DenseBitSet<T> {
     pub fn domain_size(&self) -> usize {
         self.domain_size
     }
+
+    #[inline]
+    fn num_words(&self) -> usize {
+        num_words(self.domain_size)
+    }
+
+    #[inline]
+    fn words(&self) -> &[Word] {
+        self.words.as_deref().unwrap_or(&[])
+    }
+
+    #[inline]
+    fn ensure_words(&mut self) -> &mut Vec<Word> {
+        let num_words = self.num_words();
+        self.words.get_or_insert_with(|| vec![0; num_words])
+    }
+
+    #[inline]
+    fn word(&self, word_index: usize) -> Word {
+        self.words().get(word_index).copied().unwrap_or(0)
+    }
 }
 
 impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
-        let num_words = num_words(domain_size);
-        DenseBitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        DenseBitSet { domain_size, words: None, marker: PhantomData }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result =
-            DenseBitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let words = if num_words == 0 { None } else { Some(vec![!0; num_words]) };
+        let mut result = DenseBitSet { domain_size, words, marker: PhantomData };
         result.clear_excess_bits();
         result
     }
@@ -147,17 +168,21 @@ impl<T: Idx> DenseBitSet<T> {
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
-        self.words.fill(0);
+        if let Some(words) = &mut self.words {
+            words.fill(0);
+        }
     }
 
     /// Clear excess bits in the final word.
     fn clear_excess_bits(&mut self) {
-        clear_excess_bits_in_final_word(self.domain_size, &mut self.words);
+        if let Some(words) = &mut self.words {
+            clear_excess_bits_in_final_word(self.domain_size, words);
+        }
     }
 
     /// Count the number of set bits in the set.
     pub fn count(&self) -> usize {
-        count_ones(&self.words)
+        count_ones(self.words())
     }
 
     /// Returns `true` if `self` contains `elem`.
@@ -165,20 +190,25 @@ impl<T: Idx> DenseBitSet<T> {
     pub fn contains(&self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
-        (self.words[word_index] & mask) != 0
+        (self.word(word_index) & mask) != 0
     }
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
     pub fn superset(&self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        match (&self.words, &other.words) {
+            (_, None) => true,
+            (None, Some(other_words)) => other_words.iter().all(|&word| word == 0),
+            (Some(_), Some(_)) => (0..self.num_words())
+                .all(|index| (self.word(index) & other.word(index)) == other.word(index)),
+        }
     }
 
     /// Is the set empty?
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.words.iter().all(|a| *a == 0)
+        self.words().iter().all(|a| *a == 0)
     }
 
     /// Insert `elem`. Returns whether the set has changed.
@@ -191,7 +221,7 @@ impl<T: Idx> DenseBitSet<T> {
             self.domain_size,
         );
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        let word_ref = &mut self.ensure_words()[word_index];
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
@@ -206,28 +236,32 @@ impl<T: Idx> DenseBitSet<T> {
 
         let (start_word_index, start_mask) = word_index_and_mask(start);
         let (end_word_index, end_mask) = word_index_and_mask(end);
+        let words = self.ensure_words();
 
         // Set all words in between start and end (exclusively of both).
         for word_index in (start_word_index + 1)..end_word_index {
-            self.words[word_index] = !0;
+            words[word_index] = !0;
         }
 
         if start_word_index != end_word_index {
             // Start and end are in different words, so we handle each in turn.
             //
             // We set all leading bits. This includes the start_mask bit.
-            self.words[start_word_index] |= !(start_mask - 1);
+            words[start_word_index] |= !(start_mask - 1);
             // And all trailing bits (i.e. from 0..=end) in the end word,
             // including the end.
-            self.words[end_word_index] |= end_mask | (end_mask - 1);
+            words[end_word_index] |= end_mask | (end_mask - 1);
         } else {
-            self.words[start_word_index] |= end_mask | (end_mask - start_mask);
+            words[start_word_index] |= end_mask | (end_mask - start_mask);
         }
     }
 
     /// Sets all bits to true.
     pub fn insert_all(&mut self) {
-        self.words.fill(!0);
+        if self.domain_size == 0 {
+            return;
+        }
+        self.ensure_words().fill(!0);
         self.clear_excess_bits();
     }
 
@@ -241,16 +275,16 @@ impl<T: Idx> DenseBitSet<T> {
         let (end_word_index, end_mask) = word_index_and_mask(end);
 
         if start_word_index == end_word_index {
-            self.words[start_word_index] & (end_mask | (end_mask - start_mask)) != 0
+            self.word(start_word_index) & (end_mask | (end_mask - start_mask)) != 0
         } else {
-            if self.words[start_word_index] & !(start_mask - 1) != 0 {
+            if self.word(start_word_index) & !(start_mask - 1) != 0 {
                 return true;
             }
 
             let remaining = start_word_index + 1..end_word_index;
             if remaining.start <= remaining.end {
-                self.words[remaining].iter().any(|&w| w != 0)
-                    || self.words[end_word_index] & (end_mask | (end_mask - 1)) != 0
+                self.words().get(remaining).is_some_and(|words| words.iter().any(|&w| w != 0))
+                    || self.word(end_word_index) & (end_mask | (end_mask - 1)) != 0
             } else {
                 false
             }
@@ -261,8 +295,11 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn remove(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
+        let Some(words) = &mut self.words else {
+            return false;
+        };
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        let word_ref = &mut words[word_index];
         let word = *word_ref;
         let new_word = word & !mask;
         *word_ref = new_word;
@@ -272,15 +309,18 @@ impl<T: Idx> DenseBitSet<T> {
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter::new(&self.words)
+        BitIter::new(self.words())
     }
 
     pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let (start, end) = inclusive_start_end(range, self.domain_size)?;
+        let Some(words) = &self.words else {
+            return None;
+        };
         let (start_word_index, _) = word_index_and_mask(start);
         let (end_word_index, end_mask) = word_index_and_mask(end);
 
-        let end_word = self.words[end_word_index] & (end_mask | (end_mask - 1));
+        let end_word = words[end_word_index] & (end_mask | (end_mask - 1));
         if end_word != 0 {
             let pos = max_bit(end_word) + WORD_BITS * end_word_index;
             if start <= pos {
@@ -291,11 +331,10 @@ impl<T: Idx> DenseBitSet<T> {
         // We exclude end_word_index from the range here, because we don't want
         // to limit ourselves to *just* the last word: the bits set it in may be
         // after `end`, so it may not work out.
-        if let Some(offset) =
-            self.words[start_word_index..end_word_index].iter().rposition(|&w| w != 0)
+        if let Some(offset) = words[start_word_index..end_word_index].iter().rposition(|&w| w != 0)
         {
             let word_idx = start_word_index + offset;
-            let start_word = self.words[word_idx];
+            let start_word = words[word_idx];
             let pos = max_bit(start_word) + WORD_BITS * word_idx;
             if start <= pos {
                 return Some(T::new(pos));
@@ -319,7 +358,13 @@ impl<T: Idx> DenseBitSet<T> {
         // quickly and accurately detect whether the update changed anything.
         // But that's only worth doing if there's an actual use-case.
 
-        update_words(&mut self.words, &other.words, |a, b| a | !b);
+        let other_words = other.words();
+        let words = self.ensure_words();
+        if other_words.is_empty() {
+            words.fill(!0);
+        } else {
+            update_words(words, other_words, |a, b| a | !b);
+        }
         // The bitwise update `a | !b` can result in the last word containing
         // out-of-domain bits, so we need to clear them.
         self.clear_excess_bits();
@@ -330,17 +375,38 @@ impl<T: Idx> DenseBitSet<T> {
 impl<T: Idx> BitRelations<DenseBitSet<T>> for DenseBitSet<T> {
     fn union(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a | b)
+        let Some(other_words) = &other.words else {
+            return false;
+        };
+        let Some(words) = &mut self.words else {
+            if other_words.iter().all(|&word| word == 0) {
+                return false;
+            }
+            self.words = Some(other_words.clone());
+            return true;
+        };
+        update_words(words, other_words, |a, b| a | b)
     }
 
     fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a & !b)
+        let (Some(words), Some(other_words)) = (&mut self.words, &other.words) else {
+            return false;
+        };
+        update_words(words, other_words, |a, b| a & !b)
     }
 
     fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a & b)
+        let Some(words) = &mut self.words else {
+            return false;
+        };
+        let Some(other_words) = &other.words else {
+            let changed = words.iter().any(|&word| word != 0);
+            words.fill(0);
+            return changed;
+        };
+        update_words(words, other_words, |a, b| a & b)
     }
 }
 
@@ -365,6 +431,27 @@ impl<T> Clone for DenseBitSet<T> {
     }
 }
 
+impl<T> PartialEq for DenseBitSet<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.domain_size == other.domain_size
+            && (0..self.num_words()).all(|index| self.word(index) == other.word(index))
+    }
+}
+
+impl<T> Eq for DenseBitSet<T> {}
+
+impl<T> Hash for DenseBitSet<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.domain_size.hash(state);
+
+        let num_words = self.num_words();
+        num_words.hash(state);
+        for index in 0..num_words {
+            self.word(index).hash(state);
+        }
+    }
+}
+
 impl<T: Idx> fmt::Debug for DenseBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
@@ -380,8 +467,8 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.words {
-            let mut word = *word;
+        for word_index in 0..self.num_words() {
+            let mut word = self.word(word_index);
             for _ in 0..WORD_BYTES {
                 // for each byte in `word`:
                 let remain = self.domain_size - i;
@@ -1306,8 +1393,10 @@ impl<T: Idx> GrowableBitSet<T> {
         }
 
         let min_num_words = num_words(min_domain_size);
-        if self.bit_set.words.len() < min_num_words {
-            self.bit_set.words.resize(min_num_words, 0)
+        if let Some(words) = &mut self.bit_set.words {
+            if words.len() < min_num_words {
+                words.resize(min_num_words, 0)
+            }
         }
     }
 
@@ -1357,7 +1446,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
+        self.bit_set.words().get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
@@ -1419,13 +1508,16 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn from_row_n(row: &DenseBitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
         let num_columns = row.domain_size();
         let words_per_row = num_words(num_columns);
-        assert_eq!(words_per_row, row.words.len());
-        BitMatrix {
-            num_rows,
-            num_columns,
-            words: iter::repeat_n(&row.words, num_rows).flatten().cloned().collect(),
-            marker: PhantomData,
+        let mut words = vec![0; num_rows * words_per_row];
+        if let Some(row_words) = &row.words {
+            assert_eq!(words_per_row, row_words.len());
+            if words_per_row > 0 {
+                for matrix_row in words.chunks_exact_mut(words_per_row) {
+                    matrix_row.copy_from_slice(row_words);
+                }
+            }
         }
+        BitMatrix { num_rows, num_columns, words, marker: PhantomData }
     }
 
     pub fn rows(&self) -> impl Iterator<Item = R> {
@@ -1517,8 +1609,11 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn union_row_with(&mut self, with: &DenseBitSet<C>, write: R) -> bool {
         assert!(write.index() < self.num_rows);
         assert_eq!(with.domain_size(), self.num_columns);
+        let Some(with_words) = &with.words else {
+            return false;
+        };
         let (write_start, write_end) = self.range(write);
-        update_words(&mut self.words[write_start..write_end], &with.words, |a, b| a | b)
+        update_words(&mut self.words[write_start..write_end], with_words, |a, b| a | b)
     }
 
     /// Sets every cell in `row` to true.

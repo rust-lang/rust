@@ -1,6 +1,8 @@
 use super::*;
 
 extern crate test;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::hint::black_box;
 
 use test::Bencher;
@@ -56,6 +58,59 @@ fn bitset_clone_from() {
     b.clone_from(&DenseBitSet::new_empty(40));
     assert_eq!(b.domain_size(), 40);
     assert_eq!(b.iter().collect::<Vec<_>>(), []);
+}
+
+#[test]
+fn dense_empty_bitset_is_lazy() {
+    fn hash<T: Hash>(value: &T) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    let mut lazy: DenseBitSet<usize> = DenseBitSet::new_empty(130);
+    assert!(lazy.words.is_none());
+    assert!(lazy.is_empty());
+    assert_eq!(lazy.count(), 0);
+    assert!(!lazy.contains(64));
+    assert!(!lazy.contains_any(0..130));
+    assert_eq!(lazy.last_set_in(0..130), None);
+    assert_eq!(lazy.iter().next(), None);
+    assert!(!lazy.remove(64));
+    assert!(lazy.words.is_none());
+
+    let mut allocated_empty: DenseBitSet<usize> = DenseBitSet::new_empty(130);
+    assert!(allocated_empty.insert(64));
+    assert!(allocated_empty.remove(64));
+    assert!(allocated_empty.words.is_some());
+
+    assert_eq!(lazy, allocated_empty);
+    assert_eq!(hash(&lazy), hash(&allocated_empty));
+    assert!(lazy.superset(&allocated_empty));
+    assert!(allocated_empty.superset(&lazy));
+    assert!(!lazy.union(&allocated_empty));
+    assert!(lazy.words.is_none());
+
+    assert!(lazy.insert(129));
+    assert!(lazy.words.is_some());
+    assert!(lazy.contains(129));
+}
+
+#[test]
+fn lazy_dense_bitset_adapters() {
+    let row = DenseBitSet::<usize>::new_empty(130);
+    let mut matrix = BitMatrix::<usize, usize>::from_row_n(&row, 3);
+    assert_eq!(matrix.words().len(), 3 * num_words(130));
+    assert!(matrix.words().iter().all(|&word| word == 0));
+    assert!(!matrix.union_row_with(&row, 1));
+
+    let mut growable = GrowableBitSet::<usize>::with_capacity(130);
+    assert!(growable.bit_set.words.is_none());
+    assert!(!growable.remove(64));
+    assert!(growable.bit_set.words.is_none());
+    assert!(growable.insert(64));
+    assert!(growable.bit_set.words.is_some());
+    assert!(growable.contains(64));
 }
 
 #[test]
