@@ -171,22 +171,9 @@ impl<'hir> GenericsGenerationResult<'hir> {
 }
 
 impl<'hir> GenericsGenerationResults<'hir> {
-    pub(super) fn all_params(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate params).
-        let mut create_params = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().params
-        };
-
-        let parent = create_params(&mut self.parent);
-        let child = create_params(&mut self.child);
+    pub(super) fn all_params(&self) -> impl Iterator<Item = hir::GenericParam<'hir>> {
+        let parent = self.parent.generics.hir_generics_or_empty().params;
+        let child = self.child.generics.hir_generics_or_empty().params;
 
         // Order generics, first we have parent and child lifetimes,
         // then parent and child types and consts.
@@ -205,24 +192,14 @@ impl<'hir> GenericsGenerationResults<'hir> {
     /// and `generate_lifetime_predicate` functions) we need to add them to delegation generics.
     /// Those predicates will not affect resulting predicate inheritance and folding
     /// in `rustc_hir_analysis`, as we inherit all predicates from delegation signature.
-    pub(super) fn all_predicates(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate predicates).
-        let mut create_predicates = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().predicates
-        };
-
-        let parent = create_predicates(&mut self.parent);
-        let child = create_predicates(&mut self.child);
-
-        parent.into_iter().chain(child).copied()
+    pub(super) fn all_predicates(&self) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
+        self.parent
+            .generics
+            .hir_generics_or_empty()
+            .predicates
+            .into_iter()
+            .chain(self.child.generics.hir_generics_or_empty().predicates)
+            .copied()
     }
 }
 
