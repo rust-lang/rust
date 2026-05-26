@@ -11,6 +11,11 @@
 ///   Calling `to_str` or `Display` on such a variant panics, and `FromStr`
 ///   will not produce it.
 ///
+/// Any variant may also carry an explicit discriminant
+/// (`Variant = N` or `Variant = N => "primary"`), forwarded verbatim to
+/// the generated enum. Use this when the discriminant values are
+/// load-bearing (e.g. encoded on the wire or stable-hashed).
+///
 /// Generates:
 /// * `VARIANTS` — every variant, in declaration order.
 /// * `STR_VARIANTS` — canonical string of each variant that has one, in
@@ -27,7 +32,7 @@ macro_rules! string_enum {
         $vis:vis enum $name:ident {
             $(
                 $(#[$variant_meta:meta])*
-                $variant:ident $( => $repr:literal $( | $alias:literal )* )? ,
+                $variant:ident $( = $disc:expr )? $( => $repr:literal $( | $alias:literal )* )? ,
             )*
         }
     ) => {
@@ -35,7 +40,7 @@ macro_rules! string_enum {
         $vis enum $name {
             $(
                 $(#[$variant_meta])*
-                $variant,
+                $variant $( = $disc )?,
             )*
         }
 
