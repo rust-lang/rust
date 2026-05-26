@@ -507,6 +507,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
+
+[[package]]
 name = "libwild"
 version = "0.9.0"
 source = "git+https://github.com/davidlattimore/wild?rev=0.9.0#318af2cef56fbfe81b6ac6985406bf7891dcf08d"
@@ -534,11 +544,13 @@ dependencies = [
  "jobserver",
  "leb128",
  "libc",
+ "libloading",
  "linker-layout",
  "linker-trace",
  "linker-utils",
  "memchr",
  "memmap2",
+ "nix",
  "object",
  "perf-event",
  "perfetto-recorder",
