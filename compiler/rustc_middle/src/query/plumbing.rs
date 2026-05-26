@@ -135,7 +135,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 }
 
 impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
-    pub fn cache_on_disk(&self, key: C::Key) -> bool {
+    pub fn will_cache_on_disk_for_key(&self, key: C::Key) -> bool {
         self.cache_on_disk_local && (!self.separate_provide_extern || key.as_local_key().is_some())
     }
 }
