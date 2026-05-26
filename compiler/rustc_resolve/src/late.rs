@@ -342,11 +342,6 @@ enum LifetimeRibKind {
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Resolves elided lifetimes to `'static` if there are no other lifetimes in scope,
-    /// otherwise give a warning that the previous behavior of introducing a new early-bound
-    /// lifetime is a bug and will be removed (if `emit_lint` is enabled).
-    StaticIfNoLifetimeInScope { emit_lint: bool },
-
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
 
@@ -1373,7 +1368,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         }
                         LifetimeRibKind::AnonymousCreateParameter { .. }
                         | LifetimeRibKind::AnonymousReportError
-                        | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
                         | LifetimeRibKind::ImplTrait
                         | LifetimeRibKind::Elided(_)
                         | LifetimeRibKind::ElisionFailure
@@ -1779,7 +1773,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     // lifetime would be illegal.
                                     LifetimeRibKind::Item
                                     | LifetimeRibKind::AnonymousReportError
-                                    | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
                                     // An anonymous lifetime is legal here, and bound to the right
                                     // place, go ahead.
@@ -1843,8 +1836,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | LifetimeRibKind::Generics { .. }
                 | LifetimeRibKind::ElisionFailure
                 | LifetimeRibKind::AnonymousReportError
-                | LifetimeRibKind::ImplTrait
-                | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {}
+                | LifetimeRibKind::ImplTrait => {}
             }
         }
 
@@ -1882,31 +1874,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
                     self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
-                }
-                LifetimeRibKind::StaticIfNoLifetimeInScope { emit_lint } => {
-                    let mut lifetimes_in_scope = vec![];
-                    for rib in self.lifetime_ribs[..i].iter().rev() {
-                        lifetimes_in_scope.extend(rib.bindings.iter().map(|(ident, _)| ident.span));
-                        // Consider any anonymous lifetimes, too
-                        if let LifetimeRibKind::AnonymousCreateParameter { binder, .. } = rib.kind
-                            && let Some(extra) = self.r.extra_lifetime_params_map.get(&binder)
-                        {
-                            lifetimes_in_scope.extend(extra.iter().map(|(ident, _, _)| ident.span));
-                        }
-                        if let LifetimeRibKind::Item = rib.kind {
-                            break;
-                        }
-                    }
-                    if lifetimes_in_scope.is_empty() {
-                        self.record_lifetime_use(
-                            lifetime.id,
-                            LifetimeRes::Static,
-                            elision_candidate,
-                        );
-                        return;
-                    } else if emit_lint {
-                        break;
-                    }
                 }
                 LifetimeRibKind::AnonymousReportError => {
                     let guar = if elided {
@@ -2257,8 +2224,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     //
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
-                    LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
-                    | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {
+                    LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. } => {
                         let sess = self.r.tcx.sess;
                         let subdiag = elided_lifetime_in_path_suggestion(
                             sess.source_map(),
@@ -3333,7 +3299,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(
-                            LifetimeRibKind::StaticIfNoLifetimeInScope { emit_lint: false },
+                            LifetimeRibKind::Elided(LifetimeRes::Static),
                             |this| {
                                 this.visit_generics(generics);
                                 if rhs_kind.is_type_const()
@@ -3549,10 +3515,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(
-                            LifetimeRibKind::StaticIfNoLifetimeInScope {
-                                // In impls, it's not a hard error yet due to backcompat.
-                                emit_lint: true,
-                            },
+                            LifetimeRibKind::Elided(LifetimeRes::Static),
                             |this| {
                                 // If this is a trait impl, ensure the const
                                 // exists in trait
