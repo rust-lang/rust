@@ -22,7 +22,7 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     fn get_fn_addr(
         &self,
         instance: Instance<'tcx>,
-        schema: Option<&PointerAuthSchema>,
+        pointer_auth_schema: Option<&PointerAuthSchema>,
     ) -> Self::Value;
     fn eh_personality(&self) -> Self::Function;
     fn sess(&self) -> &Session;

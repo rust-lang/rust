@@ -745,12 +745,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // <llvm_root>/llvm/include/llvm/BinaryFormat/ELF.h.
         // FIXME (jchlanda) extend possible values once we start supporting other platforms (for
         // example: AARCH64_PAUTH_PLATFORM_BAREMETAL = 0x1);
-        let aarch64_pauth_platform_llvm_linux = 0x10000002;
+        const AARCH64_PAUTH_PLATFORM_LLVM_LINUX: u32 = 0x10000002;
         llvm::add_module_flag_u32(
             self.llmod,
             llvm::ModuleFlagMergeBehavior::Error,
             "aarch64-elf-pauthabi-platform",
-            aarch64_pauth_platform_llvm_linux,
+            AARCH64_PAUTH_PLATFORM_LLVM_LINUX,
         );
         llvm::add_module_flag_u32(
             self.llmod,
@@ -907,7 +907,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn get_fn_addr(
         &self,
         instance: Instance<'tcx>,
-        schema: Option<&PointerAuthSchema>,
+        pointer_auth_schema: Option<&PointerAuthSchema>,
     ) -> &'ll Value {
         // When pointer authentication metadata is provided, `get_fn_addr` will
         // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
@@ -922,7 +922,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // <https://github.com/rust-lang/rust/issues/152532>, and comment in
         // builder's `ptrauth_operand_bundle`.
         let llfn = get_fn(self, instance);
-        match schema {
+        match pointer_auth_schema {
             Some(schema) => common::maybe_sign_fn_ptr(self, instance, llfn, schema),
             None => llfn,
         }

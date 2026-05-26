@@ -122,16 +122,27 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
         let schema = if cx.sess().pointer_authentication() {
-            if is_init_fini == IsInitOrFini::Yes {
-                assert!(cx.sess().pointer_authentication_init_fini());
-                cx.sess().pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
-            } else if cx.sess().pointer_authentication_functions() {
-                cx.sess()
-                    .pointer_auth_config
-                    .as_ref()
-                    .and_then(|cfg| cfg.function_pointers.as_ref())
-            } else {
-                None
+            match is_init_fini {
+                IsInitOrFini::Yes => {
+                    if cx.sess().pointer_authentication_init_fini() {
+                        cx.sess()
+                            .pointer_auth_config
+                            .as_ref()
+                            .and_then(|cfg| cfg.init_fini.as_ref())
+                    } else {
+                        None
+                    }
+                }
+                IsInitOrFini::No => {
+                    if cx.sess().pointer_authentication_functions() {
+                        cx.sess()
+                            .pointer_auth_config
+                            .as_ref()
+                            .and_then(|cfg| cfg.function_pointers.as_ref())
+                    } else {
+                        None
+                    }
+                }
             }
         } else {
             None

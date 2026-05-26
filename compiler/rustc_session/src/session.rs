@@ -85,12 +85,6 @@ pub trait DynLintStore: Any + DynSync + DynSend {
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PointerAuthKind {
-    None,
-    ARM8_3,
-}
-
 /// Hardware pointer-signing keys in ARM8.3.
 /// These values are the same as used in ptrauth.h.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,7 +117,6 @@ pub enum PointerAuthAddressDiscriminator {
 }
 
 pub struct PointerAuthSchema {
-    pub kind: PointerAuthKind,
     pub is_address_discriminated: PointerAuthAddressDiscriminator,
     pub discrimination_kind: PointerAuthDiscrimination,
     pub key: PointerAuthARM8_3Key,
@@ -133,7 +126,6 @@ impl PointerAuthSchema {
     pub fn function_pointers_default(target: &Target) -> Self {
         assert!(target.cfg_abi == CfgAbi::Pauthtest);
         return Self {
-            kind: PointerAuthKind::ARM8_3,
             is_address_discriminated: PointerAuthAddressDiscriminator::HardwareAddress(false),
             discrimination_kind: PointerAuthDiscrimination::None,
             key: PointerAuthARM8_3Key::ASIA,
@@ -143,7 +135,6 @@ impl PointerAuthSchema {
     pub fn init_fini_default(target: &Target) -> Self {
         assert!(target.cfg_abi == CfgAbi::Pauthtest);
         return Self {
-            kind: PointerAuthKind::ARM8_3,
             is_address_discriminated: PointerAuthAddressDiscriminator::Synthetic(1),
             discrimination_kind: PointerAuthDiscrimination::None,
             key: PointerAuthARM8_3Key::ASIA,
@@ -1425,6 +1416,25 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && sess.target.is_like_windows
     {
         sess.dcx().emit_err(errors::LinkerPluginToWindowsNotSupported);
+    }
+
+    if sess
+        .pointer_auth_config
+        .as_ref()
+        .and_then(|cfg| cfg.function_pointers.as_ref())
+        .is_some_and(|schema| matches!(schema.discrimination_kind, PointerAuthDiscrimination::Type))
+    {
+        sess.dcx().emit_err(errors::PointerAuthenticationTypeDiscriminationNotSupportedForTarget {
+            target_triple: &sess.opts.target_triple,
+        });
+    }
+
+    if sess.target.cfg_abi != CfgAbi::Pauthtest
+        && !sess.opts.unstable_opts.pointer_authentication.is_empty()
+    {
+        sess.dcx().emit_warn(errors::PointerAuthenticationNotSupportedForTarget {
+            target_triple: &sess.opts.target_triple,
+        });
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't
