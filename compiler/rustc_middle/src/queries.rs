@@ -2155,6 +2155,11 @@ rustc_queries! {
         desc { "computing the uninhabited predicate of `{}`", key }
     }
 
+    /// Do not call this query directly: invoke `Ty::is_opsem_inhabited` instead.
+    query is_opsem_inhabited_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is inhabited on the opsem level", env.value }
+    }
+
     query crate_dep_kind(_: CrateNum) -> CrateDepKind {
         eval_always
         desc { "fetching what a dependency looks like" }
