@@ -373,7 +373,6 @@ language_item_table! {
 
     AsyncGenReady,           sym::AsyncGenReady,       async_gen_ready,            Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
     AsyncGenPending,         sym::AsyncGenPending,     async_gen_pending,          Target::AssocConst,     GenericRequirement::Exact(1);
-    AsyncGenFinished,        sym::AsyncGenFinished,    async_gen_finished,         Target::AssocConst,     GenericRequirement::Exact(1);
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.

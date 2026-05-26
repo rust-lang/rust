@@ -24,7 +24,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
+use rustc_span::{DesugaringKind, ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -845,6 +845,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ExprKind::Match(..)
             | ExprKind::Block(..)
                 if expression.can_have_side_effects()
+                    // If the expression is from an async block, then do not suggest adding a semicolon,
+                    // as they just bind upvars and have no side effects.
+                    && !expression.span.is_desugaring(DesugaringKind::Async)
                     // If the expression is from an external macro, then do not suggest
                     // adding a semicolon, because there's nowhere to put it.
                     // See issue #81943.
