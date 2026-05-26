@@ -743,8 +743,11 @@ pub(crate) struct DiagMetadata<'ast> {
     /// they are used (in a `break` or `continue` statement)
     unused_labels: FxIndexMap<NodeId, Span>,
 
-    /// Only used for better errors on `let <pat>: <expr, not type>;`.
+    /// Used for better errors on `let <pat>: <expr, not type>;`.
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
+
+    /// Only used for better errors on `let <pat> = val{}` when the user forget `else`.
+    struct_field_parse_failed: bool,
 
     current_pat: Option<&'ast Pat>,
 
@@ -4593,6 +4596,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     | PathSource::PreciseCapturingArg(..) = source
                 {
                     this.suggest_adding_generic_parameter(path, source)
+                } else if let Some(Res::Local(_)) = &res
+                    && this.diag_metadata.struct_field_parse_failed
+                    && this.diag_metadata.current_let_binding.is_some()
+                {
+                    let span = path[0].ident.span.shrink_to_hi();
+                    (
+                        Some((
+                            span,
+                            "try adding `else` here:",
+                            " else ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )),
+                        None,
+                    )
                 } else {
                     (None, None)
                 };
@@ -5192,7 +5209,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ExprKind::Struct(ref se) => {
+                if let StructRest::NoneWithError(_) = &se.rest
+                    && se.fields.is_empty()
+                {
+                    self.diag_metadata.struct_field_parse_failed = true;
+                }
                 self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct(parent));
+                self.diag_metadata.struct_field_parse_failed = false;
                 // This is the same as `visit::walk_expr(self, expr);`, but we want to pass the
                 // parent in for accurate suggestions when encountering `Foo { bar }` that should
                 // have been `Foo { bar: self.bar }`.
