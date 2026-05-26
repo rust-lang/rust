@@ -460,12 +460,23 @@ pub struct Hashes {
 /// For comments about each field see `OwnerInfo` struct.
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct ProjectedOwnerInfo<'tcx> {
-    pub nodes: &'tcx OwnerNodes<'tcx>,
-    pub parenting: &'tcx LocalDefIdMap<ItemLocalId>,
-    pub trait_map: &'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>,
+    nodes: &'tcx OwnerNodes<'tcx>,
+    parenting: &'tcx LocalDefIdMap<ItemLocalId>,
+    trait_map: &'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>,
 
     #[stable_hash(ignore)]
-    pub delayed_lints: &'tcx Steal<DelayedLints>,
+    delayed_lints: &'tcx Steal<DelayedLints>,
+}
+
+impl<'tcx> ProjectedOwnerInfo<'tcx> {
+    pub fn new(
+        nodes: &'tcx OwnerNodes<'tcx>,
+        parenting: &'tcx LocalDefIdMap<ItemLocalId>,
+        trait_map: &'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>,
+        delayed_lints: &'tcx Steal<DelayedLints>,
+    ) -> ProjectedOwnerInfo<'tcx> {
+        ProjectedOwnerInfo { nodes, parenting, trait_map, delayed_lints }
+    }
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]

@@ -627,12 +627,12 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.hir_owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
-            nodes: self.tcx.arena.alloc(hir::OwnerNodes::synthetic()),
-            parenting: self.tcx.arena.alloc(Default::default()),
-            delayed_lints: self.tcx.arena.alloc(Steal::new(Default::default())),
-            trait_map: self.tcx.arena.alloc(Default::default()),
-        }));
+        self.hir_owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo::new(
+            self.tcx.arena.alloc(hir::OwnerNodes::synthetic()),
+            self.tcx.arena.alloc(Default::default()),
+            self.tcx.arena.alloc(Default::default()),
+            self.tcx.arena.alloc(Steal::new(Default::default())),
+        )));
 
         self.feed_owner_id().hir_attr_map(hir::AttributeMap::EMPTY);
     }
