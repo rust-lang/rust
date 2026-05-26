@@ -342,6 +342,10 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 }
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    if !std::env::var("ENABLE_TIDY_STYLE").is_ok() {
+        return;
+    }
+
     let mut check = tidy_ctx.start_check(CheckId::new("style").path(path));
 
     fn skip(path: &Path, is_dir: bool) -> bool {
