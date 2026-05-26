@@ -1,8 +1,9 @@
+//@check-pass
+
 struct Foo<'a>(&'a ());
 
 impl Foo<'_> {
     const STATIC: &str = "";
-    //~^ ERROR missing lifetime specifier
 }
 
 trait Bar {
@@ -11,7 +12,6 @@ trait Bar {
 
 impl Bar for Foo<'_> {
     const STATIC: &str = "";
-    //~^ ERROR missing lifetime specifier
 }
 
 fn main() {}
