@@ -2,7 +2,6 @@ use std::{assert_matches, fmt};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
@@ -781,40 +780,12 @@ impl<'tcx> Instance<'tcx> {
     pub fn try_resolve_item_for_coroutine(
         tcx: TyCtxt<'tcx>,
         trait_item_id: DefId,
-        trait_id: DefId,
         rcvr_args: ty::GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
             return None;
         };
-        let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
-
-        let coroutine_callable_item = if tcx.is_lang_item(trait_id, LangItem::Future) {
-            assert_matches!(
-                coroutine_kind,
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
-            );
-            hir::LangItem::FuturePoll
-        } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {
-            assert_matches!(
-                coroutine_kind,
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
-            );
-            hir::LangItem::IteratorNext
-        } else if tcx.is_lang_item(trait_id, LangItem::AsyncIterator) {
-            assert_matches!(
-                coroutine_kind,
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
-            );
-            hir::LangItem::AsyncIteratorPollNext
-        } else if tcx.is_lang_item(trait_id, LangItem::Coroutine) {
-            assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
-            hir::LangItem::CoroutineResume
-        } else {
-            return None;
-        };
-
-        if tcx.is_lang_item(trait_item_id, coroutine_callable_item) {
+        if tcx.is_lang_item(trait_item_id, LangItem::CoroutineResume) {
             if tcx.is_async_drop_in_place_coroutine(coroutine_def_id) {
                 return Some(resolve_async_drop_poll(rcvr_args.type_at(0)));
             }

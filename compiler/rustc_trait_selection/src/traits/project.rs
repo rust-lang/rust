@@ -1797,13 +1797,14 @@ fn coroutine_closure_output_coroutine<'tcx>(
     def_id: DefId,
     args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
 ) -> Ty<'tcx> {
+    let coroutine_def_id = tcx.coroutine_for_closure(def_id);
     let kind_ty = args.kind_ty();
     let sig = args.coroutine_closure_sig().skip_binder();
 
     // If we know the kind and upvars, use that directly.
     // Otherwise, defer to `AsyncFnKindHelper::Upvars` to delay
     // the projection, like the `AsyncFn*` traits do.
-    if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
+    let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
         // Fall back to projection if upvars aren't constrained
         && !args.tupled_upvars_ty().is_ty_var()
     {
@@ -1813,7 +1814,7 @@ fn coroutine_closure_output_coroutine<'tcx>(
         sig.to_coroutine_given_kind_and_upvars(
             tcx,
             args.parent_args(),
-            tcx.coroutine_for_closure(def_id),
+            coroutine_def_id,
             goal_kind,
             env_region,
             args.tupled_upvars_ty(),
@@ -1846,10 +1847,12 @@ fn coroutine_closure_output_coroutine<'tcx>(
             tcx,
             args.parent_args(),
             Ty::from_closure_kind(tcx, goal_kind),
-            tcx.coroutine_for_closure(def_id),
+            coroutine_def_id,
             tupled_upvars_ty,
         )
-    }
+    };
+
+    tcx.coroutine_desugared_type(coroutine_ty)
 }
 
 fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(

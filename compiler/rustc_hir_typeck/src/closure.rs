@@ -249,7 +249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // coroutine. To do so, we use the `CoroutineClosureSignature` to compute
                 // the coroutine type, filling in the tupled_upvars_ty and kind_ty with infer
                 // vars which will get constrained during upvar analysis.
-                let coroutine_output_ty = tcx.liberate_late_bound_regions(
+                let coroutine_ty = tcx.liberate_late_bound_regions(
                     expr_def_id.to_def_id(),
                     closure_args.coroutine_closure_sig().map_bound(|sig| {
                         sig.to_coroutine(
@@ -261,9 +261,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     }),
                 );
+                let closure_output_ty = tcx.coroutine_desugared_type(coroutine_ty);
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
-                    coroutine_output_ty,
+                    closure_output_ty,
                     liberated_sig.fn_sig_kind,
                 );
 

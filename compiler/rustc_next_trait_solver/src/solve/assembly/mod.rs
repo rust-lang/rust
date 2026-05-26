@@ -309,37 +309,8 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
-    /// A coroutine (that comes from an `async` desugaring) is known to implement
-    /// `Future<Output = O>`, where `O` is given by the coroutine's return type
-    /// that was computed during type-checking.
-    fn consider_builtin_future_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
-
-    /// A coroutine (that comes from a `gen` desugaring) is known to implement
-    /// `Iterator<Item = O>`, where `O` is given by the generator's yield type
-    /// that was computed during type-checking.
-    fn consider_builtin_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
-
-    /// A coroutine (that comes from a `gen` desugaring) is known to implement
-    /// `FusedIterator`
-    fn consider_builtin_fused_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
-
-    fn consider_builtin_async_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
-
-    /// A coroutine (that doesn't come from an `async` or `gen` desugaring) is known to
-    /// implement `Coroutine<R, Yield = Y, Return = O>`, given the resume, yield,
-    /// and return types of the coroutine computed during type-checking.
+    /// A coroutine is known to implement `Coroutine<R, Yield = Y, Return = O>`,
+    /// given the resume, yield, and return types of the coroutine computed during type-checking.
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -636,18 +607,6 @@ where
                 Some(SolverTraitLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
                 Some(SolverTraitLangItem::PointeeTrait) => {
                     G::consider_builtin_pointee_candidate(self, goal)
-                }
-                Some(SolverTraitLangItem::Future) => {
-                    G::consider_builtin_future_candidate(self, goal)
-                }
-                Some(SolverTraitLangItem::Iterator) => {
-                    G::consider_builtin_iterator_candidate(self, goal)
-                }
-                Some(SolverTraitLangItem::FusedIterator) => {
-                    G::consider_builtin_fused_iterator_candidate(self, goal)
-                }
-                Some(SolverTraitLangItem::AsyncIterator) => {
-                    G::consider_builtin_async_iterator_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::Coroutine) => {
                     G::consider_builtin_coroutine_candidate(self, goal)

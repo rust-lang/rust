@@ -6,7 +6,7 @@
 
 use std::iter;
 
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
@@ -413,20 +413,10 @@ pub(crate) fn transform_instance<'tcx>(
                         tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
                     (trait_id, Some(tuple_args))
                 }
-                ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
-                    hir::CoroutineKind::Coroutine(..) => (
-                        tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
-                        Some(instance.args.as_coroutine().resume_ty()),
-                    ),
-                    hir::CoroutineKind::Desugared(desugaring, _) => {
-                        let lang_item = match desugaring {
-                            hir::CoroutineDesugaring::Async => LangItem::Future,
-                            hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
-                            hir::CoroutineDesugaring::Gen => LangItem::Iterator,
-                        };
-                        (tcx.require_lang_item(lang_item, DUMMY_SP), None)
-                    }
-                },
+                ty::Coroutine(..) => (
+                    tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
+                    Some(instance.args.as_coroutine().resume_ty()),
+                ),
                 ty::CoroutineClosure(..) => (
                     tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
                     Some(

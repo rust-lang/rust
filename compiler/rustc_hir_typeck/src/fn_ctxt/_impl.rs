@@ -838,7 +838,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 }) => Some((owner_id.def_id, sig.decl)),
                 Node::Expr(&hir::Expr {
-                    hir_id,
                     kind: hir::ExprKind::Closure(&hir::Closure { def_id, kind, fn_decl, .. }),
                     ..
                 }) => {
@@ -852,7 +851,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _,
                             hir::CoroutineSource::Fn,
                         )) => {
-                            let (sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
+                            let parent_fn = self.tcx.local_parent(def_id);
+                            let (sig, owner_id) = match self.tcx.hir_node_by_def_id(parent_fn) {
                                 Node::Item(&hir::Item {
                                     kind: hir::ItemKind::Fn { ref sig, .. },
                                     owner_id,

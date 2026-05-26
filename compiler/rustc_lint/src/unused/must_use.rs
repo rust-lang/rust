@@ -149,6 +149,19 @@ pub fn is_ty_must_use<'tcx>(
 
     match *ty.kind() {
         _ if is_uninhabited(ty) => IsTyMustUse::Trivial,
+        _ if let Some((def_id, _)) = cx.tcx.try_unwrap_desugared_coroutine(ty) => {
+            // async fn should be treated as "implementor of `Future`"
+            if cx.tcx.coroutine_is_async(def_id)
+                && let Some(def_id) = cx.tcx.lang_items().future_trait()
+            {
+                IsTyMustUse::Yes(MustUsePath::Opaque(Box::new(
+                    is_def_must_use(cx, def_id, expr.span)
+                        .expect("future trait is marked as `#[must_use]`"),
+                )))
+            } else {
+                IsTyMustUse::Yes(MustUsePath::Coroutine(expr.span))
+            }
+        }
         ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
             is_ty_must_use(cx, boxed, expr).map(|inner| MustUsePath::Boxed(Box::new(inner)))
         }
@@ -258,19 +271,6 @@ pub fn is_ty_must_use<'tcx>(
         },
         ty::Closure(..) | ty::CoroutineClosure(..) => {
             IsTyMustUse::Yes(MustUsePath::Closure(expr.span))
-        }
-        ty::Coroutine(def_id, ..) => {
-            // async fn should be treated as "implementor of `Future`"
-            if cx.tcx.coroutine_is_async(def_id)
-                && let Some(def_id) = cx.tcx.lang_items().future_trait()
-            {
-                IsTyMustUse::Yes(MustUsePath::Opaque(Box::new(
-                    is_def_must_use(cx, def_id, expr.span)
-                        .expect("future trait is marked as `#[must_use]`"),
-                )))
-            } else {
-                IsTyMustUse::Yes(MustUsePath::Coroutine(expr.span))
-            }
         }
         _ => IsTyMustUse::No,
     }

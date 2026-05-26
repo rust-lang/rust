@@ -2,14 +2,13 @@
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, msg};
-use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicateKind::BoundPredicate;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
+use rustc_hir::{self as hir, PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, SubregionOrigin};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
@@ -613,8 +612,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(*def) => {
-                    FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
+                ty::Adt(def, args)
+                    if let Some((did, _)) =
+                        self.infcx.tcx.try_unwrap_desugared_coroutine(output_ty) =>
+                {
+                    let coroutine_kind = self.infcx.tcx.coroutine_kind(did).unwrap();
+                    FnMutReturnTypeErr::ReturnAsyncBlock { span: *span, coroutine_kind }
+                }
+                ty::Coroutine(def, ..) => {
+                    let coroutine_kind = self.infcx.tcx.coroutine_kind(*def).unwrap();
+                    FnMutReturnTypeErr::ReturnAsyncBlock {
+                        span: *span,
+                        coroutine_kind: hir::CoroutineKind::Coroutine(coroutine_kind.movability()),
+                    }
                 }
                 _ if output_ty.contains_closure() => {
                     FnMutReturnTypeErr::ReturnClosure { span: *span }

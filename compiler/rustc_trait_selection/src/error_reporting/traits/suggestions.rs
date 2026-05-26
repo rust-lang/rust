@@ -1039,39 +1039,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // and the expected type is `Future`, suggest using `async {}` block instead
         // of `async || {}`
         if let ty::CoroutineClosure(def_id, args) = *self_ty.kind()
+            && let Some(def_id) = def_id.as_local()
             && let sig = args.as_coroutine_closure().coroutine_closure_sig().skip_binder()
             && let ty::Tuple(inputs) = *sig.tupled_inputs_ty.kind()
             && inputs.is_empty()
             && self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Future)
             && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
-            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) =
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
                 self.tcx.hir_node(*arg_hir_id)
-            && let Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(closure), ..
-            })) = self.tcx.hir_get_if_local(def_id)
+            && *arg_hir_id == self.tcx.local_def_id_to_hir_id(def_id)
             && let hir::ClosureKind::CoroutineClosure(CoroutineDesugaring::Async) = closure.kind
             && let Some(arg_span) = closure.fn_arg_span
             && obligation.cause.span.contains(arg_span)
         {
-            let mut body = self.tcx.hir_body(closure.body).value;
-            let peeled = body.peel_blocks().peel_drop_temps();
-            if let hir::ExprKind::Closure(inner) = peeled.kind {
-                body = self.tcx.hir_body(inner.body).value;
-            }
-            if !matches!(body.peel_blocks().peel_drop_temps().kind, hir::ExprKind::Block(..)) {
-                return false;
-            }
-
-            let sm = self.tcx.sess.source_map();
-            let removal_span = if let Ok(snippet) =
-                sm.span_to_snippet(arg_span.with_hi(arg_span.hi() + rustc_span::BytePos(1)))
-                && snippet.ends_with(' ')
-            {
-                // There's a space after `||`, include it in the removal
-                arg_span.with_hi(arg_span.hi() + rustc_span::BytePos(1))
-            } else {
-                arg_span
-            };
+            let removal_span = self.tcx.sess.source_map().span_extend_while_whitespace(arg_span);
             err.span_suggestion_verbose(
                 removal_span,
                 "use `async {}` instead of `async || {}` to introduce an async block",
@@ -1470,7 +1451,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Some((
                         DefIdOrName::DefId(def_id),
                         sig_parts.map_bound(|sig| {
-                            sig.to_coroutine(
+                            let coroutine = sig.to_coroutine(
                                 self.tcx,
                                 args.as_coroutine_closure().parent_args(),
                                 // Just use infer vars here, since we  don't really care
@@ -1478,7 +1459,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 self.next_ty_var(DUMMY_SP),
                                 self.tcx.coroutine_for_closure(def_id),
                                 self.next_ty_var(DUMMY_SP),
-                            )
+                            );
+                            self.tcx.coroutine_desugared_type(coroutine)
                         }),
                         sig_parts.map_bound(|sig| sig.tupled_inputs_ty.tuple_fields().as_slice()),
                     ))
@@ -4024,8 +4006,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else if let ObligationCauseCode::BuiltinDerived(data) = &*data.parent_code {
                     let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                     let nested_ty = parent_trait_ref.skip_binder().self_ty();
-                    matches!(nested_ty.kind(), ty::Coroutine(..))
-                        || matches!(nested_ty.kind(), ty::Closure(..))
+                    matches!(nested_ty.kind(), ty::Closure(..))
+                        || tcx.try_unwrap_desugared_coroutine(nested_ty).is_some()
                 } else {
                     false
                 };
@@ -4039,6 +4021,36 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("required because it appears within the type `{ty_str}`")
                     };
                     match *ty.kind() {
+                        // Special-case this to say "async block" instead of `[static coroutine]`.
+                        _ if let Some((def_id, _)) = tcx.try_unwrap_desugared_coroutine(ty) => {
+                            // Coroutines can appear twice, once unwrapped as `#[coroutine] {}`
+                            // and once wrapped as `async {}`. Only report the obligation once.
+                            let is_duplicated_coroutine = if let Some(last) = obligated_types.last()
+                                && let Some((last_def_id, _)) =
+                                    tcx.try_unwrap_desugared_coroutine(*last)
+                            {
+                                last_def_id == def_id
+                            } else {
+                                false
+                            };
+
+                            if !is_duplicated_coroutine {
+                                let sp = tcx.def_span(def_id);
+                                let kind = tcx.coroutine_kind(def_id).unwrap();
+                                debug!(
+                                    ?ty,
+                                    ?def_id,
+                                    ?sp,
+                                    "note_obligation_cause_code: found a coroutine"
+                                );
+                                err.span_note(
+                                    sp,
+                                    with_forced_trimmed_paths!(format!(
+                                        "required because it's used within this {kind:#}",
+                                    )),
+                                );
+                            }
+                        }
                         ty::Adt(def, _) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
@@ -4060,30 +4072,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 "note_obligation_cause_code: check for async fn"
                             );
                             if is_future
-                                && obligated_types.last().is_some_and(|ty| match ty.kind() {
-                                    ty::Coroutine(last_def_id, ..) => {
-                                        tcx.coroutine_is_async(*last_def_id)
-                                    }
-                                    _ => false,
-                                })
+                                && let Some(last_ty) = obligated_types.last()
+                                && let Some((last_def_id, _)) =
+                                    tcx.try_unwrap_desugared_coroutine(*last_ty)
+                                && tcx.coroutine_is_async(last_def_id)
                             {
                                 // See comment above; skip printing twice.
                             } else {
                                 let msg = msg();
                                 err.span_note(tcx.def_span(def_id), msg);
                             }
-                        }
-                        ty::Coroutine(def_id, _) => {
-                            let sp = tcx.def_span(def_id);
-
-                            // Special-case this to say "async block" instead of `[static coroutine]`.
-                            let kind = tcx.coroutine_kind(def_id).unwrap();
-                            err.span_note(
-                                sp,
-                                with_forced_trimmed_paths!(format!(
-                                    "required because it's used within this {kind:#}",
-                                )),
-                            );
                         }
                         ty::CoroutineWitness(..) => {
                             // Skip printing coroutine-witnesses, since we'll drill into

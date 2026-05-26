@@ -374,6 +374,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.coroutine_for_closure(def_id)
     }
 
+    fn coroutine_desugared_type(self, coroutine: Ty<'tcx>) -> Ty<'tcx> {
+        self.coroutine_desugared_type(coroutine)
+    }
+
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
         self.generics_require_sized_self(def_id)
     }
@@ -744,22 +748,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.dcx().span_delayed_bug(DUMMY_SP, msg.to_string())
     }
 
-    fn is_general_coroutine(self, coroutine_def_id: DefId) -> bool {
-        self.is_general_coroutine(coroutine_def_id)
-    }
-
-    fn coroutine_is_async(self, coroutine_def_id: DefId) -> bool {
-        self.coroutine_is_async(coroutine_def_id)
-    }
-
-    fn coroutine_is_gen(self, coroutine_def_id: DefId) -> bool {
-        self.coroutine_is_gen(coroutine_def_id)
-    }
-
-    fn coroutine_is_async_gen(self, coroutine_def_id: DefId) -> bool {
-        self.coroutine_is_async_gen(coroutine_def_id)
-    }
-
     type UnsizingParams = &'tcx rustc_index::bit_set::DenseBitSet<u32>;
     fn unsizing_params_for_adt(self, adt_def_id: DefId) -> Self::UnsizingParams {
         self.unsizing_params_for_adt(adt_def_id)
@@ -864,7 +852,6 @@ bidirectional_lang_item_map! {
     AsyncFnKindHelper,
     AsyncFnMut,
     AsyncFnOnce,
-    AsyncIterator,
     BikeshedGuaranteedNoDrop,
     Clone,
     Copy,
@@ -877,9 +864,7 @@ bidirectional_lang_item_map! {
     FnMut,
     FnOnce,
     FnPtrTrait,
-    FusedIterator,
     Future,
-    Iterator,
     MetaSized,
     PointeeSized,
     PointeeTrait,

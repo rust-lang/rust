@@ -1063,32 +1063,66 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    /// If `coroutine` is a `ty::Coroutine` that comes from `gen`/`async`/`async gen` syntax,
+    /// return the corresponding wrapper type used by AST lowering, respectively
+    /// `CoroutineIterator`/`CoroutineFuture`/`CoroutineAsyncIterator`.
+    ///
+    /// If `coroutine` comes from a bare coroutine block `#[coroutine] {}` or closure,
+    /// return it unchanged.
+    pub fn coroutine_desugared_type(self, coroutine: Ty<'tcx>) -> Ty<'tcx> {
+        let ty::Coroutine(coroutine_did, ..) = coroutine.kind() else {
+            bug!("expected a coroutine type, got {coroutine:?}");
+        };
+        let coroutine_kind = self.coroutine_kind(*coroutine_did).unwrap_or_else(|| {
+            bug!("expected a coroutine kind for {coroutine_did:?}");
+        });
+        let wrapper_adt = match coroutine_kind {
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
+                LangItem::CoroutineIterator
+            }
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
+                LangItem::CoroutineFuture
+            }
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
+                LangItem::CoroutineAsyncIterator
+            }
+            hir::CoroutineKind::Coroutine(_) => return coroutine,
+        };
+        let wrapper_adt = self.require_lang_item(wrapper_adt, self.def_span(*coroutine_did));
+        Ty::new_adt(self, self.adt_def(wrapper_adt), self.mk_args(&[coroutine.into()]))
+    }
+
+    /// Conceptually, the inverse of `coroutine_desugared_type`.
+    ///
+    /// If `wrapped` is either a coroutine type or a desugared coroutine wrapper
+    /// (`CoroutineIterator`, `CoroutineFuture` or `CoroutineAsyncIterator`),
+    /// return the underlying coroutine `DefId` and its generic args.
+    ///
+    /// If `wrapped` is not a coroutine type or wrapper, return `None`.
+    pub fn try_unwrap_desugared_coroutine(
+        self,
+        wrapped: Ty<'tcx>,
+    ) -> Option<(DefId, ty::GenericArgsRef<'tcx>)> {
+        if let ty::Coroutine(def_id, args) = wrapped.kind() {
+            Some((*def_id, args))
+        } else if let ty::Adt(def, args) = wrapped.kind()
+            && let Some(
+                LangItem::CoroutineIterator
+                | LangItem::CoroutineFuture
+                | LangItem::CoroutineAsyncIterator,
+            ) = self.lang_items().from_def_id(def.did())
+            && let ty::Coroutine(def_id, args) = args.type_at(0).kind()
+        {
+            Some((*def_id, args))
+        } else {
+            None
+        }
+    }
+
     // Whether the body owner is synthetic, which in this case means it does not correspond to
     // meaningful HIR. This is currently used to skip over MIR borrowck.
     pub fn is_synthetic_mir(self, def_id: impl Into<DefId>) -> bool {
         matches!(self.def_kind(def_id.into()), DefKind::SyntheticCoroutineBody)
-    }
-
-    /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
-    /// This means it is neither an `async` or `gen` construct.
-    pub fn is_general_coroutine(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine(_)))
-    }
-
-    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `gen` construct.
-    pub fn coroutine_is_gen(self, def_id: DefId) -> bool {
-        matches!(
-            self.coroutine_kind(def_id),
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
-        )
-    }
-
-    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `async gen` construct.
-    pub fn coroutine_is_async_gen(self, def_id: DefId) -> bool {
-        matches!(
-            self.coroutine_kind(def_id),
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _))
-        )
     }
 
     pub fn features(self) -> &'tcx rustc_feature::Features {

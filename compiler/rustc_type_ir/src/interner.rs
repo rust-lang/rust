@@ -308,6 +308,10 @@ pub trait Interner:
 
     fn coroutine_for_closure(self, def_id: Self::CoroutineClosureId) -> Self::CoroutineId;
 
+    /// Given a coroutine type, wrap it inside an `impl Iterator` or `impl Future` or `impl AsyncIterator` type,
+    /// depending on the coroutine kind.
+    fn coroutine_desugared_type(self, coroutine: Self::Ty) -> Self::Ty;
+
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool;
 
     fn item_bounds(
@@ -445,11 +449,6 @@ pub trait Interner:
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
-
-    fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
-    fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
-    fn coroutine_is_gen(self, coroutine_def_id: Self::CoroutineId) -> bool;
-    fn coroutine_is_async_gen(self, coroutine_def_id: Self::CoroutineId) -> bool;
 
     type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::AdtId) -> Self::UnsizingParams;

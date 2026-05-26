@@ -508,104 +508,6 @@ where
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
 
-    fn consider_builtin_future_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution.into());
-        }
-
-        let ty::Coroutine(def_id, _) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution.into());
-        };
-
-        // Coroutines are not futures unless they come from `async` desugaring
-        let cx = ecx.cx();
-        if !cx.coroutine_is_async(def_id) {
-            return Err(NoSolution.into());
-        }
-
-        // Async coroutine unconditionally implement `Future`
-        // Technically, we need to check that the future output type is Sized,
-        // but that's already proven by the coroutine being WF.
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
-    fn consider_builtin_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution.into());
-        }
-
-        let ty::Coroutine(def_id, _) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution.into());
-        };
-
-        // Coroutines are not iterators unless they come from `gen` desugaring
-        let cx = ecx.cx();
-        if !cx.coroutine_is_gen(def_id) {
-            return Err(NoSolution.into());
-        }
-
-        // Gen coroutines unconditionally implement `Iterator`
-        // Technically, we need to check that the iterator output type is Sized,
-        // but that's already proven by the coroutines being WF.
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
-    fn consider_builtin_fused_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution.into());
-        }
-
-        let ty::Coroutine(def_id, _) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution.into());
-        };
-
-        // Coroutines are not iterators unless they come from `gen` desugaring
-        let cx = ecx.cx();
-        if !cx.coroutine_is_gen(def_id) {
-            return Err(NoSolution.into());
-        }
-
-        // Gen coroutines unconditionally implement `FusedIterator`.
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
-    fn consider_builtin_async_iterator_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution.into());
-        }
-
-        let ty::Coroutine(def_id, _) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution.into());
-        };
-
-        // Coroutines are not iterators unless they come from `gen` desugaring
-        let cx = ecx.cx();
-        if !cx.coroutine_is_async_gen(def_id) {
-            return Err(NoSolution.into());
-        }
-
-        // Gen coroutines unconditionally implement `Iterator`
-        // Technically, we need to check that the iterator output type is Sized,
-        // but that's already proven by the coroutines being WF.
-        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -615,16 +517,11 @@ where
         }
 
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args) = self_ty.kind() else {
+        let ty::Coroutine(_, args) = self_ty.kind() else {
             return Err(NoSolution.into());
         };
 
-        // `async`-desugared coroutines do not implement the coroutine trait
         let cx = ecx.cx();
-        if !cx.is_general_coroutine(def_id) {
-            return Err(NoSolution.into());
-        }
-
         let coroutine = args.as_coroutine();
         Self::probe_and_consider_implied_clause(
             ecx,

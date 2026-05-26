@@ -7,9 +7,8 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, Target, find_attr};
+use rustc_hir::{self as hir, HirId, LangItem, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
@@ -359,9 +358,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         GenBlockKind::Gen => hir::CoroutineDesugaring::Gen,
                         GenBlockKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
                     };
-                    self.make_desugared_coroutine_expr(
+                    return self.make_desugared_coroutine_expr(
                         *capture_clause,
                         e.id,
+                        expr_hir_id,
                         None,
                         *decl_span,
                         e.span,
@@ -375,7 +375,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 expr
                             })
                         },
-                    )
+                    );
                 }
                 ExprKind::Block(blk, opt_label) => {
                     // Different from loops, label of block resolves to block id rather than
@@ -813,26 +813,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
+        closure_hir_id: HirId,
         return_ty: Option<hir::FnRetTy<'hir>>,
         fn_decl_span: Span,
         span: Span,
         desugaring_kind: hir::CoroutineDesugaring,
         coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
-    ) -> hir::ExprKind<'hir> {
+    ) -> hir::Expr<'hir> {
         let closure_def_id = self.local_def_id(closure_node_id);
         let coroutine_kind = hir::CoroutineKind::Desugared(desugaring_kind, coroutine_source);
+
+        let span = self.lower_span(span);
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::Async,
+            span,
+            Some(Arc::clone(&self.allow_gen_future)),
+        );
 
         // The `async` desugaring takes a resume argument and maintains a `task_context`,
         // whereas a generator does not.
         let (inputs, params, task_context): (&[_], &[_], _) = match desugaring_kind {
             hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen => {
                 // Resume argument type: `ResumeTy`
-                let unstable_span = self.mark_span_with_reason(
-                    DesugaringKind::Async,
-                    self.lower_span(span),
-                    Some(Arc::clone(&self.allow_gen_future)),
-                );
                 let resume_ty =
                     self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span, None);
                 let input_ty = hir::Ty {
@@ -848,12 +851,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Ident::with_dummy_span(sym::_task_context),
                     hir::BindingMode::MUT,
                 );
-                let param = hir::Param {
-                    hir_id: self.next_id(),
-                    pat,
-                    ty_span: self.lower_span(span),
-                    span: self.lower_span(span),
-                };
+                let param = hir::Param { hir_id: self.next_id(), pat, ty_span: span, span };
                 let params = arena_vec![self; param];
 
                 (inputs, params, Some(task_context_hid))
@@ -861,8 +859,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::CoroutineDesugaring::Gen => (&[], &[], None),
         };
 
-        let output =
-            return_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
+        let output = return_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(span));
 
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs,
@@ -884,7 +881,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |<_task_context?>| -> <return_ty> { <body> }`:
-        hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
+        let coroutine_closure = hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
             binder: hir::ClosureBinder::Default,
             capture_clause: self.lower_capture_clause(capture_clause),
@@ -896,7 +893,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
             explicit_captures: &[],
-        }))
+        }));
+        let coroutine_closure = hir::Expr { hir_id: closure_hir_id, kind: coroutine_closure, span };
+
+        let from_coroutine = match desugaring_kind {
+            hir::CoroutineDesugaring::Async => LangItem::FutureFromCoroutine,
+            hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIteratorFromCoroutine,
+            hir::CoroutineDesugaring::Gen => LangItem::IterFromCoroutine,
+        };
+        self.expr_call_lang_item_fn_mut(
+            unstable_span,
+            from_coroutine,
+            arena_vec![self; coroutine_closure],
+        )
     }
 
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
@@ -949,19 +958,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// }
     /// ```
     fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let full_span = expr.span.to(await_kw_span);
         let expr = self.arena.alloc(self.lower_expr_mut(expr));
-        self.make_lowered_await(await_kw_span, expr, FutureKind::Future)
+        self.make_lowered_await(await_kw_span, full_span, expr, FutureKind::Future)
     }
 
     /// Takes an expr that has already been lowered and generates a desugared await loop around it
     fn make_lowered_await(
         &mut self,
         await_kw_span: Span,
+        // Pass the span separately, as `expr.span` may be a desugaring.
+        full_span: Span,
         expr: &'hir hir::Expr<'hir>,
         await_kind: FutureKind,
     ) -> hir::ExprKind<'hir> {
-        let full_span = expr.span.to(await_kw_span);
-
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
@@ -972,7 +982,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // is not accidentally orphaned.
                 let stmt_id = self.next_id();
                 let expr_err = self.expr(
-                    expr.span,
+                    full_span,
                     hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
                         await_kw_span,
                         item_span: self.current_item,
@@ -980,11 +990,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 return hir::ExprKind::Block(
                     self.block_all(
-                        expr.span,
+                        full_span,
                         arena_vec![self; hir::Stmt {
                             hir_id: stmt_id,
                             kind: hir::StmtKind::Semi(expr),
-                            span: expr.span,
+                            span: full_span,
                         }],
                         Some(self.arena.alloc(expr_err)),
                     ),
@@ -1643,18 +1653,54 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .emit();
         }
 
-        let is_async_gen = match self.coroutine_kind {
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => false,
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
-                // Lower to a block `{ EXPR; <error> }` so that the awaited expr
-                // is not accidentally orphaned.
+        let Some(coroutine_kind) = self.coroutine_kind else {
+            let suggestion = self.current_item.map(|s| s.shrink_to_lo());
+            self.dcx().emit_err(YieldInClosure { span, suggestion });
+            self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
+            return hir::ExprKind::Yield(yielded, hir::YieldSource::Yield);
+        };
+
+        match coroutine_kind {
+            // Raw and Gen coroutines, nothing to do.
+            hir::CoroutineKind::Coroutine(_)
+            | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
+                hir::ExprKind::Yield(yielded, hir::YieldSource::Yield)
+            }
+            // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
+            // This ensures that we store our resumed `ResumeContext` correctly, and also that
+            // the apparent value of the `yield` expression is `()`.
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
+                let desugar_span = self.mark_span_with_reason(
+                    DesugaringKind::Async,
+                    span,
+                    Some(Arc::clone(&self.allow_async_gen)),
+                );
+                let wrapped_yielded = self.expr_call_lang_item_fn(
+                    desugar_span,
+                    hir::LangItem::AsyncGenReady,
+                    std::slice::from_ref(yielded),
+                );
+                let yield_expr = self.arena.alloc(
+                    self.expr(span, hir::ExprKind::Yield(wrapped_yielded, hir::YieldSource::Yield)),
+                );
+
+                let Some(task_context_hid) = self.task_context else {
+                    unreachable!("use of `await` outside of an async context.");
+                };
+                let task_context_ident = Ident::with_dummy_span(sym::_task_context);
+                let lhs = self.expr_ident(desugar_span, task_context_ident, task_context_hid);
+
+                hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span))
+            }
+            // Lower to a block `{ EXPR; <error> }` so that the awaited expr
+            // is not accidentally orphaned.
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
                 let stmt_id = self.next_id();
                 let expr_err = self.expr(
                     yielded.span,
                     hir::ExprKind::Err(self.dcx().emit_err(AsyncCoroutinesNotSupported { span })),
                 );
-                return hir::ExprKind::Block(
+                hir::ExprKind::Block(
                     self.block_all(
                         yielded.span,
                         arena_vec![self; hir::Stmt {
@@ -1665,45 +1711,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(self.arena.alloc(expr_err)),
                     ),
                     None,
-                );
+                )
             }
-            Some(hir::CoroutineKind::Coroutine(_)) => false,
-            None => {
-                let suggestion = self.current_item.map(|s| s.shrink_to_lo());
-                self.dcx().emit_err(YieldInClosure { span, suggestion });
-                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
-
-                false
-            }
-        };
-
-        if is_async_gen {
-            // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
-            // This ensures that we store our resumed `ResumeContext` correctly, and also that
-            // the apparent value of the `yield` expression is `()`.
-            let desugar_span = self.mark_span_with_reason(
-                DesugaringKind::Async,
-                span,
-                Some(Arc::clone(&self.allow_async_gen)),
-            );
-            let wrapped_yielded = self.expr_call_lang_item_fn(
-                desugar_span,
-                hir::LangItem::AsyncGenReady,
-                std::slice::from_ref(yielded),
-            );
-            let yield_expr = self.arena.alloc(
-                self.expr(span, hir::ExprKind::Yield(wrapped_yielded, hir::YieldSource::Yield)),
-            );
-
-            let Some(task_context_hid) = self.task_context else {
-                unreachable!("use of `await` outside of an async context.");
-            };
-            let task_context_ident = Ident::with_dummy_span(sym::_task_context);
-            let lhs = self.expr_ident(desugar_span, task_context_ident, task_context_hid);
-
-            hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span))
-        } else {
-            hir::ExprKind::Yield(yielded, hir::YieldSource::Yield)
         }
     }
 
@@ -1798,7 +1807,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ));
                     // `unsafe { ... }`
                     let iter = self.arena.alloc(self.expr_unsafe(head_span, iter));
-                    let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
+                    let kind = self.make_lowered_await(
+                        head_span,
+                        head_span,
+                        iter,
+                        FutureKind::AsyncIterator,
+                    );
                     self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
                 }
             };

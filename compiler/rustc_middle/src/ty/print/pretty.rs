@@ -838,6 +838,41 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     write!(self, "field_of!({base}, {name})")?;
                 }
             }
+            // HIR wraps `gen`/`async`/`async gen` blocks and fn bodies inside an ADT.
+            // Unwrap and annotate the type name for better diagnostics.
+            ty::Adt(..)
+                if !self.should_print_verbose()
+                    && !with_reduced_queries()
+                    && let Some((did, args)) = self.tcx().try_unwrap_desugared_coroutine(ty) =>
+            {
+                let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
+                let should_print_movability =
+                    matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
+
+                if should_print_movability {
+                    match coroutine_kind.movability() {
+                        hir::Movability::Movable => {}
+                        hir::Movability::Static => write!(self, "static ")?,
+                    }
+                }
+
+                write!(self, "{{{coroutine_kind}")?;
+                if coroutine_kind.is_fn_like() {
+                    // If we are printing an `async fn` coroutine type, then give the path
+                    // of the fn, instead of its span, because that will in most cases be
+                    // more helpful for the reader than just a source location.
+                    //
+                    // This will look like:
+                    //    {async fn body of some_fn()}
+                    write!(self, " of ")?;
+                    let did_of_the_fn_item = self.tcx().parent(did);
+                    self.print_def_path(did_of_the_fn_item, args)?;
+                    write!(self, "()")?;
+                } else {
+                    self.pretty_print_closure_inner(did, args)?;
+                }
+                write!(self, "}}")?
+            }
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r) => {
                 let print_r = self.should_print_optional_region(r);
@@ -912,30 +947,26 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Coroutine(did, args) => {
                 write!(self, "{{")?;
                 let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
-                let should_print_movability = self.should_print_verbose()
-                    || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
 
-                if should_print_movability {
-                    match coroutine_kind.movability() {
-                        hir::Movability::Movable => {}
-                        hir::Movability::Static => write!(self, "static ")?,
-                    }
+                match coroutine_kind.movability() {
+                    hir::Movability::Movable => {}
+                    hir::Movability::Static => write!(self, "static ")?,
                 }
 
                 if !self.should_print_verbose() {
-                    write!(self, "{coroutine_kind}")?;
                     if coroutine_kind.is_fn_like() {
                         // If we are printing an `async fn` coroutine type, then give the path
                         // of the fn, instead of its span, because that will in most cases be
                         // more helpful for the reader than just a source location.
                         //
                         // This will look like:
-                        //    {async fn body of some_fn()}
-                        write!(self, " of ")?;
+                        //    {coroutine body of some_fn()}
+                        write!(self, "coroutine body of ")?;
                         let did_of_the_fn_item = self.tcx().parent(did);
                         self.print_def_path(did_of_the_fn_item, args)?;
                         write!(self, "()")?;
                     } else {
+                        write!(self, "coroutine")?;
                         self.pretty_print_closure_inner(did, args)?;
                     }
                 } else {

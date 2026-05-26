@@ -136,6 +136,9 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
+            ty::Adt(..) if let Some((def_id, _)) = tcx.try_unwrap_desugared_coroutine(self) => {
+                format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
+            }
             ty::Coroutine(def_id, ..) => {
                 format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
             }
@@ -168,7 +171,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
+    pub fn prefix_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Infer(_)
             | ty::Error(_)
@@ -180,6 +183,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Never => "type".into(),
             ty::Tuple(tys) if tys.is_empty() => "unit type".into(),
+            ty::Adt(..) if let Some((def_id, _)) = tcx.try_unwrap_desugared_coroutine(self) => {
+                format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
+            }
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),

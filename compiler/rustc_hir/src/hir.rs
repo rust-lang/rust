@@ -2423,6 +2423,23 @@ impl fmt::Display for CoroutineDesugaring {
     }
 }
 
+impl IntoDiagArg for CoroutineKind {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(match self {
+            CoroutineKind::Coroutine(_) => "a coroutine".to_owned(),
+            CoroutineKind::Desugared(CoroutineDesugaring::Gen, source) => {
+                format!("a `gen` {source}")
+            }
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, source) => {
+                format!("an `async` {source}")
+            }
+            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, source) => {
+                format!("an `async gen` {source}")
+            }
+        }))
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum BodyOwnerKind {
     /// Functions and methods.
