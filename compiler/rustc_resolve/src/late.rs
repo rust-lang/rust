@@ -1748,7 +1748,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let ident = lifetime.ident;
 
         if ident.name == kw::StaticLifetime {
-            self.record_lifetime_res(
+            self.record_lifetime_use(
                 lifetime.id,
                 LifetimeRes::Static,
                 LifetimeElisionCandidate::Named,
@@ -1764,7 +1764,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
-                self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
+                self.record_lifetime_use(lifetime.id, res, LifetimeElisionCandidate::Named);
 
                 if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
@@ -1880,7 +1880,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
                     let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
-                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
+                    self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::StaticIfNoLifetimeInScope { lint_id: node_id, emit_lint } => {
@@ -1898,7 +1898,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     }
                     if lifetimes_in_scope.is_empty() {
-                        self.record_lifetime_res(
+                        self.record_lifetime_use(
                             lifetime.id,
                             LifetimeRes::Static,
                             elision_candidate,
@@ -2006,7 +2006,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::Elided(res) => {
-                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
+                    self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::ElisionFailure => {
@@ -2123,7 +2123,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let id = self.r.next_node_id();
         let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
 
-        self.record_lifetime_res(
+        self.record_lifetime_use(
             anchor_id,
             LifetimeRes::ElidedAnchor { start: id, end: id + 1 },
             LifetimeElisionCandidate::Ignore,
@@ -2144,7 +2144,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
         let res = LifetimeRes::Fresh { param, binder, kind };
-        self.record_lifetime_param(param, res);
+        self.record_lifetime_def(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
         self.r
@@ -2207,7 +2207,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             let node_ids = self.r.next_node_ids(expected_lifetimes);
-            self.record_lifetime_res(
+            self.record_lifetime_use(
                 segment_id,
                 LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
                 LifetimeElisionCandidate::Ignore,
@@ -2233,7 +2233,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // Do not create a parameter for patterns and expressions: type checking can infer
                 // the appropriate lifetime for us.
                 for id in node_ids {
-                    self.record_lifetime_res(
+                    self.record_lifetime_use(
                         id,
                         LifetimeRes::Infer,
                         LifetimeElisionCandidate::Named,
@@ -2302,7 +2302,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
                             let res = self.create_fresh_lifetime(ident, binder, kind);
-                            self.record_lifetime_res(
+                            self.record_lifetime_use(
                                 id,
                                 res,
                                 replace(&mut candidate, LifetimeElisionCandidate::Named),
@@ -2313,7 +2313,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeRibKind::Elided(res) => {
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            self.record_lifetime_res(
+                            self.record_lifetime_use(
                                 id,
                                 res,
                                 replace(&mut candidate, LifetimeElisionCandidate::Ignore),
@@ -2376,14 +2376,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// Register a use of an already defined lifetime.
     #[instrument(level = "debug", skip(self))]
-    fn record_lifetime_res(
+    fn record_lifetime_use(
         &mut self,
         id: NodeId,
         res: LifetimeRes,
         candidate: LifetimeElisionCandidate,
     ) {
-        self.record_lifetime_param(id, res);
+        self.record_lifetime_def(id, res);
 
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static { .. } => {
@@ -2395,13 +2396,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// Can be used for both definitions and uses of lifetimes, as an error
+    /// has already been reported.
     #[instrument(level = "debug", skip(self))]
     fn record_lifetime_err(&mut self, id: NodeId, guar: ErrorGuaranteed) {
-        self.record_lifetime_param(id, LifetimeRes::Error(guar));
+        self.record_lifetime_def(id, LifetimeRes::Error(guar));
     }
 
+    /// Define a new lifetime (e.g. in generics)
     #[instrument(level = "debug", skip(self))]
-    fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
+    fn record_lifetime_def(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
                 "lifetime parameter {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)"
@@ -3189,7 +3193,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                     GenericParamKind::Lifetime => {
                         let res = LifetimeRes::Param { param: def_id, binder };
-                        self.record_lifetime_param(param.id, res);
+                        self.record_lifetime_def(param.id, res);
                         function_lifetime_rib.bindings.insert(ident, (param.id, res));
                         continue;
                     }
