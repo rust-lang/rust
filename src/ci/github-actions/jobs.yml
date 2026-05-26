@@ -540,6 +540,8 @@ auto:
         ./x.py test distcheck
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
+      DISTCHECK_CONFIGURE_ARGS: >-
+        --set llvm.link-shared=true
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
