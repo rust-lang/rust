@@ -1,0 +1,33 @@
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/151135>.
+   LL|       |
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|       |use std::sync::atomic::{AtomicUsize, Ordering};
+   LL|       |
+   LL|       |static STEPS: AtomicUsize = AtomicUsize::new(0);
+   LL|       |
+   LL|      1|async fn call_once(f: impl AsyncFnOnce()) {
+   LL|      1|    f().await;
+   LL|      1|}
+   LL|       |
+   LL|      1|pub fn main() {
+   LL|      1|    let async_closure = async || {
+   LL|      0|        STEPS.fetch_add(1, Ordering::SeqCst);
+   LL|      0|        STEPS.fetch_add(1, Ordering::SeqCst);
+   LL|      1|    };
+  ------------------
+  | Unexecuted instantiation: async_closure2::main::{closure#0}::{closure#0}::<_>
+  ------------------
+  | async_closure2::main::{closure#0}:
+  |   LL|      1|    let async_closure = async || {
+  |   LL|       |        STEPS.fetch_add(1, Ordering::SeqCst);
+  |   LL|       |        STEPS.fetch_add(1, Ordering::SeqCst);
+  |   LL|      1|    };
+  ------------------
+   LL|      1|    executor::block_on(call_once(async_closure));
+   LL|      1|    assert_eq!(STEPS.load(Ordering::SeqCst), 2);
+   LL|      1|}
+
