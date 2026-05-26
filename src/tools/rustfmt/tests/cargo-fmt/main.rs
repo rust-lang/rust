@@ -10,8 +10,17 @@ use rustfmt_config_proc_macro::rustfmt_only_ci_test;
 fn cargo_fmt(args: &[&str]) -> (String, String) {
     let mut bin_dir = env::current_exe().unwrap();
     bin_dir.pop(); // chop off test exe name
+
+    // Handle Cargo's old and new filesystem layouts
+    // * v1: `target/<profile>/deps/test-bin-[HASH][EXE]`
+    // * v2: `target/<profile>/build/<pkgname>/[HASH]/out/test-bin-[HASH][EXE]`
     if bin_dir.ends_with("deps") {
         bin_dir.pop();
+    } else if bin_dir.ends_with("out") {
+        bin_dir.pop(); // chop off `out`
+        bin_dir.pop(); // chop off `<hash>`
+        bin_dir.pop(); // chop off `<pkgname>`
+        bin_dir.pop(); // chop off `build`
     }
     let cmd = bin_dir.join(format!("cargo-fmt{}", env::consts::EXE_SUFFIX));
 

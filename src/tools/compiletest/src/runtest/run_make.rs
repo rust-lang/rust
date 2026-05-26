@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
@@ -66,8 +67,8 @@ impl TestCx<'_> {
         // build/<target_triple>/
         // ├── bootstrap-tools/
         // │   ├── <host_triple>/release/librun_make_support.rlib   // <- support rlib itself
-        // │   ├── <host_triple>/release/deps/                      // <- deps
-        // │   └── release/deps/                                    // <- deps of deps
+        // │   ├── <host_triple>/release/build/<pkg>/<hash>/out     // <- deps
+        // │   └── release/build/<pkg>/<hash>/out                   // <- deps of deps
         // ```
         //
         // FIXME(jieyouxu): there almost certainly is a better way to do this (specifically how the
@@ -77,8 +78,8 @@ impl TestCx<'_> {
         let support_host_path = tools_bin.join(&self.config.host).join("release");
         let support_lib_path = support_host_path.join("librun_make_support.rlib");
 
-        let support_lib_deps = support_host_path.join("deps");
-        let support_lib_deps_deps = tools_bin.join("release").join("deps");
+        let support_lib_deps = discover_out_dirs(support_host_path.join("build"));
+        let support_lib_deps_deps = discover_out_dirs(tools_bin.join("release").join("build"));
 
         // To compile the recipe with rustc, we need to provide suitable dynamic library search
         // paths to rustc. This includes both:
@@ -100,6 +101,10 @@ impl TestCx<'_> {
             p
         };
 
+        let out_dirs_to_args = |paths: Vec<PathBuf>| {
+            paths.into_iter().map(|p| format!("-Ldependency={}", p.display())).collect::<Vec<_>>()
+        };
+
         // run-make-support and run-make tests are compiled using the stage0 compiler
         // If the stage is 0, then the compiler that we test (either bootstrap or an explicitly
         // set compiler) is the one that actually compiled run-make-support.
@@ -119,8 +124,8 @@ impl TestCx<'_> {
             .arg(&recipe_bin)
             // Specify library search paths for `run_make_support`.
             .arg(format!("-Ldependency={}", &support_lib_path.parent().unwrap()))
-            .arg(format!("-Ldependency={}", &support_lib_deps))
-            .arg(format!("-Ldependency={}", &support_lib_deps_deps))
+            .args(out_dirs_to_args(support_lib_deps))
+            .args(out_dirs_to_args(support_lib_deps_deps))
             // Provide `run_make_support` as extern prelude, so test writers don't need to write
             // `extern run_make_support;`.
             .arg("--extern")
@@ -336,4 +341,20 @@ impl TestCx<'_> {
             self.fatal_proc_rec("rmake recipe failed to complete", &res);
         }
     }
+}
+
+/// Gets all of the `out` dirs in a given Cargo `build-dir/<profile>/build` dir.
+fn discover_out_dirs(dir: Utf8PathBuf) -> Vec<PathBuf> {
+    let read_dir = |path: &Path| path.read_dir().ok().into_iter().flatten().filter_map(Result::ok);
+    let contents = dir
+        .read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", dir, e))
+        .map(|e| e.unwrap())
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
+        .map(|e| e.path())
+        .filter(|path| path.ends_with("out"))
+        .collect::<Vec<_>>();
+
+    return contents;
 }
