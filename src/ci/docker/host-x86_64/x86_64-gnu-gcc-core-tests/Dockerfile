@@ -44,4 +44,5 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --set rust.codegen-backends=[\\\"gcc\\\"]"
 ENV SCRIPT="python3 ../x.py \
   --stage 1 \
-  test library/coretests"
+  test library/coretests \
+  --set rust.codegen-backends=[\\\"gcc\\\"]"
