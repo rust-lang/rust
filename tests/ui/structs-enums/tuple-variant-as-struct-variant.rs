@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17800>.
+
 enum MyOption<T> {
     MySome(T),
     MyNone,

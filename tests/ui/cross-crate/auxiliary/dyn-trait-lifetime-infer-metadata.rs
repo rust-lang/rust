@@ -1,3 +1,4 @@
+//! Auxiliary crate for <https://github.com/rust-lang/rust/issues/17662>.
 #![crate_type = "lib"]
 
 pub trait Foo<'a, T> {

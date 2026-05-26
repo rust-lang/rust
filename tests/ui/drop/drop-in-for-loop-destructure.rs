@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17216>.
 //@ run-pass
 #![allow(unused_variables)]
 struct Leak<'a> {
