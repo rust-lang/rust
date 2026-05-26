@@ -44,10 +44,17 @@ fn is_thread_a_fiber() -> bool {
 static KEY: AtomicU32 = AtomicU32::new(FLS_OUT_OF_INDEXES);
 
 pub fn enable() {
-    #[thread_local]
-    static REGISTERED: Cell<bool> = Cell::new(false);
+    let registered = if cfg!(target_thread_local) {
+        #[thread_local]
+        static REGISTERED: Cell<bool> = Cell::new(false);
+        REGISTERED.replace(true)
+    } else {
+        // `#[thread_local]` is unavailable on windows-gnu (`target_thread_local` is off),
+        // but setting the FLS key's value is about as expensive as `TlsGet`, so we don't bother tracking registration separately.
+        false
+    };
 
-    if !REGISTERED.replace(true) {
+    if !registered {
         let current_key = KEY.load(Ordering::Acquire);
 
         // If we already allocated a key, we only need to set it to a non-null value so that the dtor is run.
@@ -61,19 +68,21 @@ pub fn enable() {
             // If we won the race, our key is the right one and we can set it to non-null value.
             // If we lost, we'll use the winning key and free our losing key.
             match KEY.compare_exchange(current_key, new_key, Ordering::Release, Ordering::Acquire) {
-                Ok(_) => new_key,
+                Ok(_) => {
+                    // If the current DLL is unloaded, the registered `cleanup` hook will not be available later during thread exit,
+                    // triggering a `STATUS_ACCESS_VIOLATION`. To avoid this, we use the `atexit` hook, which is called during DLL unload
+                    // to manually free the FLS slot, triggering the destructors. This hook will also be called during normal process exit,
+                    // which is fine because this is the correct time to run the destructors anyway.
+                    let _ = unsafe { c::atexit(free_fls_key_at_exit) };
+
+                    new_key
+                }
                 Err(other_key) => {
                     unsafe { c::FlsFree(new_key) };
                     other_key
                 }
             }
         };
-
-        // If the current DLL is unloaded, the registered `cleanup` hook will not be available later during thread exit,
-        // triggering a `STATUS_ACCESS_VIOLATION`. To avoid this, we use the `atexit` hook, which is called during DLL unload
-        // to manually free the FLS slot, triggering the destructors. This hook will also be called during normal process exit,
-        // which is fine because this is the correct time to run the destructors anyway.
-        let _ = unsafe { c::atexit(free_fls_key_at_exit) };
 
         // Setting the key's value to non-zero will cause the dtor callback to be called when the thread exits.
         unsafe { set(key, ptr::without_provenance(1)) };
