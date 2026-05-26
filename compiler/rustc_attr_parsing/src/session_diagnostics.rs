@@ -274,11 +274,7 @@ pub(crate) enum IncorrectReprFormatGenericCause {
     Int {
         #[primary_span]
         span: Span,
-
-        #[skip_arg]
         name: Symbol,
-
-        #[skip_arg]
         value: u128,
     },
 
@@ -290,11 +286,7 @@ pub(crate) enum IncorrectReprFormatGenericCause {
     Symbol {
         #[primary_span]
         span: Span,
-
-        #[skip_arg]
         name: Symbol,
-
-        #[skip_arg]
         value: Symbol,
     },
 }
