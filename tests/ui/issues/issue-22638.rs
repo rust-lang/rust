@@ -1,13 +1,12 @@
 //@ build-fail
 
 #![allow(unused)]
-
 #![recursion_limit = "20"]
 #![type_length_limit = "20000000"]
 #![crate_type = "rlib"]
 
 #[derive(Clone)]
-struct A (B);
+struct A(B);
 
 impl A {
     pub fn matches<F: Fn()>(&self, f: &F) {
@@ -25,34 +24,30 @@ enum B {
 impl B {
     pub fn matches<F: Fn()>(&self, f: &F) {
         match self {
-            &B::Variant2(ref factor) => {
-                factor.matches(&|| ())
-            }
-            _ => unreachable!("")
+            &B::Variant2(ref factor) => factor.matches(&|| ()),
+            _ => unreachable!(""),
         }
     }
 }
 
 #[derive(Clone)]
-struct C (D);
+struct C(D);
 
 impl C {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &C(ref base) = self;
-        base.matches(&|| {
-            C(base.clone()).matches(f)
-        })
+        base.matches(&|| C(base.clone()).matches(f))
+        //~^ ERROR reached the recursion limit while instantiating
     }
 }
 
 #[derive(Clone)]
-struct D (Box<A>);
+struct D(Box<A>);
 
 impl D {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &D(ref a) = self;
         a.matches(f)
-        //~^ ERROR reached the recursion limit while instantiating
     }
 }
 
