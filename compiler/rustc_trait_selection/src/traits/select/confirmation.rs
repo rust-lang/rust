@@ -249,13 +249,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(LangItem::Copy | LangItem::Clone | LangItem::TrivialClone) => {
                 self.copy_clone_conditions(self_ty)
             }
-            Some(LangItem::FusedIterator) => {
-                if self.coroutine_is_gen(self_ty) {
-                    ty::Binder::dummy(vec![])
-                } else {
-                    unreachable!("tried to assemble `FusedIterator` for non-gen coroutine");
-                }
-            }
             Some(
                 LangItem::Destruct
                 | LangItem::DiscriminantKind

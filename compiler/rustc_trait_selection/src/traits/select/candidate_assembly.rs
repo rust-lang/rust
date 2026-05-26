@@ -143,18 +143,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Some(LangItem::Coroutine) => {
                             self.assemble_coroutine_candidates(obligation, &mut candidates);
                         }
-                        Some(LangItem::Future) => {
-                            self.assemble_future_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::Iterator) => {
-                            self.assemble_iterator_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::FusedIterator) => {
-                            self.assemble_fused_iterator_candidates(obligation, &mut candidates);
-                        }
-                        Some(LangItem::AsyncIterator) => {
-                            self.assemble_async_iterator_candidates(obligation, &mut candidates);
-                        }
                         Some(LangItem::AsyncFnKindHelper) => {
                             self.assemble_async_fn_kind_helper_candidates(
                                 obligation,
@@ -318,9 +306,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self_ty.kind() {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
-            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
+            ty::Coroutine(..) => {
                 debug!(?self_ty, ?obligation, "assemble_coroutine_candidates");
-
                 candidates.vec.push(CoroutineCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
@@ -328,78 +315,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
             _ => {}
-        }
-    }
-
-    fn assemble_future_candidates(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, ..) = self_ty.kind() {
-            // async constructs get lowered to a special kind of coroutine that
-            // should directly `impl Future`.
-            if self.tcx().coroutine_is_async(*did) {
-                debug!(?self_ty, ?obligation, "assemble_future_candidates");
-
-                candidates.vec.push(FutureCandidate);
-            }
-        }
-    }
-
-    fn assemble_iterator_candidates(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        let self_ty = obligation.self_ty().skip_binder();
-        // gen constructs get lowered to a special kind of coroutine that
-        // should directly `impl Iterator`.
-        if let ty::Coroutine(did, ..) = self_ty.kind()
-            && self.tcx().coroutine_is_gen(*did)
-        {
-            debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
-
-            candidates.vec.push(IteratorCandidate);
-        }
-    }
-
-    fn assemble_fused_iterator_candidates(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        if self.coroutine_is_gen(obligation.self_ty().skip_binder()) {
-            candidates.vec.push(BuiltinCandidate);
-        }
-    }
-
-    fn assemble_async_iterator_candidates(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args) = *self_ty.kind() {
-            // gen constructs get lowered to a special kind of coroutine that
-            // should directly `impl AsyncIterator`.
-            if self.tcx().coroutine_is_async_gen(did) {
-                debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
-
-                // Can only confirm this candidate if we have constrained
-                // the `Yield` type to at least `Poll<Option<?0>>`..
-                let ty::Adt(_poll_def, args) = *args.as_coroutine().yield_ty().kind() else {
-                    candidates.ambiguous = true;
-                    return;
-                };
-                let ty::Adt(_option_def, _) = *args.type_at(0).kind() else {
-                    candidates.ambiguous = true;
-                    return;
-                };
-
-                candidates.vec.push(AsyncIteratorCandidate);
-            }
         }
     }
 
