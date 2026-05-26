@@ -2662,8 +2662,8 @@ pub fn run_cargo(
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.path().parent().unwrap();
-    // `target_deps_dir` looks like $dir/$target/release/deps
-    let target_deps_dir = target_root_dir.join("deps");
+    // `target_build_dir` looks like $dir/$target/release/build
+    let target_build_dir = target_root_dir.join("build");
     // `host_root_dir` looks like $dir/release
     let host_root_dir = target_root_dir
         .parent()
@@ -2734,7 +2734,7 @@ pub fn run_cargo(
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
-            if filename.starts_with(&target_deps_dir) {
+            if filename.starts_with(&target_build_dir) {
                 deps.push((filename.to_path_buf(), DependencyType::Target));
                 continue;
             }
@@ -2769,11 +2769,18 @@ pub fn run_cargo(
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've
     // got a list of prefix/extensions and we basically just need to find the
-    // most recent file in the `deps` folder corresponding to each one.
-    let contents = target_deps_dir
+    // most recent file in the `build` folder corresponding to each one.
+    //
+    // Cargo's build folder is structured as `build/<pkg>/<hash>/out/<artifacts>` so
+    // we need to traverse multiple directory layers to get to actual files.
+    let read_dir = |path: &Path| path.read_dir().ok().into_iter().flatten().filter_map(Result::ok);
+    let contents = target_build_dir
         .read_dir()
-        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", target_deps_dir.display(), e))
-        .map(|e| t!(e))
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", target_build_dir.display(), e))
+        .map(|e| e.unwrap())
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
     for (prefix, extension, expected_len) in toplevel {
