@@ -240,6 +240,18 @@ pub(crate) enum DLLStorageClass {
     DllExport = 2, // Function to be accessible from DLL.
 }
 
+/// Must match the layout of `UWTableKind`.
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub(crate) enum UWTableKind {
+    /// No unwind table requested
+    None = 0,
+    /// "Synchronous" unwind tables
+    Sync = 1,
+    /// "Asynchronous" unwind tables (instr precise)
+    Async = 2,
+}
+
 /// Must match the layout of `LLVMRustAttributeKind`.
 /// Semantically a subset of the C++ enum llvm::Attribute::AttrKind,
 /// though it is not ABI compatible (since it's a C++ enum)
