@@ -43,7 +43,7 @@ LL | fn wrong(c: &str) -> Box<dyn Foo> {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected struct `Box<(dyn Foo + 'static)>`
+   = note: expected struct `Box<dyn Foo + 'static>`
            found unit type `()`
 
 error: aborting due to 3 previous errors

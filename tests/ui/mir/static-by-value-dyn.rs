@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 
 static STATIC_1: dyn Debug + Sync = *();
-//~^ ERROR the size for values of type `(dyn Debug + Sync + 'static)` cannot be known
+//~^ ERROR the size for values of type `dyn Debug + Sync + 'static` cannot be known
 //~| ERROR type `()` cannot be dereferenced
 
 fn main() {

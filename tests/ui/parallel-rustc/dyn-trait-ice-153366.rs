@@ -16,10 +16,10 @@ where
 fn iso_un_option<B>() -> Box<_> {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
     iso(())
-    //~^ ERROR the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation
+    //~^ ERROR the size for values of type `dyn Fn(_) + 'static` cannot be known at compilation
 }
 
 fn main() {
     iso(())
-    //~^ ERROR the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation
+    //~^ ERROR the size for values of type `dyn Fn(_) + 'static` cannot be known at compilation
 }

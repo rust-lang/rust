@@ -17,7 +17,7 @@ fn test2<'a>() {
 
 fn test3<'a>() {
     assert_send_static::<Box<dyn Dummy + 'a>>();
-    //~^ ERROR `(dyn Dummy + 'a)` cannot be sent between threads safely
+    //~^ ERROR `dyn Dummy + 'a` cannot be sent between threads safely
 }
 
 fn test4<'a>() {

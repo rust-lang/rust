@@ -10,7 +10,7 @@ impl<T> dyn FnOnce(T) -> () {
     extern "rust-call" fn call_once(#[rustc_splat] self) {}
     //~^ ERROR `#[rustc_splat]` is not allowed in the arguments of functions with the `rust-call` ABI
     //~| ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
-    //~| ERROR the size for values of type `(dyn FnOnce(T) + 'static)` cannot be known
+    //~| ERROR the size for values of type `dyn FnOnce(T) + 'static` cannot be known
 }
 
 fn main() {}

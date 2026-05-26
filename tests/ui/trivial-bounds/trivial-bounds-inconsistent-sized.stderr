@@ -6,7 +6,7 @@ LL | struct S(str, str) where str: Sized;
    |
    = note: `#[warn(trivial_bounds)]` on by default
 
-warning: trait bound for<'a> T<(dyn A + 'a)>: Sized does not depend on any type or lifetime parameters
+warning: trait bound for<'a> T<dyn A + 'a>: Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent-sized.rs:17:49
    |
 LL | fn unsized_local() where for<'a> T<dyn A + 'a>: Sized {
