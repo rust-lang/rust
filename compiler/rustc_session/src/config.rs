@@ -131,30 +131,36 @@ pub enum Lto {
     Fat,
 }
 
-/// The different settings that the `-C lto` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum LtoCli {
-    /// `-C lto=no`
-    No,
-    /// `-C lto=yes`
-    Yes,
-    /// `-C lto`
-    NoParam,
-    /// `-C lto=thin`
-    Thin,
-    /// `-C lto=fat`
-    Fat,
-    /// No `-C lto` flag passed
-    Unspecified,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C lto` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum LtoCli {
+        /// `-C lto=no`. Reachable only via boolean false.
+        No,
+        /// `-C lto=yes`. Reachable only via boolean true.
+        Yes,
+        /// `-C lto`. Reachable only when the flag is passed with no value.
+        NoParam,
+        /// `-C lto=thin`
+        Thin => "thin",
+        /// `-C lto=fat`
+        Fat => "fat",
+        /// No `-C lto` flag passed.
+        Unspecified,
+    }
 }
 
-/// The different settings that the `-C instrument-coverage` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum InstrumentCoverage {
-    /// `-C instrument-coverage=no` (or `off`, `false` etc.)
-    No,
-    /// `-C instrument-coverage` or `-C instrument-coverage=yes`
-    Yes,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C instrument-coverage` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum InstrumentCoverage {
+        /// `-C instrument-coverage=no` (or `off`, `false`, `0`, etc.). `"0"`
+        /// is a historical alias retained for backwards compatibility.
+        No => "0",
+        /// `-C instrument-coverage` or `-C instrument-coverage=yes`. `"all"`
+        /// is a historical alias retained for backwards compatibility.
+        Yes => "all",
+    }
 }
 
 /// Individual flag values controlled by `-Zcoverage-options`.
@@ -3377,19 +3383,22 @@ impl PatchableFunctionEntry {
     }
 }
 
-/// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
-/// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
-pub enum Polonius {
-    /// The default value: disabled.
-    #[default]
-    Off,
+rustc_data_structures::string_enum! {
+    /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
+    /// or future prototype.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+    pub enum Polonius {
+        /// The default value: disabled. Reachable only as the default when
+        /// `-Zpolonius` is not passed.
+        #[default]
+        Off,
 
-    /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
-    Legacy,
+        /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
+        Legacy => "legacy",
 
-    /// In-tree prototype, extending the NLL infrastructure.
-    Next,
+        /// In-tree prototype, extending the NLL infrastructure.
+        Next => "next",
+    }
 }
 
 impl Polonius {
