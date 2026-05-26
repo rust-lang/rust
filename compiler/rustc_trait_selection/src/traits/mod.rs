@@ -257,12 +257,6 @@ fn do_normalize_predicates<'tcx>(
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
-    // Even if we move back to eager normalization elsewhere,
-    // param env normalization remains lazy in the next solver.
-    if tcx.next_trait_solver_globally() {
-        return Ok(predicates);
-    }
-
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
     // behavior (i.e., doesn't cause any new bugs), and it would
