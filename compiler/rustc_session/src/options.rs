@@ -2037,23 +2037,13 @@ pub mod parse {
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
     ) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() {
-                    CollapseMacroDebuginfo::Yes
-                } else {
-                    CollapseMacroDebuginfo::No
-                };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            Some("external") => CollapseMacroDebuginfo::External,
-            _ => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            None,
+            Some(CollapseMacroDebuginfo::Yes),
+            Some(CollapseMacroDebuginfo::No),
+        )
     }
 
     pub(crate) fn parse_proc_macro_execution_strategy(
