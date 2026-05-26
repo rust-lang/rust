@@ -6,6 +6,7 @@ LL | fn foo<T: Trait>() -> [u8; <T as Trait>::ASSOC] {
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0658]: `type const` syntax is experimental
   --> $DIR/feature-gate-min-generic-const-args.rs:2:5
