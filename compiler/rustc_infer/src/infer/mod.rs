@@ -28,10 +28,11 @@ use rustc_middle::traits::select;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    self, AliasTermKind, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueTypeKey,
+    ProvisionalHiddenType, PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode,
+    fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::MayBeErased;
@@ -959,6 +960,23 @@ impl<'tcx> InferCtxt<'tcx> {
         match term.kind() {
             ty::TermKind::Ty(_) => self.next_ty_var(span).into(),
             ty::TermKind::Const(_) => self.next_const_var(span).into(),
+        }
+    }
+
+    pub fn next_term_var_for_alias(
+        &self,
+        alias: ty::AliasTerm<'tcx>,
+        span: Span,
+    ) -> ty::Term<'tcx> {
+        match alias.kind(self.tcx) {
+            AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::InherentTy { .. }
+            | AliasTermKind::OpaqueTy { .. }
+            | AliasTermKind::FreeTy { .. } => self.next_ty_var(span).into(),
+            AliasTermKind::UnevaluatedConst { .. }
+            | AliasTermKind::ProjectionConst { .. }
+            | AliasTermKind::FreeConst { .. }
+            | AliasTermKind::InherentConst { .. } => self.next_const_var(span).into(),
         }
     }
 

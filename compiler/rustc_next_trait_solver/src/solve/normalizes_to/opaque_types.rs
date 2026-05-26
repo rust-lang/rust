@@ -32,12 +32,12 @@ where
                     opaque_ty.args,
                     goal.param_env,
                     expected,
-                );
+                )?;
                 // Trying to normalize an opaque type during coherence is always ambiguous.
                 // We add a nested ambiguous goal here instead of using `Certainty::AMBIGUOUS`.
                 // This allows us to return the nested goals to the parent `AliasRelate` goal.
                 // This can then allow nested goals to fail after we've constrained the `term`.
-                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous));
+                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous))?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }
@@ -109,7 +109,7 @@ where
                     normalized_args,
                     goal.param_env,
                     expected,
-                );
+                )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }

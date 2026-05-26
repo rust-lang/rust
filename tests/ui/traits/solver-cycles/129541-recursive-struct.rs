@@ -1,5 +1,4 @@
 //~ ERROR reached the recursion limit finding the struct tail for `Hello`
-// Regression test for #129541
 
 //@ revisions: unique_curr unique_next multiple_curr multiple_next
 //@ ignore-compare-mode-next-solver (explicit revisions)

@@ -4,11 +4,13 @@ error[E0271]: type mismatch resolving `<() as Trait>::A normalizes-to _`
 LL |     type const A: () = <() as Trait>::A;
    |     ^^^^^^^^^^^^^^^^ types differ
 
-error: the constant `<() as Trait>::A` is not of type `()`
+error[E0271]: type mismatch resolving `<() as Trait>::A normalizes-to _`
   --> $DIR/projection-const-recursive.rs:12:5
    |
 LL |     type const A: () = <() as Trait>::A;
-   |     ^^^^^^^^^^^^^^^^ expected `()`, found a different `()`
+   |     ^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

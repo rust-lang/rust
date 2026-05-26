@@ -21,7 +21,7 @@ struct Foo {
     field: Box<<u8 as Trait>::Diverges<u8>>,
     //[current]~^ ERROR: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
     //[next]~^^ ERROR: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
-    //[next]~| ERROR: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+    //[next]~| ERROR: the type `Box<<u8 as Trait>::Diverges<u8>>` is not well-formed
 }
 
 fn main() {}
