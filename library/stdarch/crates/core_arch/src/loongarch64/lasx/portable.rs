@@ -205,6 +205,68 @@ pub(super) const unsafe fn simd_replve0_q<T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [0, 1, 0, 1])
 }
 
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(
+        b,
+        a,
+        [
+            0, 32, 2, 34, 4, 36, 6, 38, 8, 40, 10, 42, 12, 44, 14, 46,
+            16, 48, 18, 50, 20, 52, 22, 54, 24, 56, 26, 58, 28, 60, 30, 62
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 8, 2, 10, 4, 12, 6, 14])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packev_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [0, 4, 2, 6])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_b<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(
+        b,
+        a,
+        [
+            1, 33, 3, 35, 5, 37, 7, 39, 9, 41, 11, 43, 13, 45, 15, 47,
+            17, 49, 19, 51, 21, 53, 23, 55, 25, 57, 27, 59, 29, 61, 31, 63
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_h<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_w<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 9, 3, 11, 5, 13, 7, 15])
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_packod_d<T: Copy>(a: T, b: T) -> T {
+    simd_shuffle!(b, a, [1, 5, 3, 7])
+}
+
 impl_vv!("lasx", lasx_xvpcnt_b, is::simd_ctpop, m256i, i8x32);
 impl_vv!("lasx", lasx_xvpcnt_h, is::simd_ctpop, m256i, i16x16);
 impl_vv!("lasx", lasx_xvpcnt_w, is::simd_ctpop, m256i, i32x8);
@@ -381,6 +443,14 @@ impl_vvv!("lasx", lasx_xvilvl_b, simd_ilvl_b, m256i, i8x32);
 impl_vvv!("lasx", lasx_xvilvl_h, simd_ilvl_h, m256i, i16x16);
 impl_vvv!("lasx", lasx_xvilvl_w, simd_ilvl_w, m256i, i32x8);
 impl_vvv!("lasx", lasx_xvilvl_d, simd_ilvl_d, m256i, i64x4);
+impl_vvv!("lasx", lasx_xvpackev_b, simd_packev_b, m256i, i8x32);
+impl_vvv!("lasx", lasx_xvpackev_h, simd_packev_h, m256i, i16x16);
+impl_vvv!("lasx", lasx_xvpackev_w, simd_packev_w, m256i, i32x8);
+impl_vvv!("lasx", lasx_xvpackev_d, simd_packev_d, m256i, i64x4);
+impl_vvv!("lasx", lasx_xvpackod_b, simd_packod_b, m256i, i8x32);
+impl_vvv!("lasx", lasx_xvpackod_h, simd_packod_h, m256i, i16x16);
+impl_vvv!("lasx", lasx_xvpackod_w, simd_packod_w, m256i, i32x8);
+impl_vvv!("lasx", lasx_xvpackod_d, simd_packod_d, m256i, i64x4);
 
 impl_vuv!("lasx", lasx_xvslli_b, is::simd_shl, m256i, i8x32);
 impl_vuv!("lasx", lasx_xvslli_h, is::simd_shl, m256i, i16x16);
