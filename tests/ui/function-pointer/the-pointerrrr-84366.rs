@@ -30,7 +30,8 @@ fn make_static_displayable<'temp>(not_static: &'temp str) -> Box<dyn fmt::Displa
     //~^ ERROR borrowed data escapes outside of function [E0521]
 }
 
-// FIXME: add a test for closures, those are currently broken
+// FIXME: add a test for closures, those are currently broken.
+//        see the match on `ty::Closure` in compiler/rustc_type_ir/src/outlives.rs (line ~91)
 // fn make_static_displayable_closure<'temp>(not_static: &'temp str) -> Box<dyn fmt::Display> {
 //     let closure = || -> &'temp str { "" };
 //     require_static(closure);
@@ -43,6 +44,7 @@ fn main() {
     {
         let x = "Hello World".to_string();
         d = make_static_displayable(&x);
+        // d = make_static_displayable_closure(&x);
     }
     println!("{}", d);
 }
