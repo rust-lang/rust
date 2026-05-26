@@ -15,6 +15,9 @@ To follow along, copy it to a `src/lib.rs` file.
 #![cfg_attr(target_arch = "nvptx64", feature(abi_gpu_kernel))]
 #![no_std]
 
+#[cfg(target_os = "linux")]
+extern crate libc;
+
 use core::offload::offload_kernel;
 
 #[panic_handler]
@@ -48,6 +51,7 @@ fn main() {
     for i in 0..x.len() {
         assert_eq!(x[i], i as f64);
     }
+    unsafe { libc::printf(c"all checks passed".as_ptr()); }
 }
 ```
 
