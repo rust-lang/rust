@@ -442,6 +442,8 @@ The following categories are supported (all present in tree):
   * crt-static-pauthtest.rs
   * pauth-static-link-warning
   * enable_pointer_authentication_validation.rs
+  * invalid_target_pointer_authentication.rs
+  * type_discrimination_not_supported_pointer_authentication.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
 `crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `ui` and
@@ -465,7 +467,9 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
   tests/ui/statics/crt-static-pauthtest.rs \
-  tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs
+  tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
+  tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
+  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs
 ```
 
 ## Limitations
