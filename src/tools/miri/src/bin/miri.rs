@@ -526,6 +526,8 @@ fn main() -> ExitCode {
                 Some(BorrowTrackerMethod::TreeBorrows(TreeBorrowsParams {
                     precise_interior_mut: true,
                     implicit_writes: false,
+                    // We default this to "unique" for now to keep the design space open.
+                    box_custom_allocator_unique: true,
                 }));
         } else if arg == "-Zmiri-tree-borrows-no-precise-interior-mut" {
             match &mut miri_config.borrow_tracker {
@@ -545,6 +547,16 @@ fn main() -> ExitCode {
                 _ =>
                     fatal_error!(
                         "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-implicit-writes`"
+                    ),
+            };
+        } else if arg == "-Zmiri-tree-borrows-relax-custom-allocator-uniqueness" {
+            match &mut miri_config.borrow_tracker {
+                Some(BorrowTrackerMethod::TreeBorrows(params)) => {
+                    params.box_custom_allocator_unique = false;
+                }
+                _ =>
+                    fatal_error!(
+                        "`-Zmiri-tree-borrows` is required before `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness`"
                     ),
             };
         } else if arg == "-Zmiri-disable-data-race-detector" {

@@ -1,10 +1,9 @@
-//! Regression test for <https://github.com/rust-lang/miri/issues/3341>:
-//! If `Box` has a local allocator, then it can't be `noalias` as the allocator
-//! may want to access allocator state based on the data pointer.
-//! Ensure that the `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` flag makes us
-//! accept such code.
+//! Test related to <https://github.com/rust-lang/miri/issues/3341>:
+//! `Box` with custom allocators are still `noalias`, leading to UB.
 
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-relax-custom-allocator-uniqueness -Zmiri-tree-borrows-implicit-writes
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
+//@normalize-stderr-test: "\[0x[a-fx\d.]+\]" -> "[RANGE]"
 #![feature(allocator_api)]
 
 use std::alloc::{AllocError, Allocator, Layout};
@@ -52,6 +51,7 @@ impl MyBin {
         // We access this via raw pointers so that the error span is in this file.
         let top_ptr = (&raw const self.top) as *mut usize;
         let top = top_ptr.read();
+        //~[tree]^ERROR: /read access .* is forbidden/
         top_ptr.write(top);
     }
 }
@@ -97,6 +97,7 @@ unsafe impl Allocator for MyAllocator {
         // That is fundamentally the source of the aliasing trouble in this example.
         let their_bin = ptr.as_ptr().map_addr(|addr| addr & !127).cast::<MyBin>();
         let thread_id = ptr::read(ptr::addr_of!((*their_bin).thread_id));
+        //~[stack]^ERROR: tag does not exist in the borrow stack
         if self.thread_id == thread_id {
             unsafe { (*their_bin).push(ptr) };
         } else {
