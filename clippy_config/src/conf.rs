@@ -713,7 +713,8 @@ define_Conf! {
     /// be filtering for common types.
     #[lints(manual_let_else)]
     matches_for_let_else: MatchLintBehaviour = MatchLintBehaviour::WellKnownTypes,
-    /// The maximum number of bool parameters a function can have
+    /// The maximum number of bool parameters a function can have.
+    /// Use `0` to lint on any function with a bool parameter.
     #[lints(fn_params_excessive_bools)]
     max_fn_params_bools: u64 = 3,
     /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes

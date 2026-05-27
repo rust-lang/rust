@@ -780,7 +780,8 @@ be filtering for common types.
 
 
 ## `max-fn-params-bools`
-The maximum number of bool parameters a function can have
+The maximum number of bool parameters a function can have.
+Use `0` to lint on any function with a bool parameter.
 
 **Default Value:** `3`
 
