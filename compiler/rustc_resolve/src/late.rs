@@ -2170,6 +2170,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
         self.r
+            .current_owner
             .extra_lifetime_params_map
             .entry(binder)
             .or_insert_with(Vec::new)

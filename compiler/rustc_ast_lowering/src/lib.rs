@@ -351,17 +351,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
-
-    /// Obtain the list of lifetimes parameters to add to an item.
-    ///
-    /// Extra lifetime parameters should only be added in places that can appear
-    /// as a `binder` in `LifetimeRes`.
-    ///
-    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
-    /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
-        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
-    }
 }
 
 /// How relaxed bounds `?Trait` should be treated.
@@ -1129,7 +1118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir [hir::GenericParam<'hir>] {
         // Start by creating params for extra lifetimes params, as this creates the definitions
         // that may be referred to by the AST inside `generic_params`.
-        let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
+        let extra_lifetimes = self.owner.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .iter()
