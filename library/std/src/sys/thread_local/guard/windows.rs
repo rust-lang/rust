@@ -80,7 +80,10 @@ pub fn enable() {
                     // triggering a `STATUS_ACCESS_VIOLATION`. To avoid this, we use the `atexit` hook, which is called during DLL unload
                     // to manually free the FLS slot, triggering the destructors. This hook will also be called during normal process exit,
                     // which is fine because this is the correct time to run the destructors anyway.
-                    let _ = unsafe { c::atexit(free_fls_key_at_exit) };
+                    let res = unsafe { c::atexit(free_fls_key_at_exit) };
+                    if res != 0 {
+                        rtabort!("failed to register fls atexit hook");
+                    }
 
                     new_key
                 }
@@ -101,8 +104,8 @@ extern "C" fn free_fls_key_at_exit() {
 
     let current_key = KEY.swap(c::FLS_OUT_OF_INDEXES, Ordering::AcqRel);
     if current_key != c::FLS_OUT_OF_INDEXES {
-        // Calling `FlsFree` will invoke the `cleanup` hook, in the current thread, *for each thread* with a value in this FLS slot.
-        // The callback is safe to run repeatedly: it only drains the current thread's TLS destructor list.
+        // Calling `FlsFree` will invoke the `cleanup` hook, in the current thread, *for each thread* (or fiber) with a value in this FLS slot.
+        // `cleanup` is safe to run repeatedly: it only drains the current thread's TLS destructor list, and we check that we are not running in a fiber before doing so.
         unsafe { c::FlsFree(current_key) };
     }
 }

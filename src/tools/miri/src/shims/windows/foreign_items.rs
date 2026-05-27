@@ -1408,10 +1408,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     args,
                 )?;
 
-                // We do not support registering atexit handlers, so we return a error code.
-                // This is ignored by the thread-local destructor implementation in std,
-                // and because we also do not support manually unloading DLLs, it has no visible effect.
-                this.write_int(1, dest)?;
+                // We do not support registering atexit handlers, which is used by the thread-local destructor implementation in std.
+                // But we also do not support manually unloading DLLs, so this has no visible effect.
+                this.write_int(0, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
