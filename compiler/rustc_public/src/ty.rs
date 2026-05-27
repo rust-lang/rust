@@ -1167,6 +1167,7 @@ pub enum Abi {
     RiscvInterruptM,
     RiscvInterruptS,
     RustPreserveNone,
+    RustTail,
     RustInvalid,
     Custom,
     Swift,
