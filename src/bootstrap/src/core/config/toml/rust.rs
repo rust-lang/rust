@@ -1,6 +1,7 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
@@ -422,6 +423,11 @@ pub(crate) fn parse_codegen_backends(
             )
         }
         if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.as_str()) {
+            if CiEnv::is_rust_lang_managed_ci_job() {
+                eprintln!("Unknown codegen backend {backend}");
+                exit!(1);
+            }
+
             println!(
                 "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
                 List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}"
