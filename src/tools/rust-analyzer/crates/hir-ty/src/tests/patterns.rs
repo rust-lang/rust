@@ -47,8 +47,6 @@ fn infer_pattern() {
             82..94 '(1, "hello")': (i32, &'? str)
             83..84 '1': i32
             86..93 '"hello"': &'static str
-            101..150 'for (e...     }': fn into_iter<[(i32, i32); 1]>([(i32, i32); 1]) -> <[(i32, i32); 1] as IntoIterator>::IntoIter
-            101..150 'for (e...     }': IntoIter<(i32, i32), 1>
             101..150 'for (e...     }': !
             101..150 'for (e...     }': IntoIter<(i32, i32), 1>
             101..150 'for (e...     }': &'? mut IntoIter<(i32, i32), 1>
@@ -62,6 +60,8 @@ fn infer_pattern() {
             106..107 'e': i32
             109..110 'f': i32
             115..123 '[(0, 1)]': [(i32, i32); 1]
+            115..123 '[(0, 1)]': fn into_iter<[(i32, i32); 1]>([(i32, i32); 1]) -> <[(i32, i32); 1] as IntoIterator>::IntoIter
+            115..123 '[(0, 1)]': IntoIter<(i32, i32), 1>
             116..122 '(0, 1)': (i32, i32)
             117..118 '0': i32
             120..121 '1': i32
