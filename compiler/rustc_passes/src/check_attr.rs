@@ -39,8 +39,7 @@ use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES
 };
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -1212,21 +1211,46 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_c = false;
         let mut is_simd = false;
         let mut is_transparent = false;
+        let mut is_align = false;
+        let mut is_packed = false;
+        let mut repeated_repr = false;
 
         for (repr, _repr_span) in reprs {
             match repr {
                 ReprAttr::ReprRust => {
+                    if is_explicit_rust {
+                        repeated_repr = true
+                    }
                     is_explicit_rust = true;
                 }
                 ReprAttr::ReprC => {
+                    if is_c {
+                        repeated_repr = true;
+                    }
                     is_c = true;
                 }
-                ReprAttr::ReprAlign(..) => {}
-                ReprAttr::ReprPacked(_) => {}
+                ReprAttr::ReprAlign(..) => {
+                    if is_align {
+                        repeated_repr = true;
+                    }
+                    is_align = true;
+                }
+                ReprAttr::ReprPacked(..) => {
+                    if is_packed {
+                        repeated_repr = true;
+                    }
+                    is_packed = true;
+                }
                 ReprAttr::ReprSimd => {
+                    if is_simd {
+                        repeated_repr = true;
+                    }
                     is_simd = true;
                 }
                 ReprAttr::ReprTransparent => {
+                    if is_transparent {
+                        repeated_repr = true;
+                    }
                     is_transparent = true;
                 }
                 ReprAttr::ReprInt(_) => {
@@ -1274,8 +1298,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.tcx.emit_node_span_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
-                hint_spans.collect::<Vec<Span>>(),
+                hint_spans.clone().collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
+            );
+        }
+
+        if repeated_repr {
+            self.tcx.emit_node_span_lint(
+                REPEATED_REPRS,
+                hir_id,
+                hint_spans.collect::<Vec<Span>>(),
+                errors::RepeatedRepr,
             );
         }
     }
