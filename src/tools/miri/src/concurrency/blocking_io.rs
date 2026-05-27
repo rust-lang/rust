@@ -154,15 +154,9 @@ impl BlockingIoManager {
     }
 
     /// Poll for new I/O events from the OS or wait until the timeout expired.
-    ///
-    /// - If the timeout is [`Some`] and contains [`Duration::ZERO`], the poll doesn't block and just
-    ///   reads all events since the last poll.
-    /// - If the timeout is [`Some`] and contains a non-zero duration, it blocks at most for the
-    ///   specified duration.
-    /// - If the timeout is [`None`] the poll blocks indefinitely until an event occurs.
-    ///
+    /// The timeout semantics are the same as described in [`Poll::poll`].
     /// The events also immediately get processed: threads get unblocked, and epoll readiness gets updated.
-    pub fn poll<'tcx>(
+    fn poll<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         timeout: Option<Duration>,
     ) -> InterpResult<'tcx, Result<(), io::Error>> {
@@ -344,6 +338,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// readiness gets set for the source even when the requested interest
     /// might not be fulfilled.
     ///
+    /// The callback function will immediately be executed with [`UnblockKind::Ready`]
+    /// when `interest` is already fulfilled for `source_fd`.
+    ///
     /// There can also be spurious wake-ups by the OS and thus it's the callers
     /// responsibility to verify that the requested I/O interests are
     /// really ready and to block again if they're not.
@@ -372,6 +369,29 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // until the readiness is fulfilled and execute the callback then.
             this.block_thread(BlockReason::IO, deadline, callback);
             interp_ok(())
+        }
+    }
+
+    /// Poll for I/O events until either an I/O event happened or the timeout expired.
+    ///
+    /// - If the timeout is [`Some`] and contains [`Duration::ZERO`], the poll doesn't block and just
+    ///   reads all events since the last poll.
+    /// - If the timeout is [`Some`] and contains a non-zero duration, it blocks at most for the
+    ///   specified duration.
+    /// - If the timeout is [`None`] the poll blocks indefinitely until an event occurs.
+    ///
+    /// Unblocks all threads which are blocked on I/O and whose I/O interests
+    /// are currently fulfilled.
+    fn poll_and_unblock(&mut self, timeout: Option<Duration>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        match BlockingIoManager::poll(this, timeout)? {
+            Ok(_) => interp_ok(()),
+            // We can ignore errors originating from interrupts; that's just a spurious wakeup.
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => interp_ok(()),
+            // For other errors we panic. On Linux and BSD hosts this should only be
+            // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
+            Err(e) => panic!("unexpected error while polling: {e}"),
         }
     }
 }

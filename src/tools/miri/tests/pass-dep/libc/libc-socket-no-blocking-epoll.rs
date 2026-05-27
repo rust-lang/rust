@@ -530,11 +530,6 @@ fn test_readiness_after_short_peek() {
     // Write some bytes into the peer socket.
     libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
 
-    // FIXME: Changes in host I/O readiness are only processed when entering the scheduler.
-    // Ensure that we process the effects if the `write_all` by yielding the current (only) thread.
-    // <https://github.com/rust-lang/miri/issues/5047>
-    thread::yield_now();
-
     // `buffer` is intentionally bigger than `TEST_BYTES.len()` to trigger a short peek.
     let mut buffer = [0; 128];
     let bytes_read = unsafe {
@@ -547,9 +542,6 @@ fn test_readiness_after_short_peek() {
         .unwrap()
     } as usize;
     assert_eq!(bytes_read, TEST_BYTES.len());
-
-    // FIXME(#5047): same as above.
-    thread::yield_now();
 
     // Ensure that the readable readiness is still set.
     assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET), EPOLLIN);
