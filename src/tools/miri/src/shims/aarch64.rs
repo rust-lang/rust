@@ -196,10 +196,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let left = this.read_scalar(left)?;
-                let right = this.read_scalar(right)?;
+                let [crc, data] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let crc = this.read_scalar(crc)?;
+                let data = this.read_scalar(data)?;
 
                 // The CRC accumulator is always u32. The data argument is u32 for
                 // b/h/w variants and u64 for the x variant, per the LLVM intrinsic
@@ -207,9 +206,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/IntrinsicsAArch64.td
                 // If the higher bits are non-zero, `compute_crc32` will panic. We should probably
                 // raise a proper error instead, but outside stdarch nobody can trigger this anyway.
-                let crc = left.to_u32()?;
-                let data =
-                    if bit_size == 64 { right.to_u64()? } else { u64::from(right.to_u32()?) };
+                let crc = crc.to_u32()?;
+                let data = if bit_size == 64 { data.to_u64()? } else { u64::from(data.to_u32()?) };
 
                 let result = compute_crc32(crc, data, bit_size, polynomial);
                 this.write_scalar(Scalar::from_u32(result), dest)?;
