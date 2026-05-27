@@ -294,10 +294,17 @@ fn test_send_nonblock() {
                 if written as usize == fill_buf.len() {
                     // When we didn't have a short write we should still be able to write more.
                     // Ensure the socket is still writable.
-                    assert_eq!(
-                        current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET),
-                        EPOLLOUT
-                    );
+                    let readiness = current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET);
+                    if cfg!(miri) {
+                        // With Miri we keep the writable readiness until EWOULDBLOCK is returned.
+                        assert_eq!(readiness, EPOLLOUT);
+                    } else {
+                        // On native Linux hosts, the writable readiness is removed when the buffer
+                        // is "almost" full. We can't emulate this with Miri.
+                        // The buffer must not be "almost" full at the first write.
+                        let is_not_first_write = total_written > fill_buf.len();
+                        assert!(readiness == EPOLLOUT || (is_not_first_write && readiness == 0));
+                    }
                 }
             }
             Err(err) if err.kind() == ErrorKind::WouldBlock => break,
