@@ -284,17 +284,17 @@ fn do_normalize_predicates<'tcx>(
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
+    //
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
-    if !errors.is_empty() {
-        tcx.dcx().span_delayed_bug(
-            span,
-            format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
-        );
-    }
-
+    //
+    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
+    // There're placeholder constraints `leaking` out. This is a hack to work around
+    // the fact that we don't support placeholder assumptions right now and is necessary
+    // for `compare_method_predicate_entailment`. We should remove this once we
+    // have proper support for implied bounds on binders.
+    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
     match infcx.fully_resolve(predicates) {
         Ok(predicates) => Ok(predicates),
         Err(fixup_err) => {
