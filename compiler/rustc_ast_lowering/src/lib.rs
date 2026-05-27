@@ -321,10 +321,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     fn owner_def_id(&self, id: NodeId) -> LocalDefId {
         self.owners[&id].def_id
     }
-
-    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.lifetime_elision_allowed.contains(&id)
-    }
 }
 
 /// How relaxed bounds `?Trait` should be treated.
@@ -1866,7 +1862,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     _ => hir::ImplicitSelfKind::None,
                 }
             }))
-            .set_lifetime_elision_allowed(self.resolver.lifetime_elision_allowed(fn_node_id))
+            .set_lifetime_elision_allowed(
+                self.owner.id == fn_node_id && self.owner.lifetime_elision_allowed,
+            )
             .set_c_variadic(c_variadic);
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })

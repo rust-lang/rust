@@ -2456,7 +2456,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             let outer_failures = take(&mut this.diag_metadata.current_elision_failures);
             let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
-                this.r.lifetime_elision_allowed.insert(fn_id);
+                if fn_id == this.r.current_owner.id {
+                    this.r.current_owner.lifetime_elision_allowed = true;
+                }
                 LifetimeRibKind::Elided(*res)
             } else {
                 LifetimeRibKind::ElisionFailure
