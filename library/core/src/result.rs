@@ -1682,7 +1682,12 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    pub unsafe fn unwrap_err_unchecked(self) -> E {
+    #[rustc_const_unstable(feature = "const_result_unwrap_unchecked", issue = "148714")]
+    pub const unsafe fn unwrap_err_unchecked(self) -> E
+    where
+        T: [const] Destruct,
+        E: [const] Destruct,
+    {
         match self {
             // SAFETY: the safety contract must be upheld by the caller.
             Ok(_) => unsafe { hint::unreachable_unchecked() },
