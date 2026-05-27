@@ -7,7 +7,7 @@ LL |     while true {
    = note: `#[warn(while_true)]` on by default
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:73:5
+  --> $DIR/coerce-loop-issue-122561.rs:91:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -171,6 +171,56 @@ LL +     /* `bool` value */
 error[E0308]: mismatched types
   --> $DIR/coerce-loop-issue-122561.rs:73:5
    |
+LL |   fn while_let_binding() -> bool {
+   |                             ---- expected `bool` because of return type
+LL | /     while let x = false {
+LL | |
+LL | |         if x {
+LL | |             return true;
+LL | |         }
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+note: this pattern always matches, so the loop condition never fails
+  --> $DIR/coerce-loop-issue-122561.rs:73:15
+   |
+LL |     while let x = false {
+   |               ^
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:82:5
+   |
+LL |   fn while_let_tuple() -> bool {
+   |                           ---- expected `bool` because of return type
+LL | /     while let (x, _) = (false, true) {
+LL | |
+LL | |         if x {
+LL | |             return true;
+LL | |         }
+LL | |     }
+   | |_____^ expected `bool`, found `()`
+   |
+   = note: `while` loops evaluate to unit type `()`
+note: this pattern always matches, so the loop condition never fails
+  --> $DIR/coerce-loop-issue-122561.rs:82:15
+   |
+LL |     while let (x, _) = (false, true) {
+   |               ^^^^^^
+help: consider returning a value here
+   |
+LL ~     }
+LL +     /* `bool` value */
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-loop-issue-122561.rs:91:5
+   |
 LL |   fn while_never_type() -> ! {
    |                            - expected `!` because of return type
 LL | /     while true {
@@ -188,7 +238,7 @@ LL +     /* `loop {}` or `panic!("...")` */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:87:5
+  --> $DIR/coerce-loop-issue-122561.rs:105:5
    |
 LL | /     for i in 0.. {
 LL | |
@@ -203,7 +253,7 @@ LL +     /* `i32` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:94:9
+  --> $DIR/coerce-loop-issue-122561.rs:112:9
    |
 LL | /         for i in 0..5 {
 LL | |
@@ -218,7 +268,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:100:9
+  --> $DIR/coerce-loop-issue-122561.rs:118:9
    |
 LL | /         while false {
 LL | |
@@ -233,7 +283,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:106:23
+  --> $DIR/coerce-loop-issue-122561.rs:124:23
    |
 LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
    |                       ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
@@ -244,6 +294,6 @@ help: consider returning a value here
 LL |     let _ = |a: &[(); for x in 0..2 {} /* `usize` value */]| {};
    |                                        +++++++++++++++++++
 
-error: aborting due to 14 previous errors; 2 warnings emitted
+error: aborting due to 16 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0308`.
