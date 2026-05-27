@@ -1,4 +1,4 @@
-#![allow(non_upper_case_globals)]
+#![expect(non_upper_case_globals)]
 
 use rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT;
 

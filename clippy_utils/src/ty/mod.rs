@@ -1,6 +1,6 @@
 //! Util methods for [`rustc_middle::ty`]
 
-#![allow(clippy::module_name_repetitions)]
+#![expect(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
 use itertools::Itertools as _;
