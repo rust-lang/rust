@@ -163,7 +163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             || clock_timeout
                 .is_some_and(|(clock, _, timeout)| clock != absolute_clock || timeout == 0)
         {
-            this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
@@ -202,7 +202,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             futex.size.set(size);
             futex.shared.set(is_shared);
         } else if futex.size.get() != size || futex.shared.get() != is_shared {
-            this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
@@ -226,7 +226,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 this.write_scalar(Scalar::from_i32(remaining), &dest)
                             }
                             UnblockKind::TimedOut => {
-                                this.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                             }
                         }
                     }
@@ -264,7 +264,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Perform validation of the arguments.
         let addr = ptr.addr().bytes();
         if addr == 0 || !matches!(size, 4 | 8) || (flags != none && flags != shared) {
-            this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
@@ -282,19 +282,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // non-intuitive.) This means that if an address gets reused by a
             // new allocation, we'll use an independent futex queue for this...
             // that seems acceptable.
-            this.set_last_error_and_return(LibcError("ENOENT"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("ENOENT"), dest)?;
             return interp_ok(());
         };
 
         if futex.futex.waiters() == 0 {
-            this.set_last_error_and_return(LibcError("ENOENT"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("ENOENT"), dest)?;
             return interp_ok(());
         // If there are waiters in the queue, they have all used the parameters
         // stored in `futex` (we check this in `os_sync_wait_on_address` above).
         // Detect mismatches between "our" parameters and the parameters used by
         // the waiters and return an error in that case.
         } else if futex.size.get() != size || futex.shared.get() != is_shared {
-            this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
+            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
