@@ -34,7 +34,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV CODEGEN_BACKENDS="gcc"
 ENV NO_DEBUG_ASSERTIONS="1"
 ENV RUSTFLAGS="-Cpanic=abort -Zpanic-abort-tests"
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
