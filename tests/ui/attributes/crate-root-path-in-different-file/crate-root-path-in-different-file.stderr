@@ -1,5 +1,5 @@
 error: the `#![crate_name]` attribute can only be used at the crate root
-  --> $DIR/submod.rs:1:1
+  --> $DIR/submod.rs:2:1
    |
 LL | #![crate_name = "bar"]
    | ^^^^^^^^^^^^^^^^^^^^^^
