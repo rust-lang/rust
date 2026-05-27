@@ -1546,10 +1546,10 @@ impl<T: ?Sized> Rc<T> {
     /// # Safety
     ///
     /// The pointer must have been obtained through [`Rc::into_raw`] and must satisfy the
-   /// same layout requirements specified in [`Rc::from_raw_in`].
-   /// The associated `Rc` instance must be valid (i.e. the strong count must be at
-   /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-   /// allocated by the global allocator.
+    /// same layout requirements specified in [`Rc::from_raw_in`].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method, and `ptr` must point to a block of memory
+    /// allocated by the global allocator.
     ///
     /// # Examples
     ///
