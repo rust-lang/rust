@@ -549,6 +549,22 @@ auto:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     <<: *job-macos
 
+  - name: aarch64-apple-distcheck-ci-llvm
+    env:
+      SCRIPT: >-
+        ./x.py test distcheck
+        --host=aarch64-apple-darwin
+        --target=aarch64-apple-darwin
+      DISTCHECK_CONFIGURE_ARGS: >-
+        --set llvm.download-ci-llvm=true
+        --set llvm.link-shared=true
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware.
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    <<: *job-macos
+
   - name: aarch64-apple
     env:
       SCRIPT: >
