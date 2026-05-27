@@ -2000,7 +2000,7 @@ pub fn get_cmd_lint_options(
     let mut describe_lints = false;
 
     for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
-        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+        for (arg_pos, lint_name) in matches.opt_strs_pos(level.to_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -2017,8 +2017,8 @@ pub fn get_cmd_lint_options(
         .collect();
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
-        lint::Level::from_str(&cap)
-            .unwrap_or_else(|| early_dcx.early_fatal(format!("unknown lint level: `{cap}`")))
+        cap.parse::<lint::Level>()
+            .unwrap_or_else(|()| early_dcx.early_fatal(format!("unknown lint level: `{cap}`")))
     });
 
     (lint_opts, describe_lints, lint_cap)
