@@ -187,6 +187,44 @@ impl Cfg {
         }
     }
 
+    /// Recursively sorts the configuration tree to ensure deterministic rendering.
+    ///
+    /// Sorting groups predicates logically: Targets first, then Target Features,
+    /// then Crate Features, and finally nested Any/All/Not groupings.
+    /// Within each group, a fallback alphabetical sort is applied.
+    pub(crate) fn sort_for_rendering(&mut self) {
+        fn sort_cfg_entry(cfg: &mut CfgEntry) {
+            match cfg {
+                CfgEntry::Any(sub_cfgs, _) | CfgEntry::All(sub_cfgs, _) => {
+                    for sub_cfg in sub_cfgs.iter_mut() {
+                        sort_cfg_entry(sub_cfg);
+                    }
+
+                    sub_cfgs.sort_by_cached_key(|a| {
+                        (
+                            cfg_category(a),
+                            Display(a, Format::LongPlain).to_string().to_ascii_lowercase(),
+                        )
+                    });
+                }
+                CfgEntry::Not(box_cfg, _) => sort_cfg_entry(box_cfg),
+                _ => {}
+            }
+        }
+
+        fn cfg_category(cfg: &CfgEntry) -> u8 {
+            match cfg {
+                CfgEntry::NameValue { name, .. } if *name == sym::feature => 2,
+                CfgEntry::NameValue { name, .. } if *name == sym::target_feature => 1,
+                CfgEntry::NameValue { .. } | CfgEntry::Bool(..) => 0,
+                CfgEntry::Any(..) | CfgEntry::All(..) | CfgEntry::Not(..) => 3,
+                _ => 4,
+            }
+        }
+
+        sort_cfg_entry(&mut self.0);
+    }
+
     fn omit_preposition(&self) -> bool {
         matches!(self.0, CfgEntry::Bool(..))
     }
@@ -843,14 +881,20 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
         if matches!(cfg_info.current_cfg.0, CfgEntry::Bool(true, _)) {
             None
         } else {
-            Some(Arc::new(cfg_info.current_cfg.clone()))
+            let mut cfg = cfg_info.current_cfg.clone();
+            cfg.sort_for_rendering();
+            Some(Arc::new(cfg))
         }
     } else {
         // If `doc(auto_cfg)` feature is enabled, we want to collect all `cfg` items, we remove the
         // hidden ones afterward.
         match strip_hidden(&cfg_info.current_cfg.0, &cfg_info.hidden_cfg) {
             None | Some(CfgEntry::Bool(true, _)) => None,
-            Some(cfg) => Some(Arc::new(Cfg(cfg))),
+            Some(cfg_entry) => {
+                let mut cfg = Cfg(cfg_entry);
+                cfg.sort_for_rendering();
+                Some(Arc::new(cfg))
+            }
         }
     }
 }
