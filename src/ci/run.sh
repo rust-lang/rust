@@ -59,7 +59,8 @@ if [ "$FORCE_CI_RUSTC" == "" ]; then
 fi
 
 if [[ "$RUST_CONFIGURE_ARGS" == *"rust.codegen-backends"* ]]; then
-  echo "error: Please specify codegen backends using the CODEGEN_BACKENDS environment variable, not via RUST_CONFIGURE_ARGS."
+  echo "error: Please specify codegen backends using the CODEGEN_BACKENDS environment variable, \
+not via RUST_CONFIGURE_ARGS."
   exit 1
 fi
 
