@@ -279,12 +279,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Throw EFAULT if epfd and fd have the same value.
         if epfd_value == fd {
-            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         // Check if epfd is a valid epoll file descriptor.
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         let epfd = epfd
             .downcast::<Epoll>()
@@ -293,7 +293,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut interest_list = epfd.interest_list.borrow_mut();
 
         let Some(fd_ref) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         let id = fd_ref.id();
 
@@ -356,12 +356,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 if interest_list.try_insert(epoll_key, new_interest).is_err() {
                     // We already had interest in this.
-                    return this.set_last_error_and_return_i32(LibcError("EEXIST"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EEXIST"));
                 }
             } else {
                 // Modify the existing interest.
                 let Some(interest) = interest_list.get_mut(&epoll_key) else {
-                    return this.set_last_error_and_return_i32(LibcError("ENOENT"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
                 };
                 interest.relevant_events = events;
                 interest.data = data;
@@ -389,7 +389,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Remove epoll_event_interest from interest_list and ready_set.
             if interest_list.remove(&epoll_key).is_none() {
                 // We did not have interest in this.
-                return this.set_last_error_and_return_i32(LibcError("ENOENT"));
+                return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
             };
             epfd.ready_set.borrow_mut().remove(&epoll_key);
             // If this was the last interest in this FD, remove us from the global list
@@ -452,7 +452,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
 
         // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
@@ -463,10 +463,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
         let Some(epfd) = epfd.downcast::<Epoll>() else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         if timeout == 0 || !epfd.ready_set.borrow().is_empty() {

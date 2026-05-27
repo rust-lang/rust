@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::str;
+use std::time::Duration;
 
 use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
@@ -107,6 +108,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
+
+        if this.machine.communicate() {
+            // When isolation is disabled we need to check for new host I/O events before
+            // running any shimmed function. This is needed to ensure that the shim we
+            // execute has up-to-date information about host readiness (as reflected
+            // e.g. by epoll) even if the current thread never yields.
+
+            // Perform a non-blocking poll for newly available I/O events from the OS.
+            this.poll_and_unblock(Some(Duration::ZERO))?;
+        }
 
         // See `fn emulate_foreign_item_inner` in `shims/foreign_items.rs` for the general pattern.
         match link_name.as_str() {
@@ -1126,12 +1137,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
 
+                if this.machine.thread_cpu_affinity.is_none() {
+                    throw_unsup_format!(
+                        "`sched_getaffinity` is not supported on #![no_core] programs"
+                    )
+                }
+
                 let thread_id = if pid == 0 {
                     this.active_thread()
                 } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
                     // On Linux/Android, pid can be a TID as returned by `gettid`.
                     let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                        this.set_last_error_and_return(LibcError("ESRCH"), dest)?;
+                        this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
                         return interp_ok(EmulateItemResult::NeedsReturn);
                     };
                     thread_id
@@ -1145,11 +1162,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let chunk_size = CpuAffinityMask::chunk_size(this);
 
                 if this.ptr_is_null(mask)? {
-                    this.set_last_error_and_return(LibcError("EFAULT"), dest)?;
+                    this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
                 } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
                     // we only copy whole chunks of size_of::<c_ulong>()
-                    this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
-                } else if let Some(cpuset) = this.machine.thread_cpu_affinity.get(&thread_id) {
+                    this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+                } else if let Some(cpuset) =
+                    this.machine.thread_cpu_affinity.as_ref().unwrap().get(&thread_id)
+                {
                     let cpuset = cpuset.clone();
                     // we only copy whole chunks of size_of::<c_ulong>()
                     let byte_count =
@@ -1158,7 +1177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_null(dest)?;
                 } else {
                     // The thread whose ID is pid could not be found
-                    this.set_last_error_and_return(LibcError("ESRCH"), dest)?;
+                    this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
                 }
             }
             "sched_setaffinity" => {
@@ -1171,12 +1190,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
 
+                if this.machine.thread_cpu_affinity.is_none() {
+                    throw_unsup_format!(
+                        "`sched_setaffinity` is not supported on #![no_core] programs"
+                    )
+                }
+
                 let thread_id = if pid == 0 {
                     this.active_thread()
                 } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
                     // On Linux/Android, pid can be a TID as returned by `gettid`.
                     let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                        this.set_last_error_and_return(LibcError("ESRCH"), dest)?;
+                        this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
                         return interp_ok(EmulateItemResult::NeedsReturn);
                     };
                     thread_id
@@ -1187,7 +1212,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 if this.ptr_is_null(mask)? {
-                    this.set_last_error_and_return(LibcError("EFAULT"), dest)?;
+                    this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
                 } else {
                     // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
                     // Any unspecified bytes are treated as zero here (none of the CPUs are configured).
@@ -1199,12 +1224,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         std::array::from_fn(|i| bits_slice.get(i).copied().unwrap_or(0));
                     match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
                         Some(cpuset) => {
-                            this.machine.thread_cpu_affinity.insert(thread_id, cpuset);
+                            this.machine
+                                .thread_cpu_affinity
+                                .as_mut()
+                                .unwrap()
+                                .insert(thread_id, cpuset);
                             this.write_null(dest)?;
                         }
                         None => {
                             // The intersection between the mask and the available CPUs was empty.
-                            this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
+                            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
                         }
                     }
                 }
@@ -1245,7 +1274,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // macOS: https://keith.github.io/xcode-man-pages/getentropy.2.html
                 // Solaris/Illumos: https://illumos.org/man/3C/getentropy
                 if bufsize > 256 {
-                    this.set_last_error_and_return(LibcError("EIO"), dest)?;
+                    this.set_errno_and_return_neg1(LibcError("EIO"), dest)?;
                 } else {
                     this.gen_random(buf, bufsize)?;
                     this.write_null(dest)?;

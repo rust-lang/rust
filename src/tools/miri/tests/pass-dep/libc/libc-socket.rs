@@ -7,8 +7,8 @@ mod libc_utils;
 mod utils;
 
 use std::io::ErrorKind;
-use std::time::Duration;
-use std::{ptr, thread};
+use std::time::{Duration, Instant};
+use std::{ptr, slice, thread};
 
 use libc_utils::*;
 
@@ -55,6 +55,9 @@ fn main() {
     test_shutdown_writable_after_read_close();
 
     test_getsockopt_truncate();
+
+    test_sockopt_sndtimeo();
+    test_sockopt_rcvtimeo();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -118,11 +121,26 @@ fn test_set_reuseaddr_invalid_len() {
     let sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     // Value should be of type `libc::c_int` which has size 4 bytes.
-    // By providing a u64 of size 8 bytes we trigger an invalid length error.
-    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u64).unwrap_err();
+    // By providing an u16 of size 2 bytes we trigger an invalid length error.
+    let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u16).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // By providing an u64 of size 8 bytes the behavior differs between native hosts and Miri.
+    let result = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u64);
+    match result {
+        Err(err) => {
+            // Check that this is the right error.
+            assert_eq!(err.kind(), ErrorKind::InvalidInput);
+            assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+        }
+        Ok(_) => {
+            // Some native hosts just ignore too large inputs and only look at a prefix.
+            // On Miri we require an exact size.
+            assert!(!cfg!(miri));
+        }
+    }
 }
 
 #[cfg(any(
@@ -171,18 +189,35 @@ fn test_bind_ipv4_invalid_addr_len() {
     let sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    // A too small size is invalid.
     let err = unsafe {
         errno_result(libc::bind(
             sockfd,
             (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-            // Add 1 to the address to make the size invalid.
-            (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
+            (size_of::<libc::sockaddr_in>() - 1) as libc::socklen_t,
         ))
         .unwrap_err()
     };
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    if cfg!(miri) {
+        // A too big size is also invalid. Some native hosts (e.g. Linux)
+        // allow too big sizes, so we skip this test on native hosts:
+        // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
+        let err = unsafe {
+            errno_result(libc::bind(
+                sockfd,
+                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
+            ))
+            .unwrap_err()
+        };
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+        // Check that it is the right kind of `InvalidInput`.
+        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    }
 }
 
 fn test_bind_ipv6() {
@@ -716,46 +751,152 @@ fn test_shutdown_writable_after_read_close() {
 fn test_getsockopt_truncate() {
     let (sockfd, _) = net::make_listener_ipv4().unwrap();
 
-    // The actual TTL with a correctly sized buffer.
-    let ttl = net::getsockopt::<libc::c_uint>(sockfd, libc::IPPROTO_IP, libc::IP_TTL).unwrap();
+    // Set the read timeout for the socket.
+    // We use a multiple of 4ms for the `usec` since Linux seems to do rounding.
+    let new_timeout = libc::timeval { tv_sec: 123, tv_usec: 40_000 };
+    net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO, new_timeout).unwrap();
 
-    let mut option_value = std::mem::MaybeUninit::<u32>::zeroed();
-    // The actual length is 4 bytes.
-    let mut short_option_len = 2 as libc::socklen_t;
+    let mut option_value = std::mem::MaybeUninit::<[u8; 5]>::zeroed();
+    // The actual `timeval` length is more than 5 bytes.
+    let mut short_option_len = 5 as libc::socklen_t;
+    assert!(short_option_len < size_of::<libc::timeval>() as libc::socklen_t);
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO).unwrap();
+    // Ensure that we get the same value back as we just set.
+    assert_eq!(timeout.tv_sec, new_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, new_timeout.tv_usec);
 
     errno_result(unsafe {
         libc::getsockopt(
             sockfd,
-            libc::IPPROTO_IP,
-            libc::IP_TTL,
+            libc::SOL_SOCKET,
+            libc::SO_RCVTIMEO,
             option_value.as_mut_ptr().cast(),
             &mut short_option_len,
         )
     })
     .unwrap();
     // Ensure that the size wasn't changed.
-    assert_eq!(short_option_len, 2);
-    let short_ttl = unsafe { option_value.assume_init() };
+    assert_eq!(short_option_len, 5);
+    let truncated_timeout = unsafe { option_value.assume_init() };
 
-    // Assert that the value was silently truncated.
-    assert_eq!(short_ttl.to_ne_bytes()[0..2], ttl.to_ne_bytes()[0..2]);
+    unsafe {
+        let timeout_ptr = (&new_timeout) as *const libc::timeval as *const u8;
+        // Assert that the value was silently truncated.
+        assert_eq!(&truncated_timeout, slice::from_raw_parts(timeout_ptr, 5));
+    }
 
-    let mut option_value = std::mem::MaybeUninit::<u32>::zeroed();
-    // The actual length is 4 bytes.
-    let mut long_option_len = 6 as libc::socklen_t;
+    let mut option_value = std::mem::MaybeUninit::<libc::timeval>::zeroed();
+    // The actual length is smaller than this.
+    let mut long_option_len = (size_of::<libc::timeval>() + 2) as libc::socklen_t;
 
     errno_result(unsafe {
         libc::getsockopt(
             sockfd,
-            libc::IPPROTO_IP,
-            libc::IP_TTL,
+            libc::SOL_SOCKET,
+            libc::SO_RCVTIMEO,
             option_value.as_mut_ptr().cast(),
             &mut long_option_len,
         )
     })
     .unwrap();
     // Ensure that the size was shortened to the actual length.
-    assert_eq!(long_option_len, 4);
-    let long_ttl = unsafe { option_value.assume_init() };
-    assert_eq!(long_ttl, ttl);
+    assert_eq!(long_option_len, size_of::<libc::timeval>() as libc::socklen_t);
+    // The returned timeout should be the same value as we just set.
+    let untruncated_timeout = unsafe { option_value.assume_init() };
+    assert_eq!(untruncated_timeout.tv_sec, new_timeout.tv_sec);
+    assert_eq!(untruncated_timeout.tv_usec, new_timeout.tv_usec);
+}
+
+/// Test setting and getting the SO_SNDTIMEO socket option.
+/// Also test that writes don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_sndtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // By default, no write timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 40 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 40_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let buffer = [1u8; 32_000];
+    loop {
+        let before = Instant::now();
+        let result = unsafe {
+            errno_result(libc::write(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
+        };
+        match result {
+            Ok(_) => { /* continue to fill up buffer */ }
+            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket, we know
+            // it's because of the write timeout exceeding because the write buffer
+            // is full.
+            Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                // The last write should return an EAGAIN/EWOULDBLOCK after ~40ms instead
+                // of blocking indefinitely.
+                assert!(Instant::now().duration_since(before) >= Duration::from_millis(40));
+                break;
+            }
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+}
+
+/// Test setting and getting the SO_RCVTIMEO socket option.
+/// Also test that reads don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_rcvtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // By default, no read timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 40 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 40_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let mut buffer = [0u8; 16];
+    // The read should return an EAGAIN/EWOULDBLOCK after ~10ms instead of blocking indefinitely.
+    let before = Instant::now();
+    let err = unsafe {
+        errno_result(libc::read(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+    // Ensure that we blocked for at least 40 milliseconds.
+    assert!(Instant::now().duration_since(before) >= Duration::from_millis(40))
 }
