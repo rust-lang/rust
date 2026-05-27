@@ -18,7 +18,7 @@ const FOO: [empty::Empty; 3] = [foo(); 3];
 //~^ ERROR value of the never type
 
 const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-//~^ ERROR value of uninhabited type
+//~^ ERROR value of zero-variant enum
 
 fn main() {
     FOO;
