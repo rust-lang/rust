@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -24,9 +24,16 @@ pub(crate) fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> E
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
 
-    // HACK: For synthetic MIR bodies (async closures), use the def id of the HIR body.
+    // Synthetic by-move coroutine bodies don't have useful HIR of their own.
+    // Use the original coroutine body instead. These synthetic bodies are
+    // created with a coroutine type, so we can inspect that type as-is.
     if tcx.is_synthetic_mir(def_id) {
-        return extract_hir_info(tcx, tcx.local_parent(def_id));
+        let effective_def_id =
+            match *tcx.type_of(def_id).instantiate_identity().skip_normalization().kind() {
+                ty::Coroutine(coroutine_def_id, _) => coroutine_def_id.expect_local(),
+                _ => tcx.local_parent(def_id),
+            };
+        return extract_hir_info(tcx, effective_def_id);
     }
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
