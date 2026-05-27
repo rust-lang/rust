@@ -4,11 +4,7 @@ mod double_ended;
 mod exact_size;
 mod iterator;
 mod marker;
-<<<<<<< HEAD
-=======
 mod peekable;
-mod unchecked_iterator;
->>>>>>> 3b7f4abc23a (Add peekable_iterator)
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
