@@ -69,4 +69,20 @@ fn foo() {
         "#,
         );
     }
+
+    #[test]
+    fn for_iterable() {
+        check_diagnostics(
+            r#"
+//- minicore: iterator
+fn foo() {
+    for _ in () {}
+          // ^^ error: the trait bound `(): Iterator` is not satisfied
+          // ^^ error: the trait bound `(): Iterator` is not satisfied
+           // | required by the bound `(): IntoIterator`
+}
+
+        "#,
+        );
+    }
 }

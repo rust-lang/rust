@@ -270,8 +270,6 @@ fn infer_std_crash_5() {
         "#,
         expect![[r#"
             26..322 '{     ...   } }': ()
-            32..320 'for co...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            32..320 'for co...     }': <{unknown} as IntoIterator>::IntoIter
             32..320 'for co...     }': !
             32..320 'for co...     }': {unknown}
             32..320 'for co...     }': &'? mut {unknown}
@@ -283,6 +281,8 @@ fn infer_std_crash_5() {
             32..320 'for co...     }': ()
             36..43 'content': &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? {unknown}
             47..60 'doesnt_matter': {unknown}
+            47..60 'doesnt_matter': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            47..60 'doesnt_matter': <{unknown} as IntoIterator>::IntoIter
             61..320 '{     ...     }': ()
             75..79 'name': &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? {unknown}
             82..166 'if doe...     }': &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? &'? {unknown}
@@ -1261,8 +1261,6 @@ fn test() {
         "#,
         expect![[r#"
             10..68 '{     ...   } }': ()
-            16..66 'for _ ...     }': fn into_iter<()>(()) -> <() as IntoIterator>::IntoIter
-            16..66 'for _ ...     }': <() as IntoIterator>::IntoIter
             16..66 'for _ ...     }': !
             16..66 'for _ ...     }': {unknown}
             16..66 'for _ ...     }': &'? mut {unknown}
@@ -1274,6 +1272,8 @@ fn test() {
             16..66 'for _ ...     }': ()
             20..21 '_': {unknown}
             25..39 '{ let x = 0; }': ()
+            25..39 '{ let x = 0; }': fn into_iter<()>(()) -> <() as IntoIterator>::IntoIter
+            25..39 '{ let x = 0; }': <() as IntoIterator>::IntoIter
             31..32 'x': i32
             35..36 '0': i32
             40..66 '{     ...     }': ()
