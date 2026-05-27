@@ -595,3 +595,13 @@ fn diagnostic_format_mod() {
     assert_eq!(parser.line_spans, &[]);
     assert!(parser.errors.is_empty());
 }
+#[test]
+fn format_plus_sign_missing_colon_error() {
+    // `{+}` should produce an error suggesting `:` before `+`
+    let mut p = Parser::new("{+}", None, None, false, ParseMode::Format);
+    let _ = p.by_ref().collect::<Vec<Piece<'static>>>();
+    assert!(!p.errors.is_empty());
+    assert!(p.errors[0].description.contains("`+` sign flag must appear after `:`"));
+    assert!(p.errors[0].label.contains("expected `:` before `+` sign flag"));
+    assert_eq!(p.errors[0].span, 2..3);
+}
