@@ -2327,27 +2327,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
+    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator`, `Option`, and `Result`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
+    /// Readability. This can be written more concisely with `Iterator::flat_map`, `Option::and_then`, and
+    /// `Result::and_then`.
     ///
     /// ### Example
     /// ```no_run
     /// let vec = vec![vec![1]];
-    /// let opt = Some(5);
-    ///
     /// vec.iter().map(|x| x.iter()).flatten();
+    ///
+    /// let opt = Some(5);
     /// opt.map(|x| Some(x * 2)).flatten();
+    ///
+    /// let res: Result<i32, String> = Ok(5);
+    /// res.map(|x| Ok(x * 2)).flatten();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # let vec = vec![vec![1]];
-    /// # let opt = Some(5);
+    /// let vec = vec![vec![1]];
     /// vec.iter().flat_map(|x| x.iter());
+    ///
+    /// let opt = Some(5);
     /// opt.and_then(|x| Some(x * 2));
+    ///
+    /// let res: Result<i32, String> = Ok(5);
+    /// res.and_then(|x| Ok(x * 2));
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
