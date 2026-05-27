@@ -104,6 +104,7 @@ diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CannotBeDereferenced<'db>,
+    CannotBorrowAsMutable,
     CannotImplicitlyDerefTraitObject<'db>,
     CannotIndexInto<'db>,
     CastToUnsized<'db>,
@@ -333,6 +334,11 @@ pub struct ExpectedFunction<'db> {
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotBorrowAsMutable {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
@@ -979,6 +985,10 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::CannotBorrowAsMutable { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                CannotBorrowAsMutable { pat }.into()
             }
             InferenceDiagnostic::CannotImplicitlyDerefTraitObject { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);

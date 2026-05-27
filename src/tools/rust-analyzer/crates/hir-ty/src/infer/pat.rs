@@ -916,7 +916,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if matches!(bm.0, ByRef::Yes(Mutability::Mut))
             && let MutblCap::WeaklyNot = pat_info.max_ref_mutbl
         {
-            // FIXME: Emit an error: cannot borrow as mutable inside an `&` pattern.
+            self.push_diagnostic(InferenceDiagnostic::CannotBorrowAsMutable { pat });
         }
 
         // ...and store it in a side table:

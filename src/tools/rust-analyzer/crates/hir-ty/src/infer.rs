@@ -405,6 +405,10 @@ pub enum InferenceDiagnostic {
         expr: ExprId,
         found: StoredTy,
     },
+    CannotBorrowAsMutable {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     CannotImplicitlyDerefTraitObject {
         #[type_visitable(ignore)]
         pat: PatId,
