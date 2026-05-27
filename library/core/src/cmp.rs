@@ -2170,20 +2170,6 @@ mod impls {
             PartialOrd::__chaining_ge(*self, *other)
         }
     }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    const impl<A: PointeeSized> Ord for &A
-    where
-        A: [const] Ord,
-    {
-        #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
-            Ord::cmp(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    const impl<A: PointeeSized> Eq for &A where A: [const] Eq {}
 
     // &mut pointers
 
@@ -2245,20 +2231,6 @@ mod impls {
             PartialOrd::__chaining_ge(*self, *other)
         }
     }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    const impl<A: PointeeSized> Ord for &mut A
-    where
-        A: [const] Ord,
-    {
-        #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
-            Ord::cmp(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    const impl<A: PointeeSized> Eq for &mut A where A: [const] Eq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -2291,4 +2263,24 @@ mod impls {
             PartialEq::ne(*self, *other)
         }
     }
+
+    macro_rules! impl_ord_eq {
+        (<$A:ident> for $($ref_A:ty),*) => ($(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            const impl<$A: [const] Ord + PointeeSized> Ord for $ref_A
+            {
+                #[inline]
+                fn cmp(&self, other: &Self) -> Ordering {
+                    Ord::cmp(*self, *other)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            const impl<$A: [const] Eq + PointeeSized> Eq for $ref_A {}
+        )*)
+    }
+
+    impl_ord_eq!(<A> for &A, &mut A);
 }
