@@ -418,3 +418,25 @@ fn test_step_by_nth_non_fused_on_non_first_take() {
     // so we should expect `StepBy::nth` to return `None`
     assert_eq!(iter.nth(usize::MAX), None)
 }
+
+#[test]
+fn test_step_by_fused_iterator() {
+    struct TestFusedIter(usize);
+    impl Iterator for TestFusedIter {
+        type Item = usize;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.0 > 5 {
+                let ret = self.0;
+                self.0 -= 1;
+                return Some(ret);
+            }
+            None
+        }
+    }
+    impl FusedIterator for TestFusedIter {}
+
+    let mut it = TestFusedIter(15).step_by(5);
+    assert_eq!(it.next(), Some(15));
+    assert_eq!(it.next(), Some(10));
+    assert_eq!(it.next(), None);
+}
