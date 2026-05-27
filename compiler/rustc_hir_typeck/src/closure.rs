@@ -961,21 +961,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.resolve_vars_with_obligations(ret_ty);
 
-        let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
+        let get_future_output = |clause: ty::Clause<'tcx>, span| {
             // Search for a pending obligation like
             //
             // `<R as Future>::Output = T`
             //
             // where R is the return type we are expecting. This type `T`
             // will be our output.
-            let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
-                bound_predicate.skip_binder()
-            {
-                self.deduce_future_output_from_projection(
-                    span,
-                    bound_predicate.rebind(proj_predicate),
-                )
+            let bound_clause = clause.kind();
+            if let ty::ClauseKind::Projection(proj_clause) = bound_clause.skip_binder() {
+                self.deduce_future_output_from_projection(span, bound_clause.rebind(proj_clause))
             } else {
                 None
             }
@@ -984,7 +979,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let output_ty = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
                 self.obligations_for_self_ty(ret_vid).into_iter().find_map(|obligation| {
-                    get_future_output(obligation.predicate, obligation.cause.span)
+                    obligation
+                        .predicate
+                        .as_clause()
+                        .and_then(|clause| get_future_output(clause, obligation.cause.span))
                 })?
             }
             ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
@@ -999,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .map(Unnormalized::skip_norm_wip)
-                .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
+                .find_map(|(c, s)| get_future_output(c, s))?,
             ty::Error(_) => return Some(ret_ty),
             _ => {
                 span_bug!(closure_span, "invalid async fn coroutine return type: {ret_ty:?}")
