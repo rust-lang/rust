@@ -131,6 +131,7 @@ fn add_or_fix_reference(
         let edit = TextEdit::insert(range.range.start(), "*".to_owned());
         let source_change = SourceChange::from_text_edit(range.file_id.file_id(ctx.db()), edit);
         acc.push(fix("add_deref_here", "Add deref here", source_change, range.range));
+        return Some(());
     }
 
     let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
