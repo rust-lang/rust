@@ -311,6 +311,25 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    if sess.must_emit_unwind_tables() {
+        // This assertion checks that Max is the correct merge behavior.
+        // Async unwind tables are strictly more useful than sync uwtables.
+        const {
+            assert!((llvm::UWTableKind::None as u32) < (llvm::UWTableKind::Sync as u32));
+            assert!((llvm::UWTableKind::Sync as u32) < (llvm::UWTableKind::Async as u32));
+        }
+
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "uwtable",
+            match sess.opts.unstable_opts.use_sync_unwind {
+                Some(true) => llvm::UWTableKind::Sync as u32,
+                Some(false) | None => llvm::UWTableKind::Async as u32,
+            },
+        );
+    }
+
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
         llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Override, "kcfi", 1);

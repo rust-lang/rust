@@ -88,7 +88,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
     }
@@ -97,7 +97,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         if new_fd_num != old_fd_num {
             // Close new_fd if it is previously opened.
@@ -113,7 +113,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn flock(&mut self, fd_num: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         // We need to check that there aren't unsupported options in `op`.
@@ -159,7 +159,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let arg = varargs.first();
 
         let Some(fd) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         // Handle common opcodes.
@@ -201,7 +201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // always sets this flag when opening a file. However we still need to check that the
                 // file itself is open.
                 if !this.machine.fds.is_fd_num(fd_num) {
-                    this.set_last_error_and_return_i32(LibcError("EBADF"))
+                    this.set_errno_and_return_neg1_i32(LibcError("EBADF"))
                 } else {
                     interp_ok(this.eval_libc("FD_CLOEXEC"))
                 }
@@ -223,13 +223,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(fd) = this.machine.fds.get(fd_num) {
                     interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
                 } else {
-                    this.set_last_error_and_return_i32(LibcError("EBADF"))
+                    this.set_errno_and_return_neg1_i32(LibcError("EBADF"))
                 }
             }
             cmd if cmd == f_getfl => {
                 // Check if this is a valid open file descriptor.
                 let Some(fd) = this.machine.fds.get(fd_num) else {
-                    return this.set_last_error_and_return_i32(LibcError("EBADF"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
                 };
 
                 fd.get_flags(this)
@@ -237,7 +237,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             cmd if cmd == f_setfl => {
                 // Check if this is a valid open file descriptor.
                 let Some(fd) = this.machine.fds.get(fd_num) else {
-                    return this.set_last_error_and_return_i32(LibcError("EBADF"));
+                    return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
                 };
 
                 let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
@@ -263,7 +263,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Reject if isolation is enabled.
                 if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
                     this.reject_in_isolation("`fcntl`", reject_with)?;
-                    return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+                    return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
                 }
 
                 this.ffullsync_fd(fd_num)
@@ -280,7 +280,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
 
         let Some(fd) = this.machine.fds.remove(fd_num) else {
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         let result = fd.close_ref(this.machine.communicate(), this)?;
         // return `0` if close is successful
@@ -320,7 +320,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Get the FD.
         let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         trace!("read: FD mapped to {fd:?}");
@@ -346,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // This must fit since `count` fits.
                             this.write_int(u64::try_from(read_size).unwrap(), &dest)
                         }
-                        Err(e) => this.set_last_error_and_return(e, &dest)
+                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
                 }}
             ),
         )
@@ -376,7 +376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let dest = dest.clone();
@@ -397,7 +397,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // This must fit since `count` fits.
                             this.write_int(u64::try_from(write_size).unwrap(), &dest)
                         }
-                        Err(e) => this.set_last_error_and_return(e, &dest)
+                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
 
                 }}
             ),
@@ -435,7 +435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
@@ -488,7 +488,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest)?;
                             u64::try_from(size).unwrap()
                         },
-                        Err(e) => return this.set_last_error_and_return(e, &dest)
+                        Err(e) => {
+                            this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                            return this.set_errno_and_return_neg1(e, &dest)
+                        }
                     };
                     let mut remaining_bytes = bytes_read;
 
@@ -555,7 +558,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
-            return this.set_last_error_and_return(LibcError("EBADF"), dest);
+            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
@@ -628,7 +631,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
                     match result {
                         Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                        Err(e) => this.set_last_error_and_return(e, &dest)
+                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
                     }
             }),
         )

@@ -11,12 +11,12 @@ use crate::MiriMachine;
 const NANOSECONDS_PER_BASIC_BLOCK: u128 = 5000;
 
 /// An instant (a fixed moment in time) in Miri's monotone clock.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Instant {
     kind: InstantKind,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum InstantKind {
     Host(StdInstant),
     Virtual { nanoseconds: u128 },
@@ -134,7 +134,7 @@ impl MonotonicClock {
 }
 
 /// A deadline for some event to occur.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Deadline {
     Monotonic(Instant),
     RealTime(SystemTime),
