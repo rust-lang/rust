@@ -1,7 +1,6 @@
 use std::fs::{Metadata, OpenOptions};
 use std::io;
 use std::io::SeekFrom;
-use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bitflags::bitflags;
@@ -11,32 +10,6 @@ use rustc_target::spec::Os;
 use crate::shims::files::{FdId, FileDescription, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
-
-#[derive(Debug)]
-pub struct DirHandle {
-    pub(crate) path: PathBuf,
-}
-
-impl FileDescription for DirHandle {
-    fn name(&self) -> &'static str {
-        "directory"
-    }
-
-    fn metadata<'tcx>(
-        &self,
-    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        interp_ok(Either::Left(self.path.metadata()))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
-    }
-}
 
 /// Windows supports handles without any read/write/delete permissions - these handles can get
 /// metadata, but little else. We represent that by storing the metadata from the time the handle
@@ -260,9 +233,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let handle = if is_dir {
-            // Open this as a directory.
-            let fd_num = this.machine.fds.insert_new(DirHandle { path: file_name });
-            Ok(Handle::File(fd_num))
+            // Open this as a directory. We don't support proper directory handles, but we only need
+            // this for the metadata, so we only store that. That still makes us immune to races,
+            // though it also means we fail to reflect changes to the dir's metadata.
+            // FIXME: use `std::fs::Dir`, once that supports getting metadata.
+            file_name.metadata().map(|meta| {
+                let fd_num = this.machine.fds.insert_new(MetadataHandle { meta });
+                Handle::File(fd_num)
+            })
         } else if creation_disposition == OpenExisting && !(desired_read || desired_write) {
             // Windows supports handles with no permissions. These allow things such as reading
             // metadata, but not file content.
