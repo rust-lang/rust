@@ -240,7 +240,7 @@ pub(crate) enum DLLStorageClass {
     DllExport = 2, // Function to be accessible from DLL.
 }
 
-/// Must match the layout of `UWTableKind`.
+/// Must match the layout of `llvm::UWTableKind`.
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub(crate) enum UWTableKind {
