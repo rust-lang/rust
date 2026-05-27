@@ -2888,7 +2888,7 @@ impl str {
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization
-    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "154742")]
     #[must_use]
     #[inline]
     pub fn eq_ignore_case_unnormalized(&self, other: &str) -> bool {

@@ -738,7 +738,7 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the case-folded string as a new String, \
                   without modifying the original"]
-    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "154742")]
     pub fn to_casefold_unnormalized(&self) -> String {
         // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
         // prefix remains valid UTF-8.

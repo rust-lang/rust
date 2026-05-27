@@ -520,11 +520,11 @@ casemappingiter_impls! {
 }
 
 casemappingiter_impls! {
-    #[unstable(feature = "casefold", issue = "none")]
-    #[unstable(feature = "casefold", issue = "none")]
-    #[unstable(feature = "casefold", issue = "none")]
-    #[unstable(feature = "casefold", issue = "none")]
-    #[unstable(feature = "casefold", issue = "none")]
+    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "154742")]
     /// Returns an iterator that yields the case-folded equivalent of a `char`.
     ///
     /// This `struct` is created by the [`to_casefold_unnormalized`] method on [`char`]. See
