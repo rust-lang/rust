@@ -122,6 +122,16 @@ fn do_check_simd_vector_abi<'tcx>(
             is_call,
         });
     }
+    // The `wasm-multivalue` ABI relies on the WebAssembly multi-value proposal.
+    if abi.conv == CanonAbi::WasmMultivalue && !have_feature(sym::multivalue) {
+        let (span, _hir_id) = loc();
+        tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
+            span,
+            required_feature: "multivalue",
+            abi: "wasm-multivalue",
+            is_call,
+        });
+    }
 }
 
 /// Emit an error when a non-rustic ABI has unsized parameters.

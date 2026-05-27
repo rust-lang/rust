@@ -73,7 +73,7 @@ pub(crate) fn conv_to_call_conv(
         CanonAbi::Interrupt(_) | CanonAbi::Arm(_) | CanonAbi::Swift => {
             sess.dcx().fatal("call conv {c:?} is not yet implemented")
         }
-        CanonAbi::GpuKernel => {
+        CanonAbi::GpuKernel | CanonAbi::WasmMultivalue => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target")
         }
     }

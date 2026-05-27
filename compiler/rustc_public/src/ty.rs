@@ -1170,6 +1170,7 @@ pub enum Abi {
     RustInvalid,
     Custom,
     Swift,
+    WasmMultivalue,
 }
 
 /// A binder represents a possibly generic type and its bound vars.

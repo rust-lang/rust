@@ -1,0 +1,56 @@
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL | extern "wasm-multivalue" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL |     extern "wasm-multivalue" fn m();
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL |     extern "wasm-multivalue" fn dm() {}
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL |     extern "wasm-multivalue" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL |     extern "wasm-multivalue" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL | type TA = extern "wasm-multivalue" fn();
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "wasm-multivalue" ABI is experimental and subject to change
+   |
+LL | extern "wasm-multivalue" {}
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(abi_wasm_multivalue)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+

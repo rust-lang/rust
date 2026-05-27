@@ -484,6 +484,8 @@ pub enum CallConvention {
     AvrNonBlockingInterrupt,
 
     RiscvInterrupt,
+
+    WasmMultivalue,
 }
 
 #[non_exhaustive]

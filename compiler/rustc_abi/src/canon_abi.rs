@@ -41,6 +41,9 @@ pub enum CanonAbi {
     /// ABI relevant to GPUs: the entry point for a GPU kernel
     GpuKernel,
 
+    /// ABI relevant to WebAssembly, leveraging multiple returns.
+    WasmMultivalue,
+
     /// ABIs relevant to bare-metal interrupt targets
     // FIXME(workingjubilee): a particular reason for this nesting is we might not need these?
     // interrupt ABIs should have the same properties:
@@ -63,6 +66,7 @@ impl CanonAbi {
             CanonAbi::C
             | CanonAbi::Custom
             | CanonAbi::Swift
+            | CanonAbi::WasmMultivalue
             | CanonAbi::Arm(_)
             | CanonAbi::GpuKernel
             | CanonAbi::Interrupt(_)
@@ -83,6 +87,7 @@ impl fmt::Display for CanonAbi {
             CanonAbi::RustPreserveNone => ExternAbi::RustPreserveNone,
             CanonAbi::Custom => ExternAbi::Custom,
             CanonAbi::Swift => ExternAbi::Swift,
+            CanonAbi::WasmMultivalue => ExternAbi::WasmMultivalue,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CmseNonSecureCall,

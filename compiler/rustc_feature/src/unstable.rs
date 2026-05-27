@@ -382,6 +382,8 @@ declare_features! (
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
     /// Allows `extern "Swift" fn()`.
     (unstable, abi_swift, "1.97.0", Some(156481)),
+    /// Allows `extern "wasm-multivalue" fn()`.
+    (unstable, abi_wasm_multivalue, "CURRENT_RUSTC_VERSION", Some(0)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
     /// Allows additional const parameter types, such as `[u8; 10]` or user defined types

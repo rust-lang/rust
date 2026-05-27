@@ -20,6 +20,10 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[diag("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`")]
 pub(crate) struct SanitizerMemtagRequiresMte;
 
+#[derive(Diagnostic)]
+#[diag("the `\"wasm-multivalue\"` ABI requires LLVM 23 or newer")]
+pub(crate) struct WasmMultivalueRequiresLlvm23;
+
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
