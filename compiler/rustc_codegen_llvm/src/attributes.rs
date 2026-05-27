@@ -165,6 +165,8 @@ pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) 
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
+    //
+    // Similar logic exists for the per-module uwtable annotation in `context.rs`.
     let async_unwind = !use_sync_unwind.unwrap_or(false);
     llvm::CreateUWTableAttr(llcx, async_unwind)
 }
