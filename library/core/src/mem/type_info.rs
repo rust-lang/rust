@@ -528,30 +528,50 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn field(self, variant_index: usize, field_index: usize) -> FieldId {
-        FieldId { type_id: intrinsics::type_id_field(self, variant_index, field_index) }
+        FieldId {
+            frt_type_id: intrinsics::type_id_field_representing_type(
+                self,
+                variant_index,
+                field_index,
+            ),
+        }
     }
 }
 
-/// `FieldId` is a wrapper of `TypeId`, representing a field of a struct, tuple or enum variant.
+/// Field representing type ID. Representing a field of a struct, tuple or enum variant.
 #[derive(Copy, PartialOrd, Ord, Hash)]
 #[derive_const(Clone, PartialEq, Eq)]
 #[unstable(feature = "type_info", issue = "146922")]
 pub struct FieldId {
-    type_id: TypeId,
+    frt_type_id: TypeId,
 }
 
 #[unstable(feature = "type_info", issue = "146922")]
 impl fmt::Debug for FieldId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FieldId({:#034x})", self.type_id.as_u128())
+        write!(f, "FieldId({:#034x})", self.frt_type_id.as_u128())
     }
 }
 
 impl FieldId {
-    /// Returns the `TypeId` of this field.
+    /// Returns the `TypeId` of the actual field type.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(
+    ///     const { TypeId::of::<Point>().field(0, 0).type_id() },
+    ///     TypeId::of::<u32>()
+    /// );
+    /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn type_id(self) -> TypeId {
-        self.type_id
+        intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
     }
 }

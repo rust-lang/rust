@@ -2964,17 +2964,32 @@ pub const fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> u
     panic!("`TypeId::fields` can only be called at compile-time")
 }
 
-/// Gets the `TypeId` of the field at the given index of the type represented by this `TypeId`.
+/// Gets the [`FieldRepresentingType`]'s `TypeId` at the given index of the type represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::field`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-pub const fn type_id_field(
+pub const fn type_id_field_representing_type(
     _id: crate::any::TypeId,
     _variant_index: usize,
     _field_index: usize,
 ) -> crate::any::TypeId {
     panic!("`TypeId::field` can only be called at compile-time")
+}
+
+/// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::type_id`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn field_representing_type_actual_type_id(
+    _frt_type_id: crate::any::TypeId,
+) -> crate::any::TypeId {
+    panic!("`FieldId::type_id` can only be called at compile-time")
 }
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.

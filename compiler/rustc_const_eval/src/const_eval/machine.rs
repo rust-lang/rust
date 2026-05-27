@@ -647,7 +647,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(fields_num as u64, ecx), dest)?;
             }
 
-            sym::type_id_field => {
+            sym::type_id_field_representing_type => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;
                 let field_idx = ecx.read_target_usize(&args[2])? as usize;
@@ -661,37 +661,28 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     });
                 }
 
-                let field_ty = match ty.kind() {
-                    ty::Adt(adt_def, generics) => {
+                let fields_num = match ty.kind() {
+                    ty::Adt(adt_def, _) => {
                         let variant_def = &adt_def.variants()[VariantIdx::from_usize(variant_idx)];
-                        let fields_num = variant_def.fields.len();
-                        if field_idx >= fields_num {
-                            throw_ub!(BoundsCheckFailed {
-                                len: fields_num as u64,
-                                index: field_idx as u64
-                            });
-                        }
-                        let field_def = &variant_def.fields[FieldIdx::from_usize(field_idx)];
-                        field_def.ty(ecx.tcx.tcx, generics).skip_norm_wip()
+                        variant_def.fields.len()
                     }
-                    ty::Tuple(fields) => {
-                        let fields_num = fields.len();
-                        if field_idx >= fields_num {
-                            throw_ub!(BoundsCheckFailed {
-                                len: fields_num as u64,
-                                index: field_idx as u64
-                            });
-                        }
-                        fields[field_idx]
-                    }
-                    _ => {
-                        // Other types have no fields, so any field index is out of bounds.
-                        throw_ub!(BoundsCheckFailed { len: 0, index: field_idx as u64 });
-                    }
+                    ty::Tuple(fields) => fields.len(),
+                    _ => 0, // Other types have no fields
                 };
+                if field_idx >= fields_num {
+                    throw_ub!(BoundsCheckFailed {
+                        len: fields_num as u64,
+                        index: field_idx as u64
+                    });
+                }
 
-                let field_ty = ecx.tcx.erase_and_anonymize_regions(field_ty);
-                ecx.write_type_id(field_ty, dest)?;
+                let frt = Ty::new_field_representing_type(
+                    *ecx.tcx,
+                    ty,
+                    VariantIdx::from_usize(variant_idx),
+                    FieldIdx::from_usize(field_idx),
+                );
+                ecx.write_type_id(frt, dest)?;
             }
 
             sym::type_id_variants => {
@@ -719,6 +710,20 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let offset = layout.fields.offset(field.index()).bytes();
 
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
+            sym::field_representing_type_actual_type_id => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { ty, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    ecx.tcx.erase_and_anonymize_regions(ty)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                ecx.write_type_id(field_ty, dest)?;
             }
 
             _ => {
