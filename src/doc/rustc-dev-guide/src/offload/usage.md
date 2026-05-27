@@ -9,10 +9,8 @@ To follow along, copy it to a `src/lib.rs` file.
 #![allow(internal_features)]
 #![feature(gpu_offload)]
 #![cfg_attr(target_os = "linux", feature(core_intrinsics))]
-#![cfg_attr(target_arch = "amdgpu", feature(abi_gpu_kernel))]
-#![cfg_attr(target_arch = "amdgpu", feature(stdarch_amdgpu))]
-#![cfg_attr(target_arch = "nvptx64", feature(stdarch_nvptx))]
-#![cfg_attr(target_arch = "nvptx64", feature(abi_gpu_kernel))]
+#![cfg_attr(target_arch = "amdgpu", feature(stdarch_amdgpu, abi_gpu_kernel))]
+#![cfg_attr(target_arch = "nvptx64", feature(stdarch_nvptx, abi_gpu_kernel))]
 #![no_std]
 
 #[cfg(target_os = "linux")]

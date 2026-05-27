@@ -1177,7 +1177,6 @@ symbols! {
         linkonce,
         linkonce_odr,
         lint_reasons,
-        linux,
         literal,
         little, big,
         load,

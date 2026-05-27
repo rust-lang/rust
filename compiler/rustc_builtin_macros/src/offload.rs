@@ -28,7 +28,7 @@ unsafe extern "gpu-kernel" fn foo(args) {
 }
 ```
 */
-fn is_device(ecx: &mut ExtCtxt<'_>) -> bool {
+fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
     ecx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
 }
 
@@ -47,7 +47,7 @@ fn extract_fn(
 ) -> Option<(ast::Visibility, ast::FnSig, Ident, ast::Generics, Option<Box<ast::Block>>)> {
     match item {
         Annotatable::Item(iitem) => match &iitem.kind {
-            ast::ItemKind::Fn(box ast::Fn { sig, ident, generics, body, .. }) => {
+            ast::ItemKind::Fn(ast::Fn { sig, ident, generics, body, .. }) => {
                 Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone(), body.clone()))
             }
             _ => None,
@@ -169,5 +169,5 @@ pub(crate) fn expand_kernel(
         Annotatable::Item(item)
     };
 
-    if is_device(ecx) { vec![device_item] } else { vec![host_item] }
+    if compile_for_device(ecx) { vec![device_item] } else { vec![host_item] }
 }
