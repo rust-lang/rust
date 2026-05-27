@@ -16,6 +16,16 @@
 /// the generated enum. Use this when the discriminant values are
 /// load-bearing (e.g. encoded on the wire or stable-hashed).
 ///
+/// Variants with a CLI string may also be marked `@no_from_str`
+/// (`Variant => "primary" @no_from_str`), which makes the string
+/// available to `to_str`/`Display` but excludes it from `FromStr`.
+/// Use this for variants that have a textual identity for display
+/// purposes but should not be constructible from untrusted user input
+/// (e.g. variants that require out-of-band context to build correctly).
+/// Such variants still appear in `STR_VARIANTS`/`ALL_STR_VARIANTS` —
+/// callers needing a parseable-only view should filter through
+/// `FromStr` themselves.
+///
 /// Generates:
 /// * `VARIANTS` — every variant, in declaration order.
 /// * `STR_VARIANTS` — canonical string of each variant that has one, in
@@ -32,7 +42,9 @@ macro_rules! string_enum {
         $vis:vis enum $name:ident {
             $(
                 $(#[$variant_meta:meta])*
-                $variant:ident $( = $disc:expr )? $( => $repr:literal $( | $alias:literal )* )? ,
+                $variant:ident $( = $disc:expr )?
+                    $( => $repr:literal $( | $alias:literal )*
+                       $( @ $no_from_str:ident )? )? ,
             )*
         }
     ) => {
@@ -76,12 +88,28 @@ macro_rules! string_enum {
         impl ::std::str::FromStr for $name {
             type Err = ();
 
+            #[allow(unreachable_code)]
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
-                    $( $( $repr $( | $alias )* => Ok(Self::$variant), )? )*
+                    $( $( $repr $( | $alias )* => {
+                        $(
+                            $crate::__string_enum_check_no_from_str!($no_from_str);
+                            return Err(());
+                        )?
+                        Ok(Self::$variant)
+                    }, )? )*
                     _ => Err(()),
                 }
             }
         }
     }
+}
+
+/// Validates that a `string_enum!` variant's `@`-marker is spelled exactly
+/// `no_from_str`. Used internally by [`string_enum!`]; not part of the public
+/// surface.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __string_enum_check_no_from_str {
+    (no_from_str) => {};
 }
