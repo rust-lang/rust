@@ -1890,9 +1890,9 @@ fn to_uppercase() {
 }
 
 #[test]
-fn to_casefold() {
-    assert_eq!("".to_casefold(), "");
-    assert_eq!("ꮿﬁῲὼ\u{0345}ßẞΣς".to_casefold(), "Ꮿfiὼιὼιssssσσ");
+fn to_casefold_unnormalized() {
+    assert_eq!("".to_casefold_unnormalized(), "");
+    assert_eq!("ꮿﬁῲὼ\u{0345}ßẞΣς".to_casefold_unnormalized(), "Ꮿfiὼιὼιssssσσ");
 }
 
 #[test]

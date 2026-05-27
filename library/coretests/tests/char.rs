@@ -213,14 +213,14 @@ fn test_to_uppercase() {
 }
 
 #[test]
-fn test_to_casefold() {
+fn test_to_casefold_unnormalized() {
     fn fold(c: char) -> String {
-        let to_casefold = c.to_casefold();
+        let to_casefold = c.to_casefold_unnormalized();
         assert_eq!(to_casefold.len(), to_casefold.count());
-        let iter: String = c.to_casefold().collect();
-        let disp: String = c.to_casefold().to_string();
+        let iter: String = c.to_casefold_unnormalized().collect();
+        let disp: String = c.to_casefold_unnormalized().to_string();
         assert_eq!(iter, disp);
-        let iter_rev: String = c.to_casefold().rev().collect();
+        let iter_rev: String = c.to_casefold_unnormalized().rev().collect();
         let disp_rev: String = disp.chars().rev().collect();
         assert_eq!(iter_rev, disp_rev);
         iter

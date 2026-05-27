@@ -2827,7 +2827,7 @@ impl str {
     /// but without allocating and copying temporaries.
     ///
     /// For Unicode-aware case-insensitive matching, consider
-    /// [`str::eq_ignore_case`].
+    /// [`str::eq_ignore_case_unnormalized`].
     ///
     /// # Examples
     ///
@@ -2849,25 +2849,26 @@ impl str {
     ///
     /// [Definition 144]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G53513
     ///
-    /// Same as `a.to_casefold() == b.to_casefold()`,
+    /// Same as `a.to_casefold_unnormalized() == b.to_casefold_unnormalized()`,
     /// but without allocating. See that method's documentation,
-    /// as well as [`char::to_casefold()`],
+    /// as well as [`char::to_casefold_unnormalized()`],
     /// for more information about case folding.
     ///
-    /// No [normalization] (e.g. NFC) is performed,
-    /// so visually and semantically identical strings
-    /// might still compare unequal. In addition,
-    /// this method is independent of language/locale,
-    /// so the special behavior of I/ı/İ/i
-    /// in Turkish and Azeri is not handled.
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still compare unequal. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
+    ///
+    /// In addition, this method is independent of language/locale,
+    /// so the special behavior of I/ı/İ/i in Turkish and Azeri is not handled.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(casefold)]
-    /// assert!("Ferris".eq_ignore_case("FERRIS"));
-    /// assert!("Ferrös".eq_ignore_case("FERRÖS"));
-    /// assert!("ẞ".eq_ignore_case("ss"));
+    /// assert!("Ferris".eq_ignore_case_unnormalized("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_case_unnormalized("FERRÖS"));
+    /// assert!("ẞ".eq_ignore_case_unnormalized("ss"));
     /// ```
     ///
     /// No NFC [normalization] is performed:
@@ -2875,23 +2876,25 @@ impl str {
     /// ```rust
     /// #![feature(casefold)]
     /// // These two strings are visually and semantically identical...
-    /// let comp = "Á";
-    /// let decomp = "Á";
+    /// let comp = "Å";
+    /// let decomp = "Å";
     ///
     /// // ... but not codepoint-for-codepoint equal.
-    /// assert_eq!(comp, "\u{C1}");
-    /// assert_eq!(decomp, "A\u{0301}");
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
     ///
     /// // Their case-foldings are likewise unequal:
-    /// assert!(!comp.eq_ignore_case(decomp));
+    /// assert!(!comp.eq_ignore_case_unnormalized(decomp));
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization
     #[unstable(feature = "casefold", issue = "none")]
     #[must_use]
     #[inline]
-    pub fn eq_ignore_case(&self, other: &str) -> bool {
-        self.chars().flat_map(char::to_casefold).eq(other.chars().flat_map(char::to_casefold))
+    pub fn eq_ignore_case_unnormalized(&self, other: &str) -> bool {
+        self.chars()
+            .flat_map(char::to_casefold_unnormalized)
+            .eq(other.chars().flat_map(char::to_casefold_unnormalized))
     }
 
     /// Converts this string to its ASCII upper case equivalent in-place.

@@ -672,10 +672,12 @@ impl str {
     /// Since some characters can expand into multiple characters when case folding,
     /// this function returns a [`String`] instead of modifying the parameter in-place.
     ///
-    /// This function does not perform any [normalization] (e.g. NFC),
-    /// so semantically and visually identical strings may compare unequal.
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still casefold differently. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
     ///
-    /// Like [`char::to_casefold()`] this method does not handle language-specific
+    /// Like [`char::to_casefold_unnormalized()`] this method does not handle language-specific
     /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
     /// for more information.
     ///
@@ -688,8 +690,8 @@ impl str {
     /// let s0 = "HELLO";
     /// let s1 = "Hello";
     ///
-    /// assert_eq!(s0.to_casefold(), s1.to_casefold());
-    /// assert_eq!(s0.to_casefold(), "hello")
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "hello")
     /// ```
     ///
     /// Scripts without case are not changed:
@@ -698,7 +700,7 @@ impl str {
     /// #![feature(casefold)]
     /// let new_year = "农历新年";
     ///
-    /// assert_eq!(new_year, new_year.to_casefold());
+    /// assert_eq!(new_year, new_year.to_casefold_unnormalized());
     /// ```
     ///
     /// One character can become multiple:
@@ -709,9 +711,9 @@ impl str {
     /// let s1 = "TSCHÜSS";
     /// let s2 = "tschüß";
     ///
-    /// assert_eq!(s0.to_casefold(), s1.to_casefold());
-    /// assert_eq!(s0.to_casefold(), s2.to_casefold());
-    /// assert_eq!(s0.to_casefold(), "tschüss");
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), s2.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "tschüss");
     /// ```
     ///
     /// No NFC [normalization] is performed:
@@ -719,16 +721,16 @@ impl str {
     /// ```rust
     /// #![feature(casefold)]
     /// // These two strings are visually and semantically identical...
-    /// let comp = "Á";
-    /// let decomp = "Á";
+    /// let comp = "Å";
+    /// let decomp = "Å";
     ///
     /// // ... but not codepoint-for-codepoint equal.
-    /// assert_eq!(comp, "\u{C1}");
-    /// assert_eq!(decomp, "A\u{0301}");
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
     ///
     /// // Their case-foldings are likewise unequal:
-    /// assert_eq!(comp.to_casefold(), "\u{E1}");
-    /// assert_eq!(decomp.to_casefold(), "a\u{0301}");
+    /// assert_eq!(comp.to_casefold_unnormalized(), "\u{E5}");
+    /// assert_eq!(decomp.to_casefold_unnormalized(), "a\u{030A}");
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization
@@ -737,7 +739,7 @@ impl str {
     #[must_use = "this returns the case-folded string as a new String, \
                   without modifying the original"]
     #[unstable(feature = "casefold", issue = "none")]
-    pub fn to_casefold(&self) -> String {
+    pub fn to_casefold_unnormalized(&self) -> String {
         // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
         // prefix remains valid UTF-8.
         let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };

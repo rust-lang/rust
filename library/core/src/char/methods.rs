@@ -1566,12 +1566,14 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`CaseFolding.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/CaseFolding.txt
     ///
-    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
-    /// is independent of context and language.
     ///
-    /// It also does not perform any [normalization] (e.g. NFC).
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical characters
+    /// might still casefold differently. For example, `'ά'` (U+03AC GREEK SMALL LETTER ALPHA WITH TONOS)
+    /// is considered distinct from `'ά'` (U+1F71 GREEK SMALL LETTER ALPHA WITH OXIA),
+    /// even though Unicode considers them canonically equivalent.
     ///
-    /// [normalization]: https://www.unicode.org/faq/normalization
+    /// In addition, this method is independent of language/locale,
+    /// so the special behavior of I/ı/İ/i in Turkish and Azeri is not handled.
     ///
     /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case folding in
     /// general and Chapter 3 (Conformance) discusses the default algorithm for case folding.
@@ -1588,16 +1590,34 @@ impl char {
     ///
     /// ```
     /// #![feature(casefold)]
-    /// assert!('ß'.to_casefold().eq(['s', 's']));
-    /// assert!('ẞ'.to_casefold().eq(['s', 's']));
+    /// assert!('ß'.to_casefold_unnormalized().eq(['s', 's']));
+    /// assert!('ẞ'.to_casefold_unnormalized().eq(['s', 's']));
     /// ```
     ///
     /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// #![feature(casefold)]
-    /// assert_eq!('ß'.to_casefold().to_string(), "ss");
-    /// assert_eq!('ẞ'.to_casefold().to_string(), "ss");
+    /// assert_eq!('ß'.to_casefold_unnormalized().to_string(), "ss");
+    /// assert_eq!('ẞ'.to_casefold_unnormalized().to_string(), "ss");
+    /// ```
+    ///
+    /// No [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two characters are visually and semantically identical;
+    /// // Unicode considers them to be canonically equivalent.
+    /// let alpha_tonos = 'ά';
+    /// let alpha_oxia = 'ά';
+    ///
+    /// // However, they are different codepoints:
+    /// assert_eq!(alpha_tonos, '\u{03AC}');
+    /// assert_eq!(alpha_oxia, '\u{1F71}');
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert!(alpha_tonos.to_casefold_unnormalized().eq(['\u{03AC}']));
+    /// assert!(alpha_oxia.to_casefold_unnormalized().eq(['\u{1F71}']));
     /// ```
     ///
     /// # Note on locale
@@ -1611,26 +1631,28 @@ impl char {
     ///
     /// ```
     /// #![feature(casefold)]
-    /// let casefold_i = 'I'.to_casefold().to_string();
+    /// let casefold_i = 'I'.to_casefold_unnormalized().to_string();
     /// ```
     ///
     /// `'I'`'s correct case folding relies on the language of the text: if we're
     /// in `en-US`, it should be `"i"`, but if we're in `tr-TR` or `az-AZ`, it should
-    /// be `"ı"`. `to_casefold()` does not take this into account, and so:
+    /// be `"ı"`. `to_casefold_unnormalized()` does not take this into account, and so:
     ///
     /// ```
     /// #![feature(casefold)]
-    /// let casefold_i = 'I'.to_casefold().to_string();
+    /// let casefold_i = 'I'.to_casefold_unnormalized().to_string();
     ///
     /// assert_eq!(casefold_i, "i");
     /// ```
     ///
     /// holds across languages.
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
     #[unstable(feature = "casefold", issue = "none")]
     #[inline]
-    pub fn to_casefold(self) -> ToCasefold {
+    pub fn to_casefold_unnormalized(self) -> ToCasefold {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
     }
 

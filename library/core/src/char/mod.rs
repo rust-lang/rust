@@ -527,10 +527,10 @@ casemappingiter_impls! {
     #[unstable(feature = "casefold", issue = "none")]
     /// Returns an iterator that yields the case-folded equivalent of a `char`.
     ///
-    /// This `struct` is created by the [`to_casefold`] method on [`char`]. See
+    /// This `struct` is created by the [`to_casefold_unnormalized`] method on [`char`]. See
     /// its documentation for more.
     ///
-    /// [`to_casefold`]: char::to_casefold
+    /// [`to_casefold_unnormalized`]: char::to_casefold_unnormalized
     ToCasefold
 }
 
