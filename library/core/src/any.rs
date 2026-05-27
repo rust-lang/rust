@@ -739,7 +739,7 @@ unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl const PartialEq for TypeId {
+const impl PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         #[cfg(miri)]

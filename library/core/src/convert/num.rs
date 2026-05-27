@@ -503,7 +503,7 @@ macro_rules! impl_nonzero_int_from_nonzero_int {
     ($Small:ty => $Large:ty) => {
         #[stable(feature = "nz_int_conv", since = "1.41.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-        impl const From<NonZero<$Small>> for NonZero<$Large> {
+        const impl From<NonZero<$Small>> for NonZero<$Large> {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = concat!("Converts <code>[NonZero]\\<[", stringify!($Small), "]></code> ")]
@@ -562,7 +562,7 @@ macro_rules! impl_nonzero_int_try_from_int {
     ($Int:ty) => {
         #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-        impl const TryFrom<$Int> for NonZero<$Int> {
+        const impl TryFrom<$Int> for NonZero<$Int> {
             type Error = TryFromIntError;
 
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.

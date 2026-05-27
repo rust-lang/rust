@@ -5594,7 +5594,7 @@ const trait CloneFromSpec<T> {
 }
 
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const CloneFromSpec<T> for [T]
+const impl<T> CloneFromSpec<T> for [T]
 where
     T: [const] Clone + [const] Destruct,
 {
@@ -5616,7 +5616,7 @@ where
 }
 
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const CloneFromSpec<T> for [T]
+const impl<T> CloneFromSpec<T> for [T]
 where
     T: [const] TrivialClone + [const] Destruct,
 {
@@ -5631,7 +5631,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for &[T] {
+const impl<T> Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
         &[]
@@ -5640,7 +5640,7 @@ impl<T> const Default for &[T] {
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for &mut [T] {
+const impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
         &mut []
