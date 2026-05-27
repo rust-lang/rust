@@ -301,8 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
-                        .map(Unnormalized::skip_norm_wip)
-                        .map(|(c, s)| (c.as_predicate(), s)),
+                        .map(Unnormalized::skip_norm_wip),
                 ),
             ty::Dynamic(object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
@@ -319,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 closure_kind,
                 self.obligations_for_self_ty(vid)
                     .into_iter()
-                    .map(|obl| (obl.predicate, obl.cause.span)),
+                    .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
             ),
             ty::FnPtr(sig_tys, hdr) => match closure_kind {
                 hir::ClosureKind::Closure => {
@@ -338,36 +337,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expected_ty: Ty<'tcx>,
         closure_kind: hir::ClosureKind,
-        predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
+        clauses: impl DoubleEndedIterator<Item = (ty::Clause<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for (pred, span) in traits::elaborate(
+        for (clause, span) in traits::elaborate(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
             // the registered obligations.
-            predicates.rev(),
+            clauses.rev(),
         )
         // We only care about self bounds
         .filter_only_self()
         {
-            debug!(?pred);
-            let bound_predicate = pred.kind();
+            debug!(?clause);
+            let bound_clause = clause.kind();
 
-            // Given a Projection predicate, we can potentially infer
-            // the complete signature.
+            // Given a Projection clause, we can potentially infer the complete signature.
             if expected_sig.is_none()
-                && let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
-                    bound_predicate.skip_binder()
+                && let ty::ClauseKind::Projection(proj_clause) = bound_clause.skip_binder()
             {
                 let inferred_sig = self.normalize(
                     span,
                     Unnormalized::new_wip(self.deduce_sig_from_projection(
                         Some(span),
                         closure_kind,
-                        bound_predicate.rebind(proj_predicate),
+                        bound_clause.rebind(proj_clause),
                     )),
                 );
 
@@ -434,11 +431,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // infer the kind. This can occur when we elaborate a predicate
             // like `F : Fn<A>`. Note that due to subtyping we could encounter
             // many viable options, so pick the most restrictive.
-            let trait_def_id = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
+            let trait_def_id = match bound_clause.skip_binder() {
+                ty::ClauseKind::Projection(data) => {
                     Some(data.projection_term.trait_def_id(self.tcx))
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => Some(data.def_id()),
+                ty::ClauseKind::Trait(data) => Some(data.def_id()),
                 _ => None,
             };
 
