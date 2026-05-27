@@ -5,7 +5,7 @@ use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
-use rustc_span::{BytePos, RemapPathScopeComponents, Span, Symbol, sym};
+use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::AttributeParser;
 use crate::context::AcceptContext;
@@ -189,6 +189,12 @@ impl<'sess> AttributeParser<'sess> {
         let (show_crate_root_help, crate_root_path) = is_used_as_inner
             .then(|| cx.cx.sess.local_crate_source_file())
             .flatten()
+            .filter(|src| {
+                !matches!(
+                    cx.cx.sess.source_map().span_to_filename(attr_span),
+                    FileName::Real(ref name) if name == src
+                )
+            })
             .map(|src| {
                 (true, src.path(RemapPathScopeComponents::DIAGNOSTICS).display().to_string())
             })

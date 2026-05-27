@@ -503,7 +503,6 @@ mod no_std {
     //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_std] }
 //~^ WARN the `#![no_std]` attribute can only be used at the crate root
-//~| HELP the crate root is at
 
     #[no_std] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
@@ -765,8 +764,7 @@ mod windows_subsystem {
     //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![windows_subsystem="windows"] }
     //~^ WARN the `#![windows_subsystem]` attribute can only be used at the crate root
-    //~| HELP the crate root is at
-
+    
     #[windows_subsystem = "windows"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -792,7 +790,6 @@ mod crate_name {
 //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_name="0900"] }
 //~^ WARN the `#![crate_name]` attribute can only be used at the crate root
-//~| HELP the crate root is at
 
     #[crate_name = "0900"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
@@ -817,7 +814,6 @@ mod crate_type {
 //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_type="0800"] }
 //~^ WARN the `#![crate_type]` attribute can only be used at the crate root
-//~| HELP the crate root is at
 
     #[crate_type = "0800"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
@@ -842,8 +838,7 @@ mod feature {
 //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![feature(x0600)] }
     //~^ WARN the `#![feature]` attribute can only be used at the crate root
-    //~| HELP the crate root is at
-
+    
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -868,8 +863,7 @@ mod no_main_1 {
     //~^ NOTE: this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_main] }
     //~^ WARN the `#![no_main]` attribute can only be used at the crate root
-    //~| HELP the crate root is at
-
+    
     #[no_main] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -893,8 +887,7 @@ mod no_builtins {
     //~^ NOTE: this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_builtins] }
     //~^ WARN the `#![no_builtins]` attribute can only be used at the crate root
-    //~| HELP the crate root is at
-
+    
     #[no_builtins] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -918,7 +911,6 @@ mod recursion_limit {
     //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![recursion_limit="0200"] }
 //~^ WARN the `#![recursion_limit]` attribute can only be used at the crate root
-//~| HELP the crate root is at
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
@@ -943,7 +935,6 @@ mod type_length_limit {
     //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![type_length_limit="0100"] }
 //~^ WARN the `#![type_length_limit]` attribute can only be used at the crate root
-//~| HELP the crate root is at
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
