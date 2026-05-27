@@ -187,6 +187,7 @@ fn file_test_io_seek_and_write() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -220,6 +221,7 @@ fn file_lock_multiple_shared() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -254,6 +256,7 @@ fn file_lock_blocking() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -285,6 +288,7 @@ fn file_lock_drop() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic

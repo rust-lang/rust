@@ -1451,6 +1451,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1478,6 +1479,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1494,6 +1496,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1521,6 +1524,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1537,6 +1541,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1580,6 +1585,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1599,6 +1605,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1642,6 +1649,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1661,6 +1669,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn unlock(&self) -> io::Result<()> {
@@ -1688,6 +1697,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn unlock(&self) -> io::Result<()> {
