@@ -93,6 +93,7 @@
 #![feature(one_sided_range)]
 #![feature(panic_internals)]
 #![feature(pattern)]
+#![feature(peekable_iterator)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
