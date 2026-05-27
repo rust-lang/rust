@@ -322,6 +322,7 @@ fn file_lock_dup() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
