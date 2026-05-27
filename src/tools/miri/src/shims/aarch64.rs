@@ -214,6 +214,30 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = compute_crc32(crc, data, bit_size, polynomial);
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
+            // Polynomial multiply long (64-bit x 64-bit -> 128-bit).
+            //
+            // This is the same as "carryless" multiplication, see
+            // <https://en.wikipedia.org/wiki/Carry-less_product#Multiplication_of_polynomials>.
+            //
+            // Used to implement the vmull_p64 and vmull_high_p64 functions.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_p64
+            "neon.pmull64" => {
+                // LLVM and GCC group pmull with the AES intrinsics.
+                // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
+                this.expect_target_feature_for_intrinsic(link_name, "aes")?;
+
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let left = this.read_scalar(left)?.to_u64()?;
+                let right = this.read_scalar(right)?.to_u64()?;
+
+                let result = left.widening_carryless_mul(right);
+
+                // dest is int8x16_t, transmute to u128 for the write.
+                let dest = dest.transmute(this.machine.layouts.u128, this)?;
+                this.write_scalar(Scalar::from_u128(result), &dest)?;
+            }
+
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)
