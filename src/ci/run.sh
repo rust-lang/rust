@@ -58,6 +58,11 @@ if [ "$FORCE_CI_RUSTC" == "" ]; then
     DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
 
+if [[ "$RUST_CONFIGURE_ARGS" == *"rust.codegen-backends"* ]]; then
+  echo "error: Please specify codegen backends using the CODEGEN_BACKENDS environment variable, not via RUST_CONFIGURE_ARGS."
+  exit 1
+fi
+
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
