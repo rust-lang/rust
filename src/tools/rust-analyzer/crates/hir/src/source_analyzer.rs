@@ -446,6 +446,35 @@ impl<'db> SourceAnalyzer<'db> {
         Some(self.ty(ty))
     }
 
+    pub(crate) fn expr_is_diverging(
+        &self,
+        _db: &'db dyn HirDatabase,
+        expr: &ast::Expr,
+    ) -> Option<bool> {
+        let expr_id = self.expr_id(expr.clone())?;
+        let store = self.store()?;
+        let infer = self.infer()?;
+        Some(self.expr_id_is_diverging(store, infer, expr_id))
+    }
+
+    fn expr_id_is_diverging(
+        &self,
+        store: &ExpressionStore,
+        infer: &InferenceResult,
+        expr_id: ExprOrPatId,
+    ) -> bool {
+        // FIXME: This is an approximation, perhaps we need to store a set of diverging exprs in inference?
+        if infer.type_of_expr_or_pat(expr_id).is_some_and(|ty| ty.is_never()) {
+            true
+        } else if let ExprOrPatId::ExprId(expr_id) = expr_id
+            && let Expr::Block { tail: Some(tail), .. } = store[expr_id]
+        {
+            self.expr_id_is_diverging(store, infer, tail.into())
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn type_of_expr(
         &self,
         _db: &'db dyn HirDatabase,

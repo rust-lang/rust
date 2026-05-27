@@ -1772,6 +1772,10 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
+    pub fn expr_is_diverging(&self, expr: &ast::Expr) -> bool {
+        (|| self.analyze(expr.syntax())?.expr_is_diverging(self.db, expr))().unwrap_or(false)
+    }
+
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo<'db>> {
         self.analyze(expr.syntax())?
             .type_of_expr(self.db, expr)
