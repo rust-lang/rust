@@ -18,13 +18,19 @@ help: consider giving `y` an explicit type
 LL |     let y: /* Type */ = x.into();
    |          ++++++++++++
 
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/multiple-impl-apply.rs:61:29
    |
 LL |     let _ = n == 42usize as _;
    |                             ^ cannot infer type
+   |
+note: multiple `impl`s satisfying `u32: PartialEq<_>` found
+  --> $DIR/multiple-impl-apply.rs:52:1
+   |
+LL | impl PartialEq<Value> for u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate: `impl PartialEq for u32;`
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

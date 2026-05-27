@@ -58,5 +58,5 @@ impl PartialEq<Value> for u32 {
 fn partial_eq_with_infer_cast() {
     // https://github.com/rust-lang/rust/issues/156004
     let n: u32 = 17;
-    let _ = n == 42usize as _; //~ ERROR E0282
+    let _ = n == 42usize as _; //~ ERROR E0283
 }
