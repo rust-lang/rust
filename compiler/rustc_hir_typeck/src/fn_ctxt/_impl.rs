@@ -37,7 +37,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
+    self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
 use tracing::{debug, instrument};
 
@@ -1505,6 +1505,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let err = Ty::new_error(self.tcx, guar);
         self.demand_suptype(sp, err, ty);
         err
+    }
+
+    /// Prefer a pending operator ambiguity over a generic `as _` inference failure.
+    #[cold]
+    pub(crate) fn try_report_ambiguous_binop_for_infer_cast(
+        &self,
+        sp: Span,
+    ) -> Option<ErrorGuaranteed> {
+        let errors: Vec<_> = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations()
+            .into_iter()
+            .filter_map(|mut obligation| {
+                let rhs_span = match obligation.cause.code() {
+                    ObligationCauseCode::BinOp { rhs_span, .. } => *rhs_span,
+                    _ => return None,
+                };
+
+                let predicate = self.resolve_vars_if_possible(obligation.predicate);
+                if !rhs_span.contains(sp)
+                    || !matches!(
+                        predicate.kind().skip_binder(),
+                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
+                    )
+                {
+                    return None;
+                }
+
+                obligation.cause.span = sp;
+                obligation.predicate = predicate;
+
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
+                ocx.register_obligation(obligation);
+                ocx.evaluate_obligations_error_on_ambiguity()
+                    .into_iter()
+                    .filter(|error| {
+                        matches!(
+                            error.code,
+                            traits::FulfillmentErrorCode::Ambiguity { overflow: None }
+                        )
+                    })
+                    .next()
+            })
+            .collect();
+
+        if errors.is_empty() {
+            None
+        } else {
+            Some(self.err_ctxt().report_fulfillment_errors(errors))
+        }
     }
 
     pub(crate) fn structurally_resolve_const(
