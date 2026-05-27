@@ -12,12 +12,10 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
-extern crate rustc_hir_analysis;
 extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
-extern crate rustc_span;
 
 /// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
@@ -44,15 +42,13 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
+    BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, ProvenanceMode,
+    TreeBorrowsParams, ValidationMode, entry_fn, run_genmc_mode,
 };
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
-use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
 use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
@@ -61,11 +57,9 @@ use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::{EarlyDiagCtxt, Session};
-use rustc_span::def_id::DefId;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -82,53 +76,6 @@ struct ManySeedsConfig {
 impl MiriCompilerCalls {
     fn new(miri_config: MiriConfig, many_seeds: Option<ManySeedsConfig>) -> Self {
         Self { miri_config: Some(miri_config), many_seeds }
-    }
-}
-
-fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
-    if let Some((def_id, entry_type)) = tcx.entry_fn(()) {
-        return (def_id, MiriEntryFnType::Rustc(entry_type));
-    }
-    // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
-    let sym = tcx.exported_non_generic_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
-        if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
-    });
-    if let Some(ExportedSymbol::NonGeneric(id)) = sym {
-        let start_def_id = id.expect_local();
-        let start_span = tcx.def_span(start_def_id);
-
-        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi(
-            [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
-            tcx.types.isize,
-        ));
-
-        let correct_func_sig = check_function_signature(
-            tcx,
-            ObligationCause::new(start_span, start_def_id, ObligationCauseCode::Misc),
-            *id,
-            expected_sig,
-        )
-        .is_ok();
-
-        if correct_func_sig {
-            (*id, MiriEntryFnType::MiriStart)
-        } else {
-            tcx.dcx().fatal(
-                "`miri_start` must have the following signature:\n\
-                fn miri_start(argc: isize, argv: *const *const u8) -> isize",
-            );
-        }
-    } else {
-        tcx.dcx().fatal(
-            "Miri can only run programs that have a main function.\n\
-            Alternatively, you can export a `miri_start` function:\n\
-            \n\
-            #[cfg(miri)]\n\
-            #[unsafe(no_mangle)]\n\
-            fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
-            \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
-            }"
-        );
     }
 }
 
