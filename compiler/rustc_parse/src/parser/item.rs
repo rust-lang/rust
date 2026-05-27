@@ -23,7 +23,10 @@ use super::{
     AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
+use crate::errors::{
+    self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField,
+    UseDoubleColonSuggestion, UseRegularStructSuggestion,
+};
 use crate::exp;
 
 impl<'a> Parser<'a> {
@@ -2084,10 +2087,11 @@ impl<'a> Parser<'a> {
             Safety::Default
         }
     }
-
+    /// This is the case where we find `struct Foo<T>(T) where T: Copy;`
+    /// Unit like structs are handled in parse_item_struct function
     pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
-        // This is the case where we find `struct Foo<T>(T) where T: Copy;`
-        // Unit like structs are handled in parse_item_struct function
+        let openparen_span = self.token.span;
+        let mut encountered_colon = false;
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
@@ -2109,6 +2113,8 @@ impl<'a> Parser<'a> {
                     }
                 };
                 let mut_restriction = p.parse_mut_restriction()?;
+                encountered_colon |=
+                    p.token.is_ident() && p.look_ahead(1, |tok| tok == &token::Colon);
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
                 let ty = match p.parse_ty() {
@@ -2156,6 +2162,19 @@ impl<'a> Parser<'a> {
             })
         })
         .map(|(r, _)| r)
+        .map_err(|mut error| {
+            if encountered_colon {
+                error.subdiagnostic(UseDoubleColonSuggestion { colon: self.token.span });
+                self.eat_to_tokens(&[exp!(CloseParen)]);
+                self.bump();
+                error.subdiagnostic(UseRegularStructSuggestion {
+                    open: openparen_span,
+                    close: self.prev_token.span,
+                    semicolon: if self.token == token::Semi { Some(self.token.span) } else { None },
+                });
+            }
+            error
+        })
     }
 
     /// Parses an element of a struct declaration.
