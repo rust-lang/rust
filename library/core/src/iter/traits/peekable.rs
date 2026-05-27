@@ -21,7 +21,7 @@ pub trait PeekableIterator: Iterator {
     /// assert_eq!(vals.next(), Some(1));
     ///
     /// // determine if the iterator has an element without advancing
-    /// assert_eq!(vals.peek_with(|x| x.is_some()), false);
+    /// assert_eq!(vals.peek_with(|x| x.is_some()), true);
     /// assert_eq!(vals.next(), Some(2));
     ///
     /// // exhausted iterator
