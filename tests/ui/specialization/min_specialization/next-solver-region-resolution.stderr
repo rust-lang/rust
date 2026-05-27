@@ -15,7 +15,7 @@ LL | / impl<'a, T> Foo for &'a T
 LL | | where
 LL | |     Self::Item: 'a,
    | |___________________^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

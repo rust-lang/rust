@@ -45,16 +45,6 @@ LL | |         Self::Assoc: A<T>,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc == _`
-  --> $DIR/normalize-param-env-2.rs:22:5
-   |
-LL | /     fn f()
-LL | |     where
-LL | |         Self::Assoc: A<T>,
-   | |__________________________^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
   --> $DIR/normalize-param-env-2.rs:24:22
    |
@@ -102,11 +92,7 @@ LL |     where
 LL |         Self::Assoc: A<T>,
    |                      ^^^^ required by this bound in `A::f`
 
-<<<<<<< HEAD
-error: aborting due to 8 previous errors
-=======
-error: aborting due to 11 previous errors
->>>>>>> 73f144c9f51 (enable eager param_env norm in new solver)
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0275, E0283.
 For more information about an error, try `rustc --explain E0275`.
