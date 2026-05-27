@@ -273,6 +273,21 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// Todo: explain this.
+    ///
+    /// ### Example
+    ///
+    /// TODO
+    ///
+    /// ### Explanation
+    ///
+    /// TODO
+    pub REPEATED_REPRS,
+    Warn,
+    "repeated `#[repr(..)]` attributes were inconsistently rejected before",
+}
+
+declare_lint! {
     /// The `meta_variable_misuse` lint detects possible meta-variable misuse
     /// in macro definitions.
     ///
