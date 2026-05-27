@@ -9,7 +9,6 @@ use rustc_type_ir_macros::{
 };
 
 use crate::inherent::*;
-use crate::lift::Lift;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
 use crate::{self as ty, AliasTyKind, Interner};
@@ -17,7 +16,7 @@ use crate::{self as ty, AliasTyKind, Interner};
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
 #[derive_where(Copy; I: Interner, A: Copy)]
-#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
@@ -25,20 +24,6 @@ use crate::{self as ty, AliasTyKind, Interner};
 pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
 
 impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
-
-// FIXME: We manually derive `Lift` because the `derive(Lift_Generic)` doesn't
-// understand how to turn `A` to `A::Lifted` in the output `type Lifted`.
-impl<I: Interner, U: Interner, A> Lift<U> for OutlivesPredicate<I, A>
-where
-    A: Lift<U>,
-    I::Region: Lift<U, Lifted = U::Region>,
-{
-    type Lifted = OutlivesPredicate<U, A::Lifted>;
-
-    fn lift_to_interner(self, cx: U) -> Self::Lifted {
-        OutlivesPredicate(self.0.lift_to_interner(cx), self.1.lift_to_interner(cx))
-    }
-}
 
 /// `'a == 'b`.
 /// For the rationale behind having this instead of a pair of bidirectional

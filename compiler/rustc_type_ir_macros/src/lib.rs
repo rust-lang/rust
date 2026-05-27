@@ -178,6 +178,12 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
                 return bind.to_token_stream();
             }
 
+            if is_type_phantom(&ty) {
+                return quote! {
+                    PhantomData
+                };
+            }
+
             let lifted = lift(ty.clone(), &generic_parameters);
 
             for param in lifted.generic_parameter_bounds {
@@ -233,18 +239,28 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     )
 }
 
+fn get_first_path_segment(ty: &syn::Type) -> Option<&syn::PathSegment> {
+    if let syn::Type::Path(ty) = ty
+        && ty.path.segments.len() == 1
+    {
+        ty.path.segments.first()
+    } else {
+        None
+    }
+}
+
 /// Returns true only for bare generic parameters like `T`, not paths such as
 /// `I::Ty`, `Vec<T>`, or `Binder<I, T>`
 fn is_type_param(ty: &syn::Type, generic_parameters: &[syn::Ident]) -> bool {
-    if let syn::Type::Path(ty) = ty
-        && ty.path.segments.len() == 1
-        && let Some(segment) = ty.path.segments.first()
-    {
+    get_first_path_segment(ty).is_some_and(|segment| {
         matches!(segment.arguments, syn::PathArguments::None)
             && generic_parameters.iter().any(|param| segment.ident == *param)
-    } else {
-        false
-    }
+    })
+}
+
+/// Return if the type is `PhantomData`
+fn is_type_phantom(ty: &syn::Type) -> bool {
+    get_first_path_segment(ty).is_some_and(|segment| segment.ident == "PhantomData")
 }
 
 fn lift(mut ty: syn::Type, generic_parameters: &[syn::Ident]) -> LiftedTy {

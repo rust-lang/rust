@@ -764,7 +764,7 @@ impl<I: Interner> Eq for TypeAndMut<I> {}
 /// Contains the packed non-type fields of a function signature.
 // FIXME(splat): add the splatted argument index as a u16
 #[derive_where(Copy, Clone, PartialEq, Eq, Hash; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
@@ -772,19 +772,13 @@ impl<I: Interner> Eq for TypeAndMut<I> {}
 pub struct FnSigKind<I: Interner> {
     /// Holds the c_variadic and safety bitflags, and 6 bits for the `ExternAbi` variant and unwind
     /// flag.
+    #[lift(identity)]
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
     flags: u8,
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
     _marker: PhantomData<fn() -> I>,
-}
-
-impl<I: Interner, J: Interner> crate::lift::Lift<J> for FnSigKind<I> {
-    type Lifted = FnSigKind<J>;
-    fn lift_to_interner(self, _cx: J) -> Self::Lifted {
-        FnSigKind { flags: self.flags, _marker: PhantomData }
-    }
 }
 
 impl<I: Interner> fmt::Debug for FnSigKind<I> {

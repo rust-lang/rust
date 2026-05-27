@@ -14,7 +14,6 @@ use tracing::instrument;
 use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
-use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 
@@ -949,12 +948,13 @@ pub enum BoundVarIndexKind {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 #[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash; I: Interner, T)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct Placeholder<I: Interner, T> {
+    #[lift(identity)]
     pub universe: UniverseIndex,
     pub bound: T,
     #[type_foldable(identity)]
@@ -968,21 +968,6 @@ impl<I: Interner, T: fmt::Debug> fmt::Debug for ty::Placeholder<I, T> {
             write!(f, "!{:?}", self.bound)
         } else {
             write!(f, "!{}_{:?}", self.universe.index(), self.bound)
-        }
-    }
-}
-
-impl<I: Interner, U: Interner, T> Lift<U> for Placeholder<I, T>
-where
-    T: Lift<U>,
-{
-    type Lifted = Placeholder<U, T::Lifted>;
-
-    fn lift_to_interner(self, cx: U) -> Self::Lifted {
-        Placeholder {
-            universe: self.universe,
-            bound: self.bound.lift_to_interner(cx),
-            _tcx: PhantomData,
         }
     }
 }
@@ -1157,25 +1142,15 @@ impl<I: Interner> PlaceholderRegion<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
-#[derive(GenericTypeVisitable)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct BoundTy<I: Interner> {
+    #[lift(identity)]
     pub var: ty::BoundVar,
     pub kind: BoundTyKind<I>,
-}
-
-impl<I: Interner, U: Interner> Lift<U> for BoundTy<I>
-where
-    BoundTyKind<I>: Lift<U, Lifted = BoundTyKind<U>>,
-{
-    type Lifted = BoundTy<U>;
-
-    fn lift_to_interner(self, cx: U) -> Self::Lifted {
-        BoundTy { var: self.var, kind: self.kind.lift_to_interner(cx) }
-    }
 }
 
 impl<I: Interner> fmt::Debug for ty::BoundTy<I> {
