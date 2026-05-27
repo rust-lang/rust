@@ -764,7 +764,7 @@ mod windows_subsystem {
     //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![windows_subsystem="windows"] }
     //~^ WARN the `#![windows_subsystem]` attribute can only be used at the crate root
-    
+
     #[windows_subsystem = "windows"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -838,7 +838,7 @@ mod feature {
 //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![feature(x0600)] }
     //~^ WARN the `#![feature]` attribute can only be used at the crate root
-    
+
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -863,7 +863,7 @@ mod no_main_1 {
     //~^ NOTE: this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_main] }
     //~^ WARN the `#![no_main]` attribute can only be used at the crate root
-    
+
     #[no_main] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
@@ -887,7 +887,7 @@ mod no_builtins {
     //~^ NOTE: this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_builtins] }
     //~^ WARN the `#![no_builtins]` attribute can only be used at the crate root
-    
+
     #[no_builtins] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
     //~| NOTE this attribute does not have an `!`, which means it is applied to this function
