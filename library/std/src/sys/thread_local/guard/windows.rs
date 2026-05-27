@@ -10,7 +10,7 @@
 //! [1]: https://devblogs.microsoft.com/oldnewthing/20191011-00/?p=102989
 
 use core::ffi::c_void;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use crate::cell::Cell;
 use crate::ptr;
@@ -42,6 +42,7 @@ fn is_thread_a_fiber() -> bool {
 }
 
 static KEY: AtomicU32 = AtomicU32::new(FLS_OUT_OF_INDEXES);
+static AT_EXIT_HOOK_CALLED: AtomicBool = AtomicBool::new(false);
 
 pub fn enable() {
     let registered = if cfg!(target_thread_local) {
@@ -61,6 +62,12 @@ pub fn enable() {
         let key = if current_key != FLS_OUT_OF_INDEXES {
             current_key
         } else {
+            // We free key once the `atexit` hook is called, and swap it back to FLS_OUT_OF_INDEXES because it is no longer valid.
+            // But we also don't want to allow new threads to register new destructors after that point, so we bail out early.
+            if AT_EXIT_HOOK_CALLED.load(Ordering::Acquire) {
+                return;
+            }
+
             // Otherwise, we try to allocate a key.
             let new_key = unsafe { create(Some(cleanup)) };
 
@@ -90,6 +97,8 @@ pub fn enable() {
 }
 
 extern "C" fn free_fls_key_at_exit() {
+    AT_EXIT_HOOK_CALLED.store(true, Ordering::Release);
+
     let current_key = KEY.swap(c::FLS_OUT_OF_INDEXES, Ordering::AcqRel);
     if current_key != c::FLS_OUT_OF_INDEXES {
         // Calling `FlsFree` will invoke the `cleanup` hook, in the current thread, *for each thread* with a value in this FLS slot.
