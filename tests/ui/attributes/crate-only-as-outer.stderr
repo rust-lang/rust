@@ -21,6 +21,8 @@ error: the `#![crate_name]` attribute can only be used at the crate root
    |
 LL |     #![crate_name = "iwi"]
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the crate root is at `$DIR/crate-only-as-outer.rs`
 
 error: aborting due to 2 previous errors
 

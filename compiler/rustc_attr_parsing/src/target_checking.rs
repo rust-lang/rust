@@ -5,7 +5,7 @@ use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::AttributeParser;
 use crate::context::AcceptContext;
@@ -186,6 +186,14 @@ impl<'sess> AttributeParser<'sess> {
         let target_span = cx.target_span;
         let attr_span = cx.attr_span;
 
+        let (show_crate_root_help, crate_root_path) = is_used_as_inner
+            .then(|| cx.cx.sess.local_crate_source_file())
+            .flatten()
+            .map(|src| {
+                (true, src.path(RemapPathScopeComponents::DIAGNOSTICS).display().to_string())
+            })
+            .unwrap_or_default();
+
         cx.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
             crate::errors::InvalidAttrStyle {
@@ -193,6 +201,8 @@ impl<'sess> AttributeParser<'sess> {
                 is_used_as_inner,
                 target_span: (!is_used_as_inner).then_some(target_span),
                 target: target.name(),
+                crate_root_path,
+                show_crate_root_help,
             },
             attr_span,
         );

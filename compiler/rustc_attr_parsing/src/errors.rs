@@ -165,6 +165,9 @@ pub(crate) struct InvalidAttrStyle {
     #[note("this attribute does not have an `!`, which means it is applied to this {$target}")]
     pub target_span: Option<Span>,
     pub target: &'static str,
+    pub crate_root_path: String,
+    #[help("the crate root is at `{$crate_root_path}`")]
+    pub show_crate_root_help: bool,
 }
 
 #[derive(Diagnostic)]
