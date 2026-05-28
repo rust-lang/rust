@@ -30,9 +30,8 @@ const _: () =
         #[rustc_proc_macro_decls]
         #[used]
         #[allow(deprecated)]
-        static _DECLS: &[proc_macro::bridge::client::ProcMacro] =
-            &[proc_macro::bridge::client::ProcMacro::bang("a", a),
-                        proc_macro::bridge::client::ProcMacro::custom_derive("B",
-                            &["attr_a", "attr_b"], b),
-                        proc_macro::bridge::client::ProcMacro::attr("c", c)];
+        static _DECLS: &[proc_macro::bridge::client::Client] =
+            &[proc_macro::bridge::client::Client::expand1(a),
+                        proc_macro::bridge::client::Client::expand1(b),
+                        proc_macro::bridge::client::Client::expand2(c)];
     };
