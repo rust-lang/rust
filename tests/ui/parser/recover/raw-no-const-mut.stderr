@@ -76,6 +76,23 @@ LL |     x = &raw const 1;
 LL |     x = &raw mut 1;
    |              +++
 
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `x`
+  --> $DIR/raw-no-const-mut.rs:36:24
+   |
+LL |     takes_raw_ptr(&raw x);
+   |                        ^ expected one of 10 possible tokens
+   |
+help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
+   |
+LL |     takes_raw_ptr(&raw const x);
+   |                        +++++
+LL |     takes_raw_ptr(&raw mut x);
+   |                        +++
+help: missing `,`
+   |
+LL |     takes_raw_ptr(&raw, x);
+   |                       +
+
 error[E0425]: cannot find value `raw` in this scope
   --> $DIR/raw-no-const-mut.rs:7:21
    |
@@ -87,6 +104,12 @@ error[E0425]: cannot find value `raw` in this scope
    |
 LL |     f(&raw 2);
    |        ^^^ not found in this scope
+
+error[E0425]: cannot find value `raw` in this scope
+  --> $DIR/raw-no-const-mut.rs:36:20
+   |
+LL |     takes_raw_ptr(&raw x);
+   |                    ^^^ not found in this scope
 
 error[E0745]: cannot take address of a temporary
   --> $DIR/raw-no-const-mut.rs:7:17
@@ -109,7 +132,24 @@ LL -     f(&raw 2);
 LL +     a(&raw 2);
    |
 
-error: aborting due to 9 previous errors
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/raw-no-const-mut.rs:36:5
+   |
+LL |     takes_raw_ptr(&raw x);
+   |     ^^^^^^^^^^^^^      - unexpected argument #2 of type `u32`
+   |
+note: function defined here
+  --> $DIR/raw-no-const-mut.rs:32:8
+   |
+LL |     fn takes_raw_ptr(_: *const u32) {}
+   |        ^^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     takes_raw_ptr(&raw x);
+LL +     takes_raw_ptr(&raw);
+   |
 
-Some errors have detailed explanations: E0425, E0745.
-For more information about an error, try `rustc --explain E0425`.
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0061, E0425, E0745.
+For more information about an error, try `rustc --explain E0061`.

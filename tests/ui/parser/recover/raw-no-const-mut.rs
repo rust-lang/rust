@@ -28,4 +28,13 @@ fn e() {
     //~^ ERROR expected one of
 }
 
+fn g() {
+    fn takes_raw_ptr(_: *const u32) {}
+    
+    let x = 0u32;
+    // Regression test for https://github.com/rust-lang/rust/issues/157015.
+    takes_raw_ptr(&raw x);
+    //~^ ERROR expected one of
+}
+
 fn main() {}
