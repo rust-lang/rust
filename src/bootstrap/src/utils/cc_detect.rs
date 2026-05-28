@@ -94,7 +94,7 @@ pub(crate) fn fill_compilers(sess: &mut Session) {
     // as well. In the future it would be good to make this a no-op given that we shouldn't need to
     // build any C/C++ code for wasm...
     if sess.config.wasm_proc_macros {
-        targets.insert(TargetSelection::from_user("wasm32-wasip2"));
+        targets.insert(TargetSelection::from_user("wasm32-unknown-unknown"));
     }
 
     for target in targets {
