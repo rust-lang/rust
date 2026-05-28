@@ -1,7 +1,8 @@
 //! Complete fields in record literals and patterns.
 use ide_db::SymbolKind;
 use syntax::{
-    SmolStr,
+    SmolStr, T,
+    algo::next_non_trivia_token,
     ast::{self, Expr},
 };
 
@@ -97,7 +98,9 @@ pub(crate) fn add_default_update(
     let impls_default_trait = default_trait
         .zip(ty)
         .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
-    if impls_default_trait {
+    let ends_of_record_list =
+        next_non_trivia_token(ctx.token.clone()).is_none_or(|it| it.kind() == T!['}']);
+    if impls_default_trait && ends_of_record_list {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function
         let completion_text = "..Default::default()";
