@@ -1,3 +1,10 @@
+```
+./x.py build library --target wasm32-unknown-unknown,x86_64-unknown-linux-gnu --keep-stage-std 1
+echo 'extern crate proc_macro; #[proc_macro] pub fn foo(a: proc_macro::TokenStream) -> proc_macro::TokenStream { println!("foo"); (a.to_string() + ";println!(\"Hello from wasm proc macro!\");").parse().unwrap() }' | rustc +stage1 - --crate-type proc-macro --target wasm32-unknown-unknown -Zwasm-proc-macros
+echo 'fn main() { foo::foo!(println!("Hello World")); }' | rustc +stage1 --extern foo=rust_out.wasm - --edition 2024 && ./rust_out
+```
+
+
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-dark.svg">

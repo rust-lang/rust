@@ -989,6 +989,7 @@ pub fn get_proc_macros(
     metadata_loader: &dyn MetadataLoader,
     cfg_version: &'static str,
 ) -> IoResult<Vec<(IntoDynSyncSend<DynClient>, ProcMacroKind)>> {
+    // FIXME support wasm proc-macros
     let host_tuple = TargetTuple::from_tuple(config::host_tuple());
     let (host, _) = Target::search(&host_tuple, Path::new(""), false).unwrap();
 
