@@ -62,20 +62,33 @@ LL -     #[deprecated("test")]
 LL +     #[deprecated = "test"]
    |
 
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/deprecation-sanity.rs:27:5
+   |
+LL |     #[deprecated("1.2.3")]
+   |     ^^^^^^^^^^^^^-------^^
+   |                  |
+   |                  didn't expect a literal here
+   |
+help: try specifying a deprecated since version
+   |
+LL |     #[deprecated(since = "1.2.3")]
+   |                  +++++++
+
 error: multiple `deprecated` attributes
-  --> $DIR/deprecation-sanity.rs:29:1
+  --> $DIR/deprecation-sanity.rs:32:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/deprecation-sanity.rs:28:1
+  --> $DIR/deprecation-sanity.rs:31:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0538]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:32:1
+  --> $DIR/deprecation-sanity.rs:35:1
    |
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^
@@ -83,7 +96,7 @@ LL | #[deprecated(since = "a", since = "b", note = "c")]
    |                           found `since` used as a key more than once
 
 error: `#[deprecated]` attribute cannot be used on trait impl blocks
-  --> $DIR/deprecation-sanity.rs:37:1
+  --> $DIR/deprecation-sanity.rs:40:1
    |
 LL | #[deprecated = "hello"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +105,7 @@ LL | #[deprecated = "hello"]
    = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
    = note: `#[deny(useless_deprecated)]` on by default
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0538, E0539, E0565.
 For more information about an error, try `rustc --explain E0538`.
