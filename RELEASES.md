@@ -11,16 +11,12 @@ Language
 - [Support s390x vector registers in inline assembly](https://github.com/rust-lang/rust/pull/154184)
 - [Allow using constants of type `ManuallyDrop` as patterns (fixing a regression introduced in 1.94.0)](https://github.com/rust-lang/rust/pull/154891)
 
-
 <a id="1.96.0-Compiler"></a>
 
 Compiler
 --------
 - [Enable link relaxation feature for LoongArch Linux targets](https://github.com/rust-lang/rust/pull/153427)
 - [Update `riscv64gc-unknown-fuchsia` baseline to RVA22 + vector](https://github.com/rust-lang/rust/pull/155072)
-
-
-
 
 <a id="1.96.0-Libraries"></a>
 
@@ -29,7 +25,6 @@ Libraries
 - [Support iterating over ranges of `NonZero` integers](https://github.com/rust-lang/rust/pull/127534)
 - [refactor 'valid for read/write' definition: exclude null; add that as an exception on individual methods instead](https://github.com/rust-lang/rust/pull/152615)
 - [Fix SGX delayed host lookup via ToSocketAddr](https://github.com/rust-lang/rust/pull/152851)
-
 
 <a id="1.96.0-Stabilized-APIs"></a>
 
@@ -48,7 +43,6 @@ Stabilized APIs
 - [`core::range::Range`](https://doc.rust-lang.org/stable/std/range/struct.Range.html)
 - [`core::range::RangeIter`](https://doc.rust-lang.org/stable/std/range/struct.RangeIter.html)
 
-
 <a id="1.96.0-Cargo"></a>
 
 Cargo
@@ -57,11 +51,14 @@ Cargo
 - [Added `target.'cfg(..)'.rustdocflags` support in configuration.](https://github.com/rust-lang/cargo/pull/16846)
 - Fixed [CVE-2026-5222](https://blog.rust-lang.org/2026/05/25/cve-2026-5222/) and [CVE-2026-5223](https://blog.rust-lang.org/2026/05/25/cve-2026-5223/).
 
+<a id="1.96-Rustdoc"></a>
+
 Rustdoc
 -----
 - [Deprecation notes are now rendered like any other documentation](https://github.com/rust-lang/rust/pull/149931).  Previously they used the css `white-space: pre-wrap;` property and stripped any `<p>` elements from the rendered html, however this caused issues and unintuitive behavior.  The new behavior should be more predictable, however some multi-line deprecation notes will now be rendered as as single lines.  If this is undesirable, you can use the standard markdown method of forcing a linebreak, which is two spaces followed by a newline (`"\n"`).
 - [Don't emit rustdoc `missing_doc_code_examples` lint on impl items](https://github.com/rust-lang/rust/pull/154048)
 - [Seperate methods and associated functions in sidebar](https://github.com/rust-lang/rust/pull/154644)
+
 <a id="1.96.0-Compatibility-Notes"></a>
 
 Compatibility Notes
@@ -81,7 +78,6 @@ Compatibility Notes
 - [Update the minimum external LLVM to 21](https://github.com/rust-lang/rust/pull/153684)
 - On `avr` targets, C's `double` type is 32-bit by default, so [change `c_double` to `f32` on `avr` targets to match](https://github.com/rust-lang/rust/pull/154647). This is a breaking change, but necessary to make `c_double` match C's double.
 
-
 <a id="1.96.0-Internal-Changes"></a>
 
 Internal Changes
@@ -93,7 +89,6 @@ tools.
 
 - [JSON targets: `aarch64` softfloat targets now have to have `rustc_abi` set to `"softfloat"`](https://github.com/rust-lang/rust/pull/152941)
 - [target specs: stricter checks for LLVM ABI values, and correlate that with `cfg(target_abi)`](https://github.com/rust-lang/rust/pull/153769)
-
 
 
 Version 1.95.0 (2026-04-16)
