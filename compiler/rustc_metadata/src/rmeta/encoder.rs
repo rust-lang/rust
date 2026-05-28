@@ -45,6 +45,7 @@ use self::public_api_hasher::{
 };
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::public_api_hasher::PublicApiHashState;
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
@@ -603,9 +604,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_hash_map(
+    fn encode_def_path_hash_map<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
         let value = self
             .lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()));
@@ -616,9 +617,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Hashed { hash: hasher.finish(hcx), value }
     }
 
-    fn encode_source_map(
+    fn encode_source_map<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
@@ -719,9 +720,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque, hcx)
     }
 
-    fn encode_crate_root(
+    fn encode_crate_root<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> (LazyValue<CrateRoot>, CrateHashes) {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
@@ -1510,7 +1511,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn encode_attrs(&mut self, def_id: LocalDefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_attrs<'h>(&mut self, def_id: LocalDefId, hcx: &mut impl PublicApiHashState<'h>) {
         let tcx = self.tcx;
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
@@ -1535,7 +1536,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         );
     }
 
-    fn encode_def_ids(&mut self, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_def_ids<'h>(&mut self, hcx: &mut impl PublicApiHashState<'h>) {
         self.encode_info_for_mod(CRATE_DEF_ID, hcx);
 
         // Proc-macro crates only export proc-macro items, which are looked
@@ -1792,9 +1793,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_externally_implementable_items(
+    fn encode_externally_implementable_items<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<EiiMapEncodedKeyValue>> {
         empty_proc_macro!(self);
         let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
@@ -1812,10 +1813,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self, hcx))]
-    fn encode_info_for_adt(
+    fn encode_info_for_adt<'h>(
         &mut self,
         local_def_id: LocalDefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         let def_id = local_def_id.to_def_id();
         let tcx = self.tcx;
@@ -1878,10 +1879,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_info_for_mod(
+    fn encode_info_for_mod<'h>(
         &mut self,
         local_def_id: LocalDefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         let tcx = self.tcx;
         let def_id = local_def_id.to_def_id();
@@ -1914,20 +1915,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_explicit_item_bounds(
+    fn encode_explicit_item_bounds<'h>(
         &mut self,
         def_id: DefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds, hcx);
     }
 
-    fn encode_explicit_item_self_bounds(
+    fn encode_explicit_item_self_bounds<'h>(
         &mut self,
         def_id: DefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
         let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
@@ -1935,7 +1936,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_info_for_assoc_item(&mut self, def_id: DefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_info_for_assoc_item<'h>(
+        &mut self,
+        def_id: DefId,
+        hcx: &mut impl PublicApiHashState<'h>,
+    ) {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
 
@@ -1971,10 +1976,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_precise_capturing_args(
+    fn encode_precise_capturing_args<'h>(
         &mut self,
         def_id: DefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         let Some(precise_capturing_args) = self.tcx.rendered_precise_capturing_args(def_id) else {
             return;
@@ -1983,7 +1988,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_array!(self.tables.rendered_precise_capturing_args[def_id] <- precise_capturing_args, hcx);
     }
 
-    fn encode_mir(&mut self, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_mir<'h>(&mut self, hcx: &mut impl PublicApiHashState<'h>) {
         if self.is_proc_macro {
             return;
         }
@@ -2069,7 +2074,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_stability(&mut self, def_id: DefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_stability<'h>(&mut self, def_id: DefId, hcx: &mut impl PublicApiHashState<'h>) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
         if self.feat.staged_api() || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
@@ -2080,7 +2085,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_const_stability(&mut self, def_id: DefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_const_stability<'h>(&mut self, def_id: DefId, hcx: &mut impl PublicApiHashState<'h>) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
         if self.feat.staged_api() || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
@@ -2091,10 +2096,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_default_body_stability(
+    fn encode_default_body_stability<'h>(
         &mut self,
         def_id: DefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
@@ -2106,14 +2111,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_deprecation(&mut self, def_id: DefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_deprecation<'h>(&mut self, def_id: DefId, hcx: &mut impl PublicApiHashState<'h>) {
         if let Some(depr) = self.tcx.lookup_deprecation(def_id) {
             record!(self.tables.lookup_deprecation_entry[def_id] <- depr, hcx);
         }
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_info_for_macro(&mut self, def_id: LocalDefId, hcx: &mut PublicApiHashingContext<'_>) {
+    fn encode_info_for_macro<'h>(
+        &mut self,
+        def_id: LocalDefId,
+        hcx: &mut impl PublicApiHashState<'h>,
+    ) {
         let tcx = self.tcx;
 
         let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
@@ -2121,27 +2130,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body, hcx);
     }
 
-    fn encode_native_libraries(
+    fn encode_native_libraries<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<NativeLib>> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
         hashed_lazy_array!(self, used_libraries, hcx)
     }
 
-    fn encode_foreign_modules(
+    fn encode_foreign_modules<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<ForeignModule>> {
         empty_proc_macro!(self);
         let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
         hashed_lazy_array!(self, foreign_modules.iter().map(|(_, m)| m), hcx)
     }
 
-    fn encode_hygiene(
+    fn encode_hygiene<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> (Hashed<SyntaxContextTable>, Hashed<ExpnDataTable>, Hashed<ExpnHashTable>) {
         let mut syntax_contexts: TableBuilder<RDRHashAll<_>, _, _> = Default::default();
         let mut expn_data_table: TableBuilder<RDRHashAll<_>, _, _> = Default::default();
@@ -2155,7 +2164,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     index,
                     this.lazy(ctxt_data),
                     ctxt_data,
-                    &mut hcx.borrow_mut(),
+                    *hcx.borrow_mut(),
                 );
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
@@ -2164,7 +2173,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         index.as_raw(),
                         this.lazy(expn_data),
                         index,
-                        &mut hcx.borrow_mut(),
+                        *hcx.borrow_mut(),
                     );
                     // don't need to hash it since it is already included with `expn_data_table`
                     expn_hash_table.set_some_unhashed(index.as_raw(), this.lazy(hash));
@@ -2180,9 +2189,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_proc_macros(
+    fn encode_proc_macros<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Option<ProcMacroData> {
         let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
@@ -2274,9 +2283,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_debugger_visualizers(
+    fn encode_debugger_visualizers<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<DebuggerVisualizerFile>> {
         empty_proc_macro!(self);
 
@@ -2294,9 +2303,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_crate_deps(
+    fn encode_crate_deps<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<CrateDep>> {
         empty_proc_macro!(self);
 
@@ -2333,27 +2342,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         hashed_lazy_array!(self, deps.iter().map(|(_, dep)| dep), hcx)
     }
 
-    fn encode_target_modifiers(
+    fn encode_target_modifiers<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<TargetModifier>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         hashed_lazy_array!(self, tcx.sess.opts.gather_target_modifiers(), hcx)
     }
 
-    fn encode_enabled_denied_partial_mitigations(
+    fn encode_enabled_denied_partial_mitigations<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<DeniedPartialMitigation>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         hashed_lazy_array!(self, tcx.sess.gather_enabled_denied_partial_mitigations(), hcx)
     }
 
-    fn encode_lib_features(
+    fn encode_lib_features<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(Symbol, FeatureStability)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2361,9 +2370,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         hashed_lazy_array!(self, lib_features.to_sorted_vec(), hcx)
     }
 
-    fn encode_stability_implications(
+    fn encode_stability_implications<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(Symbol, Symbol)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2372,9 +2381,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         hashed_lazy_array!(self, sorted.into_iter().map(|(k, v)| (*k, *v)), hcx)
     }
 
-    fn encode_canonical_symbols(
+    fn encode_canonical_symbols<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(Symbol, DefIndex)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2385,9 +2394,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         ))
     }
 
-    fn encode_diagnostic_items(
+    fn encode_diagnostic_items<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(Symbol, DefIndex)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2400,9 +2409,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_lang_items(
+    fn encode_lang_items<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(DefIndex, LangItem)>> {
         empty_proc_macro!(self);
         let lang_items = self.tcx.lang_items().iter();
@@ -2414,18 +2423,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_lang_items_missing(
+    fn encode_lang_items_missing<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<LangItem>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         hashed_lazy_array!(self, &tcx.lang_items().missing, hcx)
     }
 
-    fn encode_stripped_cfg_items(
+    fn encode_stripped_cfg_items<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<StrippedCfgItem<DefIndex>>> {
         hashed_lazy_array!(
             self,
@@ -2435,9 +2444,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_traits(
+    fn encode_traits<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<DefIndex>> {
         empty_proc_macro!(self);
         hashed_lazy_array!(
@@ -2450,9 +2459,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     /// Encodes an index, mapping each trait to its (local) implementations.
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_impls(
+    fn encode_impls<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<TraitImpls>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2532,9 +2541,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
-    fn encode_incoherent_impls(
+    fn encode_incoherent_impls<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<IncoherentImpls>> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2560,9 +2569,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         Hashed { value: self.lazy_array(&all_impls), hash: hasher.finish(hcx) }
     }
 
-    fn encode_exportable_items(
+    fn encode_exportable_items<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<DefIndex>> {
         empty_proc_macro!(self);
         hashed_lazy_array!(
@@ -2573,9 +2582,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_stable_order_of_exportable_impls(
+    fn encode_stable_order_of_exportable_impls<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(DefIndex, usize)>> {
         empty_proc_macro!(self);
         let stable_order_of_exportable_impls =
@@ -2594,19 +2603,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols(
+    fn encode_exported_symbols<'h>(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
         hashed_lazy_array!(self, exported_symbols, hcx)
     }
 
-    fn encode_dylib_dependency_formats(
+    fn encode_dylib_dependency_formats<'h>(
         &mut self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
     ) -> Hashed<LazyArray<Option<LinkagePreference>>> {
         empty_proc_macro!(self);
         let arr = dylib_dependency_formats(self.tcx).into_iter().flatten();
@@ -2807,12 +2816,16 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
                     & !is_proc_macro
                     & tcx.sess.opts.incremental.is_some();
-                let mut hcx = PublicApiHashingContext::new(hash_public_api, hcx);
-
                 with_encode_metadata_header(tcx, path, |ecx| {
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
-                    let (root, crate_hashes) = ecx.encode_crate_root(&mut hcx);
+                    let (root, crate_hashes) = if hash_public_api {
+                        let mut hcx = PublicApiHashingContext::<true>::new(hcx);
+                        ecx.encode_crate_root(&mut hcx)
+                    } else {
+                        let mut hcx = PublicApiHashingContext::<false>::new(hcx);
+                        ecx.encode_crate_root(&mut hcx)
+                    };
                     hashes = crate_hashes;
 
                     // Flush buffer to ensure backing file has the correct size.
