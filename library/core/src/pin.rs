@@ -1913,7 +1913,7 @@ pub unsafe trait PinSafePointer: Deref + Sized {}
 //
 // Conversely, downstream crates are able to implement `Debug` and `Display` for
 // `&LocalType` as long as `LocalType` does not implement said trait. However,
-// the existence of an `&T` is not treated as evidence that the `T` is not
+// the existence of an `&&T` cannot be treated as evidence that the `T` is not
 // pinned, so this is not problematic.
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinSafePointer for &'a T {}
@@ -1931,9 +1931,9 @@ unsafe impl<'a, T: ?Sized> PinSafePointer for &'a T {}
 // downstream crates cannot implement `Clone` for `&mut LocalType`.
 //
 // Conversely, downstream crates are able to implement `Debug` and `Display`
-// for `&LocalType` as long as `LocalType` does not implement said trait.
-// However, the existence of an `&T` is not treated as evidence that the `T` is
-// not pinned, so this is not problematic.
+// for `&mut LocalType` as long as `LocalType` does not implement said trait.
+// However, the existence of an `&&mut T` cannot be treated as evidence that the
+// `T` is not pinned, so this is not problematic.
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinSafePointer for &'a mut T {}
 
@@ -1960,7 +1960,7 @@ unsafe impl<'a, T: ?Sized> PinSafePointer for &'a mut T {}
 //
 // Conversely, downstream crates are able to implement `Clone`, `Debug` and
 // `Display` for `Pin<LocalType>` as long as `LocalType` does not implement
-// said trait. However, the existence of an `&Pin<P>` is not treated as
+// said trait. However, the existence of an `&Pin<P>` cannot be treated as
 // evidence that the value is not pinned, so this is not problematic.
 //
 // Furthermore, in the case of `Clone`, cloning a `Pin<Pin<P>>` will utilize
