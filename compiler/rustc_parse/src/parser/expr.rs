@@ -29,7 +29,7 @@ use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
-use super::diagnostics::SnapshotParser;
+use super::diagnostics::{ConsumeClosingDelim, SnapshotParser};
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
@@ -1279,9 +1279,25 @@ impl<'a> Parser<'a> {
         };
         let open_paren = self.token.span;
 
-        let seq = self
-            .parse_expr_paren_seq()
-            .map(|args| self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args)));
+        let seq = match self.parse_expr_paren_seq() {
+            Ok(args) => Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args))),
+            Err(err)
+                if self.prev_token.is_keyword(kw::Raw)
+                    && self.expected_token_types.contains(TokenType::KwMut)
+                    && self.expected_token_types.contains(TokenType::KwConst)
+                    && self.token.can_begin_expr() =>
+            {
+                let err_span = self.prev_token.span.to(self.token.span);
+                let guar = err.emit();
+                // Preserve the call expression so later passes can still diagnose the callee,
+                // while treating the malformed `&raw <expr>` argument as an error expression.
+                self.consume_block(exp!(OpenParen), exp!(CloseParen), ConsumeClosingDelim::Yes);
+                let err_arg = self.mk_expr_err(err_span, guar);
+                return self
+                    .mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, thin_vec![err_arg]));
+            }
+            Err(err) => Err(err),
+        };
         match self.maybe_recover_struct_lit_bad_delims(lo, open_paren, seq, snapshot) {
             Ok(expr) => expr,
             Err(err) => self.recover_seq_parse_error(exp!(OpenParen), exp!(CloseParen), lo, err),

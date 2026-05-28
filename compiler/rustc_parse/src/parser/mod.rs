@@ -917,6 +917,17 @@ impl<'a> Parser<'a> {
                             }
 
                             // Attempt to keep parsing if it was an omitted separator.
+                            // `&raw <expr>` already has a specific suggestion for missing
+                            // `const`/`mut`, so don't recover `<expr>` as the next element in
+                            // a comma-separated list.
+                            if exp.token_type == TokenType::Comma
+                                && self.prev_token.is_keyword(kw::Raw)
+                                && self.expected_token_types.contains(TokenType::KwMut)
+                                && self.expected_token_types.contains(TokenType::KwConst)
+                                && self.token.can_begin_expr()
+                            {
+                                return Err(expect_err);
+                            }
                             self.last_unexpected_token_span = None;
                             match f(self) {
                                 Ok(t) => {
