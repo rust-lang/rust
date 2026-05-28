@@ -32,9 +32,12 @@ pub enum Stability {
         Symbol,
     ),
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
-    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
-    /// particular for features are actually ABI configuration flags (not all targets are as nice as
-    /// RISC-V and have an explicit way to set the ABI separate from target features).
+    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in particular for
+    /// features are actually ABI configuration flags (such as "soft-float" on many targets).
+    /// However, "forbidden" target features can still sometimes be enabled via `-Ctarget-cpu` or
+    /// target feature implications (on the Rust/LLVM level). To prevent that, ABI-relevant target
+    /// features are ideally pinned down (required or forbidden) in
+    /// [`Target::abi_required_features`].
     Forbidden {
         reason: &'static str,
         /// True if this is always an error, false if this can be reported as a warning when set via
@@ -128,9 +131,9 @@ impl Stability {
 // It is important for soundness to consider the interaction of targets features and the function
 // call ABI. For example, disabling the `x87` feature on x86 changes how scalar floats are passed as
 // arguments, so letting people toggle that feature would be unsound. To this end, the
-// `abi_required_features` function computes which target features must and must not be enabled for
-// any given target, and individual features can also be marked as `Forbidden`.
-// See https://github.com/rust-lang/rust/issues/116344 for some more context.
+// [`Target::abi_required_features`] function computes which target features must and must not be
+// enabled for any given target, and individual features can also be marked as `Forbidden`. See
+// https://github.com/rust-lang/rust/issues/116344 for some more context.
 //
 // The one exception to features that change the ABI is features that enable larger vector
 // registers. Those are permitted to be listed here. The `*_FOR_CORRECT_VECTOR_ABI` arrays store
