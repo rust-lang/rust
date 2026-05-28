@@ -1844,12 +1844,20 @@ impl<'db> ExprCollector<'db> {
                 }
 
                 let mut elements = e.exprs();
+                let mut rest_ptr = None;
                 let prefix = elements
                     .by_ref()
-                    .map_while(|elem| collect_possibly_rest(self, elem).left())
+                    .map_while(|elem| match collect_possibly_rest(self, elem.clone()) {
+                        Either::Left(elem) => Some(elem),
+                        Either::Right(()) => {
+                            rest_ptr = Some(AstPtr::new(&elem));
+                            None
+                        }
+                    })
                     .collect();
                 let suffix = elements.map(|elem| self.collect_expr_as_pat(elem)).collect();
-                self.alloc_pat_from_expr(Pat::Slice { prefix, slice: None, suffix }, syntax_ptr)
+                let slice = rest_ptr.map(|ptr| self.alloc_pat_from_expr(Pat::Rest, ptr));
+                self.alloc_pat_from_expr(Pat::Slice { prefix, slice, suffix }, syntax_ptr)
             }
             ast::Expr::CallExpr(e) => {
                 let path = collect_path(self, e.expr()?)?;
