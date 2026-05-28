@@ -669,7 +669,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     self.lower_block_to_place(statements, current, *tail, place, expr_id.into())
                 }
             }
-            Expr::Loop { body, label } => {
+            Expr::Loop { body, label, source: _ } => {
                 self.lower_loop(current, place, *label, expr_id.into(), |this, begin| {
                     let scope = this.push_drop_scope();
                     if let Some((_, mut current)) = this.lower_expr_as_place(begin, *body, true)? {

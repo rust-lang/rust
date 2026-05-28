@@ -1490,7 +1490,7 @@ fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
         expect![[r#"
             29..33 'self': &'? Self
             54..58 'self': &'? Self
-            206..208 '{}': Box<dyn Trait<u64> + 'static>
+            206..208 '{}': Box<dyn Trait<u64> + '?>
             218..219 'x': Box<dyn Trait<u64> + 'static>
             242..243 'y': &'? (dyn Trait<u64> + 'static)
             262..379 '{     ...2(); }': ()
@@ -1571,7 +1571,7 @@ fn test(x: Trait, y: &Trait) -> u64 {
 }"#,
         expect![[r#"
             26..30 'self': &'? Self
-            60..62 '{}': dyn Trait + 'static
+            60..62 '{}': dyn Trait + '?
             72..73 'x': dyn Trait + 'static
             82..83 'y': &'? (dyn Trait + 'static)
             100..175 '{     ...o(); }': u64
@@ -1712,7 +1712,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 }"#,
         expect![[r#"
             81..82 't': T
-            109..111 '{}': <T as Trait>::Type
+            109..111 '{}': ()
             143..144 't': T
             154..156 '{}': U
             186..187 't': T
@@ -5018,7 +5018,7 @@ where
 "#,
         expect![[r#"
             84..86 'de': D
-            135..138 '{ }': <D as Deserializer<'de>>::Error
+            135..138 '{ }': ()
         "#]],
     );
 }
@@ -5083,7 +5083,7 @@ fn main() {
     let _ = iter.into_iter();
 }"#,
         expect![[r#"
-            10..313 '{     ...r(); }': ()
+            10..313 '{     ...r(); }': !
             223..227 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
             273..280 'loop {}': !
             278..280 '{}': ()

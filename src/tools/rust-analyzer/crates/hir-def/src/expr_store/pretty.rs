@@ -567,7 +567,7 @@ impl Printer<'_> {
                 w!(self, " = ");
                 self.print_expr_in(prec, *expr);
             }
-            Expr::Loop { body, label } => {
+            Expr::Loop { body, label, source: _ } => {
                 if let Some(lbl) = label {
                     w!(self, "{}: ", self.store[*lbl].name.display(self.db, self.edition));
                 }
