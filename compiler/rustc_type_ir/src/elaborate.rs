@@ -53,14 +53,16 @@ pub trait Elaboratable<I: Interner> {
 
 pub struct ClauseWithSupertraitSpan<I: Interner> {
     pub clause: I::Clause,
-    // Span of the supertrait predicatae that lead to this clause.
+    // Span of the supertrait predicate that lead to this clause.
     pub supertrait_span: I::Span,
 }
+
 impl<I: Interner> ClauseWithSupertraitSpan<I> {
     pub fn new(clause: I::Clause, span: I::Span) -> Self {
         ClauseWithSupertraitSpan { clause, supertrait_span: span }
     }
 }
+
 impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
     fn predicate(&self) -> <I as Interner>::Predicate {
         self.clause.as_predicate()
