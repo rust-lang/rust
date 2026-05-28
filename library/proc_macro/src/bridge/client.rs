@@ -47,6 +47,18 @@ impl<S> Decode<'_, '_, S> for TokenStream {
     }
 }
 
+impl Encode<()> for crate::TokenStream {
+    fn encode(self, w: &mut Buffer, s: &mut ()) {
+        self.0.encode(w, s)
+    }
+}
+
+impl Decode<'_, '_, ()> for crate::TokenStream {
+    fn decode(r: &mut &[u8], s: &mut ()) -> Self {
+        crate::TokenStream(Some(Decode::decode(r, s)))
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Span {
     handle: handle::Handle,
@@ -244,9 +256,9 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
-fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
+fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
     config: BridgeConfig<'_>,
-    f: impl FnOnce(A) -> R,
+    f: impl FnOnce(A) -> crate::TokenStream,
 ) -> Buffer {
     let BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
 
@@ -285,7 +297,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
         Client {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
+                run_client(bridge, |input| f(input))
             }),
             _marker: PhantomData,
         }
@@ -299,9 +311,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
         Client {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
-                })
+                run_client(bridge, |(input, input2)| f(input, input2))
             }),
             _marker: PhantomData,
         }
