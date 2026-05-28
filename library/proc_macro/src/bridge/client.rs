@@ -2,18 +2,8 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::sync::atomic::AtomicU32;
 
 use super::*;
-
-#[repr(C)]
-pub(super) struct HandleCounters {
-    pub(super) token_stream: AtomicU32,
-    pub(super) span: AtomicU32,
-}
-
-static COUNTERS: HandleCounters =
-    HandleCounters { token_stream: AtomicU32::new(1), span: AtomicU32::new(1) };
 
 pub(crate) struct TokenStream {
     handle: handle::Handle,
@@ -221,8 +211,6 @@ pub(crate) fn is_available() -> bool {
 /// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
 #[repr(C)]
 pub struct Client<I, O> {
-    pub(super) handle_counters: &'static HandleCounters,
-
     pub(super) run: extern "C" fn(BridgeConfig<'_>) -> Buffer,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
@@ -294,7 +282,6 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
 impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(input))
             }),
@@ -308,7 +295,6 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| f(input, input2))
             }),
