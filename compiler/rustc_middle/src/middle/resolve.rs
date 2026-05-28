@@ -3,7 +3,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
-use rustc_attr_ir::StrippedCfgItem;
+use rustc_attr_ir::{StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -17,7 +17,7 @@ use rustc_span::{ExpnId, Ident, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::ty::Visibility;
+use crate::ty::{TyCtxt, Visibility};
 
 /// The result of resolving a path before lowering to HIR,
 /// with "module" segments resolved and associated item
@@ -250,6 +250,41 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     /// should appear at the enclosing `PolyTraitRef`.
     pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
+    }
+
+    pub fn legacy_const_generic_args(
+        &self,
+        expr: &ast::Expr,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<Vec<usize>> {
+        let ast::ExprKind::Path(None, path) = &expr.kind else {
+            return None;
+        };
+
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
+        }
+
+        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
+        // `self_param` locals. And here we are looking for the function definition that `expr`
+        // resolves to.
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        // we can use parsed attrs here since for other crates they're already available
+        find_attr!(
+            tcx, def_id,
+            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+        )
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 }
 

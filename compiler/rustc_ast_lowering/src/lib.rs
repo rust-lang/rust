@@ -45,7 +45,6 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
-use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
@@ -65,7 +64,6 @@ use rustc_hir::{
     LifetimeSource, LifetimeSyntax, MissingLifetimeKind, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_macros::extension;
 use rustc_middle::middle::resolve::{
     AstOwner, LifetimeRes, PartialRes, PerOwnerResolverData, ResolverAstLowering,
 };
@@ -406,40 +404,6 @@ impl SpanLowerer {
             // Do not make spans relative when not using incremental compilation.
             span
         }
-    }
-}
-
-#[extension(trait ResolverAstLoweringExt<'tcx>)]
-impl<'tcx> ResolverAstLowering<'tcx> {
-    fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'tcx>) -> Option<Vec<usize>> {
-        let ExprKind::Path(None, path) = &expr.kind else {
-            return None;
-        };
-
-        // Don't perform legacy const generics rewriting if the path already
-        // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
-            return None;
-        }
-
-        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
-        // `self_param` locals. And here we are looking for the function definition that `expr`
-        // resolves to.
-        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
-
-        // We only support cross-crate argument rewriting. Uses
-        // within the same crate should be updated to use the new
-        // const generics style.
-        if def_id.is_local() {
-            return None;
-        }
-
-        // we can use parsed attrs here since for other crates they're already available
-        find_attr!(
-            tcx, def_id,
-            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
-        )
-        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 }
 
