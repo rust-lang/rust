@@ -3497,6 +3497,7 @@ impl AttrItem {
             || self.path == sym::warn
             || self.path == sym::allow
             || self.path == sym::deny
+            || self.path == sym::expect
     }
 }
 
