@@ -1,7 +1,9 @@
-use rustc_ast::{AttrItem, ForeignMod, ast};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::{AttrItem, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::errors;
@@ -127,45 +129,68 @@ pub(crate) fn expand_kernel(
         Annotatable::Item(item)
     };
 
+    // unimplemented! body
+    let macro_expr = ecx.expr_macro_call(
+        span,
+        ecx.macro_call(
+            span,
+            ecx.path_global(
+                span,
+                [sym::std, sym::unimplemented].map(|s| Ident::new(s, span)).to_vec(),
+            ),
+            Delimiter::Parenthesis,
+            TokenStream::default(),
+        ),
+    );
+    let stmt = ecx.stmt_expr(macro_expr);
+    let body = ecx.block(span, thin_vec![stmt]);
+
     // host function
-    let host_fn = Box::new(ast::Fn {
+    let mut host_fn = Box::new(ast::Fn {
         defaultness: ast::Defaultness::Implicit,
         sig: sig.clone(),
         ident,
         generics: generics.clone(),
         contract: None,
-        body: None,
+        body: Some(body),
         define_opaque: None,
         eii_impls: Default::default(),
     });
 
-    let foreign_fn = ast::ForeignItem {
-        attrs: Default::default(),
-        id: ast::DUMMY_NODE_ID,
-        span,
-        vis: vis.clone(),
-        kind: ast::ForeignItemKind::Fn(host_fn),
+    for param in host_fn.sig.decl.inputs.iter_mut() {
+        param.pat = Box::new(ecx.pat_wild(param.pat.span));
+    }
+
+    // inline(never) attr
+    let ts: Vec<TokenTree> = vec![TokenTree::Token(
+        Token::new(TokenKind::Ident(sym::never, false.into()), span),
+        Spacing::Joint,
+    )];
+
+    let never_arg = ast::DelimArgs {
+        dspan: DelimSpan::from_single(span),
+        delim: Delimiter::Parenthesis,
+        tokens: TokenStream::from_iter(ts),
+    };
+
+    let inline_item = ast::AttrItem {
+        unsafety: ast::Safety::Default,
+        path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
+        args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
         tokens: None,
     };
+    let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
 
-    let extern_c_lit = ast::StrLit {
-        symbol: sym::C,
-        suffix: None,
-        symbol_unescaped: sym::C,
-        style: ast::StrStyle::Cooked,
-        span,
-    };
+    let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+    let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-    let foreign_mod = ForeignMod {
-        abi: Some(extern_c_lit),
-        safety: ast::Safety::Unsafe(span),
-        items: thin_vec![Box::new(foreign_fn)],
-        extern_span: DUMMY_SP,
-    };
+    let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+    let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
 
     let host_item = {
-        let mut item = ecx.item(span, thin_vec![], ast::ItemKind::ForeignMod(foreign_mod));
-        item.vis = vis;
+        let mut item =
+            ecx.item(span, thin_vec![unsafe_no_mangle, inline_never], ast::ItemKind::Fn(host_fn));
+        item.vis = vis.clone();
         Annotatable::Item(item)
     };
 

@@ -17,8 +17,10 @@ use ::std::prelude::rust_2015::*;
 
 use std::offload::offload_kernel;
 
-unsafe extern "C" {
-    fn foo(a: &[f32], b: &[f32], c: *mut f32);
-}
+#[unsafe(no_mangle)]
+#[inline(never)]
+fn foo(_: &[f32], _: &[f32], _: *mut f32) {
 
+    ::core::panicking::panic("not implemented")
+}
 fn main() {}

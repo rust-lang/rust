@@ -2160,6 +2160,7 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
+        unimplemented,
         unit,
         universal_impl_trait,
         unix,
