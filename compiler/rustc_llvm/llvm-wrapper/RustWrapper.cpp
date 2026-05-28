@@ -178,7 +178,7 @@ static Error writeFile(StringRef Filename, StringRef Data) {
 
 // This is the first of many steps in creating a binary using llvm offload,
 // to run code on the gpu. Concrete, it replaces the following binary use:
-// clang-offload-packager -o host.out
+// clang-offload-packager -o device.bin
 //  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
 // The input module is the rust code compiled for a gpu target like amdgpu.
 // Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
