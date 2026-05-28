@@ -69,7 +69,7 @@ const unsafe fn simd_pickod_h<T: Copy>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvh_b<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvh_b<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(
         b,
         a,
@@ -82,25 +82,25 @@ pub(crate) const unsafe fn simd_ilvh_b<T: Copy>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvh_h<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvh_h<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [4, 20, 5, 21, 6, 22, 7, 23, 12, 28, 13, 29, 14, 30, 15, 31])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvh_w<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvh_w<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [2, 10, 3, 11, 6, 14, 7, 15])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvh_d<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvh_d<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 5, 3, 7])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvl_b<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvl_b<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(
         b,
         a,
@@ -113,25 +113,25 @@ pub(crate) const unsafe fn simd_ilvl_b<T: Copy>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvl_h<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvl_h<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 16, 1, 17, 2, 18, 3, 19, 8, 24, 9, 25, 10, 26, 11, 27])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvl_w<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvl_w<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 8, 1, 9, 4, 12, 5, 13])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_ilvl_d<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_ilvl_d<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 4, 2, 6])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_replvei_b<const I: u32, T: Copy>(a: T) -> T {
+const unsafe fn simd_replvei_b<const I: u32, T: Copy>(a: T) -> T {
     simd_shuffle!(
         a,
         a,
@@ -145,7 +145,7 @@ pub(crate) const unsafe fn simd_replvei_b<const I: u32, T: Copy>(a: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_replvei_h<const I: u32, T: Copy>(a: T) -> T {
+const unsafe fn simd_replvei_h<const I: u32, T: Copy>(a: T) -> T {
     simd_shuffle!(
         a,
         a,
@@ -158,19 +158,19 @@ pub(crate) const unsafe fn simd_replvei_h<const I: u32, T: Copy>(a: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_replvei_w<const I: u32, T: Copy>(a: T) -> T {
+const unsafe fn simd_replvei_w<const I: u32, T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [I, I, I, I, I + 4, I + 4, I + 4, I + 4])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_replvei_d<const I: u32, T: Copy>(a: T) -> T {
+const unsafe fn simd_replvei_d<const I: u32, T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [I, I, I + 2, I + 2])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_replve0_b<T: Copy>(a: T) -> T {
+const unsafe fn simd_replve0_b<T: Copy>(a: T) -> T {
     simd_shuffle!(
         a,
         a,
@@ -183,31 +183,31 @@ pub(super) const unsafe fn simd_replve0_b<T: Copy>(a: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_replve0_h<T: Copy>(a: T) -> T {
+const unsafe fn simd_replve0_h<T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_replve0_w<T: Copy>(a: T) -> T {
+const unsafe fn simd_replve0_w<T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_replve0_d<T: Copy>(a: T) -> T {
+const unsafe fn simd_replve0_d<T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [0, 0, 0, 0])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(super) const unsafe fn simd_replve0_q<T: Copy>(a: T) -> T {
+const unsafe fn simd_replve0_q<T: Copy>(a: T) -> T {
     simd_shuffle!(a, a, [0, 1, 0, 1])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packev_b<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packev_b<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(
         b,
         a,
@@ -220,25 +220,25 @@ pub(crate) const unsafe fn simd_packev_b<T: Copy>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packev_h<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packev_h<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packev_w<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packev_w<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packev_d<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packev_d<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [0, 4, 2, 6])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packod_b<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packod_b<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(
         b,
         a,
@@ -251,19 +251,19 @@ pub(crate) const unsafe fn simd_packod_b<T: Copy>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packod_h<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packod_h<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packod_w<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packod_w<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
-pub(crate) const unsafe fn simd_packod_d<T: Copy>(a: T, b: T) -> T {
+const unsafe fn simd_packod_d<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 5, 3, 7])
 }
 
