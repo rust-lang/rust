@@ -21,8 +21,9 @@
 
 // tidy-alphabetical-start
 #![allow(elided_lifetimes_in_paths)]
-#![allow(unreachable_pub)] // because this crate is mostly generated code
+#![allow(unreachable_pub, reason = "this crate is mostly generated code")]
 // #![warn(unreachable_pub)] // don't use because this crate is mostly generated code
+#![doc(test(attr(elided_lifetimes_in_paths)))]
 // tidy-alphabetical-end
 
 pub struct BakedDataProvider;
