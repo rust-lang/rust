@@ -612,7 +612,12 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
-                if !self.cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, e.hir_id).is_allow() {
+                if !self
+                    .cx
+                    .tcx
+                    .lint_level_spec_at_node(NONMINIMAL_BOOL, e.hir_id)
+                    .is_allow()
+                {
                     suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,

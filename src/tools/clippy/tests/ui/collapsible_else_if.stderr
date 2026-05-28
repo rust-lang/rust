@@ -177,5 +177,41 @@ LL | |         (if y == "world" { println!("world") } else { println!("!") })
 LL | |     }
    | |_____^ help: collapse nested if block: `if y == "world" { println!("world") } else { println!("!") }`
 
-error: aborting due to 10 previous errors
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:198:12
+   |
+LL |       } else‎{
+   |  ___________^
+LL | |         if y == "world" {
+LL | |             println!("LRM world");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else‎ if y == "world" {
+LL +         println!("LRM world");
+LL +     }
+   |
+
+error: this `else { if .. }` block can be collapsed
+  --> tests/ui/collapsible_else_if.rs:208:12
+   |
+LL |       } else‏{
+   |  ___________^
+LL | |         if y == "world" {
+LL | |             println!("RLM world");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     } else‏ if y == "world" {
+LL +         println!("RLM world");
+LL +     }
+   |
+
+error: aborting due to 12 previous errors
 
