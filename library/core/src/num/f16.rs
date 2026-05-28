@@ -35,6 +35,7 @@ pub mod consts {
     pub const TAU: f16 = 6.28318530717958647692528676655900577_f16;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f16", issue = "116909")]
     pub const GOLDEN_RATIO: f16 = 1.618033988749894848204586834365638118_f16;
 

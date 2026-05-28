@@ -17,12 +17,13 @@ use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode}
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
-use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
+use super::operand::OperandValue::{self, Immediate, Pair, Ref, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
+use crate::mir::IntrinsicResult;
 use crate::traits::*;
 use crate::{MemFlags, meth};
 
@@ -944,32 +945,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let result_layout =
                             self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
 
-                        let (result, store_in_local) = if result_layout.is_zst() {
-                            (
-                                PlaceRef::new_sized(bx.const_undef(bx.type_ptr()), result_layout),
-                                None,
-                            )
-                        } else if let Some(local) = destination.as_local() {
-                            match self.locals[local] {
-                                LocalRef::Place(dest) => (dest, None),
-                                LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
-                                LocalRef::PendingOperand => {
-                                    // Currently, intrinsics always need a location to store
-                                    // the result, so we create a temporary `alloca` for the
-                                    // result.
-                                    let tmp = PlaceRef::alloca(bx, result_layout);
-                                    tmp.storage_live(bx);
-                                    (tmp, Some(local))
+                        let (result_place, store_in_local) =
+                            if let Some(local) = destination.as_local() {
+                                match self.locals[local] {
+                                    LocalRef::Place(dest) => (Some(dest.val), None),
+                                    LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
+                                    LocalRef::PendingOperand => (None, Some(local)),
+                                    LocalRef::Operand(_) => {
+                                        if result_layout.is_zst() {
+                                            let place = PlaceRef::new_sized(
+                                                bx.const_undef(bx.type_ptr()),
+                                                result_layout,
+                                            );
+                                            (Some(place.val), None)
+                                        } else {
+                                            bug!("place local already assigned to");
+                                        }
+                                    }
                                 }
-                                LocalRef::Operand(_) => {
-                                    bug!("place local already assigned to");
-                                }
-                            }
-                        } else {
-                            (self.codegen_place(bx, destination.as_ref()), None)
-                        };
+                            } else {
+                                (Some(self.codegen_place(bx, destination.as_ref()).val), None)
+                            };
 
-                        if result.val.align < result.layout.align.abi {
+                        if let Some(place) = result_place
+                            && place.align < result_layout.align.abi
+                        {
                             // Currently, MIR code generation does not create calls
                             // that store directly to fields of packed structs (in
                             // fact, the calls it creates write only to temps).
@@ -982,16 +982,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let args: Vec<_> =
                             args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
-                        match self.codegen_intrinsic_call(bx, instance, &args, result, source_info)
-                        {
-                            Ok(()) => {
-                                if let Some(local) = store_in_local {
-                                    let op = bx.load_operand(result);
-                                    result.storage_dead(bx);
+                        let intrinsic_result = self.codegen_intrinsic_call(
+                            bx,
+                            instance,
+                            &args,
+                            result_layout,
+                            result_place,
+                            source_info,
+                        );
+
+                        if let IntrinsicResult::Operand(op_val) = intrinsic_result {
+                            match (result_place, store_in_local) {
+                                (None, Some(local)) => {
+                                    let op = OperandRef {
+                                        val: op_val,
+                                        layout: result_layout,
+                                        move_annotation: None,
+                                    };
                                     self.overwrite_local(local, LocalRef::Operand(op));
                                     self.debug_introduce_local(bx, local);
                                 }
+                                (Some(place_val), None) => {
+                                    let dest = PlaceRef { val: place_val, layout: result_layout };
+                                    op_val.store(bx, dest);
+                                }
+                                _ => bug!(),
+                            }
+                        }
 
+                        match intrinsic_result {
+                            IntrinsicResult::Operand(_) | IntrinsicResult::WroteIntoPlace => {
                                 return if let Some(target) = target {
                                     helper.funclet_br(self, bx, target, mergeable_succ)
                                 } else {
@@ -999,7 +1019,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     MergingSucc::False
                                 };
                             }
-                            Err(instance) => {
+                            IntrinsicResult::Err(_) => {
+                                // Even though we're definitely going to error, we need it initialize
+                                // the local or `maybe_codegen_consume_direct` might ICE later
+                                // when it goes to use the result from this intrinsic.
+                                if let Some(local) = store_in_local {
+                                    let op = OperandRef {
+                                        val: OperandValue::poison(bx, result_layout),
+                                        layout: result_layout,
+                                        move_annotation: None,
+                                    };
+                                    self.overwrite_local(local, LocalRef::Operand(op));
+                                }
+                                // Also we need to terminate the block to avoid an LLVM assertion,
+                                // even though we're not going to actually use the IR.
+                                bx.abort();
+                                return MergingSucc::False;
+                            }
+                            IntrinsicResult::Fallback(instance) => {
                                 if intrinsic.must_be_overridden {
                                     span_bug!(
                                         fn_span,

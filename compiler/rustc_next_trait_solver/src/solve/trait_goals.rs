@@ -898,6 +898,8 @@ where
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
                     },
                 );
+                // FIXME(field_projections): This function does some questionable incomplete stuff by
+                // returning `Err(NoSolution)` on ambiguity.
                 ecx.try_evaluate_added_goals()? == Certainty::Yes
             }
             && match base.kind() {

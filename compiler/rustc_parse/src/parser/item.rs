@@ -23,7 +23,10 @@ use super::{
     AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
     Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
+use crate::errors::{
+    self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField,
+    UseDoubleColonSuggestion, UseRegularStructSuggestion,
+};
 use crate::exp;
 
 impl<'a> Parser<'a> {
@@ -2084,10 +2087,11 @@ impl<'a> Parser<'a> {
             Safety::Default
         }
     }
-
+    /// This is the case where we find `struct Foo<T>(T) where T: Copy;`
+    /// Unit like structs are handled in parse_item_struct function
     pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
-        // This is the case where we find `struct Foo<T>(T) where T: Copy;`
-        // Unit like structs are handled in parse_item_struct function
+        let openparen_span = self.token.span;
+        let mut encountered_colon = false;
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
@@ -2108,6 +2112,9 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut_restriction = p.parse_mut_restriction()?;
+                encountered_colon |=
+                    p.token.is_ident() && p.look_ahead(1, |tok| tok == &token::Colon);
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
                 let ty = match p.parse_ty() {
@@ -2140,6 +2147,7 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
+                        mut_restriction,
                         safety: Safety::Default,
                         ident: None,
                         id: DUMMY_NODE_ID,
@@ -2154,6 +2162,19 @@ impl<'a> Parser<'a> {
             })
         })
         .map(|(r, _)| r)
+        .map_err(|mut error| {
+            if encountered_colon {
+                error.subdiagnostic(UseDoubleColonSuggestion { colon: self.token.span });
+                self.eat_to_tokens(&[exp!(CloseParen)]);
+                self.bump();
+                error.subdiagnostic(UseRegularStructSuggestion {
+                    open: openparen_span,
+                    close: self.prev_token.span,
+                    semicolon: if self.token == token::Semi { Some(self.token.span) } else { None },
+                });
+            }
+            error
+        })
     }
 
     /// Parses an element of a struct declaration.
@@ -2164,9 +2185,18 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
+            let mut_restriction = this.parse_mut_restriction()?;
             let safety = this.parse_unsafe_field();
-            this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs, ident_span)
-                .map(|field| (field, Trailing::No, UsePreAttrPos::No))
+            this.parse_single_struct_field(
+                adt_ty,
+                lo,
+                vis,
+                mut_restriction,
+                safety,
+                attrs,
+                ident_span,
+            )
+            .map(|field| (field, Trailing::No, UsePreAttrPos::No))
         })
     }
 
@@ -2176,11 +2206,12 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: MutRestriction,
         safety: Safety,
         attrs: AttrVec,
         ident_span: Span,
     ) -> PResult<'a, FieldDef> {
-        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, safety, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, mut_restriction, safety, attrs)?;
         match self.token.kind {
             token::Comma => {
                 self.bump();
@@ -2299,6 +2330,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: MutRestriction,
         safety: Safety,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
@@ -2337,6 +2369,7 @@ impl<'a> Parser<'a> {
             ident: Some(name),
             vis,
             safety,
+            mut_restriction,
             id: DUMMY_NODE_ID,
             ty,
             default,

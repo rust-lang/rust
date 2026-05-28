@@ -20,7 +20,7 @@ pub fn generate_exclusive_bound() -> usize {
 // CHECK-LABEL: @size_load_from_size_of_val
 #[no_mangle]
 pub fn size_load_from_size_of_val(x: &dyn Trait) -> usize {
-    // CHECK: {{%[0-9]+}} = load [[USIZE]], {{.+}} !range [[RANGE_META:![0-9]+]]
+    // CHECK: {{%_?[0-9]+}} = load [[USIZE]], {{.+}} !range [[RANGE_META:![0-9]+]]
     core::mem::size_of_val(x)
 }
 
@@ -28,7 +28,7 @@ pub fn size_load_from_size_of_val(x: &dyn Trait) -> usize {
 #[no_mangle]
 pub unsafe fn size_load_from_vtable_size_intrinsic(x: &dyn Trait) -> usize {
     let (data, vtable): (*const (), *const ()) = core::mem::transmute(x);
-    // CHECK: {{%[0-9]+}} = load [[USIZE]], {{.+}} !range [[RANGE_META]]
+    // CHECK: {{%_?[0-9]+}} = load [[USIZE]], {{.+}} !range [[RANGE_META]]
     core::intrinsics::vtable_size(vtable)
 }
 

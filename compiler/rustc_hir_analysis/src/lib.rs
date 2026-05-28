@@ -73,7 +73,7 @@ mod check_unused;
 mod coherence;
 mod collect;
 mod constrained_generic_params;
-mod delegation;
+pub mod delegation;
 pub mod errors;
 pub mod hir_ty_lowering;
 pub mod hir_wf_check;

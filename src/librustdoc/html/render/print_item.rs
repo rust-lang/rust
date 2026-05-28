@@ -946,24 +946,22 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
 
         let mut extern_crates = FxIndexSet::default();
 
-        if !t.is_dyn_compatible(cx.tcx()) {
-            write!(
-                w,
-                "{}",
-                write_section_heading(
-                    "Dyn Compatibility",
-                    "dyn-compatibility",
-                    None,
-                    format!(
-                        "<div class=\"dyn-compatibility-info\"><p>This trait is <b>not</b> \
-                        <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
-                        <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
-                        so this trait is not object safe.</i></p></div>",
-                        base = crate::clean::utils::DOC_RUST_LANG_ORG_VERSION
-                    ),
+        write!(
+            w,
+            "{}",
+            write_section_heading(
+                "Dyn Compatibility",
+                "dyn-compatibility",
+                None,
+                format!(
+                    "<div class=\"dyn-compatibility-info\"><p>This trait {} \
+                    <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
+                    <p><i>In older versions of Rust, dyn compatibility was called \"object safety\".</i></p></div>",
+                    if t.is_dyn_compatible(cx.tcx()) { "<b>is</b>" } else { "is <b>not</b>" },
+                    base = crate::clean::utils::DOC_RUST_LANG_ORG_VERSION
                 ),
-            )?;
-        }
+            ),
+        )?;
 
         if let Some(implementors) = cx.shared.cache.implementors.get(&it.item_id.expect_def_id()) {
             // The DefId is for the first Type found with that name. The bool is

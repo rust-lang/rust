@@ -1072,41 +1072,42 @@ pub mod consts {
     ///
     /// <details><summary>Full list of possible values</summary>
     ///
-    /// * `"linux"`
-    /// * `"windows"`
-    /// * `"macos"`
-    /// * `"android"`
-    /// * `"ios"`
-    /// * `"openbsd"`
-    /// * `"freebsd"`
-    /// * `"netbsd"`
-    /// * `"wasi"`
-    /// * `"hermit"`
+    // tidy-alphabetical-start
     /// * `"aix"`
+    /// * `"android"`
     /// * `"apple"`
     /// * `"dragonfly"`
     /// * `"emscripten"`
     /// * `"espidf"`
     /// * `"fortanix"`
-    /// * `"uefi"`
+    /// * `"freebsd"`
     /// * `"fuchsia"`
     /// * `"haiku"`
     /// * `"hermit"`
-    /// * `"watchos"`
-    /// * `"visionos"`
-    /// * `"tvos"`
     /// * `"horizon"`
     /// * `"hurd"`
     /// * `"illumos"`
+    /// * `"ios"`
     /// * `"l4re"`
+    /// * `"linux"`
+    /// * `"macos"`
+    /// * `"netbsd"`
     /// * `"nto"`
+    /// * `"openbsd"`
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3"`
+    /// * `"tvos"`
+    /// * `"uefi"`
     /// * `"vexos"`
+    /// * `"visionos"`
     /// * `"vita"`
     /// * `"vxworks"`
+    /// * `"wasi"`
+    /// * `"watchos"`
+    /// * `"windows"`
     /// * `"xous"`
+    // tidy-alphabetical-end
     ///
     /// </details>
     #[stable(feature = "env", since = "1.0.0")]

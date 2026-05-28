@@ -2723,7 +2723,7 @@ written to standard error output)"),
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
-        `normal`, `identified`,
+        `normal`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `ast-tree` (raw AST before expansion),

@@ -10,7 +10,7 @@ use rustc_parse_format as parse;
 use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
-use smallvec::{SmallVec, smallvec};
+use smallvec::smallvec;
 
 use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
@@ -24,24 +24,6 @@ struct ValidatedAsmArgs {
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
-}
-
-struct MacGlobalAsm {
-    item: ast::Item,
-}
-
-impl MacResult for MacGlobalAsm {
-    fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
-        Some(smallvec![Box::new(self.item)])
-    }
-
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        Some(smallvec![ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            span: self.item.span,
-            kind: ast::StmtKind::Item(Box::new(self.item)),
-        }])
-    }
 }
 
 fn parse_args<'a>(
@@ -668,20 +650,18 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => Box::new(MacGlobalAsm {
-                    item: ast::Item {
-                        attrs: ast::AttrVec::new(),
-                        id: ast::DUMMY_NODE_ID,
-                        kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                        vis: ast::Visibility {
-                            span: sp.shrink_to_lo(),
-                            kind: ast::VisibilityKind::Inherited,
-                            tokens: None,
-                        },
-                        span: sp,
+                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
+                    attrs: ast::AttrVec::new(),
+                    id: ast::DUMMY_NODE_ID,
+                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
+                    vis: ast::Visibility {
+                        span: sp.shrink_to_lo(),
+                        kind: ast::VisibilityKind::Inherited,
                         tokens: None,
                     },
-                }),
+                    span: sp,
+                    tokens: None,
+                })]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
         }

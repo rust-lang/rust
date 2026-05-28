@@ -5,8 +5,8 @@
 
 set -ex
 
-if [ $# -lt 1 ]; then
-    >&2 echo "Usage: $0 <TARGET>"
+if [ $# -lt 2 ]; then
+    >&2 echo "Usage: $0 <TARGET> <CC>"
     exit 1
 fi
 
@@ -29,7 +29,6 @@ run() {
       --user "$(id -u)":"$(id -g)" \
       --env CARGO_HOME=/cargo \
       --env CARGO_TARGET_DIR=/checkout/target \
-      --env TARGET="${1}" \
       --env PROFILE \
       --env "${HOST_LINKER}"="cc" \
       --env STDARCH_DISABLE_ASSERT_INSTR \
@@ -48,12 +47,12 @@ run() {
       --workdir /checkout \
       --privileged \
       stdarch \
-      sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/intrinsic-test.sh"
+      sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/intrinsic-test.sh ${1} ${2}"
 }
 
 if [ -z "$1" ]; then
   >&2 echo "No target specified!"
   exit 1
 else
-  run "${1}"
+  run "${1}" "${2}"
 fi

@@ -378,18 +378,6 @@ impl Subdiagnostic for TypeMismatchFruTypo {
 }
 
 #[derive(Diagnostic)]
-#[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
-#[help(
-    "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
-)]
-pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
-    pub expr_ty: Ty<'tcx>,
-    pub cast_ty: Ty<'tcx>,
-    #[subdiagnostic]
-    pub sugg: LossyProvenanceInt2PtrSuggestion,
-}
-
-#[derive(Diagnostic)]
 #[diag("cannot add {$traits_len ->
     [1] auto trait {$traits}
     *[other] auto traits {$traits}
@@ -402,76 +390,6 @@ pub(crate) struct PtrCastAddAutoToObject {
     pub span: Span,
     pub traits_len: usize,
     pub traits: DiagSymbolList<String>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address",
-    applicability = "has-placeholders"
-)]
-pub(crate) struct LossyProvenanceInt2PtrSuggestion {
-    #[suggestion_part(code = "(...).with_addr(")]
-    pub lo: Span,
-    #[suggestion_part(code = ")")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "under strict provenance it is considered bad style to cast pointer `{$expr_ty}` to integer `{$cast_ty}`"
-)]
-#[help(
-    "if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead"
-)]
-pub(crate) struct LossyProvenancePtr2Int<'tcx> {
-    pub expr_ty: Ty<'tcx>,
-    pub cast_ty: Ty<'tcx>,
-    #[subdiagnostic]
-    pub sugg: LossyProvenancePtr2IntSuggestion<'tcx>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
-    #[multipart_suggestion(
-        "use `.addr()` to obtain the address of a pointer",
-        applicability = "maybe-incorrect"
-    )]
-    NeedsParensCast {
-        #[suggestion_part(code = "(")]
-        expr_span: Span,
-        #[suggestion_part(code = ").addr() as {cast_ty}")]
-        cast_span: Span,
-        cast_ty: Ty<'tcx>,
-    },
-    #[multipart_suggestion(
-        "use `.addr()` to obtain the address of a pointer",
-        applicability = "maybe-incorrect"
-    )]
-    NeedsParens {
-        #[suggestion_part(code = "(")]
-        expr_span: Span,
-        #[suggestion_part(code = ").addr()")]
-        cast_span: Span,
-    },
-    #[suggestion(
-        "use `.addr()` to obtain the address of a pointer",
-        code = ".addr() as {cast_ty}",
-        applicability = "maybe-incorrect"
-    )]
-    NeedsCast {
-        #[primary_span]
-        cast_span: Span,
-        cast_ty: Ty<'tcx>,
-    },
-    #[suggestion(
-        "use `.addr()` to obtain the address of a pointer",
-        code = ".addr()",
-        applicability = "maybe-incorrect"
-    )]
-    Other {
-        #[primary_span]
-        cast_span: Span,
-    },
 }
 
 #[derive(Subdiagnostic)]

@@ -25,7 +25,7 @@ use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
@@ -308,6 +308,25 @@ pub(crate) unsafe fn create_module<'ll>(
             llvm::ModuleFlagMergeBehavior::Override,
             "EnableSplitLTOUnit",
             1,
+        );
+    }
+
+    if sess.must_emit_unwind_tables() {
+        // This assertion checks that Max is the correct merge behavior.
+        // Async unwind tables are strictly more useful than sync uwtables.
+        const {
+            assert!((llvm::UWTableKind::None as u32) < (llvm::UWTableKind::Sync as u32));
+            assert!((llvm::UWTableKind::Sync as u32) < (llvm::UWTableKind::Async as u32));
+        }
+
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "uwtable",
+            match sess.opts.unstable_opts.use_sync_unwind {
+                Some(true) => llvm::UWTableKind::Sync as u32,
+                Some(false) | None => llvm::UWTableKind::Async as u32,
+            },
         );
     }
 
@@ -936,6 +955,17 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // #[no_mangle] extern "C" fn main(..) {..}
             None
         }
+    }
+
+    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
+        matches!(
+            name,
+            sym::autodiff
+                | sym::catch_unwind
+                | sym::volatile_load
+                | sym::unaligned_volatile_load
+                | sym::black_box
+        )
     }
 }
 
