@@ -1198,15 +1198,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
       fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateEnumerator(LLVMDIBuilderRef Builder, const char *Name,
-                                  size_t NameLen, const uint64_t Value[2],
-                                  unsigned SizeInBits, bool IsUnsigned) {
-  return wrap(unwrap(Builder)->createEnumerator(
-      StringRef(Name, NameLen),
-      APSInt(APInt(SizeInBits, ArrayRef<uint64_t>(Value, 2)), IsUnsigned)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
