@@ -1,4 +1,4 @@
-#![allow(clippy::no_effect, unused)]
+#![allow(clippy::no_effect)]
 #![warn(clippy::needless_raw_string_hashes)]
 
 fn main() {

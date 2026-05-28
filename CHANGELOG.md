@@ -6947,6 +6947,7 @@ Released 2018-09-13
 [`map_err_ignore`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_err_ignore
 [`map_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_flatten
 [`map_identity`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_identity
+[`map_or_identity`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_or_identity
 [`map_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or
 [`map_with_unused_argument_over_ranges`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_with_unused_argument_over_ranges
 [`match_as_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#match_as_ref
@@ -7375,6 +7376,7 @@ Released 2018-09-13
 [`unstable_as_mut_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#unstable_as_mut_slice
 [`unstable_as_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#unstable_as_slice
 [`unused_async`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+[`unused_async_trait_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_async_trait_impl
 [`unused_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_collect
 [`unused_enumerate_index`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_enumerate_index
 [`unused_format_specs`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_format_specs
