@@ -618,14 +618,43 @@ pub(crate) fn coerce_shared_info<'tcx>(
     }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
-    let Some((target, _obligations)) = structurally_normalize_ty(
+    let target = if let Some((target, _obligations)) = structurally_normalize_ty(
         tcx,
         &infcx,
         impl_did,
         span,
         Unnormalized::new_wip(trait_ref.args.type_at(1)),
-    ) else {
-        todo!("something went wrong with structurally_normalize_ty");
+    ) {
+        target
+    } else {
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let cause = traits::ObligationCause::misc(span, impl_did);
+        let target = match ocx.structurally_normalize_ty(
+            &cause,
+            tcx.param_env(impl_did),
+            Unnormalized::new_wip(trait_ref.args.type_at(1)),
+        ) {
+            Ok(normalized) => normalized,
+            Err(errors) if !errors.is_empty() => {
+                return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+            }
+            Err(_) => {
+                // Note: reusing CoerceUnsizedNonStruct error as it takes trait_name as argument.
+                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct {
+                    span,
+                    trait_name,
+                }));
+            }
+        };
+        let normalization_errors = ocx.try_evaluate_obligations();
+        if !normalization_errors.is_empty() {
+            if infcx.next_trait_solver() {
+                unreachable!();
+            }
+            debug!(?normalization_errors, "encountered errors while fulfilling");
+            return Err(infcx.err_ctxt().report_fulfillment_errors(normalization_errors));
+        }
+        target
     };
 
     let param_env = tcx.param_env(impl_did);

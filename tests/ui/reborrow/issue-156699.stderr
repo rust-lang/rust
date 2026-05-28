@@ -1,0 +1,41 @@
+error[E0277]: `T` is not an iterator
+  --> $DIR/issue-156699.rs:9:1
+   |
+LL | impl<'a, T> CoerceShared<<T as Iterator>::Item> for Source<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` is not an iterator
+   |
+help: consider restricting type parameter `T` with trait `Iterator`
+   |
+LL | impl<'a, T: std::iter::Iterator> CoerceShared<<T as Iterator>::Item> for Source<'a> {}
+   |           +++++++++++++++++++++
+
+error[E0277]: `T` is not an iterator
+  --> $DIR/issue-156699.rs:15:1
+   |
+LL | impl<'a, T> CoerceShared<<T as Iterator>::Item> for dyn CustomMarker<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` is not an iterator
+   |
+help: consider restricting type parameter `T` with trait `Iterator`
+   |
+LL | impl<'a, T: std::iter::Iterator> CoerceShared<<T as Iterator>::Item> for dyn CustomMarker<'a> {}
+   |           +++++++++++++++++++++
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-156699.rs:9:10
+   |
+LL | impl<'a, T> CoerceShared<<T as Iterator>::Item> for Source<'a> {}
+   |        --^
+   |        | |
+   |        | unconstrained type parameter
+   |        help: remove the unused type parameter `T`
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-156699.rs:15:10
+   |
+LL | impl<'a, T> CoerceShared<<T as Iterator>::Item> for dyn CustomMarker<'a> {}
+   |          ^ unconstrained type parameter
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0207, E0277.
+For more information about an error, try `rustc --explain E0207`.
