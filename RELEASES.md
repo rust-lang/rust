@@ -31,7 +31,7 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`assert_matches!`](https://doc.rust-lang.org/stable/std/macro.debug_assert_matches.html)
+- [`assert_matches!`](https://doc.rust-lang.org/stable/std/macro.assert_matches.html)
 - [`debug_assert_matches!`](https://doc.rust-lang.org/stable/std/macro.debug_assert_matches.html)
 - [`From<T> for AssertUnwindSafe<T>`](https://doc.rust-lang.org/stable/std/panic/struct.AssertUnwindSafe.html#impl-From%3CT%3E-for-AssertUnwindSafe%3CT%3E)
 - [`From<T> for LazyCell<T, F>`](https://doc.rust-lang.org/stable/std/cell/struct.LazyCell.html#impl-From%3CT%3E-for-LazyCell%3CT,+F%3E)
