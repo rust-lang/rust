@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::convert::Infallible;
 use std::path::PathBuf;
 
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -18,6 +19,12 @@ pub trait WriteBackendMethods: Clone + 'static {
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;
 
+    /// Returns `true` if this backend can be safely called from multiple threads.
+    ///
+    /// Defaults to `true`.
+    fn supports_parallel(&self) -> bool {
+        true
+    }
     fn thread_profiler() -> Box<dyn Any> {
         Box::new(())
     }

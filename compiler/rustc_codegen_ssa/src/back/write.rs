@@ -352,7 +352,7 @@ pub struct CodegenContext {
     pub incr_comp_session_dir: Option<PathBuf>,
     /// `true` if the codegen should be run in parallel.
     ///
-    /// Depends on [`ExtraBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
+    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
     pub parallel: bool,
 }
 
@@ -416,7 +416,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     }
 }
 
-pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
+pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     allocator_module: Option<ModuleCodegen<B::Module>>,
@@ -1208,7 +1208,7 @@ enum MainThreadState {
     Lending,
 }
 
-fn start_executing_work<B: ExtraBackendMethods>(
+fn start_executing_work<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     shared_emitter: SharedEmitter,
