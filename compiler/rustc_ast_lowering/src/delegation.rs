@@ -124,7 +124,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
         let sig_id = if let Some(delegation_info) = self.resolver.delegation_info(self.owner.def_id)
         {
-            self.get_sig_id(delegation_info.resolution_node, span)
+            self.get_sig_id(delegation_info.resolution_id, span)
         } else {
             self.dcx().span_delayed_bug(
                 span,
@@ -223,22 +223,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect::<Vec<_>>()
     }
 
-    fn get_sig_id(&self, mut node_id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
-        let mut visited: FxHashSet<NodeId> = Default::default();
+    fn get_sig_id(&self, mut def_id: DefId, span: Span) -> Result<DefId, ErrorGuaranteed> {
+        let mut visited: FxHashSet<DefId> = Default::default();
         let mut path: SmallVec<[DefId; 1]> = Default::default();
 
         loop {
-            visited.insert(node_id);
-
-            let Some(def_id) = self.get_resolution_id(node_id) else {
-                return Err(self.tcx.dcx().span_delayed_bug(
-                    span,
-                    format!(
-                        "LoweringContext: couldn't resolve node {:?} in delegation item",
-                        node_id
-                    ),
-                ));
-            };
+            visited.insert(def_id);
 
             path.push(def_id);
 
@@ -248,8 +238,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             if let Some(local_id) = def_id.as_local()
                 && let Some(delegation_info) = self.resolver.delegation_info(local_id)
             {
-                node_id = delegation_info.resolution_node;
-                if visited.contains(&node_id) {
+                def_id = delegation_info.resolution_id;
+                if visited.contains(&def_id) {
                     // We encountered a cycle in the resolution, or delegation callee refers to non-existent
                     // entity, in this case emit an error.
                     return Err(match visited.len() {
