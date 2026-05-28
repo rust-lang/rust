@@ -1,9 +1,10 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
+use crate::clone::TrivialClone;
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
 use crate::ops::{IndexRange, NeverShortCircuit, Try};
-use crate::{fmt, iter};
+use crate::{fmt, iter, ptr};
 
 #[allow(private_bounds)]
 trait PartialDrop {
@@ -99,9 +100,26 @@ impl<T, const N: usize> PolymorphicIter<[MaybeUninit<T>; N]> {
 impl<T: Clone, const N: usize> Clone for PolymorphicIter<[MaybeUninit<T>; N]> {
     #[inline]
     fn clone(&self) -> Self {
+        SpecPolymorphicIterClone::<N>::spec_clone(self)
+    }
+}
+
+trait SpecPolymorphicIterClone<const N: usize> {
+    fn spec_clone(
+        this: &PolymorphicIter<[MaybeUninit<Self>; N]>,
+    ) -> PolymorphicIter<[MaybeUninit<Self>; N]>
+    where
+        Self: Sized;
+}
+
+impl<T: Clone, const N: usize> SpecPolymorphicIterClone<N> for T {
+    #[inline]
+    default fn spec_clone(
+        this: &PolymorphicIter<[MaybeUninit<Self>; N]>,
+    ) -> PolymorphicIter<[MaybeUninit<Self>; N]> {
         // Note, we don't really need to match the exact same alive range, so
         // we can just clone into offset 0 regardless of where `self` is.
-        let mut new = Self::empty();
+        let mut new = PolymorphicIter::<[MaybeUninit<T>; N]>::empty();
 
         fn clone_into_new<U: Clone>(
             source: &PolymorphicIter<[MaybeUninit<U>]>,
@@ -118,7 +136,33 @@ impl<T: Clone, const N: usize> Clone for PolymorphicIter<[MaybeUninit<T>; N]> {
             }
         }
 
-        clone_into_new(self, &mut new);
+        clone_into_new(this, &mut new);
+        new
+    }
+}
+
+impl<T: TrivialClone, const N: usize> SpecPolymorphicIterClone<N> for T {
+    #[inline]
+    fn spec_clone(
+        this: &PolymorphicIter<[MaybeUninit<Self>; N]>,
+    ) -> PolymorphicIter<[MaybeUninit<Self>; N]> {
+        // Note, we don't really need to match the exact same alive range, so
+        // we can just clone into offset 0 regardless of where `self` is.
+        let mut new = PolymorphicIter::<[MaybeUninit<T>; N]>::empty();
+
+        let len = this.alive.len();
+
+        // SAFETY: These two allocations can not overlap since `new` is allocated
+        // on the stack of this function.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                this.data.as_ptr().add(this.alive.start()),
+                new.data.as_mut_ptr(),
+                len,
+            );
+            new.alive = IndexRange::zero_to(len);
+        }
+
         new
     }
 }
