@@ -2941,11 +2941,57 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
 
 /// Gets the size of the type represented by this `TypeId`.
 ///
-/// The stabilized version of this intrinsic is [`core::any::TypeId::size`].
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 pub const fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
-    panic!("`Type::size` can only be called at compile-time")
+    panic!("`TypeId::size` can only be called at compile-time")
+}
+
+/// Gets the number of variants of the type represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::variants`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn type_id_variants(_id: crate::any::TypeId) -> usize {
+    panic!("`TypeId::variants` can only be called at compile-time")
+}
+
+/// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
+    panic!("`TypeId::fields` can only be called at compile-time")
+}
+
+/// Gets the [`FieldRepresentingType`]'s `TypeId` at the given index of the type represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::field`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn type_id_field_representing_type(
+    _id: crate::any::TypeId,
+    _variant_index: usize,
+    _field_index: usize,
+) -> crate::any::TypeId {
+    panic!("`TypeId::field` can only be called at compile-time")
+}
+
+/// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::type_id`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn field_representing_type_actual_type_id(
+    _frt_type_id: crate::any::TypeId,
+) -> crate::any::TypeId {
+    panic!("`FieldId::type_id` can only be called at compile-time")
 }
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
