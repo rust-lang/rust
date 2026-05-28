@@ -1,0 +1,25 @@
+error[E0532]: expected tuple struct or tuple variant, found unit variant `FarmAnimal::Cow`
+  --> $DIR/issue-84700.rs:15:9
+   |
+LL |     Cow,
+   |     --- `FarmAnimal::Cow` defined here
+...
+LL |         FarmAnimal::Cow(_) => "moo".to_string(),
+   |         ^^^^^^^^^^^^^^^^^^ help: use this syntax instead: `FarmAnimal::Cow`
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `FarmAnimal::Chicken`
+  --> $DIR/issue-84700.rs:17:9
+   |
+LL |         FarmAnimal::Chicken(_) => "cluck, cluck!".to_string(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: the struct variant's field is being ignored
+   |
+LL -         FarmAnimal::Chicken(_) => "cluck, cluck!".to_string(),
+LL +         FarmAnimal::Chicken { num_eggs: _ } => "cluck, cluck!".to_string(),
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0164, E0532.
+For more information about an error, try `rustc --explain E0164`.

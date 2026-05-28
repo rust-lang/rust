@@ -1,0 +1,16 @@
+@@ -3,6 +3,15 @@
+   |
+ 3 |     x.push(Complete::Item { name: "hello" });
+   |            ^^^^^^^^ use of undeclared type `Complete`
++  |
++help: there is an enum variant `core::ops::CoroutineState::Complete` and 1 other; try using the variant's enum
++  |
++3 -     x.push(Complete::Item { name: "hello" });
++3 +     x.push(core::ops::CoroutineState::Item { name: "hello" });
++  |
++3 -     x.push(Complete::Item { name: "hello" });
++3 +     x.push(std::ops::CoroutineState::Item { name: "hello" });
++  |
+ 
+ error: aborting due to 1 previous error
+ 

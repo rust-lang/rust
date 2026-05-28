@@ -1,0 +1,15 @@
+error: the `Self` constructor can only be used with tuple or unit structs
+  --> $DIR/invalid-self-constructor-56835.rs:5:12
+   |
+LL |     fn bar(Self(foo): Self) {}
+   |            ^^^^^^^^^ help: use curly brackets: `Self { /* fields */ }`
+
+error[E0164]: expected tuple struct or tuple variant, found self constructor `Self`
+  --> $DIR/invalid-self-constructor-56835.rs:5:12
+   |
+LL |     fn bar(Self(foo): Self) {}
+   |            ^^^^^^^^^ not a tuple struct or tuple variant
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0164`.

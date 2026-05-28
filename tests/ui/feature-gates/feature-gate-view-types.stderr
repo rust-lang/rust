@@ -1,0 +1,33 @@
+error[E0658]: view types are experimental
+  --> $DIR/feature-gate-view-types.rs:6:19
+   |
+LL | fn bar(a: &mut Foo.{ a }, b: &mut Foo.{ b }) {
+   |                   ^^^^^^
+   |
+   = note: see issue #155938 <https://github.com/rust-lang/rust/issues/155938> for more information
+   = help: add `#![feature(view_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: view types are experimental
+  --> $DIR/feature-gate-view-types.rs:6:38
+   |
+LL | fn bar(a: &mut Foo.{ a }, b: &mut Foo.{ b }) {
+   |                                      ^^^^^^
+   |
+   = note: see issue #155938 <https://github.com/rust-lang/rust/issues/155938> for more information
+   = help: add `#![feature(view_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/feature-gate-view-types.rs:15:19
+   |
+LL |     bar(&mut foo, &mut foo);
+   |     --- --------  ^^^^^^^^ second mutable borrow occurs here
+   |     |   |
+   |     |   first mutable borrow occurs here
+   |     first borrow later used by call
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0499, E0658.
+For more information about an error, try `rustc --explain E0499`.

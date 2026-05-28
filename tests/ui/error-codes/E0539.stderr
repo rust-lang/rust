@@ -1,0 +1,13 @@
+error[E0539]: malformed `deprecated` attribute input
+  --> $DIR/E0539.rs:2:1
+   |
+LL | #[deprecated(since = b"1.29", note = "hi")]
+   | ^^^^^^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^
+   |                      |
+   |                      help: consider removing the prefix
+   |
+   = note: expected a normal string literal, not a byte string literal
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

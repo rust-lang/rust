@@ -1,0 +1,20 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f(_1: (T, T)) -> T {
+      let mut _0: T;
+      let mut _2: T;
+      let mut _3: T;
+      let mut _4: &T;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy (_1.0: T);
+          _3 = copy _2;
+          _4 = &_3;
+          StorageDead(_2);
+          _0 = copy (*_4);
+          return;
+      }
+  }
+  

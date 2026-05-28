@@ -1,0 +1,25 @@
+error[E0005]: refutable pattern in function argument
+  --> $DIR/refutable-pattern-errors.rs:3:9
+   |
+LL | fn func((1, (Some(1), 2..=3)): (isize, (Option<isize>, isize))) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^ patterns `(..=0_isize, _)` and `(2_isize.., _)` not covered
+   |
+   = note: the matched value is of type `(isize, (Option<isize>, isize))`
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/refutable-pattern-errors.rs:8:9
+   |
+LL |     let (1, (Some(1), 2..=3)) = (1, (None, 2));
+   |         ^^^^^^^^^^^^^^^^^^^^^ patterns `(i32::MIN..=0_i32, _)` and `(2_i32..=i32::MAX, _)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `(i32, (Option<i32>, i32))`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let (1, (Some(1), 2..=3)) = (1, (None, 2)) { todo!() };
+   |     ++                                            +++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

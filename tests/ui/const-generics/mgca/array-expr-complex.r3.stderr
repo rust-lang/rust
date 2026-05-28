@@ -1,0 +1,8 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array-expr-complex.rs:17:21
+   |
+LL |     takes_array::<{ [0; Y] }>();
+   |                     ^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,23 @@
+error[E0557]: feature has been removed
+  --> $DIR/feature-gate-coverage-attribute.rs:2:12
+   |
+LL | #![feature(no_coverage)]
+   |            ^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.74.0; see <https://github.com/rust-lang/rust/pull/114656> for more information
+   = note: renamed to `coverage_attribute`
+
+error[E0658]: the `#[coverage]` attribute is an experimental feature
+  --> $DIR/feature-gate-coverage-attribute.rs:10:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #84605 <https://github.com/rust-lang/rust/issues/84605> for more information
+   = help: add `#![feature(coverage_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0557, E0658.
+For more information about an error, try `rustc --explain E0557`.

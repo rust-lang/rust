@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in the type of `p`
+  --> $DIR/regions-infer-at-fn-not-param.rs:13:57
+   |
+LL | fn take1<'a>(p: Parameterized1) -> Parameterized1<'a> { p }
+   |                                                         ^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `p`
+   |
+LL | fn take1<'a>(p: Parameterized1<'a>) -> Parameterized1<'a> { p }
+   |                               ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

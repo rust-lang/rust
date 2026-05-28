@@ -1,0 +1,61 @@
+error[E0277]: the trait bound `NonLeakS: bounds_check::LeakTr` is not satisfied
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:65:26
+   |
+LL |     let _: &dyn LeakTr = &NonLeakS;
+   |                          ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `bounds_check::LeakTr` is not implemented for `NonLeakS`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:51:1
+   |
+LL | struct NonLeakS;
+   | ^^^^^^^^^^^^^^^
+help: the trait `bounds_check::LeakTr` is implemented for `LeakS`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:62:5
+   |
+LL |     impl LeakTr for LeakS {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   = note: required for the cast from `&NonLeakS` to `&dyn bounds_check::LeakTr + Leak`
+
+error[E0038]: the trait `DynCompatCheck2` is not dyn compatible
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:90:17
+   |
+LL |         fn mut_foo(&mut self) {}
+   |                    --------- help: consider changing method `mut_foo`'s `self` parameter to be `&self`: `&Self`
+...
+LL |     let _: &dyn DynCompatCheck2 = &NonLeakS;
+   |                 ^^^^^^^^^^^^^^^ `DynCompatCheck2` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:82:20
+   |
+LL |     trait DynCompatCheck2: ?Leak {
+   |           --------------- this trait is not dyn compatible...
+LL |         fn mut_foo(&mut self) {}
+   |                    ^^^^^^^^^ ...because method `mut_foo`'s `self` parameter cannot be dispatched on
+   = help: only type `NonLeakS` implements `DynCompatCheck2`; consider using it directly instead.
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:98:26
+   |
+LL |     let _: dyn LeakTr + ?Leak<(), Undefined = ()>;
+   |                          ^^^^-------------------- help: remove the unnecessary generics
+   |                          |
+   |                          expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:49:12
+   |
+LL | auto trait Leak {}
+   |            ^^^^
+
+error[E0220]: associated type `Undefined` not found for `Leak`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:98:35
+   |
+LL |     let _: dyn LeakTr + ?Leak<(), Undefined = ()>;
+   |                                   ^^^^^^^^^ associated type `Undefined` not found
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0107, E0220, E0277.
+For more information about an error, try `rustc --explain E0038`.

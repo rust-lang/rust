@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/constant-in-expr-trait-item-2.rs:10:5
+   |
+LL | fn foo<'a, T: Foo<'a>>() -> &'static u32 {
+   |        -- lifetime `'a` defined here
+LL |     <T as Foo<'a>>::C
+   |     ^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 1 previous error
+

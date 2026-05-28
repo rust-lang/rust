@@ -1,0 +1,51 @@
+error[E0277]: expected a `Fn(&isize)` closure, found `unsafe fn(isize) -> isize {square}`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:21:21
+   |
+LL |     let x = call_it(&square, 22);
+   |             ------- ^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> Fn(&'a isize)` is not implemented for fn item `unsafe fn(isize) -> isize {square}`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `call_it`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:10:15
+   |
+LL | fn call_it<F: Fn(&isize) -> isize>(_: &F, _: isize) -> isize {
+   |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `call_it`
+
+error[E0277]: expected a `FnMut(&isize)` closure, found `unsafe fn(isize) -> isize {square}`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:26:25
+   |
+LL |     let y = call_it_mut(&mut square, 22);
+   |             ----------- ^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> FnMut(&'a isize)` is not implemented for fn item `unsafe fn(isize) -> isize {square}`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `call_it_mut`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:13:19
+   |
+LL | fn call_it_mut<F: FnMut(&isize) -> isize>(_: &mut F, _: isize) -> isize {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `call_it_mut`
+
+error[E0277]: expected a `FnOnce(&isize)` closure, found `unsafe fn(isize) -> isize {square}`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:31:26
+   |
+LL |     let z = call_it_once(square, 22);
+   |             ------------ ^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> FnOnce(&'a isize)` is not implemented for fn item `unsafe fn(isize) -> isize {square}`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `call_it_once`
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:16:20
+   |
+LL | fn call_it_once<F: FnOnce(&isize) -> isize>(_: F, _: isize) -> isize {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `call_it_once`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

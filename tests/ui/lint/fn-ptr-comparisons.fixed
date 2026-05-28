@@ -1,0 +1,56 @@
+//@ check-pass
+//@ run-rustfix
+
+extern "C" {
+    fn test();
+}
+
+fn a() {}
+
+extern "C" fn c() {}
+
+extern "C" fn args(_a: i32) -> i32 { 0 }
+
+struct A {
+    f: fn(),
+}
+
+fn main() {
+    let f: fn() = a;
+    let g: fn() = f;
+
+    let a1 = A { f };
+    let a2 = A { f };
+
+    let _ = std::ptr::fn_addr_eq(f, a as fn());
+    //~^ WARN function pointer comparisons
+    let _ = !std::ptr::fn_addr_eq(f, a as fn());
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(f, g);
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(f, f);
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(g, g);
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(g, g);
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(g, g);
+    //~^ WARN function pointer comparisons
+    let _ = std::ptr::fn_addr_eq(a as fn(), g);
+    //~^ WARN function pointer comparisons
+
+    let cfn: extern "C" fn() = c;
+    let _ = std::ptr::fn_addr_eq(cfn, c as extern "C" fn());
+    //~^ WARN function pointer comparisons
+
+    let argsfn: extern "C" fn(i32) -> i32 = args;
+    let _ = std::ptr::fn_addr_eq(argsfn, args as extern "C" fn(i32) -> i32);
+    //~^ WARN function pointer comparisons
+
+    let t: unsafe extern "C" fn() = test;
+    let _ = std::ptr::fn_addr_eq(t, test as unsafe extern "C" fn());
+    //~^ WARN function pointer comparisons
+
+    let _ = std::ptr::fn_addr_eq(a1.f, a2.f);
+    //~^ WARN function pointer comparisons
+}

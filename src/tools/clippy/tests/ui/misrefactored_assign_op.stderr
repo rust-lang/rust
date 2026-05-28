@@ -1,0 +1,157 @@
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:6:5
+   |
+LL |     a += a + 1;
+   |     ^^^^^^^^^^
+   |
+   = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::misrefactored_assign_op)]`
+help: did you mean `a = a + 1` or `a = a + a + 1`? Consider replacing it with
+   |
+LL -     a += a + 1;
+LL +     a += 1;
+   |
+help: or
+   |
+LL -     a += a + 1;
+LL +     a = a + a + 1;
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:9:5
+   |
+LL |     a += 1 + a;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a + 1` or `a = a + 1 + a`? Consider replacing it with
+   |
+LL -     a += 1 + a;
+LL +     a += 1;
+   |
+help: or
+   |
+LL -     a += 1 + a;
+LL +     a = a + 1 + a;
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:12:5
+   |
+LL |     a -= a - 1;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a - 1` or `a = a - (a - 1)`? Consider replacing it with
+   |
+LL -     a -= a - 1;
+LL +     a -= 1;
+   |
+help: or
+   |
+LL -     a -= a - 1;
+LL +     a = a - (a - 1);
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:15:5
+   |
+LL |     a *= a * 99;
+   |     ^^^^^^^^^^^
+   |
+help: did you mean `a = a * 99` or `a = a * a * 99`? Consider replacing it with
+   |
+LL -     a *= a * 99;
+LL +     a *= 99;
+   |
+help: or
+   |
+LL -     a *= a * 99;
+LL +     a = a * a * 99;
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:18:5
+   |
+LL |     a *= 42 * a;
+   |     ^^^^^^^^^^^
+   |
+help: did you mean `a = a * 42` or `a = a * 42 * a`? Consider replacing it with
+   |
+LL -     a *= 42 * a;
+LL +     a *= 42;
+   |
+help: or
+   |
+LL -     a *= 42 * a;
+LL +     a = a * 42 * a;
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:21:5
+   |
+LL |     a /= a / 2;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a / 2` or `a = a / (a / 2)`? Consider replacing it with
+   |
+LL -     a /= a / 2;
+LL +     a /= 2;
+   |
+help: or
+   |
+LL -     a /= a / 2;
+LL +     a = a / (a / 2);
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:24:5
+   |
+LL |     a %= a % 5;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a % 5` or `a = a % (a % 5)`? Consider replacing it with
+   |
+LL -     a %= a % 5;
+LL +     a %= 5;
+   |
+help: or
+   |
+LL -     a %= a % 5;
+LL +     a = a % (a % 5);
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:27:5
+   |
+LL |     a &= a & 1;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a & 1` or `a = a & a & 1`? Consider replacing it with
+   |
+LL -     a &= a & 1;
+LL +     a &= 1;
+   |
+help: or
+   |
+LL -     a &= a & 1;
+LL +     a = a & a & 1;
+   |
+
+error: variable appears on both sides of an assignment operation
+  --> tests/ui/misrefactored_assign_op.rs:30:5
+   |
+LL |     a *= a * a;
+   |     ^^^^^^^^^^
+   |
+help: did you mean `a = a * a` or `a = a * a * a`? Consider replacing it with
+   |
+LL -     a *= a * a;
+LL +     a *= a;
+   |
+help: or
+   |
+LL -     a *= a * a;
+LL +     a = a * a * a;
+   |
+
+error: aborting due to 9 previous errors
+

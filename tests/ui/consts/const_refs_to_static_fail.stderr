@@ -1,0 +1,23 @@
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/const_refs_to_static_fail.rs:14:13
+   |
+LL |     assert!(*C1.get() == 0);
+   |             ^^^^^^^^^ evaluation of `C1_READ` failed here
+
+error[E0080]: constant accesses mutable global memory
+  --> $DIR/const_refs_to_static_fail.rs:18:13
+   |
+LL |     assert!(*C2 == 0);
+   |             ^^^ evaluation of `C2_READ` failed here
+
+error: constant BAD_PATTERN cannot be used as pattern
+  --> $DIR/const_refs_to_static_fail.rs:28:9
+   |
+LL |         BAD_PATTERN => {},
+   |         ^^^^^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as patterns
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

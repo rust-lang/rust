@@ -1,0 +1,61 @@
+error[E0317]: `if` may be missing an `else` clause
+  --> $DIR/irrefutable-if-let-without-else.rs:8:5
+   |
+LL |   fn foo(x: Enum) -> i32 {
+   |                      --- expected `i32` because of this return type
+LL | /     if let Enum::Variant(value) = x {
+LL | |         value
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+help: consider using an irrefutable `let` binding instead
+   |
+LL ~     let Enum::Variant(value) = x;
+LL ~         value
+   |
+
+error[E0317]: `if` may be missing an `else` clause
+  --> $DIR/irrefutable-if-let-without-else.rs:13:5
+   |
+LL |   fn bar(x: Enum) -> i32 {
+   |                      --- expected `i32` because of this return type
+LL | /     if let Enum::Variant(value) = x {
+LL | |         let x = value + 1;
+LL | |         x
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+help: consider using an irrefutable `let` binding instead
+   |
+LL ~     let Enum::Variant(value) = x;
+LL ~         let x = value + 1;
+LL ~         x
+   |
+
+error[E0317]: `if` may be missing an `else` clause
+  --> $DIR/irrefutable-if-let-without-else.rs:19:5
+   |
+LL |   fn baz(x: Struct) -> i32 {
+   |                        --- expected `i32` because of this return type
+LL | /     if let Struct(value) = x {
+LL | |         let x = value + 1;
+LL | |         x
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+help: consider using an irrefutable `let` binding instead
+   |
+LL ~     let Struct(value) = x;
+LL ~         let x = value + 1;
+LL ~         x
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0317`.

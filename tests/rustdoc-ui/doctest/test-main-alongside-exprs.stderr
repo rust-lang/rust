@@ -1,0 +1,8 @@
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/test-main-alongside-exprs.rs:15:1
+   |
+15 | //! ```
+   | ^^^^^^^
+
+warning: 1 warning emitted
+

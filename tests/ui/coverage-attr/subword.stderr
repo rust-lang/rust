@@ -1,0 +1,71 @@
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/subword.rs:8:1
+   |
+LL | #[coverage(yes(milord))]
+   | ^^^^^^^^^^^-----------^^
+   |            |
+   |            valid arguments are `on` or `off`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(yes(milord))]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(yes(milord))]
+LL + #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/subword.rs:11:1
+   |
+LL | #[coverage(no(milord))]
+   | ^^^^^^^^^^^----------^^
+   |            |
+   |            valid arguments are `on` or `off`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(no(milord))]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(no(milord))]
+LL + #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/subword.rs:14:1
+   |
+LL | #[coverage(yes = "milord")]
+   | ^^^^^^^^^^^--------------^^
+   |            |
+   |            valid arguments are `on` or `off`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(yes = "milord")]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(yes = "milord")]
+LL + #[coverage(on)]
+   |
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/subword.rs:17:1
+   |
+LL | #[coverage(no = "milord")]
+   | ^^^^^^^^^^^-------------^^
+   |            |
+   |            valid arguments are `on` or `off`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[coverage(no = "milord")]
+LL + #[coverage(off)]
+   |
+LL - #[coverage(no = "milord")]
+LL + #[coverage(on)]
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

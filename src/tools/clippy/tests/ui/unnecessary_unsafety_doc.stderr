@@ -1,0 +1,52 @@
+error: safe function's docs have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:19:1
+   |
+LL | pub fn apocalypse(universe: &mut ()) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-safety-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_doc)]`
+
+error: safe function's docs have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:46:5
+   |
+LL |     pub fn republished() {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: safe function's docs have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:60:5
+   |
+LL |     fn documented(self);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: docs for safe trait have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:71:1
+   |
+LL | pub trait DocumentedSafeTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: safe function's docs have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:100:5
+   |
+LL |     pub fn documented() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: safe function's docs have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:128:9
+   |
+LL |         pub fn drive() {
+   |         ^^^^^^^^^^^^^^
+...
+LL | very_safe!();
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `very_safe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: docs for safe trait have unnecessary `# Safety` section
+  --> tests/ui/unnecessary_unsafety_doc.rs:157:1
+   |
+LL | pub trait DocumentedSafeTraitWithImplementationHeader {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

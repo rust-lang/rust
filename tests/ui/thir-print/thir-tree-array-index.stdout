@@ -1,0 +1,1211 @@
+DefId(0:3 ~ thir_tree_array_index[2569]::index):
+params: [
+    Param {
+        ty: usize
+        ty_span: Some($DIR/thir-tree-array-index.rs:4:13: 4:18 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:3 ~ thir_tree_array_index[2569]::index).1))
+        param: Some( 
+            Pat {
+                ty: usize
+                span: $DIR/thir-tree-array-index.rs:4:10: 4:11 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "x"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(0:3 ~ thir_tree_array_index[2569]::index).2))
+                        ty: usize
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 6
+        span: $DIR/thir-tree-array-index.rs:4:29: 4:34 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(6)
+                hir_id: HirId(DefId(0:3 ~ thir_tree_array_index[2569]::index).6)
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 6
+                        span: $DIR/thir-tree-array-index.rs:4:29: 4:34 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-array-index.rs:4:29: 4:34 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 4
+                                        span: $DIR/thir-tree-array-index.rs:4:31: 4:32 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(4)
+                                                hir_id: HirId(DefId(0:3 ~ thir_tree_array_index[2569]::index).4)
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 4
+                                                        span: $DIR/thir-tree-array-index.rs:4:31: 4:32 (#0)
+                                                        kind: 
+                                                            VarRef {
+                                                                id: LocalVarId(HirId(DefId(0:3 ~ thir_tree_array_index[2569]::index).2))
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:4 ~ thir_tree_array_index[2569]::indexing):
+params: [
+    Param {
+        ty: usize
+        ty_span: Some($DIR/thir-tree-array-index.rs:6:16: 6:21 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).1))
+        param: Some( 
+            Pat {
+                ty: usize
+                span: $DIR/thir-tree-array-index.rs:6:13: 6:14 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "x"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                        ty: usize
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 90
+        span: $DIR/thir-tree-array-index.rs:6:32: 20:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(90)
+                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).90)
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 90
+                        span: $DIR/thir-tree-array-index.rs:6:32: 20:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-array-index.rs:6:32: 20:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 0}
+                                            init_scope: Node(4)
+                                            pattern: 
+                                                Pat {
+                                                    ty: [usize; 5_usize]
+                                                    span: $DIR/thir-tree-array-index.rs:7:7: 7:9 (#0)
+                                                    extra: PatExtra {
+                                                        expanded_const: None
+                                                        ascriptions: [
+                                                            Ascription { annotation: CanonicalUserTypeAnnotation { user_ty: Canonical { value: UserType { kind: Ty([usize; 5_usize]), bounds: [] }, max_universe: U0, var_kinds: [] }, span: $DIR/thir-tree-array-index.rs:7:11: 7:21 (#0), inferred_ty: [usize; 5_usize] }, variance: + }
+                                                        ]
+                                                    }
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "a1"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).18))
+                                                            ty: [usize; 5_usize]
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: [usize; 5_usize]
+                                                    temp_scope_id: 11
+                                                    span: $DIR/thir-tree-array-index.rs:7:24: 7:39 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(11)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).11)
+                                                            value:
+                                                                Expr {
+                                                                    ty: [usize; 5_usize]
+                                                                    temp_scope_id: 11
+                                                                    span: $DIR/thir-tree-array-index.rs:7:24: 7:39 (#0)
+                                                                    kind: 
+                                                                        Array {
+                                                                            fields: [
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 12
+                                                                                    span: $DIR/thir-tree-array-index.rs:7:25: 7:26 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(12)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).12)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 12
+                                                                                                    span: $DIR/thir-tree-array-index.rs:7:25: 7:26 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:25: 7:26 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 13
+                                                                                    span: $DIR/thir-tree-array-index.rs:7:28: 7:29 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(13)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).13)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 13
+                                                                                                    span: $DIR/thir-tree-array-index.rs:7:28: 7:29 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(2), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:28: 7:29 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 14
+                                                                                    span: $DIR/thir-tree-array-index.rs:7:31: 7:32 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(14)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).14)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 14
+                                                                                                    span: $DIR/thir-tree-array-index.rs:7:31: 7:32 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(3), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:31: 7:32 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 15
+                                                                                    span: $DIR/thir-tree-array-index.rs:7:34: 7:35 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(15)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).15)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 15
+                                                                                                    span: $DIR/thir-tree-array-index.rs:7:34: 7:35 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(4), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:34: 7:35 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 16
+                                                                                    span: $DIR/thir-tree-array-index.rs:7:37: 7:38 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(16)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).16)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 16
+                                                                                                    span: $DIR/thir-tree-array-index.rs:7:37: 7:38 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(5), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:37: 7:38 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).17)
+                                            span: $DIR/thir-tree-array-index.rs:7:3: 7:39 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 1}
+                                            init_scope: Node(19)
+                                            pattern: 
+                                                Pat {
+                                                    ty: [usize; 5_usize]
+                                                    span: $DIR/thir-tree-array-index.rs:8:7: 8:9 (#0)
+                                                    extra: PatExtra {
+                                                        expanded_const: None
+                                                        ascriptions: [
+                                                            Ascription { annotation: CanonicalUserTypeAnnotation { user_ty: Canonical { value: UserType { kind: Ty([usize; 5_usize]), bounds: [] }, max_universe: U0, var_kinds: [] }, span: $DIR/thir-tree-array-index.rs:8:11: 8:21 (#0), inferred_ty: [usize; 5_usize] }, variance: + }
+                                                        ]
+                                                    }
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "a2"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                            ty: [usize; 5_usize]
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: [usize; 5_usize]
+                                                    temp_scope_id: 26
+                                                    span: $DIR/thir-tree-array-index.rs:8:24: 8:30 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(26)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).26)
+                                                            value:
+                                                                Expr {
+                                                                    ty: [usize; 5_usize]
+                                                                    temp_scope_id: 26
+                                                                    span: $DIR/thir-tree-array-index.rs:8:24: 8:30 (#0)
+                                                                    kind: 
+                                                                        Repeat {
+                                                                            count: 5_usize
+                                                                            value:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 27
+                                                                                    span: $DIR/thir-tree-array-index.rs:8:25: 8:26 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(27)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).27)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 27
+                                                                                                    span: $DIR/thir-tree-array-index.rs:8:25: 8:26 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).32)
+                                            span: $DIR/thir-tree-array-index.rs:8:3: 8:30 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(38)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 34
+                                                    span: $DIR/thir-tree-array-index.rs:10:3: 10:8 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(34)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).34)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 34
+                                                                    span: $DIR/thir-tree-array-index.rs:10:3: 10:8 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 35
+                                                                                    span: $DIR/thir-tree-array-index.rs:10:3: 10:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(35)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).35)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 35
+                                                                                                    span: $DIR/thir-tree-array-index.rs:10:3: 10:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).18))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 37
+                                                                                    span: $DIR/thir-tree-array-index.rs:10:6: 10:7 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(37)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).37)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 37
+                                                                                                    span: $DIR/thir-tree-array-index.rs:10:6: 10:7 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(0), Unsuffixed), span: $DIR/thir-tree-array-index.rs:10:6: 10:7 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(43)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 39
+                                                    span: $DIR/thir-tree-array-index.rs:11:3: 11:8 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(39)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).39)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 39
+                                                                    span: $DIR/thir-tree-array-index.rs:11:3: 11:8 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 40
+                                                                                    span: $DIR/thir-tree-array-index.rs:11:3: 11:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(40)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).40)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 40
+                                                                                                    span: $DIR/thir-tree-array-index.rs:11:3: 11:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 42
+                                                                                    span: $DIR/thir-tree-array-index.rs:11:6: 11:7 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(42)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).42)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 42
+                                                                                                    span: $DIR/thir-tree-array-index.rs:11:6: 11:7 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-array-index.rs:11:6: 11:7 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(49)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 44
+                                                    span: $DIR/thir-tree-array-index.rs:13:3: 13:8 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(44)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).44)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 44
+                                                                    span: $DIR/thir-tree-array-index.rs:13:3: 13:8 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 45
+                                                                                    span: $DIR/thir-tree-array-index.rs:13:3: 13:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(45)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).45)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 45
+                                                                                                    span: $DIR/thir-tree-array-index.rs:13:3: 13:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).18))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 47
+                                                                                    span: $DIR/thir-tree-array-index.rs:13:6: 13:7 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(47)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).47)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 47
+                                                                                                    span: $DIR/thir-tree-array-index.rs:13:6: 13:7 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(57)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 50
+                                                    span: $DIR/thir-tree-array-index.rs:14:3: 14:12 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(50)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).50)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 50
+                                                                    span: $DIR/thir-tree-array-index.rs:14:3: 14:12 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 51
+                                                                                    span: $DIR/thir-tree-array-index.rs:14:3: 14:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(51)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).51)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 51
+                                                                                                    span: $DIR/thir-tree-array-index.rs:14:3: 14:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 53
+                                                                                    span: $DIR/thir-tree-array-index.rs:14:6: 14:11 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(53)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).53)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 53
+                                                                                                    span: $DIR/thir-tree-array-index.rs:14:6: 14:11 (#0)
+                                                                                                    kind: 
+                                                                                                        Binary {
+                                                                                                            op: Add
+                                                                                                            lhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 54
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:14:6: 14:7 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(54)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).54)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 54
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:14:6: 14:7 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        VarRef {
+                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                            rhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 56
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:14:10: 14:11 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(56)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).56)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 56
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:14:10: 14:11 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        Literal( lit: Spanned { node: Int(Pu128(2), Unsuffixed), span: $DIR/thir-tree-array-index.rs:14:10: 14:11 (#0) }, neg: false)
+
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(74)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 58
+                                                    span: $DIR/thir-tree-array-index.rs:16:3: 16:24 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(58)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).58)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 58
+                                                                    span: $DIR/thir-tree-array-index.rs:16:3: 16:24 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 59
+                                                                                    span: $DIR/thir-tree-array-index.rs:16:3: 16:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(59)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).59)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 59
+                                                                                                    span: $DIR/thir-tree-array-index.rs:16:3: 16:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).18))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 61
+                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:23 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(61)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).61)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 61
+                                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:23 (#0)
+                                                                                                    kind: 
+                                                                                                        Binary {
+                                                                                                            op: Add
+                                                                                                            lhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 62
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:11 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(62)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).62)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 62
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:11 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        Index {
+                                                                                                                                            lhs:
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: [usize; 5_usize]
+                                                                                                                                                    temp_scope_id: 63
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:8 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(63)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).63)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: [usize; 5_usize]
+                                                                                                                                                                    temp_scope_id: 63
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:6: 16:8 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        VarRef {
+                                                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                            index:
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: usize
+                                                                                                                                                    temp_scope_id: 65
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:9: 16:10 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(65)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).65)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: usize
+                                                                                                                                                                    temp_scope_id: 65
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:9: 16:10 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        VarRef {
+                                                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                            rhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 67
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:14: 16:23 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(67)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).67)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 67
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:14: 16:23 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        Index {
+                                                                                                                                            lhs:
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: [usize; 5_usize]
+                                                                                                                                                    temp_scope_id: 68
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:14: 16:16 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(68)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).68)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: [usize; 5_usize]
+                                                                                                                                                                    temp_scope_id: 68
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:14: 16:16 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        VarRef {
+                                                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                            index:
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: usize
+                                                                                                                                                    temp_scope_id: 70
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:17: 16:22 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(70)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).70)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: usize
+                                                                                                                                                                    temp_scope_id: 70
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:17: 16:22 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        Binary {
+                                                                                                                                                                            op: Sub
+                                                                                                                                                                            lhs:
+                                                                                                                                                                                Expr {
+                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                    temp_scope_id: 71
+                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:17: 16:18 (#0)
+                                                                                                                                                                                    kind: 
+                                                                                                                                                                                        Scope {
+                                                                                                                                                                                            region_scope: Node(71)
+                                                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).71)
+                                                                                                                                                                                            value:
+                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                                    temp_scope_id: 71
+                                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:17: 16:18 (#0)
+                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                        VarRef {
+                                                                                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                }
+                                                                                                                                                                                        }
+                                                                                                                                                                                }
+                                                                                                                                                                            rhs:
+                                                                                                                                                                                Expr {
+                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                    temp_scope_id: 73
+                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:21: 16:22 (#0)
+                                                                                                                                                                                    kind: 
+                                                                                                                                                                                        Scope {
+                                                                                                                                                                                            region_scope: Node(73)
+                                                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).73)
+                                                                                                                                                                                            value:
+                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                                    temp_scope_id: 73
+                                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:16:21: 16:22 (#0)
+                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                        Literal( lit: Spanned { node: Int(Pu128(3), Unsuffixed), span: $DIR/thir-tree-array-index.rs:16:21: 16:22 (#0) }, neg: false)
+
+                                                                                                                                                                                                }
+                                                                                                                                                                                        }
+                                                                                                                                                                                }
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(88)
+                                            expr:
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 75
+                                                    span: $DIR/thir-tree-array-index.rs:17:3: 17:24 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(75)
+                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).75)
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 75
+                                                                    span: $DIR/thir-tree-array-index.rs:17:3: 17:24 (#0)
+                                                                    kind: 
+                                                                        Index {
+                                                                            lhs:
+                                                                                Expr {
+                                                                                    ty: [usize; 5_usize]
+                                                                                    temp_scope_id: 76
+                                                                                    span: $DIR/thir-tree-array-index.rs:17:3: 17:5 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(76)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).76)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: [usize; 5_usize]
+                                                                                                    temp_scope_id: 76
+                                                                                                    span: $DIR/thir-tree-array-index.rs:17:3: 17:5 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).33))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            index:
+                                                                                Expr {
+                                                                                    ty: usize
+                                                                                    temp_scope_id: 78
+                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:23 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(78)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).78)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: usize
+                                                                                                    temp_scope_id: 78
+                                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:23 (#0)
+                                                                                                    kind: 
+                                                                                                        Binary {
+                                                                                                            op: Sub
+                                                                                                            lhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 79
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:19 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(79)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).79)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 79
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:19 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        Call {
+                                                                                                                                            ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                            from_hir_call: true
+                                                                                                                                            fn_span: $DIR/thir-tree-array-index.rs:17:6: 17:19 (#0)
+                                                                                                                                            fun:
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                                    temp_scope_id: 80
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:11 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(80)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).80)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                                                    temp_scope_id: 80
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:6: 17:11 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        ZstLiteral(user_ty: None)
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                            args: [
+                                                                                                                                                Expr {
+                                                                                                                                                    ty: usize
+                                                                                                                                                    temp_scope_id: 82
+                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:13: 17:18 (#0)
+                                                                                                                                                    kind: 
+                                                                                                                                                        Scope {
+                                                                                                                                                            region_scope: Node(82)
+                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).82)
+                                                                                                                                                            value:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: usize
+                                                                                                                                                                    temp_scope_id: 82
+                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:13: 17:18 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        Binary {
+                                                                                                                                                                            op: Add
+                                                                                                                                                                            lhs:
+                                                                                                                                                                                Expr {
+                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                    temp_scope_id: 83
+                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:13: 17:14 (#0)
+                                                                                                                                                                                    kind: 
+                                                                                                                                                                                        Scope {
+                                                                                                                                                                                            region_scope: Node(83)
+                                                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).83)
+                                                                                                                                                                                            value:
+                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                                    temp_scope_id: 83
+                                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:13: 17:14 (#0)
+                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                        VarRef {
+                                                                                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                }
+                                                                                                                                                                                        }
+                                                                                                                                                                                }
+                                                                                                                                                                            rhs:
+                                                                                                                                                                                Expr {
+                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                    temp_scope_id: 85
+                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:17: 17:18 (#0)
+                                                                                                                                                                                    kind: 
+                                                                                                                                                                                        Scope {
+                                                                                                                                                                                            region_scope: Node(85)
+                                                                                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).85)
+                                                                                                                                                                                            value:
+                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                    ty: usize
+                                                                                                                                                                                                    temp_scope_id: 85
+                                                                                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:17: 17:18 (#0)
+                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                        Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-array-index.rs:17:17: 17:18 (#0) }, neg: false)
+
+                                                                                                                                                                                                }
+                                                                                                                                                                                        }
+                                                                                                                                                                                }
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                }
+                                                                                                                                            ]
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                            rhs:
+                                                                                                                Expr {
+                                                                                                                    ty: usize
+                                                                                                                    temp_scope_id: 86
+                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:22: 17:23 (#0)
+                                                                                                                    kind: 
+                                                                                                                        Scope {
+                                                                                                                            region_scope: Node(86)
+                                                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).86)
+                                                                                                                            value:
+                                                                                                                                Expr {
+                                                                                                                                    ty: usize
+                                                                                                                                    temp_scope_id: 86
+                                                                                                                                    span: $DIR/thir-tree-array-index.rs:17:22: 17:23 (#0)
+                                                                                                                                    kind: 
+                                                                                                                                        VarRef {
+                                                                                                                                            id: LocalVarId(HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).2))
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                ]
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 89
+                                        span: $DIR/thir-tree-array-index.rs:19:3: 19:4 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(89)
+                                                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).89)
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 89
+                                                        span: $DIR/thir-tree-array-index.rs:19:3: 19:4 (#0)
+                                                        kind: 
+                                                            Literal( lit: Spanned { node: Int(Pu128(0), Unsuffixed), span: $DIR/thir-tree-array-index.rs:19:3: 19:4 (#0) }, neg: false)
+
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:5 ~ thir_tree_array_index[2569]::indexing::{constant#0}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 8
+        span: $DIR/thir-tree-array-index.rs:7:19: 7:20 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(8)
+                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).8)
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 8
+                        span: $DIR/thir-tree-array-index.rs:7:19: 7:20 (#0)
+                        kind: 
+                            Literal( lit: Spanned { node: Int(Pu128(5), Unsuffixed), span: $DIR/thir-tree-array-index.rs:7:19: 7:20 (#0) }, neg: false)
+
+                    }
+            }
+    }
+
+
+DefId(0:7 ~ thir_tree_array_index[2569]::indexing::{constant#2}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 30
+        span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(30)
+                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).30)
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 30
+                        span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0)
+                        kind: 
+                            Literal( lit: Spanned { node: Int(Pu128(5), Unsuffixed), span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0) }, neg: false)
+
+                    }
+            }
+    }
+
+
+DefId(0:6 ~ thir_tree_array_index[2569]::indexing::{constant#1}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 23
+        span: $DIR/thir-tree-array-index.rs:8:19: 8:20 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(23)
+                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).23)
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 23
+                        span: $DIR/thir-tree-array-index.rs:8:19: 8:20 (#0)
+                        kind: 
+                            Literal( lit: Spanned { node: Int(Pu128(5), Unsuffixed), span: $DIR/thir-tree-array-index.rs:8:19: 8:20 (#0) }, neg: false)
+
+                    }
+            }
+    }
+
+
+DefId(0:8 ~ thir_tree_array_index[2569]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 2
+        span: $DIR/thir-tree-array-index.rs:22:11: 22:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                hir_id: HirId(DefId(0:8 ~ thir_tree_array_index[2569]::main).2)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 2
+                        span: $DIR/thir-tree-array-index.rs:22:11: 22:13 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-array-index.rs:22:11: 22:13 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

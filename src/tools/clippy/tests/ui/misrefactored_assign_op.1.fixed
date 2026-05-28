@@ -1,0 +1,40 @@
+#![allow(clippy::eq_op)]
+#![warn(clippy::misrefactored_assign_op, clippy::assign_op_pattern)]
+
+fn main() {
+    let mut a = 5;
+    a += 1;
+    //~^ misrefactored_assign_op
+
+    a += 1;
+    //~^ misrefactored_assign_op
+
+    a -= 1;
+    //~^ misrefactored_assign_op
+
+    a *= 99;
+    //~^ misrefactored_assign_op
+
+    a *= 42;
+    //~^ misrefactored_assign_op
+
+    a /= 2;
+    //~^ misrefactored_assign_op
+
+    a %= 5;
+    //~^ misrefactored_assign_op
+
+    a &= 1;
+    //~^ misrefactored_assign_op
+
+    a *= a;
+    //~^ misrefactored_assign_op
+
+    a = a * a * a;
+    a = a * 42 * a;
+    a = a * 2 + a;
+    a -= 1 - a;
+    a /= 5 / a;
+    a %= 42 % a;
+    a <<= 6 << a;
+}

@@ -1,0 +1,15 @@
+error[E0741]: `Bar` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/issue-97278.rs:11:20
+   |
+LL | fn test<const BAR: Bar>() {}
+   |                    ^^^
+   |
+help: add `#[derive(ConstParamTy)]` to the enum
+   |
+LL + #[derive(ConstParamTy)]
+LL | enum Bar {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

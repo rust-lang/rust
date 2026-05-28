@@ -1,0 +1,26 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/unconstrained_impl_param.rs:15:45
+   |
+LL | impl<U> Trait for () where (U,): AssocConst<A = 0> {}
+   |                                             ^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained_impl_param.rs:15:6
+   |
+LL | impl<U> Trait for () where (U,): AssocConst<A = 0> {}
+   |      ^ unconstrained type parameter
+
+error[E0282]: type annotations needed
+  --> $DIR/unconstrained_impl_param.rs:21:5
+   |
+LL |     (): Trait,
+   |     ^^^^^^^^^ cannot infer type for type parameter `U`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0207, E0282, E0658.
+For more information about an error, try `rustc --explain E0207`.

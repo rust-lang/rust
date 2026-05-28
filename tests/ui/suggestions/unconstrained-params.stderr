@@ -1,0 +1,68 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-params.rs:10:6
+   |
+LL | impl<T> Local {}
+   |     -^-
+   |     ||
+   |     |unconstrained type parameter
+   |     help: remove the unused type parameter `T`
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-params.rs:16:6
+   |
+LL | impl<T> Local {
+   |      ^ unconstrained type parameter
+   |
+help: use the type parameter `T` in the `Local` type and use it in the type definition
+   |
+LL ~ struct Local<T>;
+LL | struct Defaulted<T = u32>(T);
+...
+LL | // -> suggests adding T to self type and struct definition
+LL ~ impl<T> Local<T> {
+   |
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-params.rs:27:6
+   |
+LL | impl<T> Defaulted {}
+   |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `T`
+   |
+LL - impl<T> Defaulted {}
+LL + impl Defaulted {}
+   |
+help: or use it
+   |
+LL | impl<T> Defaulted<T> {}
+   |                  +++
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-params.rs:39:12
+   |
+LL |         impl<$t> Local {}
+   |             ---- help: remove the unused type parameter `U`
+...
+LL | make_impl!(U);
+   |            ^ unconstrained type parameter
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-params.rs:43:6
+   |
+LL | impl<T> External {
+   |      ^ unconstrained type parameter
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/unconstrained-params.rs:43:1
+   |
+LL | impl<T> External {
+   | ^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0116, E0207.
+For more information about an error, try `rustc --explain E0116`.

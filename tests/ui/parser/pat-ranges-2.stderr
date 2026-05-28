@@ -1,0 +1,8 @@
+error: expected one of `::`, `:`, `;`, `=`, or `|`, found `!`
+  --> $DIR/pat-ranges-2.rs:4:26
+   |
+LL |     let 10 ..= makropulos!() = 12;
+   |                          ^ expected one of `::`, `:`, `;`, `=`, or `|`
+
+error: aborting due to 1 previous error
+

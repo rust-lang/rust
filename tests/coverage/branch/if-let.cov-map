@@ -1,0 +1,68 @@
+Function name: if_let::if_let
+Raw bytes (58): 0x[01, 01, 01, 01, 05, 0a, 01, 0c, 01, 00, 1f, 01, 01, 05, 00, 0e, 20, 02, 05, 02, 0c, 00, 13, 02, 00, 11, 00, 12, 01, 00, 16, 00, 1b, 02, 00, 1c, 02, 06, 05, 02, 0c, 02, 06, 01, 03, 05, 00, 08, 01, 00, 09, 00, 0f, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if-let.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 12, 1) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Branch { true: Expression(0, Sub), false: Counter(1) } at (prev + 2, 12) to (start + 0, 19)
+    true  = (c0 - c1)
+    false = c1
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 0, 18)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 27)
+- Code(Expression(0, Sub)) at (prev + 0, 28) to (start + 2, 6)
+    = (c0 - c1)
+- Code(Counter(1)) at (prev + 2, 12) to (start + 2, 6)
+- Code(Counter(0)) at (prev + 3, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: if_let::if_let_chain
+Raw bytes (102): 0x[01, 01, 0c, 01, 05, 01, 2f, 05, 09, 01, 2f, 05, 09, 01, 2f, 05, 09, 01, 2f, 05, 09, 01, 2f, 05, 09, 05, 09, 0e, 01, 17, 01, 00, 32, 20, 02, 05, 01, 0c, 00, 13, 02, 00, 11, 00, 12, 01, 00, 16, 00, 17, 20, 26, 09, 01, 10, 00, 17, 26, 00, 15, 00, 16, 02, 00, 1a, 00, 1b, 26, 01, 05, 03, 06, 26, 01, 09, 00, 0c, 26, 00, 0d, 00, 0e, 2f, 02, 0c, 02, 06, 01, 03, 05, 00, 08, 01, 00, 09, 00, 0f, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if-let.rs
+Number of expressions: 12
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(11, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(0), rhs = Expression(11, Add)
+- expression 4 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 5 operands: lhs = Counter(0), rhs = Expression(11, Add)
+- expression 6 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 7 operands: lhs = Counter(0), rhs = Expression(11, Add)
+- expression 8 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 9 operands: lhs = Counter(0), rhs = Expression(11, Add)
+- expression 10 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 11 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 14
+- Code(Counter(0)) at (prev + 23, 1) to (start + 0, 50)
+- Branch { true: Expression(0, Sub), false: Counter(1) } at (prev + 1, 12) to (start + 0, 19)
+    true  = (c0 - c1)
+    false = c1
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 0, 18)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 22) to (start + 0, 23)
+- Branch { true: Expression(9, Sub), false: Counter(2) } at (prev + 1, 16) to (start + 0, 23)
+    true  = (c0 - (c1 + c2))
+    false = c2
+- Code(Expression(9, Sub)) at (prev + 0, 21) to (start + 0, 22)
+    = (c0 - (c1 + c2))
+- Code(Expression(0, Sub)) at (prev + 0, 26) to (start + 0, 27)
+    = (c0 - c1)
+- Code(Expression(9, Sub)) at (prev + 1, 5) to (start + 3, 6)
+    = (c0 - (c1 + c2))
+- Code(Expression(9, Sub)) at (prev + 1, 9) to (start + 0, 12)
+    = (c0 - (c1 + c2))
+- Code(Expression(9, Sub)) at (prev + 0, 13) to (start + 0, 14)
+    = (c0 - (c1 + c2))
+- Code(Expression(11, Add)) at (prev + 2, 12) to (start + 2, 6)
+    = (c1 + c2)
+- Code(Counter(0)) at (prev + 3, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+

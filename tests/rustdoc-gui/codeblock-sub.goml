@@ -1,0 +1,5 @@
+// Test that code blocks nested within <sub> do not have a line height of 0.
+go-to: "file://" + |DOC_PATH| + "/test_docs/codeblock_sub/index.html"
+
+store-property: ("#codeblock-sub-1", {"offsetHeight": codeblock_sub_1})
+assert-property-false: ("#codeblock-sub-3", { "offsetHeight": |codeblock_sub_1| })

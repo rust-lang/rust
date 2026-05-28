@@ -1,0 +1,131 @@
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:14:5
+   |
+LL |     string.push_str("R");
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('R')`
+   |
+   = note: `-D clippy::single-char-add-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_char_add_str)]`
+
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:16:5
+   |
+LL |     string.push_str("'");
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\'')`
+
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:22:5
+   |
+LL |     string.push_str("\x52");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\x52')`
+
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:24:5
+   |
+LL |     string.push_str("\u{0052}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('\u{0052}')`
+
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:26:5
+   |
+LL |     string.push_str(r##"a"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `string.push('a')`
+
+error: calling `push_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:30:5
+   |
+LL |     string.push_str(&c_ref.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` without `to_string()`: `string.push(*c_ref)`
+
+error: calling `push_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:33:5
+   |
+LL |     string.push_str(&c.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` without `to_string()`: `string.push(c)`
+
+error: calling `push_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:35:5
+   |
+LL |     string.push_str(&'a'.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` without `to_string()`: `string.push('a')`
+
+error: calling `push_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:38:5
+   |
+LL |     get_string!().push_str("ö");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `push` with a character literal: `get_string!().push('ö')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:44:5
+   |
+LL |     string.insert_str(0, "R");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, 'R')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:46:5
+   |
+LL |     string.insert_str(1, "'");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(1, '\'')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:52:5
+   |
+LL |     string.insert_str(0, "\x52");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '\x52')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:54:5
+   |
+LL |     string.insert_str(0, "\u{0052}");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(0, '\u{0052}')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:57:5
+   |
+LL |     string.insert_str(x, r##"a"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(x, 'a')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:60:5
+   |
+LL |     string.insert_str(Y, r##"a"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, 'a')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:62:5
+   |
+LL |     string.insert_str(Y, r##"""##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '"')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:64:5
+   |
+LL |     string.insert_str(Y, r##"'"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '\'')`
+
+error: calling `insert_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:67:5
+   |
+LL |     string.insert_str(0, &c_ref.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` without `to_string()`: `string.insert(0, *c_ref)`
+
+error: calling `insert_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:69:5
+   |
+LL |     string.insert_str(0, &c.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` without `to_string()`: `string.insert(0, c)`
+
+error: calling `insert_str()` using a single-character converted to string
+  --> tests/ui/single_char_add_str.rs:71:5
+   |
+LL |     string.insert_str(0, &'a'.to_string());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` without `to_string()`: `string.insert(0, 'a')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> tests/ui/single_char_add_str.rs:74:5
+   |
+LL |     get_string!().insert_str(1, "?");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `get_string!().insert(1, '?')`
+
+error: aborting due to 21 previous errors
+

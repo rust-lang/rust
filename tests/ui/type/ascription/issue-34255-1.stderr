@@ -1,0 +1,18 @@
+error: struct literal body without path
+  --> $DIR/issue-34255-1.rs:8:26
+   |
+LL |       pub fn new() -> Self {
+   |  __________________________^
+LL | |         input_cells: Vec::new()
+LL | |     }
+   | |_____^
+   |
+help: you might have forgotten to add the struct literal inside the block
+   |
+LL ~     pub fn new() -> Self { SomeStruct {
+LL |         input_cells: Vec::new()
+LL ~     } }
+   |
+
+error: aborting due to 1 previous error
+

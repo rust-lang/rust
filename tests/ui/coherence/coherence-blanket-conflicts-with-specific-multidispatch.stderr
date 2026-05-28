@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `MyTrait<MyType>` for type `MyType`
+  --> $DIR/coherence-blanket-conflicts-with-specific-multidispatch.rs:22:1
+   |
+LL | impl<T> MyTrait<T> for T {
+   | ------------------------ first implementation here
+...
+LL | impl MyTrait<MyType> for MyType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyType`
+
+error[E0308]: mismatched types
+  --> $DIR/coherence-blanket-conflicts-with-specific-multidispatch.rs:24:30
+   |
+LL |     fn get(&self) -> usize { (*self).clone() }
+   |                      -----   ^^^^^^^^^^^^^^^ expected `usize`, found `MyType`
+   |                      |
+   |                      expected `usize` because of return type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0308.
+For more information about an error, try `rustc --explain E0119`.

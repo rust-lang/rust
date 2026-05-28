@@ -1,0 +1,4 @@
+error: `-Zregparm=N` is only supported on x86
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: values of the type `[u8; 2305843011361177600]` are too big for the target architecture
+  --> $DIR/huge-array-simple-64.rs:12:9
+   |
+LL |     let _fat: [u8; (1<<61)+(1<<31)] =
+   |         ^^^^
+
+error: aborting due to 1 previous error
+

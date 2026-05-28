@@ -1,0 +1,24 @@
+error[E0658]: c-variadic const function definitions are unstable
+  --> $DIR/feature-gate-const-c-variadic.rs:4:5
+   |
+LL |     const unsafe extern "C" fn foo(ap: ...) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0015]: calling const c-variadic functions is unstable in constants
+  --> $DIR/feature-gate-const-c-variadic.rs:9:22
+   |
+LL |     const { unsafe { foo() } }
+   |                      ^^^^^
+   |
+   = note: see issue #151787 <https://github.com/rust-lang/rust/issues/151787> for more information
+   = help: add `#![feature(const_c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0658.
+For more information about an error, try `rustc --explain E0015`.

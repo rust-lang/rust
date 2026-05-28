@@ -1,0 +1,49 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-boxed-trait-objects-instead-of-impl-trait.rs:17:9
+   |
+LL | /     if true {
+LL | |         S
+   | |         - expected because of this
+LL | |     } else {
+LL | |         Y
+   | |         ^ expected `S`, found `Y`
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn foo() -> impl Trait {
+LL + fn foo() -> Box<dyn Trait> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         Box::new(S)
+LL |     } else {
+LL ~         Box::new(Y)
+   |
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/suggest-boxed-trait-objects-instead-of-impl-trait.rs:24:18
+   |
+LL | /     match true {
+LL | |         true => S,
+   | |                 - this is found to be of type `S`
+LL | |         false => Y,
+   | |                  ^ expected `S`, found `Y`
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn bar() -> impl Trait {
+LL + fn bar() -> Box<dyn Trait> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         true => Box::new(S),
+LL ~         false => Box::new(Y),
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

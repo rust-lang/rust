@@ -1,0 +1,26 @@
+//@ run-rustfix
+
+struct GenericAssocMethod<T>(T);
+
+impl<T> GenericAssocMethod<T> {
+    fn default_hello() {}
+    fn self_ty_hello(_: Self) {}
+    fn self_ty_ref_hello(_: &Self) {}
+}
+
+fn main() {
+    // Test for inferred types
+    let x = GenericAssocMethod(33);
+    GenericAssocMethod::<_>::self_ty_ref_hello(&x);
+    //~^ ERROR no method named `self_ty_ref_hello` found
+    GenericAssocMethod::<_>::self_ty_hello(x);
+    //~^ ERROR no method named `self_ty_hello` found
+    // Test for known types
+    let y = GenericAssocMethod(33i32);
+    GenericAssocMethod::<i32>::default_hello();
+    //~^ ERROR no method named `default_hello` found
+    GenericAssocMethod::<i32>::self_ty_ref_hello(&y);
+    //~^ ERROR no method named `self_ty_ref_hello` found
+    GenericAssocMethod::<i32>::self_ty_hello(y);
+    //~^ ERROR no method named `self_ty_hello` found
+}

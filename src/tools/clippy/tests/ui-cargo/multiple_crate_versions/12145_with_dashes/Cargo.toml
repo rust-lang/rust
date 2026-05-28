@@ -1,0 +1,14 @@
+# Should not lint for dev or build dependencies. See issue 5041.
+
+[package]
+# purposefully separated by - instead of _
+name = "multiple-crate-versions"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+# One of the versions of winapi is only a dev dependency: allowed
+[dependencies]
+winapi = "0.2"
+ansi_term = "=0.11.0"

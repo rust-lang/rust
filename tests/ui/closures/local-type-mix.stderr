@@ -1,0 +1,51 @@
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:5:17
+   |
+LL |     let _ = |x: x| x;
+   |                 ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:6:26
+   |
+LL |     let _ = |x: bool| -> x { x };
+   |                          ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:7:28
+   |
+LL |     let _ = async move |x: x| x;
+   |                            ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:8:37
+   |
+LL |     let _ = async move |x: bool| -> x { x };
+   |                                     ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:11:11
+   |
+LL | fn foo(x: x) {}
+   |           ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:12:24
+   |
+LL | fn foo_ret(x: bool) -> x {}
+   |                        ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:14:23
+   |
+LL | async fn async_foo(x: x) {}
+   |                       ^ not a type
+
+error[E0573]: expected type, found local variable `x`
+  --> $DIR/local-type-mix.rs:15:36
+   |
+LL | async fn async_foo_ret(x: bool) -> x {}
+   |                                    ^ not a type
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

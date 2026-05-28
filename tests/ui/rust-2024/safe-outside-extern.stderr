@@ -1,0 +1,38 @@
+error: items outside of `unsafe extern { }` cannot be declared with `safe` safety qualifier
+  --> $DIR/safe-outside-extern.rs:1:1
+   |
+LL | safe fn foo() {}
+   | ^^^^^^^^^^^^^^^^
+
+error: items outside of `unsafe extern { }` cannot be declared with `safe` safety qualifier
+  --> $DIR/safe-outside-extern.rs:4:1
+   |
+LL | safe static FOO: i32 = 1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: items outside of `unsafe extern { }` cannot be declared with `safe` safety qualifier
+  --> $DIR/safe-outside-extern.rs:8:5
+   |
+LL |     safe fn foo();
+   |     ^^^^^^^^^^^^^^
+
+error: items outside of `unsafe extern { }` cannot be declared with `safe` safety qualifier
+  --> $DIR/safe-outside-extern.rs:13:5
+   |
+LL |     safe fn foo() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: function pointers cannot be declared with `safe` safety qualifier
+  --> $DIR/safe-outside-extern.rs:17:14
+   |
+LL | type FnPtr = safe fn(i32, i32) -> i32;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
+  --> $DIR/safe-outside-extern.rs:20:1
+   |
+LL | unsafe static LOL: u8 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

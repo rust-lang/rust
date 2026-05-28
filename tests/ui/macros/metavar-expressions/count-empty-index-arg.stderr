@@ -1,0 +1,19 @@
+error: `count` followed by a comma must have an associated index indicating its depth
+  --> $DIR/count-empty-index-arg.rs:7:37
+   |
+LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
+   |                                     ^^^^^
+
+error: expected expression, found `$`
+  --> $DIR/count-empty-index-arg.rs:7:35
+   |
+LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
+   |                                   ^ expected expression
+...
+LL |     foo!(a, a; b, b);
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,16 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/uninit-local.rs:4:15
+   |
+LL |         let x: bool;
+   |             - binding declared here but left uninitialized
+LL |         while x {}
+   |               ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let x: bool = false;
+   |                     +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

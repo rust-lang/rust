@@ -1,0 +1,13 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-85031-2.rs:12:5
+   |
+LL |     pub fn foo<const A: usize>() -> [(); A - 0] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         Self::foo()
+   |         ----------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: 1 warning emitted
+

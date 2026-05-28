@@ -1,0 +1,132 @@
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:5:5
+   |
+LL |     r#"aaa"#;
+   |     ^^^^^^^^
+   |
+   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
+help: use a plain string literal instead
+   |
+LL -     r#"aaa"#;
+LL +     "aaa";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:9:5
+   |
+LL |     br#"aaa"#;
+   |     ^^^^^^^^^
+   |
+help: use a plain byte string literal instead
+   |
+LL -     br#"aaa"#;
+LL +     b"aaa";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:13:5
+   |
+LL |     cr#"aaa"#;
+   |     ^^^^^^^^^
+   |
+help: use a plain C string literal instead
+   |
+LL -     cr#"aaa"#;
+LL +     c"aaa";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:18:5
+   |
+LL | /     r#"
+LL | |
+LL | |         a
+LL | |         multiline
+LL | |         string
+LL | |     "#;
+   | |______^
+   |
+help: use a plain string literal instead
+   |
+LL ~     "
+LL |
+...
+LL |         string
+LL ~     ";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:25:5
+   |
+LL |     r"no hashes";
+   |     ^^^^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     r"no hashes";
+LL +     "no hashes";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:27:5
+   |
+LL |     br"no hashes";
+   |     ^^^^^^^^^^^^^
+   |
+help: use a plain byte string literal instead
+   |
+LL -     br"no hashes";
+LL +     b"no hashes";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:29:5
+   |
+LL |     cr"no hashes";
+   |     ^^^^^^^^^^^^^
+   |
+help: use a plain C string literal instead
+   |
+LL -     cr"no hashes";
+LL +     c"no hashes";
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:34:14
+   |
+LL |     println!(r"SELECT * FROM posts");
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!(r"SELECT * FROM posts");
+LL +     println!("SELECT * FROM posts");
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:36:14
+   |
+LL |     println!(r#"SELECT * FROM posts"#);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!(r#"SELECT * FROM posts"#);
+LL +     println!("SELECT * FROM posts");
+   |
+
+error: unnecessary raw string literal
+  --> tests/ui/needless_raw_string.rs:41:20
+   |
+LL |     println!("{}", r"foobar".len());
+   |                    ^^^^^^^^^
+   |
+help: use a plain string literal instead
+   |
+LL -     println!("{}", r"foobar".len());
+LL +     println!("{}", "foobar".len());
+   |
+
+error: aborting due to 10 previous errors
+

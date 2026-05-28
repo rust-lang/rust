@@ -1,0 +1,43 @@
+error: `Trait(...)` syntax does not support named parameters
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:32
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                                ^ help: remove the parameter name
+
+error[E0425]: cannot find function `dealloc` in this scope
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:9
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |         ^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::alloc::dealloc;
+   |
+
+error[E0425]: cannot find value `ptr2` in this scope
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:17
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                 ^^^^ not found in this scope
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:35
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                                   ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Layout` in this scope
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:23
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                       ^^^^^^ not found in this scope
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

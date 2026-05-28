@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'d`
+  --> $DIR/issue-109299.rs:6:12
+   |
+LL | impl Lexer<'d> {
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'d` here
+   |
+LL | impl<'d> Lexer<'d> {
+   |     ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

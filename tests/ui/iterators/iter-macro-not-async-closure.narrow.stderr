@@ -1,0 +1,72 @@
+error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}: AsyncFnOnce()` is not satisfied
+  --> $DIR/iter-macro-not-async-closure.rs:32:34
+   |
+LL | ...n!(call_async_once(f));
+   |       --------------- ^ unsatisfied trait bound
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}`
+note: required by a bound in `call_async_once`
+  --> $DIR/iter-macro-not-async-closure.rs:21:34
+   |
+LL | ...pl AsyncFnOnce()) {
+   |       ^^^^^^^^^^^^^ required by this bound in `call_async_once`
+
+error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}: AsyncFnOnce()` is not satisfied
+  --> $DIR/iter-macro-not-async-closure.rs:32:18
+   |
+LL | ...n!(call_async_once(f));
+   |       ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}`
+note: required by a bound in `call_async_once`
+  --> $DIR/iter-macro-not-async-closure.rs:21:34
+   |
+LL | ...pl AsyncFnOnce()) {
+   |       ^^^^^^^^^^^^^ required by this bound in `call_async_once`
+
+error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}: AsyncFnOnce()` is not satisfied
+  --> $DIR/iter-macro-not-async-closure.rs:32:13
+   |
+LL | ... = pin!(call_async_once(f));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}`
+note: required by a bound in `call_async_once`
+  --> $DIR/iter-macro-not-async-closure.rs:21:34
+   |
+LL | ...pl AsyncFnOnce()) {
+   |       ^^^^^^^^^^^^^ required by this bound in `call_async_once`
+   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}: AsyncFnOnce()` is not satisfied
+  --> $DIR/iter-macro-not-async-closure.rs:32:13
+   |
+LL | ... = pin!(call_async_once(f));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}`
+note: required by a bound in `call_async_once`
+  --> $DIR/iter-macro-not-async-closure.rs:21:34
+   |
+LL | ...pl AsyncFnOnce()) {
+   |       ^^^^^^^^^^^^^ required by this bound in `call_async_once`
+   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}: AsyncFnOnce()` is not satisfied
+  --> $DIR/iter-macro-not-async-closure.rs:37:5
+   |
+LL |     ...::noop()));
+   |     ...^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `AsyncFnOnce()` is not implemented for `{gen closure@$DIR/iter-macro-not-async-closure.rs:26:21: 26:28}`
+note: required by a bound in `call_async_once`
+  --> $DIR/iter-macro-not-async-closure.rs:21:34
+   |
+LL | ...pl AsyncFnOnce()) {
+   |       ^^^^^^^^^^^^^ required by this bound in `call_async_once`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

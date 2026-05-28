@@ -1,0 +1,24 @@
+error: expected identifier, found metavariable
+  --> $DIR/attr-expr.rs:3:11
+   |
+LL |         #[$e]
+   |           ^^ expected identifier, found metavariable
+...
+LL | foo!(inline);
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
+  --> $DIR/attr-expr.rs:12:18
+   |
+LL |         #[inline($e)]
+   |                  ^^
+...
+LL | bar!(always);
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

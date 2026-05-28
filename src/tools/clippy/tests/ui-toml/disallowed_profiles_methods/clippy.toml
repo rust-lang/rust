@@ -1,0 +1,13 @@
+disallowed-methods = [
+    { path = "std::mem::drop" }
+]
+
+[profiles.forward_pass]
+disallowed-methods = [
+    { path = "alloc::vec::Vec::push", reason = "push is forbidden in forward profile" }
+]
+
+[profiles.export]
+disallowed-methods = [
+    { path = "core::option::Option::unwrap" }
+]

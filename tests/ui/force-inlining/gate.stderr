@@ -1,0 +1,23 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/gate.rs:4:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_force_inline]` attribute is an internal implementation detail that will never be stable
+   = note: `#[rustc_force_inline]` forces a free function to be inlined
+
+error[E0658]: use of an internal attribute
+  --> $DIR/gate.rs:11:1
+   |
+LL | #[rustc_force_inline = "the test requires it"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_force_inline]` attribute is an internal implementation detail that will never be stable
+   = note: `#[rustc_force_inline]` forces a free function to be inlined
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

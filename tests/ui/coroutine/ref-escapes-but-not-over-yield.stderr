@@ -1,0 +1,15 @@
+error[E0521]: borrowed data escapes outside of coroutine
+  --> $DIR/ref-escapes-but-not-over-yield.rs:12:9
+   |
+LL |     let mut a = &3;
+   |         ----- `a` declared here, outside of the coroutine body
+...
+LL |         a = &b;
+   |         ^^^^--
+   |         |   |
+   |         |   borrow is only valid in the coroutine body
+   |         reference to `b` escapes the coroutine body here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

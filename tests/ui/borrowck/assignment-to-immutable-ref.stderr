@@ -1,0 +1,25 @@
+error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
+  --> $DIR/assignment-to-immutable-ref.rs:8:5
+   |
+LL |     *foo = 32;
+   |     ^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let foo = &mut 16;
+   |                +++
+
+error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
+  --> $DIR/assignment-to-immutable-ref.rs:12:5
+   |
+LL |     *bar = 64;
+   |     ^^^^^^^^^ `bar` is a `&` reference, so it cannot be written to
+   |
+help: consider specifying this binding's type
+   |
+LL |     let bar: &mut i32 = foo;
+   |            ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

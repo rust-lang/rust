@@ -1,0 +1,46 @@
+error: tail calling closures directly is not allowed
+  --> $DIR/closure.rs:6:5
+   |
+LL |     become (|| ())();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: try casting the closure to a function pointer type
+   |
+LL |     become ((|| ()) as fn() -> _)();
+   |            +        +++++++++++++
+
+error: tail calling closures directly is not allowed
+  --> $DIR/closure.rs:11:5
+   |
+LL |     become (|()| ())(());
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try casting the closure to a function pointer type
+   |
+LL |     become ((|()| ()) as fn(_) -> _)(());
+   |            +          ++++++++++++++
+
+error: tail calling closures directly is not allowed
+  --> $DIR/closure.rs:16:5
+   |
+LL |     become (|(), _| ())((), 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try casting the closure to a function pointer type
+   |
+LL |     become ((|(), _| ()) as fn(_, _) -> _)((), 1);
+   |            +             +++++++++++++++++
+
+error: tail calling closures directly is not allowed
+  --> $DIR/closure.rs:22:5
+   |
+LL |     become f((), ((), ()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try casting the closure to a function pointer type
+   |
+LL |     become (f as fn(_, _) -> _)((), ((), ()));
+   |            +  +++++++++++++++++
+
+error: aborting due to 4 previous errors
+

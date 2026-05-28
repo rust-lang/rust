@@ -1,0 +1,25 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:102:5
+   |
+LL | /     send(async {
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:102:5
+   |
+LL | /     send(async {
+LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
+LL | |     });
+   | |______^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

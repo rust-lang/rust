@@ -1,0 +1,16 @@
+error[E0069]: `return;` in a function whose return type is not `()`
+  --> $DIR/suggest-a-value.rs:2:5
+   |
+LL | fn test() -> (i32,) {
+   |              ------ expected `(i32,)` because of this return type
+LL |     return;
+   |     ^^^^^^ return type is not `()`
+   |
+help: give the `return` a value of the expected type
+   |
+LL |     return (42,);
+   |            +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0069`.

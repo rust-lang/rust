@@ -1,0 +1,16 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/issue-26046-fn-mut.rs:4:19
+   |
+LL |     let closure = || {
+   |                   ^^ this closure implements `FnMut`, not `Fn`
+LL |         num += 1;
+   |         --- closure is `FnMut` because it mutates the variable `num` here
+...
+LL |     Box::new(closure)
+   |     ----------------- the requirement to implement `Fn` derives from here
+   |
+   = note: required for the cast from `Box<{closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21}>` to `Box<(dyn Fn() + 'static)>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0525`.

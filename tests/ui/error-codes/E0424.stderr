@@ -1,0 +1,48 @@
+error[E0424]: expected value, found module `self`
+  --> $DIR/E0424.rs:7:9
+   |
+LL |     fn foo() {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.bar();
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn foo(&self) {
+   |            +++++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/E0424.rs:11:9
+   |
+LL |     fn baz(_: i32) {
+   |        --- this function doesn't have a `self` parameter
+LL |         self.bar();
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn baz(&self, _: i32) {
+   |            ++++++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/E0424.rs:15:20
+   |
+LL |     fn qux() {
+   |        --- this function doesn't have a `self` parameter
+LL |         let _ = || self.bar();
+   |                    ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn qux(&self) {
+   |            +++++
+
+error[E0424]: expected unit struct, unit variant or constant, found module `self`
+  --> $DIR/E0424.rs:20:9
+   |
+LL |     let self = "self";
+   |         ^^^^ `self` value is a keyword and may not be bound to variables or shadowed
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0424`.

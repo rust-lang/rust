@@ -1,0 +1,117 @@
+#![crate_type = "lib"]
+#![feature(rustc_attrs)]
+#![allow(unused)]
+
+#[rustc_on_unimplemented(label = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`")]
+trait Foo<Bar, Baz, Quux> {}
+
+#[rustc_on_unimplemented(label = "a collection of type `{Self}` cannot \
+ be built from an iterator over elements of type `{A}`")]
+trait MyFromIterator<A> {
+    /// Builds a container with elements from an external iterator.
+    fn my_from_iter<T: Iterator<Item = A>>(iterator: T) -> Self;
+}
+
+#[rustc_on_unimplemented]
+//~^ WARN missing options for `rustc_on_unimplemented` attribute
+//~| NOTE part of
+trait NoContent {}
+
+#[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{C}>`")]
+//~^ WARN there is no parameter `C` on trait `ParameterNotPresent`
+//~| NOTE part of
+trait ParameterNotPresent<A, B> {}
+
+#[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{}>`")]
+//~^ WARN positional arguments are not permitted in diagnostic attributes
+//~| NOTE remove this format argument
+trait NoPositionalArgs<A, B> {}
+
+#[rustc_on_unimplemented(lorem = "")]
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
+trait EmptyMessage {}
+
+#[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
+trait Invalid {}
+
+#[rustc_on_unimplemented(message = "x", message = "y")]
+//~^WARN `message` is ignored due to previous definition of `message`
+//~|NOTE `message` is first declared here
+//~|NOTE `message` is later redundantly declared here
+trait DuplicateMessage {}
+
+#[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
+//~^ ERROR invalid flag in `on`-clause
+//~| NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `desugared`
+trait OnInWrongPosition {}
+
+#[rustc_on_unimplemented(on(), message = "y")]
+//~^ ERROR empty `on`-clause
+//~^^ NOTE empty `on`-clause here
+trait EmptyOn {}
+
+#[rustc_on_unimplemented(on = "x", message = "y")]
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
+trait ExpectedPredicateInOn {}
+
+#[rustc_on_unimplemented(on(Self = "y"), message = "y")]
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
+trait OnWithoutDirectives {}
+
+#[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
+trait NestedOn {}
+
+#[rustc_on_unimplemented(on("y", message = "y"))]
+//~^ ERROR literals inside `on`-clauses are not supported
+//~^^ NOTE unexpected literal here
+trait UnsupportedLiteral {}
+
+#[rustc_on_unimplemented(on(42, message = "y"))]
+//~^ ERROR literals inside `on`-clauses are not supported
+//~^^ NOTE unexpected literal here
+trait UnsupportedLiteral2 {}
+
+#[rustc_on_unimplemented(on(not(a, b), message = "y"))]
+//~^ ERROR expected a single predicate in `not(..)` [E0232]
+//~^^ NOTE unexpected quantity of predicates here
+trait ExpectedOnePattern {}
+
+#[rustc_on_unimplemented(on(not(), message = "y"))]
+//~^ ERROR expected a single predicate in `not(..)` [E0232]
+//~^^ NOTE unexpected quantity of predicates here
+trait ExpectedOnePattern2 {}
+
+#[rustc_on_unimplemented(on(thing::What, message = "y"))]
+//~^ ERROR expected an identifier inside this `on`-clause
+//~^^ NOTE expected an identifier here, not `thing::What`
+trait KeyMustBeIdentifier {}
+
+#[rustc_on_unimplemented(on(thing::What = "value", message = "y"))]
+//~^ ERROR  expected an identifier inside this `on`-clause
+//~^^ NOTE expected an identifier here, not `thing::What`
+trait KeyMustBeIdentifier2 {}
+
+#[rustc_on_unimplemented(on(aaaaaaaaaaaaaa(a, b), message = "y"))]
+//~^ ERROR this predicate is invalid
+//~^^ NOTE expected one of `any`, `all` or `not` here, not `aaaaaaaaaaaaaa`
+trait InvalidPredicate {}
+
+#[rustc_on_unimplemented(on(something, message = "y"))]
+//~^ ERROR invalid flag in `on`-clause
+//~^^ NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
+trait InvalidFlag {}
+
+#[rustc_on_unimplemented(on(_Self = "y", message = "y"))]
+//~^ WARN there is no parameter `_Self` on trait `InvalidName`
+trait InvalidName {}
+
+#[rustc_on_unimplemented(on(abc = "y", message = "y"))]
+//~^ WARN there is no parameter `abc` on trait `InvalidName2`
+trait InvalidName2 {}

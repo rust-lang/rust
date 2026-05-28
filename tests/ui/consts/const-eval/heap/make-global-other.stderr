@@ -1,0 +1,9 @@
+error[E0080]: pointer passed to `const_make_global` does not point to a heap allocation: ALLOC0<imm>
+  --> $DIR/make-global-other.rs:11:8
+   |
+LL |     &*(intrinsics::const_make_global(X as *const i32 as *mut u8) as *const i32)
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Y` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

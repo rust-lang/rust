@@ -1,0 +1,11 @@
+error[E0124]: field `field` is already declared
+  --> $DIR/duplicated-fields-issue-125842.rs:6:5
+   |
+LL |     field: Option<u8>,
+   |     ----------------- `field` first declared here
+LL |     field: u8,
+   |     ^^^^^^^^^ field already declared
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0124`.

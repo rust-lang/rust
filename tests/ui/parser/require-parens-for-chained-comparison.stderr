@@ -1,0 +1,122 @@
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:2:11
+   |
+LL |     false == false == false;
+   |           ^^       ^^
+   |
+help: split the comparison into two
+   |
+LL |     false == false && false == false;
+   |                    ++++++++
+
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:6:11
+   |
+LL |     false == 0 < 2;
+   |           ^^   ^
+   |
+help: parenthesize the comparison
+   |
+LL |     false == (0 < 2);
+   |              +     +
+
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:10:6
+   |
+LL |     f<X>();
+   |      ^ ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     f::<X>();
+   |      ++
+
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:14:6
+   |
+LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
+   |      ^      ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
+   |      ++
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `,`
+  --> $DIR/require-parens-for-chained-comparison.rs:18:17
+   |
+LL |     let _ = f<u8, i8>();
+   |                 ^ expected one of 8 possible tokens
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let _ = f::<u8, i8>();
+   |              ++
+
+error: labels cannot use keyword names
+  --> $DIR/require-parens-for-chained-comparison.rs:22:15
+   |
+LL |     let _ = f<'_, i8>();
+   |               ^^
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/require-parens-for-chained-comparison.rs:22:17
+   |
+LL |     let _ = f<'_, i8>();
+   |                 ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let _ = f<'_', i8>();
+   |                 +
+
+error: expected one of `.`, `:`, `;`, `?`, `else`, `for`, `loop`, `while`, or an operator, found `,`
+  --> $DIR/require-parens-for-chained-comparison.rs:22:17
+   |
+LL |     let _ = f<'_, i8>();
+   |                 ^ expected one of 9 possible tokens
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let _ = f::<'_, i8>();
+   |              ++
+
+error: labels cannot use keyword names
+  --> $DIR/require-parens-for-chained-comparison.rs:29:7
+   |
+LL |     f<'_>();
+   |       ^^
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/require-parens-for-chained-comparison.rs:29:9
+   |
+LL |     f<'_>();
+   |         ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     f<'_'>();
+   |         +
+
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:29:6
+   |
+LL |     f<'_>();
+   |      ^  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     f::<'_>();
+   |      ++
+
+error: comparison operators cannot be chained
+  --> $DIR/require-parens-for-chained-comparison.rs:36:14
+   |
+LL |     let _ = f<u8>;
+   |              ^  ^
+   |
+   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: aborting due to 12 previous errors
+

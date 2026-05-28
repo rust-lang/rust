@@ -1,0 +1,135 @@
+error[E0308]: mismatched types
+  --> $DIR/or_patterns.rs:27:24
+   |
+LL |     let _: NonNullI8 = 0;
+   |            ---------   ^ expected `(i8) is (i8::MIN..=-1 | 1..)`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected pattern type `(i8) is (i8::MIN..=-1 | 1..)`
+                      found type `{integer}`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-1 | 1..)`
+  --> $DIR/or_patterns.rs:29:24
+   |
+LL |     let _: NonNullI8 = -1;
+   |                        ^^ cannot apply unary operator `-`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-1 | 1..)`
+  --> $DIR/or_patterns.rs:31:24
+   |
+LL |     let _: NonNullI8 = -128;
+   |                        ^^^^ cannot apply unary operator `-`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+  --> $DIR/or_patterns.rs:38:26
+   |
+LL |     let _: NonNegOneI8 = -1;
+   |                          ^^ cannot apply unary operator `-`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+  --> $DIR/or_patterns.rs:40:26
+   |
+LL |     let _: NonNegOneI8 = -2;
+   |                          ^^ cannot apply unary operator `-`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is (i8::MIN..=-2 | 0..)`
+  --> $DIR/or_patterns.rs:42:26
+   |
+LL |     let _: NonNegOneI8 = -128;
+   |                          ^^^^ cannot apply unary operator `-`
+
+error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: 1..=255,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: 1..=255,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/or_patterns.rs:17:1
+   |
+LL | type NonNullI8 = pattern_type!(i8 is ..0 | 1..);
+   | ^^^^^^^^^^^^^^
+
+error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: 0..=254,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: 0..=254,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/or_patterns.rs:21:1
+   |
+LL | type NonNegOneI8 = pattern_type!(i8 is ..-1 | 0..);
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0600.
+For more information about an error, try `rustc --explain E0308`.

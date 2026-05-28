@@ -1,0 +1,31 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-close-object-into-object-2.rs:9:5
+   |
+LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+   |      -- lifetime `'a` defined here
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL - fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+LL + fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
+   |
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL - fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+LL + fn g<'a, T: 'static>(v: Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
+   |
+
+error[E0515]: cannot return value referencing local data `*v`
+  --> $DIR/regions-close-object-into-object-2.rs:9:5
+   |
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ^^^^^^^^^^^---^^^^^^^^^^^^^^^^
+   |     |          |
+   |     |          `*v` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

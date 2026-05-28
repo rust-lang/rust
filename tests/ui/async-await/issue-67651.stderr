@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `From` for type `()`
+  --> $DIR/issue-67651.rs:11:1
+   |
+LL | impl From for () {
+   | ---------------- first implementation here
+...
+LL | impl From for () {
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

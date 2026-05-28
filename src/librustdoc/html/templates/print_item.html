@@ -1,0 +1,33 @@
+<div class="main-heading">
+    {% if !path_components.is_empty() %}
+    <div class="rustdoc-breadcrumbs">
+        {% for (i, component) in path_components.iter().enumerate() %}
+            {% if i != 0 %}
+                ::<wbr>
+            {% endif %}
+            <a href="{{component.path|safe}}index.html">{{component.name}}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <h1>
+        {{typ}}
+        <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
+        {{name|wrapped|safe}}
+        </span>&nbsp;{# #}
+        <button id="copy-path" title="Copy item path to clipboard"> {# #}
+            Copy item path {# #}
+        </button> {# #}
+    </h1> {# #}
+    <rustdoc-toolbar></rustdoc-toolbar> {# #}
+    <span class="sub-heading">
+        {% if !stability_since_raw.is_empty() %}
+        {{ stability_since_raw|safe +}}
+        {% endif %}
+        {% match src_href %}
+            {% when Some with (href) %}
+                {% if !stability_since_raw.is_empty() +%} · {%+ endif %}
+                <a class="src" href="{{href|safe}}">Source</a> {#+ #}
+            {% else %}
+        {% endmatch %}
+    </span> {# #}
+</div> {# #}

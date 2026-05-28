@@ -1,0 +1,34 @@
+error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `unnamed-ID` and (2) retag write of type `u8` on thread `unnamed-ID` at ALLOC
+  --> tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+   |
+LL |     fn write(y: &mut u8, v: u8, barrier: &Arc<Barrier>) {
+   |              ^ (2) just happened here
+   |
+help: and (1) occurred earlier here
+  --> tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+   |
+LL |     let _v = *x;
+   |              ^^
+   = help: retags occur on all (re)borrows and as well as when references are copied or moved
+   = help: retags permit optimizations that insert speculative reads or writes
+   = help: therefore from the perspective of data races, a retag has the same implications as a read or write
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: this is on thread `unnamed-ID`
+   = note: stack backtrace:
+           0: thread_2::write
+               at tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+           1: thread_2
+               at tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+           2: main::{closure#1}
+               at tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+note: the last function in that backtrace got called indirectly due to this code
+  --> tests/fail/tree_borrows/implicit_writes/retag_is_race.rs:LL:CC
+   |
+LL |     let h2 = thread::spawn(move || thread_2(p, b2));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

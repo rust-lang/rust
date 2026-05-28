@@ -1,0 +1,283 @@
+warning: `extern` block uses type `Option<TransparentNoNiche>`, which is not FFI-safe
+  --> $DIR/clashing-extern-fn.rs:483:55
+   |
+LL |             fn hidden_niche_transparent_no_niche() -> Option<TransparentNoNiche>;
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+   = note: `#[warn(improper_ctypes)]` on by default
+
+warning: `extern` block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
+  --> $DIR/clashing-extern-fn.rs:487:46
+   |
+LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usize>>>;
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+warning: `extern` block uses type `Option<(usize) is 0..>`, which is not FFI-safe
+  --> $DIR/clashing-extern-fn.rs:502:54
+   |
+LL |             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+warning: `clash` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:13:13
+   |
+LL |             fn clash(x: u8);
+   |             ---------------- `clash` previously declared here
+...
+LL |             fn clash(x: u64);
+   |             ^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(u8)`
+              found `unsafe extern "C" fn(u64)`
+   = note: `#[warn(clashing_extern_declarations)]` on by default
+
+warning: `extern_link_name` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:51:9
+   |
+LL |     #[link_name = "extern_link_name"]
+   |     --------------------------------- `extern_link_name` previously declared here
+...
+LL |         fn extern_link_name(x: u32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(i16)`
+              found `unsafe extern "C" fn(u32)`
+
+warning: `some_other_extern_link_name` redeclares `some_other_new_name` with a different signature
+  --> $DIR/clashing-extern-fn.rs:54:9
+   |
+LL |     fn some_other_new_name(x: i16);
+   |     ------------------------------- `some_other_new_name` previously declared here
+...
+LL |         #[link_name = "some_other_new_name"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(i16)`
+              found `unsafe extern "C" fn(u32)`
+
+warning: `other_both_names_different` redeclares `link_name_same` with a different signature
+  --> $DIR/clashing-extern-fn.rs:58:9
+   |
+LL |     #[link_name = "link_name_same"]
+   |     ------------------------------- `link_name_same` previously declared here
+...
+LL |         #[link_name = "link_name_same"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(i16)`
+              found `unsafe extern "C" fn(u32)`
+
+warning: `different_mod` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:71:9
+   |
+LL |         fn different_mod(x: u8);
+   |         ------------------------ `different_mod` previously declared here
+...
+LL |         fn different_mod(x: u64);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(u8)`
+              found `unsafe extern "C" fn(u64)`
+
+warning: `variadic_decl` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:81:9
+   |
+LL |     fn variadic_decl(x: u8, ...);
+   |     ----------------------------- `variadic_decl` previously declared here
+...
+LL |         fn variadic_decl(x: u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(u8, ...)`
+              found `unsafe extern "C" fn(u8)`
+
+warning: `weigh_banana` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:141:13
+   |
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             --------------------------------------------- `weigh_banana` previously declared here
+...
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(*const banana::one::Banana) -> u64`
+              found `unsafe extern "C" fn(*const banana::three::Banana) -> u64`
+
+warning: `weigh_banana` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:154:13
+   |
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             --------------------------------------------- `weigh_banana` previously declared here
+...
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(*const banana::one::Banana) -> u64`
+              found `unsafe extern "C" fn(*const banana::four::Banana) -> u64`
+
+warning: `weigh_banana3` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:200:13
+   |
+LL |             fn weigh_banana3(count: *const Banana) -> u64;
+   |             ---------------------------------------------- `weigh_banana3` previously declared here
+...
+LL |             fn weigh_banana3(count: *const Banana) -> u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(*const banana3::one::Banana) -> u64`
+              found `unsafe extern "C" fn(*const banana3::three::Banana) -> u64`
+
+warning: `weigh_banana3` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:214:13
+   |
+LL |             fn weigh_banana3(count: *const Banana) -> u64;
+   |             ---------------------------------------------- `weigh_banana3` previously declared here
+...
+LL |             fn weigh_banana3(count: *const Banana) -> u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(*const banana3::one::Banana) -> u64`
+              found `unsafe extern "C" fn(*const banana3::four::Banana) -> u64`
+
+warning: `draw_point` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:243:13
+   |
+LL |             fn draw_point(p: Point);
+   |             ------------------------ `draw_point` previously declared here
+...
+LL |             fn draw_point(p: Point);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn(sameish_members::a::Point)`
+              found `unsafe extern "C" fn(sameish_members::b::Point)`
+
+warning: `origin` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:270:13
+   |
+LL |             fn origin() -> Point3;
+   |             ---------------------- `origin` previously declared here
+...
+LL |             fn origin() -> Point3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> same_sized_members_clash::a::Point3`
+              found `unsafe extern "C" fn() -> same_sized_members_clash::b::Point3`
+
+warning: `transparent_incorrect` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:293:13
+   |
+LL |             fn transparent_incorrect() -> T;
+   |             -------------------------------- `transparent_incorrect` previously declared here
+...
+LL |             fn transparent_incorrect() -> isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> T`
+              found `unsafe extern "C" fn() -> isize`
+
+warning: `missing_return_type` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:311:13
+   |
+LL |             fn missing_return_type() -> usize;
+   |             ---------------------------------- `missing_return_type` previously declared here
+...
+LL |             fn missing_return_type();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> usize`
+              found `unsafe extern "C" fn()`
+
+warning: `non_zero_usize` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:329:13
+   |
+LL |             fn non_zero_usize() -> core::num::NonZero<usize>;
+   |             ------------------------------------------------- `non_zero_usize` previously declared here
+...
+LL |             fn non_zero_usize() -> usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> NonZero<usize>`
+              found `unsafe extern "C" fn() -> usize`
+
+warning: `non_null_ptr` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:331:13
+   |
+LL |             fn non_null_ptr() -> core::ptr::NonNull<usize>;
+   |             ----------------------------------------------- `non_null_ptr` previously declared here
+...
+LL |             fn non_null_ptr() -> *const usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> NonNull<usize>`
+              found `unsafe extern "C" fn() -> *const usize`
+
+warning: `option_non_zero_usize_incorrect` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:425:13
+   |
+LL |             fn option_non_zero_usize_incorrect() -> usize;
+   |             ---------------------------------------------- `option_non_zero_usize_incorrect` previously declared here
+...
+LL |             fn option_non_zero_usize_incorrect() -> isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> usize`
+              found `unsafe extern "C" fn() -> isize`
+
+warning: `option_non_null_ptr_incorrect` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:427:13
+   |
+LL |             fn option_non_null_ptr_incorrect() -> *const usize;
+   |             --------------------------------------------------- `option_non_null_ptr_incorrect` previously declared here
+...
+LL |             fn option_non_null_ptr_incorrect() -> *const isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> *const usize`
+              found `unsafe extern "C" fn() -> *const isize`
+
+warning: `hidden_niche_transparent_no_niche` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:483:13
+   |
+LL |             fn hidden_niche_transparent_no_niche() -> usize;
+   |             ------------------------------------------------ `hidden_niche_transparent_no_niche` previously declared here
+...
+LL |             fn hidden_niche_transparent_no_niche() -> Option<TransparentNoNiche>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> usize`
+              found `unsafe extern "C" fn() -> Option<TransparentNoNiche>`
+
+warning: `hidden_niche_unsafe_cell` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:487:13
+   |
+LL |             fn hidden_niche_unsafe_cell() -> usize;
+   |             --------------------------------------- `hidden_niche_unsafe_cell` previously declared here
+...
+LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usize>>>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> usize`
+              found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZero<usize>>>`
+
+warning: `pt_non_null_ptr` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:516:13
+   |
+LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
+   |             ---------------------------------------------------- `pt_non_null_ptr` previously declared here
+...
+LL |             fn pt_non_null_ptr() -> *const ();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
+              found `unsafe extern "C" fn() -> *const ()`
+
+warning: 24 warnings emitted
+

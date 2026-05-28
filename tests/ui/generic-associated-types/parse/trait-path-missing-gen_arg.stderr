@@ -1,0 +1,14 @@
+error: expected one of `>`, a const expression, lifetime, or type, found `:`
+  --> $DIR/trait-path-missing-gen_arg.rs:6:30
+   |
+LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
+   |                              ^ expected one of `>`, a const expression, lifetime, or type
+
+error: expected one of `>`, a const expression, lifetime, or type, found `=`
+  --> $DIR/trait-path-missing-gen_arg.rs:11:30
+   |
+LL |   fn f1<'a>(arg : Box<dyn X< = 32 >>) {}
+   |                              ^ expected one of `>`, a const expression, lifetime, or type
+
+error: aborting due to 2 previous errors
+

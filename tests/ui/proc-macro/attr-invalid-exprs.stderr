@@ -1,0 +1,32 @@
+error: expected expression, found end of macro arguments
+  --> $DIR/attr-invalid-exprs.rs:13:13
+   |
+LL |     let _ = #[no_output] "Hello, world!";
+   |             ^^^^^^^^^^^^
+
+error: macro expansion ignores `,` and any tokens following
+  --> $DIR/attr-invalid-exprs.rs:16:13
+   |
+LL |     let _ = #[duplicate] "Hello, world!";
+   |             ^^^^^^^^^^^^ caused by the macro expansion here
+   |
+   = note: the usage of `duplicate!` is likely invalid in expression context
+help: you might be missing a semicolon here
+   |
+LL |     let _ = #[duplicate]; "Hello, world!";
+   |                         +
+
+error: macro expansion ignores `,` and any tokens following
+  --> $DIR/attr-invalid-exprs.rs:25:9
+   |
+LL |         #[duplicate]
+   |         ^^^^^^^^^^^^ caused by the macro expansion here
+   |
+   = note: the usage of `duplicate!` is likely invalid in expression context
+help: you might be missing a semicolon here
+   |
+LL |         #[duplicate];
+   |                     +
+
+error: aborting due to 3 previous errors
+

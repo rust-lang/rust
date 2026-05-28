@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `&'a mut T: CoerceShared<&'a U>` is not satisfied
+  --> $DIR/coerce-shared-wrong-generic.rs:18:1
+   |
+LL | impl<'a, T, U> CoerceShared<GenericRef<'a, T, U>> for GenericMut<'a, T, U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `CoerceShared<&'a U>` is not implemented for `&'a mut T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

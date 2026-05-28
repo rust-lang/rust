@@ -1,0 +1,25 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/region-error-ice-109072.rs:8:9
+   |
+LL | impl Lt<'missing> for () {
+   |         ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | impl<'missing> Lt<'missing> for () {
+   |     ++++++++++
+
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/region-error-ice-109072.rs:9:15
+   |
+LL |     type T = &'missing ();
+   |               ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | impl<'missing> Lt<'missing> for () {
+   |     ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

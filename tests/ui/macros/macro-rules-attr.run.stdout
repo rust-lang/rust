@@ -1,0 +1,15 @@
+exported_attr: args="", body="struct S;"
+exported_attr: args="arguments, key = \"value\"", body="fn func(_arg: u32) {}"
+exported_attr: args="1", body="#[self::exported_attr(2)] struct Twice;"
+exported_attr!("")
+exported_attr!("invoked, arguments")
+exported_attr: args="", body="struct S;"
+exported_attr: args="arguments, key = \"value\"", body="fn func(_arg: u32) {}"
+exported_attr: args="1", body="#[exported_attr(2)] struct Twice;"
+exported_attr!("")
+exported_attr!("invoked, arguments")
+local_attr: args="", body="struct S;"
+local_attr: args="arguments, key = \"value\"", body="fn func(_arg: u32) {}"
+local_attr: args="1", body="#[local_attr(2)] struct Twice;"
+local_attr!("")
+local_attr!("invoked, arguments")

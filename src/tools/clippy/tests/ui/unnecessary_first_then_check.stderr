@@ -1,0 +1,47 @@
+error: unnecessary use of `first().is_some()` to check if slice is not empty
+  --> tests/ui/unnecessary_first_then_check.rs:6:19
+   |
+LL |     let _: bool = s.first().is_some();
+   |                   ^^^^^^^^^^^^^^^^^^^ help: replace this with: `!s.is_empty()`
+   |
+   = note: `-D clippy::unnecessary-first-then-check` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_first_then_check)]`
+
+error: unnecessary use of `first().is_none()` to check if slice is empty
+  --> tests/ui/unnecessary_first_then_check.rs:8:21
+   |
+LL |     let _: bool = s.first().is_none();
+   |                     ^^^^^^^^^^^^^^^^^ help: replace this with: `is_empty()`
+
+error: unnecessary use of `first().is_some()` to check if slice is not empty
+  --> tests/ui/unnecessary_first_then_check.rs:12:19
+   |
+LL |     let _: bool = v.first().is_some();
+   |                   ^^^^^^^^^^^^^^^^^^^ help: replace this with: `!v.is_empty()`
+
+error: unnecessary use of `first().is_some()` to check if slice is not empty
+  --> tests/ui/unnecessary_first_then_check.rs:16:19
+   |
+LL |     let _: bool = n[0].first().is_some();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `!n[0].is_empty()`
+
+error: unnecessary use of `first().is_none()` to check if slice is empty
+  --> tests/ui/unnecessary_first_then_check.rs:18:24
+   |
+LL |     let _: bool = n[0].first().is_none();
+   |                        ^^^^^^^^^^^^^^^^^ help: replace this with: `is_empty()`
+
+error: unnecessary use of `first().is_some()` to check if slice is not empty
+  --> tests/ui/unnecessary_first_then_check.rs:25:19
+   |
+LL |     let _: bool = f[0].bar.first().is_some();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this with: `!f[0].bar.is_empty()`
+
+error: unnecessary use of `first().is_none()` to check if slice is empty
+  --> tests/ui/unnecessary_first_then_check.rs:27:28
+   |
+LL |     let _: bool = f[0].bar.first().is_none();
+   |                            ^^^^^^^^^^^^^^^^^ help: replace this with: `is_empty()`
+
+error: aborting due to 7 previous errors
+

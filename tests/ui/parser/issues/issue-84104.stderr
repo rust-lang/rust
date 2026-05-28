@@ -1,0 +1,10 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-84104.rs:2:13
+   |
+LL | #[i=i::<ښܖ<
+   |  -         ^
+   |  |
+   |  unclosed delimiter
+
+error: aborting due to 1 previous error
+

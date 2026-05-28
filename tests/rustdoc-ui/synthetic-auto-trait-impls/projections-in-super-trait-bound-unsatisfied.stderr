@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `C: Bar<5>` is not satisfied
+  --> $DIR/projections-in-super-trait-bound-unsatisfied.rs:16:1
+   |
+LL | pub struct Structure<C: Tec> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
+   |
+help: consider further restricting type parameter `C` with trait `Bar`
+   |
+LL | pub struct Structure<C: Tec + Bar<5>> {
+   |                             ++++++++
+
+error[E0277]: the trait bound `C: Bar<5>` is not satisfied
+  --> $DIR/projections-in-super-trait-bound-unsatisfied.rs:17:13
+   |
+LL |     _field: C::BarType,
+   |             ^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
+   |
+help: consider further restricting type parameter `C` with trait `Bar`
+   |
+LL | pub struct Structure<C: Tec + Bar<5>> {
+   |                             ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

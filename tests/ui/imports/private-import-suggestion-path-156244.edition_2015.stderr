@@ -1,0 +1,81 @@
+error[E0603]: struct import `One` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:17:12
+   |
+LL |     use b::One;
+   |            ^^^ private struct import
+   |
+note: the struct import `One` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:12:20
+   |
+LL |     use crate::a::{One, Two};
+   |                    ^^^
+note: ...and refers to the struct `One` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:7:5
+   |
+LL |     pub struct One;
+   |     ^^^^^^^^^^^^^^^ you could import this directly
+help: import `One` directly
+   |
+LL -     use b::One;
+LL +     use crate::a::One;
+   |
+
+error[E0603]: struct import `One` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:35:20
+   |
+LL |     use crate::b::{One, Two};
+   |                    ^^^ private struct import
+   |
+note: the struct import `One` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:12:20
+   |
+LL |     use crate::a::{One, Two};
+   |                    ^^^
+note: ...and refers to the struct `One` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:7:5
+   |
+LL |     pub struct One;
+   |     ^^^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `Two` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:35:25
+   |
+LL |     use crate::b::{One, Two};
+   |                         ^^^ private struct import
+   |
+note: the struct import `Two` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:12:25
+   |
+LL |     use crate::a::{One, Two};
+   |                         ^^^
+note: ...and refers to the struct `Two` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:8:5
+   |
+LL |     pub struct Two;
+   |     ^^^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: module import `inner` is private
+  --> $DIR/private-import-suggestion-path-156244.rs:38:24
+   |
+LL |     use crate::rename::inner::Item as Item1;
+   |                        ^^^^^ private module import
+   |
+note: the module import `inner` is defined here...
+  --> $DIR/private-import-suggestion-path-156244.rs:31:9
+   |
+LL |     use crate::outer::actual as inner;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the module `actual` which is defined here
+  --> $DIR/private-import-suggestion-path-156244.rs:25:5
+   |
+LL |     pub mod actual {
+   |     ^^^^^^^^^^^^^^ you could import this directly
+help: consider importing this struct instead
+   |
+LL -     use crate::rename::inner::Item as Item1;
+LL +     use outer::actual::Item as Item1;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

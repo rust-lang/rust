@@ -1,0 +1,77 @@
+error: `#[derive(From)]` used on a struct with no fields
+  --> $DIR/deriving-from-wrong-target.rs:8:10
+   |
+LL | #[derive(From)]
+   |          ^^^^
+LL |
+LL | struct S1;
+   |        ^^
+   |
+   = note: `#[derive(From)]` can only be used on structs with exactly one field
+
+error: `#[derive(From)]` used on a struct with no fields
+  --> $DIR/deriving-from-wrong-target.rs:12:10
+   |
+LL | #[derive(From)]
+   |          ^^^^
+LL |
+LL | struct S2 {}
+   |        ^^
+   |
+   = note: `#[derive(From)]` can only be used on structs with exactly one field
+
+error: `#[derive(From)]` used on a struct with multiple fields
+  --> $DIR/deriving-from-wrong-target.rs:16:10
+   |
+LL | #[derive(From)]
+   |          ^^^^
+LL |
+LL | struct S3(u32, bool);
+   |        ^^
+   |
+   = note: `#[derive(From)]` can only be used on structs with exactly one field
+
+error: `#[derive(From)]` used on a struct with multiple fields
+  --> $DIR/deriving-from-wrong-target.rs:20:10
+   |
+LL | #[derive(From)]
+   |          ^^^^
+LL |
+LL | struct S4 {
+   |        ^^
+   |
+   = note: `#[derive(From)]` can only be used on structs with exactly one field
+
+error: `#[derive(From)]` used on an enum
+  --> $DIR/deriving-from-wrong-target.rs:27:10
+   |
+LL | #[derive(From)]
+   |          ^^^^
+LL |
+LL | enum E1 {}
+   |      ^^
+   |
+   = note: `#[derive(From)]` can only be used on structs with exactly one field
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/deriving-from-wrong-target.rs:33:11
+   |
+LL | struct SUnsizedField<T: ?Sized> {
+   |                      - this type parameter needs to be `Sized`
+LL |     last: T,
+   |           ^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - struct SUnsizedField<T: ?Sized> {
+LL + struct SUnsizedField<T> {
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     last: &T,
+   |           +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,50 @@
+error: doc comment uses two spaces for a hard line break
+  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:8:43
+   |
+LL | //! Should warn on double space linebreaks  
+   |                                           ^^
+   |
+   = help: replace this double space with a backslash: `\`
+   = note: `-D clippy::doc-comment-double-space-linebreaks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_comment_double_space_linebreaks)]`
+
+error: doc comment uses two spaces for a hard line break
+  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:37:51
+   |
+LL | /// Should warn when doc comment uses double space  
+   |                                                   ^^
+LL | /// as a line-break, even when there are multiple  
+   |                                                  ^^
+   |
+   = help: replace this double space with a backslash: `\`
+
+error: doc comment uses two spaces for a hard line break
+  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:47:12
+   |
+LL | /// 🌹 are 🟥  
+   |              ^^
+LL | /// 🌷 are 🟦  
+   |              ^^
+LL | /// 📎 is 😎  
+   |             ^^
+LL | /// and so are 🫵  
+   |                  ^^
+   |
+   = help: replace this double space with a backslash: `\`
+
+error: doc comment uses two spaces for a hard line break
+  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:90:16
+   |
+LL | /// here we mix  
+   |                ^^
+LL | /// double spaces\
+LL | /// and also  
+   |             ^^
+LL | /// adding backslash\
+LL | /// to some of them  
+   |                    ^^
+   |
+   = help: replace this double space with a backslash: `\`
+
+error: aborting due to 4 previous errors
+

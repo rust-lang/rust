@@ -1,0 +1,14 @@
+error: parameter defaults are not supported
+  --> $DIR/param-default.rs:1:15
+   |
+LL | fn foo(x: i32 = 1) {}
+   |               ^^^
+
+error: parameter defaults are not supported
+  --> $DIR/param-default.rs:3:19
+   |
+LL | type Foo = fn(i32 = 0);
+   |                   ^^^
+
+error: aborting due to 2 previous errors
+

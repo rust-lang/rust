@@ -1,0 +1,36 @@
+   LL|       |#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+   LL|       |
+   LL|       |use std::ops::{Coroutine, CoroutineState};
+   LL|       |use std::pin::Pin;
+   LL|       |
+   LL|       |// The following implementation of a function called from a `yield` statement
+   LL|       |// (apparently requiring the Result and the `String` type or constructor)
+   LL|       |// creates conditions where the `coroutine::StateTransform` MIR transform will
+   LL|       |// drop all `Counter` `Coverage` statements from a MIR. `simplify.rs` has logic
+   LL|       |// to handle this condition, and still report dead block coverage.
+   LL|      1|fn get_u32(val: bool) -> Result<u32, String> {
+   LL|      1|    if val {
+   LL|      1|        Ok(1) //
+   LL|       |    } else {
+   LL|      0|        Err(String::from("some error")) //
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|      1|    let mut coroutine = #[coroutine]
+   LL|      1|    || {
+   LL|      1|        yield get_u32(is_true);
+   LL|      1|        return "foo";
+   LL|      1|    };
+   LL|       |
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Yielded(Ok(1)) => {}
+   LL|      0|        _ => panic!("unexpected return from resume"),
+   LL|       |    }
+   LL|      1|    match Pin::new(&mut coroutine).resume(()) {
+   LL|      1|        CoroutineState::Complete("foo") => {}
+   LL|      0|        _ => panic!("unexpected return from resume"),
+   LL|       |    }
+   LL|      1|}
+

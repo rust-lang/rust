@@ -1,0 +1,130 @@
+// This test ensures that the elements in ".search-form" have the expected display.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
+show-text: true
+
+define-function: (
+    "check-search-colors",
+    [
+        theme, border, background, search_input_color, search_input_border_focus,
+        menu_button_a_color, menu_button_a_border_hover, menu_a_color,
+    ],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (
+            ".search-input",
+            {
+                "border-color": |border|,
+                "background-color": |background|,
+                "color": |search_input_color|,
+            },
+        )
+        // Focus on search input.
+        focus: ".search-input"
+        assert-css: (
+            ".search-input",
+            {
+                "border-color": |search_input_border_focus|,
+                "background-color": |background|,
+                "color": |search_input_color|,
+            },
+        )
+        assert-css: (
+            "rustdoc-toolbar .help-menu > a",
+            {
+                "color": |menu_button_a_color|,
+                "border-color": "transparent",
+                "background-color": "transparent",
+            },
+        )
+        // Hover help button.
+        move-cursor-to: "rustdoc-toolbar .help-menu"
+        assert-css: (
+            "rustdoc-toolbar .help-menu > a",
+            {
+                "color": |menu_button_a_color|,
+                "border-color": |menu_button_a_border_hover|,
+                "background-color": "transparent",
+            },
+        )
+        // Link color inside
+        click: "rustdoc-toolbar .help-menu"
+        assert-css: (
+            "rustdoc-toolbar #help a",
+            {
+                "color": |menu_a_color|,
+            },
+        )
+        assert-css: (
+            "rustdoc-toolbar .settings-menu > a",
+            {
+                "color": |menu_button_a_color|,
+                "border-color": "transparent",
+                "background-color": "transparent",
+            },
+        )
+        // Hover settings menu.
+        move-cursor-to: "rustdoc-toolbar .settings-menu"
+        assert-css: (
+            "rustdoc-toolbar .settings-menu:hover > a",
+            {
+                "color": |menu_button_a_color|,
+                "border-color": |menu_button_a_border_hover|,
+                "background-color": "transparent",
+            },
+        )
+    },
+)
+
+call-function: (
+    "check-search-colors",
+    {
+        "theme": "ayu",
+        "border": "#5c6773",
+        "background": "#141920",
+        "search_input_color": "#fff",
+        "search_input_border_focus": "#5c6773",
+        "menu_button_a_color": "#c5c5c5",
+        "menu_button_a_border_hover": "#e0e0e0",
+        "menu_a_color": "#39afd7",
+    }
+)
+call-function: (
+    "check-search-colors",
+    {
+        "theme": "dark",
+        "border": "#e0e0e0",
+        "background": "#f0f0f0",
+        "search_input_color": "#111",
+        "search_input_border_focus": "#008dfd",
+        "menu_button_a_color": "#ddd",
+        "menu_button_a_border_hover": "#ffb900",
+        "menu_a_color": "#d2991d",
+    }
+)
+call-function: (
+    "check-search-colors",
+    {
+        "theme": "light",
+        "border": "#e0e0e0",
+        "background": "#fff",
+        "search_input_color": "#000",
+        "search_input_border_focus": "#66afe9",
+        "menu_button_a_color": "#000",
+        "menu_button_a_border_hover": "#717171",
+        "menu_a_color": "#3873ad",
+    }
+)
+
+// Check that search input correctly decodes form encoding.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a+b"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
+assert-property: (".search-input", { "value": "a b" })
+// Check that literal + is not treated as space.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a%2Bb"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+wait-for-false: "#search-tabs .count.loading"
+assert-property: (".search-input", { "value": "a+b" })

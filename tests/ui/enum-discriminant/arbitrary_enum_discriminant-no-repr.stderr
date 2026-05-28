@@ -1,0 +1,23 @@
+error[E0732]: `#[repr(inttype)]` must be specified for enums with explicit discriminants and non-unit variants
+  --> $DIR/arbitrary_enum_discriminant-no-repr.rs:5:1
+   |
+LL | enum Enum {
+   | ^^^^^^^^^
+LL |
+LL |     Unit = 1,
+   |            - explicit discriminant specified here
+LL |     Tuple(),
+   |     ----- non-unit discriminant declared here
+
+error[E0732]: `#[repr(inttype)]` must be specified for enums with explicit discriminants and non-unit variants
+  --> $DIR/arbitrary_enum_discriminant-no-repr.rs:14:1
+   |
+LL | enum Enum2 {
+   | ^^^^^^^^^^
+LL |
+LL |     Tuple() = 2,
+   |               - explicit discriminant on non-unit variant specified here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0732`.

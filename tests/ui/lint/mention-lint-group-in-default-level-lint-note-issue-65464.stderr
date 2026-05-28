@@ -1,0 +1,23 @@
+warning: variable `WrongCase` should have a snake case name
+  --> $DIR/mention-lint-group-in-default-level-lint-note-issue-65464.rs:12:9
+   |
+LL |     let WrongCase = 1;
+   |         ^^^^^^^^^ help: convert the identifier to snake case: `wrong_case`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `WrongCase` should have a snake case name
+  --> $DIR/mention-lint-group-in-default-level-lint-note-issue-65464.rs:19:9
+   |
+LL |     let WrongCase = 2;
+   |         ^^^^^^^^^ help: convert the identifier to snake case: `wrong_case`
+   |
+note: the lint level is defined here
+  --> $DIR/mention-lint-group-in-default-level-lint-note-issue-65464.rs:18:12
+   |
+LL |     #[warn(nonstandard_style)]
+   |            ^^^^^^^^^^^^^^^^^
+   = note: `#[warn(non_snake_case)]` implied by `#[warn(nonstandard_style)]`
+
+warning: 2 warnings emitted
+

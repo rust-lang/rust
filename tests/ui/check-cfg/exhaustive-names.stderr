@@ -1,0 +1,12 @@
+warning: unexpected `cfg` condition name: `unknown_key`
+  --> $DIR/exhaustive-names.rs:7:7
+   |
+LL | #[cfg(unknown_key = "value")]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(unknown_key, values("value"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

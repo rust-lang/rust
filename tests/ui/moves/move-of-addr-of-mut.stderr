@@ -1,0 +1,17 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/move-of-addr-of-mut.rs:8:5
+   |
+LL |     let mut x: S;
+   |         ----- binding declared here but left uninitialized
+LL |     std::ptr::addr_of_mut!(x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `x` used here but it isn't initialized
+   |
+   = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let mut x: S = /* value */;
+   |                  +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

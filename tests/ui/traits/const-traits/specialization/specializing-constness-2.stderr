@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: [const] A` is not satisfied
+  --> $DIR/specializing-constness-2.rs:26:6
+   |
+LL |     <T as A>::a();
+   |      ^
+   |
+help: make the `impl` of trait `A` `const`
+   |
+LL | impl<T: Default> const A for T {
+   |                  +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

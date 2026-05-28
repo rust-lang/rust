@@ -1,0 +1,24 @@
+Function name: if_else::main
+Raw bytes (68): 0x[01, 01, 02, 01, 05, 01, 09, 0c, 01, 04, 01, 00, 0a, 01, 04, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 02, 09, 00, 16, 01, 00, 19, 00, 1a, 01, 02, 09, 00, 10, 05, 01, 05, 05, 06, 02, 08, 09, 02, 10, 01, 06, 09, 00, 10, 09, 01, 05, 05, 06, 06, 07, 05, 05, 06, 01, 06, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/if_else.rs
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+Number of file 0 mappings: 12
+- Code(Counter(0)) at (prev + 4, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 4, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 16)
+- Code(Counter(1)) at (prev + 1, 5) to (start + 5, 6)
+- Code(Expression(0, Sub)) at (prev + 8, 9) to (start + 2, 16)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 6, 9) to (start + 0, 16)
+- Code(Counter(2)) at (prev + 1, 5) to (start + 5, 6)
+- Code(Expression(1, Sub)) at (prev + 7, 5) to (start + 5, 6)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 2)
+Highest counter ID seen: c2
+

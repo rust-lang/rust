@@ -1,0 +1,679 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:11:22
+   |
+LL |     fn bar(self, _: &'a Trait) {}
+   |                      ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn bar<'a>(self, _: &'a Trait) {}
+   |           ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> IceCream {
+   |     ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:21:17
+   |
+LL |     fn cat() -> &Trait {
+   |                 ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     fn cat() -> &'static Trait {
+   |                  +++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:27:21
+   |
+LL |     fn dog<'a>() -> &Trait {
+   |                     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'a` lifetime
+   |
+LL |     fn dog<'a>() -> &'a Trait {
+   |                      ++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:33:21
+   |
+LL |     fn kitten() -> &'a Trait {
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn kitten<'a>() -> &'a Trait {
+   |              ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> IceCream {
+   |     ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:44:20
+   |
+LL |     fn parrot() -> &mut Trait {
+   |                    ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     fn parrot() -> &'static mut Trait {
+   |                     +++++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:55:16
+   |
+LL |     fn bar(_: &'a Trait);
+   |                ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn bar<'a>(_: &'a Trait);
+   |           ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Sing<'a> {
+   |           ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:65:17
+   |
+LL |     fn cat() -> &Trait;
+   |                 ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     fn cat() -> &'static Trait;
+   |                  +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL -     fn cat() -> &Trait;
+LL +     fn cat() -> Trait;
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:69:21
+   |
+LL |     fn dog<'a>() -> &Trait {
+   |                     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'a` lifetime
+   |
+LL |     fn dog<'a>() -> &'a Trait {
+   |                      ++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:75:21
+   |
+LL |     fn kitten() -> &'a Trait {
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn kitten<'a>() -> &'a Trait {
+   |              ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Sing<'a> {
+   |           ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:86:20
+   |
+LL |     fn parrot() -> &mut Trait {
+   |                    ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL |     fn parrot() -> &'static mut Trait {
+   |                     +++++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:96:12
+   |
+LL | fn bar(_: &'a Trait) {}
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn bar<'a>(_: &'a Trait) {}
+   |       ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:110:13
+   |
+LL | fn cat() -> &Trait {
+   |             ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn cat() -> &'static Trait {
+   |              +++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:116:17
+   |
+LL | fn dog<'a>() -> &Trait {
+   |                 ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'a` lifetime
+   |
+LL | fn dog<'a>() -> &'a Trait {
+   |                  ++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:122:17
+   |
+LL | fn kitten() -> &'a Trait {
+   |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn kitten<'a>() -> &'a Trait {
+   |          ++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:133:16
+   |
+LL | fn parrot() -> &mut Trait {
+   |                ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn parrot() -> &'static mut Trait {
+   |                 +++++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:93:12
+   |
+LL | fn foo(_: &Trait) {}
+   |            ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL - fn foo(_: &Trait) {}
+LL + fn foo<T: Trait>(_: &T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn foo(_: &impl Trait) {}
+   |            ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn foo(_: &dyn Trait) {}
+   |            +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:96:15
+   |
+LL | fn bar(_: &'a Trait) {}
+   |               ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL - fn bar(_: &'a Trait) {}
+LL + fn bar<T: Trait>(_: &'a T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn bar(_: &'a impl Trait) {}
+   |               ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn bar(_: &'a dyn Trait) {}
+   |               +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:100:18
+   |
+LL | fn alice<'a>(_: &Trait) {}
+   |                  ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL - fn alice<'a>(_: &Trait) {}
+LL + fn alice<'a, T: Trait>(_: &T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn alice<'a>(_: &impl Trait) {}
+   |                  ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn alice<'a>(_: &dyn Trait) {}
+   |                  +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:103:19
+   |
+LL | fn bob<'a>(_: &'a Trait) {}
+   |                   ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL - fn bob<'a>(_: &'a Trait) {}
+LL + fn bob<'a, T: Trait>(_: &'a T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn bob<'a>(_: &'a impl Trait) {}
+   |                   ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn bob<'a>(_: &'a dyn Trait) {}
+   |                   +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:110:14
+   |
+LL | fn cat() -> &Trait {
+   |              ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn cat() -> &impl Trait {
+   |              ++++
+help: alternatively, you can return an owned trait object
+   |
+LL - fn cat() -> &Trait {
+LL + fn cat() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:116:18
+   |
+LL | fn dog<'a>() -> &Trait {
+   |                  ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn dog<'a>() -> &impl Trait {
+   |                  ++++
+help: alternatively, you can return an owned trait object
+   |
+LL - fn dog<'a>() -> &Trait {
+LL + fn dog<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:122:20
+   |
+LL | fn kitten() -> &'a Trait {
+   |                    ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn kitten() -> &'a impl Trait {
+   |                    ++++
+help: alternatively, you can return an owned trait object
+   |
+LL - fn kitten() -> &'a Trait {
+LL + fn kitten() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:128:23
+   |
+LL | fn puppy<'a>() -> &'a Trait {
+   |                       ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn puppy<'a>() -> &'a impl Trait {
+   |                       ++++
+help: alternatively, you can return an owned trait object
+   |
+LL - fn puppy<'a>() -> &'a Trait {
+LL + fn puppy<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:133:21
+   |
+LL | fn parrot() -> &mut Trait {
+   |                     ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn parrot() -> &mut impl Trait {
+   |                     ++++
+help: alternatively, you can return an owned trait object
+   |
+LL - fn parrot() -> &mut Trait {
+LL + fn parrot() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:8:16
+   |
+LL |     fn foo(_: &Trait) {}
+   |                ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn foo(_: &Trait) {}
+LL +     fn foo<T: Trait>(_: &T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn foo(_: &impl Trait) {}
+   |                ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn foo(_: &dyn Trait) {}
+   |                +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:11:25
+   |
+LL |     fn bar(self, _: &'a Trait) {}
+   |                         ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn bar(self, _: &'a Trait) {}
+LL +     fn bar<T: Trait>(self, _: &'a T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bar(self, _: &'a impl Trait) {}
+   |                         ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn bar(self, _: &'a dyn Trait) {}
+   |                         +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:15:29
+   |
+LL |     fn alice<'a>(&self, _: &Trait) {}
+   |                             ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn alice<'a>(&self, _: &Trait) {}
+LL +     fn alice<'a, T: Trait>(&self, _: &T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn alice<'a>(&self, _: &impl Trait) {}
+   |                             ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn alice<'a>(&self, _: &dyn Trait) {}
+   |                             +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:18:23
+   |
+LL |     fn bob<'a>(_: &'a Trait) {}
+   |                       ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn bob<'a>(_: &'a Trait) {}
+LL +     fn bob<'a, T: Trait>(_: &'a T) {}
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bob<'a>(_: &'a impl Trait) {}
+   |                       ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn bob<'a>(_: &'a dyn Trait) {}
+   |                       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:21:18
+   |
+LL |     fn cat() -> &Trait {
+   |                  ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn cat() -> &impl Trait {
+   |                  ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn cat() -> &Trait {
+LL +     fn cat() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:27:22
+   |
+LL |     fn dog<'a>() -> &Trait {
+   |                      ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn dog<'a>() -> &impl Trait {
+   |                      ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn dog<'a>() -> &Trait {
+LL +     fn dog<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:33:24
+   |
+LL |     fn kitten() -> &'a Trait {
+   |                        ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn kitten() -> &'a impl Trait {
+   |                        ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn kitten() -> &'a Trait {
+LL +     fn kitten() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:39:27
+   |
+LL |     fn puppy<'a>() -> &'a Trait {
+   |                           ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn puppy<'a>() -> &'a impl Trait {
+   |                           ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn puppy<'a>() -> &'a Trait {
+LL +     fn puppy<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:44:25
+   |
+LL |     fn parrot() -> &mut Trait {
+   |                         ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn parrot() -> &mut impl Trait {
+   |                         ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn parrot() -> &mut Trait {
+LL +     fn parrot() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:52:16
+   |
+LL |     fn foo(_: &Trait);
+   |                ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn foo(_: &Trait);
+LL +     fn foo<T: Trait>(_: &T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn foo(_: &impl Trait);
+   |                ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn foo(_: &dyn Trait);
+   |                +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:55:19
+   |
+LL |     fn bar(_: &'a Trait);
+   |                   ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn bar(_: &'a Trait);
+LL +     fn bar<T: Trait>(_: &'a T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bar(_: &'a impl Trait);
+   |                   ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn bar(_: &'a dyn Trait);
+   |                   +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:59:22
+   |
+LL |     fn alice<'a>(_: &Trait);
+   |                      ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn alice<'a>(_: &Trait);
+LL +     fn alice<'a, T: Trait>(_: &T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn alice<'a>(_: &impl Trait);
+   |                      ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn alice<'a>(_: &dyn Trait);
+   |                      +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:62:23
+   |
+LL |     fn bob<'a>(_: &'a Trait);
+   |                       ^^^^^
+   |
+help: use a new generic type parameter, constrained by `Trait`
+   |
+LL -     fn bob<'a>(_: &'a Trait);
+LL +     fn bob<'a, T: Trait>(_: &'a T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bob<'a>(_: &'a impl Trait);
+   |                       ++++
+help: alternatively, use a trait object to accept any type that implements `Trait`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn bob<'a>(_: &'a dyn Trait);
+   |                       +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:65:18
+   |
+LL |     fn cat() -> &Trait;
+   |                  ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn cat() -> &impl Trait;
+   |                  ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn cat() -> &Trait;
+LL +     fn cat() -> Box<dyn Trait>;
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:69:22
+   |
+LL |     fn dog<'a>() -> &Trait {
+   |                      ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn dog<'a>() -> &impl Trait {
+   |                      ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn dog<'a>() -> &Trait {
+LL +     fn dog<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:75:24
+   |
+LL |     fn kitten() -> &'a Trait {
+   |                        ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn kitten() -> &'a impl Trait {
+   |                        ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn kitten() -> &'a Trait {
+LL +     fn kitten() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:81:27
+   |
+LL |     fn puppy<'a>() -> &'a Trait {
+   |                           ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn puppy<'a>() -> &'a impl Trait {
+   |                           ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn puppy<'a>() -> &'a Trait {
+LL +     fn puppy<'a>() -> Box<dyn Trait> {
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/reference-to-bare-trait-in-fn-inputs-and-outputs-issue-125139.rs:86:25
+   |
+LL |     fn parrot() -> &mut Trait {
+   |                         ^^^^^
+   |
+help: use `impl Trait` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn parrot() -> &mut impl Trait {
+   |                         ++++
+help: alternatively, you can return an owned trait object
+   |
+LL -     fn parrot() -> &mut Trait {
+LL +     fn parrot() -> Box<dyn Trait> {
+   |
+
+error: aborting due to 42 previous errors
+
+Some errors have detailed explanations: E0106, E0261, E0782.
+For more information about an error, try `rustc --explain E0106`.

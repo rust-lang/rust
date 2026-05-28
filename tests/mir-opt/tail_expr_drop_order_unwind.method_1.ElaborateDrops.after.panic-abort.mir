@@ -1,0 +1,157 @@
+// MIR for `method_1` after ElaborateDrops
+
+fn method_1(_1: Guard) -> () {
+    debug g => _1;
+    let mut _0: ();
+    let mut _2: std::result::Result<OtherDrop, ()>;
+    let mut _3: &Guard;
+    let _4: &Guard;
+    let _5: Guard;
+    let mut _6: &Guard;
+    let mut _7: isize;
+    let _8: OtherDrop;
+    let _9: ();
+    let mut _10: bool;
+    let mut _11: isize;
+    let mut _12: isize;
+    let mut _13: isize;
+    scope 1 {
+        debug other_drop => _8;
+    }
+    scope 2 {
+        debug err => _9;
+    }
+
+    bb0: {
+        _10 = const false;
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = &_1;
+        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb13];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        _4 = &_5;
+        _3 = &(*_4);
+        _2 = method_2(move _3) -> [return: bb2, unwind: bb12];
+    }
+
+    bb2: {
+        _10 = const true;
+        StorageDead(_3);
+        PlaceMention(_2);
+        _7 = discriminant(_2);
+        switchInt(move _7) -> [0: bb5, 1: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        unreachable;
+    }
+
+    bb4: {
+        StorageLive(_9);
+        _9 = copy ((_2 as Err).0: ());
+        _0 = const ();
+        StorageDead(_9);
+        goto -> bb7;
+    }
+
+    bb5: {
+        StorageLive(_8);
+        _8 = move ((_2 as Ok).0: OtherDrop);
+        _0 = const ();
+        drop(_8) -> [return: bb6, unwind: bb11];
+    }
+
+    bb6: {
+        StorageDead(_8);
+        goto -> bb7;
+    }
+
+    bb7: {
+        goto -> bb21;
+    }
+
+    bb8: {
+        drop(_5) -> [return: bb9, unwind: bb13];
+    }
+
+    bb9: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _10 = const false;
+        StorageDead(_2);
+        drop(_1) -> [return: bb10, unwind: bb14];
+    }
+
+    bb10: {
+        return;
+    }
+
+    bb11 (cleanup): {
+        goto -> bb25;
+    }
+
+    bb12 (cleanup): {
+        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb13 (cleanup): {
+        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
+    }
+
+    bb14 (cleanup): {
+        resume;
+    }
+
+    bb15: {
+        goto -> bb8;
+    }
+
+    bb16 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb17 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb18: {
+        goto -> bb15;
+    }
+
+    bb19: {
+        goto -> bb15;
+    }
+
+    bb20 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb21: {
+        _11 = discriminant(_2);
+        switchInt(move _11) -> [0: bb18, otherwise: bb19];
+    }
+
+    bb22 (cleanup): {
+        _12 = discriminant(_2);
+        switchInt(move _12) -> [0: bb16, otherwise: bb20];
+    }
+
+    bb23 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb24 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb25 (cleanup): {
+        _13 = discriminant(_2);
+        switchInt(move _13) -> [0: bb23, otherwise: bb24];
+    }
+}

@@ -1,0 +1,29 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:9:5
+   |
+LL | impl<'a, T> Trait<'a, T> for usize {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     type Out = &'a fn(T);
+   |     ^^^^^^^^ ...so that the reference type `&'a fn(T)` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a, T> for usize {
+   |           ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:19:5
+   |
+LL | impl<'a, T> Trait<'a, T> for u32 {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     type Out = &'a dyn Baz<T>;
+   |     ^^^^^^^^ ...so that the reference type `&'a (dyn Baz<T> + 'a)` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
+   |           ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

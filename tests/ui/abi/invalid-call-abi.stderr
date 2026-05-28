@@ -1,0 +1,9 @@
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/invalid-call-abi.rs:5:14
+   |
+LL | const extern "rust-invalid" fn foo() {
+   |              ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0570`.

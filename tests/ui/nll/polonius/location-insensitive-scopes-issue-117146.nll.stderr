@@ -1,0 +1,47 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:10:18
+   |
+LL |     let a = ();
+   |         - binding `a` declared here
+LL |     let b = |_| &a;
+   |             --- -^
+   |             |   ||
+   |             |   |borrowed value does not live long enough
+   |             |   returning this value requires that `a` is borrowed for `'static`
+   |             value captured here
+...
+LL | }
+   | - `a` dropped here while still borrowed
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:20:11
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |           ^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:20:22
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |                      ^^^
+
+error: implementation of `Fn` is not general enough
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:13:5
+   |
+LL |     bad(&b);
+   |     ^^^^^^^ implementation of `Fn` is not general enough
+   |
+   = note: closure with signature `fn(&'2 ()) -> &()` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:13:5
+   |
+LL |     bad(&b);
+   |     ^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 ()) -> &()` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

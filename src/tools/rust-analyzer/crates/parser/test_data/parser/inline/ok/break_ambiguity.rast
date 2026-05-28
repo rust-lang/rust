@@ -1,0 +1,67 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          IF_EXPR
+            IF_KW "if"
+            WHITESPACE " "
+            BREAK_EXPR
+              BREAK_KW "break"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            BREAK_EXPR
+              BREAK_KW "break"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          FOR_EXPR
+            FOR_KW "for"
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "i"
+            WHITESPACE " "
+            IN_KW "in"
+            WHITESPACE " "
+            BREAK_EXPR
+              BREAK_KW "break"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        MATCH_EXPR
+          MATCH_KW "match"
+          WHITESPACE " "
+          BREAK_EXPR
+            BREAK_KW "break"
+          WHITESPACE " "
+          MATCH_ARM_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,14 @@
+error: crate `rustc_serialize` required to be available in rlib format, but was not found in this form
+   |
+   = help: try adding `extern crate rustc_driver;` at the top level of this crate
+
+error: crate `rustc_hashes` required to be available in rlib format, but was not found in this form
+   |
+   = help: try adding `extern crate rustc_driver;` at the top level of this crate
+
+error: crate `rustc_stable_hash` required to be available in rlib format, but was not found in this form
+   |
+   = help: try adding `extern crate rustc_driver;` at the top level of this crate
+
+error: aborting due to NUMBER previous errors
+

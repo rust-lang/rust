@@ -1,0 +1,13 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:47:13
+   |
+LL | /             {
+LL | |
+LL | |                 struct W<I>;
+LL | |                 impl<I> W<I> {
+...  |
+LL | |             },
+   | |_____________^
+
+error: aborting due to 1 previous error
+

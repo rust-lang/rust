@@ -1,0 +1,25 @@
+error[E0063]: missing fields `field`, `field1` and `field2` in initializer of `S`
+  --> $DIR/non-exhaustive-ctor.rs:24:13
+   |
+LL |     let _ = S { };
+   |             ^ missing `field`, `field1` and `field2`
+   |
+help: all remaining fields have default values, you can use those values with `..`
+   |
+LL |     let _ = S { .. };
+   |                 ++
+
+error[E0063]: missing fields `field1` and `field2` in initializer of `S`
+  --> $DIR/non-exhaustive-ctor.rs:26:13
+   |
+LL |     let _ = S { field: () };
+   |             ^ missing `field1` and `field2`
+   |
+help: all remaining fields have default values, you can use those values with `..`
+   |
+LL |     let _ = S { field: (), .. };
+   |                          ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

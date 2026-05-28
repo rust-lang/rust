@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/account-for-lifetimes-in-closure-suggestion.rs:13:22
+   |
+LL |     Thing.enter_scope(|ctx| {
+   |                        ---
+   |                        |
+   |                        has type `TwoThings<'_, '1>`
+   |                        has type `TwoThings<'2, '_>`
+LL |         SameLifetime(ctx);
+   |                      ^^^ this usage requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `TwoThings<'_, '_>`, which makes the generic argument `'_` invariant
+   = note: the struct `TwoThings<'a, 'b>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

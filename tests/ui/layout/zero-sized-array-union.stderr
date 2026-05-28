@@ -1,0 +1,26 @@
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/zero-sized-array-union.rs:59:1
+   |
+LL | type TestBaz1 = Baz1;
+   | ^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/zero-sized-array-union.rs:70:1
+   |
+LL | type TestBaz2 = Baz2;
+   | ^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/zero-sized-array-union.rs:81:1
+   |
+LL | type TestBaz3 = Baz3;
+   | ^^^^^^^^^^^^^
+
+error: homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
+  --> $DIR/zero-sized-array-union.rs:92:1
+   |
+LL | type TestBaz4 = Baz4;
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

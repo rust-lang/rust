@@ -1,0 +1,46 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    MACRO_TYPE
+      MACRO_CALL
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "foo"
+        BANG "!"
+        TOKEN_TREE
+          L_PAREN "("
+          R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    MACRO_TYPE
+      MACRO_CALL
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                CRATE_KW "crate"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "foo"
+        BANG "!"
+        TOKEN_TREE
+          L_PAREN "("
+          R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

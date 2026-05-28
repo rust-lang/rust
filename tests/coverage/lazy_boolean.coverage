@@ -1,0 +1,65 @@
+   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn main() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let (mut a, mut b, mut c) = (0, 0, 0);
+   LL|      1|    if is_true {
+   LL|      1|        a = 1;
+   LL|      1|        b = 10;
+   LL|      1|        c = 100;
+   LL|      1|    }
+                  ^0
+   LL|       |    let
+   LL|      1|        somebool
+   LL|       |        =
+   LL|      1|            a < b
+   LL|       |        ||
+   LL|      0|            b < c
+   LL|       |    ;
+   LL|       |    let
+   LL|      1|        somebool
+   LL|       |        =
+   LL|      1|            b < a
+   LL|       |        ||
+   LL|      1|            b < c
+   LL|       |    ;
+   LL|      1|    let somebool = a < b && b < c;
+   LL|      1|    let somebool = b < a && b < c;
+                                          ^0
+   LL|       |
+   LL|       |    if
+   LL|      1|        !
+   LL|      1|        is_true
+   LL|      0|    {
+   LL|      0|        a = 2
+   LL|      0|        ;
+   LL|      1|    }
+   LL|       |
+   LL|       |    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        b = 30
+   LL|      1|        ;
+   LL|      1|    }
+   LL|       |    else
+   LL|      0|    {
+   LL|      0|        c = 400
+   LL|      0|        ;
+   LL|      0|    }
+   LL|       |
+   LL|      1|    if !is_true {
+   LL|      0|        a = 2;
+   LL|      1|    }
+   LL|       |
+   LL|      1|    if is_true {
+   LL|      1|        b = 30;
+   LL|      1|    } else {
+   LL|      0|        c = 400;
+   LL|      0|    }
+   LL|      1|}
+

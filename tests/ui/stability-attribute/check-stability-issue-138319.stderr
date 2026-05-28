@@ -1,0 +1,10 @@
+warning: use of deprecated struct `_Bar`: reason
+  --> $DIR/check-stability-issue-138319.rs:3:5
+   |
+LL |     _Bar {
+   |     ^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: 1 warning emitted
+

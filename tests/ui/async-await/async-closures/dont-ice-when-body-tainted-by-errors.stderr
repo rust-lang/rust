@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `(): Impossible` is not satisfied
+  --> $DIR/dont-ice-when-body-tainted-by-errors.rs:17:23
+   |
+LL |         trait_error::<()>();
+   |                       ^^ the trait `Impossible` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-when-body-tainted-by-errors.rs:5:1
+   |
+LL | trait Impossible {}
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `trait_error`
+  --> $DIR/dont-ice-when-body-tainted-by-errors.rs:6:19
+   |
+LL | fn trait_error<T: Impossible>() {}
+   |                   ^^^^^^^^^^ required by this bound in `trait_error`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

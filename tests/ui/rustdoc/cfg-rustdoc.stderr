@@ -1,0 +1,17 @@
+error[E0425]: cannot find value `Foo` in this scope
+  --> $DIR/cfg-rustdoc.rs:5:13
+   |
+LL |     let f = Foo;
+   |             ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/cfg-rustdoc.rs:2:12
+   |
+LL | #[cfg(doc)]
+   |       --- the item is gated here
+LL | pub struct Foo;
+   |            ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

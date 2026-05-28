@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+  --> $DIR/closure-arg-type-mismatch-method-receiver.rs:8:17
+   |
+LL |     (|a: A| foo(a)).bar();
+   |             --- ^ expected `&A`, found `A`
+   |             |
+   |             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/closure-arg-type-mismatch-method-receiver.rs:5:4
+   |
+LL | fn foo(_: &A) {}
+   |    ^^^ -----
+help: consider borrowing here
+   |
+LL |     (|a: A| foo(&a)).bar();
+   |                 +
+
+error[E0599]: no method named `bar` found for closure `{closure@$DIR/closure-arg-type-mismatch-method-receiver.rs:8:6: 8:12}` in the current scope
+  --> $DIR/closure-arg-type-mismatch-method-receiver.rs:8:21
+   |
+LL |     (|a: A| foo(a)).bar();
+   |                     ^^^ method not found in `{closure@$DIR/closure-arg-type-mismatch-method-receiver.rs:8:6: 8:12}`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.

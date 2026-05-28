@@ -1,0 +1,93 @@
+error[E0599]: no method named `c` found for reference `&dyn Bar` in the current scope
+  --> $DIR/subtrait-method.rs:53:9
+   |
+LL |     bar.c();
+   |         ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Baz` defines an item `c`, perhaps you need to implement it
+  --> $DIR/subtrait-method.rs:25:1
+   |
+LL | trait Baz: Bar {
+   | ^^^^^^^^^^^^^^
+help: there is a method `a` with a similar name
+   |
+LL -     bar.c();
+LL +     bar.a();
+   |
+
+error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
+  --> $DIR/subtrait-method.rs:57:9
+   |
+LL |     foo.b();
+   |         ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `b`, perhaps you need to implement it
+  --> $DIR/subtrait-method.rs:15:1
+   |
+LL | trait Bar: Foo {
+   | ^^^^^^^^^^^^^^
+help: there is a method `a` with a similar name
+   |
+LL -     foo.b();
+LL +     foo.a();
+   |
+
+error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
+  --> $DIR/subtrait-method.rs:59:9
+   |
+LL |     foo.c();
+   |         ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Baz` defines an item `c`, perhaps you need to implement it
+  --> $DIR/subtrait-method.rs:25:1
+   |
+LL | trait Baz: Bar {
+   | ^^^^^^^^^^^^^^
+help: there is a method `a` with a similar name
+   |
+LL -     foo.c();
+LL +     foo.a();
+   |
+
+error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
+  --> $DIR/subtrait-method.rs:63:9
+   |
+LL |     foo.b();
+   |         ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `b`, perhaps you need to implement it
+  --> $DIR/subtrait-method.rs:15:1
+   |
+LL | trait Bar: Foo {
+   | ^^^^^^^^^^^^^^
+help: there is a method `a` with a similar name
+   |
+LL -     foo.b();
+LL +     foo.a();
+   |
+
+error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
+  --> $DIR/subtrait-method.rs:65:9
+   |
+LL |     foo.c();
+   |         ^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Baz` defines an item `c`, perhaps you need to implement it
+  --> $DIR/subtrait-method.rs:25:1
+   |
+LL | trait Baz: Bar {
+   | ^^^^^^^^^^^^^^
+help: there is a method `a` with a similar name
+   |
+LL -     foo.c();
+LL +     foo.a();
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

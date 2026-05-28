@@ -1,0 +1,52 @@
+// This test checks the appearance of the tables in the doc comments.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/doc_block_table/struct.DocBlockTable.html#method.func"
+
+compare-elements-css: (".impl-items .docblock table th", ".top-doc .docblock table th", ["border"])
+compare-elements-css: (".impl-items .docblock table td", ".top-doc .docblock table td", ["border"])
+
+define-function: (
+    "check-colors",
+    [theme, border_color, zebra_stripe_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(1)", {
+            "background-color": "rgba(0, 0, 0, 0)",
+        })
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(2)", {
+            "background-color": |zebra_stripe_color|,
+        })
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(3)", {
+            "background-color": "rgba(0, 0, 0, 0)",
+        })
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(4)", {
+            "background-color": |zebra_stripe_color|,
+        })
+        assert-css: (".top-doc .docblock table td", {
+            "border-style": "solid",
+            "border-width": "1px",
+            "border-color": |border_color|,
+        })
+        assert-css: (".top-doc .docblock table th", {
+            "border-style": "solid",
+            "border-width": "1px",
+            "border-color": |border_color|,
+        })
+    }
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "border_color": "#5c6773",
+    "zebra_stripe_color": "#191f26",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "border_color": "#e0e0e0",
+    "zebra_stripe_color": "#2a2a2a",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "border_color": "#e0e0e0",
+    "zebra_stripe_color": "#f5f5f5",
+})

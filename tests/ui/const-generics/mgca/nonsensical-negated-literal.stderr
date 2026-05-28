@@ -1,0 +1,44 @@
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:20:26
+   |
+LL |     foo::<{ Foo { field: -true } }>();
+   |                          ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:22:28
+   |
+LL |     foo::<{ Foo { field: { -true } } }>();
+   |                            ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:24:26
+   |
+LL |     foo::<{ Foo { field: -"<3" } }>();
+   |                          ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:26:28
+   |
+LL |     foo::<{ Foo { field: { -"<3" } } }>();
+   |                            ^^^^^
+
+error: negated literal must be an integer
+  --> $DIR/nonsensical-negated-literal.rs:29:13
+   |
+LL |     bar::<{ -"hi" }>();
+   |             ^^^^^
+
+error: type annotations needed for the literal
+  --> $DIR/nonsensical-negated-literal.rs:16:26
+   |
+LL |     foo::<{ Foo { field: -1_usize } }>();
+   |                          ^^^^^^^^
+
+error: type annotations needed for the literal
+  --> $DIR/nonsensical-negated-literal.rs:18:28
+   |
+LL |     foo::<{ Foo { field: { -1_usize } } }>();
+   |                            ^^^^^^^^
+
+error: aborting due to 7 previous errors
+

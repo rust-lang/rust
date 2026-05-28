@@ -1,0 +1,22 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these features.
+
+# Warns when a PR contains merge commits
+# Documentation at: https://forge.rust-lang.org/triagebot/no-merge.html
+[no-merges]
+exclude_titles = ["Rustc pull update"]
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+check-commits = "uncanonicalized"
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
+
+# Enable comments linking to triagebot range-diff when a PR is rebased
+# onto a different base commit
+# Documentation at: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]

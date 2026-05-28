@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `Vec<_>`
+  --> $DIR/vector-no-ann.rs:2:9
+   |
+LL |     let _foo = Vec::new();
+   |         ^^^^   ---------- type must be known at this point
+   |
+help: consider giving `_foo` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let _foo: Vec<T> = Vec::new();
+   |             ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

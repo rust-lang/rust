@@ -1,0 +1,15 @@
+error[E0806]: static `HELLO_IMPL` has a type that is incompatible with the declaration of `#[hello]`
+  --> $DIR/wrong_ty.rs:13:1
+   |
+LL | static HELLO_IMPL: bool = true;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: expected this because of this attribute
+  --> $DIR/wrong_ty.rs:12:1
+   |
+LL | #[hello]
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0806`.

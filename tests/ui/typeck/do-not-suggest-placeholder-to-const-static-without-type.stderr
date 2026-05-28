@@ -1,0 +1,30 @@
+error: associated `static` items are not allowed
+  --> $DIR/do-not-suggest-placeholder-to-const-static-without-type.rs:3:5
+   |
+LL |     static B;
+   |     ^^^^^^^^^
+
+error: missing type for `const` item
+  --> $DIR/do-not-suggest-placeholder-to-const-static-without-type.rs:2:12
+   |
+LL |     const A;
+   |            ^
+   |
+help: provide a type for the item
+   |
+LL |     const A: <type>;
+   |            ++++++++
+
+error: missing type for `static` item
+  --> $DIR/do-not-suggest-placeholder-to-const-static-without-type.rs:3:13
+   |
+LL |     static B;
+   |             ^
+   |
+help: provide a type for the item
+   |
+LL |     static B: <type>;
+   |             ++++++++
+
+error: aborting due to 3 previous errors
+

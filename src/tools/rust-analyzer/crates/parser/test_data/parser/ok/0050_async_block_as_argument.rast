@@ -1,0 +1,92 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "x"
+        COLON ":"
+        WHITESPACE " "
+        IMPL_TRAIT_TYPE
+          IMPL_KW "impl"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "std"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "future"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Future"
+                    GENERIC_ARG_LIST
+                      L_ANGLE "<"
+                      ASSOC_TYPE_ARG
+                        NAME_REF
+                          IDENT "Output"
+                        WHITESPACE " "
+                        EQ "="
+                        WHITESPACE " "
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "i32"
+                      R_ANGLE ">"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        CALL_EXPR
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "foo"
+          ARG_LIST
+            L_PAREN "("
+            BLOCK_EXPR
+              ASYNC_KW "async"
+              WHITESPACE " "
+              MOVE_KW "move"
+              WHITESPACE " "
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "12"
+                WHITESPACE " "
+                R_CURLY "}"
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

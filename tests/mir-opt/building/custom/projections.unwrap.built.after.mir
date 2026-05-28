@@ -1,0 +1,10 @@
+// MIR for `unwrap` after built
+
+fn unwrap(_1: Option<i32>) -> i32 {
+    let mut _0: i32;
+
+    bb0: {
+        _0 = copy ((_1 as variant#1).0: i32);
+        return;
+    }
+}

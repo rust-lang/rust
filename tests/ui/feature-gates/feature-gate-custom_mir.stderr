@@ -1,0 +1,30 @@
+error[E0658]: the `#[custom_mir]` attribute is just used for the Rust test suite
+  --> $DIR/feature-gate-custom_mir.rs:6:1
+   |
+LL | #[custom_mir(dialect = "built")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(custom_mir)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `custom_mir`: MIR is an implementation detail and extremely unstable
+  --> $DIR/feature-gate-custom_mir.rs:4:5
+   |
+LL | use core::intrinsics::mir::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(custom_mir)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `custom_mir`: MIR is an implementation detail and extremely unstable
+  --> $DIR/feature-gate-custom_mir.rs:10:13
+   |
+LL |             Return()
+   |             ^^^^^^
+   |
+   = help: add `#![feature(custom_mir)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

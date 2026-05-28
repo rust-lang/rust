@@ -1,0 +1,38 @@
+// MIR for `main` after Inline
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: {closure@$DIR/issue_76997_inline_scopes_parenting.rs:16:13: 16:16};
+    let mut _2: &{closure@$DIR/issue_76997_inline_scopes_parenting.rs:16:13: 16:16};
+    let mut _3: ((),);
+    let mut _4: ();
+    let mut _5: ();
+    scope 1 {
+        debug f => _1;
+        scope 2 (inlined main::{closure#0}) {
+            debug x => const ();
+            scope 3 {
+                debug y => const ();
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = {closure@$DIR/issue_76997_inline_scopes_parenting.rs:16:13: 16:16};
+        StorageLive(_2);
+        _2 = &_1;
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = ();
+        _3 = (move _4,);
+        StorageLive(_5);
+        _5 = move (_3.0: ());
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}

@@ -1,0 +1,19 @@
+//@ run-rustfix
+#![allow(unused)]
+
+struct S {
+    f: String,
+}
+
+fn main() {
+    let ref _moved @ ref _from = String::from("foo"); //~ ERROR
+    let ref _moved @ ref _from = String::from("foo"); //~ ERROR
+    let ref _moved @ ref _from = String::from("foo"); //~ ERROR
+    //~^ ERROR
+    let ref _moved @ ref _from = String::from("foo"); // ok
+    let ref _moved @ S { ref f } = S { f: String::from("foo") }; //~ ERROR
+    let ref _moved @ S { ref f } = S { f: String::from("foo") }; //~ ERROR
+    //~^ ERROR
+    let ref _moved @ S { ref f } = S { f: String::from("foo") }; // ok
+    let ref _moved @ S { ref f } = S { f: String::from("foo") }; //~ ERROR
+}

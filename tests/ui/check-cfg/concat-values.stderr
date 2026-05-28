@@ -1,0 +1,23 @@
+warning: unexpected `cfg` condition value: (none)
+  --> $DIR/concat-values.rs:6:7
+   |
+LL | #[cfg(my_cfg)]
+   |       ^^^^^^
+   |
+   = note: expected values for `my_cfg` are: `bar` and `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(my_cfg)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `unk`
+  --> $DIR/concat-values.rs:10:7
+   |
+LL | #[cfg(my_cfg = "unk")]
+   |       ^^^^^^^^^^^^^^
+   |
+   = note: expected values for `my_cfg` are: `bar` and `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(my_cfg, values("unk"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

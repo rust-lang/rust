@@ -1,0 +1,38 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:6:37
+   |
+LL |         + Deref<Target = Self::Item<'b>>;
+   |                                     ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL |         + for<'b> Deref<Target = Self::Item<'b>>;
+   |           +++++++
+help: consider introducing lifetime `'b` here
+   |
+LL |     type Iter<'b, 'a>: Iterator<Item = Self::Item<'a>>
+   |               +++
+help: consider introducing lifetime `'b` here
+   |
+LL | trait Iterable<'b> {
+   |               ++++
+
+error[E0261]: use of undeclared lifetime name `'undeclared`
+  --> $DIR/generic_associated_type_undeclared_lifetimes.rs:9:41
+   |
+LL |     fn iter<'a>(&'a self) -> Self::Iter<'undeclared>;
+   |                                         ^^^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'undeclared` here
+   |
+LL |     fn iter<'undeclared, 'a>(&'a self) -> Self::Iter<'undeclared>;
+   |             ++++++++++++
+help: consider introducing lifetime `'undeclared` here
+   |
+LL | trait Iterable<'undeclared> {
+   |               +++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

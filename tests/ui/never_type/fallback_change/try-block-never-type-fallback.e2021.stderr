@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `!: From<()>` is not satisfied
+  --> $DIR/try-block-never-type-fallback.rs:20:9
+   |
+LL |     bar(try { x? });
+   |     --- ^^^^^^^^^^ the trait `From<()>` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+   = note: required for `()` to implement `Into<!>`
+note: required by a bound in `bar`
+  --> $DIR/try-block-never-type-fallback.rs:15:23
+   |
+LL | fn bar(_: Result<impl Into<!>, u32>) {
+   |                       ^^^^^^^ required by this bound in `bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

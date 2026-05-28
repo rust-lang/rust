@@ -1,0 +1,10 @@
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/forbid_ambig_type_infers.rs:6:33
+   |
+LL |     let c = for<'a> |b: &'a Foo<_>| -> u32 { b.0 };
+   |             -------             ^
+   |             |
+   |             `for<...>` is here
+
+error: aborting due to 1 previous error
+

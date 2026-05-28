@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/coercion-missing-tail-expected-type.rs:4:24
+   |
+LL | fn plus_one(x: i32) -> i32 {
+   |    --------            ^^^ expected `i32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+LL |     x + 1;
+   |          - help: remove this semicolon to return this value
+
+error[E0308]: mismatched types
+  --> $DIR/coercion-missing-tail-expected-type.rs:8:13
+   |
+LL | fn foo() -> Result<u8, u64> {
+   |    ---      ^^^^^^^^^^^^^^^ expected `Result<u8, u64>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+LL |     Ok(1);
+   |          - help: remove this semicolon to return this value
+   |
+   = note:   expected enum `Result<u8, u64>`
+           found unit type `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

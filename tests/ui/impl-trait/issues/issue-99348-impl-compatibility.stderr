@@ -1,0 +1,25 @@
+error[E0271]: type mismatch resolving `<Concrete as Bar>::Other == Concrete`
+  --> $DIR/issue-99348-impl-compatibility.rs:8:17
+   |
+LL | type Tait = impl Sized;
+   |             ---------- the found opaque type
+...
+LL |     type Item = Concrete;
+   |                 ^^^^^^^^ type mismatch resolving `<Concrete as Bar>::Other == Concrete`
+   |
+note: expected this to be `Concrete`
+  --> $DIR/issue-99348-impl-compatibility.rs:13:18
+   |
+LL |     type Other = Tait;
+   |                  ^^^^
+   = note:   expected struct `Concrete`
+           found opaque type `Tait`
+note: required by a bound in `Foo::Item`
+  --> $DIR/issue-99348-impl-compatibility.rs:17:20
+   |
+LL |     type Item: Bar<Other = Self>;
+   |                    ^^^^^^^^^^^^ required by this bound in `Foo::Item`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

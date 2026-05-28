@@ -1,0 +1,140 @@
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:6:8
+   |
+LL |     foo<BAR + 3>();
+   |        ^       ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR + 3>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:9:8
+   |
+LL |     foo<BAR + BAR>();
+   |        ^         ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR + BAR>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:12:8
+   |
+LL |     foo<3 + 3>();
+   |        ^     ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<3 + 3>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:15:8
+   |
+LL |     foo<BAR - 3>();
+   |        ^       ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR - 3>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:18:8
+   |
+LL |     foo<BAR - BAR>();
+   |        ^         ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR - BAR>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:21:8
+   |
+LL |     foo<100 - BAR>();
+   |        ^         ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<100 - BAR>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:24:8
+   |
+LL |     foo<bar<i32>()>();
+   |        ^   ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<bar<i32>()>();
+   |        ++
+
+error: expected one of `;` or `}`, found `>`
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:24:19
+   |
+LL |     foo<bar<i32>()>();
+   |                   ^ expected one of `;` or `}`
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:28:8
+   |
+LL |     foo<bar::<i32>()>();
+   |        ^            ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<bar::<i32>()>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:31:8
+   |
+LL |     foo<bar::<i32>() + BAR>();
+   |        ^                  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<bar::<i32>() + BAR>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:34:8
+   |
+LL |     foo<bar::<i32>() - BAR>();
+   |        ^                  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<bar::<i32>() - BAR>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:37:8
+   |
+LL |     foo<BAR - bar::<i32>()>();
+   |        ^                  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |        ++
+
+error: comparison operators cannot be chained
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:40:8
+   |
+LL |     foo<BAR - bar::<i32>()>();
+   |        ^                  ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |        ++
+
+error: aborting due to 13 previous errors
+

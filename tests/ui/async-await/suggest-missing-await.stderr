@@ -1,0 +1,150 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:13:14
+   |
+LL |     take_u32(x)
+   |     -------- ^ expected `u32`, found future
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: calling an async function returns a future
+  --> $DIR/suggest-missing-await.rs:13:14
+   |
+LL |     take_u32(x)
+   |              ^
+note: function defined here
+  --> $DIR/suggest-missing-await.rs:4:4
+   |
+LL | fn take_u32(_x: u32) {}
+   |    ^^^^^^^^ -------
+help: consider `await`ing on the `Future`
+   |
+LL |     take_u32(x.await)
+   |               ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:23:5
+   |
+LL |     dummy()
+   |     ^^^^^^^ expected `()`, found future
+   |
+note: calling an async function returns a future
+  --> $DIR/suggest-missing-await.rs:23:5
+   |
+LL |     dummy()
+   |     ^^^^^^^
+help: consider `await`ing on the `Future`
+   |
+LL |     dummy().await
+   |            ++++++
+help: consider using a semicolon here
+   |
+LL |     dummy();
+   |            +
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-missing-await.rs:36:9
+   |
+LL |       let _x = if true {
+   |  ______________-
+LL | |         dummy()
+   | |         ------- expected because of this
+LL | |
+LL | |     } else {
+LL | |         dummy().await
+   | |         ^^^^^^^^^^^^^ expected future, found `()`
+LL | |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL |         dummy().await
+   |                ++++++
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/suggest-missing-await.rs:46:14
+   |
+LL |       let _x = match 0usize {
+   |  ______________-
+LL | |         0 => dummy(),
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
+LL | |         1 => dummy(),
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
+LL | |         2 => dummy().await,
+   | |              ^^^^^^^^^^^^^ expected future, found `()`
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL ~         0 => dummy().await,
+LL ~         1 => dummy().await,
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:54:9
+   |
+LL |     let _x = match dummy() {
+   |                    ------- this expression has type `impl Future<Output = ()>`
+LL |         () => {}
+   |         ^^ expected future, found `()`
+   |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL |     let _x = match dummy().await {
+   |                           ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:68:9
+   |
+LL |     match dummy_result() {
+   |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
+...
+LL |         Ok(_) => {}
+   |         ^^^^^ expected future, found `Result<_, _>`
+   |
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:70:9
+   |
+LL |     match dummy_result() {
+   |           -------------- this expression has type `impl Future<Output = Result<(), ()>>`
+...
+LL |         Err(_) => {}
+   |         ^^^^^^ expected future, found `Result<_, _>`
+   |
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:78:27
+   |
+LL |     Some(do_async()).map(|()| {});
+   |                           ^^
+   |                           |
+   |                           expected future, found `()`
+   |                           expected due to this
+   |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

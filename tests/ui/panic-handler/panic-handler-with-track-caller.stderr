@@ -1,0 +1,11 @@
+error: `#[panic_handler]` function is not allowed to have `#[track_caller]`
+  --> $DIR/panic-handler-with-track-caller.rs:10:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL |
+LL | fn panic(info: &PanicInfo) -> ! {
+   | ------------------------------- `#[panic_handler]` function is not allowed to have `#[track_caller]`
+
+error: aborting due to 1 previous error
+

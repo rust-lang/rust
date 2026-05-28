@@ -1,0 +1,28 @@
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/array-trait.rs:22:1
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: unconstrained generic constant
+  --> $DIR/array-trait.rs:22:23
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   |                       ^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]) where [(); S::SIZE]:;
+   |                                           ++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/array-trait.rs:22:23
+   |
+LL | #[derive(Copy, Clone)]
+   |                ----- in this derive macro expansion
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0077`.

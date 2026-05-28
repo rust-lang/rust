@@ -1,0 +1,57 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:6:11
+   |
+LL | #![expect(unfulfilled_lint_expectations, reason = "idk why you would expect this")]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: idk why you would expect this
+   = note: the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:12:10
+   |
+LL | #[expect(unfulfilled_lint_expectations, reason = "a local: idk why you would expect this")]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a local: idk why you would expect this
+   = note: the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:17:14
+   |
+LL |     #[expect(unused_mut, reason = "this expectation will create a diagnostic with the default lint level")]
+   |              ^^^^^^^^^^
+   |
+   = note: this expectation will create a diagnostic with the default lint level
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:17:14
+   |
+LL |     #[expect(unused_mut, reason = "this expectation will create a diagnostic with the default lint level")]
+   |              ^^^^^^^^^^
+   |
+   = note: this expectation will create a diagnostic with the default lint level
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:27:22
+   |
+LL |     #[expect(unused, unfulfilled_lint_expectations, reason = "the expectation for `unused` should be fulfilled")]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the expectation for `unused` should be fulfilled
+   = note: the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_unfulfilled_expectation.rs:27:22
+   |
+LL |     #[expect(unused, unfulfilled_lint_expectations, reason = "the expectation for `unused` should be fulfilled")]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the expectation for `unused` should be fulfilled
+   = note: the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 6 warnings emitted
+

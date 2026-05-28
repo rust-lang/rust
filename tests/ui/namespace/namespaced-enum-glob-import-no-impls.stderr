@@ -1,0 +1,27 @@
+error[E0425]: cannot find function `foo` in module `m`
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:22:8
+   |
+LL |     m::foo();
+   |        ^^^ not found in `m`
+
+error[E0425]: cannot find function `bar` in module `m`
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:24:8
+   |
+LL |     m::bar();
+   |        ^^^ not found in `m`
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:21:5
+   |
+LL |     foo();
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/namespaced-enum-glob-import-no-impls.rs:23:5
+   |
+LL |     bar();
+   |     ^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

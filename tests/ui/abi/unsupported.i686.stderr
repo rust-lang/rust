@@ -1,0 +1,87 @@
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:37:8
+   |
+LL | extern "ptx-kernel" fn ptx() {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:39:22
+   |
+LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
+   |                      ^^^^^^^^^^^^
+
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:43:8
+   |
+LL | extern "ptx-kernel" {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "gpu-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:45:8
+   |
+LL | extern "gpu-kernel" fn gpu() {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:48:8
+   |
+LL | extern "aapcs" fn aapcs() {}
+   |        ^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:50:24
+   |
+LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
+   |                        ^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:54:8
+   |
+LL | extern "aapcs" {}
+   |        ^^^^^^^
+
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:57:8
+   |
+LL | extern "msp430-interrupt" {}
+   |        ^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:60:8
+   |
+LL | extern "avr-interrupt" {}
+   |        ^^^^^^^^^^^^^^^
+
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:63:8
+   |
+LL | extern "riscv-interrupt-m" {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "cmse-nonsecure-call" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:121:28
+   |
+LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
+   |                            ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:126:8
+   |
+LL | extern "cmse-nonsecure-entry" fn cmse_entry() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:128:29
+   |
+LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:132:8
+   |
+LL | extern "cmse-nonsecure-entry" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

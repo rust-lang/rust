@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/trivial-const-arg-nested-braces.rs:4:35
+   |
+LL | fn foo<const N: usize>() -> A<{ { N } }> {
+   |                                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

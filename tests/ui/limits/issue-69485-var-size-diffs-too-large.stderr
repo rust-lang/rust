@@ -1,0 +1,8 @@
+error: values of the type `[u8; usize::MAX]` are too big for the target architecture
+  --> $DIR/issue-69485-var-size-diffs-too-large.rs:6:5
+   |
+LL |     Bug::V([0; !0]);
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

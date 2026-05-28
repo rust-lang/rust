@@ -1,0 +1,57 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-87461.rs:10:8
+   |
+LL |     Ok(())
+   |     -- ^^ expected `u16`, found `()`
+   |     |
+   |     arguments to this enum variant are incorrect
+   |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:10:5
+   |
+LL |     Ok(())
+   |     ^^^--^
+   |        |
+   |        this argument influences the type of `Ok`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/issue-87461.rs:17:8
+   |
+LL |     Ok(())
+   |     -- ^^ expected `u16`, found `()`
+   |     |
+   |     arguments to this enum variant are incorrect
+   |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:17:5
+   |
+LL |     Ok(())
+   |     ^^^--^
+   |        |
+   |        this argument influences the type of `Ok`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/issue-87461.rs:26:12
+   |
+LL |         Ok(())
+   |         -- ^^ expected `u16`, found `()`
+   |         |
+   |         arguments to this enum variant are incorrect
+   |
+help: the type constructed contains `()` due to the type of the argument passed
+  --> $DIR/issue-87461.rs:26:9
+   |
+LL |         Ok(())
+   |         ^^^--^
+   |            |
+   |            this argument influences the type of `Ok`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

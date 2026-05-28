@@ -1,0 +1,116 @@
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:16:9
+   |
+LL | /         async fn do_something() -> u32 {
+LL | |
+LL | |             1
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = u32> {
+LL |
+LL ~             std::future::ready(1)
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:40:9
+   |
+LL | /         async fn do_something() -> u32 {
+LL | |
+LL | |             let mut x = 0;
+LL | |             for y in 0..64 {
+...  |
+LL | |             x
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = u32> {
+LL |
+...
+LL |
+LL ~             std::future::ready(x)
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:63:9
+   |
+LL | /         async fn do_something() -> u32 {
+LL | |
+LL | |             5
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = u32> {
+LL |
+LL ~             std::future::ready(5)
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:97:9
+   |
+LL | /         async fn do_something() -> vec_ty!(u32) {
+LL | |
+LL | |             Vec::new()
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = vec_ty!(u32)>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = vec_ty!(u32)> {
+LL |
+LL ~             std::future::ready(Vec::new())
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:104:9
+   |
+LL | /         async fn do_something() -> Vec<u32> {
+LL | |
+LL | |             vec![]
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = Vec<u32>>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = Vec<u32>> {
+LL |
+LL ~             std::future::ready(vec![])
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl.rs:115:9
+   |
+LL | /         async fn do_something() -> u32 {
+...  |
+LL | |             5
+LL | |         }
+   | |_________^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~         fn do_something() -> impl Future<Output = u32> {
+LL |
+...
+LL |             if f() == 5 {
+LL ~                 return std::future::ready(3);
+LL |             }
+LL |
+LL ~             std::future::ready(5)
+   |
+
+error: aborting due to 6 previous errors
+

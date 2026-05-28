@@ -1,0 +1,124 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/nested-rpit-hrtb.rs:56:77
+   |
+LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                                                             ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | fn two_htrb_outlives() -> impl for<'b, 'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                    +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                     ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/nested-rpit-hrtb.rs:64:82
+   |
+LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                                                                  ^^ undeclared lifetime
+   |
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | fn two_htrb_outlives_uses() -> impl for<'b, 'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                         +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn two_htrb_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                          ++++
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/nested-rpit-hrtb.rs:25:56
+   |
+LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
+   |                                                        ^^^^^^^^^^^^^--
+   |                                                        |
+   |                                                        `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:25:36
+   |
+LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
+   |                                    ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/nested-rpit-hrtb.rs:29:59
+   |
+LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
+   |                                                           ^^^^^^^^^--^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:29:39
+   |
+LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
+   |                                       ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/nested-rpit-hrtb.rs:32:61
+   |
+LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
+   |                                                             ^^^^^^^^^^^^^--
+   |                                                             |
+   |                                                             `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:32:41
+   |
+LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
+   |                                         ^^
+
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/nested-rpit-hrtb.rs:35:64
+   |
+LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
+   |                                                                ^^^^^^^^^--^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:35:44
+   |
+LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
+   |                                            ^^
+
+error[E0277]: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
+  --> $DIR/nested-rpit-hrtb.rs:45:79
+   |
+LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
+   |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
+   |
+help: the trait `Qux<'b>` is not implemented for `&'a ()`
+      but trait `Qux<'_>` is implemented for `()`
+  --> $DIR/nested-rpit-hrtb.rs:22:1
+   |
+LL | impl Qux<'_> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `()`, found `&'a ()`
+
+error: implementation of `Bar` is not general enough
+  --> $DIR/nested-rpit-hrtb.rs:49:93
+   |
+LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
+   |                                                                                             ^^ implementation of `Bar` is not general enough
+   |
+   = note: `()` must implement `Bar<'a>`
+   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
+
+error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
+  --> $DIR/nested-rpit-hrtb.rs:60:64
+   |
+LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
+   |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
+   |
+help: the trait `Qux<'b>` is not implemented for `&'a ()`
+      but trait `Qux<'_>` is implemented for `()`
+  --> $DIR/nested-rpit-hrtb.rs:22:1
+   |
+LL | impl Qux<'_> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `()`, found `&'a ()`
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0261, E0277, E0657.
+For more information about an error, try `rustc --explain E0261`.

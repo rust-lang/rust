@@ -1,0 +1,27 @@
+error[E0599]: the method `filterx` exists for struct `Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:113:27: 113:34}>`, but its trait bounds were not satisfied
+  --> $DIR/hrtb-doesnt-borrow-self-1.rs:114:22
+   |
+LL | pub struct Map<S, F> {
+   | -------------------- method `filterx` not found for this struct because it doesn't satisfy `_: StreamExt`
+...
+LL |     let filter = map.filterx(|x: &_| true);
+   |                      ^^^^^^^ method cannot be called due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `&'a mut &Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:113:27: 113:34}>: Stream`
+      `&'a mut &mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:113:27: 113:34}>: Stream`
+      `&'a mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:113:27: 113:34}>: Stream`
+  --> $DIR/hrtb-doesnt-borrow-self-1.rs:96:50
+   |
+LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
+   |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
+  --> $DIR/hrtb-doesnt-borrow-self-1.rs:64:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

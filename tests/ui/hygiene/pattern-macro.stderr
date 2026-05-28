@@ -1,0 +1,19 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/pattern-macro.rs:5:5
+   |
+LL |     x + 1;
+   |     ^ not found in this scope
+   |
+help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
+  --> $DIR/pattern-macro.rs:1:28
+   |
+LL | macro_rules! foo { () => ( x ) }
+   |                            ^
+...
+LL |     let foo!() = 2;
+   |         ------ in this macro invocation
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,49 @@
+error[E0422]: cannot find struct, variant or union type `Fooo` in this scope
+  --> $DIR/adt_expr_erroneuous_inits.rs:20:17
+   |
+LL | struct Foo<T> { field: T }
+   | ------------- similarly named struct `Foo` defined here
+...
+LL |     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
+   |                 ^^^^
+   |
+help: a struct with a similar name exists
+   |
+LL -     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
+LL +     accepts::<{ Foo::<u8> { field: const { 1 } }}>();
+   |
+
+error[E0574]: expected struct, variant or union type, found function `NonStruct`
+  --> $DIR/adt_expr_erroneuous_inits.rs:23:17
+   |
+LL |     accepts::<{ NonStruct { }}>();
+   |                 ^^^^^^^^^ not a struct, variant or union type
+
+error: struct expression with missing field initialiser for `field`
+  --> $DIR/adt_expr_erroneuous_inits.rs:16:17
+   |
+LL |     accepts::<{ Foo::<u8> { }}>();
+   |                 ^^^^^^^^^^^^^
+
+error: struct expression with multiple initialisers for `field`
+  --> $DIR/adt_expr_erroneuous_inits.rs:18:49
+   |
+LL |     accepts::<{ Foo::<u8> { field: const { 1 }, field: const { 2} }}>();
+   |                                                 ^^^^^^^^^^^^^^^^^
+
+error: struct expression with invalid base path
+  --> $DIR/adt_expr_erroneuous_inits.rs:20:17
+   |
+LL |     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: struct expression with invalid base path
+  --> $DIR/adt_expr_erroneuous_inits.rs:23:17
+   |
+LL |     accepts::<{ NonStruct { }}>();
+   |                 ^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0422, E0574.
+For more information about an error, try `rustc --explain E0422`.

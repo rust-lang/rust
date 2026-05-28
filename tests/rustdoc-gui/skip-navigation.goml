@@ -1,0 +1,19 @@
+// This test ensures that the "Skip to main content" link works correctly
+// for keyboard navigation (WCAG 2.4.1 compliance).
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// The skip link should be hidden initially (positioned off-screen above viewport)
+store-position: (".skip-main-content", {"y": y_before})
+store-size: (".skip-main-content", {"height": height_before})
+assert: |y_before| + |height_before| < 0
+
+// The skip link should be the first focusable element when pressing Tab
+press-key: "Tab"
+wait-for: ".skip-main-content:focus"
+
+// When focused, the link should be visible (top: 0px)
+assert-css: (".skip-main-content:focus", {"top": "0px"})
+
+// Pressing Enter on the skip link should move focus to main content
+press-key: "Enter"
+wait-for: "#main-content:focus"

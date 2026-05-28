@@ -1,0 +1,30 @@
+error: unconstrained opaque type
+  --> $DIR/declared_but_not_defined_in_scope.rs:7:20
+   |
+LL |     pub type Boo = impl ::std::fmt::Debug;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Boo` must be used in combination with a concrete type within the same crate
+
+error[E0308]: mismatched types
+  --> $DIR/declared_but_not_defined_in_scope.rs:11:5
+   |
+LL |     pub type Boo = impl ::std::fmt::Debug;
+   |                    ---------------------- the expected opaque type
+...
+LL | fn bomp() -> boo::Boo {
+   |              -------- expected `Boo` because of return type
+LL |     ""
+   |     ^^ expected opaque type, found `&str`
+   |
+   = note: expected opaque type `Boo`
+                found reference `&'static str`
+note: this item must have a `#[define_opaque(Boo)]` attribute to be able to define hidden types
+  --> $DIR/declared_but_not_defined_in_scope.rs:10:4
+   |
+LL | fn bomp() -> boo::Boo {
+   |    ^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

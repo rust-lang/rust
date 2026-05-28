@@ -1,0 +1,79 @@
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:37:25
+   |
+LL |     const fn into_inner(self) -> T { self.0 }
+   |                         ^^^^                - value is dropped here
+   |                         |
+   |                         the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:43:28
+   |
+LL |     const fn into_inner_lt(self) -> T { self.0 }
+   |                            ^^^^                - value is dropped here
+   |                            |
+   |                            the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:49:27
+   |
+LL |     const fn into_inner_s(self) -> T { self.0 }
+   |                           ^^^^                - value is dropped here
+   |                           |
+   |                           the destructor for this type cannot be evaluated in constant functions
+
+error: pointers cannot be cast to integers during const eval
+  --> $DIR/min_const_fn.rs:79:42
+   |
+LL | const fn foo30(x: *const u32) -> usize { x as usize }
+   |                                          ^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error: pointers cannot be cast to integers during const eval
+  --> $DIR/min_const_fn.rs:81:63
+   |
+LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
+   |                                                               ^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error: pointers cannot be cast to integers during const eval
+  --> $DIR/min_const_fn.rs:83:42
+   |
+LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
+   |                                          ^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error: pointers cannot be cast to integers during const eval
+  --> $DIR/min_const_fn.rs:85:63
+   |
+LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
+   |                                                               ^^^^^^^^^^
+   |
+   = note: at compile-time, pointers do not have an integer value
+   = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
+
+error[E0493]: destructor of `AlanTuring<impl std::fmt::Debug>` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:109:19
+   |
+LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
+   |                   ^^                                     - value is dropped here
+   |                   |
+   |                   the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `impl std::fmt::Debug` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn.rs:111:18
+   |
+LL | const fn no_apit(_x: impl std::fmt::Debug) {}
+   |                  ^^                         - value is dropped here
+   |                  |
+   |                  the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

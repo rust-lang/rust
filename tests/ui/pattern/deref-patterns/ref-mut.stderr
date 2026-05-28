@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Rc<{integer}>: DerefMut` is not satisfied
+  --> $DIR/ref-mut.rs:16:9
+   |
+LL |         deref!(x) => {}
+   |         ^^^^^^^^^ the trait `DerefMut` is not implemented for `Rc<{integer}>`
+   |
+   = note: this error originates in the macro `deref` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `Rc<({integer},)>: DerefMut` is not satisfied
+  --> $DIR/ref-mut.rs:21:9
+   |
+LL |         (x,) => {}
+   |         ^^^^ the trait `DerefMut` is not implemented for `Rc<({integer},)>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

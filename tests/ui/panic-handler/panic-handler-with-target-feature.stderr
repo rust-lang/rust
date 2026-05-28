@@ -1,0 +1,11 @@
+error: `#[panic_handler]` function is not allowed to have `#[target_feature]`
+  --> $DIR/panic-handler-with-target-feature.rs:10:1
+   |
+LL | #[target_feature(enable = "avx2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn panic(info: &PanicInfo) -> ! {
+   | ------------------------------- `#[panic_handler]` function is not allowed to have `#[target_feature]`
+
+error: aborting due to 1 previous error
+

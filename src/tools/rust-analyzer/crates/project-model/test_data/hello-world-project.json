@@ -1,0 +1,12 @@
+{
+    "sysroot_src": null,
+    "crates": [
+        {
+            "display_name": "hello_world",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2018",
+            "deps": [],
+            "is_workspace_member": true
+        }
+    ]
+}

@@ -1,0 +1,1 @@
+tests/ui/simd/intrinsic/splat.rs

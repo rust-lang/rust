@@ -1,0 +1,30 @@
+- // MIR for `foo` before Inline
++ // MIR for `foo` after Inline
+  
+  fn foo() -> () {
+      let mut _0: ();
+      let mut _1: <IntFactory as Factory<T>>::Item;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = bar::<T>() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _0 = const ();
+          drop(_1) -> [return: bb2, unwind: bb3];
+      }
+  
+      bb2: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb3 (cleanup): {
+          resume;
+      }
+  }
+  

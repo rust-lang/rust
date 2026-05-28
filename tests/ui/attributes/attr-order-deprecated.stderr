@@ -1,0 +1,22 @@
+error: multiple `deprecated` attributes
+  --> $DIR/attr-order-deprecated.rs:3:1
+   |
+LL | #[deprecated = "BBB"]
+   | ^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/attr-order-deprecated.rs:1:1
+   |
+LL | #[deprecated = "AAA"]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `deprecated`: AAA
+  --> $DIR/attr-order-deprecated.rs:8:5
+   |
+LL |     deprecated();
+   |     ^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+

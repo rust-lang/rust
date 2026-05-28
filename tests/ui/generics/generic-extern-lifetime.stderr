@@ -1,0 +1,45 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic-extern-lifetime.rs:6:26
+   |
+LL |     pub fn life2<'b>(x: &'a i32, y: &'b i32);
+   |                          ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     pub fn life2<'a, 'b>(x: &'a i32, y: &'b i32);
+   |                  +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic-extern-lifetime.rs:8:37
+   |
+LL |     pub fn life4<'b>(x: for<'c> fn(&'a i32));
+   |                                     ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |     pub fn life4<'b>(x: for<'a, 'c> fn(&'a i32));
+   |                             +++
+help: consider introducing lifetime `'a` here
+   |
+LL |     pub fn life4<'a, 'b>(x: for<'c> fn(&'a i32));
+   |                  +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic-extern-lifetime.rs:11:39
+   |
+LL |     pub fn life7<'b>() -> for<'c> fn(&'a i32);
+   |                                       ^^ undeclared lifetime
+   |
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |     pub fn life7<'b>() -> for<'a, 'c> fn(&'a i32);
+   |                               +++
+help: consider introducing lifetime `'a` here
+   |
+LL |     pub fn life7<'a, 'b>() -> for<'c> fn(&'a i32);
+   |                  +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

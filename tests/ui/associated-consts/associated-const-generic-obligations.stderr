@@ -1,0 +1,17 @@
+error[E0326]: implemented const `FROM` has an incompatible type for trait
+  --> $DIR/associated-const-generic-obligations.rs:14:17
+   |
+LL |     const FROM: &'static str = "foo";
+   |                 ^^^^^^^^^^^^ expected associated type, found `&'static str`
+   |
+note: type in trait
+  --> $DIR/associated-const-generic-obligations.rs:10:17
+   |
+LL |     const FROM: Self::Out;
+   |                 ^^^^^^^^^
+   = note: expected associated type `<T as Foo>::Out`
+                    found reference `&'static str`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0326`.

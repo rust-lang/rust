@@ -1,0 +1,70 @@
+error[E0277]: `Cell<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:8:12
+   |
+LL |     test::<Cell<i32>>();
+   |            ^^^^^^^^^ `Cell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
+note: required by a bound in `test`
+  --> $DIR/not-sync.rs:5:12
+   |
+LL | fn test<T: Sync>() {}
+   |            ^^^^ required by this bound in `test`
+
+error[E0277]: `RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:10:12
+   |
+LL |     test::<RefCell<i32>>();
+   |            ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+note: required by a bound in `test`
+  --> $DIR/not-sync.rs:5:12
+   |
+LL | fn test<T: Sync>() {}
+   |            ^^^^ required by this bound in `test`
+
+error[E0277]: `Rc<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:13:12
+   |
+LL |     test::<Rc<i32>>();
+   |            ^^^^^^^ `Rc<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Rc<i32>`
+note: required by a bound in `test`
+  --> $DIR/not-sync.rs:5:12
+   |
+LL | fn test<T: Sync>() {}
+   |            ^^^^ required by this bound in `test`
+
+error[E0277]: `std::rc::Weak<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:15:12
+   |
+LL |     test::<Weak<i32>>();
+   |            ^^^^^^^^^ `std::rc::Weak<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `std::rc::Weak<i32>`
+note: required by a bound in `test`
+  --> $DIR/not-sync.rs:5:12
+   |
+LL | fn test<T: Sync>() {}
+   |            ^^^^ required by this bound in `test`
+
+error[E0277]: `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+  --> $DIR/not-sync.rs:18:12
+   |
+LL |     test::<Receiver<i32>>();
+   |            ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<i32>`
+note: required by a bound in `test`
+  --> $DIR/not-sync.rs:5:12
+   |
+LL | fn test<T: Sync>() {}
+   |            ^^^^ required by this bound in `test`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

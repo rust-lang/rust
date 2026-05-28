@@ -1,0 +1,26 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
++     scope 1 (inlined <C as Call>::call) {
++         scope 2 (inlined <B<A> as Call>::call) {
++             scope 3 (inlined <A as Call>::call) {
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = <C as Call>::call() -> [return: bb1, unwind unreachable];
++         _1 = <B<C> as Call>::call() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

@@ -1,0 +1,8 @@
+error: only opaque types defined in the local crate can be defined
+  --> $DIR/foreign_type.rs:3:17
+   |
+LL | #[define_opaque(String)]
+   |                 ^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0423]: expected value, found builtin type `u8`
+  --> $DIR/unknown-alias-defkind-anonconst-ice-116710.rs:6:43
+   |
+LL | struct A<const N: u32 = 1, const M: u32 = u8>;
+   |                                           ^^ not a value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

@@ -1,0 +1,76 @@
+#![warn(clippy::single_char_add_str)]
+#![allow(clippy::needless_raw_strings, clippy::needless_raw_string_hashes)]
+
+macro_rules! get_string {
+    () => {
+        String::from("Hello world!")
+    };
+}
+
+fn main() {
+    // `push_str` tests
+
+    let mut string = String::new();
+    string.push('R');
+    //~^ single_char_add_str
+    string.push('\'');
+    //~^ single_char_add_str
+
+    string.push('u');
+    string.push_str("st");
+    string.push_str("");
+    string.push('\x52');
+    //~^ single_char_add_str
+    string.push('\u{0052}');
+    //~^ single_char_add_str
+    string.push('a');
+    //~^ single_char_add_str
+
+    let c_ref = &'a';
+    string.push(*c_ref);
+    //~^ single_char_add_str
+    let c = 'a';
+    string.push(c);
+    //~^ single_char_add_str
+    string.push('a');
+    //~^ single_char_add_str
+
+    get_string!().push('ö');
+    //~^ single_char_add_str
+
+    // `insert_str` tests
+
+    let mut string = String::new();
+    string.insert(0, 'R');
+    //~^ single_char_add_str
+    string.insert(1, '\'');
+    //~^ single_char_add_str
+
+    string.insert(0, 'u');
+    string.insert_str(2, "st");
+    string.insert_str(0, "");
+    string.insert(0, '\x52');
+    //~^ single_char_add_str
+    string.insert(0, '\u{0052}');
+    //~^ single_char_add_str
+    let x: usize = 2;
+    string.insert(x, 'a');
+    //~^ single_char_add_str
+    const Y: usize = 1;
+    string.insert(Y, 'a');
+    //~^ single_char_add_str
+    string.insert(Y, '"');
+    //~^ single_char_add_str
+    string.insert(Y, '\'');
+    //~^ single_char_add_str
+
+    string.insert(0, *c_ref);
+    //~^ single_char_add_str
+    string.insert(0, c);
+    //~^ single_char_add_str
+    string.insert(0, 'a');
+    //~^ single_char_add_str
+
+    get_string!().insert(1, '?');
+    //~^ single_char_add_str
+}

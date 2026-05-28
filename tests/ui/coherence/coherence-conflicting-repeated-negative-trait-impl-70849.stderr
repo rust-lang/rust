@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Clone` for type `&mut MyType`
+  --> $DIR/coherence-conflicting-repeated-negative-trait-impl-70849.rs:8:1
+   |
+LL | impl !Clone for &mut MyType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> !Clone for &mut T
+             where T: ?Sized;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,38 @@
+#![deny(clippy::transmute_ptr_to_ptr)]
+#![allow(dead_code, clippy::missing_transmute_annotations, clippy::cast_slice_different_sizes)]
+
+fn main() {
+    unsafe {
+        let single_u64: &[u64] = &[0xDEAD_BEEF_DEAD_BEEF];
+        let bools: &[bool] = unsafe { &*(single_u64 as *const [u64] as *const [bool]) };
+        //~^ transmute_ptr_to_ptr
+
+        let a: &[u32] = &[0x12345678, 0x90ABCDEF, 0xFEDCBA09, 0x87654321];
+        let b: &[u8] = unsafe { &*(a as *const [u32] as *const [u8]) };
+        //~^ transmute_ptr_to_ptr
+
+        let bytes = &[1u8, 2u8, 3u8, 4u8] as &[u8];
+        let alt_slice: &[u32] = unsafe { &*(bytes as *const [u8] as *const [u32]) };
+        //~^ transmute_ptr_to_ptr
+    }
+}
+
+fn issue16104(make_ptr: fn() -> *const u32) {
+    macro_rules! call {
+        ($x:expr) => {
+            $x()
+        };
+    }
+    macro_rules! take_ref {
+        ($x:expr) => {
+            &$x
+        };
+    }
+
+    unsafe {
+        let _: *const f32 = call!(make_ptr).cast::<f32>();
+        //~^ transmute_ptr_to_ptr
+        let _: &f32 = &*(take_ref!(1u32) as *const u32 as *const f32);
+        //~^ transmute_ptr_to_ptr
+    }
+}

@@ -1,0 +1,375 @@
+use std::fmt;
+use std::ops::RangeInclusive;
+
+use libm::support::{Float, Int, MinInt};
+
+use crate::domain::get_domain;
+use crate::generate::{product2, product3};
+use crate::num::full_range;
+use crate::run_cfg::{int_range, iteration_count};
+use crate::{Arg0, Arg1, Arg2, CheckCtx, MathOp, linear_ints, logspace};
+
+/// Generate a sequence of inputs that eiher cover the domain in completeness (for smaller float
+/// types and single argument functions) or provide evenly spaced inputs across the domain with
+/// approximately `u32::MAX` total iterations.
+pub trait SpacedInput<Op> {
+    fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self> + Send, u64);
+}
+
+/// Construct an iterator from `logspace` and also calculate the total number of steps expected
+/// for that iterator.
+fn logspace_steps<F>(
+    ctx: &CheckCtx,
+    argnum: usize,
+    max_steps: u64,
+) -> (impl Iterator<Item = F> + Clone, u64)
+where
+    F: Float,
+    F::Int: TryFrom<u64, Error: fmt::Debug>,
+    u64: TryFrom<F::Int, Error: fmt::Debug>,
+    RangeInclusive<F::Int>: Iterator,
+{
+    // i8 is a dummy type here, it can be any integer.
+    let domain = get_domain::<F, i8>(ctx.fn_ident, argnum).unwrap_float();
+    let start = domain.range_start();
+    let end = domain.range_end();
+
+    let max_steps = F::Int::try_from(max_steps).unwrap_or(F::Int::MAX);
+    let (iter, steps) = logspace(start, end, max_steps);
+
+    // `steps` will be <= the original `max_steps`, which is a `u64`.
+    (iter, steps.try_into().unwrap())
+}
+
+/// Represents the iterator in either `Left` or `Right`.
+enum EitherIter<A, B> {
+    A(A),
+    B(B),
+}
+
+impl<T, A: Iterator<Item = T>, B: Iterator<Item = T>> Iterator for EitherIter<A, B> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::A(iter) => iter.next(),
+            Self::B(iter) => iter.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::A(iter) => iter.size_hint(),
+            Self::B(iter) => iter.size_hint(),
+        }
+    }
+}
+
+/// Gets the total number of possible values, returning `None` if that number doesn't fit in a
+/// `u64`.
+fn total_value_count<F: Float>() -> Option<u64>
+where
+    u64: TryFrom<F::Int>,
+{
+    total_value_count_int::<F::Int>()
+}
+
+fn total_value_count_int<I: Int>() -> Option<u64>
+where
+    u64: TryFrom<I::Unsigned>,
+{
+    u64::try_from(I::MAX.abs_diff(I::MIN))
+        .ok()
+        .and_then(|max| max.checked_add(1))
+}
+
+/// Returns an iterator of every possible value of type `F`.
+fn exhaustive_float<F: Float>() -> (impl Iterator<Item = F> + Clone, u64)
+where
+    u64: TryFrom<F::Int>,
+    RangeInclusive<F::Int>: Iterator<Item = F::Int>,
+{
+    let count = total_value_count::<F>().expect("tried exhaustive with > u64::MAX items");
+    let iter = (F::Int::MIN..=F::Int::MAX).map(|bits| F::from_bits(bits));
+    (iter, count)
+}
+
+macro_rules! impl_spaced_input {
+    ($fty:ty) => {
+        impl<Op> SpacedInput<Op> for ($fty,)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let max_steps0 = iteration_count(ctx, 0);
+
+                // Unary tests: `f16` and `f32` may be exhaustive.
+                if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
+                    && exhaustive_steps0 <= max_steps0
+                {
+                    let (iter0, steps0) = exhaustive_float();
+                    let iter0 = iter0.map(|v| (v,));
+
+                    return (EitherIter::A(iter0), steps0);
+                }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let iter0 = iter0.map(|v| (v,));
+                (EitherIter::B(iter0), steps0)
+            }
+        }
+
+        impl<Op> SpacedInput<Op> for ($fty, $fty)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
+
+                // Binary test: `f16` may be exhaustive.
+                if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
+                    && exhaustive_steps0 <= max_steps0
+                    && let Some(exhaustive_steps1) = total_value_count::<Arg1<Op>>()
+                    && exhaustive_steps1 <= max_steps1
+                {
+                    let (iter0, steps0) = exhaustive_float();
+                    let (iter1, steps1) = exhaustive_float();
+
+                    let iter = product2(iter0, iter1);
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+
+                let iter = product2(iter0, iter1);
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
+            }
+        }
+
+        impl<Op> SpacedInput<Op> for ($fty, $fty, $fty)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
+                let max_steps2 = iteration_count(ctx, 2);
+
+                // Ternary test: `f16` may be exhaustive tested if `LIBM_EXTENSIVE_TESTS`
+                // is incresed.
+                if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
+                    && exhaustive_steps0 <= max_steps0
+                    && let Some(exhaustive_steps1) = total_value_count::<Arg1<Op>>()
+                    && exhaustive_steps1 <= max_steps1
+                    && let Some(exhaustive_steps2) = total_value_count::<Arg2<Op>>()
+                    && exhaustive_steps2 <= max_steps2
+                {
+                    let (iter0, steps0) = exhaustive_float();
+                    let (iter1, steps1) = exhaustive_float();
+                    let (iter2, steps2) = exhaustive_float();
+
+                    let iter = product3(iter0, iter1, iter2);
+                    let count = steps0.strict_mul(steps1).strict_mul(steps2);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                // Non-exhaustive, sweep a subset of inputs.
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+                let (iter2, steps2) = logspace_steps::<Arg2<Op>>(ctx, 2, max_steps2);
+
+                let iter = product3(iter0, iter1, iter2);
+                let count = steps0.strict_mul(steps1).strict_mul(steps2);
+
+                (EitherIter::B(iter), count)
+            }
+        }
+
+        impl<Op> SpacedInput<Op> for (i32, $fty)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range0 = int_range(ctx, 0).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 1);
+
+                if let Some(exhaustive_steps0) = total_value_count_int::<Arg0<Op>>()
+                    && exhaustive_steps0 <= max_steps0
+                    && let Some(exhaustive_steps1) = total_value_count::<Arg1<Op>>()
+                    && exhaustive_steps1 <= max_steps1
+                {
+                    let (iter0, steps0) = linear_ints(range0, max_steps0);
+                    let (iter1, steps1) = exhaustive_float();
+
+                    let iter = product2(iter0, iter1);
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                let (iter0, steps0) = linear_ints(range0, max_steps0);
+                let (iter1, steps1) = logspace_steps::<Arg1<Op>>(ctx, 1, max_steps1);
+
+                let iter = product2(iter0, iter1);
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
+            }
+        }
+
+        impl<Op> SpacedInput<Op> for ($fty, i32)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let max_steps0 = iteration_count(ctx, 0);
+                let range1 = int_range(ctx, 1).unwrap_or(full_range());
+                let max_steps1 = iteration_count(ctx, 1);
+
+                if let Some(exhaustive_steps0) = total_value_count::<Arg0<Op>>()
+                    && exhaustive_steps0 <= max_steps0
+                {
+                    let (iter0, steps0) = exhaustive_float();
+                    let (iter1, steps1) = linear_ints(range1, max_steps1);
+
+                    let iter = product2(iter0, iter1);
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                let (iter0, steps0) = logspace_steps::<Arg0<Op>>(ctx, 0, max_steps0);
+                let (iter1, steps1) = linear_ints(range1, max_steps1);
+
+                let iter = product2(iter0, iter1);
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
+            }
+        }
+    };
+}
+
+#[cfg(f16_enabled)]
+impl_spaced_input!(f16);
+impl_spaced_input!(f32);
+impl_spaced_input!(f64);
+#[cfg(f128_enabled)]
+impl_spaced_input!(f128);
+
+macro_rules! impl_spaced_input_int {
+    (@skip_u32 $ity:ty) => {
+        impl<Op> SpacedInput<Op> for ($ity,)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range = int_range(ctx, 0).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                {
+                    let iter0 = range.map(|v| (v,));
+                    return (EitherIter::A(iter0), steps0);
+                }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range, max_steps0);
+                let iter0 = iter0.map(|v| (v,));
+                (EitherIter::B(iter0), steps0)
+            }
+        }
+
+        impl<Op> SpacedInput<Op> for ($ity, $ity)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range0 = int_range(ctx, 0).unwrap_or(full_range());
+                let range1 = int_range(ctx, 1).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 0);
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let iter = product2(range0, range1);
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
+                let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
+
+                let iter = product2(iter0, iter1);
+                let count = steps0.strict_mul(steps1);
+
+                (EitherIter::B(iter), count)
+            }
+        }
+    };
+    ($ity:ty) => {
+        impl_spaced_input_int!(@skip_u32 $ity);
+
+        impl<Op> SpacedInput<Op> for ($ity, u32)
+        where
+            Op: MathOp<RustArgs = Self>,
+        {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
+                let range0 = int_range(ctx, 0).unwrap_or(full_range());
+                let range1 = int_range(ctx, 1).unwrap_or(full_range());
+                let max_steps0 = iteration_count(ctx, 0);
+                let max_steps1 = iteration_count(ctx, 0);
+
+                if let Some(steps0) = total_value_count_int::<Arg0<Op>>()
+                    && steps0 <= max_steps0
+                    && let Some(steps1) = total_value_count_int::<Arg1<Op>>()
+                    && steps1 <= max_steps1
+                {
+                    let iter = product2(range0, range1);
+                    let count = steps0.strict_mul(steps1);
+
+                    return (EitherIter::A(iter), count);
+                }
+
+                let (iter0, steps0) = linear_ints::<Arg0<Op>>(range0, max_steps0);
+                let (iter1, steps1) = linear_ints::<Arg1<Op>>(range1, max_steps1);
+
+                let iter = product2(iter0, iter1);
+                let count = steps0.strict_mul(steps1);
+                (EitherIter::B(iter), count)
+            }
+        }
+    };
+}
+
+impl_spaced_input_int!(i32);
+impl_spaced_input_int!(i64);
+impl_spaced_input_int!(i128);
+impl_spaced_input_int!(@skip_u32 u32);
+impl_spaced_input_int!(u64);
+impl_spaced_input_int!(u128);
+
+/// Create a test case iterator for extensive inputs. Also returns the total test case count.
+pub fn get_test_cases<Op>(
+    ctx: &CheckCtx,
+) -> (impl Iterator<Item = Op::RustArgs> + Send + use<'_, Op>, u64)
+where
+    Op: MathOp,
+    Op::RustArgs: SpacedInput<Op>,
+{
+    Op::RustArgs::get_cases(ctx)
+}

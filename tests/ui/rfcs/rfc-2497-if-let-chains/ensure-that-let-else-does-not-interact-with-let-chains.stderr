@@ -1,0 +1,141 @@
+error: a `&&` expression cannot be directly assigned in `let...else`
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:19
+   |
+LL |     let Some(n) = opt && n == 1 else {
+   |                   ^^^^^^^^^^^^^
+   |
+help: wrap the expression in parentheses
+   |
+LL |     let Some(n) = (opt && n == 1) else {
+   |                   +             +
+
+error: expected expression, found `let` statement
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:26
+   |
+LL |     let Some(n) = opt && let another = n else {
+   |                          ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: a `&&` expression cannot be directly assigned in `let...else`
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19
+   |
+LL |     let Some(n) = opt && let another = n else {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: wrap the expression in parentheses
+   |
+LL |     let Some(n) = (opt && let another = n) else {
+   |                   +                      +
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:5
+   |
+LL |     if let Some(n) = opt else {
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:23:25
+   |
+LL |     if let Some(n) = opt else {
+   |                         ^
+help: remove the `if` if you meant to write a `let...else` statement
+   |
+LL -     if let Some(n) = opt else {
+LL +     let Some(n) = opt else {
+   |
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:5
+   |
+LL |     if let Some(n) = opt && n == 1 else {
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:27:35
+   |
+LL |     if let Some(n) = opt && n == 1 else {
+   |                                   ^
+
+error: this `if` expression is missing a block after the condition
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:5
+   |
+LL |     if let Some(n) = opt && let another = n else {
+   |     ^^
+   |
+help: add a block here
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:31:44
+   |
+LL |     if let Some(n) = opt && let another = n else {
+   |                                            ^
+
+error: expected `{`, found keyword `else`
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:37:33
+   |
+LL |         while let Some(n) = opt else {
+   |         ----- ----------------- ^^^^ expected `{`
+   |         |     |
+   |         |     this `while` condition successfully parsed
+   |         while parsing the body of this `while` expression
+
+error: expected `{`, found keyword `else`
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:43:43
+   |
+LL |         while let Some(n) = opt && n == 1 else {
+   |         ----- --------------------------- ^^^^ expected `{`
+   |         |     |
+   |         |     this `while` condition successfully parsed
+   |         while parsing the body of this `while` expression
+
+error: expected `{`, found keyword `else`
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:49:52
+   |
+LL |         while let Some(n) = opt && let another = n else {
+   |         ----- ------------------------------------ ^^^^ expected `{`
+   |         |     |
+   |         |     this `while` condition successfully parsed
+   |         while parsing the body of this `while` expression
+
+error[E0308]: mismatched types
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:19
+   |
+LL |     let Some(n) = opt && n == 1 else {
+   |                   ^^^ expected `bool`, found `Option<i32>`
+   |
+   = note: expected type `bool`
+              found enum `Option<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:9
+   |
+LL |     let Some(n) = opt && n == 1 else {
+   |         ^^^^^^^   ------------- this expression has type `bool`
+   |         |
+   |         expected `bool`, found `Option<_>`
+   |
+   = note: expected type `bool`
+              found enum `Option<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19
+   |
+LL |     let Some(n) = opt && let another = n else {
+   |                   ^^^ expected `bool`, found `Option<i32>`
+   |
+   = note: expected type `bool`
+              found enum `Option<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:9
+   |
+LL |     let Some(n) = opt && let another = n else {
+   |         ^^^^^^^   ---------------------- this expression has type `bool`
+   |         |
+   |         expected `bool`, found `Option<_>`
+   |
+   = note: expected type `bool`
+              found enum `Option<_>`
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

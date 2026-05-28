@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `&'static String: Borrow<str>` is not satisfied
+  --> $DIR/suggest-remove-reference-in-where-clause.rs:2:60
+   |
+LL | pub const F: for<'a> fn(&'a &'static String) -> &'a str = <&'static String as Borrow<str>>::borrow;
+   |                                                            ^^^^^^^^^^^^^^^ the trait `Borrow<str>` is not implemented for `&'static String`
+   |
+help: consider removing the leading `&`-reference
+   |
+LL - pub const F: for<'a> fn(&'a &'static String) -> &'a str = <&'static String as Borrow<str>>::borrow;
+LL + pub const F: for<'a> fn(&'a &'static String) -> &'a str = <String as Borrow<str>>::borrow;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

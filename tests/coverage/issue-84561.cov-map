@@ -1,0 +1,155 @@
+Function name: <issue_84561::Foo as core::fmt::Debug>::fmt
+Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, 8a, 01, 05, 00, 43, 01, 01, 09, 00, 0f, 01, 00, 10, 00, 11, 05, 00, 25, 00, 26, 02, 01, 09, 00, 0f, 01, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 6
+- Code(Counter(0)) at (prev + 138, 5) to (start + 0, 67)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 16) to (start + 0, 17)
+- Code(Counter(1)) at (prev + 0, 37) to (start + 0, 38)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: c1
+
+Function name: issue_84561::main
+Raw bytes (30): 0x[01, 01, 00, 05, 01, b4, 01, 01, 00, 0a, 01, 01, 05, 00, 0a, 01, 01, 05, 00, 0a, 01, 01, 05, 00, 0a, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 0
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 180, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: issue_84561::test1
+Raw bytes (45): 0x[01, 01, 00, 08, 01, 9a, 01, 01, 00, 0b, 01, 01, 05, 00, 0b, 01, 01, 05, 00, 0b, 01, 01, 0d, 00, 0e, 01, 01, 05, 00, 0b, 01, 01, 05, 02, 06, 01, 03, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 0
+Number of file 0 mappings: 8
+- Code(Counter(0)) at (prev + 154, 1) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 2, 6)
+- Code(Counter(0)) at (prev + 3, 5) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: issue_84561::test2
+Raw bytes (20): 0x[01, 01, 00, 03, 01, b0, 01, 01, 00, 0b, 01, 01, 05, 00, 10, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 176, 1) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: issue_84561::test2::call_print
+Raw bytes (20): 0x[01, 01, 00, 03, 01, a7, 01, 09, 00, 1f, 01, 01, 0d, 00, 13, 01, 01, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 167, 9) to (start + 0, 31)
+- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 10)
+Highest counter ID seen: c0
+
+Function name: issue_84561::test3
+Raw bytes (340): 0x[01, 01, 08, 01, 05, 01, 09, 01, 0d, 11, 15, 1d, 21, 19, 1d, 19, 1d, 19, 1d, 40, 01, 08, 01, 00, 0b, 01, 01, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 01, 09, 00, 0c, 01, 00, 0f, 00, 15, 01, 01, 05, 00, 0f, 01, 01, 09, 00, 0c, 01, 00, 0f, 00, 15, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0d, 01, 02, 05, 00, 0f, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0f, 01, 01, 09, 00, 0c, 01, 00, 0f, 00, 15, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0f, 01, 01, 05, 00, 0d, 01, 01, 05, 00, 0d, 01, 02, 05, 00, 0f, 00, 00, 29, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 01, 01, 05, 00, 0f, 00, 08, 09, 00, 10, 00, 02, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 01, 04, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 02, 05, 00, 0f, 01, 04, 05, 00, 0f, 01, 04, 05, 00, 0f, 01, 04, 09, 00, 0c, 01, 00, 0f, 00, 15, 01, 01, 05, 00, 0f, 01, 04, 08, 00, 0f, 05, 01, 09, 00, 13, 02, 05, 09, 00, 13, 01, 05, 08, 00, 0f, 09, 01, 09, 00, 13, 06, 06, 09, 00, 13, 01, 06, 05, 00, 0f, 01, 01, 0c, 00, 13, 0d, 01, 0d, 00, 13, 0a, 02, 0d, 00, 13, 11, 04, 05, 00, 0f, 11, 02, 0c, 00, 13, 15, 01, 0d, 00, 13, 0e, 02, 0d, 00, 13, 13, 03, 05, 00, 0f, 19, 01, 0c, 00, 13, 1d, 01, 0d, 00, 17, 1d, 04, 0d, 00, 13, 1e, 02, 0d, 00, 17, 1e, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 1e, 02, 15, 00, 1b, 21, 04, 0d, 00, 13, 25, 05, 05, 00, 0f, 00, 05, 05, 00, 0f, 00, 05, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/issue-84561.rs
+Number of expressions: 8
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 4 operands: lhs = Counter(7), rhs = Counter(8)
+- expression 5 operands: lhs = Counter(6), rhs = Counter(7)
+- expression 6 operands: lhs = Counter(6), rhs = Counter(7)
+- expression 7 operands: lhs = Counter(6), rhs = Counter(7)
+Number of file 0 mappings: 64
+- Code(Counter(0)) at (prev + 8, 1) to (start + 0, 11)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 15)
+- Code(Zero) at (prev + 0, 41) to (start + 0, 48)
+- Code(Zero) at (prev + 0, 51) to (start + 0, 65)
+- Code(Zero) at (prev + 0, 75) to (start + 0, 90)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Zero) at (prev + 8, 9) to (start + 0, 16)
+- Code(Zero) at (prev + 2, 13) to (start + 0, 27)
+- Code(Zero) at (prev + 2, 13) to (start + 0, 28)
+- Code(Counter(0)) at (prev + 4, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 2, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 4, 9) to (start + 0, 12)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 21)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 4, 8) to (start + 0, 15)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 19)
+- Code(Expression(0, Sub)) at (prev + 5, 9) to (start + 0, 19)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 5, 8) to (start + 0, 15)
+- Code(Counter(2)) at (prev + 1, 9) to (start + 0, 19)
+- Code(Expression(1, Sub)) at (prev + 6, 9) to (start + 0, 19)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 1, 12) to (start + 0, 19)
+- Code(Counter(3)) at (prev + 1, 13) to (start + 0, 19)
+- Code(Expression(2, Sub)) at (prev + 2, 13) to (start + 0, 19)
+    = (c0 - c3)
+- Code(Counter(4)) at (prev + 4, 5) to (start + 0, 15)
+- Code(Counter(4)) at (prev + 2, 12) to (start + 0, 19)
+- Code(Counter(5)) at (prev + 1, 13) to (start + 0, 19)
+- Code(Expression(3, Sub)) at (prev + 2, 13) to (start + 0, 19)
+    = (c4 - c5)
+- Code(Expression(4, Add)) at (prev + 3, 5) to (start + 0, 15)
+    = (c7 + c8)
+- Code(Counter(6)) at (prev + 1, 12) to (start + 0, 19)
+- Code(Counter(7)) at (prev + 1, 13) to (start + 0, 23)
+- Code(Counter(7)) at (prev + 4, 13) to (start + 0, 19)
+- Code(Expression(7, Sub)) at (prev + 2, 13) to (start + 0, 23)
+    = (c6 - c7)
+- Code(Expression(7, Sub)) at (prev + 1, 20) to (start + 0, 27)
+    = (c6 - c7)
+- Code(Zero) at (prev + 1, 21) to (start + 0, 27)
+- Code(Expression(7, Sub)) at (prev + 2, 21) to (start + 0, 27)
+    = (c6 - c7)
+- Code(Counter(8)) at (prev + 4, 13) to (start + 0, 19)
+- Code(Counter(9)) at (prev + 5, 5) to (start + 0, 15)
+- Code(Zero) at (prev + 5, 5) to (start + 0, 15)
+- Code(Zero) at (prev + 5, 1) to (start + 0, 2)
+Highest counter ID seen: c9
+

@@ -1,0 +1,26 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/hrtb-implied-2.rs:18:17
+   |
+LL | fn fails<I: LendingIterator, F>(iter: &mut I, f: F) -> bool
+   |                                 ----  - let's call the lifetime of this reference `'1`
+   |                                 |
+   |                                 `iter` is a reference that is only valid in the function body
+...
+LL |     let _next = iter2.next();
+   |                 ^^^^^^^^^^^^
+   |                 |
+   |                 `iter` escapes the function body here
+   |                 argument requires that `'1` must outlive `'static`
+   |
+   = note: requirement occurs because of a mutable reference to `Eat<&mut I, F>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/hrtb-implied-2.rs:31:8
+   |
+LL |     F: FnMut(I::Item<'_>),
+   |        ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

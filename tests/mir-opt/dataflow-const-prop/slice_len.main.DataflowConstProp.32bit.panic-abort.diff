@@ -1,0 +1,77 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u32;
+      let mut _2: &[u32];
+      let mut _3: &[u32; 3];
+      let _4: &[u32; 3];
+      let _5: [u32; 3];
+      let _6: usize;
+      let mut _7: usize;
+      let mut _8: bool;
+      let mut _10: &[u32];
+      let _11: usize;
+      let mut _12: usize;
+      let mut _13: bool;
+      let mut _14: &[u32; 3];
+      scope 1 {
+          debug local => _1;
+          let _9: u32;
+          scope 2 {
+              debug constant => _9;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _14 = const main::promoted[0];
+          _4 = copy _14;
+          _3 = copy _4;
+          _2 = move _3 as &[u32] (PointerCoercion(Unsize, AsCast));
+          StorageDead(_3);
+          StorageLive(_6);
+          _6 = const 1_usize;
+-         _7 = PtrMetadata(copy _2);
+-         _8 = Lt(copy _6, copy _7);
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, copy _6) -> [success: bb1, unwind unreachable];
++         _7 = const 3_usize;
++         _8 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _1 = copy (*_2)[_6];
++         _1 = copy (*_2)[1 of 2];
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = const main::SLICE;
+          StorageLive(_11);
+          _11 = const 1_usize;
+-         _12 = PtrMetadata(copy _10);
+-         _13 = Lt(copy _11, copy _12);
+-         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, copy _11) -> [success: bb2, unwind unreachable];
++         _12 = const 3_usize;
++         _13 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _9 = copy (*_10)[_11];
++         _9 = copy (*_10)[1 of 2];
+          StorageDead(_11);
+          StorageDead(_10);
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

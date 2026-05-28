@@ -1,0 +1,62 @@
+error[E0277]: the trait bound `!: OnlyUnit` is not satisfied
+  --> $DIR/defaulted-never-note.rs:40:19
+   |
+LL |     requires_unit(x);
+   |     ------------- ^ the trait `OnlyUnit` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `OnlyUnit` is implemented for `()`
+  --> $DIR/defaulted-never-note.rs:13:1
+   |
+LL | impl OnlyUnit for () {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `requires_unit`
+  --> $DIR/defaulted-never-note.rs:16:26
+   |
+LL | fn requires_unit(_: impl OnlyUnit) {}
+   |                          ^^^^^^^^ required by this bound in `requires_unit`
+
+error[E0277]: the trait bound `!: OnlyU32` is not satisfied
+  --> $DIR/defaulted-never-note.rs:48:18
+   |
+LL |     requires_u32(x);
+   |     ------------ ^ the trait `OnlyU32` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `OnlyU32` is implemented for `u32`
+  --> $DIR/defaulted-never-note.rs:23:1
+   |
+LL | impl OnlyU32 for u32 {}
+   | ^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `requires_u32`
+  --> $DIR/defaulted-never-note.rs:26:25
+   |
+LL | fn requires_u32(_: impl OnlyU32) {}
+   |                         ^^^^^^^ required by this bound in `requires_u32`
+
+error[E0277]: the trait bound `!: Nothing` is not satisfied
+  --> $DIR/defaulted-never-note.rs:54:22
+   |
+LL |     requires_nothing(x);
+   |     ---------------- ^ the trait `Nothing` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/defaulted-never-note.rs:31:1
+   |
+LL | trait Nothing {}
+   | ^^^^^^^^^^^^^
+note: required by a bound in `requires_nothing`
+  --> $DIR/defaulted-never-note.rs:34:29
+   |
+LL | fn requires_nothing(_: impl Nothing) {}
+   |                             ^^^^^^^ required by this bound in `requires_nothing`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

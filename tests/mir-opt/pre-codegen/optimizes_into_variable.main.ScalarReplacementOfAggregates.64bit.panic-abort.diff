@@ -1,0 +1,68 @@
+- // MIR for `main` before ScalarReplacementOfAggregates
++ // MIR for `main` after ScalarReplacementOfAggregates
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _2: (i32, bool);
+      let mut _4: [i32; 6];
+      let _5: usize;
+      let mut _6: bool;
+      let mut _8: Point;
++     let mut _9: u32;
++     let mut _10: u32;
+      scope 1 {
+          debug x => _1;
+          let _3: i32;
+          scope 2 {
+              debug y => _3;
+              let _7: u32;
+              scope 3 {
+                  debug z => _7;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _2 = AddWithOverflow(const 2_i32, const 2_i32);
+          assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _1 = move (_2.0: i32);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = [const 0_i32, const 1_i32, const 2_i32, const 3_i32, const 4_i32, const 5_i32];
+          StorageLive(_5);
+          _5 = const 3_usize;
+          _6 = Lt(copy _5, const 6_usize);
+          assert(move _6, "index out of bounds: the length is {} but the index is {}", const 6_usize, copy _5) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          _3 = copy _4[_5];
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_7);
+-         StorageLive(_8);
+-         _8 = Point { x: const 12_u32, y: const 42_u32 };
+-         _7 = copy (_8.1: u32);
+-         StorageDead(_8);
++         StorageLive(_9);
++         StorageLive(_10);
++         nop;
++         _9 = const 12_u32;
++         _10 = const 42_u32;
++         nop;
++         _7 = copy _10;
++         StorageDead(_9);
++         StorageDead(_10);
++         nop;
+          StorageDead(_7);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

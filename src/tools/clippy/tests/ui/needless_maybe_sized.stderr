@@ -1,0 +1,353 @@
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:9:24
+   |
+LL | fn directly<T: Sized + ?Sized>(t: &T) {}
+   |                        ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:9:16
+   |
+LL | fn directly<T: Sized + ?Sized>(t: &T) {}
+   |                ^^^^^
+   = note: `-D clippy::needless-maybe-sized` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_maybe_sized)]`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn directly<T: Sized + ?Sized>(t: &T) {}
+LL + fn directly<T: Sized>(t: &T) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:15:19
+   |
+LL | fn depth_1<T: A + ?Sized>(t: &T) {}
+   |                   ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:15:15
+   |
+LL | fn depth_1<T: A + ?Sized>(t: &T) {}
+   |               ^
+   = note: ...because `A` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn depth_1<T: A + ?Sized>(t: &T) {}
+LL + fn depth_1<T: A>(t: &T) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:17:19
+   |
+LL | fn depth_2<T: B + ?Sized>(t: &T) {}
+   |                   ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:17:15
+   |
+LL | fn depth_2<T: B + ?Sized>(t: &T) {}
+   |               ^
+   = note: ...because `B` has the bound `A`
+   = note: ...because `A` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn depth_2<T: B + ?Sized>(t: &T) {}
+LL + fn depth_2<T: B>(t: &T) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:21:30
+   |
+LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
+   |                              ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:21:22
+   |
+LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
+   |                      ^
+   = note: ...because `A` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
+LL + fn multiple_paths<T: A + B>(t: &T) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:26:16
+   |
+LL |     T: Sized + ?Sized,
+   |                ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:26:8
+   |
+LL |     T: Sized + ?Sized,
+   |        ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     T: Sized + ?Sized,
+LL +     T: Sized,
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:33:8
+   |
+LL |     T: ?Sized,
+   |        ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:31:15
+   |
+LL | fn mixed_1<T: Sized>(t: &T)
+   |               ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - where
+LL -     T: ?Sized,
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:38:15
+   |
+LL | fn mixed_2<T: ?Sized>(t: &T)
+   |               ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:41:8
+   |
+LL |     T: Sized,
+   |        ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn mixed_2<T: ?Sized>(t: &T)
+LL + fn mixed_2<T>(t: &T)
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:48:8
+   |
+LL |     T: ?Sized,
+   |        ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:47:8
+   |
+LL |     T: Sized,
+   |        ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     T: Sized,
+LL -     T: ?Sized,
+LL +     T: Sized,
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:53:26
+   |
+LL | struct Struct<T: Sized + ?Sized>(T);
+   |                          ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:53:18
+   |
+LL | struct Struct<T: Sized + ?Sized>(T);
+   |                  ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - struct Struct<T: Sized + ?Sized>(T);
+LL + struct Struct<T: Sized>(T);
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:56:17
+   |
+LL | impl<T: Sized + ?Sized> Struct<T> {
+   |                 ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:56:9
+   |
+LL | impl<T: Sized + ?Sized> Struct<T> {
+   |         ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - impl<T: Sized + ?Sized> Struct<T> {
+LL + impl<T: Sized> Struct<T> {
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:58:26
+   |
+LL |     fn method<U: Sized + ?Sized>(&self) {}
+   |                          ^^^^^^
+   |
+note: `U` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:58:18
+   |
+LL |     fn method<U: Sized + ?Sized>(&self) {}
+   |                  ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     fn method<U: Sized + ?Sized>(&self) {}
+LL +     fn method<U: Sized>(&self) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:62:22
+   |
+LL | enum Enum<T: Sized + ?Sized + 'static> {
+   |                      ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:62:14
+   |
+LL | enum Enum<T: Sized + ?Sized + 'static> {
+   |              ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - enum Enum<T: Sized + ?Sized + 'static> {
+LL + enum Enum<T: Sized + 'static> {
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:67:28
+   |
+LL | union Union<'a, T: Sized + ?Sized> {
+   |                            ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:67:20
+   |
+LL | union Union<'a, T: Sized + ?Sized> {
+   |                    ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - union Union<'a, T: Sized + ?Sized> {
+LL + union Union<'a, T: Sized> {
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:72:24
+   |
+LL | trait Trait<T: Sized + ?Sized> {
+   |                        ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:72:16
+   |
+LL | trait Trait<T: Sized + ?Sized> {
+   |                ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - trait Trait<T: Sized + ?Sized> {
+LL + trait Trait<T: Sized> {
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:74:32
+   |
+LL |     fn trait_method<U: Sized + ?Sized>() {}
+   |                                ^^^^^^
+   |
+note: `U` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:74:24
+   |
+LL |     fn trait_method<U: Sized + ?Sized>() {}
+   |                        ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     fn trait_method<U: Sized + ?Sized>() {}
+LL +     fn trait_method<U: Sized>() {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:77:25
+   |
+LL |     type GAT<U: Sized + ?Sized>;
+   |                         ^^^^^^
+   |
+note: `U` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:77:17
+   |
+LL |     type GAT<U: Sized + ?Sized>;
+   |                 ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     type GAT<U: Sized + ?Sized>;
+LL +     type GAT<U: Sized>;
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:84:23
+   |
+LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
+   |                       ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:84:32
+   |
+LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
+   |                                ^^^^^^^^^^^^^
+   = note: ...because `SecondInTrait` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn second_in_trait<T: ?Sized + SecondInTrait>() {}
+LL + fn second_in_trait<T: SecondInTrait>() {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:87:33
+   |
+LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
+   |                                 ^^^^^^
+   |
+note: `impl Sized + ?Sized` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:87:25
+   |
+LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
+   |                         ^^^^^
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn impl_trait(_: &(impl Sized + ?Sized)) {}
+LL + fn impl_trait(_: &(impl Sized)) {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:91:42
+   |
+LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
+   |                                          ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:91:24
+   |
+LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
+   |                        ^^^^^^^^^^^^^^^
+   = note: ...because `GenericTrait` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL - fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
+LL + fn in_generic_trait<T: GenericTrait<U>, U>() {}
+   |
+
+error: `?Sized` bound is ignored because of a `Sized` requirement
+  --> tests/ui/needless_maybe_sized.rs:107:29
+   |
+LL |     fn larger_graph<T: A1 + ?Sized>() {}
+   |                             ^^^^^^
+   |
+note: `T` cannot be unsized because of the bound
+  --> tests/ui/needless_maybe_sized.rs:107:24
+   |
+LL |     fn larger_graph<T: A1 + ?Sized>() {}
+   |                        ^^
+   = note: ...because `A1` has the bound `B2`
+   = note: ...because `B2` has the bound `Sized`
+help: change the bounds that require `Sized`, or remove the `?Sized` bound
+   |
+LL -     fn larger_graph<T: A1 + ?Sized>() {}
+LL +     fn larger_graph<T: A1>() {}
+   |
+
+error: aborting due to 20 previous errors
+

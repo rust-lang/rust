@@ -1,0 +1,65 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:7:13
+   |
+LL |     let a = #![allow(warnings)] (1, 2);
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:10:14
+   |
+LL |     let b = (#![allow(warnings)] 1, 2);
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:15:10
+   |
+LL |         (#![allow(warnings)] 1, 2)
+   |          ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:21:18
+   |
+LL |         let e = (#![allow(warnings)] 1, 2);
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:26:14
+   |
+LL |     let e = [#![allow(warnings)] 1, 2];
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:29:14
+   |
+LL |     let f = [#![allow(warnings)] 1; 0];
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/stmt_expr_attrs_placement.rs:36:24
+   |
+LL |     let h = MyStruct { #![allow(warnings)] field: 0 };
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: aborting due to 7 previous errors
+

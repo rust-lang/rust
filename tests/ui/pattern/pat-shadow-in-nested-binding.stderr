@@ -1,0 +1,12 @@
+error[E0530]: let bindings cannot shadow tuple structs
+  --> $DIR/pat-shadow-in-nested-binding.rs:5:10
+   |
+LL | struct foo(usize);
+   | ------------------ the tuple struct `foo` is defined here
+...
+LL |     let (foo, _) = (2, 3);
+   |          ^^^ cannot be named the same as a tuple struct
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0530`.

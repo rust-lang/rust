@@ -1,0 +1,13 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/reborrow-promotion-rejected.rs:18:47
+   |
+LL | static BAD: &'static MyRef<'static> = &coerce(MyMut(&1));
+   |                                       --------^^^^^^^^^-
+   |                                       |       |        |
+   |                                       |       |        temporary value is freed at the end of this statement
+   |                                       |       creates a temporary value which is freed while still in use
+   |                                       using this value as a static requires that borrow lasts for `'static`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

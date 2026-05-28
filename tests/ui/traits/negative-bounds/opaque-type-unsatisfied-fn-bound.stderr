@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): !Fn(u32)` is not satisfied
+  --> $DIR/opaque-type-unsatisfied-fn-bound.rs:5:17
+   |
+LL | fn produce() -> impl !Fn<(u32,)> {}
+   |                 ^^^^^^^^^^^^^^^^ the trait bound `(): !Fn(u32)` is not satisfied
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

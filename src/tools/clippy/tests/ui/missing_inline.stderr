@@ -1,0 +1,41 @@
+error: missing `#[inline]` for a function
+  --> tests/ui/missing_inline.rs:20:1
+   |
+LL | pub fn pub_foo() {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-inline-in-public-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_inline_in_public_items)]`
+
+error: missing `#[inline]` for a default trait method
+  --> tests/ui/missing_inline.rs:39:5
+   |
+LL |     fn PubBar_b() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> tests/ui/missing_inline.rs:56:5
+   |
+LL |     fn PubBar_a() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> tests/ui/missing_inline.rs:60:5
+   |
+LL |     fn PubBar_b() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> tests/ui/missing_inline.rs:64:5
+   |
+LL |     fn PubBar_c() {}
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> tests/ui/missing_inline.rs:76:5
+   |
+LL |     pub fn PubFooImpl() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

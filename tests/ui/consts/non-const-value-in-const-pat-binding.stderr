@@ -1,0 +1,21 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/non-const-value-in-const-pat-binding.rs:5:17
+   |
+LL |         const { v }
+   |                 ^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/non-const-value-in-const-pat-binding.rs:12:17
+   |
+LL |         const { v }
+   |                 ^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/non-const-value-in-const-pat-binding.rs:20:13
+   |
+LL |     const { v }
+   |             ^ non-constant value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0435`.

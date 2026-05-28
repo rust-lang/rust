@@ -1,0 +1,81 @@
+error[E0308]: mismatched types
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:8:13
+   |
+LL | fn change_object(mut object: &Object) {
+   |                              ------- expected due to this parameter type
+LL |    let object2 = Object;
+LL |    object = object2;
+   |             ^^^^^^^ expected `&Object`, found `Object`
+   |
+help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+   |
+LL ~ fn change_object(object: &mut Object) {
+LL |    let object2 = Object;
+LL ~    *object = object2;
+   |
+
+error[E0597]: `object2` does not live long enough
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:14:13
+   |
+LL | fn change_object2(mut object: &Object) {
+   |                               - let's call the lifetime of this reference `'1`
+LL |
+LL |    let object2 = Object;
+   |        ------- binding `object2` declared here
+LL |    object = &object2;
+   |    ---------^^^^^^^^
+   |    |        |
+   |    |        borrowed value does not live long enough
+   |    assignment requires that `object2` is borrowed for `'1`
+...
+LL | }
+   | - `object2` dropped here while still borrowed
+
+error: value assigned to `object` is never read
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:14:4
+   |
+LL |    object = &object2;
+   |    ^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:9
+   |
+LL | #![deny(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+   |
+LL ~ fn change_object2(object: &mut Object) {
+LL |
+LL |    let object2 = Object;
+LL ~    *object = object2;
+   |
+
+error[E0596]: cannot borrow `object2` as mutable, as it is not declared as mutable
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:14
+   |
+LL |     object = &mut object2;
+   |              ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut object2 = Object;
+   |         +++
+
+error: value assigned to `object` is never read
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:5
+   |
+LL |     object = &mut object2;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+   |
+LL ~ fn change_object3(object: &mut Object) {
+LL |
+LL |     let object2 = Object;
+LL ~     *object = object2;
+   |
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0596, E0597.
+For more information about an error, try `rustc --explain E0308`.

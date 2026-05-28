@@ -1,0 +1,19 @@
+warning: unused return value of `Box::<T>::from_raw` that must be used
+  --> $DIR/must-use-box-from-raw.rs:8:5
+   |
+LL |     Box::from_raw(ptr);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`
+note: the lint level is defined here
+  --> $DIR/must-use-box-from-raw.rs:5:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = Box::from_raw(ptr);
+   |     +++++++
+
+warning: 1 warning emitted
+

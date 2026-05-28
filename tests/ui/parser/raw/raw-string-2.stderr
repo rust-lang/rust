@@ -1,0 +1,11 @@
+error[E0748]: unterminated raw string
+  --> $DIR/raw-string-2.rs:2:13
+   |
+LL |     let x = r###"here's a long string"# "# "##;
+   |             ^ unterminated raw string       -- help: consider terminating the string here: `###`
+   |
+   = note: this raw string should be terminated with `"###`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0748`.

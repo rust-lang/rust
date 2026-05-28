@@ -1,0 +1,13 @@
+error: unicode codepoint changing visible direction of text present in doc comment
+  --> $DIR/unicode-control-doc-comment-issue-153096.rs:4:1
+   |
+LL | /// �א�, �ב�, �ג�, �ד�, �ה�
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = note: if their presence wasn't intentional, you can remove them
+   = note: if you need to keep them and make them explicit in source, rewrite this doc comment as a `#[doc = "..."]` attribute and use Unicode escapes such as '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}', '\u{2068}', '\u{2069}'
+   = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
+
+error: aborting due to 1 previous error
+

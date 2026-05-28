@@ -1,0 +1,36 @@
+error[E0277]: the trait bound `(): LocalTrait` is not satisfied
+  --> $DIR/nightly-only-unstable.rs:25:21
+   |
+LL |     use_local_trait(());
+   |     --------------- ^^ the trait `LocalTrait` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/nightly-only-unstable.rs:14:1
+   |
+LL | trait LocalTrait {}
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `use_local_trait`
+  --> $DIR/nightly-only-unstable.rs:16:28
+   |
+LL | fn use_local_trait(_: impl LocalTrait) {}
+   |                            ^^^^^^^^^^ required by this bound in `use_local_trait`
+
+error[E0277]: the trait bound `(): ForeignTrait` is not satisfied
+  --> $DIR/nightly-only-unstable.rs:31:23
+   |
+LL |     use_foreign_trait(());
+   |     ----------------- ^^ the nightly-only, unstable trait `ForeignTrait` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `use_foreign_trait`
+  --> $DIR/nightly-only-unstable.rs:20:30
+   |
+LL | fn use_foreign_trait(_: impl force_unstable::ForeignTrait) {}
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `use_foreign_trait`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

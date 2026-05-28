@@ -1,0 +1,23 @@
+error: this method is named `iter` but its return type does not implement `Iterator`
+  --> tests/ui/iter_not_returning_iterator.rs:30:5
+   |
+LL |     fn iter(&self) -> Counter2 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::iter-not-returning-iterator` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_not_returning_iterator)]`
+
+error: this method is named `iter_mut` but its return type does not implement `Iterator`
+  --> tests/ui/iter_not_returning_iterator.rs:36:5
+   |
+LL |     fn iter_mut(&self) -> Counter2 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this method is named `iter` but its return type does not implement `Iterator`
+  --> tests/ui/iter_not_returning_iterator.rs:54:5
+   |
+LL |     fn iter(&self) -> Self::I;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

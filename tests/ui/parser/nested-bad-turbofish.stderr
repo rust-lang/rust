@@ -1,0 +1,11 @@
+error: comparison operators cannot be chained
+  --> $DIR/nested-bad-turbofish.rs:2:16
+   |
+LL |     foo<<S as T>::V>();
+   |                ^   ^
+   |
+   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+// MIR for `drop_second` after built
+
+fn drop_second(_1: WriteOnDrop<'_>, _2: WriteOnDrop<'_>) -> () {
+    let mut _0: ();
+
+    bb0: {
+        drop(_2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

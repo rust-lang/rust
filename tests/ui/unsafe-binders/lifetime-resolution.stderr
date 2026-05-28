@@ -1,0 +1,38 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/lifetime-resolution.rs:6:28
+   |
+LL |     let missing: unsafe<> &'missing ();
+   |                            ^^^^^^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'missing` lifetime
+   |
+LL |     let missing: unsafe<'missing, > &'missing ();
+   |                         +++++++++
+help: consider introducing lifetime `'missing` here
+   |
+LL | fn foo<'missing, 'a>() {
+   |        +++++++++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/lifetime-resolution.rs:10:30
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime parameter from outer item
+...
+LL |         let outer: unsafe<> &'a &'b ();
+   |                              ^^ use of generic parameter from outer item
+   |
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |         let outer: unsafe<'a, > &'a &'b ();
+   |                           +++
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn inner<'a, 'b>() {
+   |              +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0261, E0401.
+For more information about an error, try `rustc --explain E0261`.

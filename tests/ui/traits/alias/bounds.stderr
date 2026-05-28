@@ -1,0 +1,10 @@
+warning: trait `Empty` is never used
+  --> $DIR/bounds.rs:7:7
+   |
+LL | trait Empty {}
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,16 @@
+error[E0432]: unresolved import `self::p::nu`
+  --> $DIR/issue-99695-b.rs:14:23
+   |
+LL |     pub use self::p::{nu, other_item as _};
+   |                       ^^ no `nu` in `m::p`
+   |
+   = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
+help: a macro with this name exists at the root of the crate
+   |
+LL ~     use crate::nu;
+LL ~ pub use self::p::{other_item as _};
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

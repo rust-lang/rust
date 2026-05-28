@@ -1,0 +1,18 @@
+error: `#[rustc_const_stable]` attribute cannot be used on macro defs
+  --> $DIR/const-stability-on-macro.rs:4:1
+   |
+LL | #[rustc_const_stable(feature = "foo", since = "3.3.3")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_const_stable]` can be applied to associated consts, constants, crates, functions, impl blocks, statics, traits, and use statements
+
+error: `#[rustc_const_unstable]` attribute cannot be used on macro defs
+  --> $DIR/const-stability-on-macro.rs:10:1
+   |
+LL | #[rustc_const_unstable(feature = "bar", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_const_unstable]` can be applied to associated consts, constants, crates, functions, impl blocks, statics, traits, and use statements
+
+error: aborting due to 2 previous errors
+

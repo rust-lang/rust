@@ -1,0 +1,8 @@
+//@ run-rustfix
+
+fn main() {
+    let _x: Box<dyn Fn() -> Result<(), ()>> = Box::new(|| { //~ ERROR mismatched types
+        Err(())?;
+        Ok(())
+    });
+}

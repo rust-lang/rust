@@ -1,0 +1,34 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/hrtb-just-for-static.rs:24:5
+   |
+LL |     want_hrtb::<StaticInt>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Foo<&'static isize>`
+
+error: lifetime may not live long enough
+  --> $DIR/hrtb-just-for-static.rs:30:5
+   |
+LL | fn give_some<'a>() {
+   |              -- lifetime `'a` defined here
+LL |     want_hrtb::<&'a u32>()
+   |     ^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/hrtb-just-for-static.rs:9:15
+   |
+LL |     where T : for<'a> Foo<&'a isize>
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `Foo` is not general enough
+  --> $DIR/hrtb-just-for-static.rs:30:5
+   |
+LL |     want_hrtb::<&'a u32>()
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo<&'0 isize>` would have to be implemented for the type `&u32`, for any lifetime `'0`...
+   = note: ...but `Foo<&'1 isize>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
+
+error: aborting due to 3 previous errors
+

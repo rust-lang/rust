@@ -1,0 +1,9 @@
+error[E0275]: overflow assigning `Box<_>` to `_`
+  --> $DIR/direct-self-reference-occurs-check.rs:7:18
+   |
+LL |     f = Box::new(f);
+   |                  ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

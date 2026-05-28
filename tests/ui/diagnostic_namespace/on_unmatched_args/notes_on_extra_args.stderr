@@ -1,0 +1,19 @@
+error: pair! expects exactly two arguments
+  --> $DIR/notes_on_extra_args.rs:16:16
+   |
+LL | macro_rules! pair {
+   | ----------------- when calling this macro
+...
+LL |     pair!(u8, 0, 42);
+   |                ^ unexpected extra input starts here
+   |
+note: while trying to match meta-variable `$value:expr`
+  --> $DIR/notes_on_extra_args.rs:11:14
+   |
+LL |     ($ty:ty, $value:expr) => {};
+   |              ^^^^^^^^^^^
+   = note: this macro expects a type and a value, like `pair!(u8, 0)`
+   = note: make sure to pass both arguments
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/raw-to-ref.rs:11:26
+   |
+LL |     let _: &S = unsafe { *x };
+   |                          ^^ expected `&S`, found `S`
+   |
+help: consider borrowing here
+   |
+LL |     let _: &S = unsafe { &*x };
+   |                          +
+
+error[E0308]: mismatched types
+  --> $DIR/raw-to-ref.rs:16:30
+   |
+LL |     let _: &mut S = unsafe { *x };
+   |                              ^^ expected `&mut S`, found `S`
+   |
+help: consider mutably borrowing here
+   |
+LL |     let _: &mut S = unsafe { &mut *x };
+   |                              ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

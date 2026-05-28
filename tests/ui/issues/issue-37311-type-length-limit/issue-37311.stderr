@@ -1,0 +1,16 @@
+error: reached the recursion limit while instantiating `<(&(&(&..., ...), ...), ...) as Foo>::recurse`
+  --> $DIR/issue-37311.rs:17:9
+   |
+LL |         (self, self).recurse();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `<T as Foo>::recurse` defined here
+  --> $DIR/issue-37311.rs:16:5
+   |
+LL |     fn recurse(&self) {
+   |     ^^^^^^^^^^^^^^^^^
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/issue-37311.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+

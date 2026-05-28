@@ -1,0 +1,6 @@
+// This test is to ensure that the codeblocks are correctly rendered in the search results.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=some_more_function"
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-text: (".search-results .desc code", "format!")

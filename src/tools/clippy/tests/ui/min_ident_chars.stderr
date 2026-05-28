@@ -1,0 +1,275 @@
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:9:8
+   |
+LL | struct A {
+   |        ^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:11:5
+   |
+LL |     a: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:14:5
+   |
+LL |     A: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:16:5
+   |
+LL |     I: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:20:8
+   |
+LL | struct B(u32);
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:23:8
+   |
+LL | struct O {
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:25:5
+   |
+LL |     o: u32,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:31:6
+   |
+LL | enum C {
+   |      ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:33:5
+   |
+LL |     D,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:35:5
+   |
+LL |     E,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:37:5
+   |
+LL |     F,
+   |     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:52:11
+   |
+LL |     const A: u32 = 0;
+   |           ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:54:10
+   |
+LL |     type A;
+   |          ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:56:8
+   |
+LL |     fn a() {}
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:71:9
+   |
+LL |     let h = 1;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:73:9
+   |
+LL |     let e = 2;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:75:9
+   |
+LL |     let l = 3;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:77:9
+   |
+LL |     let l = 4;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:79:9
+   |
+LL |     let o = 6;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:84:10
+   |
+LL |     let (h, o, w) = (1, 2, 3);
+   |          ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:84:13
+   |
+LL |     let (h, o, w) = (1, 2, 3);
+   |             ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:87:10
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |          ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:87:14
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |              ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:87:17
+   |
+LL |     for (a, (r, e)) in (0..1000).enumerate().enumerate() {}
+   |                 ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:92:16
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:92:19
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                   ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:92:29
+   |
+LL |     while let (d, o, _i, n, g) = (true, true, false, false, true) {}
+   |                             ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:99:9
+   |
+LL |     let o = 1;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:101:9
+   |
+LL |     let o = O { o };
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:116:4
+   |
+LL | fn b() {}
+   |    ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:118:21
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                     ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:118:29
+   |
+LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
+   |                             ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:137:19
+   |
+LL |     fn fmt(&self, g: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+   |                   ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:144:14
+   |
+LL |     let a = |f: i8| f;
+   |              ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:144:9
+   |
+LL |     let a = |f: i8| f;
+   |         ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:149:7
+   |
+LL | trait D {
+   |       ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:151:10
+   |
+LL |     fn f(g: i32);
+   |          ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:151:8
+   |
+LL |     fn f(g: i32);
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:156:8
+   |
+LL |     fn g(arg: i8) {
+   |        ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:158:12
+   |
+LL |         fn c(d: u8) {}
+   |            ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:158:14
+   |
+LL |         fn c(d: u8) {}
+   |              ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:166:12
+   |
+LL |         fn h() {}
+   |            ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:168:18
+   |
+LL |         fn inner(a: i32) {}
+   |                  ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:170:18
+   |
+LL |         let a = |f: String| f;
+   |                  ^
+
+error: this ident consists of a single char
+  --> tests/ui/min_ident_chars.rs:170:13
+   |
+LL |         let a = |f: String| f;
+   |             ^
+
+error: aborting due to 45 previous errors
+

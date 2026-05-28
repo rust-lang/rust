@@ -1,0 +1,94 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/311"
+  WHITESPACE "\n\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Iterator"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "String"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH
+              PATH_SEGMENT
+                TYPE_ANCHOR
+                  L_ANGLE "<"
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "S"
+                  WHITESPACE " "
+                  AS_KW "as"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Iterator"
+                  R_ANGLE ">"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Item"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Eq"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        METHOD_CALL_EXPR
+          LITERAL
+            STRING "\"\""
+          DOT "."
+          NAME_REF
+            IDENT "to_owned"
+          ARG_LIST
+            L_PAREN "("
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

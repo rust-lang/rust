@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error
+  --> $DIR/re-empty-in-error.rs:7:5
+   |
+LL |     foo(&10);
+   |     ^^^^^^^^
+   |
+   = note: could not prove `for<'b> &'b (): '_`
+
+error: aborting due to 1 previous error
+

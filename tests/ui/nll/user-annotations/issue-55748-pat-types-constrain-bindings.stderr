@@ -1,0 +1,29 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-55748-pat-types-constrain-bindings.rs:33:5
+   |
+LL | fn coupled_regions_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
+   |                        -- lifetime `'a` defined here
+...
+LL |     y
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-55748-pat-types-constrain-bindings.rs:47:5
+   |
+LL | fn coupled_types_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
+   |                      -- lifetime `'a` defined here
+...
+LL |     y
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-55748-pat-types-constrain-bindings.rs:60:5
+   |
+LL | fn coupled_wilds_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
+   |                      -- lifetime `'a` defined here
+...
+LL |     y
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 3 previous errors
+

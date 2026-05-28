@@ -1,0 +1,37 @@
+error[E0284]: type annotations needed
+  --> $DIR/issue-77092.rs:11:26
+   |
+LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
+   |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
+   |
+note: required by a const generic parameter in `take_array_from_mut`
+  --> $DIR/issue-77092.rs:3:27
+   |
+LL | fn take_array_from_mut<T, const N: usize>(data: &mut [T], start: usize) -> &mut [T; N] {
+   |                           ^^^^^^^^^^^^^^ required by this const generic parameter in `take_array_from_mut`
+help: consider specifying the generic arguments
+   |
+LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
+   |                                             ++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/issue-77092.rs:11:26
+   |
+LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
+   |                   ----   ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
+   |                   |
+   |                   required by this formatting parameter
+   |
+   = note: required for `[i32; _]` to implement `Debug`
+   = note: 1 redundant requirement hidden
+   = note: required for `&mut [i32; _]` to implement `Debug`
+note: required by a bound in `core::fmt::rt::Argument::<'_>::new_debug`
+  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
+help: consider specifying the generic arguments
+   |
+LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
+   |                                             ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

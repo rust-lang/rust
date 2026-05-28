@@ -1,0 +1,14 @@
+error[E0700]: hidden type for `impl Trait<'a, 'b>` captures lifetime that does not appear in bounds
+  --> $DIR/ordinary-bounds-unsuited.rs:31:33
+   |
+LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
+   |                                                              ------------------ opaque type defined here
+...
+LL |     if condition() { a } else { b }
+   |                                 ^
+   |
+   = note: hidden type `Ordinary<'_>` captures lifetime `'_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

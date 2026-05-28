@@ -1,0 +1,90 @@
+error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-object.rs:7:13
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) {
+   |             ^^^^^ the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
+   |
+note: required by a bound in `X`
+  --> $DIR/hr-associated-type-bound-object.rs:3:33
+   |
+LL | trait X<'a>
+   |       - required by a bound in this trait
+LL | where
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ^^^^^ required by this bound in `X`
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-object.rs:9:7
+   |
+LL |     <<T as X<'_>>::U>::clone(x);
+   |       ^ the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
+   |
+note: required by a bound in `X::U`
+  --> $DIR/hr-associated-type-bound-object.rs:3:33
+   |
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ^^^^^ required by this bound in `X::U`
+LL | {
+LL |     type U: ?Sized;
+   |          - required by a bound in this associated type
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `<T as X<'_>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-object.rs:9:6
+   |
+LL |     <<T as X<'_>>::U>::clone(x);
+   |      ^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `<T as X<'_>>::U`
+   |
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where <T as X<'_>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-object.rs:9:5
+   |
+LL |     <<T as X<'_>>::U>::clone(x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
+   |
+note: required by a bound in `X`
+  --> $DIR/hr-associated-type-bound-object.rs:3:33
+   |
+LL | trait X<'a>
+   |       - required by a bound in this trait
+LL | where
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ^^^^^ required by this bound in `X`
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-object.rs:9:5
+   |
+LL |     <<T as X<'_>>::U>::clone(x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
+   |
+note: required by a bound in `X`
+  --> $DIR/hr-associated-type-bound-object.rs:3:33
+   |
+LL | trait X<'a>
+   |       - required by a bound in this trait
+LL | where
+LL |     for<'b> <Self as X<'b>>::U: Clone,
+   |                                 ^^^^^ required by this bound in `X`
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,11 @@
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `pub`
+  --> $DIR/issue-76437-async.rs:4:11
+   |
+LL |     async pub fn t() {}
+   |     ------^^^
+   |     |     |
+   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
+   |     help: visibility `pub` must come before `async`: `pub async`
+
+error: aborting due to 1 previous error
+

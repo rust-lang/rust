@@ -1,0 +1,8 @@
+error: macro expansion ends with an incomplete expression: expected expression
+  --> $DIR/issue-68092-unicode-ident-after-incomplete-expr.rs:8:9
+   |
+LL |     x!(!);
+   |         ^ expected expression
+
+error: aborting due to 1 previous error
+

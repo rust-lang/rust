@@ -1,0 +1,15 @@
+error[E0499]: cannot borrow `**other` as mutable more than once at a time
+  --> $DIR/issue-46589.rs:25:21
+   |
+LL |         *other = match (*other).get_self() {
+   |                        -------- first mutable borrow occurs here
+LL |             Some(s) => s,
+LL |             None => (*other).new_self()
+   |                     ^^^^^^^^
+   |                     |
+   |                     second mutable borrow occurs here
+   |                     first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

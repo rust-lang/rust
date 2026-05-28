@@ -1,0 +1,31 @@
+error[E0283]: type annotations needed: cannot satisfy `&(): Marker`
+  --> $DIR/overlap-marker-trait-with-underscore-lifetime.rs:6:17
+   |
+LL | impl Marker for &'_ () {}
+   |                 ^^^^^^
+   |
+note: multiple `impl`s satisfying `&(): Marker` found
+  --> $DIR/overlap-marker-trait-with-underscore-lifetime.rs:6:1
+   |
+LL | impl Marker for &'_ () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Marker for &'_ () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed: cannot satisfy `&(): Marker`
+  --> $DIR/overlap-marker-trait-with-underscore-lifetime.rs:7:17
+   |
+LL | impl Marker for &'_ () {}
+   |                 ^^^^^^
+   |
+note: multiple `impl`s satisfying `&(): Marker` found
+  --> $DIR/overlap-marker-trait-with-underscore-lifetime.rs:6:1
+   |
+LL | impl Marker for &'_ () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Marker for &'_ () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

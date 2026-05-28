@@ -1,0 +1,8 @@
+error: cannot determine whether the path is accessible or not
+  --> $DIR/cfg_accessible-stuck.rs:6:1
+   |
+LL | #[cfg_accessible(S)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

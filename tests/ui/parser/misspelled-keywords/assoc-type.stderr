@@ -1,0 +1,14 @@
+error: keyword `type` is written in the wrong case
+  --> $DIR/assoc-type.rs:4:5
+   |
+LL |     Type Result = u8;
+   |     ^^^^
+   |
+help: write it in lowercase
+   |
+LL -     Type Result = u8;
+LL +     type Result = u8;
+   |
+
+error: aborting due to 1 previous error
+

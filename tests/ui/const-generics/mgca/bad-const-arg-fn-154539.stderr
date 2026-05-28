@@ -1,0 +1,11 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/bad-const-arg-fn-154539.rs:5:9
+   |
+LL | /         || {
+LL | |             use std::io::*;
+LL | |             write!(_, "")
+LL | |         }
+   | |_________^
+
+error: aborting due to 1 previous error
+

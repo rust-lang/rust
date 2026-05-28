@@ -1,0 +1,38 @@
+error: invalid format string: expected `}`, found `#`
+  --> $DIR/suggest-wrongly-order-format-parameter.rs:14:19
+   |
+LL |     println!("{f:?#}");
+   |                   ^ expected `'}'` in format string
+   |
+help: did you mean `#?`?
+   |
+LL -     println!("{f:?#}");
+LL +     println!("{f:#?}");
+   |
+
+error: invalid format string: expected `}`, found `x`
+  --> $DIR/suggest-wrongly-order-format-parameter.rs:18:19
+   |
+LL |     println!("{f:?x}");
+   |                   ^ expected `'}'` in format string
+   |
+help: did you mean `x?`?
+   |
+LL -     println!("{f:?x}");
+LL +     println!("{f:x?}");
+   |
+
+error: invalid format string: expected `}`, found `X`
+  --> $DIR/suggest-wrongly-order-format-parameter.rs:22:19
+   |
+LL |     println!("{f:?X}");
+   |                   ^ expected `'}'` in format string
+   |
+help: did you mean `X?`?
+   |
+LL -     println!("{f:?X}");
+LL +     println!("{f:X?}");
+   |
+
+error: aborting due to 3 previous errors
+

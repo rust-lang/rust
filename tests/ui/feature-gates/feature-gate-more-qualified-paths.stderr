@@ -1,0 +1,33 @@
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/feature-gate-more-qualified-paths.rs:3:9
+   |
+LL |     let <Foo as A>::Assoc { br } = StructStruct { br: 2 };
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/feature-gate-more-qualified-paths.rs:5:13
+   |
+LL |     let _ = <Foo as A>::Assoc { br: 2 };
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: usage of qualified paths in this context is experimental
+  --> $DIR/feature-gate-more-qualified-paths.rs:7:9
+   |
+LL |     let <E>::V(..) = E::V(0);
+   |         ^^^^^^
+   |
+   = note: see issue #86935 <https://github.com/rust-lang/rust/issues/86935> for more information
+   = help: add `#![feature(more_qualified_paths)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

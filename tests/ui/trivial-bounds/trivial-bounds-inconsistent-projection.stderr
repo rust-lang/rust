@@ -1,0 +1,46 @@
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:21:8
+   |
+LL |     B: A
+   |        ^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:28:8
+   |
+LL |     B: A<X = i32>
+   |        ^^^^^^^^^^
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:35:8
+   |
+LL |     B: A<X = u8>
+   |        ^^^^^^^^^
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:42:8
+   |
+LL |     B: A<X = i32> + A
+   |        ^^^^^^^^^^
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:42:21
+   |
+LL |     B: A<X = i32> + A
+   |                     ^
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:51:8
+   |
+LL |     B: A<X = u8> + A
+   |        ^^^^^^^^^
+
+warning: trait bound B: A does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:51:20
+   |
+LL |     B: A<X = u8> + A
+   |                    ^
+
+warning: 7 warnings emitted
+

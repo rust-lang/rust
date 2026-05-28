@@ -1,0 +1,8 @@
+error: '\'' character isn't allowed in `#[doc(alias = "...")]`
+  --> $DIR/doc-alias.rs:1:15
+   |
+LL | #[doc(alias = "shouldn't work!")]
+   |               ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,62 @@
+error[E0195]: lifetime parameters or bounds on associated type `A` do not match the trait declaration
+  --> $DIR/parameter_number_and_kind_impl.rs:14:11
+   |
+LL |     type A<'a>;
+   |           ---- lifetimes in impl do not match this associated type in trait
+...
+LL |     type A = u32;
+   |           ^ lifetimes do not match associated type in trait
+
+error[E0049]: associated type `B` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/parameter_number_and_kind_impl.rs:16:12
+   |
+LL |     type B<'a, 'b>;
+   |            --  --
+   |            |
+   |            expected 0 type parameters
+...
+LL |     type B<'a, T> = Vec<T>;
+   |            ^^  ^
+   |            |
+   |            found 1 type parameter
+
+error[E0195]: lifetime parameters or bounds on associated type `C` do not match the trait declaration
+  --> $DIR/parameter_number_and_kind_impl.rs:18:11
+   |
+LL |     type C;
+   |           - lifetimes in impl do not match this associated type in trait
+...
+LL |     type C<'a> = u32;
+   |           ^^^^ lifetimes do not match associated type in trait
+
+error[E0049]: associated type `A` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/parameter_number_and_kind_impl.rs:25:12
+   |
+LL |     type A<'a>;
+   |            -- expected 0 type parameters
+...
+LL |     type A<T> = u32;
+   |            ^ found 1 type parameter
+
+error[E0195]: lifetime parameters or bounds on associated type `B` do not match the trait declaration
+  --> $DIR/parameter_number_and_kind_impl.rs:27:11
+   |
+LL |     type B<'a, 'b>;
+   |           -------- lifetimes in impl do not match this associated type in trait
+...
+LL |     type B<'a> = u32;
+   |           ^^^^ lifetimes do not match associated type in trait
+
+error[E0049]: associated type `C` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/parameter_number_and_kind_impl.rs:29:12
+   |
+LL |     type C;
+   |           - expected 0 type parameters
+...
+LL |     type C<T> = T;
+   |            ^ found 1 type parameter
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0049, E0195.
+For more information about an error, try `rustc --explain E0049`.

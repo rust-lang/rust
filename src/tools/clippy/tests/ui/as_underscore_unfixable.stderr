@@ -1,0 +1,20 @@
+error: using `as _` conversion
+  --> tests/ui/as_underscore_unfixable.rs:8:37
+   |
+LL |     let _: Box<dyn FnOnce() -> _> = Box::new(f) as _;
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider giving the type explicitly
+   = note: `-D clippy::as-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::as_underscore)]`
+
+error: using `as _` conversion
+  --> tests/ui/as_underscore_unfixable.rs:12:33
+   |
+LL |     let _: Box<dyn Fn() -> _> = Box::new(barr) as _;
+   |                                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider giving the type explicitly
+
+error: aborting due to 2 previous errors
+

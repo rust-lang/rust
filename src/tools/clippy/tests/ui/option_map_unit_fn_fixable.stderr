@@ -1,0 +1,256 @@
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:36:5
+   |
+LL |     x.field.map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_unit_fn)]`
+help: use `if let` instead
+   |
+LL -     x.field.map(do_nothing);
+LL +     if let Some(x_field) = x.field { do_nothing(x_field) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:39:5
+   |
+LL |     x.field.map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(do_nothing);
+LL +     if let Some(x_field) = x.field { do_nothing(x_field) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:42:5
+   |
+LL |     x.field.map(diverge);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(diverge);
+LL +     if let Some(x_field) = x.field { diverge(x_field) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:49:5
+   |
+LL |     x.field.map(|value| x.do_option_nothing(value + captured));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| x.do_option_nothing(value + captured));
+LL +     if let Some(value) = x.field { x.do_option_nothing(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:52:5
+   |
+LL |     x.field.map(|value| { x.do_option_plus_one(value + captured); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { x.do_option_plus_one(value + captured); });
+LL +     if let Some(value) = x.field { x.do_option_plus_one(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:56:5
+   |
+LL |     x.field.map(|value| do_nothing(value + captured));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| do_nothing(value + captured));
+LL +     if let Some(value) = x.field { do_nothing(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:59:5
+   |
+LL |     x.field.map(|value| { do_nothing(value + captured) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { do_nothing(value + captured) });
+LL +     if let Some(value) = x.field { do_nothing(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:62:5
+   |
+LL |     x.field.map(|value| { do_nothing(value + captured); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { do_nothing(value + captured); });
+LL +     if let Some(value) = x.field { do_nothing(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:65:5
+   |
+LL |     x.field.map(|value| { { do_nothing(value + captured); } });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { { do_nothing(value + captured); } });
+LL +     if let Some(value) = x.field { do_nothing(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:69:5
+   |
+LL |     x.field.map(|value| diverge(value + captured));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| diverge(value + captured));
+LL +     if let Some(value) = x.field { diverge(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:72:5
+   |
+LL |     x.field.map(|value| { diverge(value + captured) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { diverge(value + captured) });
+LL +     if let Some(value) = x.field { diverge(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:75:5
+   |
+LL |     x.field.map(|value| { diverge(value + captured); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { diverge(value + captured); });
+LL +     if let Some(value) = x.field { diverge(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:78:5
+   |
+LL |     x.field.map(|value| { { diverge(value + captured); } });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { { diverge(value + captured); } });
+LL +     if let Some(value) = x.field { diverge(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:84:5
+   |
+LL |     x.field.map(|value| { let y = plus_one(value + captured); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { let y = plus_one(value + captured); });
+LL +     if let Some(value) = x.field { let y = plus_one(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:87:5
+   |
+LL |     x.field.map(|value| { plus_one(value + captured); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { plus_one(value + captured); });
+LL +     if let Some(value) = x.field { plus_one(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:90:5
+   |
+LL |     x.field.map(|value| { { plus_one(value + captured); } });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { { plus_one(value + captured); } });
+LL +     if let Some(value) = x.field { plus_one(value + captured); }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:94:5
+   |
+LL |     x.field.map(|ref value| { do_nothing(value + captured) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|ref value| { do_nothing(value + captured) });
+LL +     if let Some(ref value) = x.field { do_nothing(value + captured) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:97:5
+   |
+LL |     option().map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     option().map(do_nothing);
+LL +     if let Some(a) = option() { do_nothing(a) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:100:5
+   |
+LL |     option().map(|value| println!("{value:?}"));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     option().map(|value| println!("{value:?}"));
+LL +     if let Some(value) = option() { println!("{value:?}") }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:107:5
+   |
+LL |     x.map(|x| unsafe { f(x) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.map(|x| unsafe { f(x) });
+LL +     if let Some(x) = x { unsafe { f(x) } }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:109:5
+   |
+LL |     x.map(|x| unsafe { { f(x) } });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.map(|x| unsafe { { f(x) } });
+LL +     if let Some(x) = x { unsafe { f(x) } }
+   |
+
+error: aborting due to 21 previous errors
+

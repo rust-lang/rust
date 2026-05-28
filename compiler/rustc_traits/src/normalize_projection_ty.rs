@@ -1,0 +1,162 @@
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::traits::PredicateObligations;
+use rustc_middle::query::Providers;
+use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::query::normalize::NormalizationResult;
+use rustc_trait_selection::traits::query::{CanonicalAliasGoal, NoSolution};
+use rustc_trait_selection::traits::{self, ObligationCause, ScrubbedTraitError, SelectionContext};
+use tracing::debug;
+
+pub(crate) fn provide(p: &mut Providers) {
+    *p = Providers {
+        normalize_canonicalized_projection,
+        normalize_canonicalized_free_alias,
+        normalize_canonicalized_inherent_projection,
+        ..*p
+    };
+}
+
+/// If `normalized_term` is a const, returns a `ConstArgHasType` obligation
+/// to verify that the const value's type matches the alias's declared type.
+/// Returns `None` if the term is a type rather than a const.
+fn const_arg_has_type_obligation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalized_term: ty::Term<'tcx>,
+    goal: ty::AliasTerm<'tcx>,
+) -> Option<traits::PredicateObligation<'tcx>> {
+    let ct = normalized_term.as_const()?;
+    let expected_ty = goal.expect_ct().type_of(tcx).skip_norm_wip();
+    Some(traits::Obligation::new(
+        tcx,
+        ObligationCause::dummy(),
+        param_env,
+        ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+    ))
+}
+
+fn normalize_canonicalized_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    goal: CanonicalAliasGoal<'tcx>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
+    debug!("normalize_canonicalized_projection(goal={:#?})", goal);
+
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &goal,
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
+            debug_assert!(!ocx.infcx.next_trait_solver());
+            let selcx = &mut SelectionContext::new(ocx.infcx);
+            let cause = ObligationCause::dummy();
+            let mut obligations = PredicateObligations::new();
+            let normalized_term = traits::normalize_projection_term(
+                selcx,
+                param_env,
+                goal,
+                cause,
+                0,
+                &mut obligations,
+            );
+            obligations.extend(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
+            ocx.register_obligations(obligations);
+            // #112047: With projections and opaques, we are able to create opaques that
+            // are recursive (given some generic parameters of the opaque's type variables).
+            // In that case, we may only realize a cycle error when calling
+            // `normalize_erasing_regions` in mono.
+            let errors = ocx.try_evaluate_obligations();
+            if !errors.is_empty() {
+                // Rustdoc may attempt to normalize type alias types which are not
+                // well-formed. Rustdoc also normalizes types that are just not
+                // well-formed, since we don't do as much HIR analysis (checking
+                // that impl vars are constrained by the signature, for example).
+                if !tcx.sess.opts.actually_rustdoc {
+                    for error in &errors {
+                        if let ScrubbedTraitError::Cycle(cycle) = &error {
+                            ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
+                        }
+                    }
+                }
+                return Err(NoSolution);
+            }
+
+            Ok(NormalizationResult { normalized_term })
+        },
+    )
+}
+
+fn normalize_canonicalized_free_alias<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    goal: CanonicalAliasGoal<'tcx>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
+    debug!("normalize_canonicalized_free_alias(goal={:#?})", goal);
+
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &goal,
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
+            let def_id = goal.expect_free_def_id();
+            let obligations = tcx.predicates_of(def_id).instantiate_own(tcx, goal.args).map(
+                |(predicate, span)| {
+                    traits::Obligation::new(
+                        tcx,
+                        ObligationCause::dummy_with_span(span),
+                        param_env,
+                        predicate.skip_norm_wip(),
+                    )
+                },
+            );
+            ocx.register_obligations(obligations);
+            let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
+                tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+            } else {
+                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+            };
+            ocx.register_obligations(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
+            Ok(NormalizationResult { normalized_term })
+        },
+    )
+}
+
+fn normalize_canonicalized_inherent_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    goal: CanonicalAliasGoal<'tcx>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
+    debug!("normalize_canonicalized_inherent_projection(goal={:#?})", goal);
+
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &goal,
+        |ocx, ParamEnvAnd { param_env, value: goal }| {
+            let selcx = &mut SelectionContext::new(ocx.infcx);
+            let cause = ObligationCause::dummy();
+            let mut obligations = PredicateObligations::new();
+            let normalized_term = traits::normalize_inherent_projection(
+                selcx,
+                param_env,
+                goal.into(),
+                cause,
+                0,
+                &mut obligations,
+            );
+            obligations.extend(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
+            ocx.register_obligations(obligations);
+
+            Ok(NormalizationResult { normalized_term })
+        },
+    )
+}

@@ -1,0 +1,830 @@
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:8:1
+   |
+LL | trait NiceOfTheFoundation<'_a: '_a, '_b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "Self",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "'_a",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'_b",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 5,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+              (
+                  DefId(..),
+                  5,
+              ),
+          ],
+          has_self: true,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:8:1
+   |
+LL | trait NiceOfTheFoundation<'_a: '_a, '_b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:28:1
+   |
+LL | pub trait IHopeItMadeLotsOfCode<'a, 'b, const N: usize, T, U: Clone>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "Self",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'b",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 5,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+              (
+                  DefId(..),
+                  5,
+              ),
+          ],
+          has_self: true,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:28:1
+   |
+LL | pub trait IHopeItMadeLotsOfCode<'a, 'b, const N: usize, T, U: Clone>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:33:1
+   |
+LL | struct LookItsFromCorro<'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'b",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:33:1
+   |
+LL | struct LookItsFromCorro<'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:40:1
+   |
+LL | enum HaveTakenOver<'a: 'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'b",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:40:1
+   |
+LL | enum HaveTakenOver<'a: 'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:48:1
+   |
+LL | union TheFoundation<'a: 'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'b",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:48:1
+   |
+LL | union TheFoundation<'a: 'a, 'b, const N: usize, T, U: Clone> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:55:1
+   |
+LL | const fn i_dare_you<'a: 'a, 'b, const N: usize, T, U>(you_can: &'a bool, _: &'b [(T, U); N]) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: Some(
+              $DIR/dump_generics.rs:55:29: 55:31 (#0),
+          ),
+      }
+  --> $DIR/dump_generics.rs:55:1
+   |
+LL | const fn i_dare_you<'a: 'a, 'b, const N: usize, T, U>(you_can: &'a bool, _: &'b [(T, U); N]) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:66:1
+   |
+LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "Self",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "'_a",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'_b",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 5,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+              (
+                  DefId(..),
+                  5,
+              ),
+          ],
+          has_self: true,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:66:1
+   |
+LL | trait IfYouNeed<'_a: '_a, '_b, const N: usize, T, U: Clone> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:70:1
+   |
+LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'a",
+                  def_id: DefId(..),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "'b",
+                  def_id: DefId(..),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "N",
+                  def_id: DefId(..),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "T",
+                  def_id: DefId(..),
+                  index: 3,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "U",
+                  def_id: DefId(..),
+                  index: 4,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  0,
+              ),
+              (
+                  DefId(..),
+                  1,
+              ),
+              (
+                  DefId(..),
+                  2,
+              ),
+              (
+                  DefId(..),
+                  3,
+              ),
+              (
+                  DefId(..),
+                  4,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:70:1
+   |
+LL | type Instructions<'a: 'a, 'b, const N: usize, T, U: Clone> = dyn IfYouNeed<'a, 'b, N, T, U>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:74:1
+   |
+LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [],
+          param_def_id_to_index: [],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:74:1
+   |
+LL | const ON_HOW_TO_GET: usize = <() as NiceOfTheFoundation::<'static, 'static, 7, (), ()>>::OVER_FOR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:12:5
+   |
+LL |     type ToInviteUs<V: PartialEq>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: Some(
+              DefId(..),
+          ),
+          parent_count: 6,
+          own_params: [
+              GenericParamDef {
+                  name: "V",
+                  def_id: DefId(..),
+                  index: 6,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  6,
+              ),
+          ],
+          has_self: true,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:12:5
+   |
+LL |     type ToInviteUs<V: PartialEq>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:16:5
+   |
+LL |     const OVER_FOR: usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Generics {
+          parent: Some(
+              DefId(..),
+          ),
+          parent_count: 6,
+          own_params: [],
+          param_def_id_to_index: [],
+          has_self: true,
+          has_late_bound_regions: None,
+      }
+  --> $DIR/dump_generics.rs:16:5
+   |
+LL |     const OVER_FOR: usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dump_generics: DefId(..)
+  --> $DIR/dump_generics.rs:20:5
+   |
+LL | /     fn a_picnic<const NN: usize>(
+LL | |         &self,
+LL | |         eh: [u8; N],
+LL | |         ferris: [u32; NN]
+LL | |     ) { }
+   | |_____^
+   |
+note: Generics {
+          parent: Some(
+              DefId(..),
+          ),
+          parent_count: 6,
+          own_params: [
+              GenericParamDef {
+                  name: "NN",
+                  def_id: DefId(..),
+                  index: 6,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..),
+                  6,
+              ),
+          ],
+          has_self: true,
+          has_late_bound_regions: Some(
+              $DIR/dump_generics.rs:21:9: 21:10 (#0),
+          ),
+      }
+  --> $DIR/dump_generics.rs:20:5
+   |
+LL | /     fn a_picnic<const NN: usize>(
+LL | |         &self,
+LL | |         eh: [u8; N],
+LL | |         ferris: [u32; NN]
+LL | |     ) { }
+   | |_____^
+
+error: aborting due to 12 previous errors
+

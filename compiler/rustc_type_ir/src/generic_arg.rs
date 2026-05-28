@@ -1,0 +1,20 @@
+use derive_where::derive_where;
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
+use rustc_type_ir_macros::GenericTypeVisitable;
+
+use crate::Interner;
+
+#[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub enum GenericArgKind<I: Interner> {
+    Lifetime(I::Region),
+    Type(I::Ty),
+    Const(I::Const),
+}
+
+impl<I: Interner> Eq for GenericArgKind<I> {}

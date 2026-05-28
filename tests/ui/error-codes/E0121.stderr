@@ -1,0 +1,27 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/E0121.rs:1:13
+   |
+LL | fn foo() -> _ { 5 }
+   |             ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn foo() -> _ { 5 }
+LL + fn foo() -> i32 { 5 }
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/E0121.rs:3:13
+   |
+LL | static BAR: _ = "test";
+   |             ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL - static BAR: _ = "test";
+LL + static BAR: &str = "test";
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

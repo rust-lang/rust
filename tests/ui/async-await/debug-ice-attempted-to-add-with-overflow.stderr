@@ -1,0 +1,25 @@
+error[E0277]: `[usize; usize::MAX]` is not a future
+  --> $DIR/debug-ice-attempted-to-add-with-overflow.rs:8:37
+   |
+LL |     [0usize; 0xffff_ffff_ffff_ffff].await;
+   |                                     ^^^^^ `[usize; usize::MAX]` is not a future
+   |
+   = help: the trait `Future` is not implemented for `[usize; usize::MAX]`
+   = note: [usize; usize::MAX] must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `[usize; usize::MAX]` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     [0usize; 0xffff_ffff_ffff_ffff].await;
+LL +     [0usize; 0xffff_ffff_ffff_ffff];
+   |
+
+error[E0752]: `main` function is not allowed to be `async`
+  --> $DIR/debug-ice-attempted-to-add-with-overflow.rs:6:1
+   |
+LL | async fn main() {
+   | ^^^^^^^^^^^^^^^ `main` function is not allowed to be `async`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0752.
+For more information about an error, try `rustc --explain E0277`.

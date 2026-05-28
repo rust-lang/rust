@@ -1,0 +1,47 @@
+error[E0592]: duplicate definitions with name `hello`
+  --> $DIR/overlap.rs:20:12
+   |
+LL | impl Foo { fn hello() {} }
+   |            ^^^^^^^^^^ duplicate definitions for `hello`
+LL | impl Foo { fn hello() {} }
+   |            ---------- other definition for `hello`
+
+error[E0592]: duplicate definitions with name `hello2`
+  --> $DIR/overlap.rs:31:5
+   |
+LL |     fn hello2() {}
+   |     ^^^^^^^^^^^ duplicate definitions for `hello2`
+...
+LL |     fn hello2() {}
+   |     ----------- other definition for `hello2`
+
+error[E0592]: duplicate definitions with name `bar`
+  --> $DIR/overlap.rs:46:5
+   |
+LL |     fn bar() {}
+   |     ^^^^^^^^ duplicate definitions for `bar`
+...
+LL |     fn bar() {}
+   |     -------- other definition for `bar`
+
+error[E0592]: duplicate definitions with name `hello3`
+  --> $DIR/overlap.rs:47:5
+   |
+LL |     fn hello3() {}
+   |     ^^^^^^^^^^^ duplicate definitions for `hello3`
+...
+LL |     fn hello3() {}
+   |     ----------- other definition for `hello3`
+
+error[E0592]: duplicate definitions with name `bar2`
+  --> $DIR/overlap.rs:67:5
+   |
+LL |     fn bar2() {}
+   |     ^^^^^^^^^ duplicate definitions for `bar2`
+LL | }
+LL | impl Bar<B> { fn bar2() {} }
+   |               --------- other definition for `bar2`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0592`.

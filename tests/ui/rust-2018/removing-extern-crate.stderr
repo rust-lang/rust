@@ -1,0 +1,56 @@
+warning: unused extern crate
+  --> $DIR/removing-extern-crate.rs:8:1
+   |
+LL | extern crate dummy_crate as foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+note: the lint level is defined here
+  --> $DIR/removing-extern-crate.rs:6:9
+   |
+LL | #![warn(rust_2018_idioms)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
+help: remove the unused `extern crate`
+   |
+LL - extern crate dummy_crate as foo;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate.rs:9:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL - extern crate core;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate.rs:12:5
+   |
+LL |     extern crate dummy_crate as foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     extern crate dummy_crate as foo;
+LL +
+   |
+
+warning: unused extern crate
+  --> $DIR/removing-extern-crate.rs:13:5
+   |
+LL |     extern crate core;
+   |     ^^^^^^^^^^^^^^^^^^ unused
+   |
+help: remove the unused `extern crate`
+   |
+LL -     extern crate core;
+LL +
+   |
+
+warning: 4 warnings emitted
+

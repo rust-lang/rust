@@ -1,0 +1,34 @@
+error: lifetime may not live long enough
+  --> $DIR/invariant.rs:15:5
+   |
+LL | fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
+   |                     --  -- lifetime `'b` defined here
+   |                     |
+   |                     lifetime `'a` defined here
+LL |     consume(x, y);
+   |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type `field_of!(Struct<'_>, field)`, which makes the generic argument `Struct<'_>` invariant
+   = note: the struct `FieldRepresentingType<T, VARIANT, FIELD>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/invariant.rs:15:5
+   |
+LL | fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
+   |                     --  -- lifetime `'b` defined here
+   |                     |
+   |                     lifetime `'a` defined here
+LL |     consume(x, y);
+   |     ^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `field_of!(Struct<'_>, field)`, which makes the generic argument `Struct<'_>` invariant
+   = note: the struct `FieldRepresentingType<T, VARIANT, FIELD>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: aborting due to 2 previous errors
+

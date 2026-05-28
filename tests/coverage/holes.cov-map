@@ -1,0 +1,81 @@
+Function name: <holes::main::MyStruct>::_method (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 2b, 09, 00, 1a, 00, 00, 1c, 00, 1d]
+Number of files: 1
+- file 0 => $DIR/holes.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 43, 9) to (start + 0, 26)
+- Code(Zero) at (prev + 0, 28) to (start + 0, 29)
+Highest counter ID seen: (none)
+
+Function name: holes::main
+Raw bytes (154): 0x[01, 01, 00, 1e, 01, 08, 01, 00, 0a, 01, 01, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 04, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 07, 09, 00, 11, 01, 09, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 04, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 07, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 06, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 04, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 04, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 06, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 03, 09, 00, 0f, 01, 07, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 03, 09, 00, 0f, 01, 07, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 06, 09, 00, 27, 01, 0d, 05, 00, 0e, 01, 00, 0f, 00, 11, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/holes.rs
+Number of expressions: 0
+Number of file 0 mappings: 30
+- Code(Counter(0)) at (prev + 8, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 7, 9) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 9, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 7, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 3, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 7, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 3, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 7, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 6, 9) to (start + 0, 39)
+- Code(Counter(0)) at (prev + 13, 5) to (start + 0, 14)
+- Code(Counter(0)) at (prev + 0, 15) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: holes::main::_unused_fn (unused)
+Raw bytes (14): 0x[01, 01, 00, 02, 00, 1f, 05, 00, 14, 00, 00, 16, 00, 17]
+Number of files: 1
+- file 0 => $DIR/holes.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 31, 5) to (start + 0, 20)
+- Code(Zero) at (prev + 0, 22) to (start + 0, 23)
+Highest counter ID seen: (none)
+
+Function name: holes::main::{closure#0} (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 18, 09, 00, 0a, 00, 01, 0d, 00, 16, 00, 00, 17, 00, 19, 00, 01, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/holes.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Zero) at (prev + 24, 9) to (start + 0, 10)
+- Code(Zero) at (prev + 1, 13) to (start + 0, 22)
+- Code(Zero) at (prev + 0, 23) to (start + 0, 25)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 10)
+Highest counter ID seen: (none)
+
+Function name: holes::main::{closure#1} (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 4b, 09, 00, 0a, 00, 01, 0d, 00, 12, 00, 01, 09, 00, 0a]
+Number of files: 1
+- file 0 => $DIR/holes.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 75, 9) to (start + 0, 10)
+- Code(Zero) at (prev + 1, 13) to (start + 0, 18)
+- Code(Zero) at (prev + 1, 9) to (start + 0, 10)
+Highest counter ID seen: (none)
+

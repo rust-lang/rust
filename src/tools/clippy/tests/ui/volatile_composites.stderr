@@ -1,0 +1,89 @@
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:39:9
+   |
+LL |         DEVICE_ADDR.write_volatile(regs);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::volatile-composites` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::volatile_composites)]`
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:47:21
+   |
+LL |         let _regs = DEVICE_ADDR.read_volatile();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:56:9
+   |
+LL |         std::ptr::write_volatile(DEVICE_ADDR, regs);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:64:21
+   |
+LL |         let _regs = std::ptr::read_volatile(DEVICE_ADDR);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:73:9
+   |
+LL |         core::ptr::write_volatile(DEVICE_ADDR, regs);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:81:21
+   |
+LL |         let _regs = core::ptr::read_volatile(DEVICE_ADDR);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:89:9
+   |
+LL |         ptr.write_volatile(regs);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `MyDevRegisters` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:92:21
+   |
+LL |         let _regs = ptr.read_volatile();
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error: type `Wrapper<MyDevRegisters>` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:118:9
+   |
+LL |         (0xdead as *mut Wrapper<MyDevRegisters>).write_volatile(Wrapper((), MyDevRegisters::default(), ()));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `*const [u32]` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:136:9
+   |
+LL |         (0xdead as *mut *const [u32]).write_volatile(wideptr);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `main::PlainEnum` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:157:9
+   |
+LL |         (0xdead as *mut PlainEnum).write_volatile(PlainEnum::A);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `main::SumType` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:185:9
+   |
+LL |         (0xdead as *mut SumType).write_volatile(SumType::C);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `main::ReprSumType` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:195:9
+   |
+LL |         (0xdead as *mut ReprSumType).write_volatile(ReprSumType::C);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `std::string::String` is not volatile-compatible
+  --> tests/ui/volatile_composites.rs:211:9
+   |
+LL |         std::ptr::write_volatile(&mut s, String::from("bar"));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+

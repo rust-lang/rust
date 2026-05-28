@@ -1,0 +1,13 @@
+   LL|       |#![feature(no_core)]
+   LL|       |#![no_core]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Test that coverage instrumentation works for `#![no_core]` crates.
+   LL|       |
+   LL|       |// For this test, we pull in std anyway, to avoid having to set up our own
+   LL|       |// no-core or no-std environment. What's important is that the compiler allows
+   LL|       |// coverage for a crate with the `#![no_core]` annotation.
+   LL|       |extern crate std;
+   LL|       |
+   LL|      1|fn main() {}
+

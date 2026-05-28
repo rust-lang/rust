@@ -1,0 +1,91 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |// Enables `coverage(off)` on the entire crate
+   LL|       |//@ reference: attributes.coverage.intro
+   LL|       |//@ reference: attributes.coverage.nesting
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn do_not_add_coverage_1() {
+   LL|       |    println!("called but not covered");
+   LL|       |}
+   LL|       |
+   LL|       |fn do_not_add_coverage_2() {
+   LL|       |    #![coverage(off)]
+   LL|       |    println!("called but not covered");
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |#[allow(dead_code)]
+   LL|       |fn do_not_add_coverage_not_called() {
+   LL|       |    println!("not called and not covered");
+   LL|       |}
+   LL|       |
+   LL|      1|fn add_coverage_1() {
+   LL|      1|    println!("called and covered");
+   LL|      1|}
+   LL|       |
+   LL|      1|fn add_coverage_2() {
+   LL|      1|    println!("called and covered");
+   LL|      1|}
+   LL|       |
+   LL|       |#[allow(dead_code)]
+   LL|      0|fn add_coverage_not_called() {
+   LL|      0|    println!("not called but covered");
+   LL|      0|}
+   LL|       |
+   LL|       |// FIXME: These test-cases illustrate confusing results of nested functions.
+   LL|       |// See https://github.com/rust-lang/rust/issues/93319
+   LL|       |mod nested_fns {
+   LL|       |    #[coverage(off)]
+   LL|       |    pub fn outer_not_covered(is_true: bool) {
+   LL|       |        fn inner(is_true: bool) {
+   LL|       |            if is_true {
+   LL|       |                println!("called and covered");
+   LL|       |            } else {
+   LL|       |                println!("absolutely not covered");
+   LL|       |            }
+   LL|       |        }
+   LL|       |        println!("called but not covered");
+   LL|       |        inner(is_true);
+   LL|       |    }
+   LL|       |
+   LL|      1|    pub fn outer(is_true: bool) {
+   LL|      1|        println!("called and covered");
+   LL|      1|        inner_not_covered(is_true);
+   LL|       |
+   LL|       |        #[coverage(off)]
+   LL|       |        fn inner_not_covered(is_true: bool) {
+   LL|       |            if is_true {
+   LL|       |                println!("called but not covered");
+   LL|       |            } else {
+   LL|       |                println!("absolutely not covered");
+   LL|       |            }
+   LL|       |        }
+   LL|      1|    }
+   LL|       |
+   LL|      1|    pub fn outer_both_covered(is_true: bool) {
+   LL|      1|        println!("called and covered");
+   LL|      1|        inner(is_true);
+   LL|       |
+   LL|      1|        fn inner(is_true: bool) {
+   LL|      1|            if is_true {
+   LL|      1|                println!("called and covered");
+   LL|      1|            } else {
+   LL|      0|                println!("absolutely not covered");
+   LL|      0|            }
+   LL|      1|        }
+   LL|      1|    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    do_not_add_coverage_1();
+   LL|      1|    do_not_add_coverage_2();
+   LL|      1|    add_coverage_1();
+   LL|      1|    add_coverage_2();
+   LL|       |
+   LL|      1|    nested_fns::outer_not_covered(is_true);
+   LL|      1|    nested_fns::outer(is_true);
+   LL|      1|    nested_fns::outer_both_covered(is_true);
+   LL|      1|}
+

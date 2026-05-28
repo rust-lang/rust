@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/closure-no-fn-5.rs:10:27
+   |
+LL |     let bar: fn() -> u8 = || { a; b; c; d; e };
+   |              ----------   ^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found closure
+   |              |
+   |              expected due to this
+   |
+   = note: expected fn pointer `fn() -> u8`
+                 found closure `{closure@$DIR/closure-no-fn-5.rs:10:27: 10:29}`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/closure-no-fn-5.rs:10:32
+   |
+LL |     let bar: fn() -> u8 = || { a; b; c; d; e };
+   |                                ^  ^  ^  ^ `d` captured here
+   |                                |  |  |
+   |                                |  |  `c` captured here
+   |                                |  `b` captured here
+   |                                `a` captured here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

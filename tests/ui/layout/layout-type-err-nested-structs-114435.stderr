@@ -1,0 +1,6 @@
+error: reached the recursion limit finding the struct tail for `Bottom`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
+  --> $DIR/from-sig-fail.rs:4:35
+   |
+LL | fn test<const N: usize>() -> [u8; N - 1] {
+   |                                   ^^^^^ evaluation of `test::<0>::{constant#0}` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

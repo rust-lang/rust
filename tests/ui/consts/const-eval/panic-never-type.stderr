@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/panic-never-type.rs:4:17
+   |
+LL | const VOID: ! = panic!();
+   |                 ^^^^^^^^ evaluation of `VOID` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

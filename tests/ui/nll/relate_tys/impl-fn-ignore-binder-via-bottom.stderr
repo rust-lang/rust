@@ -1,0 +1,31 @@
+error: implementation of `Y` is not general enough
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:30:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:30:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `Y` is not general enough
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:30:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^ implementation of `Y` is not general enough
+   |
+   = note: `Y` would have to be implemented for the type `for<'a> fn(&'a ())`
+   = note: ...but `Y` is actually implemented for the type `fn(&'0 ())`, for some specific lifetime `'0`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,8 @@
+error: expected one of `(`, `+`, `,`, `::`, `<`, or `{`, found `->`
+  --> $DIR/misplaced-return-type-without-type-issue-126311.rs:1:30
+   |
+LL | fn foo<T>() where T: Default -> {
+   |                              ^^ expected one of `(`, `+`, `,`, `::`, `<`, or `{`
+
+error: aborting due to 1 previous error
+

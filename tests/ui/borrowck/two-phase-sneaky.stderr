@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/two-phase-sneaky.rs:10:9
+   |
+LL |     v[0].push_str({
+   |     -    -------- first borrow later used by call
+   |     |
+   |     first mutable borrow occurs here
+LL |
+LL |         v.push(format!("foo"));
+   |         ^ second mutable borrow occurs here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

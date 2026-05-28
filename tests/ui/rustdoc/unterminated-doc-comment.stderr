@@ -1,0 +1,9 @@
+error[E0758]: unterminated block doc-comment
+  --> $DIR/unterminated-doc-comment.rs:1:1
+   |
+LL | /*!
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0758`.

@@ -1,0 +1,21 @@
+error[E0609]: no field `0` on type `Point`
+  --> $DIR/tuple-index-not-tuple.rs:6:12
+   |
+LL |     origin.0;
+   |            ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL -     origin.0;
+LL +     origin.x;
+   |
+
+error[E0609]: no field `0` on type `Empty`
+  --> $DIR/tuple-index-not-tuple.rs:8:11
+   |
+LL |     Empty.0;
+   |           ^ unknown field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

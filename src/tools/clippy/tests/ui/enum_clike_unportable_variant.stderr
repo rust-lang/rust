@@ -1,0 +1,59 @@
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:8:5
+   |
+LL |     X = 0x1_0000_0000,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::enum-clike-unportable-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_clike_unportable_variant)]`
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:16:5
+   |
+LL |     X = 0x1_0000_0000,
+   |     ^^^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:20:5
+   |
+LL |     A = 0xFFFF_FFFF,
+   |     ^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:28:5
+   |
+LL |     Z = 0xFFFF_FFFF,
+   |     ^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:30:5
+   |
+LL |     A = 0x1_0000_0000,
+   |     ^^^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:33:5
+   |
+LL |     C = (i32::MIN as isize) - 1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:40:5
+   |
+LL |     Z = 0xFFFF_FFFF,
+   |     ^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:42:5
+   |
+LL |     A = 0x1_0000_0000,
+   |     ^^^^^^^^^^^^^^^^^
+
+error: C-like enum variant discriminant is not portable to 32-bit targets
+  --> tests/ui/enum_clike_unportable_variant.rs:48:5
+   |
+LL |     X = <usize as Trait>::Number,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

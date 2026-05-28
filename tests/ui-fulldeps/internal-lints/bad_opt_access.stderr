@@ -1,0 +1,20 @@
+error: use `Session::split_debuginfo` instead of this field
+  --> $DIR/bad_opt_access.rs:14:13
+   |
+LL |     let _ = sess.opts.cg.split_debuginfo;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/bad_opt_access.rs:8:9
+   |
+LL | #![deny(rustc::bad_opt_access)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: use `TyCtxt::crate_types` instead of this field
+  --> $DIR/bad_opt_access.rs:17:13
+   |
+LL |     let _ = sess.opts.crate_types;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

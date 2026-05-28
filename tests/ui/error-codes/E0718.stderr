@@ -1,0 +1,10 @@
+error: `#[lang = "owned_box"]` attribute cannot be used on statics
+  --> $DIR/E0718.rs:4:1
+   |
+LL | #[lang = "owned_box"]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[lang = "owned_box"]` can only be applied to structs
+
+error: aborting due to 1 previous error
+

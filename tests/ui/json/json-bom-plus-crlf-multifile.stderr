@@ -1,0 +1,114 @@
+{"$message_type":"diagnostic","message":"mismatched types","code":{"code":"E0308","explanation":"Expected type did not match the received type.
+
+Erroneous code examples:
+
+```compile_fail,E0308
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one(\"Not a number\");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if \"Not a bool\" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = \"Not a float\";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+"},"level":"error","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":622,"byte_end":623,"line_start":17,"line_end":17,"column_start":22,"column_end":23,"is_primary":true,"text":[{"text":"    let s : String = 1;  // Error in the middle of line.","highlight_start":22,"highlight_end":23}],"label":"expected `String`, found integer","suggested_replacement":null,"suggestion_applicability":null,"expansion":null},{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":613,"byte_end":619,"line_start":17,"line_end":17,"column_start":13,"column_end":19,"is_primary":false,"text":[{"text":"    let s : String = 1;  // Error in the middle of line.","highlight_start":13,"highlight_end":19}],"label":"expected due to this","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"try using a conversion method","code":null,"level":"help","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":623,"byte_end":623,"line_start":17,"line_end":17,"column_start":23,"column_end":23,"is_primary":true,"text":[{"text":"    let s : String = 1;  // Error in the middle of line.","highlight_start":23,"highlight_end":23}],"label":null,"suggested_replacement":".to_string()","suggestion_applicability":"MaybeIncorrect","expansion":null}],"children":[],"rendered":null}],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:17:22: error[E0308]: mismatched types: expected `String`, found integer
+"}
+{"$message_type":"diagnostic","message":"mismatched types","code":{"code":"E0308","explanation":"Expected type did not match the received type.
+
+Erroneous code examples:
+
+```compile_fail,E0308
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one(\"Not a number\");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if \"Not a bool\" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = \"Not a float\";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+"},"level":"error","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":682,"byte_end":683,"line_start":19,"line_end":19,"column_start":22,"column_end":23,"is_primary":true,"text":[{"text":"    let s : String = 1","highlight_start":22,"highlight_end":23}],"label":"expected `String`, found integer","suggested_replacement":null,"suggestion_applicability":null,"expansion":null},{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":673,"byte_end":679,"line_start":19,"line_end":19,"column_start":13,"column_end":19,"is_primary":false,"text":[{"text":"    let s : String = 1","highlight_start":13,"highlight_end":19}],"label":"expected due to this","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"try using a conversion method","code":null,"level":"help","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":683,"byte_end":683,"line_start":19,"line_end":19,"column_start":23,"column_end":23,"is_primary":true,"text":[{"text":"    let s : String = 1","highlight_start":23,"highlight_end":23}],"label":null,"suggested_replacement":".to_string()","suggestion_applicability":"MaybeIncorrect","expansion":null}],"children":[],"rendered":null}],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:19:22: error[E0308]: mismatched types: expected `String`, found integer
+"}
+{"$message_type":"diagnostic","message":"mismatched types","code":{"code":"E0308","explanation":"Expected type did not match the received type.
+
+Erroneous code examples:
+
+```compile_fail,E0308
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one(\"Not a number\");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if \"Not a bool\" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = \"Not a float\";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+"},"level":"error","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":746,"byte_end":747,"line_start":23,"line_end":23,"column_start":1,"column_end":2,"is_primary":true,"text":[{"text":"1;  // Error after the newline.","highlight_start":1,"highlight_end":2}],"label":"expected `String`, found integer","suggested_replacement":null,"suggestion_applicability":null,"expansion":null},{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":736,"byte_end":742,"line_start":22,"line_end":22,"column_start":13,"column_end":19,"is_primary":false,"text":[{"text":"    let s : String =","highlight_start":13,"highlight_end":19}],"label":"expected due to this","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"try using a conversion method","code":null,"level":"help","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":747,"byte_end":747,"line_start":23,"line_end":23,"column_start":2,"column_end":2,"is_primary":true,"text":[{"text":"1;  // Error after the newline.","highlight_start":2,"highlight_end":2}],"label":null,"suggested_replacement":".to_string()","suggestion_applicability":"MaybeIncorrect","expansion":null}],"children":[],"rendered":null}],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:23:1: error[E0308]: mismatched types: expected `String`, found integer
+"}
+{"$message_type":"diagnostic","message":"mismatched types","code":{"code":"E0308","explanation":"Expected type did not match the received type.
+
+Erroneous code examples:
+
+```compile_fail,E0308
+fn plus_one(x: i32) -> i32 {
+    x + 1
+}
+
+plus_one(\"Not a number\");
+//       ^^^^^^^^^^^^^^ expected `i32`, found `&str`
+
+if \"Not a bool\" {
+// ^^^^^^^^^^^^ expected `bool`, found `&str`
+}
+
+let x: f32 = \"Not a float\";
+//     ---   ^^^^^^^^^^^^^ expected `f32`, found `&str`
+//     |
+//     expected due to this
+```
+
+This error occurs when an expression was used in a place where the compiler
+expected an expression of a different type. It can occur in several cases, the
+most common being when calling a function and passing an argument which has a
+different type than the matching type in the function declaration.
+"},"level":"error","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":802,"byte_end":810,"line_start":25,"line_end":26,"column_start":22,"column_end":6,"is_primary":true,"text":[{"text":"    let s : String = (","highlight_start":22,"highlight_end":23},{"text":"    );  // Error spanning the newline.","highlight_start":1,"highlight_end":6}],"label":"expected `String`, found `()`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null},{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":793,"byte_end":799,"line_start":25,"line_end":25,"column_start":13,"column_end":19,"is_primary":false,"text":[{"text":"    let s : String = (","highlight_start":13,"highlight_end":19}],"label":"expected due to this","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:25:22: error[E0308]: mismatched types: expected `String`, found `()`
+"}
+{"$message_type":"diagnostic","message":"aborting due to 4 previous errors","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 4 previous errors
+"}

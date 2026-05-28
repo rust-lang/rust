@@ -1,0 +1,98 @@
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:6:1
+   |
+LL | fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::no_mangle_with_rust_abi)]`
+help: set an ABI
+   |
+LL | extern "C" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | ++++++++++
+help: or explicitly set the default
+   |
+LL | extern "Rust" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | +++++++++++++
+
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:10:1
+   |
+LL | pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | pub extern "C" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   |     ++++++++++
+help: or explicitly set the default
+   |
+LL | pub extern "Rust" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   |     +++++++++++++
+
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:16:1
+   |
+LL | pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | pub unsafe extern "C" fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   |            ++++++++++
+help: or explicitly set the default
+   |
+LL | pub unsafe extern "Rust" fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   |            +++++++++++++
+
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:22:1
+   |
+LL | unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL | unsafe extern "C" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   |        ++++++++++
+help: or explicitly set the default
+   |
+LL | unsafe extern "Rust" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   |        +++++++++++++
+
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:26:1
+   |
+LL | / fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+LL | |
+LL | |     arg_one: u32,
+LL | |     arg_two: usize,
+LL | | ) -> u32 {
+   | |________^
+   |
+help: set an ABI
+   |
+LL | extern "C" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+   | ++++++++++
+help: or explicitly set the default
+   |
+LL | extern "Rust" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+   | +++++++++++++
+
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:52:5
+   |
+LL |     pub(in super::r#fn) fn with_some_fn_around() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL |     pub(in super::r#fn) extern "C" fn with_some_fn_around() {}
+   |                         ++++++++++
+help: or explicitly set the default
+   |
+LL |     pub(in super::r#fn) extern "Rust" fn with_some_fn_around() {}
+   |                         +++++++++++++
+
+error: aborting due to 6 previous errors
+

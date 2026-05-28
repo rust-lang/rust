@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of `*key` which is behind a shared reference
+  --> $DIR/issue-52262.rs:15:35
+   |
+LL |                 String::from_utf8(*key).unwrap()
+   |                                   ^^^^ move occurs because `*key` has type `Vec<u8>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -                 String::from_utf8(*key).unwrap()
+LL +                 String::from_utf8(key.clone()).unwrap()
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

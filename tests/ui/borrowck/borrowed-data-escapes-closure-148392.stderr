@@ -1,0 +1,14 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/borrowed-data-escapes-closure-148392.rs:11:9
+   |
+LL |     let mut b = None;
+   |         ----- `b` declared here, outside of the closure body
+LL |     move || {
+LL |         b = Some(&a);
+   |         ^^^^^^^^^^^^ a temporary borrow escapes the closure body here
+   |
+   = help: `b` is declared outside the closure, so any data borrowed inside the closure cannot be stored into it
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

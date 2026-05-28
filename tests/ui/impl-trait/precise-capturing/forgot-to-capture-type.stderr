@@ -1,0 +1,22 @@
+error: `impl Trait` must mention all type parameters in scope in `use<...>`
+  --> $DIR/forgot-to-capture-type.rs:1:23
+   |
+LL | fn type_param<T>() -> impl Sized + use<> {}
+   |               -       ^^^^^^^^^^^^^^^^^^
+   |               |
+   |               type parameter is implicitly captured by this `impl Trait`
+   |
+   = note: currently, all type parameters are required to be mentioned in the precise captures list
+
+error: `impl Trait` must mention the `Self` type of the trait in `use<...>`
+  --> $DIR/forgot-to-capture-type.rs:5:17
+   |
+LL | trait Foo {
+   | --------- `Self` type parameter is implicitly captured by this `impl Trait`
+LL |     fn bar() -> impl Sized + use<>;
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: currently, all type parameters are required to be mentioned in the precise captures list
+
+error: aborting due to 2 previous errors
+

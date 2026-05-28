@@ -1,0 +1,5 @@
+// This test ensures that the reexport of a macro doesn't make the original macro
+// displayed twice in the sidebar.
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.repro.html"
+wait-for: ".sidebar-elems .block.macro a"
+assert-count: ("//*[@class='sidebar-elems']//*[@class='block macro']//a[normalize-space()='repro']", 1)

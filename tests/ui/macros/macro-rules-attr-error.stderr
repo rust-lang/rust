@@ -1,0 +1,75 @@
+error: local_attr: struct S;
+  --> $DIR/macro-rules-attr-error.rs:5:9
+   |
+LL |         compile_error!(concat!("local_attr: ", stringify!($($body)*)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     #[local_attr]
+   |     ------------- in this attribute macro expansion
+   |
+   = note: this error originates in the attribute macro `local_attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unnecessary `unsafe` on safe attribute invocation
+  --> $DIR/macro-rules-attr-error.rs:63:3
+   |
+LL | #[unsafe(attr_with_safety)]
+   |   ^^^^^^
+
+error: unsafe attribute invocation requires `unsafe`
+  --> $DIR/macro-rules-attr-error.rs:67:1
+   |
+LL | #[attr_with_safety]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `local_attr` in this scope
+  --> $DIR/macro-rules-attr-error.rs:27:5
+   |
+LL |     local_attr!(arg);
+   |     ^^^^^^^^^^
+   |
+   = note: `local_attr` is in scope, but it is an attribute: `#[local_attr]`
+
+error: cannot find attribute `fn_only` in this scope
+  --> $DIR/macro-rules-attr-error.rs:30:7
+   |
+LL | macro_rules! fn_only {
+   |              ------- `fn_only` exists, but has no `attr` rules
+...
+LL |     #[fn_only]
+   |       ^^^^^^^
+
+error: cannot find macro `attr_only` in this scope
+  --> $DIR/macro-rules-attr-error.rs:33:5
+   |
+LL | macro_rules! attr_only {
+   |              --------- `attr_only` exists, but has no rules for function-like invocation
+...
+LL |     attr_only!();
+   |     ^^^^^^^^^
+
+error: cannot find attribute `forward_referenced_attr` in this scope
+  --> $DIR/macro-rules-attr-error.rs:38:3
+   |
+LL | #[forward_referenced_attr]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^ consider moving the definition of `forward_referenced_attr` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/macro-rules-attr-error.rs:42:14
+   |
+LL | macro_rules! forward_referenced_attr {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `cyclic_attr` in this scope
+  --> $DIR/macro-rules-attr-error.rs:48:3
+   |
+LL | #[cyclic_attr]
+   |   ^^^^^^^^^^^ consider moving the definition of `cyclic_attr` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/macro-rules-attr-error.rs:50:14
+   |
+LL | macro_rules! cyclic_attr {
+   |              ^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

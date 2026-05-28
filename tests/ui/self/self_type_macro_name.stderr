@@ -1,0 +1,8 @@
+error: cannot find macro `Self` in this scope
+  --> $DIR/self_type_macro_name.rs:3:9
+   |
+LL |         Self!() => (),
+   |         ^^^^
+
+error: aborting due to 1 previous error
+

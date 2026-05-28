@@ -1,0 +1,15 @@
+error[E0271]: expected `{closure@fallback-closure-wrap.rs:17:40}` to return `()`, but it returns `!`
+  --> $DIR/fallback-closure-wrap.rs:18:9
+   |
+LL |     let error = Closure::wrap(Box::new(move || {
+   |                                        ------- this closure
+LL |         panic!("Can't connect to server.");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `!`
+   |
+   = note: expected unit type `()`
+                   found type `!`
+   = note: required for the cast from `Box<{closure@$DIR/fallback-closure-wrap.rs:17:40: 17:47}>` to `Box<dyn FnMut()>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

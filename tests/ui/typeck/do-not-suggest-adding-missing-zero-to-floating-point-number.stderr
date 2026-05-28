@@ -1,0 +1,51 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:16:8
+   |
+LL |     42._;
+   |        ^ expected identifier, found reserved identifier
+
+error[E0610]: `i32` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:5:7
+   |
+LL |     x.e10;
+   |       ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:8:7
+   |
+LL |     y.e10;
+   |       ^^^
+
+error[E0610]: `u32` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:10:10
+   |
+LL |     2u32.e10;
+   |          ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:12:12
+   |
+LL |     num!().e10;
+   |            ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:14:7
+   |
+LL |     2.e10foo;
+   |       ^^^^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:16:8
+   |
+LL |     42._;
+   |        ^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/do-not-suggest-adding-missing-zero-to-floating-point-number.rs:20:8
+   |
+LL |     42.a;
+   |        ^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

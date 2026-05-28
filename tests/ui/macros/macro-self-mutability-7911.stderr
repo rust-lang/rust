@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/macro-self-mutability-7911.rs:8:8
+   |
+LL | trait FooBar {
+   |       ------ method in this trait
+LL |     fn dummy(&self) { }
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,14 @@
+#![allow(unused_parens)]
+#![warn(clippy::verbose_bit_mask)]
+
+fn main() {
+    let x: i32 = 42;
+    let _ = x.trailing_zeros() >= 4;
+    //~^ verbose_bit_mask
+
+    let _ = x.trailing_zeros() >= 5;
+    //~^ verbose_bit_mask
+
+    let _ = x & 0b1_1010 == 0; // do not lint
+    let _ = x & 1 == 0; // do not lint
+}

@@ -1,0 +1,10 @@
+error: static cannot implement multiple EIIs
+  --> $DIR/multiple_impls.rs:14:1
+   |
+LL | #[b]
+   | ^^^^
+   |
+   = note: this is not allowed because multiple externally implementable statics that alias may be unintuitive
+
+error: aborting due to 1 previous error
+

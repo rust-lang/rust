@@ -1,0 +1,18 @@
+error: expected `{`, found `}`
+  --> $DIR/while-if-let-without-body.rs:11:1
+   |
+LL |       while if let Some(thing) = container.get(i) {
+   |  _____-----_-
+   | |     |
+   | |     while parsing the body of this `while` expression
+LL | |
+LL | |
+LL | |         println!("{:?}", thing);
+LL | |         i += 1;
+LL | |     }
+   | |_____- this `while` condition successfully parsed
+LL |   }
+   |   ^ expected `{`
+
+error: aborting due to 1 previous error
+

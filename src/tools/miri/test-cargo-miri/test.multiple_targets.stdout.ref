@@ -1,0 +1,34 @@
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+imported main
+imported main
+
+running 6 tests
+...i..
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 6 tests
+...i..
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

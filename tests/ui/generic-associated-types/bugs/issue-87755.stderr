@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<Bar as Foo>::Ass == _`
+  --> $DIR/issue-87755.rs:16:16
+   |
+LL |     type Ass = Bar;
+   |                ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

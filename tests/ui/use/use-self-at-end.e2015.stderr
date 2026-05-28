@@ -1,0 +1,302 @@
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:14:24
+   |
+LL |         pub use crate::self;
+   |                        ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use crate::self as name;
+   |                             +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:16:25
+   |
+LL |         pub use crate::{self};
+   |                         ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use crate::{self as name};
+   |                              +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:20:17
+   |
+LL |         pub use self;
+   |                 ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use self as name;
+   |                      +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:22:18
+   |
+LL |         pub use {self};
+   |                  ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use {self as name};
+   |                       +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:26:23
+   |
+LL |         pub use self::self;
+   |                       ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use self::self as name;
+   |                            +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:29:24
+   |
+LL |         pub use self::{self};
+   |                        ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use self::{self as name};
+   |                             +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:33:24
+   |
+LL |         pub use super::self;
+   |                        ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use super::self as name;
+   |                             +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:36:25
+   |
+LL |         pub use super::{self};
+   |                         ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use super::{self as name};
+   |                              +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:48:19
+   |
+LL |         pub use ::self;
+   |                   ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use ::self as name;
+   |                        +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-self-at-end.rs:52:20
+   |
+LL |         pub use ::{self};
+   |                    ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         pub use ::{self as name};
+   |                         +++++++
+
+error: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:57:20
+   |
+LL |         pub use z::self::self;
+   |                    ^^^^
+
+error: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:58:20
+   |
+LL |         pub use z::self::self as z1;
+   |                    ^^^^
+
+error: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:59:21
+   |
+LL |         pub use z::{self::{self}};
+   |                     ^^^^
+
+error: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:60:21
+   |
+LL |         pub use z::{self::{self as z2}};
+   |                     ^^^^
+
+error[E0252]: the name `x` is defined multiple times
+  --> $DIR/use-self-at-end.rs:42:28
+   |
+LL |         pub use crate::x::self;
+   |                 -------------- previous import of the module `x` here
+LL |         pub use crate::x::self as x3;
+LL |         pub use crate::x::{self};
+   |         -------------------^^^^--
+   |         |                  |
+   |         |                  `x` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `x` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Enum` is defined multiple times
+  --> $DIR/use-self-at-end.rs:71:31
+   |
+LL |         pub use super::Enum::self;
+   |                 ----------------- previous import of the type `Enum` here
+LL |         pub use super::Enum::self as Enum1;
+LL |         pub use super::Enum::{self};
+   |         ----------------------^^^^--
+   |         |                     |
+   |         |                     `Enum` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `Enum` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Trait` is defined multiple times
+  --> $DIR/use-self-at-end.rs:79:32
+   |
+LL |         pub use super::Trait::self;
+   |                 ------------------ previous import of the trait `Trait` here
+LL |         pub use super::Trait::self as Trait1;
+LL |         pub use super::Trait::{self};
+   |         -----------------------^^^^--
+   |         |                      |
+   |         |                      `Trait` reimported here
+   |         help: remove unnecessary import
+   |
+   = note: `Trait` must be defined only once in the type namespace of this module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:63:24
+   |
+LL |         pub use super::Struct::self;
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:64:24
+   |
+LL |         pub use super::Struct::self as Struct1;
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:65:24
+   |
+LL |         pub use super::Struct::{self};
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:83:24
+   |
+LL |         pub use super::self::y::z;
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:84:24
+   |
+LL |         pub use super::self::y::z as z3;
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:85:24
+   |
+LL |         pub use super::self::y::{z};
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:86:24
+   |
+LL |         pub use super::self::y::{z as z4};
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0432]: unresolved import `super::Struct`
+  --> $DIR/use-self-at-end.rs:66:24
+   |
+LL |         pub use super::Struct::{self as Struct2};
+   |                        ^^^^^^ `Struct` is a struct, not a module
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:56:21
+   |
+LL |         type G = z::self::self;
+   |                     ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:82:25
+   |
+LL |         type K = super::self::y::z;
+   |                         ^^^^ can only be used in path start position or last position
+
+error[E0573]: expected type, found module `crate::self`
+  --> $DIR/use-self-at-end.rs:13:18
+   |
+LL |         type A = crate::self;
+   |                  ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `self`
+  --> $DIR/use-self-at-end.rs:19:18
+   |
+LL |         type B = self;
+   |                  ^^^^ not a type
+
+error[E0573]: expected type, found module `self::self`
+  --> $DIR/use-self-at-end.rs:25:18
+   |
+LL |         type C = self::self;
+   |                  ^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `super::self`
+  --> $DIR/use-self-at-end.rs:32:18
+   |
+LL |         type D = super::self;
+   |                  ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `crate::x::self`
+  --> $DIR/use-self-at-end.rs:39:18
+   |
+LL |         type E = crate::x::self;
+   |                  ^^^^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `::self`
+  --> $DIR/use-self-at-end.rs:45:18
+   |
+LL |         type F = ::self;
+   |                  ^^^^^^ not a type
+
+error[E0223]: ambiguous associated type
+  --> $DIR/use-self-at-end.rs:62:18
+   |
+LL |         type H = super::Struct::self;
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `self` implemented for `x::Struct`, you could use the fully-qualified path
+   |
+LL -         type H = super::Struct::self;
+LL +         type H = <x::Struct as Example>::self;
+   |
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/use-self-at-end.rs:74:18
+   |
+LL |         type J = super::Trait::self;
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |         type J = dyn super::Trait::self;
+   |                  +++
+
+error: aborting due to 34 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0223, E0252, E0432, E0433, E0573.
+For more information about an error, try `rustc --explain E0223`.

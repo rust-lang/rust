@@ -1,0 +1,47 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/mut-borrow-in-loop.rs:15:9
+   |
+LL |         while true {
+   |         ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error[E0499]: cannot borrow `*arg` as mutable more than once at a time
+  --> $DIR/mut-borrow-in-loop.rs:10:25
+   |
+LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg)
+   |             ------------^^^-
+   |             |           |
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
+   |             argument requires that `*arg` is borrowed for `'a`
+
+error[E0499]: cannot borrow `*arg` as mutable more than once at a time
+  --> $DIR/mut-borrow-in-loop.rs:16:25
+   |
+LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg)
+   |             ------------^^^-
+   |             |           |
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
+   |             argument requires that `*arg` is borrowed for `'a`
+
+error[E0499]: cannot borrow `*arg` as mutable more than once at a time
+  --> $DIR/mut-borrow-in-loop.rs:23:25
+   |
+LL | impl<'a, T : 'a> FuncWrapper<'a, T> {
+   |      -- lifetime `'a` defined here
+...
+LL |             (self.func)(arg)
+   |             ------------^^^-
+   |             |           |
+   |             |           `*arg` was mutably borrowed here in the previous iteration of the loop
+   |             argument requires that `*arg` is borrowed for `'a`
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0499`.

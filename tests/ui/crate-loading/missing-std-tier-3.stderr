@@ -1,0 +1,12 @@
+error[E0463]: can't find crate for `core`
+  --> $DIR/missing-std-tier-3.rs:9:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ can't find crate
+   |
+   = note: the `m68k-unknown-linux-gnu` target may not be installed
+   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.

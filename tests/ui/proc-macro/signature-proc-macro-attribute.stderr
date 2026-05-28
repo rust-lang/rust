@@ -1,0 +1,38 @@
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:10:1
+   |
+LL | pub fn bad_input(input: String) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(TokenStream, TokenStream) -> TokenStream`
+              found signature `fn(String) -> TokenStream`
+
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:16:1
+   |
+LL | pub fn bad_output(input: TokenStream) -> String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(TokenStream, TokenStream) -> TokenStream`
+              found signature `fn(TokenStream) -> String`
+
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:22:1
+   |
+LL | pub fn bad_everything(input: String) -> String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(TokenStream, TokenStream) -> TokenStream`
+              found signature `fn(String) -> String`
+
+error: attribute proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-attribute.rs:28:52
+   |
+LL | pub fn too_many(a: TokenStream, b: TokenStream, c: String) -> TokenStream {
+   |                                                    ^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(TokenStream, TokenStream) -> TokenStream`
+              found signature `fn(TokenStream, TokenStream, String) -> TokenStream`
+
+error: aborting due to 4 previous errors
+

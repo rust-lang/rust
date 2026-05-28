@@ -1,0 +1,48 @@
+error[E0539]: malformed `unroll` attribute input
+  --> $DIR/invalid-unroll.rs:5:5
+   |
+LL |     #[unroll(please)]
+   |     ^^^^^^^^^------^^
+   |              |
+   |              valid arguments are `full` or `never`
+
+error[E0539]: malformed `unroll` attribute input
+  --> $DIR/invalid-unroll.rs:8:5
+   |
+LL |     #[unroll("never")]
+   |     ^^^^^^^^^-------^^
+   |              |
+   |              valid arguments are `full` or `never`
+
+error[E0805]: malformed `unroll` attribute input
+  --> $DIR/invalid-unroll.rs:11:5
+   |
+LL |     #[unroll()]
+   |     ^^^^^^^^--^
+   |             |
+   |             expected an argument here
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/invalid-unroll.rs:14:14
+   |
+LL |     #[unroll(-1)]
+   |              ^^ expressions are not allowed here
+   |
+help: negative numbers are not literals, try removing the `-` sign
+   |
+LL -     #[unroll(-1)]
+LL +     #[unroll(1)]
+   |
+
+error[E0539]: malformed `unroll` attribute input
+  --> $DIR/invalid-unroll.rs:17:5
+   |
+LL |     #[unroll(1.5)]
+   |     ^^^^^^^^^---^^
+   |              |
+   |              valid arguments are `full` or `never`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

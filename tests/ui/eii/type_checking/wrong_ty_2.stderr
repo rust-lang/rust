@@ -1,0 +1,14 @@
+error[E0806]: `other` has 0 parameters but #[foo] requires it to have 1
+  --> $DIR/wrong_ty_2.rs:17:1
+   |
+LL |     safe fn bar(x: u64) -> u64;
+   |                    --- requires 1 parameter
+...
+LL | #[foo]
+   | ------ required because of this attribute
+LL | fn other() -> u64 {
+   | ^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0806`.

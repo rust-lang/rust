@@ -1,0 +1,13 @@
+error: expected identifier, found reserved keyword `abstract`
+  --> $DIR/keyword-abstract.rs:2:9
+   |
+LL |     let abstract = ();
+   |         ^^^^^^^^ expected identifier, found reserved keyword
+   |
+help: escape `abstract` to use it as an identifier
+   |
+LL |     let r#abstract = ();
+   |         ++
+
+error: aborting due to 1 previous error
+

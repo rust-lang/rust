@@ -1,0 +1,23 @@
+task:
+  name: freebsd
+  freebsd_instance:
+    image_family: freebsd-15-0-amd64-ufs
+  setup_rust_script:
+    - pkg install -y git-tiny binutils
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh --default-toolchain none -y --profile=minimal
+  target_cache:
+    folder: build/cg_clif
+  prepare_script:
+    - . $HOME/.cargo/env
+    - ./y.sh prepare
+  test_script:
+    - . $HOME/.cargo/env
+    # Disabling incr comp reduces cache size and incr comp doesn't save as much
+    # on CI anyway.
+    - export CARGO_BUILD_INCREMENTAL=false
+    # FIXME(rust-lang/rust#134863) necessary to avoid error when dlopening proc
+    # macros during compilation of cg_clif.
+    - export LD_STATIC_TLS_EXTRA=4096
+    # Skip rand as it fails on FreeBSD due to rust-random/rand#1355
+    - ./y.sh test --skip-test test.rust-random/rand

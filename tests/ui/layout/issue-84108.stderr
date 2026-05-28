@@ -1,0 +1,44 @@
+error[E0425]: cannot find type `OsStr` in this scope
+  --> $DIR/issue-84108.rs:6:24
+   |
+LL | static FOO: (dyn AsRef<OsStr>, u8) = ("hello", 42);
+   |                        ^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::ffi::OsStr;
+   |
+
+error[E0425]: cannot find type `Path` in this scope
+  --> $DIR/issue-84108.rs:9:14
+   |
+LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
+   |              ^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::path::Path;
+   |
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/issue-84108.rs:13:13
+   |
+LL | static BAZ: ([u8], usize) = ([], 0);
+   |             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0308]: mismatched types
+  --> $DIR/issue-84108.rs:9:45
+   |
+LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
+   |                                             ^^ expected `[u8]`, found `[_; 0]`
+   |
+   = note: expected slice `[u8]`
+              found array `[_; 0]`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0425.
+For more information about an error, try `rustc --explain E0277`.

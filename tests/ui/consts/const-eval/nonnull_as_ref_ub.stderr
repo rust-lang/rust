@@ -1,0 +1,9 @@
+error[E0080]: memory access failed: attempting to access 1 byte, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/nonnull_as_ref_ub.rs:4:29
+   |
+LL | const _: () = assert!(42 == *unsafe { NON_NULL.as_ref() });
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

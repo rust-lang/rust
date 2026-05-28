@@ -1,0 +1,17 @@
+error[E0109]: type arguments are not allowed on builtin type `usize`
+  --> $DIR/prim-crate-partial-res.rs:5:19
+   |
+LL | fn foo() -> usize<()> { 0 }
+   |             ----- ^^ type argument not allowed
+   |             |
+   |             not allowed on builtin type `usize`
+   |
+help: primitive type `usize` doesn't have generic parameters
+   |
+LL - fn foo() -> usize<()> { 0 }
+LL + fn foo() -> usize { 0 }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0109`.

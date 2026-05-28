@@ -1,0 +1,28 @@
+error: internal compiler error: compiler/rustc_mir_transform/src/validate.rs:LL:CC: broken MIR in Item(DefId) (after phase change to runtime-optimized) at bb0[1]:
+                                place (*(_2.0: *mut i32)) has deref as a later projection (it is only permitted as the first projection)
+  --> tests/panic/mir-validation.rs:LL:CC
+   |
+LL |             *(tuple.0) = 1;
+   |             ^^^^^^^^^^^^^^
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
+Box<dyn Any>
+stack backtrace:
+
+
+
+
+query stack during panic:
+#0 [optimized_mir] optimizing MIR for `main`
+end of query stack
+
+Miri caused an ICE during evaluation. Here's the interpreter backtrace at the time of the panic:
+  --> RUSTLIB/core/src/ops/function.rs:LL:CC
+   |
+LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: aborting due to 1 previous error
+

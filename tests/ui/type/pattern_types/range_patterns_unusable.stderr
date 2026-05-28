@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/range_patterns_unusable.rs:13:35
+   |
+LL |     let _: Option<u32> = unsafe { std::mem::transmute(z) };
+   |                                   ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `Option<(u32) is 1..>` (32 bits)
+   = note: target type: `Option<u32>` (64 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

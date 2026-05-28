@@ -1,0 +1,25 @@
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/move-generic-to-trait-in-method-with-params.rs:14:7
+   |
+LL |     1.bar::<i32>(0);
+   |       ^^^ expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/move-generic-to-trait-in-method-with-params.rs:4:8
+   |
+LL |     fn bar(&self, _: T);
+   |        ^^^
+help: consider moving this generic argument to the `Foo` trait, which takes up to 1 argument
+   |
+LL -     1.bar::<i32>(0);
+LL +     Foo::<i32>::bar(1, 0);
+   |
+help: remove the unnecessary generics
+   |
+LL -     1.bar::<i32>(0);
+LL +     1.bar(0);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

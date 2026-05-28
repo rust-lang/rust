@@ -1,0 +1,151 @@
+error[E0425]: cannot find value `whiskers` in this scope
+  --> $DIR/issue-2356.rs:39:5
+   |
+LL |   whiskers: isize,
+   |   -------- a field by that name exists in `Self`
+...
+LL |     whiskers -= other;
+   |     ^^^^^^^^
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/issue-2356.rs:65:8
+   |
+LL |   fn meow() {
+   |      ---- this function doesn't have a `self` parameter
+LL |     if self.whiskers > 3 {
+   |        ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |   fn meow(&self) {
+   |           +++++
+
+error[E0425]: cannot find value `whiskers` in this scope
+  --> $DIR/issue-2356.rs:79:5
+   |
+LL |     whiskers = 0;
+   |     ^^^^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |     self.whiskers = 0;
+   |     +++++
+
+error[E0425]: cannot find value `whiskers` in this scope
+  --> $DIR/issue-2356.rs:84:5
+   |
+LL |   whiskers: isize,
+   |   -------- a field by that name exists in `Self`
+...
+LL |     whiskers = 4;
+   |     ^^^^^^^^
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/issue-2356.rs:92:5
+   |
+LL | fn main() {
+   |    ---- this function can't have a `self` parameter
+LL |     self += 1;
+   |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+
+error[E0425]: cannot find function `shave` in this scope
+  --> $DIR/issue-2356.rs:17:5
+   |
+LL |     shave();
+   |     ^^^^^ not found in this scope
+
+error[E0425]: cannot find function `clone` in this scope
+  --> $DIR/issue-2356.rs:24:5
+   |
+LL |     clone();
+   |     ^^^^^
+   |
+help: you might have meant to call the method
+   |
+LL |     self.clone();
+   |     +++++
+
+error[E0425]: cannot find function `default` in this scope
+  --> $DIR/issue-2356.rs:31:5
+   |
+LL |     default();
+   |     ^^^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |     Self::default();
+   |     ++++++
+
+error[E0425]: cannot find function `shave` in this scope
+  --> $DIR/issue-2356.rs:41:5
+   |
+LL |     shave(4);
+   |     ^^^^^
+   |
+help: you might have meant to call the associated function
+   |
+LL |     Self::shave(4);
+   |     ++++++
+
+error[E0425]: cannot find function `purr` in this scope
+  --> $DIR/issue-2356.rs:43:5
+   |
+LL |     purr();
+   |     ^^^^ not found in this scope
+
+error[E0425]: cannot find function `static_method` in this scope
+  --> $DIR/issue-2356.rs:52:9
+   |
+LL |         static_method();
+   |         ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider using the associated function on `Self`
+   |
+LL |         Self::static_method();
+   |         ++++++
+
+error[E0425]: cannot find function `purr` in this scope
+  --> $DIR/issue-2356.rs:54:9
+   |
+LL |         purr();
+   |         ^^^^ not found in this scope
+
+error[E0425]: cannot find function `purr` in this scope
+  --> $DIR/issue-2356.rs:56:9
+   |
+LL |         purr();
+   |         ^^^^ not found in this scope
+
+error[E0425]: cannot find function `purr` in this scope
+  --> $DIR/issue-2356.rs:58:9
+   |
+LL |         purr();
+   |         ^^^^ not found in this scope
+
+error[E0425]: cannot find function `grow_older` in this scope
+  --> $DIR/issue-2356.rs:72:5
+   |
+LL |     grow_older();
+   |     ^^^^^^^^^^ not found in this scope
+   |
+help: consider using the associated function on `Self`
+   |
+LL |     Self::grow_older();
+   |     ++++++
+
+error[E0425]: cannot find function `shave` in this scope
+  --> $DIR/issue-2356.rs:74:5
+   |
+LL |     shave();
+   |     ^^^^^ not found in this scope
+
+error[E0425]: cannot find function `purr_louder` in this scope
+  --> $DIR/issue-2356.rs:86:5
+   |
+LL |     purr_louder();
+   |     ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0424, E0425.
+For more information about an error, try `rustc --explain E0424`.

@@ -1,0 +1,17 @@
+// MIR for `assert_nonzero` after built
+
+fn assert_nonzero(_1: i32) -> () {
+    let mut _0: ();
+
+    bb0: {
+        switchInt(copy _1) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        unreachable;
+    }
+
+    bb2: {
+        return;
+    }
+}

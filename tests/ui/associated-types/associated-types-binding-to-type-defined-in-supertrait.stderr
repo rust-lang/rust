@@ -1,0 +1,41 @@
+error[E0271]: type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:31:19
+   |
+LL | fn b() { blue_car(ModelT); }
+   |          -------- ^^^^^^ type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
+   |          |
+   |          required by a bound introduced by this call
+   |
+note: expected this to be `Blue`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:16:40
+   |
+LL | impl Vehicle for ModelT { type Color = Black; }
+   |                                        ^^^^^
+note: required by a bound in `blue_car`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:27:19
+   |
+LL | fn blue_car<C:Car<Color=Blue>>(c: C) {
+   |                   ^^^^^^^^^^ required by this bound in `blue_car`
+
+error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:32:20
+   |
+LL | fn c() { black_car(ModelU); }
+   |          --------- ^^^^^^ type mismatch resolving `<ModelU as Vehicle>::Color == Black`
+   |          |
+   |          required by a bound introduced by this call
+   |
+note: expected this to be `Black`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:21:40
+   |
+LL | impl Vehicle for ModelU { type Color = Blue; }
+   |                                        ^^^^
+note: required by a bound in `black_car`
+  --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:24:20
+   |
+LL | fn black_car<C:Car<Color=Black>>(c: C) {
+   |                    ^^^^^^^^^^^ required by this bound in `black_car`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

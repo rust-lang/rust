@@ -1,0 +1,12 @@
+error: structs are not allowed in struct definitions
+  --> $DIR/issue-101540.rs:2:5
+   |
+LL | struct S1 {
+   |        -- while parsing this struct
+LL |     struct S2 {
+   |     ^^^^^^^^^
+   |
+   = help: consider creating a new `struct` definition instead of nesting
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,148 @@
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:4:7
+   |
+LL | /// - [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+   = note: `-D clippy::doc-nested-refdefs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_nested_refdefs)]`
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:7:7
+   |
+LL | /// - [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def (title)
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:10:7
+   |
+LL | /// - [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def "title"
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:21:7
+   |
+LL | /// - [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:23:7
+   |
+LL | /// - [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def (title)
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:25:7
+   |
+LL | /// - [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def "title"
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:33:7
+   |
+LL | /// - [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:37:7
+   |
+LL | /// - [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def (title)
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:41:7
+   |
+LL | /// - [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def "title"
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:56:7
+   |
+LL | /// - [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:59:7
+   |
+LL | /// - [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def (title)
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:62:7
+   |
+LL | /// - [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [link][]: def "title"
+   |             ++
+
+error: aborting due to 12 previous errors
+

@@ -1,0 +1,8 @@
+
+running 2 tests
+test $DIR/force-merge.rs - Foo (line 14) ... ok
+test $DIR/force-merge.rs - Foo (line 20) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

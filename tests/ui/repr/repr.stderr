@@ -1,0 +1,31 @@
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:1:1
+   |
+LL | #[repr]
+   | ^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:4:1
+   |
+LL | #[repr = "B"]
+   | ^^^^^^^-----^
+   |        |
+   |        expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr.rs:7:1
+   |
+LL | #[repr = "C"]
+   | ^^^^^^^-----^
+   |        |
+   |        expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

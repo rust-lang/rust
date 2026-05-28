@@ -1,0 +1,87 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:18:13
+   |
+LL |         let y = *x;
+   |             ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let y = *x;
+LL +         let y = x;
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:25:13
+   |
+LL |         let _y = *x;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:32:13
+   |
+LL |         let _y = *x;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:37:13
+   |
+LL |         let y = *x;
+   |             ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let y = *x;
+LL +         let y = x;
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:44:13
+   |
+LL |         let _y = *x;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:51:13
+   |
+LL |         let _y = *x;
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

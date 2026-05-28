@@ -1,0 +1,33 @@
+error: unexpected token: `;`
+  --> $DIR/parse-error-correct.rs:6:15
+   |
+LL |     let x = y.;
+   |               ^
+
+error: unexpected token: `(`
+  --> $DIR/parse-error-correct.rs:7:15
+   |
+LL |     let x = y.();
+   |               ^
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/parse-error-correct.rs:7:13
+   |
+LL |     let y = 42;
+   |         - `y` has type `{integer}`
+LL |     let x = y.;
+LL |     let x = y.();
+   |             ^---
+   |             |
+   |             call expression requires function
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/parse-error-correct.rs:9:15
+   |
+LL |     let x = y.foo;
+   |               ^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0610, E0618.
+For more information about an error, try `rustc --explain E0610`.

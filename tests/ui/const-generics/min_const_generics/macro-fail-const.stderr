@@ -1,0 +1,51 @@
+error: expected type, found `{`
+  --> $DIR/macro-fail-const.rs:16:27
+   |
+LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
+   |                                 ----------------------
+   |                                 |
+   |                                 this macro call doesn't expand to a type
+   |                                 in this macro invocation
+...
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |                           ^ expected type
+   |
+   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected type, found `{`
+  --> $DIR/macro-fail-const.rs:16:27
+   |
+LL |   Example::<gimme_a_const!(marker)>
+   |             ----------------------
+   |             |
+   |             this macro call doesn't expand to a type
+   |             in this macro invocation
+...
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |                           ^ expected type
+   |
+   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/macro-fail-const.rs:5:33
+   |
+LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/macro-fail-const.rs:5:33
+   |
+LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/macro-fail-const.rs:8:13
+   |
+LL |   Example::<gimme_a_const!(marker)>
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0747`.

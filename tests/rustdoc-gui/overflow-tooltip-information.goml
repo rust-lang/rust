@@ -1,0 +1,8 @@
+// The goal of this test is to ensure that the tooltip `.information` class doesn't
+// have overflow and max-width CSS rules set because they create a bug in firefox on
+// mac. For more information: https://github.com/rust-lang/rust/issues/89185
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+assert-css: (".docblock > .example-wrap .tooltip", {
+    "overflow-x": "visible",
+    "max-width": "none"
+}, ALL)

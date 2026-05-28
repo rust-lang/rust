@@ -1,0 +1,6 @@
+error: invalid `--check-cfg` argument: `cfg(foo,"NOT_IDENT",bar)`
+   |
+   = note: `"NOT_IDENT"` is a string literal
+   = note: `cfg()` arguments must be simple identifiers, `any()` or `values(...)`
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

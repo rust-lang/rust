@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> == _`
+  --> $DIR/normalize-diverging-alias-in-struct.rs:21:12
+   |
+LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<u8 as Trait>::Diverges<u8> == _`
+   |
+note: types differ
+  --> $DIR/normalize-diverging-alias-in-struct.rs:17:31
+   |
+LL |     type Diverges<D: Trait> = D::Diverges<D>;
+   |                               ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

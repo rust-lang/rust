@@ -1,0 +1,27 @@
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:8:11
+   |
+LL |         ! |
+   |         - ^
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: a never pattern is always unreachable
+  --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:10:20
+   |
+LL |         if true => {}
+   |                    ^^
+   |                    |
+   |                    this will never be executed
+   |                    help: remove this expression
+
+error: mismatched types
+  --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:8:9
+   |
+LL |         ! |
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `E`
+
+error: aborting due to 3 previous errors
+

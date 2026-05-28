@@ -1,0 +1,16 @@
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/attrs-on-params.rs:3:13
+   |
+LL | fn function(#[inline] param: u32) {
+   |             ^^^^^^^^^
+
+error: `#[inline]` attribute cannot be used on function params
+  --> $DIR/attrs-on-params.rs:3:13
+   |
+LL | fn function(#[inline] param: u32) {
+   |             ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: aborting due to 2 previous errors
+

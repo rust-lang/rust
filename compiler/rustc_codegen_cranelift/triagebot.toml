@@ -1,0 +1,4 @@
+# Documentation at https://forge.rust-lang.org/triagebot/index.html
+
+# Prevents un-canonicalized issue links (to avoid wrong issues being linked in r-l/rust)
+[issue-links]

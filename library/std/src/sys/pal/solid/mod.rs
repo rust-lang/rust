@@ -1,0 +1,42 @@
+#![allow(dead_code)]
+#![allow(missing_docs, nonstandard_style)]
+#![forbid(unsafe_op_in_unsafe_fn)]
+
+use crate::io;
+
+pub mod abi;
+
+#[path = "../itron"]
+pub mod itron {
+    pub mod abi;
+    pub mod error;
+    pub mod spin;
+    pub mod task;
+    pub mod thread_parking;
+    pub mod time;
+}
+
+// `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
+// `crate::sys::error`
+pub(crate) mod error;
+pub use self::itron::thread_parking;
+
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {}
+
+pub fn unsupported<T>() -> io::Result<T> {
+    Err(unsupported_err())
+}
+
+pub fn unsupported_err() -> io::Error {
+    io::Error::UNSUPPORTED_PLATFORM
+}
+
+#[inline]
+pub fn abort_internal() -> ! {
+    unsafe { libc::abort() }
+}

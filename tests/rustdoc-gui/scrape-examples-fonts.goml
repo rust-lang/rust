@@ -1,0 +1,9 @@
+// This test ensures that the correct font is used in scraped examples.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+store-value: (font, '"Fira Sans", Arial, NanumBarunGothic, sans-serif')
+
+wait-for-css: (".scraped-example-title", {"font-family": |font|})
+wait-for-css: (".more-examples-toggle summary", {"font-family": |font|})
+wait-for-css: (".more-examples-toggle .hide-more", {"font-family": |font|})
+wait-for-css: (".example-links a", {"font-family": |font|})

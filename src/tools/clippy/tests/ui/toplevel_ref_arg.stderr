@@ -1,0 +1,43 @@
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:14:9
+   |
+LL |     let ref _x = 1;
+   |     ----^^^^^^----- help: try: `let _x = &1;`
+   |
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:17:9
+   |
+LL |     let ref _y: (&_, u8) = (&1, 2);
+   |     ----^^^^^^--------------------- help: try: `let _y: &(&_, u8) = &(&1, 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:20:9
+   |
+LL |     let ref _z = 1 + 2;
+   |     ----^^^^^^--------- help: try: `let _z = &(1 + 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:23:9
+   |
+LL |     let ref mut _z = 1 + 2;
+   |     ----^^^^^^^^^^--------- help: try: `let _z = &mut (1 + 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:29:9
+   |
+LL |     let ref _x = vec![1, 2, 3];
+   |     ----^^^^^^----------------- help: try: `let _x = &vec![1, 2, 3];`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> tests/ui/toplevel_ref_arg.rs:40:17
+   |
+LL |     inline!(let ref _y = 42;);
+   |             ----^^^^^^------ help: try: `let _y = &42;`
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+

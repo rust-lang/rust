@@ -1,0 +1,30 @@
+warning: associated items `F` and `C` are never used
+  --> $DIR/dead-code-associated-function.rs:11:8
+   |
+LL | impl E {
+   | ------ associated items in this implementation
+LL |     #[expect(non_snake_case)]
+LL |     fn F() {}
+   |        ^
+...
+LL |     const C: () = ();
+   |           ^
+   |
+note: it is impossible to refer to the associated function `F` because it is shadowed by this enum variant with the same name
+  --> $DIR/dead-code-associated-function.rs:5:5
+   |
+LL |     F(),
+   |     ^
+note: it is impossible to refer to the associated constant `C` because it is shadowed by this enum variant with the same name
+  --> $DIR/dead-code-associated-function.rs:6:5
+   |
+LL |     C(),
+   |     ^
+note: the lint level is defined here
+  --> $DIR/dead-code-associated-function.rs:2:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: 1 warning emitted
+

@@ -1,0 +1,32 @@
+error[E0109]: type arguments are not allowed on module `generics_on_self_mod_segment`
+  --> $DIR/generics-on-self-mod-segment.rs:3:20
+   |
+LL | fn self_(_: self::<i32>::Ty) {}
+   |             ----   ^^^ type argument not allowed
+   |             |
+   |             not allowed on module `generics_on_self_mod_segment`
+
+error[E0109]: type arguments are not allowed on module `generics_on_self_mod_segment`
+  --> $DIR/generics-on-self-mod-segment.rs:6:22
+   |
+LL | fn crate_(_: crate::<i32>::Ty) {}
+   |              -----   ^^^ type argument not allowed
+   |              |
+   |              not allowed on module `generics_on_self_mod_segment`
+
+error[E0109]: type arguments are not allowed on module `generics_on_self_mod_segment`
+  --> $DIR/generics-on-self-mod-segment.rs:11:38
+   |
+LL |         fn dollar_crate_(_: $crate::<i32>::Ty) {}
+   |                             ------   ^^^ type argument not allowed
+   |                             |
+   |                             not allowed on module `generics_on_self_mod_segment`
+...
+LL | dollar_crate!();
+   | --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0109`.

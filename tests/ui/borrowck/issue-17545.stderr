@@ -1,0 +1,19 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-17545.rs:7:10
+   |
+LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
+   |              -- lifetime `'a` defined here
+LL | /     bar.call((
+LL | |         &id(()),
+   | |          ^^^^^^ creates a temporary value which is freed while still in use
+LL | |     ));
+   | |      -- temporary value is freed at the end of this statement
+   | |______|
+   |        argument requires that borrow lasts for `'a`
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

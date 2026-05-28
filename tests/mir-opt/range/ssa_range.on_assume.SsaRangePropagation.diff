@@ -1,0 +1,56 @@
+- // MIR for `on_assume` before SsaRangePropagation
++ // MIR for `on_assume` after SsaRangePropagation
+  
+  fn on_assume(_1: usize, _2: &[u8]) -> u8 {
+      debug i => _1;
+      debug v => _2;
+      let mut _0: u8;
+      let _3: ();
+      let _4: ();
+      let mut _5: bool;
+      let mut _6: usize;
+      let mut _7: usize;
+      let mut _8: &[u8];
+      let _9: usize;
+      let mut _10: usize;
+      let mut _11: bool;
+      scope 1 (inlined core::slice::<impl [u8]>::len) {
+          scope 2 (inlined std::ptr::metadata::<[u8]>) {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          nop;
+          StorageLive(_6);
+          _6 = copy _1;
+          nop;
+          StorageLive(_8);
+          _8 = &(*_2);
+          _7 = PtrMetadata(copy _2);
+          StorageDead(_8);
+          _5 = Lt(copy _1, copy _7);
+          nop;
+          StorageDead(_6);
+          assume(copy _5);
+          nop;
+          StorageDead(_4);
+          _3 = const ();
+          StorageDead(_3);
+          StorageLive(_9);
+          _9 = copy _1;
+          _10 = copy _7;
+-         _11 = copy _5;
+-         assert(copy _5, "index out of bounds: the length is {} but the index is {}", copy _7, copy _1) -> [success: bb1, unwind unreachable];
++         _11 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", copy _7, copy _1) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _0 = copy (*_2)[_1];
+          StorageDead(_9);
+          return;
+      }
+  }
+  

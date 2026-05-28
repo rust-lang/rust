@@ -1,0 +1,15 @@
+error: this could be rewritten as `let...else`
+  --> tests/ui-toml/manual_let_else/manual_let_else.rs:9:5
+   |
+LL | /     let x = match Foo::A(1) {
+LL | |
+LL | |         Foo::A(x) => x,
+LL | |         Foo::B => return,
+LL | |     };
+   | |______^ help: consider writing: `let Foo::A(x) = Foo::A(1) else { return };`
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+
+error: aborting due to 1 previous error
+

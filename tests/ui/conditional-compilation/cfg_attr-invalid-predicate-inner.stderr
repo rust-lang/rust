@@ -1,0 +1,34 @@
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:1
+   |
+LL | #![cfg_attr(a())]
+   | ^^^^^^^^^^^^---^^
+   |             |
+   |             valid arguments are `any`, `all`, `not` or `target`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+help: must be of the form
+   |
+LL - #![cfg_attr(a())]
+LL + #![cfg_attr(predicate, attr1, attr2, ...)]
+   |
+
+error[E0539]: malformed `cfg_attr` attribute input
+  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:1
+   |
+LL | #![cfg_attr(a())]
+   | ^^^^^^^^^^^^---^^
+   |             |
+   |             valid arguments are `any`, `all`, `not` or `target`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: must be of the form
+   |
+LL - #![cfg_attr(a())]
+LL + #![cfg_attr(predicate, attr1, attr2, ...)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

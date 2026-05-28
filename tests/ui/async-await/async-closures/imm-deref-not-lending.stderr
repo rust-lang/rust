@@ -1,0 +1,14 @@
+error: async closure does not implement `Fn` because it captures state from its environment
+  --> $DIR/imm-deref-not-lending.rs:23:29
+   |
+LL |     let x: impl Fn() -> _ = async move || {
+   |                             ^^^^^^^^^^^^^
+
+error: async closure does not implement `Fn` because it captures state from its environment
+  --> $DIR/imm-deref-not-lending.rs:43:29
+   |
+LL |     let x: impl Fn() -> _ = async move || {
+   |                             ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,39 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-exprs.rs:19:22
+   |
+LL |     udrop::<A<[u8]>>(A { 0: *foo() });
+   |                      ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `A<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `A<[u8]>`
+  --> $DIR/unsized-exprs.rs:3:8
+   |
+LL | struct A<X: ?Sized>(X);
+   |        ^
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-exprs.rs:19:22
+   |
+LL |     udrop::<A<[u8]>>(A { 0: *foo() });
+   |                      ^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-exprs.rs:21:22
+   |
+LL |     udrop::<A<[u8]>>(A(*foo()));
+   |                      ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `A<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `A<[u8]>`
+  --> $DIR/unsized-exprs.rs:3:8
+   |
+LL | struct A<X: ?Sized>(X);
+   |        ^
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-exprs.rs:21:22
+   |
+LL |     udrop::<A<[u8]>>(A(*foo()));
+   |                      ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

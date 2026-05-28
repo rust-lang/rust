@@ -1,0 +1,61 @@
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/mixed-editions.rs:41:10
+   |
+LL |     let [bind_mut!(y)] = &[0];
+   |          ^^^^^^^^^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `bind_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:110:28
+   |
+LL |     let match_ref!(ref mut x) = &mut 0;
+   |                            ^
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:112:24
+   |
+LL |     let &bind_ref_mut!(x) = &mut 0;
+   |         -              ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:116:29
+   |
+LL |     let [match_ref!(ref mut x)] = &mut [0];
+   |                             ^
+
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/mixed-editions.rs:118:25
+   |
+LL |     let [&bind_ref_mut!(x)] = &mut [0];
+   |          -              ^
+   |          |
+   |          help: replace this `&` with `&mut`: `&mut`
+
+error: cannot explicitly borrow within an implicitly-borrowing pattern
+  --> $DIR/mixed-editions.rs:30:10
+   |
+LL |     let [bind_ref!(y)] = &[0];
+   |          ^^^^^^^^^^^^ occurs within macro expansion
+   |
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
+  --> $DIR/mixed-editions.rs:30:9
+   |
+LL |     let [bind_ref!(y)] = &[0];
+   |         ^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
+   = note: this error originates in the macro `bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: match on the reference with a reference pattern to avoid implicitly borrowing
+   |
+LL |     let &[bind_ref!(y)] = &[0];
+   |         +
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0596, E0658.
+For more information about an error, try `rustc --explain E0596`.

@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/assignment-mismatch-various-types.rs:4:18
+   |
+LL |     let x: u32 = ();
+   |            ---   ^^ expected `u32`, found `()`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-mismatch-various-types.rs:7:20
+   |
+LL |     let _p: char = 100;
+   |             ----   ^^^ expected `char`, found `u8`
+   |             |
+   |             expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

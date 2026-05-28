@@ -1,0 +1,14 @@
+error: `enum` and `struct` are mutually exclusive
+  --> $DIR/issue-99625-enum-struct-mutually-exclusive.rs:3:5
+   |
+LL | pub enum struct Range {
+   |     ^^^^^^^^^^^
+   |
+help: replace `enum struct` with
+   |
+LL - pub enum struct Range {
+LL + pub enum Range {
+   |
+
+error: aborting due to 1 previous error
+

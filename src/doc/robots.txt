@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /1.
+Disallow: /0.
+Disallow: /book/first-edition/
+Disallow: /book/second-edition/
+Disallow: /stable/book/first-edition/
+Disallow: /stable/book/second-edition/
+Disallow: /beta/book/first-edition/
+Disallow: /beta/book/second-edition/
+Disallow: /nightly/book/first-edition/
+Disallow: /nightly/book/second-edition/
+
+Sitemap: https://doc.rust-lang.org/sitemap.txt

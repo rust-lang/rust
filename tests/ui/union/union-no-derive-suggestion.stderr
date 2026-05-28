@@ -1,0 +1,109 @@
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/union-no-derive-suggestion.rs:19:15
+   |
+LL |     println!("{u:?}");
+   |               ^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+help: the trait `Debug` is not implemented for `U`
+  --> $DIR/union-no-derive-suggestion.rs:5:1
+   |
+LL | union U {
+   | ^^^^^^^
+   = note: manually `impl Debug for U`
+
+error[E0369]: binary operation `==` cannot be applied to type `U`
+  --> $DIR/union-no-derive-suggestion.rs:22:15
+   |
+LL |     let _ = u == U { a: 0 };
+   |             - ^^ ---------- U
+   |             |
+   |             U
+   |
+note: an implementation of `PartialEq` might be missing for `U`
+  --> $DIR/union-no-derive-suggestion.rs:5:1
+   |
+LL | union U {
+   | ^^^^^^^ must implement `PartialEq`
+note: the trait `PartialEq` must be implemented
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error[E0369]: binary operation `<` cannot be applied to type `U`
+  --> $DIR/union-no-derive-suggestion.rs:25:15
+   |
+LL |     let _ = u < U { a: 1 };
+   |             - ^ ---------- U
+   |             |
+   |             U
+   |
+note: an implementation of `PartialOrd` might be missing for `U`
+  --> $DIR/union-no-derive-suggestion.rs:5:1
+   |
+LL | union U {
+   | ^^^^^^^ must implement `PartialOrd`
+note: the trait `PartialOrd` must be implemented
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error[E0277]: the trait bound `U: Default` is not satisfied
+  --> $DIR/union-no-derive-suggestion.rs:28:16
+   |
+LL |     let _: U = Default::default();
+   |                ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Default` is not implemented for `U`
+  --> $DIR/union-no-derive-suggestion.rs:5:1
+   |
+LL | union U {
+   | ^^^^^^^
+
+error[E0277]: the trait bound `U: Hash` is not satisfied
+  --> $DIR/union-no-derive-suggestion.rs:31:27
+   |
+LL |     std::hash::Hash::hash(&u, &mut h);
+   |     --------------------- ^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Hash` is not implemented for `U`
+  --> $DIR/union-no-derive-suggestion.rs:5:1
+   |
+LL | union U {
+   | ^^^^^^^
+
+error[E0277]: the trait bound `U: Clone` is not satisfied
+  --> $DIR/union-no-derive-suggestion.rs:34:9
+   |
+LL |     x::<U>();
+   |         ^ the trait `Clone` is not implemented for `U`
+   |
+note: required by a bound in `x`
+  --> $DIR/union-no-derive-suggestion.rs:13:9
+   |
+LL | fn x<T: Clone>() {}
+   |         ^^^^^ required by this bound in `x`
+help: consider annotating `U` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | union U {
+   |
+
+error[E0277]: the trait bound `U: Copy` is not satisfied
+  --> $DIR/union-no-derive-suggestion.rs:36:9
+   |
+LL |     y::<U>();
+   |         ^ the trait `Copy` is not implemented for `U`
+   |
+note: required by a bound in `y`
+  --> $DIR/union-no-derive-suggestion.rs:14:9
+   |
+LL | fn y<T: Copy>() {}
+   |         ^^^^ required by this bound in `y`
+help: consider annotating `U` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | union U {
+   |
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,2 @@
+error: failed to parse target machine config to target machine: could not create LLVM TargetMachine for triple: not-a-real-target
+

@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Type`
+  --> $DIR/associated-types-issue-17359.rs:8:1
+   |
+LL |     type Type;
+   |     --------- `Type` from trait
+...
+LL | impl Trait for isize {}
+   | ^^^^^^^^^^^^^^^^^^^^ missing `Type` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

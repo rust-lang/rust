@@ -1,0 +1,2 @@
+error: incorrect value `pc` for unstable option `branch-protection` - a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set) was expected
+

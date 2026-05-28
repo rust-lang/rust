@@ -1,0 +1,2 @@
+unsafe extern "C" {}
+extern {}

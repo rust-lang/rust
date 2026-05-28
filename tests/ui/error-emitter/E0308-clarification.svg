@@ -1,0 +1,97 @@
+<svg width="740px" height="668px" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .fg { fill: #AAAAAA }
+    .bg { fill: #000000 }
+    .fg-bright-blue { fill: #5555FF }
+    .fg-bright-red { fill: #FF5555 }
+    .fg-magenta { fill: #AA00AA }
+    .container {
+      padding: 0 10px;
+      line-height: 18px;
+    }
+    .bold { font-weight: bold; }
+    tspan {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      white-space: pre;
+      line-height: 18px;
+    }
+  </style>
+
+  <rect width="100%" height="100%" y="0" rx="4.5" class="bg" />
+
+  <text xml:space="preserve" class="container fg">
+    <tspan x="10px" y="28px"><tspan class="fg-bright-red bold">error[E0308]</tspan><tspan class="bold">: mismatched types</tspan>
+</tspan>
+    <tspan x="10px" y="46px"><tspan>  </tspan><tspan class="fg-bright-blue bold"> ╭▸ </tspan><tspan>$DIR/E0308-clarification.rs:15:10</tspan>
+</tspan>
+    <tspan x="10px" y="64px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="82px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> fn hide&lt;T: Foo&gt;(x: T) -&gt; impl Foo {</tspan>
+</tspan>
+    <tspan x="10px" y="100px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">┬───────</tspan>
+</tspan>
+    <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">the expected opaque type</tspan>
+</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">the found opaque type</tspan>
+</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan>
+</tspan>
+    <tspan x="10px" y="190px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>     x = (x.1, x.0);</tspan>
+</tspan>
+    <tspan x="10px" y="208px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          </tspan><tspan class="fg-bright-red bold">━━━</tspan><tspan> </tspan><tspan class="fg-bright-red bold">expected `u32`, found `i32`</tspan>
+</tspan>
+    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`u32`</tspan><tspan>)</tspan>
+</tspan>
+    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`i32`</tspan><tspan>)</tspan>
+</tspan>
+    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-bright-blue bold">╰ </tspan><tspan class="bold">note</tspan><tspan>: distinct uses of `impl Trait` result in different opaque types</tspan>
+</tspan>
+    <tspan x="10px" y="298px">
+</tspan>
+    <tspan x="10px" y="316px"><tspan class="fg-bright-red bold">error[E0308]</tspan><tspan class="bold">: mismatched types</tspan>
+</tspan>
+    <tspan x="10px" y="334px"><tspan>  </tspan><tspan class="fg-bright-blue bold"> ╭▸ </tspan><tspan>$DIR/E0308-clarification.rs:15:15</tspan>
+</tspan>
+    <tspan x="10px" y="352px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="370px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> fn hide&lt;T: Foo&gt;(x: T) -&gt; impl Foo {</tspan>
+</tspan>
+    <tspan x="10px" y="388px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">┬───────</tspan>
+</tspan>
+    <tspan x="10px" y="406px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="424px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">the expected opaque type</tspan>
+</tspan>
+    <tspan x="10px" y="442px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>                          </tspan><tspan class="fg-bright-blue bold">the found opaque type</tspan>
+</tspan>
+    <tspan x="10px" y="460px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan>
+</tspan>
+    <tspan x="10px" y="478px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>     x = (x.1, x.0);</tspan>
+</tspan>
+    <tspan x="10px" y="496px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>               </tspan><tspan class="fg-bright-red bold">━━━</tspan><tspan> </tspan><tspan class="fg-bright-red bold">expected `i32`, found `u32`</tspan>
+</tspan>
+    <tspan x="10px" y="514px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
+</tspan>
+    <tspan x="10px" y="532px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`i32`</tspan><tspan>)</tspan>
+</tspan>
+    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`u32`</tspan><tspan>)</tspan>
+</tspan>
+    <tspan x="10px" y="568px"><tspan>   </tspan><tspan class="fg-bright-blue bold">╰ </tspan><tspan class="bold">note</tspan><tspan>: distinct uses of `impl Trait` result in different opaque types</tspan>
+</tspan>
+    <tspan x="10px" y="586px">
+</tspan>
+    <tspan x="10px" y="604px"><tspan class="fg-bright-red bold">error</tspan><tspan class="bold">: aborting due to 2 previous errors</tspan>
+</tspan>
+    <tspan x="10px" y="622px">
+</tspan>
+    <tspan x="10px" y="640px"><tspan class="bold">For more information about this error, try `rustc --explain E0308`.</tspan>
+</tspan>
+    <tspan x="10px" y="658px">
+</tspan>
+  </text>
+
+</svg>

@@ -1,0 +1,23 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-42234-unknown-receiver-type.rs:9:24
+   |
+LL |     let x: Option<_> = None;
+   |                        ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+LL |     x.unwrap().method_that_could_exist_on_some_type();
+   |     ---------- type must be known at this point
+   |
+help: consider specifying the generic argument
+   |
+LL |     let x: Option<_> = None::<T>;
+   |                            +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-42234-unknown-receiver-type.rs:15:10
+   |
+LL |         .sum::<_>()
+   |          ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

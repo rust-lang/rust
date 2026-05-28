@@ -1,0 +1,79 @@
+error: expected expression, found `let` statement
+  --> $DIR/bad-if-let-suggestion.rs:2:8
+   |
+LL |     if let x = 1 && i = 2 {}
+   |        ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to continue the let-chain
+   |
+LL |     if let x = 1 && let i = 2 {}
+   |                     +++
+help: you might have meant to compare for equality
+   |
+LL |     if let x = 1 && i == 2 {}
+   |                        +
+
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/bad-if-let-suggestion.rs:7:9
+   |
+LL | fn a() {
+   | ------ similarly named function `a` defined here
+...
+LL |     if (i + j) = i {}
+   |         ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (a + j) = i {}
+   |
+
+error[E0425]: cannot find value `j` in this scope
+  --> $DIR/bad-if-let-suggestion.rs:7:13
+   |
+LL | fn a() {
+   | ------ similarly named function `a` defined here
+...
+LL |     if (i + j) = i {}
+   |             ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (i + a) = i {}
+   |
+
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/bad-if-let-suggestion.rs:7:18
+   |
+LL | fn a() {
+   | ------ similarly named function `a` defined here
+...
+LL |     if (i + j) = i {}
+   |                  ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if (i + j) = i {}
+LL +     if (i + j) = a {}
+   |
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/bad-if-let-suggestion.rs:14:8
+   |
+LL | fn a() {
+   | ------ similarly named function `a` defined here
+...
+LL |     if x[0] = 1 {}
+   |        ^
+   |
+help: a function with a similar name exists
+   |
+LL -     if x[0] = 1 {}
+LL +     if a[0] = 1 {}
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

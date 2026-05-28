@@ -1,0 +1,16 @@
+error[E0425]: cannot find value `async` in this scope
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:66:13
+   |
+LL |             async || {};
+   |             ^^^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:66:22
+   |
+LL |             async || {};
+   |                      ^^ expected `bool`, found `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

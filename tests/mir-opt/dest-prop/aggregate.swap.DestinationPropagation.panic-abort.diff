@@ -1,0 +1,22 @@
+- // MIR for `swap` before DestinationPropagation
++ // MIR for `swap` after DestinationPropagation
+  
+  fn swap() -> (MaybeUninit<[u8; 10]>, MaybeUninit<[u8; 10]>) {
+      let mut _0: (std::mem::MaybeUninit<[u8; 10]>, std::mem::MaybeUninit<[u8; 10]>);
+      let mut _1: (std::mem::MaybeUninit<[u8; 10]>, std::mem::MaybeUninit<[u8; 10]>);
+      let mut _2: (std::mem::MaybeUninit<[u8; 10]>, std::mem::MaybeUninit<[u8; 10]>);
+      let mut _3: ();
+  
+      bb0: {
+-         _1 = const swap::{constant#6};
+-         _2 = copy _1;
+-         _1 = (copy (_2.1: std::mem::MaybeUninit<[u8; 10]>), copy (_2.0: std::mem::MaybeUninit<[u8; 10]>));
+-         _0 = copy _1;
++         _0 = const swap::{constant#6};
++         _2 = copy _0;
++         _0 = (copy (_2.1: std::mem::MaybeUninit<[u8; 10]>), copy (_2.0: std::mem::MaybeUninit<[u8; 10]>));
++         nop;
+          return;
+      }
+  }
+  

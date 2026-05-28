@@ -1,0 +1,21 @@
+// MIR for `statics` after built
+
+fn statics() -> () {
+    let mut _0: ();
+    let mut _1: &i32;
+    let mut _2: *mut i32;
+
+    bb0: {
+        _1 = const {ALLOC0: &i32};
+        _2 = const {ALLOC1: *mut i32};
+        return;
+    }
+}
+
+ALLOC1 (static: T, size: 4, align: 4) {
+    0a 0a 0a 0a                                     │ ....
+}
+
+ALLOC0 (static: S, size: 4, align: 4) {
+    05 05 05 05                                     │ ....
+}

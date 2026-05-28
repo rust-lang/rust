@@ -1,0 +1,32 @@
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/two-traits.rs:11:14
+   |
+LL |     type X = Self;
+   |              ^^^^ `T` cannot be shared between threads safely
+   |
+note: required by a bound in `Magic::X`
+  --> $DIR/two-traits.rs:8:13
+   |
+LL |     type X: Trait;
+   |             ^^^^^ required by this bound in `Magic::X`
+help: consider further restricting type parameter `T` with trait `Sync`
+   |
+LL | impl<T: Magic + std::marker::Sync> Magic for T {
+   |               +++++++++++++++++++
+
+error[E0275]: overflow evaluating the requirement `*mut (): Magic`
+  --> $DIR/two-traits.rs:20:5
+   |
+LL |     wizard::<*mut ()>();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `wizard`
+  --> $DIR/two-traits.rs:17:14
+   |
+LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
+   |              ^^^^^ required by this bound in `wizard`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.

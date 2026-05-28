@@ -1,0 +1,109 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/unop-move-semantics.rs:8:5
+   |
+LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
+   |                                               - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+LL |     !x;
+   |     -- `x` moved due to usage in operator
+LL |
+LL |     x.clone();
+   |     ^ value borrowed here after move
+   |
+note: calling this operator moves the value
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     !x.clone();
+   |       ++++++++
+help: consider further restricting type parameter `T` with trait `Copy`
+   |
+LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {
+   |                                              ++++++
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/unop-move-semantics.rs:15:6
+   |
+LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
+   |                                    - binding `x` declared here
+LL |     let m = &x;
+   |             -- borrow of `x` occurs here
+...
+LL |     !x;
+   |      ^ move out of `x` occurs here
+...
+LL |     use_mut(n); use_imm(m);
+   |                         - borrow later used here
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/unop-move-semantics.rs:11:18
+   |
+LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
+   |                  ^ consider constraining this type parameter with `Clone`
+LL |     let m = &x;
+   |              - you could clone this value
+
+error[E0505]: cannot move out of `y` because it is borrowed
+  --> $DIR/unop-move-semantics.rs:17:6
+   |
+LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
+   |                                          ----- binding `y` declared here
+LL |     let m = &x;
+LL |     let n = &mut y;
+   |             ------ borrow of `y` occurs here
+...
+LL |     !y;
+   |      ^ move out of `y` occurs here
+LL |     use_mut(n); use_imm(m);
+   |             - borrow later used here
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/unop-move-semantics.rs:11:18
+   |
+LL | fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
+   |                  ^ consider constraining this type parameter with `Clone`
+LL |     let m = &x;
+LL |     let n = &mut y;
+   |                  - you could clone this value
+
+error[E0507]: cannot move out of `*m` which is behind a mutable reference
+  --> $DIR/unop-move-semantics.rs:24:6
+   |
+LL |     !*m;
+   |     -^^
+   |     ||
+   |     |move occurs because `*m` has type `T`, which does not implement the `Copy` trait
+   |     `*m` moved due to usage in operator
+   |
+note: calling this operator moves the value
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/unop-move-semantics.rs:20:24
+   |
+LL | fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
+   |                        ^ consider constraining this type parameter with `Clone`
+...
+LL |     !*m;
+   |      -- you could clone this value
+
+error[E0507]: cannot move out of `*n` which is behind a shared reference
+  --> $DIR/unop-move-semantics.rs:26:6
+   |
+LL |     !*n;
+   |     -^^
+   |     ||
+   |     |move occurs because `*n` has type `T`, which does not implement the `Copy` trait
+   |     `*n` moved due to usage in operator
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/unop-move-semantics.rs:20:24
+   |
+LL | fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
+   |                        ^ consider constraining this type parameter with `Clone`
+...
+LL |     !*n;
+   |      -- you could clone this value
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0382, E0505, E0507.
+For more information about an error, try `rustc --explain E0382`.

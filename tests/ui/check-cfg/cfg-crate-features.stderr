@@ -1,0 +1,33 @@
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/cfg-crate-features.rs:4:8
+   |
+LL | #![cfg(version("1.0"))]
+   |        ^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: compact `cfg(target(..))` is experimental and subject to change
+  --> $DIR/cfg-crate-features.rs:9:12
+   |
+LL | #![cfg(not(target(os = "does_not_exist")))]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #96901 <https://github.com/rust-lang/rust/issues/96901> for more information
+   = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: unexpected `cfg` condition value: `does_not_exist`
+  --> $DIR/cfg-crate-features.rs:9:19
+   |
+LL | #![cfg(not(target(os = "does_not_exist")))]
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `target_os` are: `aix`, `amdhsa`, `android`, `cuda`, `cygwin`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `helenos`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `lynxos178`, `macos`, `managarm`, `motor`, `netbsd`, `none`, `nto`, `nuttx`, `openbsd`, `psp`, `psx`, `qurt`, `redox`, `rtems`, `solaris`, and `solid_asp3` and 14 more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.

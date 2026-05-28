@@ -1,0 +1,173 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/regions-name-undeclared.rs:16:24
+   |
+LL |     fn m4(&self, arg: &'b isize) { }
+   |                        ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m4<'b>(&self, arg: &'b isize) { }
+   |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/regions-name-undeclared.rs:17:12
+   |
+LL |     fn m5(&'b self) { }
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m5<'b>(&'b self) { }
+   |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/regions-name-undeclared.rs:18:27
+   |
+LL |     fn m6(&self, arg: Foo<'b>) { }
+   |                           ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL |     fn m6<'b>(&self, arg: Foo<'b>) { }
+   |          ++++
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'a> Foo<'a> {
+   |      +++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:26:22
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |     type X = Option<&'a isize>;
+   |                      ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     type X<'a> = Option<&'a isize>;
+   |           ++++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:28:13
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |         E1(&'a isize)
+   |             ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     enum E<'a> {
+   |           ++++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:31:13
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |         f: &'a isize
+   |             ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     struct S<'a> {
+   |             ++++
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/regions-name-undeclared.rs:33:14
+   |
+LL | fn bar<'a>(x: &'a isize) {
+   |        -- lifetime parameter from outer item
+...
+LL |     fn f(a: &'a isize) { }
+   |              ^^ use of generic parameter from outer item
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn f<'a>(a: &'a isize) { }
+   |         ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-name-undeclared.rs:41:17
+   |
+LL | fn fn_types(a: &'a isize,
+   |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fn_types<'a>(a: &'a isize,
+   |            ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/regions-name-undeclared.rs:43:36
+   |
+LL | ...                   &'b isize,
+   |                        ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL |             b: Box<dyn for<'b, 'a> FnOnce(&'a isize,
+   |                            +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn fn_types<'b>(a: &'a isize,
+   |            ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/regions-name-undeclared.rs:46:36
+   |
+LL | ...                   &'b isize)>,
+   |                        ^^ undeclared lifetime
+   |
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL |             b: Box<dyn for<'b, 'a> FnOnce(&'a isize,
+   |                            +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn fn_types<'b>(a: &'a isize,
+   |            ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-name-undeclared.rs:47:17
+   |
+LL |             c: &'a isize)
+   |                 ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn fn_types<'a>(a: &'a isize,
+   |            ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-name-undeclared.rs:53:31
+   |
+LL |     async fn buggy(&self) -> &'a str {
+   |                               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     async fn buggy<'a>(&self) -> &'a str {
+   |                   ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> Bug {
+   |     ++++
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0261, E0401.
+For more information about an error, try `rustc --explain E0261`.

@@ -1,0 +1,27 @@
+warning: unexpected `cfg` condition value: `foo`
+  --> $DIR/no-expected-values.rs:11:7
+   |
+LL | #[cfg(feature = "foo")]
+   |       ^^^^^^^--------
+   |              |
+   |              help: remove the value
+   |
+   = note: no expected value for `feature`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `foo`
+  --> $DIR/no-expected-values.rs:15:7
+   |
+LL | #[cfg(test = "foo")]
+   |       ^^^^--------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `test`
+   = help: to expect this configuration use `--check-cfg=cfg(test, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

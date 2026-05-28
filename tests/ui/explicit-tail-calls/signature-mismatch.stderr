@@ -1,0 +1,49 @@
+error: mismatched signatures
+  --> $DIR/signature-mismatch.rs:6:5
+   |
+LL |     become _g0();
+   |     ^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn(())`
+   = note: callee signature: `fn()`
+
+error: mismatched signatures
+  --> $DIR/signature-mismatch.rs:12:5
+   |
+LL |     become _g1(());
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn()`
+   = note: callee signature: `fn(())`
+
+error: mismatched function ABIs
+  --> $DIR/signature-mismatch.rs:18:5
+   |
+LL |     become _g2();
+   |     ^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"C"`, while callee ABI is `"Rust"`
+
+error: mismatched function ABIs
+  --> $DIR/signature-mismatch.rs:24:5
+   |
+LL |     become _g3();
+   |     ^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"Rust"`, while callee ABI is `"C"`
+
+error: mismatched function ABIs
+  --> $DIR/signature-mismatch.rs:34:5
+   |
+LL |     become _tailcc();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"Rust"`, while callee ABI is `"tail"`
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,17 @@
+error[E0602]: unknown lint tool: `unknown_tool`
+   |
+   = note: requested on the command line with `-A unknown_tool::foo`
+
+error[E0602]: unknown lint tool: `unknown_tool`
+   |
+   = note: requested on the command line with `-A unknown_tool::foo`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0602]: unknown lint tool: `unknown_tool`
+   |
+   = note: requested on the command line with `-A unknown_tool::foo`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0602`.

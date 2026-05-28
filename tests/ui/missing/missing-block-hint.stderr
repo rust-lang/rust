@@ -1,0 +1,35 @@
+error: expected `{`, found `=>`
+  --> $DIR/missing-block-hint.rs:3:18
+   |
+LL |         if (foo) => {}
+   |                  ^^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/missing-block-hint.rs:3:12
+   |
+LL |         if (foo) => {}
+   |            ^^^^^
+help: you might have meant to write a "greater than or equal to" comparison
+   |
+LL -         if (foo) => {}
+LL +         if (foo) >= {}
+   |
+
+error: expected `{`, found `bar`
+  --> $DIR/missing-block-hint.rs:7:13
+   |
+LL |             bar;
+   |             ^^^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/missing-block-hint.rs:6:12
+   |
+LL |         if (foo)
+   |            ^^^^^
+help: you might have meant to write this as part of a block
+   |
+LL |             { bar; }
+   |             +      +
+
+error: aborting due to 2 previous errors
+

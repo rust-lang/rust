@@ -1,0 +1,10 @@
+error: expected item after attributes
+  --> $DIR/doc-before-attr.rs:4:1
+   |
+LL | /// hi
+   | ------ other attributes here
+LL | #[derive(Debug)]
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

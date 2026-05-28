@@ -1,0 +1,11 @@
+error: local variable doesn't need to be boxed here
+  --> tests/ui-toml/too_large_for_stack/boxed_local.rs:1:6
+   |
+LL | fn f(x: Box<[u8; 500]>) {}
+   |      ^
+   |
+   = note: `-D clippy::boxed-local` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::boxed_local)]`
+
+error: aborting due to 1 previous error
+

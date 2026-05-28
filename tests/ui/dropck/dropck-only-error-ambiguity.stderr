@@ -1,0 +1,11 @@
+error[E0284]: type annotations needed
+  --> $DIR/dropck-only-error-ambiguity.rs:19:23
+   |
+LL |     pub fn MOVES_SELF(self) {}
+   |                       ^^^^ cannot infer type
+   |
+   = note: cannot satisfy `<[T] as ToOwned>::Owned == _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

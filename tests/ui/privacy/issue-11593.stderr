@@ -1,0 +1,15 @@
+error[E0603]: trait `Foo` is private
+  --> $DIR/issue-11593.rs:7:24
+   |
+LL | impl private_trait_xc::Foo for Bar {}
+   |                        ^^^ private trait
+   |
+note: the trait `Foo` is defined here
+  --> $DIR/auxiliary/private-trait-xc.rs:1:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

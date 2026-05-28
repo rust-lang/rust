@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing local variable `z`
+  --> $DIR/issue-48697.rs:7:5
+   |
+LL |     let k = f(&z);
+   |               -- `z` is borrowed here
+LL |     f(x)
+   |     ^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

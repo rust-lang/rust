@@ -1,0 +1,6 @@
+[package]
+name = "x"
+version = "0.1.1"
+description = "Run x.py slightly more conveniently"
+edition = "2024"
+publish = false

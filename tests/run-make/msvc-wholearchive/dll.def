@@ -1,0 +1,4 @@
+LIBRARY dll
+EXPORTS
+        hello
+        number

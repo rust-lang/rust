@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/closure-return-type-mismatch.rs:9:45
+   |
+LL |     let _ = for<'a> |x: &'a u8| -> &'a () { x };
+   |                                    ------   ^ expected `&()`, found `&u8`
+   |                                    |
+   |                                    expected `&'a ()` because of return type
+   |
+   = note: expected reference `&'a ()`
+              found reference `&'a u8`
+
+error[E0308]: mismatched types
+  --> $DIR/closure-return-type-mismatch.rs:14:45
+   |
+LL |     let _ = for<'a> |x: &'a u8| -> &'a () { x };
+   |                                    ------   ^ expected `&()`, found `&u8`
+   |                                    |
+   |                                    expected `&'a ()` because of return type
+   |
+   = note: expected reference `&'a ()`
+              found reference `&'a u8`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

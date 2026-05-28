@@ -1,0 +1,45 @@
+error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
+  --> $DIR/uninhabited-patterns.rs:34:11
+   |
+LL |     match x {
+   |           ^ pattern `Ok(_)` not covered
+   |
+note: `Result<Box<NotSoSecretlyEmpty>, &[Result<!, !>]>` defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: not covered
+   = note: the matched value is of type `Result<Box<NotSoSecretlyEmpty>, &[Result<!, !>]>`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Err(&[..]) => (),
+LL ~         Ok(_) => todo!(),
+   |
+
+error: unreachable pattern
+  --> $DIR/uninhabited-patterns.rs:43:9
+   |
+LL |         Err(Ok(_y)) => (),
+   |         ^^^^^^^^^^^-------
+   |         |
+   |         matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+note: the lint level is defined here
+  --> $DIR/uninhabited-patterns.rs:4:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/uninhabited-patterns.rs:46:15
+   |
+LL |     while let Some(_y) = foo() {
+   |               ^^^^^^^^ matches no values because `NotSoSecretlyEmpty` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

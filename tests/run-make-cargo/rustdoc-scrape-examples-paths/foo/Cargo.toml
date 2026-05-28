@@ -1,0 +1,8 @@
+[package]
+name = "foo"
+version = "0.0.1"
+edition = "2024"
+
+[[example]]
+name = "complex"
+doc-scrape-examples = true

@@ -1,0 +1,43 @@
+error: missing fragment specifier
+  --> $DIR/macro-match-nonterminal.rs:2:6
+   |
+LL |     ($a, $b) => {
+   |      ^^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($a:spec, $b) => {
+   |        +++++
+
+error: missing fragment specifier
+  --> $DIR/macro-match-nonterminal.rs:2:10
+   |
+LL |     ($a, $b) => {
+   |          ^^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($a, $b:spec) => {
+   |            +++++
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-match-nonterminal.rs:10:5
+   |
+LL | macro_rules! test {
+   | ----------------- when calling this macro
+...
+LL |     test!()
+   |     ^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$a:tt`
+  --> $DIR/macro-match-nonterminal.rs:2:6
+   |
+LL |     ($a, $b) => {
+   |      ^^
+
+error: aborting due to 3 previous errors
+

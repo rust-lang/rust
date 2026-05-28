@@ -1,0 +1,26 @@
+error: the constant `1` is not of type `usize`
+  --> $DIR/type_const-mismatched-type-incremental.rs:5:1
+   |
+LL | type const R: usize = 1_i32;
+   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: the constant `-1` is not of type `usize`
+  --> $DIR/type_const-mismatched-type-incremental.rs:6:1
+   |
+LL | type const U: usize = -1_i32;
+   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: the constant `1` is not of type `bool`
+  --> $DIR/type_const-mismatched-type-incremental.rs:7:1
+   |
+LL | type const S: bool = 1i32;
+   | ^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`
+
+error: the constant `-1` is not of type `bool`
+  --> $DIR/type_const-mismatched-type-incremental.rs:8:1
+   |
+LL | type const T: bool = -1i32;
+   | ^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`
+
+error: aborting due to 4 previous errors
+

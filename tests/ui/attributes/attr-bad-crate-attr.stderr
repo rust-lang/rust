@@ -1,0 +1,8 @@
+error: expected item after attributes
+  --> $DIR/attr-bad-crate-attr.rs:7:1
+   |
+LL | #[attr = "val"] // Unterminated
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

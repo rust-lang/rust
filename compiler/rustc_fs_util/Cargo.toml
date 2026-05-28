@@ -1,0 +1,9 @@
+[package]
+name = "rustc_fs_util"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+tempfile = "3.7.1"
+# tidy-alphabetical-end

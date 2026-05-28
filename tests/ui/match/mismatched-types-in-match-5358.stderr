@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatched-types-in-match-5358.rs:11:9
+   |
+LL |     match S(Either::Left(5)) {
+   |           ------------------ this expression has type `S`
+LL |
+LL |         Either::Right(_) => {}
+   |         ^^^^^^^^^^^^^^^^ expected `S`, found `Either<_, _>`
+   |
+   = note: expected struct `S`
+                found enum `Either<_, _>`
+help: try wrapping the pattern in `S`
+   |
+LL |         S(Either::Right(_)) => {}
+   |         ++                +
+help: you might have meant to use field `0` whose type is `Either<usize, usize>`
+   |
+LL |     match S(Either::Left(5)).0 {
+   |                             ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

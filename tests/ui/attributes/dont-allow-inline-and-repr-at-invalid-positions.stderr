@@ -1,0 +1,18 @@
+error: `#[inline]` attribute cannot be used on structs
+  --> $DIR/dont-allow-inline-and-repr-at-invalid-positions.rs:3:5
+   |
+LL |     #[inline] struct Foo;
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/dont-allow-inline-and-repr-at-invalid-positions.rs:4:5
+   |
+LL |     #[repr(C)] fn foo() {}
+   |     ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
+error: aborting due to 2 previous errors
+

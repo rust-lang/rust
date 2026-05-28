@@ -1,0 +1,582 @@
+From 285d5716fcfa6d43a3516d899b73bc85da322c25 Mon Sep 17 00:00:00 2001
+From: xonx <119700621+xonx4l@users.noreply.github.com>
+Date: Sun, 15 Feb 2026 14:06:49 +0000
+Subject: [PATCH] Disable f16 math tests for cranelift
+
+---
+ coretests/tests/num/floats.rs | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/coretests/tests/num/floats.rs b/coretests/tests/num/floats.rs
+index 1d7956b..01e4caa 100644
+--- a/coretests/tests/num/floats.rs
++++ b/coretests/tests/num/floats.rs
+@@ -444,7 +444,7 @@ pub(crate) use float_test;
+ float_test! {
+     name: num,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -463,7 +463,7 @@ float_test! {
+     name: num_rem,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -476,7 +476,7 @@ float_test! {
+ float_test! {
+     name: nan,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -496,7 +496,7 @@ float_test! {
+ float_test! {
+     name: infinity,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -514,7 +514,7 @@ float_test! {
+ float_test! {
+     name: neg_infinity,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -532,7 +532,7 @@ float_test! {
+ float_test! {
+     name: zero,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -550,7 +550,7 @@ float_test! {
+ float_test! {
+     name: neg_zero,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -570,7 +570,7 @@ float_test! {
+ float_test! {
+     name: one,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -588,7 +588,7 @@ float_test! {
+ float_test! {
+     name: is_nan,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -609,7 +609,7 @@ float_test! {
+ float_test! {
+     name: is_infinite,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -630,7 +630,7 @@ float_test! {
+ float_test! {
+     name: is_finite,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -651,7 +651,7 @@ float_test! {
+ float_test! {
+     name: is_normal,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -673,7 +673,7 @@ float_test! {
+ float_test! {
+     name: classify,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+     },
+     test {
+         let nan: Float = Float::NAN;
+@@ -695,7 +695,7 @@ float_test! {
+     name: min,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -737,7 +737,7 @@ float_test! {
+     name: max,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -780,7 +780,7 @@ float_test! {
+     name: minimum,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -812,7 +812,7 @@ float_test! {
+     name: maximum,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -845,7 +845,7 @@ float_test! {
+     name: midpoint,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -898,7 +898,7 @@ float_test! {
+     attrs: {
+         const: #[cfg(false)],
+         // Needs powi
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -929,7 +929,7 @@ float_test! {
+     name: abs,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -948,7 +948,7 @@ float_test! {
+     name: copysign,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -964,7 +964,7 @@ float_test! {
+     attrs: {
+         const: #[cfg(false)],
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -982,7 +982,7 @@ float_test! {
+     attrs: {
+         const: #[cfg(false)],
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -998,7 +998,7 @@ float_test! {
+     name: floor,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1028,7 +1028,7 @@ float_test! {
+     name: ceil,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1058,7 +1058,7 @@ float_test! {
+     name: round,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1089,7 +1089,7 @@ float_test! {
+     name: round_ties_even,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1120,7 +1120,7 @@ float_test! {
+     name: trunc,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1150,7 +1150,7 @@ float_test! {
+     name: fract,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1182,7 +1182,7 @@ float_test! {
+     name: signum,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1200,7 +1200,7 @@ float_test! {
+ float_test! {
+     name: is_sign_positive,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1219,7 +1219,7 @@ float_test! {
+ float_test! {
+     name: is_sign_negative,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1238,7 +1238,7 @@ float_test! {
+ float_test! {
+     name: next_up,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1269,7 +1269,7 @@ float_test! {
+ float_test! {
+     name: next_down,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1303,7 +1303,7 @@ float_test! {
+     attrs: {
+         const: #[cfg(false)],
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1321,7 +1321,7 @@ float_test! {
+     name: clamp_min_greater_than_max,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[should_panic, cfg(target_has_reliable_f16)],
++        f16: #[should_panic, cfg(false)],
+         f32: #[should_panic],
+         f64: #[should_panic],
+         f128: #[should_panic, cfg(target_has_reliable_f128)],
+@@ -1335,7 +1335,7 @@ float_test! {
+     name: clamp_min_is_nan,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[should_panic, cfg(target_has_reliable_f16)],
++        f16: #[should_panic, cfg(false)],
+         f32: #[should_panic],
+         f64: #[should_panic],
+         f128: #[should_panic, cfg(target_has_reliable_f128)],
+@@ -1349,7 +1349,7 @@ float_test! {
+     name: clamp_max_is_nan,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[should_panic, cfg(target_has_reliable_f16)],
++        f16: #[should_panic, cfg(false)],
+         f32: #[should_panic],
+         f64: #[should_panic],
+         f128: #[should_panic, cfg(target_has_reliable_f128)],
+@@ -1363,7 +1363,7 @@ float_test! {
+     name: total_cmp,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1469,7 +1469,7 @@ float_test! {
+     attrs: {
+         const: #[cfg(false)],
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1526,7 +1526,7 @@ float_test! {
+     name: recip,
+     attrs: {
+         // Miri only uses softfloats here, so that always works
+-        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
++        f16: #[cfg(false)],
+         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+     },
+     test {
+@@ -1549,7 +1549,7 @@ float_test! {
+     name: powi,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1570,7 +1570,7 @@ float_test! {
+     name: powf,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1593,7 +1593,7 @@ float_test! {
+     name: exp,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1614,7 +1614,7 @@ float_test! {
+     name: exp2,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1634,7 +1634,7 @@ float_test! {
+     name: ln,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1656,7 +1656,7 @@ float_test! {
+     name: log,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1681,7 +1681,7 @@ float_test! {
+     name: log2,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1704,7 +1704,7 @@ float_test! {
+     name: log10,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1728,7 +1728,7 @@ float_test! {
+     name: asinh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1764,7 +1764,7 @@ float_test! {
+     name: acosh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1795,7 +1795,7 @@ float_test! {
+     name: atanh,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1821,7 +1821,7 @@ float_test! {
+     name: gamma,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1856,7 +1856,7 @@ float_test! {
+     name: ln_gamma,
+     attrs: {
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+@@ -1874,7 +1874,7 @@ float_test! {
+ float_test! {
+     name: to_degrees,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1895,7 +1895,7 @@ float_test! {
+ float_test! {
+     name: to_radians,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1916,7 +1916,7 @@ float_test! {
+ float_test! {
+     name: to_algebraic,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1940,7 +1940,7 @@ float_test! {
+ float_test! {
+     name: to_bits_conv,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -1967,7 +1967,7 @@ float_test! {
+ float_test! {
+     name: mul_add,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         // FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
+         f32: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+         f64: #[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)],
+@@ -1992,7 +1992,7 @@ float_test! {
+ float_test! {
+     name: from,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -2049,7 +2049,7 @@ float_test! {
+ float_test! {
+     name: max_exact_integer_constant,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -2091,7 +2091,7 @@ float_test! {
+ float_test! {
+     name: min_exact_integer_constant,
+     attrs: {
+-        f16: #[cfg(target_has_reliable_f16)],
++        f16: #[cfg(false)],
+         f128: #[cfg(target_has_reliable_f128)],
+     },
+     test {
+@@ -2156,7 +2156,7 @@ float_test! {
+     attrs: {
+         // FIXME(f16_f128): add math tests when available
+         const: #[cfg(false)],
+-        f16: #[cfg(target_has_reliable_f16_math)],
++        f16: #[cfg(false)], // FIXME(rust-lang/rustc_codegen_cranelift#1622)
+         f128: #[cfg(target_has_reliable_f128_math)],
+     },
+     test {
+--
+2.50.1

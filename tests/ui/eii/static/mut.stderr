@@ -1,0 +1,8 @@
+error: `#[eii]` cannot be used on mutable statics
+  --> $DIR/mut.rs:7:1
+   |
+LL | #[eii(hello)]
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

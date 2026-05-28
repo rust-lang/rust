@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/where_clauses_in_structs.rs:11:14
+   |
+LL | fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     Foo { x, y };
+   |              ^ this usage requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type `Cell<&u32>`, which makes the generic argument `&u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

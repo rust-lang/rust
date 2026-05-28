@@ -1,0 +1,14 @@
+error: expected one of `!` or `::`, found keyword `enum`
+  --> $DIR/public-instead-of-pub-1.rs:4:8
+   |
+LL | public enum Test {
+   |        ^^^^ expected one of `!` or `::`
+   |
+help: write `pub` instead of `public` to make the item public
+   |
+LL - public enum Test {
+LL + pub enum Test {
+   |
+
+error: aborting due to 1 previous error
+

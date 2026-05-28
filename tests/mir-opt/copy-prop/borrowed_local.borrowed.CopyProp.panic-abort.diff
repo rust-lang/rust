@@ -1,0 +1,24 @@
+- // MIR for `borrowed` before CopyProp
++ // MIR for `borrowed` after CopyProp
+  
+  fn borrowed(_1: T) -> bool {
+      let mut _0: bool;
+      let mut _2: T;
+      let mut _3: &T;
+  
+      bb0: {
+-         _2 = copy _1;
+          _3 = &_1;
+          _0 = opaque::<&T>(copy _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _0 = opaque::<T>(copy _2) -> [return: bb2, unwind unreachable];
++         _0 = opaque::<T>(copy _1) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

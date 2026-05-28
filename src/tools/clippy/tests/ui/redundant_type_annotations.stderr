@@ -1,0 +1,107 @@
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:81:9
+   |
+LL |         let v: u32 = self.return_an_int();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-type-annotations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_type_annotations)]`
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:84:9
+   |
+LL |         let v: &u32 = self.return_a_ref();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:87:9
+   |
+LL |         let v: &Slice = self.return_a_ref_to_struct();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:160:5
+   |
+LL |     let _return: String = return_a_string();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:163:5
+   |
+LL |     let _return: Pie = return_a_struct();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:166:5
+   |
+LL |     let _return: Pizza = return_an_enum();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:169:5
+   |
+LL |     let _return: u32 = return_an_int();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:172:5
+   |
+LL |     let _return: String = String::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:175:5
+   |
+LL |     let new_pie: Pie = Pie::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:178:5
+   |
+LL |     let _return: u32 = new_pie.return_an_int();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:181:5
+   |
+LL |     let _return: u32 = Pie::associated_return_an_int();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:184:5
+   |
+LL |     let _return: String = Pie::associated_return_a_string();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:191:5
+   |
+LL |     let _var: u32 = u32::MAX;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:194:5
+   |
+LL |     let _var: u32 = 5_u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:197:5
+   |
+LL |     let _var: &str = "test";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:200:5
+   |
+LL |     let _var: &[u8; 4] = b"test";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant type annotation
+  --> tests/ui/redundant_type_annotations.rs:203:5
+   |
+LL |     let _var: bool = false;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+

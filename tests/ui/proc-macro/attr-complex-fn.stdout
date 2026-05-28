@@ -1,0 +1,174 @@
+PRINT-ATTR INPUT (DISPLAY): fn foo<T: MyTrait<MyStruct<{ true }>>>() {}
+PRINT-ATTR RE-COLLECTED (DISPLAY): fn foo < T : MyTrait < MyStruct < { true } >>> () {}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/attr-complex-fn.rs:19:1: 19:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/attr-complex-fn.rs:19:4: 19:7 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:19:7: 19:8 (#0),
+    },
+    Ident {
+        ident: "T",
+        span: $DIR/attr-complex-fn.rs:19:8: 19:9 (#0),
+    },
+    Punct {
+        ch: ':',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:19:9: 19:10 (#0),
+    },
+    Ident {
+        ident: "MyTrait",
+        span: $DIR/attr-complex-fn.rs:19:11: 19:18 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:19:18: 19:19 (#0),
+    },
+    Ident {
+        ident: "MyStruct",
+        span: $DIR/attr-complex-fn.rs:19:19: 19:27 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:19:27: 19:28 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/attr-complex-fn.rs:19:30: 19:34 (#0),
+            },
+        ],
+        span: $DIR/attr-complex-fn.rs:19:28: 19:36 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Joint,
+        span: $DIR/attr-complex-fn.rs:19:36: 19:37 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Joint,
+        span: $DIR/attr-complex-fn.rs:19:37: 19:38 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:19:38: 19:39 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/attr-complex-fn.rs:19:39: 19:41 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/attr-complex-fn.rs:19:42: 19:44 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): impl<T> MyTrait<T> for MyStruct<{true}> { #![rustc_dummy] }
+PRINT-ATTR RE-COLLECTED (DISPLAY): impl < T > MyTrait < T > for MyStruct < { true } > { #![rustc_dummy] }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): impl < T > MyTrait < T > for MyStruct < { true } > { #! [rustc_dummy] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "impl",
+        span: $DIR/attr-complex-fn.rs:21:1: 21:5 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:5: 21:6 (#0),
+    },
+    Ident {
+        ident: "T",
+        span: $DIR/attr-complex-fn.rs:21:6: 21:7 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:7: 21:8 (#0),
+    },
+    Ident {
+        ident: "MyTrait",
+        span: $DIR/attr-complex-fn.rs:21:9: 21:16 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:16: 21:17 (#0),
+    },
+    Ident {
+        ident: "T",
+        span: $DIR/attr-complex-fn.rs:21:17: 21:18 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:18: 21:19 (#0),
+    },
+    Ident {
+        ident: "for",
+        span: $DIR/attr-complex-fn.rs:21:20: 21:23 (#0),
+    },
+    Ident {
+        ident: "MyStruct",
+        span: $DIR/attr-complex-fn.rs:21:24: 21:32 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:32: 21:33 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/attr-complex-fn.rs:21:34: 21:38 (#0),
+            },
+        ],
+        span: $DIR/attr-complex-fn.rs:21:33: 21:39 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/attr-complex-fn.rs:21:39: 21:40 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/attr-complex-fn.rs:23:5: 23:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/attr-complex-fn.rs:23:6: 23:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "rustc_dummy",
+                        span: $DIR/attr-complex-fn.rs:23:8: 23:19 (#0),
+                    },
+                ],
+                span: $DIR/attr-complex-fn.rs:23:7: 23:20 (#0),
+            },
+        ],
+        span: $DIR/attr-complex-fn.rs:21:41: 24:2 (#0),
+    },
+]

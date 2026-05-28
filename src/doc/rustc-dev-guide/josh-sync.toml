@@ -1,0 +1,3 @@
+org = "rust-lang"
+repo = "rustc-dev-guide"
+path = "src/doc/rustc-dev-guide"

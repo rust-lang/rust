@@ -1,0 +1,38 @@
+error: `x @` is not allowed in a tuple struct
+  --> $DIR/issue-74539.rs:8:14
+   |
+LL |         E::A(x @ ..) => {
+   |              ^^^^^^ this is only allowed in slice patterns
+   |
+   = help: remove this and bind each tuple field independently
+help: if you don't need to use the contents of x, discard the tuple's remaining fields
+   |
+LL -         E::A(x @ ..) => {
+LL +         E::A(..) => {
+   |
+
+error: `..` patterns are not allowed here
+  --> $DIR/issue-74539.rs:8:18
+   |
+LL |         E::A(x @ ..) => {
+   |                  ^^
+   |
+   = note: only allowed in tuple, tuple struct, and slice patterns
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
+  --> $DIR/issue-74539.rs:8:14
+   |
+LL |     A(u8, u8),
+   |       --  -- tuple variant has 2 fields
+...
+LL |         E::A(x @ ..) => {
+   |              ^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::A(x @ .., _) => {
+   |                    +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0023`.

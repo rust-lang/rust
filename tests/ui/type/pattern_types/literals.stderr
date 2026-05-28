@@ -1,0 +1,193 @@
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/literals.rs:86:62
+   |
+LL | fn empty_range_at_base_type_min() -> pattern_type!(u32 is 0..0) {
+   |                                                              ^ evaluation of `empty_range_at_base_type_min::{constant#1}` failed here
+
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/literals.rs:91:63
+   |
+LL | fn empty_range_at_base_type_min2() -> pattern_type!(u32 is 0..0) {
+   |                                                               ^ evaluation of `empty_range_at_base_type_min2::{constant#1}` failed here
+
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/literals.rs:106:65
+   |
+LL | fn wraparound_range_at_base_ty_end() -> pattern_type!(u32 is 1..0) {
+   |                                                                 ^ evaluation of `wraparound_range_at_base_ty_end::{constant#1}` failed here
+
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/literals.rs:111:66
+   |
+LL | fn wraparound_range_at_base_ty_end2() -> pattern_type!(u32 is 1..0) {
+   |                                                                  ^ evaluation of `wraparound_range_at_base_ty_end2::{constant#1}` failed here
+
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
+  --> $DIR/literals.rs:116:66
+   |
+LL | fn wraparound_range_at_base_ty_end3() -> pattern_type!(u32 is 1..0) {
+   |                                                                  ^ evaluation of `wraparound_range_at_base_ty_end3::{constant#1}` failed here
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:9:5
+   |
+LL | fn out_of_range() -> pattern_type!(u32 is 1..) {
+   |                      ------------------------- expected `(u32) is 1..` because of return type
+LL |     0
+   |     ^ expected `(u32) is 1..`, found integer
+   |
+   = note: expected pattern type `(u32) is 1..`
+                      found type `{integer}`
+
+error[E0600]: cannot apply unary operator `-` to type `(u32) is 1..`
+  --> $DIR/literals.rs:22:5
+   |
+LL |     -3
+   |     ^^ cannot apply unary operator `-`
+
+error[E0600]: cannot apply unary operator `-` to type `(i8) is -5..=4`
+  --> $DIR/literals.rs:27:5
+   |
+LL |     -2
+   |     ^^ cannot apply unary operator `-`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:36:5
+   |
+LL | fn negative_lit_at_range_start() -> pattern_type!(i8 is -5..5) {
+   |                                     -------------------------- expected `(i8) is -5..=4` because of return type
+LL |     -5
+   |     ^^ expected `(i8) is -5..=4`, found integer
+   |
+   = note: expected pattern type `(i8) is -5..=4`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:45:5
+   |
+LL | fn lit_one_beyond_range_end() -> pattern_type!(i8 is -5..5) {
+   |                                  -------------------------- expected `(i8) is -5..=4` because of return type
+LL |     5
+   |     ^ expected `(i8) is -5..=4`, found integer
+   |
+   = note: expected pattern type `(i8) is -5..=4`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:50:5
+   |
+LL | fn wrong_lit_kind() -> pattern_type!(u32 is 1..) {
+   |                        ------------------------- expected `(u32) is 1..` because of return type
+LL |     '3'
+   |     ^^^ expected `(u32) is 1..`, found `char`
+   |
+   = note: expected pattern type `(u32) is 1..`
+                      found type `char`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:55:5
+   |
+LL | fn char_lit_in_range() -> pattern_type!(char is 'a'..'z') {
+   |                           ------------------------------- expected `(char) is 'a'..='y'` because of return type
+LL |     'b'
+   |     ^^^ expected `(char) is 'a'..='y'`, found `char`
+   |
+   = note: expected pattern type `(char) is 'a'..='y'`
+                      found type `char`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:60:5
+   |
+LL | fn char_lit_out_of_range() -> pattern_type!(char is 'a'..'z') {
+   |                               ------------------------------- expected `(char) is 'a'..='y'` because of return type
+LL |     'A'
+   |     ^^^ expected `(char) is 'a'..='y'`, found `char`
+   |
+   = note: expected pattern type `(char) is 'a'..='y'`
+                      found type `char`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:73:5
+   |
+LL | fn lit_oob_single_element_range() -> pattern_type!(u32 is 0..=0) {
+   |                                      --------------------------- expected `(u32) is 0..=0` because of return type
+LL |     1
+   |     ^ expected `(u32) is 0..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 0..=0`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:78:5
+   |
+LL | fn lit_oob_single_element_range_exclusive() -> pattern_type!(u32 is 0..1) {
+   |                                                -------------------------- expected `(u32) is 0..=0` because of return type
+LL |     1
+   |     ^ expected `(u32) is 0..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 0..=0`
+                      found type `{integer}`
+
+error: pattern type ranges cannot wrap: 1..=0
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:97:5
+   |
+LL | fn empty_range() -> pattern_type!(u32 is 1..1) {
+   |                     -------------------------- expected `(u32) is 1..=0` because of return type
+LL |     0
+   |     ^ expected `(u32) is 1..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 1..=0`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:102:5
+   |
+LL | fn empty_range2() -> pattern_type!(u32 is 1..1) {
+   |                      -------------------------- expected `(u32) is 1..=0` because of return type
+LL |     1
+   |     ^ expected `(u32) is 1..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 1..=0`
+                      found type `{integer}`
+
+error: pattern type ranges cannot wrap: 2..=0
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:122:5
+   |
+LL | fn wraparound_range() -> pattern_type!(u32 is 2..1) {
+   |                          -------------------------- expected `(u32) is 2..=0` because of return type
+LL |     1
+   |     ^ expected `(u32) is 2..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 2..=0`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:127:5
+   |
+LL | fn lit_in_wraparound_range() -> pattern_type!(u32 is 2..1) {
+   |                                 -------------------------- expected `(u32) is 2..=0` because of return type
+LL |     0
+   |     ^ expected `(u32) is 2..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 2..=0`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/literals.rs:132:5
+   |
+LL | fn lit_at_wraparound_range_start() -> pattern_type!(u32 is 2..1) {
+   |                                       -------------------------- expected `(u32) is 2..=0` because of return type
+LL |     2
+   |     ^ expected `(u32) is 2..=0`, found integer
+   |
+   = note: expected pattern type `(u32) is 2..=0`
+                      found type `{integer}`
+
+error: aborting due to 22 previous errors
+
+Some errors have detailed explanations: E0080, E0308, E0600.
+For more information about an error, try `rustc --explain E0080`.

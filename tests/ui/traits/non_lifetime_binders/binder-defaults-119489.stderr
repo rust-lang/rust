@@ -1,0 +1,20 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/binder-defaults-119489.rs:5:23
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |                       ^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-119489.rs:5:9
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |         ^^^^^^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-119489.rs:5:17
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |                 ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

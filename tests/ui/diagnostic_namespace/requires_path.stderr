@@ -1,0 +1,8 @@
+error: cannot find attribute `diagnostic` in this scope
+  --> $DIR/requires_path.rs:1:3
+   |
+LL | #[diagnostic]
+   |   ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

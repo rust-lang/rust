@@ -1,0 +1,26 @@
+error[E0038]: the trait `Qux` is not dyn compatible
+  --> $DIR/taint-const-eval.rs:7:15
+   |
+LL | static FOO: &(dyn Qux + Sync) = "desc";
+   |               ^^^^^^^^^^^^^^ `Qux` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/taint-const-eval.rs:4:8
+   |
+LL | trait Qux {
+   |       --- this trait is not dyn compatible...
+LL |     fn bar();
+   |        ^^^ ...because associated function `bar` has no `self` parameter
+help: consider turning `bar` into a method by giving it a `&self` argument
+   |
+LL |     fn bar(&self);
+   |            +++++
+help: alternatively, consider constraining `bar` so it does not apply to trait objects
+   |
+LL |     fn bar() where Self: Sized;
+   |              +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

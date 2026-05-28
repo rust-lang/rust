@@ -1,0 +1,48 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/min-choice-reject-ambiguous.rs:17:5
+   |
+LL | fn test_b<'a, 'b, 'c, T>() -> impl Cap<'a> + Cap<'b> + Cap<'c>
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     type_test::<'_, T>() // This should pass if we pick 'b.
+   |     ^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'b + 'a,
+   |           ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/min-choice-reject-ambiguous.rs:28:5
+   |
+LL | fn test_c<'a, 'b, 'c, T>() -> impl Cap<'a> + Cap<'b> + Cap<'c>
+   |           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     type_test::<'_, T>() // This should pass if we pick 'c.
+   |     ^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: 'c + 'a,
+   |           ++++
+
+error[E0700]: hidden type for `impl Cap<'b> + Cap<'c>` captures lifetime that does not appear in bounds
+  --> $DIR/min-choice-reject-ambiguous.rs:39:5
+   |
+LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c>
+   |                   --                        ---------------------- opaque type defined here
+   |                   |
+   |                   hidden type `&'a u8` captures the lifetime `'a` as defined here
+...
+LL |     s
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c> + use<'b, 'c, 'a>
+   |                                                                    +++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0309, E0700.
+For more information about an error, try `rustc --explain E0309`.

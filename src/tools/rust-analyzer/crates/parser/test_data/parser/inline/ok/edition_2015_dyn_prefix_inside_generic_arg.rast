@@ -1,0 +1,32 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    COMMENT "// 2015"
+    WHITESPACE "\n"
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              DYN_TRAIT_TYPE
+                DYN_KW "dyn"
+                WHITESPACE " "
+                TYPE_BOUND_LIST
+                  TYPE_BOUND
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "T"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

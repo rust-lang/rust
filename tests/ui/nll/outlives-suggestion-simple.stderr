@@ -1,0 +1,108 @@
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:4:5
+   |
+LL | fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:8:5
+   |
+LL | fn foo2<'a>(x: &'a usize) -> &'static usize {
+   |         -- lifetime `'a` defined here
+LL |     x
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:12:5
+   |
+LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     (x, y)
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:12:5
+   |
+LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     (x, y)
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:20:5
+   |
+LL | fn foo4<'a, 'b, 'c>(x: &'a usize) -> (&'b usize, &'c usize) {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+...
+LL |     (x, x)
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:29:9
+   |
+LL |     pub fn foo<'a>(x: &'a usize) -> Self {
+   |                -- lifetime `'a` defined here
+LL |         Foo { x }
+   |         ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:39:9
+   |
+LL | impl<'a> Bar<'a> {
+   |      -- lifetime `'a` defined here
+LL |     pub fn get<'b>(&self) -> &'b usize {
+   |                -- lifetime `'b` defined here
+LL |         self.x
+   |         ^^^^^^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:50:9
+   |
+LL | impl<'a> Baz<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn get<'b>(&'b self) -> &'a i32 {
+   |            -- lifetime `'b` defined here
+LL |         self.x
+   |         ^^^^^^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/outlives-suggestion-simple.rs:71:9
+   |
+LL | impl<'a> Foo2<'a> {
+   |      -- lifetime `'a` defined here
+LL |     // should not produce outlives suggestions to name 'self
+LL |     fn get_bar(&self) -> Bar2 {
+   |                - let's call the lifetime of this reference `'1`
+LL |         Bar2::new(&self)
+   |         ^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'a`
+   |
+   = note: requirement occurs because of the type `Foo2<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Foo2<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 9 previous errors
+

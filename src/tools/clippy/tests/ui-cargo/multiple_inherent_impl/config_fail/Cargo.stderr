@@ -1,0 +1,7 @@
+error: error reading Clippy's configuration file: unknown variant `FooBar`, expected one of `crate`, `file`, `module`
+ --> $DIR/tests/ui-cargo/multiple_inherent_impl/config_fail/clippy.toml:1:28
+  |
+1 | inherent-impl-lint-scope = "FooBar"
+  |                            ^^^^^^^^
+
+error: could not compile `config_fail` (bin "config_fail") due to 1 previous error

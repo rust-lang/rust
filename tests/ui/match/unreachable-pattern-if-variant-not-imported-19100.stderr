@@ -1,0 +1,17 @@
+error[E0170]: pattern binding `Bar` is named the same as one of the variants of the type `Foo`
+  --> $DIR/unreachable-pattern-if-variant-not-imported-19100.rs:18:1
+   |
+LL | Bar if true
+   | ^^^ help: to match on the variant, qualify the path: `Foo::Bar`
+   |
+   = note: `#[deny(bindings_with_variant_name)]` on by default
+
+error[E0170]: pattern binding `Baz` is named the same as one of the variants of the type `Foo`
+  --> $DIR/unreachable-pattern-if-variant-not-imported-19100.rs:22:1
+   |
+LL | Baz if false
+   | ^^^ help: to match on the variant, qualify the path: `Foo::Baz`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0170`.

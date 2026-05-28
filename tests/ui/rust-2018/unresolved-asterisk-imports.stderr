@@ -1,0 +1,11 @@
+error[E0432]: unresolved import `not_existing_crate`
+  --> $DIR/unresolved-asterisk-imports.rs:3:5
+   |
+LL | use not_existing_crate::*;
+   |     ^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `not_existing_crate`
+   |
+   = help: you might be missing a crate named `not_existing_crate`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

@@ -1,0 +1,23 @@
+error[E0597]: `p` does not live long enough
+  --> $DIR/borrowck-4.rs:12:25
+   |
+LL |       let mut p = Point {x: 1, y: 2 };
+   |           ----- binding `p` declared here
+LL |       let mut c = || {
+   |                   --
+   |                   |
+   |  _________________value captured here
+   | |
+LL | |        p.x += 5;
+LL | |        println!("{:?}", p);
+   | |                         ^ borrowed value does not live long enough
+LL | |
+LL | |     };
+   | |_____- assignment requires that `p` is borrowed for `'static`
+LL |       c
+LL |   }
+   |   - `p` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

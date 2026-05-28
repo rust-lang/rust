@@ -1,0 +1,16 @@
+error[E0596]: cannot borrow `*v` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-82032.rs:10:13
+   |
+LL |         for v in self.0.values() {
+   |                  --------------- this iterator yields `&` references
+LL |             v.flush();
+   |             ^ `v` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: use mutable method
+   |
+LL |         for v in self.0.values_mut() {
+   |                               ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

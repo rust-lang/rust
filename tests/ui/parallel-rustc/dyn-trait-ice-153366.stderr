@@ -1,0 +1,93 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-trait-ice-153366.rs:5:14
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |              ^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn iso<A>(a: dyn Fn) -> Option<_>
+   |              +++
+
+error[E0107]: missing generics for trait `Fn`
+  --> $DIR/dyn-trait-ice-153366.rs:5:14
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |              ^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | fn iso<A>(a: Fn<Args>) -> Option<_>
+   |                ++++++
+
+error[E0277]: the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-ice-153366.rs:18:5
+   |
+LL |     iso(())
+   |     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn(_) + 'static)`
+note: required by a bound in `iso`
+  --> $DIR/dyn-trait-ice-153366.rs:11:22
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |    --- required by a bound in this function
+...
+LL |     dyn Fn(A) -> (): Sized,
+   |                      ^^^^^ required by this bound in `iso`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/dyn-trait-ice-153366.rs:16:30
+   |
+LL | fn iso_un_option<B>() -> Box<_> {
+   |                              ^ not allowed in type signatures
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-trait-ice-153366.rs:13:5
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |                     --------- expected `Option<_>` because of return type
+...
+LL |     Box::new(iso_un_option)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `Box<fn() -> ... {iso_un_option::<_>}>`
+   |
+   = note: expected enum `Option<_>`
+            found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
+help: use parentheses to call this function
+   |
+LL |     Box::new(iso_un_option)()
+   |                            ++
+help: try wrapping the expression in `Some`
+   |
+LL |     Some(Box::new(iso_un_option))
+   |     +++++                       +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/dyn-trait-ice-153366.rs:5:28
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |                            ^ not allowed in type signatures
+
+error[E0277]: the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-ice-153366.rs:23:5
+   |
+LL |     iso(())
+   |     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn(_) + 'static)`
+note: required by a bound in `iso`
+  --> $DIR/dyn-trait-ice-153366.rs:11:22
+   |
+LL | fn iso<A>(a: Fn) -> Option<_>
+   |    --- required by a bound in this function
+...
+LL |     dyn Fn(A) -> (): Sized,
+   |                      ^^^^^ required by this bound in `iso`
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0107, E0121, E0277, E0308.
+For more information about an error, try `rustc --explain E0107`.

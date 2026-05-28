@@ -1,0 +1,15 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore-suffix-for-float.rs:2:16
+   |
+LL |     let a = 42._;
+   |                ^ expected identifier, found reserved identifier
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/underscore-suffix-for-float.rs:2:16
+   |
+LL |     let a = 42._;
+   |                ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

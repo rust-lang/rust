@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-bounds-on-nested-references-plus-variance-early-bound.rs:8:12
+   |
+LL | fn bad<'a, T>(x: &'a T) -> &'static T {
+   |        -- lifetime `'a` defined here
+LL |     let f: fn(_, &'a T) -> &'static T = foo;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,24 @@
+# Rust files
+target
+
+# We have a couple of potential Cargo.lock files, but we only the root
+# workspace should have dependencies other than (optional) `cc`.
+Cargo.lock
+!/Cargo.lock
+
+# Sources for external files
+compiler-rt
+*.tar.gz
+
+# Benchmark cache
+baseline-*
+iai-home
+gungraun-home
+
+# Temporary files
+*.bk
+*.rs.bk
+.#*
+
+# Manually managed
+crates/musl-math-sys/musl

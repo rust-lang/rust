@@ -1,0 +1,25 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:7:14
+   |
+LL |     const B: S = S { s: &() };
+   |              ^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     const B: S<'_> = S { s: &() };
+   |               ++++
+
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:9:14
+   |
+LL |     const D: T = T { a: &(), b: &() };
+   |              ^ expected lifetime parameters
+   |
+help: indicate the anonymous lifetimes
+   |
+LL |     const D: T<'_, '_> = T { a: &(), b: &() };
+   |               ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0726`.

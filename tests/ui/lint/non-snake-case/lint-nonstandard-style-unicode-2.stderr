@@ -1,0 +1,20 @@
+error: function `Ц` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:17:4
+   |
+LL | fn Ц() {}
+   |    ^ help: convert the identifier to snake case: `ц`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:3:11
+   |
+LL | #![forbid(non_snake_case)]
+   |           ^^^^^^^^^^^^^^
+
+error: function `分__隔` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:22:4
+   |
+LL | fn 分__隔() {}
+   |    ^^^^^^ help: convert the identifier to snake case: `分_隔`
+
+error: aborting due to 2 previous errors
+

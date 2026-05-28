@@ -1,0 +1,77 @@
+error: expected type, found `,`
+  --> $DIR/issue-86053-1.rs:6:47
+   |
+LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
+   |                                               ^ expected type
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:6:51
+   |
+LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
+   |                                                   ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:6:58
+   |
+LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
+   |                                                          ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:6:67
+   |
+LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
+   |                                                                   ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:11:5
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |     ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:11:23
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |                       ^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/issue-86053-1.rs:11:32
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |                                ^^^^ must be the first parameter of an associated function
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/issue-86053-1.rs:11:12
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |            ^^^^^^
+
+error: `...` is not supported for non-extern functions
+  --> $DIR/issue-86053-1.rs:11:39
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |                                       ^^^^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error[E0425]: cannot find type `F` in this scope
+  --> $DIR/issue-86053-1.rs:11:54
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |                                                      ^
+   |
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+   = note: similarly named trait `Fn` defined here
+help: a trait with a similar name exists
+   |
+LL |     self , _: ... ,   self ,   self , _: ... ) where Fn : FnOnce ( & 'a & 'b usize ) {
+   |                                                       +
+help: you might be missing a type parameter
+   |
+LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,
+   |                       +++
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

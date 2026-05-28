@@ -1,0 +1,106 @@
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:23:5
+   |
+LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_unit_fn)]`
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { do_nothing(value); do_nothing(value) });
+LL +     if let Some(value) = x.field { ... }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:26:5
+   |
+LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+LL +     if let Some(value) = x.field { ... }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:31:5
+   |
+LL | /     x.field.map(|value| {
+LL | |         do_nothing(value);
+LL | |         do_nothing(value)
+LL | |     });
+   | |______^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| {
+LL -         do_nothing(value);
+LL -         do_nothing(value)
+LL -     });
+LL +     if let Some(value) = x.field { ... }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:36:5
+   |
+LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+LL +     if let Some(value) = x.field { ... }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:40:5
+   |
+LL |     Some(42).map(diverge);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     Some(42).map(diverge);
+LL +     if let Some(a) = Some(42) { diverge(a) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:42:5
+   |
+LL |     "12".parse::<i32>().ok().map(diverge);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     "12".parse::<i32>().ok().map(diverge);
+LL +     if let Some(a) = "12".parse::<i32>().ok() { diverge(a) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:44:5
+   |
+LL |     Some(plus_one(1)).map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     Some(plus_one(1)).map(do_nothing);
+LL +     if let Some(a) = Some(plus_one(1)) { do_nothing(a) }
+   |
+
+error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_unfixable.rs:49:5
+   |
+LL |     y.map(do_nothing);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: use `if let` instead
+   |
+LL -     y.map(do_nothing);
+LL +     if let Some(_y) = y { do_nothing(_y) }
+   |
+
+error: aborting due to 8 previous errors
+

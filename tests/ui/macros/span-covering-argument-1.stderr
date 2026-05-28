@@ -1,0 +1,18 @@
+error[E0596]: cannot borrow `foo` as mutable, as it is not declared as mutable
+  --> $DIR/span-covering-argument-1.rs:5:14
+   |
+LL |             *&mut $s = 0;
+   |              ^^^^^^^ cannot borrow as mutable
+...
+LL |     bad!(foo whatever);
+   |     ------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `bad` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider changing this to be mutable
+   |
+LL |             let mut $s = 0;
+   |                 +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

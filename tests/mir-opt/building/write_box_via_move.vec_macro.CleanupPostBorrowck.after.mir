@@ -1,0 +1,37 @@
+// MIR for `vec_macro` after CleanupPostBorrowck
+
+fn vec_macro() -> Vec<i32> {
+    let mut _0: std::vec::Vec<i32>;
+    let mut _1: std::boxed::Box<std::mem::MaybeUninit<[i32; 8]>>;
+    let mut _2: std::boxed::Box<std::mem::MaybeUninit<[i32; 8]>>;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Box::<[i32; 8]>::new_uninit() -> [return: bb1, unwind: bb5];
+    }
+
+    bb1: {
+        ((((*_2).1: std::mem::ManuallyDrop<[i32; 8]>).0: std::mem::MaybeDangling<[i32; 8]>).0: [i32; 8]) = [const 0_i32, const 1_i32, const 2_i32, const 3_i32, const 4_i32, const 5_i32, const 6_i32, const 7_i32];
+        _1 = move _2;
+        drop(_2) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_2);
+        _0 = std::boxed::box_assume_init_into_vec_unsafe::<i32, 8>(move _1) -> [return: bb3, unwind: bb4];
+    }
+
+    bb3: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb4 (cleanup): {
+        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

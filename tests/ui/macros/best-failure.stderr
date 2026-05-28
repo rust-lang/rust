@@ -1,0 +1,21 @@
+error: no rules expected `$`
+  --> $DIR/best-failure.rs:4:30
+   |
+LL | macro_rules! number {
+   | ------------------- when calling this macro
+...
+LL |         number!(neg $signed, $self);
+   |                              ^^^^^ no rules expected this token in macro call
+...
+LL | number! { false => u8; }
+   | ------------------------ in this macro invocation
+   |
+note: while trying to match meta-variable `$self:ident`
+  --> $DIR/best-failure.rs:2:17
+   |
+LL |     (neg false, $self:ident) => { $self };
+   |                 ^^^^^^^^^^^
+   = note: this error originates in the macro `number` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

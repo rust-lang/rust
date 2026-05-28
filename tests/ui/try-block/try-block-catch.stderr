@@ -1,0 +1,10 @@
+error: keyword `catch` cannot follow a `try` block
+  --> $DIR/try-block-catch.rs:8:7
+   |
+LL |     } catch { };
+   |       ^^^^^
+   |
+   = help: try using `match` on the result of the `try` block instead
+
+error: aborting due to 1 previous error
+

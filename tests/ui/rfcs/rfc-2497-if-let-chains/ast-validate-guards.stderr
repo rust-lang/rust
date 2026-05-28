@@ -1,0 +1,14 @@
+error: `||` operators are not supported in let chain conditions
+  --> $DIR/ast-validate-guards.rs:5:38
+   |
+LL |         Ok(opt) if let Some(4) = opt || false  => {}
+   |                                      ^^
+
+error: module cannot be declared unsafe
+  --> $DIR/ast-validate-guards.rs:15:17
+   |
+LL |                 unsafe mod a {};
+   |                 ^^^^^^
+
+error: aborting due to 2 previous errors
+

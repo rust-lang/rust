@@ -1,0 +1,13 @@
+error: conflicting doc inlining attributes
+  --> $DIR/doc-inline-extern-crate.rs:1:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ this attribute...
+LL |
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ ...conflicts with this attribute
+   |
+   = help: remove one of the conflicting attributes
+
+error: aborting due to 1 previous error
+

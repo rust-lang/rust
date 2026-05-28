@@ -1,0 +1,34 @@
+//@ run-rustfix
+//@ edition:2018
+#![allow(unused_imports)]
+
+fn main() {}
+
+use std::ptr::read;  //~ ERROR keyword `use` is written in the wrong case
+use std::ptr::write; //~ ERROR keyword `use` is written in the wrong case
+
+async fn _a() {}
+//~^ ERROR keyword `fn` is written in the wrong case
+
+fn _b() {}
+//~^ ERROR keyword `fn` is written in the wrong case
+
+async fn _c() {}
+//~^ ERROR keyword `async` is written in the wrong case
+//~| ERROR keyword `fn` is written in the wrong case
+
+async fn _d() {}
+//~^ ERROR keyword `async` is written in the wrong case
+
+const unsafe fn _e() {}
+//~^ ERROR keyword `const` is written in the wrong case
+//~| ERROR keyword `unsafe` is written in the wrong case
+//~| ERROR keyword `fn` is written in the wrong case
+
+unsafe extern "C" fn _f() {}
+//~^ ERROR keyword `unsafe` is written in the wrong case
+//~| ERROR keyword `extern` is written in the wrong case
+
+extern "C" fn _g() {}
+//~^ ERROR keyword `extern` is written in the wrong case
+//~| ERROR keyword `fn` is written in the wrong case

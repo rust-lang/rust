@@ -1,0 +1,30 @@
+   LL|       |#![allow(dead_code, unreachable_code)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Regression test for #93054: Functions using uninhabited types often only have a single,
+   LL|       |// unreachable basic block which doesn't get instrumented. This should not cause llvm-cov to fail.
+   LL|       |// Since these kinds functions can't be invoked anyway, it's ok to not have coverage data for them.
+   LL|       |
+   LL|       |enum Never {}
+   LL|       |
+   LL|       |impl Never {
+   LL|       |    fn foo(self) {
+   LL|       |        match self {}
+   LL|       |        make().map(|never| match never {});
+   LL|       |    }
+   LL|       |
+   LL|       |    fn bar(&self) {
+   LL|       |        match *self {}
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|      0|async fn foo2(never: Never) {
+   LL|       |    match never {}
+   LL|       |}
+   LL|       |
+   LL|      0|fn make() -> Option<Never> {
+   LL|      0|    None
+   LL|      0|}
+   LL|       |
+   LL|      1|fn main() {}
+

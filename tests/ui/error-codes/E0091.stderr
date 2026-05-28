@@ -1,0 +1,21 @@
+error[E0091]: type parameter `T` is never used
+  --> $DIR/E0091.rs:1:10
+   |
+LL | type Foo<T> = u32;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0091]: type parameter `B` is never used
+  --> $DIR/E0091.rs:2:14
+   |
+LL | type Foo2<A, B> = Box<A>;
+   |              ^ unused type parameter
+   |
+   = help: consider removing `B` or referring to it in the body of the type alias
+   = help: if you intended `B` to be a const parameter, use `const B: /* Type */` instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0091`.

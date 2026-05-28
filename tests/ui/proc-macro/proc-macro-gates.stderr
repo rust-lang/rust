@@ -1,0 +1,99 @@
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:10:8
+   |
+LL |     #![empty_attr]
+   |        ^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:14:8
+   |
+LL |     #![empty_attr]
+   |        ^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: key-value macro attributes are not supported
+  --> $DIR/proc-macro-gates.rs:17:1
+   |
+LL | #[empty_attr = "y"]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: custom attributes cannot be applied to statements
+  --> $DIR/proc-macro-gates.rs:26:5
+   |
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: custom attributes cannot be applied to statements
+  --> $DIR/proc-macro-gates.rs:30:5
+   |
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: custom attributes cannot be applied to statements
+  --> $DIR/proc-macro-gates.rs:34:5
+   |
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: custom attributes cannot be applied to expressions
+  --> $DIR/proc-macro-gates.rs:38:14
+   |
+LL |     let _x = #[identity_attr] 2;
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: custom attributes cannot be applied to expressions
+  --> $DIR/proc-macro-gates.rs:41:15
+   |
+LL |     let _x = [#[identity_attr] 2];
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: custom attributes cannot be applied to expressions
+  --> $DIR/proc-macro-gates.rs:44:14
+   |
+LL |     let _x = #[identity_attr] println!();
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:49:8
+   |
+LL |     #![test]
+   |        ^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

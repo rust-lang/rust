@@ -1,0 +1,95 @@
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:6:12
+   |
+LL | const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:9:12
+   |
+LL | static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:13:8
+   |
+LL |     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:17:11
+   |
+LL | struct Ts(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:21:11
+   |
+LL |     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:23:17
+   |
+LL |     Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:28:14
+   |
+LL |     const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:31:30
+   |
+LL |     fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:36:14
+   |
+LL |     const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:39:14
+   |
+LL |     type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:42:25
+   |
+LL |     fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:45:29
+   |
+LL |     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:58:15
+   |
+LL | fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:64:14
+   |
+LL | fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> tests/ui/type_complexity.rs:68:13
+   |
+LL |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+

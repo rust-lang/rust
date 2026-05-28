@@ -1,0 +1,8 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/late-const-param-wf.rs:5:15
+   |
+LL |     for<const C: usize> [(); C]: Copy,
+   |               ^
+
+error: aborting due to 1 previous error
+

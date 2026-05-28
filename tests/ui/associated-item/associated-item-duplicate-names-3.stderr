@@ -1,0 +1,27 @@
+error[E0201]: duplicate definitions with name `Bar`:
+  --> $DIR/associated-item-duplicate-names-3.rs:14:5
+   |
+LL |     type Bar;
+   |     --------- item in trait
+...
+LL |     type Bar = i16;
+   |     --------------- previous definition here
+LL |     type Bar = u16;
+   |     ^^^^^^^^^^^^^^^ duplicate definition
+
+error[E0223]: ambiguous associated type
+  --> $DIR/associated-item-duplicate-names-3.rs:18:12
+   |
+LL |     let x: Baz::Bar = 5;
+   |            ^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let x: Baz::Bar = 5;
+LL +     let x: <Baz as Foo>::Bar = 5;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0201, E0223.
+For more information about an error, try `rustc --explain E0201`.

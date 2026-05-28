@@ -1,0 +1,9 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for statics
+  --> $DIR/issue-74086.rs:2:20
+   |
+LL |     static BUG: fn(_) -> u8 = |_| 8;
+   |                    ^ not allowed in type signatures
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0121`.

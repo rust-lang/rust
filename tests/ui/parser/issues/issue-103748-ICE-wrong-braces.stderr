@@ -1,0 +1,20 @@
+error: invalid `?` in type
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:36
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                                    ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL - struct Apple((Apple, Option(Banana ? Citron)));
+LL + struct Apple((Apple, Option(Option<Banana > Citron)));
+   |
+
+error: unexpected token: `Citron`
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                                      ^^^^^^ unexpected token after this
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,16 @@
+error[E0072]: recursive type `Expr` has infinite size
+  --> $DIR/recursive-enum-memory-32326.rs:5:1
+   |
+LL | enum Expr {
+   | ^^^^^^^^^
+LL |     Plus(Expr, Expr),
+   |          ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     Plus(Box<Expr>, Expr),
+   |          ++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

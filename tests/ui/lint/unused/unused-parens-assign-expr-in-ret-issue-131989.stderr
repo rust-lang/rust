@@ -1,0 +1,43 @@
+error: unnecessary parentheses around `break` value
+  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:14:15
+   |
+LL |         break (a + b);
+   |               ^     ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:2:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -         break (a + b);
+LL +         break a + b;
+   |
+
+error: unnecessary parentheses around `if` condition
+  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:18:12
+   |
+LL |         if (break return ()) {
+   |            ^               ^
+   |
+help: remove these parentheses
+   |
+LL -         if (break return ()) {
+LL +         if break return () {
+   |
+
+error: unnecessary parentheses around `break` value
+  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:21:18
+   |
+LL |         if break (return ()) {
+   |                  ^         ^
+   |
+help: remove these parentheses
+   |
+LL -         if break (return ()) {
+LL +         if break return () {
+   |
+
+error: aborting due to 3 previous errors
+

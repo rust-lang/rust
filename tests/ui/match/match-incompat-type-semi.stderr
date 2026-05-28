@@ -1,0 +1,87 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-incompat-type-semi.rs:11:13
+   |
+LL |       let _ = match Some(42) {
+   |  _____________-
+LL | |         Some(x) => {
+LL | |             x
+   | |             - this is found to be of type `{integer}`
+LL | |         },
+LL | |         None => {
+LL | |             0;
+   | |             ^-
+   | |             ||
+   | |             |help: consider removing this semicolon
+   | |             expected integer, found `()`
+...  |
+LL | |         },
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/match-incompat-type-semi.rs:20:9
+   |
+LL |       let _ = if let Some(x) = Some(42) {
+   |  _____________-
+LL | |         x
+   | |         - expected because of this
+LL | |     } else {
+LL | |         0;
+   | |         ^-
+   | |         ||
+   | |         |help: consider removing this semicolon
+   | |         expected integer, found `()`
+...  |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-incompat-type-semi.rs:30:13
+   |
+LL |       let _ = match Some(42) {
+   |  _____________-
+LL | |         Some(x) => {
+LL | |             x
+   | |             - this is found to be of type `{integer}`
+LL | |         },
+LL | |         None => {
+LL | |             ();
+   | |             ^^^ expected integer, found `()`
+LL | |
+LL | |         },
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-incompat-type-semi.rs:39:17
+   |
+LL |       let _ = match Some(42) {
+   |               -------------- `match` arms have incompatible types
+LL |           Some(x) => {
+LL |               x
+   |               - this is found to be of type `{integer}`
+LL |           },
+LL |           None => {
+   |  _________________^
+LL | |         },
+   | |_________^ expected integer, found `()`
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-incompat-type-semi.rs:50:17
+   |
+LL |       let _ = match Some(42) {
+   |               -------------- `match` arms have incompatible types
+LL |           Some(x) => "rust-lang.org"
+   |  ____________________-
+LL | |             .chars()
+LL | |             .skip(1)
+LL | |             .chain(Some(x as u8 as char))
+LL | |             .take(10)
+LL | |             .any(char::is_alphanumeric),
+   | |_______________________________________- this is found to be of type `bool`
+LL |           None => {}
+   |                   ^^ expected `bool`, found `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,26 @@
+error: unexpected `...`
+  --> $DIR/no-closure.rs:6:35
+   |
+LL | const F: extern "C" fn(...) = |_: ...| {};
+   |                                   ^^^
+   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: unexpected `...`
+  --> $DIR/no-closure.rs:11:14
+   |
+LL |     let f = |...| {};
+   |              ^^^ not a valid pattern
+   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: unexpected `...`
+  --> $DIR/no-closure.rs:16:17
+   |
+LL |     let f = |_: ...| {};
+   |                 ^^^
+   |
+   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: aborting due to 3 previous errors
+

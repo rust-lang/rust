@@ -1,0 +1,24 @@
+error[E0277]: `&Unit` cannot be safely transmuted into `&u8`
+  --> $DIR/unit-to-u8.rs:22:52
+   |
+LL |     assert::is_maybe_transmutable::<&'static Unit, &'static u8>();
+   |                                                    ^^^^^^^^^^^ the size of `Unit` (0 bytes) is smaller than that of `u8` (1 bytes)
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/unit-to-u8.rs:9:14
+   |
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this function
+LL |       where
+LL |           Dst: TransmuteFrom<Src, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

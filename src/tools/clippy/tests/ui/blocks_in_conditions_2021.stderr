@@ -1,0 +1,23 @@
+error: in a `match` scrutinee, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> tests/ui/blocks_in_conditions_2021.rs:7:5
+   |
+LL | /     match {
+LL | |
+LL | |         let opt = Some(2);
+LL | |         opt
+LL | |     } {
+   | |_____^
+   |
+   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
+help: try
+   |
+LL ~     let res = {
+LL +
+LL +         let opt = Some(2);
+LL +         opt
+LL ~     }; match res {
+   |
+
+error: aborting due to 1 previous error
+

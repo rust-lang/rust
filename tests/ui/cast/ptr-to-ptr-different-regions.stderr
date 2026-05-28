@@ -1,0 +1,31 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-ptr-different-regions.rs:20:5
+   |
+LL | fn assert_static<'a>(ptr: *mut (dyn Trait + 'a)) -> *mut (dyn Trait + 'static) {
+   |                  -- lifetime `'a` defined here
+LL |     ptr as _
+   |     ^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of a mutable pointer to `dyn Trait`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-ptr-different-regions.rs:20:5
+   |
+LL |     ptr as _
+   |     ^^^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `ptr`
+   |
+LL - fn assert_static<'a>(ptr: *mut (dyn Trait + 'a)) -> *mut (dyn Trait + 'static) {
+LL + fn assert_static<'a>(ptr: *mut (dyn Trait + 'a)) -> *mut (dyn Trait + 'a) {
+   |
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL - fn assert_static<'a>(ptr: *mut (dyn Trait + 'a)) -> *mut (dyn Trait + 'static) {
+LL + fn assert_static<'a>(ptr: *mut (dyn Trait + 'static)) -> *mut (dyn Trait + 'static) {
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,47 @@
+error: unknown start of token: \u{348}
+  --> $DIR/issue-66473.rs:1:2
+   |
+LL | #͈␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀
+   |  ^
+
+error: unknown start of token: \u{0}
+  --> $DIR/issue-66473.rs:1:3
+   |
+LL | #͈␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀
+   |  ^^^^^^^^^^^^^^^^^^
+   |
+   = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+   = note: character appears 17 more times
+
+error: unknown start of token: \u{1d}
+  --> $DIR/issue-66473.rs:4:2
+   |
+LL | ␋␝6␝␀␀
+   |  ^
+
+error: unknown start of token: \u{1d}
+  --> $DIR/issue-66473.rs:4:4
+   |
+LL | ␋␝6␝␀␀
+   |    ^
+
+error: unknown start of token: \u{0}
+  --> $DIR/issue-66473.rs:4:5
+   |
+LL | ␋␝6␝␀␀
+   |     ^^
+   |
+   = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+   = note: character appears once more
+
+error: expected one of `!` or `[`, found `6`
+  --> $DIR/issue-66473.rs:4:3
+   |
+LL | #͈␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀␀
+   |  - expected one of `!` or `[`
+...
+LL | ␋␝6␝␀␀
+   |   ^ unexpected token
+
+error: aborting due to 6 previous errors
+

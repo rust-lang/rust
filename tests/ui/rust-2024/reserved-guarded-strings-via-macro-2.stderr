@@ -1,0 +1,20 @@
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings-via-macro-2.rs:14:5
+   |
+LL |     m2024::number_of_tokens_in_a_guarded_string_literal!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: this error originates in the macro `m2024::number_of_tokens_in_a_guarded_string_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid string literal
+  --> $DIR/reserved-guarded-strings-via-macro-2.rs:16:5
+   |
+LL |     m2024::number_of_tokens_in_a_guarded_unterminated_string_literal!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: unprefixed guarded string literals are reserved for future use since Rust 2024
+   = note: this error originates in the macro `m2024::number_of_tokens_in_a_guarded_unterminated_string_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

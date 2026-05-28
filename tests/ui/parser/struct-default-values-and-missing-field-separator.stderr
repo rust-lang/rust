@@ -1,0 +1,133 @@
+error: expected `,`, or `}`, found `field2`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:17:16
+   |
+LL |     field1: i32
+   |                ^ help: try adding a comma: `,`
+
+error: expected `,`, or `}`, found `field3`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:18:14
+   |
+LL |     field2: E
+   |              ^ help: try adding a comma: `,`
+
+error: expected `:`, found `=`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:26:12
+   |
+LL |     field1 = i32,
+   |            ^
+   |            |
+   |            expected `:`
+   |            help: field names and their types are separated with `:`
+
+error: expected `:`, found `;`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:27:11
+   |
+LL |     field2; E,
+   |           ^
+   |           |
+   |           expected `:`
+   |           help: field names and their types are separated with `:`
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:8:16
+   |
+LL |     field1: i32 = 42,
+   |                ^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:9:14
+   |
+LL |     field2: E = E::A,
+   |              ^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:10:16
+   |
+LL |     field3: i32 = 1 + 2,
+   |                ^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:11:16
+   |
+LL |     field4: i32 = { 1 + 2 },
+   |                ^^^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:12:14
+   |
+LL |     field5: E = foo(42),
+   |              ^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:13:14
+   |
+LL |     field6: E = { foo(42) },
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:19:16
+   |
+LL |     field3: i32 = 1 + 2,
+   |                ^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:20:16
+   |
+LL |     field4: i32 = { 1 + 2 },
+   |                ^^^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:21:14
+   |
+LL |     field5: E = foo(42),
+   |              ^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:22:14
+   |
+LL |     field6: E = { foo(42) },
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

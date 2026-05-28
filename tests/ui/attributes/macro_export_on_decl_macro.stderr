@@ -1,0 +1,16 @@
+error: `#[macro_export]` has no effect on declarative macro definitions
+  --> $DIR/macro_export_on_decl_macro.rs:6:1
+   |
+LL | #[macro_export]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: declarative macros follow the same exporting rules as regular items
+note: the lint level is defined here
+  --> $DIR/macro_export_on_decl_macro.rs:4:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
+
+error: aborting due to 1 previous error
+

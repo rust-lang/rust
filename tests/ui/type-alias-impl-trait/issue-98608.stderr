@@ -1,0 +1,16 @@
+error[E0271]: expected `hi` to return `Box<u8>`, but it returns `impl Sized`
+  --> $DIR/issue-98608.rs:6:39
+   |
+LL | fn hi() -> impl Sized {
+   |            ---------- the found opaque type
+...
+LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
+   |                                       ^^^^^^^^^^^^ expected `Box<u8>`, found opaque type
+   |
+   = note:   expected struct `Box<u8>`
+           found opaque type `impl Sized`
+   = note: required for the cast from `Box<fn() -> impl Sized {hi}>` to `Box<dyn Fn() -> Box<u8>>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

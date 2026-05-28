@@ -1,0 +1,41 @@
+error: multiple implementations of this structure
+  --> src/main.rs:26:5
+   |
+26 | /     impl S {
+27 | |         //^ Must trigger
+28 | |
+29 | |         fn second() {}
+30 | |     }
+   | |_____^
+   |
+note: first implementation here
+  --> src/main.rs:22:5
+   |
+22 | /     impl S {
+23 | |         fn first() {}
+24 | |     }
+   | |_____^
+note: the lint level is defined here
+  --> src/main.rs:2:9
+   |
+ 2 | #![deny(clippy::multiple_inherent_impl)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple implementations of this structure
+  --> src/c.rs:12:1
+   |
+12 | / impl T {
+13 | |     //^ Must trigger
+14 | |     fn second() {}
+15 | | }
+   | |_^
+   |
+note: first implementation here
+  --> src/c.rs:8:1
+   |
+ 8 | / impl T {
+ 9 | |     fn first() {}
+10 | | }
+   | |_^
+
+error: could not compile `module_fail` (bin "module_fail") due to 2 previous errors

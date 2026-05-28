@@ -1,0 +1,22 @@
+error[E0576]: cannot find method or associated constant `method` in trait `A`
+  --> $DIR/path-missing.rs:10:15
+   |
+LL |     <T as A>::method(..): Send,
+   |               ^^^^^^ not found in `A`
+
+error[E0575]: expected method or associated constant, found associated type `A::bad`
+  --> $DIR/path-missing.rs:12:5
+   |
+LL |     <T as A>::bad(..): Send,
+   |     ^^^^^^^^^^^^^^^^^ not a method or associated constant
+
+error[E0220]: associated function `method` not found for `T`
+  --> $DIR/path-missing.rs:19:8
+   |
+LL |     T::method(..): Send,
+   |        ^^^^^^ associated function `method` not found
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0220, E0575, E0576.
+For more information about an error, try `rustc --explain E0220`.

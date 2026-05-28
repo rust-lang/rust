@@ -1,0 +1,91 @@
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:24:9
+   |
+LL |     while let Some(_) = foo.f() {
+   |                         -------
+   |                         |
+   |                         first mutable borrow occurs here
+   |                         a temporary with access to the first borrow is created here ...
+LL |
+LL |         foo.g();
+   |         ^^^ second mutable borrow occurs here
+LL |
+LL |     }
+   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |
+help: consider using the `matches!` macro
+   |
+LL -     while let Some(_) = foo.f() {
+LL +     while matches!(foo.f(), Some(_)) {
+   |
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:29:9
+   |
+LL |     if let Some(_) = foo.f() {
+   |                      -------
+   |                      |
+   |                      first mutable borrow occurs here
+   |                      a temporary with access to the first borrow is created here ...
+LL |
+LL |         foo.g();
+   |         ^^^ second mutable borrow occurs here
+LL |
+LL |     }
+   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |
+help: consider using the `matches!` macro
+   |
+LL -     if let Some(_) = foo.f() {
+LL +     if matches!(foo.f(), Some(_)) {
+   |
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:33:9
+   |
+LL |     while let Some(_x) = foo.f() {
+   |                          -------
+   |                          |
+   |                          first mutable borrow occurs here
+   |                          a temporary with access to the first borrow is created here ...
+LL |         foo.g();
+   |         ^^^ second mutable borrow occurs here
+LL |
+LL |     }
+   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:37:9
+   |
+LL |     if let Some(_x) = foo.f() {
+   |                       -------
+   |                       |
+   |                       first mutable borrow occurs here
+   |                       a temporary with access to the first borrow is created here ...
+LL |         foo.g();
+   |         ^^^ second mutable borrow occurs here
+LL |
+LL |     }
+   |     - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<Bar<'_>>`
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:40:45
+   |
+LL |     while let Some(_x) = {let _x = foo.f(); foo.g(); None::<()>} {
+   |                                    ---      ^^^                - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |                                    |        |
+   |                                    |        second mutable borrow occurs here
+   |                                    first mutable borrow occurs here
+
+error[E0499]: cannot borrow `foo` as mutable more than once at a time
+  --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:43:42
+   |
+LL |     if let Some(_x) = {let _x = foo.f(); foo.g(); None::<()>} {
+   |                                 ---      ^^^                - first borrow might be used here, when `_x` is dropped and runs the destructor for type `Option<Bar<'_>>`
+   |                                 |        |
+   |                                 |        second mutable borrow occurs here
+   |                                 first mutable borrow occurs here
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

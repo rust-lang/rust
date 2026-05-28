@@ -1,0 +1,49 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/import_trait_associated_item_bad.rs:11:15
+   |
+LL | type Alias1 = AssocTy;
+   |               ^^^^^^^
+   |
+help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
+   |
+LL | type Alias1 = <Example as Trait>::AssocTy;
+   |               ++++++++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> $DIR/import_trait_associated_item_bad.rs:12:15
+   |
+LL | type Alias2 = self::AssocTy;
+   |               ^^^^^^^^^^^^^
+   |
+help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
+   |
+LL - type Alias2 = self::AssocTy;
+LL + type Alias2 = <Example as Trait>::AssocTy;
+   |
+
+error[E0223]: ambiguous associated constant
+  --> $DIR/import_trait_associated_item_bad.rs:15:20
+   |
+LL | type Alias3 = [u8; CONST];
+   |                    ^^^^^
+   |
+help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
+   |
+LL | type Alias3 = [u8; <Example as Trait>::CONST];
+   |                    ++++++++++++++++++++
+
+error[E0223]: ambiguous associated constant
+  --> $DIR/import_trait_associated_item_bad.rs:16:20
+   |
+LL | type Alias4 = [u8; self::CONST];
+   |                    ^^^^^^^^^^^
+   |
+help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
+   |
+LL - type Alias4 = [u8; self::CONST];
+LL + type Alias4 = [u8; <Example as Trait>::CONST];
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

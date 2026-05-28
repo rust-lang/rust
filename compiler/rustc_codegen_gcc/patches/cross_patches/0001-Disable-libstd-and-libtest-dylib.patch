@@ -1,0 +1,25 @@
+From b2911e732d1bf0e28872495c4c47af1dad3c7911 Mon Sep 17 00:00:00 2001
+From: None <none@example.com>
+Date: Thu, 27 Mar 2025 14:30:10 -0400
+Subject: [PATCH] Disable libstd and libtest dylib
+
+---
+ library/std/Cargo.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/library/std/Cargo.toml b/library/std/Cargo.toml
+index 176da60..c183cdb 100644
+--- a/library/std/Cargo.toml
++++ b/library/std/Cargo.toml
+@@ -10,7 +10,7 @@ edition = "2024"
+ autobenches = false
+ 
+ [lib]
+-crate-type = ["dylib", "rlib"]
++crate-type = ["rlib"]
+ 
+ [dependencies]
+ alloc = { path = "../alloc", public = true }
+-- 
+2.49.0
+

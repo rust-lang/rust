@@ -1,0 +1,3 @@
+Checking if Unicode version changed.
+If the Unicode version changes are intentional, it should also be updated in the reference at https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
+Unicode version used in rustc_parse is: (17, 0, 0)

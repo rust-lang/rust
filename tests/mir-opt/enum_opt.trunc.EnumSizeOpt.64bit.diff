@@ -1,0 +1,37 @@
+- // MIR for `trunc` before EnumSizeOpt
++ // MIR for `trunc` after EnumSizeOpt
+  
+  fn trunc() -> NotTrunctable {
+      let mut _0: NotTrunctable;
+      let mut _1: NotTrunctable;
+      let mut _2: NotTrunctable;
+      let mut _3: [u8; 1024];
+      let mut _4: NotTrunctable;
+      let mut _5: [u8; 4096];
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = NotTrunctable::A;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = [const 0_u8; 1024];
+          _2 = NotTrunctable::B(move _3);
+          StorageDead(_3);
+          _1 = move _2;
+          StorageDead(_2);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = [const 0_u8; 4096];
+          _4 = NotTrunctable::C(move _5);
+          StorageDead(_5);
+          _1 = move _4;
+          StorageDead(_4);
+          _0 = move _1;
+          StorageDead(_1);
+          return;
+      }
+  }
+  

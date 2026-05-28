@@ -1,0 +1,17 @@
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/private/test.rs:6:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             dbg!($v);
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+   = note: `-D clippy::macro-metavars-in-unsafe` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::macro_metavars_in_unsafe)]`
+
+error: aborting due to 1 previous error
+

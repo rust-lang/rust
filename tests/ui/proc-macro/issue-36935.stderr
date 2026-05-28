@@ -1,0 +1,22 @@
+error[E0428]: the name `Baz` is defined multiple times
+  --> $DIR/issue-36935.rs:8:1
+   |
+LL | struct Baz {
+   | ^^^^^^^^^^
+   | |
+   | `Baz` redefined here
+   | previous definition of the type `Baz` here
+   |
+   = note: `Baz` must be defined only once in the type namespace of this module
+
+error: proc-macro derive panicked
+  --> $DIR/issue-36935.rs:7:20
+   |
+LL | #[derive(Identity, Panic)]
+   |                    ^^^^^
+   |
+   = help: message: panic-derive
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

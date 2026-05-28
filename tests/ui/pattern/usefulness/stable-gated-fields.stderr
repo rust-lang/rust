@@ -1,0 +1,33 @@
+error[E0027]: pattern does not mention field `stable2` and inaccessible fields
+  --> $DIR/stable-gated-fields.rs:8:9
+   |
+LL |     let UnstableStruct { stable } = UnstableStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `stable2` and inaccessible fields
+   |
+help: include the missing field in the pattern and ignore the inaccessible fields
+   |
+LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+   |                                +++++++++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let UnstableStruct { stable, stable2: _, .. } = UnstableStruct::default();
+   |                                ++++++++++++++++
+help: or always ignore missing fields here
+   |
+LL |     let UnstableStruct { stable, .. } = UnstableStruct::default();
+   |                                ++++
+
+error: pattern requires `..` due to inaccessible fields
+  --> $DIR/stable-gated-fields.rs:11:9
+   |
+LL |     let UnstableStruct { stable, stable2 } = UnstableStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: ignore the inaccessible and unused fields
+   |
+LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+   |                                         ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

@@ -1,0 +1,8 @@
+error: expected one of `(`, `[`, or `{`, found `bar`
+  --> $DIR/macro-bad-delimiter-ident.rs:2:10
+   |
+LL |     foo! bar <
+   |          ^^^ expected one of `(`, `[`, or `{`
+
+error: aborting due to 1 previous error
+

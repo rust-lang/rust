@@ -1,0 +1,18 @@
+//@ run-rustfix
+#![expect(incomplete_features)]
+#![feature(explicit_tail_calls)]
+#![allow(unused)]
+
+fn f() -> u64 {
+    return 1; //~ error: `become` requires a function call
+}
+
+fn g() {
+    return { h() }; //~ error: `become` requires a function call
+}
+
+fn h() {
+    return *&g(); //~ error: `become` requires a function call
+}
+
+fn main() {}

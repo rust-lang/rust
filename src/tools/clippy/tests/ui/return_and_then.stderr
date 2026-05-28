@@ -1,0 +1,244 @@
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:6:9
+   |
+LL | /         opt.and_then(|n| {
+LL | |
+LL | |             let mut ret = n + 1;
+LL | |             ret += n;
+LL | |             if n > 1 { Some(ret) } else { None }
+LL | |         })
+   | |__________^
+   |
+   = note: `-D clippy::return-and-then` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_and_then)]`
+help: try
+   |
+LL ~         let n = opt?;
+LL +
+LL +         let mut ret = n + 1;
+LL +         ret += n;
+LL +         if n > 1 { Some(ret) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:15:9
+   |
+LL |         opt.and_then(|n| test_opt_block(Some(n)))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~         let n = opt?;
+LL +         test_opt_block(Some(n))
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:20:9
+   |
+LL |         gen_option(1).and_then(|n| test_opt_block(Some(n)))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~         let n = gen_option(1)?;
+LL +         test_opt_block(Some(n))
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:25:9
+   |
+LL |         opt.and_then(|n| if n > 1 { Ok(n + 1) } else { Err(n) })
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~         let n = opt?;
+LL +         if n > 1 { Ok(n + 1) } else { Err(n) }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:30:9
+   |
+LL |         opt.and_then(|n| test_res_block(Ok(n)))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~         let n = opt?;
+LL +         test_res_block(Ok(n))
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:36:9
+   |
+LL |         Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None })
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~         let x = Some("")?;
+LL +         if x.len() > 2 { Some(3) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:42:9
+   |
+LL | /         Some(match (vec![1, 2, 3], vec![1, 2, 4]) {
+LL | |
+LL | |             (a, _) if a.len() > 1 => a,
+LL | |             (_, b) => b,
+LL | |         })
+LL | |         .and_then(|x| if x.len() > 2 { Some(3) } else { None })
+   | |_______________________________________________________________^
+   |
+help: try
+   |
+LL ~         let x = Some(match (vec![1, 2, 3], vec![1, 2, 4]) {
+LL +
+LL +             (a, _) if a.len() > 1 => a,
+LL +             (_, b) => b,
+LL +         })?;
+LL +         if x.len() > 2 { Some(3) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:70:13
+   |
+LL |             Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None })
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             let x = Some("")?;
+LL +             if x.len() > 2 { Some(3) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:78:20
+   |
+LL |             return Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let x = Some("")?;
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             };
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:86:20
+   |
+LL |               return Some("").and_then(|mut x| {
+   |  ____________________^
+LL | |                 let x = format!("{x}.");
+LL | |                 if x.len() > 2 { Some(3) } else { None }
+LL | |             });
+   | |______________^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let mut x = Some("")?;
+LL +                 let x = format!("{x}.");
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             };
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:98:20
+   |
+LL |             return Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None }),
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let x = Some("")?;
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             },
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:106:13
+   |
+LL |             i.and_then(|i| if i > 3 { Some(i) } else { None })
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             let i = i?;
+LL +             if i > 3 { Some(i) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:115:22
+   |
+LL |             1 | 2 => i.and_then(|i| if i > 3 { Some(i) } else { None }),
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             1 | 2 => {
+LL +                 let i = i?;
+LL +                 if i > 3 { Some(i) } else { None }
+LL ~             },
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:127:21
+   |
+LL |                     i.and_then(|i| if i > 3 { Some(i) } else { None })
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:142:23
+   |
+LL |                 break i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                 break ({
+LL +                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+LL ~                 });
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:147:32
+   |
+LL |                     break 'foo i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                     break 'foo ({
+LL +                         let i = i?;
+LL +                         if i > 3 { Some(i) } else { None }
+LL ~                     });
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:152:28
+   |
+LL |                 break 'bar i.and_then(|i| if i > 3 { Some(i) } else { None });
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~                 break 'bar ({
+LL +                     let i = i?;
+LL +                     if i > 3 { Some(i) } else { None }
+LL ~                 });
+   |
+
+error: aborting due to 17 previous errors
+

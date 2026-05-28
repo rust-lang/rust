@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `2`
+  --> $DIR/while-without-identifiers.rs:2:12
+   |
+LL |     whilee 2 > 1 {}
+   |            ^ expected one of 8 possible tokens
+
+error: aborting due to 1 previous error
+

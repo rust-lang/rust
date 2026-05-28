@@ -1,0 +1,69 @@
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:9:33
+   |
+LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
+   |                                 ^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `U`
+   |
+note: required by a bound on the type alias `Underconstrained`
+  --> $DIR/generic_underconstrained2.rs:5:26
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl Send;
+   |                          ^^^^^^^^^^^^^^^ required by this bound
+help: consider restricting type parameter `U` with trait `Debug`
+   |
+LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
+   |                      +++++++++++++++++
+
+error[E0277]: `V` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:19:43
+   |
+LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
+   |                                           ^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `V`
+   |
+note: required by a bound on the type alias `Underconstrained2`
+  --> $DIR/generic_underconstrained2.rs:15:27
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl Send;
+   |                           ^^^^^^^^^^^^^^^ required by this bound
+help: consider restricting type parameter `V` with trait `Debug`
+   |
+LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
+   |                          +++++++++++++++++
+
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:9:33
+   |
+LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
+   |                                 ^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `U`
+   |
+note: required by a bound on the type alias `Underconstrained`
+  --> $DIR/generic_underconstrained2.rs:5:26
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl Send;
+   |                          ^^^^^^^^^^^^^^^ required by this bound
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `U` with trait `Debug`
+   |
+LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
+   |                      +++++++++++++++++
+
+error[E0277]: `V` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:19:43
+   |
+LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
+   |                                           ^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `V`
+   |
+note: required by a bound on the type alias `Underconstrained2`
+  --> $DIR/generic_underconstrained2.rs:15:27
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl Send;
+   |                           ^^^^^^^^^^^^^^^ required by this bound
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider restricting type parameter `V` with trait `Debug`
+   |
+LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
+   |                          +++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

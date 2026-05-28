@@ -1,0 +1,57 @@
+#![warn(clippy::upper_case_acronyms)]
+
+struct HttpResponse; // not linted by default, but with cfg option
+//~^ upper_case_acronyms
+
+struct CString; // not linted
+
+enum Flags {
+    Ns, // not linted
+    //~^ upper_case_acronyms
+    Cwr,
+    //~^ upper_case_acronyms
+    Ece,
+    //~^ upper_case_acronyms
+    Urg,
+    //~^ upper_case_acronyms
+    Ack,
+    //~^ upper_case_acronyms
+    Psh,
+    //~^ upper_case_acronyms
+    Rst,
+    //~^ upper_case_acronyms
+    Syn,
+    //~^ upper_case_acronyms
+    Fin,
+    //~^ upper_case_acronyms
+}
+
+// linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
+// `GccLlvmSomething`
+struct GccllvmSomething;
+//~^ upper_case_acronyms
+
+// don't warn on public items
+pub struct MIXEDCapital;
+
+pub struct FULLCAPITAL;
+
+// enum variants should not be linted if the num is pub
+pub enum ParseError<T> {
+    FULLCAPITAL(u8),
+    MIXEDCapital(String),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+// private, do lint here
+enum ParseErrorPrivate<T> {
+    Wasd(u8),
+    //~^ upper_case_acronyms
+    WasdMixed(String),
+    //~^ upper_case_acronyms
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+fn main() {}

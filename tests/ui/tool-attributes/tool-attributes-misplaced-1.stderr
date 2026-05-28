@@ -1,0 +1,54 @@
+error: cannot find derive macro `rustfmt` in this scope
+  --> $DIR/tool-attributes-misplaced-1.rs:4:10
+   |
+LL | #[derive(rustfmt)]
+   |          ^^^^^^^
+
+error: cannot find derive macro `rustfmt` in this scope
+  --> $DIR/tool-attributes-misplaced-1.rs:4:10
+   |
+LL | #[derive(rustfmt)]
+   |          ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: cannot find attribute `rustfmt` in this scope
+  --> $DIR/tool-attributes-misplaced-1.rs:9:3
+   |
+LL | #[rustfmt]
+   |   ^^^^^^^
+
+error: cannot find macro `rustfmt` in this scope
+  --> $DIR/tool-attributes-misplaced-1.rs:15:5
+   |
+LL |     rustfmt!();
+   |     ^^^^^^^
+
+error[E0573]: expected type, found tool module `rustfmt`
+  --> $DIR/tool-attributes-misplaced-1.rs:1:10
+   |
+LL | type A = rustfmt;
+   |          ^^^^^^^ not a type
+
+error[E0573]: expected type, found tool attribute `rustfmt::skip`
+  --> $DIR/tool-attributes-misplaced-1.rs:2:10
+   |
+LL | type B = rustfmt::skip;
+   |          ^^^^^^^^^^^^^ not a type
+
+error[E0423]: expected value, found tool module `rustfmt`
+  --> $DIR/tool-attributes-misplaced-1.rs:14:5
+   |
+LL |     rustfmt;
+   |     ^^^^^^^ not a value
+
+error[E0423]: expected value, found tool attribute `rustfmt::skip`
+  --> $DIR/tool-attributes-misplaced-1.rs:17:5
+   |
+LL |     rustfmt::skip;
+   |     ^^^^^^^^^^^^^ not a value
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0423, E0573.
+For more information about an error, try `rustc --explain E0423`.

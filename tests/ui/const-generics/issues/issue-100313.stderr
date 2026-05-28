@@ -1,0 +1,15 @@
+error[E0080]: writing to ALLOC0 which is read-only
+  --> $DIR/issue-100313.rs:18:5
+   |
+LL |     x.set_false();
+   |     ^^^^^^^^^^^^^ evaluation of `_` failed inside this call
+   |
+note: inside `T::<&true>::set_false`
+  --> $DIR/issue-100313.rs:11:13
+   |
+LL |             *(B as *const bool as *mut bool) = false;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

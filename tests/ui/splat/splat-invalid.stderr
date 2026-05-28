@@ -1,0 +1,77 @@
+error: multiple `#[splat]`s are not allowed in the same function
+  --> $DIR/splat-invalid.rs:7:19
+   |
+LL | fn multisplat_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` from all but one argument
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:10:37
+   |
+LL | unsafe extern "C" fn splat_variadic(#[splat] (_a, _b): (u32, i8), varargs: ...) {}
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/splat-invalid.rs:13:38
+   |
+LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
+   |                                      ^^^^^^^^^^^^
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:13:38
+   |
+LL | unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
+   |                                      ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: incorrect function inside `extern` block
+  --> $DIR/splat-invalid.rs:18:8
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
+   |        ^^^^^^^^^^^^^^^ cannot have a body                 -- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:18:24
+   |
+LL |     fn splat_variadic3(#[splat] (_a, _b): (u32, i8), ...) {}
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: incorrect function inside `extern` block
+  --> $DIR/splat-invalid.rs:22:8
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+...
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |        ^^^^^^^^^^^^^^^ cannot have a body                 -- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/splat-invalid.rs:22:24
+   |
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |                        ^^^
+
+error: `...` and `#[splat]` are not allowed in the same function
+  --> $DIR/splat-invalid.rs:22:24
+   |
+LL |     fn splat_variadic4(..., #[splat] (_a, _b): (u32, i8)) {}
+   |                        ^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `#[splat]` or remove `...`
+
+error: aborting due to 9 previous errors
+

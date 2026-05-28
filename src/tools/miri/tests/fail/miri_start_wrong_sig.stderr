@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/fail/miri_start_wrong_sig.rs:LL:CC
+   |
+LL | fn miri_start() -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(isize, *const *const u8) -> _`
+              found signature `fn() -> _`
+
+error: `miri_start` must have the following signature:
+       fn miri_start(argc: isize, argv: *const *const u8) -> isize
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

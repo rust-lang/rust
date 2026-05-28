@@ -1,0 +1,39 @@
+error: expected `;`, found `#`
+  --> $DIR/issue-118531-ice.rs:3:47
+   |
+LL |     #[cfg(feature = )]
+   |     ------------------ only `;` terminated statements or tail expressions are allowed after this attribute
+LL |     [1, 2, 3].iter().map().collect::<String>()
+   |                                               ^ expected `;` here
+LL |
+LL |     #[attr]
+   |     - unexpected token
+   |
+help: add `;` here
+   |
+LL |     [1, 2, 3].iter().map().collect::<String>();
+   |                                               +
+help: alternatively, consider surrounding the expression with a block
+   |
+LL |     { [1, 2, 3].iter().map().collect::<String>() }
+   |     +                                            +
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/issue-118531-ice.rs:5:5
+   |
+LL |     #[attr]
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: cannot find attribute `attr` in this scope
+  --> $DIR/issue-118531-ice.rs:5:7
+   |
+LL |     #[attr]
+   |       ^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

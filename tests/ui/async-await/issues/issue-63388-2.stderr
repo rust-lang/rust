@@ -1,0 +1,17 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-63388-2.rs:12:10
+   |
+LL |         foo: &dyn Foo, bar: &'a dyn Foo
+   |              --------       -----------
+LL |     ) -> &dyn Foo
+   |          ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
+help: consider using the `'a` lifetime
+   |
+LL |     ) -> &'a dyn Foo
+   |           ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0106`.

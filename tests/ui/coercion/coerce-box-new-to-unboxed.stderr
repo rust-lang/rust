@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-box-new-to-unboxed.rs:2:21
+   |
+LL |     let _: String = Box::new(String::new());
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `Box<String>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `String`
+              found struct `Box<String>`
+help: consider removing the Box
+   |
+LL -     let _: String = Box::new(String::new());
+LL +     let _: String = String::new();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

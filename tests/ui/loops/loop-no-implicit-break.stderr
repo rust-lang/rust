@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/loop-no-implicit-break.rs:3:9
+   |
+LL |         1
+   |         ^ expected `()`, found integer
+   |
+help: you might have meant to break the loop with this value
+   |
+LL |         break 1;
+   |         +++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/loop-no-implicit-break.rs:13:9
+   |
+LL |         1
+   |         ^ expected `()`, found integer
+   |
+help: you might have meant to break the loop with this value
+   |
+LL |         break 1;
+   |         +++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/loop-no-implicit-break.rs:21:9
+   |
+LL |         1
+   |         ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |         return 1;
+   |         ++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/loop-no-implicit-break.rs:29:9
+   |
+LL |         1
+   |         ^ expected `()`, found integer
+   |
+help: you might have meant to return this value
+   |
+LL |         return 1;
+   |         ++++++  +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

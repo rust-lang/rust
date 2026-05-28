@@ -1,0 +1,16 @@
+// MIR for `f` after built
+
+fn f(_1: Void) -> ! {
+    debug v => _1;
+    let mut _0: !;
+
+    bb0: {
+        PlaceMention(_1);
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb1: {
+        return;
+    }
+}

@@ -1,0 +1,85 @@
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string_unfixable.rs:7:5
+   |
+LL |     println!("" /* comment */);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:7:14
+   |
+LL |     println!("" /* comment */);
+   |              ^^
+   = note: `-D clippy::println-empty-string` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string_unfixable.rs:9:5
+   |
+LL |     eprintln!("" /* comment */);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:9:15
+   |
+LL |     eprintln!("" /* comment */);
+   |               ^^
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string_unfixable.rs:12:5
+   |
+LL | /     println!( // comment
+LL | |                 "");
+   | |___________________^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:13:17
+   |
+LL |                 "");
+   |                 ^^
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string_unfixable.rs:15:5
+   |
+LL | /     eprintln!( // comment
+LL | |                 "");
+   | |___________________^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:16:17
+   |
+LL |                 "");
+   |                 ^^
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string_unfixable.rs:19:5
+   |
+LL |     println!("", /* comment */);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:19:14
+   |
+LL |     println!("", /* comment */);
+   |              ^^
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string_unfixable.rs:22:5
+   |
+LL | /     println!(
+LL | |         "\
+LL | |             \
+LL | |             ",
+...  |
+LL | |     );
+   | |_____^
+   |
+note: remove the empty string
+  --> tests/ui/println_empty_string_unfixable.rs:23:9
+   |
+LL | /         "\
+LL | |             \
+LL | |             ",
+   | |_____________^
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,30 @@
+error: missing lifetime in associated type
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:16:17
+   |
+LL | impl<'a> Trait for &'_ S {
+   |     ---- there is a named lifetime specified on the impl block you could use
+...
+LL |     type Item = &T;
+   |                 ^ this lifetime must come from the implemented type
+   |
+   = note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+help: consider using the lifetime from the impl block
+   |
+LL |     type Item = &'a T;
+   |                  ++
+
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:11:6
+   |
+LL | impl<'a> Trait for &'_ S {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: consider using the named lifetime here instead of an implicit lifetime
+   |
+LL - impl<'a> Trait for &'_ S {
+LL + impl<'a> Trait for &'a S {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

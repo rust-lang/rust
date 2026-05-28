@@ -1,0 +1,107 @@
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:11:31
+   |
+LL |     let ref_expr = &raw const 2;
+   |                               ^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:12:33
+   |
+LL |     let mut_ref_expr = &raw mut 3;
+   |                                 ^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:13:32
+   |
+LL |     let ref_const = &raw const FOUR;
+   |                                ^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:14:34
+   |
+LL |     let mut_ref_const = &raw mut FOUR;
+   |                                  ^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:16:37
+   |
+LL |     let field_ref_expr = &raw const (1, 2).0;
+   |                                     ^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:17:39
+   |
+LL |     let mut_field_ref_expr = &raw mut (1, 2).0;
+   |                                       ^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:18:32
+   |
+LL |     let field_ref = &raw const PAIR.0;
+   |                                ^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:19:34
+   |
+LL |     let mut_field_ref = &raw mut PAIR.0;
+   |                                  ^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:21:37
+   |
+LL |     let index_ref_expr = &raw const [1, 2][0];
+   |                                     ^^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:22:39
+   |
+LL |     let mut_index_ref_expr = &raw mut [1, 2][0];
+   |                                       ^^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:23:32
+   |
+LL |     let index_ref = &raw const ARRAY[0];
+   |                                ^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:24:34
+   |
+LL |     let mut_index_ref = &raw mut ARRAY[1];
+   |                                  ^^^^^^^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:26:34
+   |
+LL |     let ref_ascribe = &raw const type_ascribe!(2, i32);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:27:36
+   |
+LL |     let mut_ref_ascribe = &raw mut type_ascribe!(3, i32);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:29:40
+   |
+LL |     let ascribe_field_ref = &raw const type_ascribe!(PAIR.0, i32);
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ref-temp.rs:30:38
+   |
+LL |     let ascribe_index_ref = &raw mut type_ascribe!(ARRAY[0], i32);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value
+   |
+   = note: this error originates in the macro `type_ascribe` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0745`.

@@ -1,0 +1,13 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found keyword `let`
+  --> $DIR/missing-semicolon.rs:3:12
+   |
+LL |         $( let x = $e1 )*;
+   |            ^^^ expected one of `.`, `;`, `?`, `else`, or an operator
+...
+LL | fn main() { m!(0, 0; 0, 0); }
+   |             -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

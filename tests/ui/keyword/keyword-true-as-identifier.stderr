@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/keyword-true-as-identifier.rs:2:9
+   |
+LL |     let true = 22;
+   |         ^^^^   -- this expression has type `{integer}`
+   |         |
+   |         expected integer, found `bool`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

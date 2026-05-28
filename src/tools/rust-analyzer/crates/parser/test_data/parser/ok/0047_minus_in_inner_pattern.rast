@@ -1,0 +1,323 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/972"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                PREFIX_EXPR
+                  MINUS "-"
+                  LITERAL
+                    INT_NUMBER "1"
+                R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  LITERAL_PAT
+                    MINUS "-"
+                    LITERAL
+                      INT_NUMBER "1"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                TUPLE_EXPR
+                  L_PAREN "("
+                  PREFIX_EXPR
+                    MINUS "-"
+                    LITERAL
+                      INT_NUMBER "1"
+                  COMMA ","
+                  WHITESPACE " "
+                  PREFIX_EXPR
+                    MINUS "-"
+                    LITERAL
+                      INT_NUMBER "1"
+                  R_PAREN ")"
+                R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Some"
+                  L_PAREN "("
+                  TUPLE_PAT
+                    L_PAREN "("
+                    LITERAL_PAT
+                      MINUS "-"
+                      LITERAL
+                        INT_NUMBER "1"
+                    COMMA ","
+                    WHITESPACE " "
+                    LITERAL_PAT
+                      MINUS "-"
+                      LITERAL
+                        INT_NUMBER "1"
+                    R_PAREN ")"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "A"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "B"
+              ARG_LIST
+                L_PAREN "("
+                PREFIX_EXPR
+                  MINUS "-"
+                  LITERAL
+                    INT_NUMBER "1"
+                COMMA ","
+                WHITESPACE " "
+                PREFIX_EXPR
+                  MINUS "-"
+                  LITERAL
+                    INT_NUMBER "1"
+                R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                TUPLE_STRUCT_PAT
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "A"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "B"
+                  L_PAREN "("
+                  LITERAL_PAT
+                    MINUS "-"
+                    LITERAL
+                      INT_NUMBER "1"
+                  COMMA ","
+                  WHITESPACE " "
+                  LITERAL_PAT
+                    MINUS "-"
+                    LITERAL
+                      INT_NUMBER "1"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        IF_EXPR
+          IF_KW "if"
+          WHITESPACE " "
+          LET_EXPR
+            LET_KW "let"
+            WHITESPACE " "
+            TUPLE_STRUCT_PAT
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Some"
+              L_PAREN "("
+              LITERAL_PAT
+                MINUS "-"
+                LITERAL
+                  INT_NUMBER "1"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                PREFIX_EXPR
+                  MINUS "-"
+                  LITERAL
+                    INT_NUMBER "1"
+                R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      VARIANT
+        NAME
+          IDENT "B"
+        TUPLE_FIELD_LIST
+          L_PAREN "("
+          TUPLE_FIELD
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i8"
+          COMMA ","
+          WHITESPACE " "
+          TUPLE_FIELD
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i8"
+          R_PAREN ")"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        RANGE_PAT
+          LITERAL_PAT
+            MINUS "-"
+            LITERAL
+              INT_NUMBER "128"
+          DOT2EQ "..="
+          LITERAL_PAT
+            LITERAL
+              INT_NUMBER "127"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i8"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

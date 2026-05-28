@@ -1,0 +1,364 @@
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:21:14
+   |
+LL |         x if x == 0.0 => todo!(),
+   |              ^^^^^^^^
+   |
+   = note: `-D clippy::redundant-guards` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
+help: try
+   |
+LL -         x if x == 0.0 => todo!(),
+LL +         0.0 => todo!(),
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:28:14
+   |
+LL |         x if x == FloatWrapper(0.0) => todo!(),
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         x if x == FloatWrapper(0.0) => todo!(),
+LL +         FloatWrapper(0.0) => todo!(),
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:44:20
+   |
+LL |         C(x, y) if let 1 = y => ..,
+   |                    ^^^^^^^^^
+   |
+help: try
+   |
+LL -         C(x, y) if let 1 = y => ..,
+LL +         C(x, 1) => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:51:20
+   |
+LL |         Some(x) if matches!(x, Some(1) if true) => ..,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if matches!(x, Some(1) if true) => ..,
+LL +         Some(Some(1)) if true => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:53:20
+   |
+LL |         Some(x) if matches!(x, Some(1)) => {
+   |                    ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if matches!(x, Some(1)) => {
+LL +         Some(Some(1)) => {
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:58:20
+   |
+LL |         Some(x) if let Some(1) = x => ..,
+   |                    ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if let Some(1) = x => ..,
+LL +         Some(Some(1)) => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:60:20
+   |
+LL |         Some(x) if x == Some(2) => ..,
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if x == Some(2) => ..,
+LL +         Some(Some(2)) => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:62:20
+   |
+LL |         Some(x) if Some(2) == x => ..,
+   |                    ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(x) if Some(2) == x => ..,
+LL +         Some(Some(2)) => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:88:20
+   |
+LL |         B { e } if matches!(e, Some(A(2))) => ..,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         B { e } if matches!(e, Some(A(2))) => ..,
+LL +         B { e: Some(A(2)) } => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:126:20
+   |
+LL |         E::A(y) if y == "not from an or pattern" => {},
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         E::A(y) if y == "not from an or pattern" => {},
+LL +         E::A("not from an or pattern") => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:134:14
+   |
+LL |         x if matches!(x, Some(0)) => ..,
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         x if matches!(x, Some(0)) => ..,
+LL +         Some(0) => ..,
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:142:14
+   |
+LL |         i if i == -1 => {},
+   |              ^^^^^^^
+   |
+help: try
+   |
+LL -         i if i == -1 => {},
+LL +         -1 => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:144:14
+   |
+LL |         i if i == 1 => {},
+   |              ^^^^^^
+   |
+help: try
+   |
+LL -         i if i == 1 => {},
+LL +         1 => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:207:28
+   |
+LL |             Some(ref x) if x == &1 => {},
+   |                            ^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if x == &1 => {},
+LL +             Some(1) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:209:28
+   |
+LL |             Some(ref x) if &1 == x => {},
+   |                            ^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if &1 == x => {},
+LL +             Some(1) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:211:28
+   |
+LL |             Some(ref x) if let &2 = x => {},
+   |                            ^^^^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if let &2 = x => {},
+LL +             Some(2) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:213:28
+   |
+LL |             Some(ref x) if matches!(x, &3) => {},
+   |                            ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -             Some(ref x) if matches!(x, &3) => {},
+LL +             Some(3) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:234:32
+   |
+LL |             B { ref c, .. } if c == &1 => {},
+   |                                ^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if c == &1 => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:236:32
+   |
+LL |             B { ref c, .. } if &1 == c => {},
+   |                                ^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if &1 == c => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:238:32
+   |
+LL |             B { ref c, .. } if let &1 = c => {},
+   |                                ^^^^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if let &1 = c => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:240:32
+   |
+LL |             B { ref c, .. } if matches!(c, &1) => {},
+   |                                ^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -             B { ref c, .. } if matches!(c, &1) => {},
+LL +             B { c: 1, .. } => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:251:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some("")) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:263:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some([])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:269:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some([])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:281:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[]) => {},
+LL +         Some(Some([..])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:287:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[1]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[1]) => {},
+LL +         Some(Some([1, ..])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:293:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+LL +         Some(Some([1, 2, ..])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:299:26
+   |
+LL |         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
+LL +         Some(Some([.., 1, 2])) => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:322:18
+   |
+LL |             y if y.is_empty() => {},
+   |                  ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -             y if y.is_empty() => {},
+LL +             "" => {},
+   |
+
+error: redundant guard
+  --> tests/ui/redundant_guards.rs:341:22
+   |
+LL |                 y if y.is_empty() => {},
+   |                      ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -                 y if y.is_empty() => {},
+LL +                 "" => {},
+   |
+
+error: aborting due to 30 previous errors
+

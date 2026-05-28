@@ -1,0 +1,76 @@
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:23:5
+   |
+LL |     _foo + 1
+   |     ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:22:22
+   |
+LL | fn prefix_underscore(_foo: u32) -> u32 {
+   |                      ^^^^
+   = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:29:20
+   |
+LL |     println!("{}", _foo);
+   |                    ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:28:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:31:16
+   |
+LL |     assert_eq!(_foo, _foo);
+   |                ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:28:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:31:22
+   |
+LL |     assert_eq!(_foo, _foo);
+   |                      ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:28:24
+   |
+LL | fn in_macro_or_desugar(_foo: u32) {
+   |                        ^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:46:5
+   |
+LL |     s._underscore_field += 1;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:40:5
+   |
+LL |     _underscore_field: u32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:108:16
+   |
+LL |         uses_i(_i);
+   |                ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:107:13
+   |
+LL |         let _i = 5;
+   |             ^^
+
+error: aborting due to 6 previous errors
+

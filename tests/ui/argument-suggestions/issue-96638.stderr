@@ -1,0 +1,22 @@
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> $DIR/issue-96638.rs:8:5
+   |
+LL |     f(&x, "");
+   |     ^ --  -- expected `usize`, found `&str`
+   |       |
+   |       argument #1 of type `usize` is missing
+   |
+note: function defined here
+  --> $DIR/issue-96638.rs:1:4
+   |
+LL | fn f(_: usize, _: &usize, _: usize) {}
+   |    ^ --------             --------
+help: provide the argument
+   |
+LL -     f(&x, "");
+LL +     f(/* usize */, &x, /* usize */);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

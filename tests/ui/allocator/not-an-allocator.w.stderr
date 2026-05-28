@@ -1,0 +1,50 @@
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:5:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+help: the trait `GlobalAlloc` is implemented for `System`
+  --> $SRC_DIR/std/src/sys/alloc/windows.rs:LL:COL
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:5:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+help: the trait `GlobalAlloc` is implemented for `System`
+  --> $SRC_DIR/std/src/sys/alloc/windows.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:5:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+help: the trait `GlobalAlloc` is implemented for `System`
+  --> $SRC_DIR/std/src/sys/alloc/windows.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:5:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+help: the trait `GlobalAlloc` is implemented for `System`
+  --> $SRC_DIR/std/src/sys/alloc/windows.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

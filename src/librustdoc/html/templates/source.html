@@ -1,0 +1,18 @@
+{% match file_path %}
+{% when Some with ((path, name)) %}
+<div class="main-heading"> {# #}
+    <h1> {# #}
+        <div class="sub-heading">{{path}}/</div>
+        {{name}}
+    </h1> {# #}
+    <rustdoc-toolbar></rustdoc-toolbar> {# #}
+</div>
+{% else %}
+{% endmatch %}
+<div class="example-wrap digits-{{max_nb_digits}}"> {# #}
+    <pre class="rust"> {# #}
+        <code>
+            {{code_html|safe}}
+        </code> {# #}
+    </pre> {# #}
+</div> {# #}

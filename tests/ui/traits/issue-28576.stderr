@@ -1,0 +1,68 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/issue-28576.rs:1:15
+   |
+LL | pub trait Foo<RHS=Self> {
+   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: consider further restricting `Self`
+   |
+LL | pub trait Bar: Foo<Assoc=()> + Sized {
+   |                              +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-28576.rs:9:16
+   |
+LL |              dyn Bar
+   |  ________________^
+LL | |               <Assoc=()>
+   | |________________________^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |           ---  ^^^^^^^^^^^^^
+   |           |    |   |
+   |           |    |   ...because it uses `Self` as a type parameter
+   |           |    ...because it uses `Self` as a type parameter
+   |           this trait is not dyn compatible...
+help: consider using an opaque type instead
+   |
+LL -            dyn Bar
+LL +            impl Bar
+   |
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/issue-28576.rs:1:15
+   |
+LL | pub trait Foo<RHS=Self> {
+   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: consider further restricting `Self`
+   |
+LL |     ) where Self: Sized;
+   |       +++++++++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

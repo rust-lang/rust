@@ -1,0 +1,18 @@
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/issue-48636.rs:7:5
+   |
+LL | struct S {
+   |        - while parsing this struct
+LL |     x: u8
+LL |     /// The ID of the parent core
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+help: missing comma here
+   |
+LL |     x: u8,
+   |          +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0585`.

@@ -1,0 +1,69 @@
+error: interning a string literal
+  --> tests/ui-internal/interning_literals.rs:10:13
+   |
+LL |     let _ = Symbol::intern("f32");
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+   = note: `-D clippy::interning-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::interning_literals)]`
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("f32");
+LL +     let _ = sym::f32;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals.rs:14:13
+   |
+LL |     let _ = Symbol::intern("proc-macro");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("proc-macro");
+LL +     let _ = sym::proc_dash_macro;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals.rs:18:13
+   |
+LL |     let _ = Symbol::intern("self");
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("self");
+LL +     let _ = kw::SelfLower;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals.rs:22:13
+   |
+LL |     let _ = Symbol::intern("msrv");
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("msrv");
+LL +     let _ = sym::msrv;
+   |
+
+error: interning a string literal
+  --> tests/ui-internal/interning_literals.rs:24:13
+   |
+LL |     let _ = Symbol::intern("Cargo.toml");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add the symbol to `clippy_utils/src/sym.rs` if needed
+help: use a preinterned symbol instead
+   |
+LL -     let _ = Symbol::intern("Cargo.toml");
+LL +     let _ = sym::Cargo_toml;
+   |
+
+error: aborting due to 5 previous errors
+

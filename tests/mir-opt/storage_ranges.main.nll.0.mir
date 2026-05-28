@@ -1,0 +1,66 @@
+// MIR for `main` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?0, '?1]
+| '?1 | Local | ['?1]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=22], '?0, '?1}
+| '?1 | U0 | {bb0[0..=22], '?1}
+| '?2 | U0 | {bb0[10..=11]}
+| '?3 | U0 | {bb0[11]}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=22]}
+| '?1 live at {bb0[0..=22]}
+| '?2 live at {bb0[10]}
+| '?3 live at {bb0[11]}
+| '?2: '?3 due to Assignment at Single(bb0[10]) ($DIR/storage_ranges.rs:7:17: 7:25 (#0)
+|
+| Borrows
+| bw0: issued at bb0[10] in '?2
+|
+fn main() -> () {
+    let mut _0: ();
+    let _1: i32;
+    let _2: ();
+    let _4: std::option::Option<i32>;
+    let mut _5: i32;
+    scope 1 {
+        debug a => _1;
+        let _3: &std::option::Option<i32>;
+        let _6: i32;
+        scope 2 {
+            debug b => _3;
+        }
+        scope 3 {
+            debug c => _6;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 0_i32;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = copy _1;
+        _4 = Option::<i32>::Some(move _5);
+        StorageDead(_5);
+        _3 = &_4;
+        FakeRead(ForLet(None), _3);
+        _2 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_6);
+        _6 = const 1_i32;
+        FakeRead(ForLet(None), _6);
+        _0 = const ();
+        StorageDead(_6);
+        StorageDead(_1);
+        return;
+    }
+}

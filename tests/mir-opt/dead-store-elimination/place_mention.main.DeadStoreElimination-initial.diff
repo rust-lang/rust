@@ -1,0 +1,27 @@
+- // MIR for `main` before DeadStoreElimination-initial
++ // MIR for `main` after DeadStoreElimination-initial
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: (&str, &str);
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = (const "Hello", const "World");
+          PlaceMention(_1);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 5, align: 1) {
+      57 6f 72 6c 64                                  │ World
+  }
+  
+  ALLOC1 (size: 5, align: 1) {
+      48 65 6c 6c 6f                                  │ Hello
+  }
+  

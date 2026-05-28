@@ -1,0 +1,388 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/src/main.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 3,
+                    character: 4,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            severity: Some(
+                Warning,
+            ),
+            code: Some(
+                String(
+                    "let_and_return",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "let_and_return",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "returning the result of a let binding from a block\n`#[warn(clippy::let_and_return)]` on by default\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 2,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 2,
+                                    character: 30,
+                                },
+                            },
+                        },
+                        message: "unnecessary let binding",
+                    },
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 2,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 2,
+                                    character: 30,
+                                },
+                            },
+                        },
+                        message: "return the expression directly: `(0..10).collect()`",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/src/main.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 4,
+                },
+                end: Position {
+                    line: 2,
+                    character: 30,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "let_and_return",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "let_and_return",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "unnecessary let binding",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 3,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 3,
+                                    character: 5,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/src/main.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 4,
+                },
+                end: Position {
+                    line: 2,
+                    character: 30,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "let_and_return",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "let_and_return",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "return the expression directly: `(0..10).collect()`",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 3,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 3,
+                                    character: 5,
+                                },
+                            },
+                        },
+                        message: "original diagnostic",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: Some(
+            Fix {
+                ranges: [
+                    Range {
+                        start: Position {
+                            line: 2,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 2,
+                            character: 30,
+                        },
+                    },
+                    Range {
+                        start: Position {
+                            line: 3,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 3,
+                            character: 5,
+                        },
+                    },
+                ],
+                action: CodeAction {
+                    title: "return the expression directly: `(0..10).collect()`",
+                    group: None,
+                    kind: Some(
+                        CodeActionKind(
+                            "quickfix",
+                        ),
+                    ),
+                    command: None,
+                    edit: Some(
+                        SnippetWorkspaceEdit {
+                            changes: Some(
+                                {
+                                    Url {
+                                        scheme: "file",
+                                        cannot_be_a_base: false,
+                                        username: "",
+                                        password: None,
+                                        host: None,
+                                        port: None,
+                                        path: "/test/src/main.rs",
+                                        query: None,
+                                        fragment: None,
+                                    }: [
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 2,
+                                                    character: 4,
+                                                },
+                                                end: Position {
+                                                    line: 2,
+                                                    character: 30,
+                                                },
+                                            },
+                                            new_text: "",
+                                        },
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 3,
+                                                    character: 4,
+                                                },
+                                                end: Position {
+                                                    line: 3,
+                                                    character: 5,
+                                                },
+                                            },
+                                            new_text: "(0..10).collect()",
+                                        },
+                                    ],
+                                },
+                            ),
+                            document_changes: None,
+                            change_annotations: None,
+                        },
+                    ),
+                    is_preferred: Some(
+                        true,
+                    ),
+                    data: None,
+                },
+            },
+        ),
+    },
+]

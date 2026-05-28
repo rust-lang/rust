@@ -1,0 +1,10 @@
+error: `#[track_caller]` attribute cannot be used on structs
+  --> $DIR/only-for-fns.rs:1:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[track_caller]` can only be applied to functions
+
+error: aborting due to 1 previous error
+

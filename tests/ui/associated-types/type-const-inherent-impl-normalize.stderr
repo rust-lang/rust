@@ -1,0 +1,52 @@
+error[E0658]: `type const` syntax is experimental
+  --> $DIR/type-const-inherent-impl-normalize.rs:3:5
+   |
+LL |     type const LEN: usize = 1;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated `type const` are unstable
+  --> $DIR/type-const-inherent-impl-normalize.rs:3:5
+   |
+LL |     type const LEN: usize = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/type-const-inherent-impl-normalize.rs:7:13
+   |
+LL |         [8; Self::LEN]
+   |             ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/type-const-inherent-impl-normalize.rs:7:13
+   |
+LL |         [8; Self::LEN]
+   |             ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/type-const-inherent-impl-normalize.rs:7:9
+   |
+LL |     fn arr() {
+   |             - help: try adding a return type: `-> [i32; 1]`
+LL |         [8; Self::LEN]
+   |         ^^^^^^^^^^^^^^ expected `()`, found `[{integer}; 1]`
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,37 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE " "
+  ERROR
+    UNSAFE_KW "unsafe"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE " "
+    R_CURLY "}"
+  WHITESPACE " "
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "bar"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 11: expected an item
+error 18: expected an item

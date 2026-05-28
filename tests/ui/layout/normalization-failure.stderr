@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/normalization-failure.rs:50:9
+   |
+LL |         std::mem::transmute::<_, ()>(opaque::<T>().get());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `{type error}` (the type has an unknown layout)
+   = note: target type: `()` (0 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

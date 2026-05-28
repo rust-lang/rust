@@ -1,0 +1,11 @@
+error[E0567]: auto traits cannot have generic parameters
+  --> $DIR/bad-generics-on-dyn.rs:3:18
+   |
+LL | auto trait Trait1<'a> {}
+   |            ------^^^^
+   |            |
+   |            auto trait cannot have generic parameters
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0567`.

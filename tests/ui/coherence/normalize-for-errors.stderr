@@ -1,0 +1,15 @@
+error[E0119]: conflicting implementations of trait `MyTrait<_>` for type `(Box<(MyType,)>, <_ as Iterator>::Item)`
+  --> $DIR/normalize-for-errors.rs:13:1
+   |
+LL | impl<T: Copy, S: Iterator> MyTrait<S> for (T, S::Item) {}
+   | ------------------------------------------------------ first implementation here
+LL |
+LL | impl<S: Iterator> MyTrait<S> for (Box<<(MyType,) as Mirror>::Assoc>, S::Item) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(Box<(MyType,)>, <_ as Iterator>::Item)`
+   |
+   = note: upstream crates may add a new impl of trait `std::clone::Clone` for type `std::boxed::Box<(MyType,)>` in future versions
+   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::boxed::Box<(MyType,)>` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

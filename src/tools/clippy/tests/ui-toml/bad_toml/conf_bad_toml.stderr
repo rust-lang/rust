@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: expected `.`, `=`
+  --> $DIR/tests/ui-toml/bad_toml/clippy.toml:1:4
+   |
+LL | fn this_is_obviously(not: a, toml: file) {
+   |    ^
+
+error: aborting due to 1 previous error
+

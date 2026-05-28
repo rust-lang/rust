@@ -1,0 +1,48 @@
+error[E0599]: the method `foo` exists for reference `&Foo<T>`, but its trait bounds were not satisfied
+  --> $DIR/missing-trait-bounds-for-method-call.rs:14:14
+   |
+LL | struct Foo<T> {
+   | ------------- doesn't satisfy `Foo<T>: Bar`
+...
+LL |         self.foo();
+   |              ^^^ method cannot be called on `&Foo<T>` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `T: Bar`
+      `T: Default`
+  --> $DIR/missing-trait-bounds-for-method-call.rs:10:9
+   |
+LL | impl<T: Default + Bar> Bar for Foo<T> {}
+   |         ^^^^^^^   ^^^  ---     ------
+   |         |         |
+   |         |         unsatisfied trait bound introduced here
+   |         unsatisfied trait bound introduced here
+help: consider restricting the type parameters to satisfy the trait bounds
+   |
+LL | struct Foo<T> where T: Bar, T: Default {
+   |               ++++++++++++++++++++++++
+
+error[E0599]: the method `foo` exists for reference `&Fin<T>`, but its trait bounds were not satisfied
+  --> $DIR/missing-trait-bounds-for-method-call.rs:27:14
+   |
+LL | struct Fin<T> where T: Bar {
+   | ------------- doesn't satisfy `Fin<T>: Bar`
+...
+LL |         self.foo();
+   |              ^^^ method cannot be called on `&Fin<T>` due to unsatisfied trait bounds
+   |
+note: trait bound `T: Default` was not satisfied
+  --> $DIR/missing-trait-bounds-for-method-call.rs:23:9
+   |
+LL | impl<T: Default + Bar> Bar for Fin<T> {}
+   |         ^^^^^^^        ---     ------
+   |         |
+   |         unsatisfied trait bound introduced here
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | struct Fin<T> where T: Bar, T: Default {
+   |                           ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,17 @@
+error: no rules expected keyword `let`
+  --> $DIR/macro-guard-matcher.rs:16:8
+   |
+LL |     macro_rules! m {
+   |     -------------- when calling this macro
+...
+LL |     m!(let Some(x) = Some(1));
+   |        ^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$g:guard`
+  --> $DIR/macro-guard-matcher.rs:5:10
+   |
+LL |         ($g:guard) => {};
+   |          ^^^^^^^^
+
+error: aborting due to 1 previous error
+

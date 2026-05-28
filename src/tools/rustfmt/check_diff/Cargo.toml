@@ -1,0 +1,17 @@
+[package]
+name = "check_diff"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.4.2", features = ["derive"] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tempfile = "3"
+walkdir = "2.5.0"
+diffy = "0.4.0"
+crossbeam-channel = "0.5.15"
+ignore = "0.4.25"
+toml = "0.9.11"

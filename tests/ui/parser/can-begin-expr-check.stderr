@@ -1,0 +1,8 @@
+error: expected one of `;`, `}`, or an operator, found keyword `enum`
+  --> $DIR/can-begin-expr-check.rs:19:12
+   |
+LL |     return enum;
+   |            ^^^^ expected one of `;`, `}`, or an operator
+
+error: aborting due to 1 previous error
+

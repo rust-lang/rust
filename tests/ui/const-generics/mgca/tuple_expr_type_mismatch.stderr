@@ -1,0 +1,26 @@
+error: type annotations needed for the literal
+  --> $DIR/tuple_expr_type_mismatch.rs:13:14
+   |
+LL |     foo::<{ (1, true) }>();
+   |              ^
+
+error: expected `i32`, found const array
+  --> $DIR/tuple_expr_type_mismatch.rs:15:21
+   |
+LL |     bar::<{ (1_u32, [1, 2]) }>();
+   |                     ^^^^^^
+
+error: the constant `1` is not of type `char`
+  --> $DIR/tuple_expr_type_mismatch.rs:17:13
+   |
+LL |     qux::<{ (1i32, 'a') }>();
+   |             ^^^^^^^^^^^ expected `char`, found `i32`
+
+error: the constant `'a'` is not of type `i32`
+  --> $DIR/tuple_expr_type_mismatch.rs:17:13
+   |
+LL |     qux::<{ (1i32, 'a') }>();
+   |             ^^^^^^^^^^^ expected `i32`, found `char`
+
+error: aborting due to 4 previous errors
+

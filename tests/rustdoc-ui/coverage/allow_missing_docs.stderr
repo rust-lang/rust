@@ -1,0 +1,20 @@
+warning: missing documentation for a struct
+  --> $DIR/allow_missing_docs.rs:36:5
+   |
+LL |     pub struct Bar {
+   |     ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/allow_missing_docs.rs:35:12
+   |
+LL |     #[warn(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> $DIR/allow_missing_docs.rs:37:9
+   |
+LL |         pub f: u32,
+   |         ^^^^^^^^^^
+
+warning: 2 warnings emitted
+

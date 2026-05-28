@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `(): Wf` is not satisfied
+  --> $DIR/non-wf-in-coerce-pointers.rs:8:8
+   |
+LL |     f: &'static <() as Wf>::Assoc,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Wf` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-wf-in-coerce-pointers.rs:3:1
+   |
+LL | trait Wf {
+   | ^^^^^^^^
+
+error[E0277]: the trait bound `(): Wf` is not satisfied
+  --> $DIR/non-wf-in-coerce-pointers.rs:14:18
+   |
+LL |     let y: &() = x.f;
+   |                  ^^^ the trait `Wf` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-wf-in-coerce-pointers.rs:3:1
+   |
+LL | trait Wf {
+   | ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

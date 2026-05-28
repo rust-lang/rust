@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:8:30
+   |
+LL |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
+   |            --  - let's call the lifetime of this reference `'1`
+   |            |
+   |            lifetime `'a` defined here
+LL |
+LL |         if true { x } else { self }
+   |                              ^^^^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+   |
+help: consider reusing a named lifetime parameter and update trait if needed
+   |
+LL |     fn foo<'a>(&'a self, x: &'a Foo) -> &'a Foo {
+   |                 ++
+
+error: aborting due to 1 previous error
+

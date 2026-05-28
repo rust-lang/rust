@@ -1,0 +1,47 @@
+// MIR for `use_x` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?2, '?1, '?0, '?4, '?3]
+| '?1 | Local | ['?1, '?4]
+| '?2 | Local | ['?2, '?1, '?4]
+| '?3 | Local | ['?4, '?3]
+| '?4 | Local | ['?4]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=1], '?0, '?1, '?2, '?3, '?4}
+| '?1 | U0 | {bb0[0..=1], '?1}
+| '?2 | U0 | {bb0[0..=1], '?2}
+| '?3 | U0 | {bb0[0..=1], '?3}
+| '?4 | U0 | {bb0[0..=1], '?4}
+| '?5 | U0 | {bb0[0..=1], '?1}
+| '?6 | U0 | {bb0[0..=1], '?2}
+| '?7 | U0 | {bb0[0..=1], '?1}
+| '?8 | U0 | {bb0[0..=1], '?3}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=1]}
+| '?1 live at {bb0[0..=1]}
+| '?2 live at {bb0[0..=1]}
+| '?3 live at {bb0[0..=1]}
+| '?4 live at {bb0[0..=1]}
+| '?1: '?5 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:26: 13:27) ($DIR/named_lifetimes_basic.rs:13:26: 13:27 (#0)
+| '?1: '?7 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:54: 13:55) ($DIR/named_lifetimes_basic.rs:13:54: 13:55 (#0)
+| '?2: '?6 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:42: 13:43) ($DIR/named_lifetimes_basic.rs:13:42: 13:43 (#0)
+| '?3: '?8 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:66: 13:67) ($DIR/named_lifetimes_basic.rs:13:66: 13:67 (#0)
+| '?5: '?1 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:26: 13:27) ($DIR/named_lifetimes_basic.rs:13:26: 13:27 (#0)
+| '?6: '?2 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:42: 13:43) ($DIR/named_lifetimes_basic.rs:13:42: 13:43 (#0)
+| '?7: '?1 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:54: 13:55) ($DIR/named_lifetimes_basic.rs:13:54: 13:55 (#0)
+| '?8: '?3 due to BoringNoLocation at All($DIR/named_lifetimes_basic.rs:13:66: 13:67) ($DIR/named_lifetimes_basic.rs:13:66: 13:67 (#0)
+|
+fn use_x(_1: &'?5 mut i32, _2: &'?6 u32, _3: &'?7 u32, _4: &'?8 u32) -> bool {
+    debug w => _1;
+    debug x => _2;
+    debug y => _3;
+    debug z => _4;
+    let mut _0: bool;
+
+    bb0: {
+        _0 = const ConstValue(Scalar(0x01): bool);
+        return;
+    }
+}

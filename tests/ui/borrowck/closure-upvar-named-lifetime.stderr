@@ -1,0 +1,116 @@
+error[E0597]: `map` does not live long enough
+  --> $DIR/closure-upvar-named-lifetime.rs:19:21
+   |
+LL | fn apply<'a>(
+   |          -- lifetime `'a` defined here
+...
+LL |     move |map| {
+   |           --- binding `map` declared here
+LL |
+LL |         let value = map.borrow_mut().entry("foo".to_string());
+   |                     ^^^ borrowed value does not live long enough
+...
+LL |         f(wrapped_value);
+   |         ---------------- argument requires that `map` is borrowed for `'a`
+LL |     }
+   |     - `map` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/closure-upvar-named-lifetime.rs:19:21
+   |
+LL | fn apply<'a>(
+   |          -- lifetime `'a` defined here
+...
+LL |         let value = map.borrow_mut().entry("foo".to_string());
+   |                     ^^^^^^^^^^^^^^^^                         - temporary value is freed at the end of this statement
+   |                     |
+   |                     creates a temporary value which is freed while still in use
+...
+LL |         f(wrapped_value);
+   |         ---------------- argument requires that borrow lasts for `'a`
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error[E0700]: hidden type for `impl Fn(RefCell<HashMap<String, String>>)` captures lifetime that does not appear in bounds
+  --> $DIR/closure-upvar-named-lifetime.rs:17:5
+   |
+LL |   fn apply<'a>(
+   |            -- hidden type `{closure@$DIR/closure-upvar-named-lifetime.rs:17:5: 17:15}` captures the lifetime `'a` as defined here
+LL |       f: Arc<dyn Fn(Entry<'a, String, String>) + 'a>,
+LL |   ) -> impl Fn(RefCell<HashMap<String, String>>)
+   |        ----------------------------------------- opaque type defined here
+LL |   {
+LL | /     move |map| {
+LL | |
+LL | |         let value = map.borrow_mut().entry("foo".to_string());
+...  |
+LL | |         f(wrapped_value);
+LL | |     }
+   | |_____^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | ) -> impl Fn(RefCell<HashMap<String, String>>) + use<'a>
+   |                                                +++++++++
+
+error[E0597]: `map` does not live long enough
+  --> $DIR/closure-upvar-named-lifetime.rs:34:21
+   |
+LL | fn apply_box<'a>(
+   |              -- lifetime `'a` defined here
+...
+LL |     move |map| {
+   |           --- binding `map` declared here
+LL |
+LL |         let value = map.borrow_mut().entry("foo".to_string());
+   |                     ^^^ borrowed value does not live long enough
+...
+LL |         f(value);
+   |         -------- argument requires that `map` is borrowed for `'a`
+LL |     }
+   |     - `map` dropped here while still borrowed
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/closure-upvar-named-lifetime.rs:34:21
+   |
+LL | fn apply_box<'a>(
+   |              -- lifetime `'a` defined here
+...
+LL |         let value = map.borrow_mut().entry("foo".to_string());
+   |                     ^^^^^^^^^^^^^^^^                         - temporary value is freed at the end of this statement
+   |                     |
+   |                     creates a temporary value which is freed while still in use
+...
+LL |         f(value);
+   |         -------- argument requires that borrow lasts for `'a`
+
+error[E0700]: hidden type for `impl Fn(RefCell<HashMap<String, String>>)` captures lifetime that does not appear in bounds
+  --> $DIR/closure-upvar-named-lifetime.rs:32:5
+   |
+LL |   fn apply_box<'a>(
+   |                -- hidden type `{closure@$DIR/closure-upvar-named-lifetime.rs:32:5: 32:15}` captures the lifetime `'a` as defined here
+LL |       f: Box<dyn Fn(Entry<'a, String, String>) + 'a>,
+LL |   ) -> impl Fn(RefCell<HashMap<String, String>>)
+   |        ----------------------------------------- opaque type defined here
+LL |   {
+LL | /     move |map| {
+LL | |
+LL | |         let value = map.borrow_mut().entry("foo".to_string());
+...  |
+LL | |         f(value);
+LL | |     }
+   | |_____^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | ) -> impl Fn(RefCell<HashMap<String, String>>) + use<'a>
+   |                                                +++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0597, E0700, E0716.
+For more information about an error, try `rustc --explain E0597`.

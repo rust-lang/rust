@@ -1,0 +1,10 @@
+warning: lint `ptr_cast_add_auto_to_object` has been removed: converted into hard error, see issue #127323 <https://github.com/rust-lang/rust/issues/127323> for more information
+  --> $DIR/ptr_cast_add_auto_to_object.rs:3:9
+   |
+LL | #![deny(ptr_cast_add_auto_to_object)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+warning: 1 warning emitted
+

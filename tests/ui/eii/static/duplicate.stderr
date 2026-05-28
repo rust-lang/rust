@@ -1,0 +1,13 @@
+error: multiple implementations of `#[hello]`
+  --> $DIR/duplicate.rs:11:1
+   |
+LL | static HELLO_IMPL1: u64 = 5;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ first implemented here in crate `duplicate`
+...
+LL | static HELLO_IMPL2: u64 = 6;
+   | ----------------------- also implemented here in crate `duplicate`
+   |
+   = help: an "externally implementable item" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict
+
+error: aborting due to 1 previous error
+

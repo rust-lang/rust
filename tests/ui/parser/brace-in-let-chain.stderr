@@ -1,0 +1,31 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/brace-in-let-chain.rs:58:54
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+...
+LL | fn quux() {
+   |           - unclosed delimiter
+...
+LL | fn foobar() {
+   |             - unclosed delimiter
+...
+LL | fn fubar() {
+   |            - unclosed delimiter
+...
+LL | fn qux() {
+   |          - unclosed delimiter
+...
+LL | fn foo() {
+   |          - another 3 unclosed delimiters begin from here
+...
+LL |         {
+   |         - this delimiter might not be properly closed...
+LL |             && let () = ()
+LL |     }
+   |     - ...as it matches this but it has different indentation
+LL | }
+   |                                                     ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,39 @@
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
+  --> $DIR/method-path-in-pattern.rs:15:9
+   |
+LL |         Foo::bar => {}
+   |         ^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
+  --> $DIR/method-path-in-pattern.rs:19:9
+   |
+LL |         <Foo>::bar => {}
+   |         ^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::trait_bar`
+  --> $DIR/method-path-in-pattern.rs:23:9
+   |
+LL |         <Foo>::trait_bar => {}
+   |         ^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
+  --> $DIR/method-path-in-pattern.rs:26:12
+   |
+LL |     if let Foo::bar = 0u32 {}
+   |            ^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::bar`
+  --> $DIR/method-path-in-pattern.rs:28:12
+   |
+LL |     if let <Foo>::bar = 0u32 {}
+   |            ^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error[E0533]: expected unit struct, unit variant or constant, found associated function `Foo::trait_bar`
+  --> $DIR/method-path-in-pattern.rs:30:12
+   |
+LL |     if let Foo::trait_bar = 0u32 {}
+   |            ^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0533`.

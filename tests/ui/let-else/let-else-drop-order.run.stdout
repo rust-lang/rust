@@ -1,0 +1,51 @@
+ --- matching cases ---
+
+| construct    | let _     | let else _ |
+| ------------ | --------- | ---------- |
+| vanilla      | drop,body | drop,body  |
+| &            | body,drop | body,drop  |
+| &mut         | body,drop | body,drop  |
+| move         | drop,body | drop,body  |
+| fn(this)     | drop,body | drop,body  |
+| tuple        | n/a,n/a   | drop,body  |
+| array        | n/a,n/a   | drop,body  |
+| ref &        | body,drop | body,drop  |
+| ref mut &mut | body,drop | body,drop  |
+
+| construct    | let _v    | let else _v |
+| ------------ | --------- | ----------- |
+| vanilla      | drop,body | drop,body   |
+| &            | body,drop | body,drop   |
+| &mut         | body,drop | body,drop   |
+| move         | drop,body | drop,body   |
+| fn(this)     | drop,body | drop,body   |
+| tuple        | n/a,n/a   | drop,body   |
+| array        | n/a,n/a   | drop,body   |
+| ref &        | body,drop | body,drop   |
+| ref mut &mut | body,drop | body,drop   |
+
+ --- mismatching cases ---
+
+| construct    | let else _ mismatch | let else _v mismatch |
+| ------------ | ------------------- | -------------------- |
+| vanilla      | drop,else           | drop,else            |
+| &            | drop,else           | drop,else            |
+| &mut         | drop,else           | drop,else            |
+| move         | drop,else           | drop,else            |
+| fn(this)     | drop,else           | drop,else            |
+| tuple        | drop,else           | drop,else            |
+| array        | drop,else           | drop,else            |
+| ref &        | drop,else           | drop,else            |
+| ref mut &mut | drop,else           | drop,else            |
+
+| construct    | let else 0 mismatch | let else 0 mismatch |
+| ------------ | ------------------- | ------------------- |
+| vanilla      | drop,else           | drop,else           |
+| &            | drop,else           | drop,else           |
+| &mut         | drop,else           | drop,else           |
+| move         | drop,else           | drop,else           |
+| fn(this)     | drop,else           | drop,else           |
+| tuple        | drop,else           | drop,else           |
+| array        | drop,else           | drop,else           |
+| ref &        | drop,else           | drop,else           |
+| ref mut &mut | drop,else           | drop,else           |

@@ -1,0 +1,14 @@
+error: lifetimes cannot use keyword names
+  --> $DIR/cfg-keyword-lifetime.rs:4:16
+   |
+LL | fn hello() -> &'ref () {}
+   |                ^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/cfg-keyword-lifetime.rs:11:20
+   |
+LL |     fn hello() -> &'ref () {}
+   |                    ^^^^
+
+error: aborting due to 2 previous errors
+

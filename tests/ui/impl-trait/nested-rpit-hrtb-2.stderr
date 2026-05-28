@@ -1,0 +1,12 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/nested-rpit-hrtb-2.rs:6:57
+   |
+LL | fn test() -> impl for<'a> Trait<'a, Assoc = impl Sized> {}
+   |                       --                    ----------  ^^
+   |                       |                     |
+   |                       |                     opaque type defined here
+   |                       hidden type `&'a str` captures the lifetime `'a` as defined here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

@@ -1,0 +1,49 @@
+error[E0308]: mismatched types
+  --> $DIR/str-lit-type-mismatch.rs:2:20
+   |
+LL |     let x: &[u8] = "foo";
+   |            -----   ^^^^^ expected `&[u8]`, found `&str`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&[u8]`
+              found reference `&'static str`
+help: consider adding a leading `b`
+   |
+LL |     let x: &[u8] = b"foo";
+   |                    +
+
+error[E0308]: mismatched types
+  --> $DIR/str-lit-type-mismatch.rs:3:23
+   |
+LL |     let y: &[u8; 4] = "baaa";
+   |            --------   ^^^^^^ expected `&[u8; 4]`, found `&str`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&[u8; 4]`
+              found reference `&'static str`
+help: consider adding a leading `b`
+   |
+LL |     let y: &[u8; 4] = b"baaa";
+   |                       +
+
+error[E0308]: mismatched types
+  --> $DIR/str-lit-type-mismatch.rs:4:19
+   |
+LL |     let z: &str = b"foo";
+   |            ----   ^^^^^^ expected `&str`, found `&[u8; 3]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&str`
+              found reference `&'static [u8; 3]`
+help: consider removing the leading `b`
+   |
+LL -     let z: &str = b"foo";
+LL +     let z: &str = "foo";
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

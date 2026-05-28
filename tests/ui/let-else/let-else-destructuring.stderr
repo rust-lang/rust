@@ -1,0 +1,17 @@
+error: <assignment> ... else { ... } is not allowed
+  --> $DIR/let-else-destructuring.rs:10:9
+   |
+LL |         &Foo::Nested(Some(value)) = value else { break };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/let-else-destructuring.rs:10:35
+   |
+LL |         &Foo::Nested(Some(value)) = value else { break };
+   |         ------------------------- ^
+   |         |
+   |         cannot assign to this expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0070`.

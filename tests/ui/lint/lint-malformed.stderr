@@ -1,0 +1,68 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: malformed `deny` attribute input
+  --> $DIR/lint-malformed.rs:1:1
+   |
+LL | #![deny = "foo"]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: the following are the possible correct uses
+   |
+LL - #![deny = "foo"]
+LL + #![deny(lint1)]
+   |
+LL - #![deny = "foo"]
+LL + #![deny(lint1, lint2, ...)]
+   |
+LL - #![deny = "foo"]
+LL + #![deny(lint1, lint2, lint3, reason = "...")]
+   |
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0452`.

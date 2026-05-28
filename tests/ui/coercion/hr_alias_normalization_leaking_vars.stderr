@@ -1,0 +1,46 @@
+error[E0277]: the trait bound `(): LendingIterator` is not satisfied
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:34:31
+   |
+LL |     LendingIterator::for_each(&(), f);
+   |     ------------------------- ^^^ the trait `LendingIterator` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:26:1
+   |
+LL | trait LendingIterator {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:34:36
+   |
+LL |     LendingIterator::for_each(&(), f);
+   |     -------------------------      ^ expected `Box<fn(...)>`, found fn item
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Box<for<'a> fn(<() as LendingIterator>::Item<'a>)>`
+             found fn item `fn(()) {f}`
+note: method defined here
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:28:8
+   |
+LL |     fn for_each(&self, _f: Box<fn(Self::Item<'_>)>) {}
+   |        ^^^^^^^^        ---------------------------
+
+error[E0277]: the trait bound `(): LendingIterator` is not satisfied
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:34:36
+   |
+LL |     LendingIterator::for_each(&(), f);
+   |                                    ^ the trait `LendingIterator` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/hr_alias_normalization_leaking_vars.rs:26:1
+   |
+LL | trait LendingIterator {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

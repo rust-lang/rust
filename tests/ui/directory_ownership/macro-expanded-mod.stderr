@@ -1,0 +1,14 @@
+error: cannot declare a file module inside a block unless it has a path attribute
+  --> $DIR/macro-expanded-mod.rs:5:9
+   |
+LL |         mod $i;
+   |         ^^^^^^^
+...
+LL |     mod_decl!(foo);
+   |     -------------- in this macro invocation
+   |
+   = note: file modules are usually placed outside of blocks, at the top level of the file
+   = note: this error originates in the macro `mod_decl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

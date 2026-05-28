@@ -1,0 +1,8 @@
+{
+    "data-layout": "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32",
+    "linker-flavor": "gcc",
+    "target-endian": "little",
+    "target-pointer-width": 32,
+    "arch": "x86",
+    "os": "foo"
+}

@@ -1,0 +1,62 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:10:36
+   |
+LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
+   |                                    ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |     fn method(self: &unsafe<'a, 'ops> &'a Bar) {}
+   |                             +++
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn method<'a>(self: &unsafe<'ops> &'a Bar) {}
+   |              ++++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Foo<'a>: Deref<Target = unsafe<'a> &'a dyn Bar> {
+   |          ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:10:39
+   |
+LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
+   |                                       ^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     fn method(self: &unsafe<'ops> &'a dyn Bar) {}
+   |                                       +++
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:17:13
+   |
+LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
+   |                     --------------------- help: consider changing method `method`'s `self` parameter to be `&self`: `&Self`
+...
+LL | fn test(x: &dyn Foo) {
+   |             ^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:10:21
+   |
+LL | trait Foo: Deref<Target = unsafe<'a> &'a dyn Bar> {
+   |       --- this trait is not dyn compatible...
+LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^ ...because method `method`'s `self` parameter cannot be dispatched on
+
+error[E0599]: no method named `method` found for reference `&dyn Foo` in the current scope
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:19:7
+   |
+LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
+   |                     --------------------- the method might not be found because of this arbitrary self type
+...
+LL |     x.method();
+   |       ^^^^^^ method not found in `&dyn Foo`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0261, E0599, E0782.
+For more information about an error, try `rustc --explain E0038`.

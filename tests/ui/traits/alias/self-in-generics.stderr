@@ -1,0 +1,25 @@
+error[E0038]: the trait alias `SelfInput` is not dyn compatible
+  --> $DIR/self-in-generics.rs:8:19
+   |
+LL | pub fn f(_f: &dyn SelfInput) {}
+   |                   ^^^^^^^^^ `SelfInput` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/self-in-generics.rs:6:23
+   |
+LL | pub trait SelfInput = Fn(&mut Self);
+   |           ---------   ^^^^^^^^^^^^^
+   |           |           |
+   |           |           ...because it uses `Self` as a type parameter
+   |           |           ...because it uses `Self` as a type parameter
+   |           this trait is not dyn compatible...
+help: consider using an opaque type instead
+   |
+LL - pub fn f(_f: &dyn SelfInput) {}
+LL + pub fn f(_f: &impl SelfInput) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

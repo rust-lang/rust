@@ -1,0 +1,40 @@
+error: cloning an `Option<_>` using `.as_ref().cloned()`
+  --> tests/ui/option_as_ref_cloned.rs:7:31
+   |
+LL |     let _: Option<String> = x.as_ref().cloned();
+   |                               ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-as-ref-cloned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_as_ref_cloned)]`
+help: this can be written more concisely by cloning the `Option<_>` directly
+   |
+LL -     let _: Option<String> = x.as_ref().cloned();
+LL +     let _: Option<String> = x.clone();
+   |
+
+error: cloning an `Option<_>` using `.as_mut().cloned()`
+  --> tests/ui/option_as_ref_cloned.rs:9:31
+   |
+LL |     let _: Option<String> = x.as_mut().cloned();
+   |                               ^^^^^^^^^^^^^^^
+   |
+help: this can be written more concisely by cloning the `Option<_>` directly
+   |
+LL -     let _: Option<String> = x.as_mut().cloned();
+LL +     let _: Option<String> = x.clone();
+   |
+
+error: cloning an `Option<_>` using `.as_ref().cloned()`
+  --> tests/ui/option_as_ref_cloned.rs:13:32
+   |
+LL |     let _: Option<&String> = y.as_ref().cloned();
+   |                                ^^^^^^^^^^^^^^^
+   |
+help: this can be written more concisely by cloning the `Option<_>` directly
+   |
+LL -     let _: Option<&String> = y.as_ref().cloned();
+LL +     let _: Option<&String> = y.clone();
+   |
+
+error: aborting due to 3 previous errors
+

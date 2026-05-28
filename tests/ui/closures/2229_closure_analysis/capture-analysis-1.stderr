@@ -1,0 +1,67 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-analysis-1.rs:15:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/capture-analysis-1.rs:19:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", p);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:22:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+note: Capturing p[(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-1.rs:25:26
+   |
+LL |         println!("{:?}", p.x);
+   |                          ^^^
+note: Capturing q[(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-1.rs:28:26
+   |
+LL |         println!("{:?}", q.x);
+   |                          ^^^
+note: Capturing q[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:30:26
+   |
+LL |         println!("{:?}", q);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-analysis-1.rs:19:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", p);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:22:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+note: Min Capture q[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:30:26
+   |
+LL |         println!("{:?}", q);
+   |                          ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

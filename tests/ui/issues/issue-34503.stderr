@@ -1,0 +1,14 @@
+warning: methods `foo` and `bar` are never used
+  --> $DIR/issue-34503.rs:5:12
+   |
+LL |     trait Foo<T> {
+   |           --- methods in this trait
+LL |         fn foo(&self) where (T, Option<T>): Ord {}
+   |            ^^^
+LL |         fn bar(&self, x: &Option<T>) -> bool
+   |            ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

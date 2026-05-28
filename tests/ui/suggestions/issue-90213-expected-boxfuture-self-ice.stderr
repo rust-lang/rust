@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-90213-expected-boxfuture-self-ice.rs:9:19
+   |
+LL |         Self::foo(None)
+   |         --------- ^^^^ expected `Box<Option<S>>`, found `Option<_>`
+   |         |
+   |         arguments to this function are incorrect
+   |
+   = note: expected struct `Box<Option<S>>`
+                found enum `Option<_>`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+note: associated function defined here
+  --> $DIR/issue-90213-expected-boxfuture-self-ice.rs:7:8
+   |
+LL |     fn foo(_: Box<Option<S>>) {}
+   |        ^^^ -----------------
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Self::foo(Box::new(None))
+   |                   +++++++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

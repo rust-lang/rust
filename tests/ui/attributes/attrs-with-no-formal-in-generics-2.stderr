@@ -1,0 +1,8 @@
+error: trailing attribute after generic parameter
+  --> $DIR/attrs-with-no-formal-in-generics-2.rs:9:43
+   |
+LL | impl<#[rustc_dummy] 'a, #[rustc_dummy] T, #[oops]> RefAny<'a, T> {}
+   |                                           ^^^^^^^ attributes must go before parameters
+
+error: aborting due to 1 previous error
+

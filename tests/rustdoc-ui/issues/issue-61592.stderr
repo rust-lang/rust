@@ -1,0 +1,11 @@
+error[E0780]: anonymous imports cannot be inlined
+  --> $DIR/issue-61592.rs:5:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^
+LL | pub use foo::Foo as _;
+   | ---------------------- anonymous import
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0780`.

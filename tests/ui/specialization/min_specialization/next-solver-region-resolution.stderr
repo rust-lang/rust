@@ -1,0 +1,17 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `&_`
+  --> $DIR/next-solver-region-resolution.rs:18:1
+   |
+LL | / impl<'a, T> Foo for &'a T
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________- first implementation here
+...
+LL | / impl<'a, T> Foo for &T
+LL | |
+LL | | where
+LL | |     Self::Item: Baz,
+   | |____________________^ conflicting implementation for `&_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

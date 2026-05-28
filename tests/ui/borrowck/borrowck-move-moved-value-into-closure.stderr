@@ -1,0 +1,24 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/borrowck-move-moved-value-into-closure.rs:11:12
+   |
+LL |     let t: Box<_> = Box::new(3);
+   |         - move occurs because `t` has type `Box<isize>`, which does not implement the `Copy` trait
+LL |
+LL |     call_f(move|| { *t + 1 });
+   |            ------   -- variable moved due to use in closure
+   |            |
+   |            value moved into closure here
+LL |     call_f(move|| { *t + 1 });
+   |            ^^^^^^   -- use occurs due to use in closure
+   |            |
+   |            value used here after move
+   |
+help: consider cloning the value before moving it into the closure
+   |
+LL ~     let value = t.clone();
+LL ~     call_f(move|| { value + 1 });
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

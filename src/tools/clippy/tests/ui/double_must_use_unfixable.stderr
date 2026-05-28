@@ -1,0 +1,30 @@
+error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+  --> tests/ui/double_must_use_unfixable.rs:6:1
+   |
+LL | pub fn issue_12320() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/double_must_use_unfixable.rs:5:19
+   |
+LL | #[cfg_attr(all(), must_use, deprecated)]
+   |                   ^^^^^^^^
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+   = note: `-D clippy::double-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+  --> tests/ui/double_must_use_unfixable.rs:12:1
+   |
+LL | pub fn issue_12320_2() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/double_must_use_unfixable.rs:11:31
+   |
+LL | #[cfg_attr(all(), deprecated, must_use)]
+   |                               ^^^^^^^^
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+
+error: aborting due to 2 previous errors
+

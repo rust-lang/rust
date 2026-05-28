@@ -1,0 +1,42 @@
+error: field `c` is never read
+  --> $DIR/union-fields-1.rs:6:5
+   |
+LL | union U1 {
+   |       -- field in this union
+...
+LL |     c: u8,
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/union-fields-1.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: field `a` is never read
+  --> $DIR/union-fields-1.rs:9:5
+   |
+LL | union U2 {
+   |       -- field in this union
+LL |     a: u8,
+   |     ^
+
+error: field `a` is never read
+  --> $DIR/union-fields-1.rs:13:20
+   |
+LL | union NoDropLike { a: u8 }
+   |       ----------   ^
+   |       |
+   |       field in this union
+
+error: field `c` is never read
+  --> $DIR/union-fields-1.rs:18:5
+   |
+LL | union U {
+   |       - field in this union
+...
+LL |     c: u8,
+   |     ^
+
+error: aborting due to 4 previous errors
+

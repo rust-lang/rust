@@ -1,0 +1,101 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-116434-2015.rs:5:17
+   |
+LL |     fn foo() -> Clone;
+   |                 ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn foo() -> dyn Clone;
+   |                 +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-116434-2015.rs:5:17
+   |
+LL |     fn foo() -> Clone;
+   |                 ^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn foo() -> dyn Clone;
+   |                 +++
+
+error[E0038]: the trait `Clone` is not dyn compatible
+  --> $DIR/issue-116434-2015.rs:5:17
+   |
+LL |     fn foo() -> Clone;
+   |                 ^^^^^ `Clone` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn foo() -> Clone;
+LL +     fn foo() -> Self;
+   |
+help: there is an associated type with the same name
+   |
+LL |     fn foo() -> Self::Clone;
+   |                 ++++++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-116434-2015.rs:21:20
+   |
+LL |     fn handle() -> DbHandle;
+   |                    ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn handle() -> dyn DbHandle;
+   |                    +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-116434-2015.rs:21:20
+   |
+LL |     fn handle() -> DbHandle;
+   |                    ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn handle() -> dyn DbHandle;
+   |                    +++
+
+error[E0038]: the trait `DbHandle` is not dyn compatible
+  --> $DIR/issue-116434-2015.rs:21:20
+   |
+LL |     fn handle() -> DbHandle;
+   |                    ^^^^^^^^ `DbHandle` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-116434-2015.rs:17:17
+   |
+LL | trait DbHandle: Sized {}
+   |       --------  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait is not dyn compatible...
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn handle() -> DbHandle;
+LL +     fn handle() -> Self;
+   |
+help: there is an associated type with the same name
+   |
+LL |     fn handle() -> Self::DbHandle;
+   |                    ++++++
+
+error: aborting due to 2 previous errors; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0038`.

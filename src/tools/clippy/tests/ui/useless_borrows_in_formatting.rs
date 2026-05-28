@@ -1,0 +1,121 @@
+// When testing or blessing this lint, set TESTNAME so only this test runs:
+//   TESTNAME=useless_borrows_in_formatting cargo uitest
+//   TESTNAME=useless_borrows_in_formatting cargo uibless
+#![warn(clippy::useless_borrows_in_formatting)]
+#![allow(unused, clippy::useless_format)]
+
+fn main() {
+    let mut s: &str = "hello";
+    println!("{}", &s); //~ useless_borrows_in_formatting
+    println!("{:?}", &s); //~ useless_borrows_in_formatting
+    println!("{}", &&s); //~ useless_borrows_in_formatting
+    println!("{}", &&mut s); //~ useless_borrows_in_formatting
+    println!("{}", &mut &s); //~ useless_borrows_in_formatting
+    println!("{}", &mut s); //~ useless_borrows_in_formatting
+
+    let string = String::from("world");
+    println!("{}", &string); //~ useless_borrows_in_formatting
+    println!("{:?}", &string); //~ useless_borrows_in_formatting
+    println!("{}", &&string); //~ useless_borrows_in_formatting
+    println!("{}", &&string[..2]); //~ useless_borrows_in_formatting
+    println!("{:?}", &&string[..2]); //~ useless_borrows_in_formatting
+    // these are ok
+    println!("{}", &string[..2]);
+    println!("{:?}", &string[..2]);
+
+    let n: i32 = 42;
+    println!("{}", &n); //~ useless_borrows_in_formatting
+    println!("{:?}", &n); //~ useless_borrows_in_formatting
+    println!("{}", &&n); //~ useless_borrows_in_formatting
+
+    // Reference to slice element
+    let slice: [i32; 3] = [1, 2, 3];
+    println!("{}", &slice[0]); //~ useless_borrows_in_formatting
+    println!("{:?}", &slice[0]); //~ useless_borrows_in_formatting
+    println!("{}", &&slice[0]); //~ useless_borrows_in_formatting
+
+    // big array: should not suggest removing & because of the size of the output
+    println!(
+        "{:?}",
+        &[
+            //~^ useless_borrows_in_formatting
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5,
+            6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1,
+            2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ]
+    );
+
+    println!("{:?}", &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+    //~^ useless_borrows_in_formatting
+
+    let a: [i32; 2] = [1, 2];
+    println!("{:016x?}", &[a[0], a[1], a[0], a[1]]); //~ useless_borrows_in_formatting
+
+    // &slice[0..1] with {:?}: inner type [i32] is unsized, so we don't suggest removing &
+    println!("{:?}", &slice[0..1]); // don't change
+    println!("{:?}", &&slice[0..1]); //~ useless_borrows_in_formatting
+
+    // Pointer formatting ({:p}): never suggest any changes to it
+    let x: i32 = 0;
+    println!("{:p}", &x); // don't change
+    println!("{:p}", &&x); // should change, but out of scope
+
+    struct Wrap(i32);
+    let w: Wrap = Wrap(42);
+    println!("{}", &w.0); //~ useless_borrows_in_formatting
+    println!("{:?}", &w.0); //~ useless_borrows_in_formatting
+    println!("{}", &&w.0); //~ useless_borrows_in_formatting
+
+    struct WrapRef<'a>(&'a i32);
+    let n: i32 = 42;
+    let w: WrapRef<'_> = WrapRef(&n);
+    println!("{}", &w.0); //~ useless_borrows_in_formatting
+    println!("{:?}", &w.0); //~ useless_borrows_in_formatting
+    println!("{}", &&w.0); //~ useless_borrows_in_formatting
+
+    let a: &mut String = &mut String::from("foo");
+    println!("{}", &*a); //~ useless_borrows_in_formatting
+    println!("{:?}", &*a); //~ useless_borrows_in_formatting
+
+    // Parenthesized expressions: &(expr)
+    let n: i32 = 42;
+    println!("{}", &(n)); //~ useless_borrows_in_formatting
+    println!("{:?}", &(n + 1)); //~ useless_borrows_in_formatting
+    println!("{}", &(String::from("paren"))); //~ useless_borrows_in_formatting
+
+    // Block expressions: &{ expr }
+    println!("{}", &{ n }); //~ useless_borrows_in_formatting
+    println!("{:?}", &{ n + 1 }); //~ useless_borrows_in_formatting
+    println!("{}", &{ String::from("block") }); //~ useless_borrows_in_formatting
+
+    let v1 = 42.12345;
+    let v2 = 20;
+    let v3 = 10;
+    println!("{0:1$.2$}", &v1, &v2, &v3);
+    //~^ useless_borrows_in_formatting
+    //~| useless_borrows_in_formatting
+    //~| useless_borrows_in_formatting
+    println!("{0:1$.2$?}", &v1, &v2, &v3);
+    //~^ useless_borrows_in_formatting
+    //~| useless_borrows_in_formatting
+    //~| useless_borrows_in_formatting
+    println!("{0:1$.2$}", &v1, v2, v3); //~ useless_borrows_in_formatting
+    println!("{0:1$.2$}", v1, &v2, v3); //~ useless_borrows_in_formatting
+    println!("{0:1$.2$}", v1, v2, &v3); //~ useless_borrows_in_formatting
+
+    // Macro wrapping println! - should not lint (println! call is inside macro expansion)
+    macro_rules! my_println {
+        ($($args:tt)*) => {
+            println!($($args)*);
+        };
+    }
+    my_println!("{}", &n);
+
+    // Arguments coming from a macro - should not lint (& comes from expansion)
+    macro_rules! make_ref {
+        ($e:expr) => {
+            &$e
+        };
+    }
+    println!("{}", make_ref!(n));
+}

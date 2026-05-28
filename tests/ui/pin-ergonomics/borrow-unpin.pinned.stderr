@@ -1,0 +1,238 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:39:14
+   |
+LL |     let foo = Foo::default();
+   |         --- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_pin_mut(&pin mut foo);
+   |                          --- value moved here
+LL |     foo_move(foo);
+   |              ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo);
+   |                          --- you could clone this value
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:43:14
+   |
+LL |     let foo = Foo::default();
+   |         --- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo;
+   |                      --- value moved here
+LL |     foo_move(foo);
+   |              ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo;
+   |                      --- you could clone this value
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:52:14
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- value moved here
+LL |     foo_move(foo);
+   |              ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- you could clone this value
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:56:14
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo; // ok
+   |                      --- value moved here
+LL |     foo_move(foo);
+   |              ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo; // ok
+   |                      --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-unpin.rs:68:14
+   |
+LL |     let foo = Foo::default();
+   |         --- binding `foo` declared here
+LL |     let x = &pin const foo; // ok
+   |             -------------- borrow of `foo` occurs here
+LL |     foo_move(foo);
+   |              ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_pin_ref(x);
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin const foo; // ok
+   |                        --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:76:13
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- value moved here
+LL |     foo_ref(&foo);
+   |             ^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:80:13
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo; // ok
+   |                      --- value moved here
+LL |     foo_ref(&foo);
+   |             ^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo; // ok
+   |                      --- you could clone this value
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:99:26
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- value moved here
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- you could clone this value
+
+error[E0382]: use of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:103:26
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo; // ok
+   |                      --- value moved here
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo; // ok
+   |                      --- you could clone this value
+
+error[E0505]: cannot move out of `foo` because it is borrowed
+  --> $DIR/borrow-unpin.rs:115:26
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- binding `foo` declared here
+LL |     let x = &pin const foo; // ok
+   |             -------------- borrow of `foo` occurs here
+LL |     foo_pin_mut(&pin mut foo);
+   |                          ^^^ move out of `foo` occurs here
+LL |
+LL |     foo_pin_ref(x);
+   |                 - borrow later used here
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin const foo; // ok
+   |                        --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:123:17
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- value moved here
+LL |     foo_pin_ref(&pin const foo);
+   |                 ^^^^^^^^^^^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     foo_pin_mut(&pin mut foo); // ok
+   |                          --- you could clone this value
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/borrow-unpin.rs:127:17
+   |
+LL |     let mut foo = Foo::default();
+   |         ------- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
+LL |     let x = &pin mut foo; // ok
+   |                      --- value moved here
+LL |     foo_pin_ref(&pin const foo);
+   |                 ^^^^^^^^^^^^^^ value borrowed here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-unpin.rs:16:1
+   |
+LL | struct Foo(PhantomPinned);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let x = &pin mut foo; // ok
+   |                      --- you could clone this value
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

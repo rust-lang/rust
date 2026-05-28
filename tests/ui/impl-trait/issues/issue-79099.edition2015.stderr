@@ -1,0 +1,25 @@
+error: expected identifier, found `1`
+  --> $DIR/issue-79099.rs:6:65
+   |
+LL |         let f: impl core::future::Future<Output = u8> = async { 1 };
+   |                                                         -----   ^ expected identifier
+   |                                                         |
+   |                                                         `async` blocks are only allowed in Rust 2018 or later
+   |
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0562]: `impl Trait` is not allowed in the type of variable bindings
+  --> $DIR/issue-79099.rs:6:16
+   |
+LL |         let f: impl core::future::Future<Output = u8> = async { 1 };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

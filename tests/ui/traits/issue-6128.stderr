@@ -1,0 +1,14 @@
+warning: methods `f` and `g` are never used
+  --> $DIR/issue-6128.rs:6:8
+   |
+LL | trait Graph<Node, Edge> {
+   |       ----- methods in this trait
+LL |     fn f(&self, _: Edge);
+   |        ^
+LL |     fn g(&self, _: Node);
+   |        ^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

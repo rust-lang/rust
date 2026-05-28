@@ -1,0 +1,16 @@
+error[E0053]: method `bit` has an incompatible generic parameter for trait `Bits`
+  --> $DIR/issue-86820.rs:16:12
+   |
+LL | trait Bits {
+   |       ----
+LL |     fn bit<const I: u8>(self) -> bool;
+   |            ----------- expected const parameter of type `u8`
+...
+LL | impl Bits for u8 {
+   | ----------------
+LL |     fn bit<const I: usize>(self) -> bool {
+   |            ^^^^^^^^^^^^^^ found const parameter of type `usize`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

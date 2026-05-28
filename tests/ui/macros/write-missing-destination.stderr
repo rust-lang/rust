@@ -1,0 +1,8 @@
+error: requires a destination and format arguments, like `write!(dest, "format string", args...)`
+  --> $DIR/write-missing-destination.rs:5:5
+   |
+LL |     write!("S");
+   |     ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

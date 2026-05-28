@@ -1,0 +1,8 @@
+error: expected identifier, found `]`
+  --> $DIR/impl-conditionally-const-trait.rs:9:12
+   |
+LL | impl [const] T for S {}
+   |            ^ expected identifier
+
+error: aborting due to 1 previous error
+

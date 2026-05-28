@@ -1,0 +1,37 @@
+error[E0477]: the type `StreamingSliceIter<'b, T>` does not fulfill the required lifetime
+  --> $DIR/issue-84931.rs:14:21
+   |
+LL |     type Item<'a> where Self: 'a;
+   |     ------------- definition of `Item` from trait
+...
+LL |     type Item<'a> = &'a mut T;
+   |                     ^^^^^^^^^
+   |
+note: type must outlive the lifetime `'a` as defined here
+  --> $DIR/issue-84931.rs:14:15
+   |
+LL |     type Item<'a> = &'a mut T;
+   |               ^^
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Item<'a> = &'a mut T where Self: 'a;
+   |                               ++++++++++++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-84931.rs:14:5
+   |
+LL |     type Item<'a> = &'a mut T;
+   |     ^^^^^^^^^^--^
+   |     |         |
+   |     |         the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |     ...so that the reference type `&'a mut T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     type Item<'a> = &'a mut T where T: 'a;
+   |                               +++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0309, E0477.
+For more information about an error, try `rustc --explain E0309`.

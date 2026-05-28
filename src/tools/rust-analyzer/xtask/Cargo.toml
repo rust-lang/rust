@@ -1,0 +1,27 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+publish = false
+license = "MIT OR Apache-2.0"
+edition = "2024"
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+flate2 = "1.1.2"
+write-json = "0.1.4"
+xshell.workspace = true
+xflags = "0.3.2"
+time = { version = "0.3", default-features = false }
+zip = { version = "4.0", default-features = false, features = ["deflate-flate2", "time"] }
+stdx.workspace = true
+proc-macro2 = "1.0.95"
+quote = "1.0.40"
+ungrammar = "1.16.1"
+either.workspace = true
+itertools.workspace = true
+edition.workspace = true
+# Avoid adding more dependencies to this crate
+
+[lints]
+workspace = true

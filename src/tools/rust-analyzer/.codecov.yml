@@ -1,0 +1,10 @@
+coverage:
+  range: 40...60
+  status:
+    patch: off
+    project:
+      default:
+        informational: true
+
+# Don't leave comments on PRs
+comment: false

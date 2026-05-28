@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_defining_uses_never_type-3.rs:9:30
+   |
+LL |             let y: Tait<U> = 1i32;
+   |                              ^^^^ expected `()`, got `i32`
+   |
+note: previous use here
+  --> $DIR/different_defining_uses_never_type-3.rs:14:5
+   |
+LL |     x
+   |     ^
+
+error: aborting due to 1 previous error
+

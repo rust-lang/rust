@@ -1,0 +1,13 @@
+error[E0502]: cannot borrow `*v` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-lend-flow.rs:24:16
+   |
+LL |     let _w = &v;
+   |              -- immutable borrow occurs here
+LL |     borrow_mut(&mut *v);
+   |                ^^^^^^^ mutable borrow occurs here
+LL |     _w.use_ref();
+   |     -- immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

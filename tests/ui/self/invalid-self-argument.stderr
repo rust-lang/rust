@@ -1,0 +1,22 @@
+error: unexpected `self` parameter in function
+  --> $DIR/invalid-self-argument.rs:8:16
+   |
+LL | fn b(foo: u32, &mut self) {}
+   |                ^^^^^^^^^ must be the first parameter of an associated function
+
+error: unexpected `self` parameter in function
+  --> $DIR/invalid-self-argument.rs:15:20
+   |
+LL |     fn c(foo: u32, self) {}
+   |                    ^^^^ must be the first parameter of an associated function
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/invalid-self-argument.rs:3:6
+   |
+LL | fn a(&self) {}
+   |      ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 3 previous errors
+

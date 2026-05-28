@@ -1,0 +1,12 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/118904>.
+   LL|       |// `assert!(true)` and `assert!(!false)` should have similar coverage spans.
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    assert!(true);
+   LL|      1|    assert!(!false);
+   LL|      1|    assert!(!!true);
+   LL|      1|    assert!(!!!false);
+   LL|      1|}
+

@@ -1,0 +1,52 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/method-ufcs-1.rs:30:7
+   |
+LL |     let a = 22;
+   |         - binding `a` declared here
+...
+LL |     let x = <&'static u32 as Bazoom<_>>::method;
+   |             ----------------------------------- assignment requires that `a` is borrowed for `'static`
+LL |     x(&a, b, c);
+   |       ^^ borrowed value does not live long enough
+LL | }
+   | - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/method-ufcs-1.rs:37:36
+   |
+LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
+   |                                   -- lifetime `'a` defined here
+LL |     let a = 22;
+   |         - binding `a` declared here
+...
+LL |     <&'a u32 as Bazoom<_>>::method(&a, b, c);
+   |     -------------------------------^^-------
+   |     |                              |
+   |     |                              borrowed value does not live long enough
+   |     argument requires that `a` is borrowed for `'a`
+LL | }
+   | - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/method-ufcs-1.rs:51:41
+   |
+LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
+   |                                              -- lifetime `'a` defined here
+LL |     let a = 22;
+   |         - binding `a` declared here
+LL |     let b = 44;
+LL |     let _closure = || {
+   |                    -- value captured here
+LL |         let c = 66;
+LL |         <&'a u32 as Bazoom<_>>::method(&a, b, c);
+   |         --------------------------------^-------
+   |         |                               |
+   |         |                               borrowed value does not live long enough
+   |         argument requires that `a` is borrowed for `'a`
+LL |     };
+LL | }
+   | - `a` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

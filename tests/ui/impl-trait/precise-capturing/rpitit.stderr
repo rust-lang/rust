@@ -1,0 +1,46 @@
+error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+  --> $DIR/rpitit.rs:9:19
+   |
+LL | trait TraitLt<'a: 'a> {
+   |               -- all lifetime parameters originating from a trait are captured implicitly
+LL |     fn hello() -> impl Sized + use<Self>;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/rpitit.rs:13:5
+   |
+LL |   fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
+   |               --  -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+LL | /     eq_types(
+LL | |
+LL | |
+LL | |         <T as TraitLt<'a>>::hello(),
+LL | |         <T as TraitLt<'b>>::hello(),
+LL | |     );
+   | |_____^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/rpitit.rs:13:5
+   |
+LL |   fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
+   |               --  -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+LL | /     eq_types(
+LL | |
+LL | |
+LL | |         <T as TraitLt<'a>>::hello(),
+LL | |         <T as TraitLt<'b>>::hello(),
+LL | |     );
+   | |_____^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: aborting due to 3 previous errors
+

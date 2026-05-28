@@ -1,0 +1,47 @@
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:5:5
+   |
+LL |     f() && g();
+   |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
+   |
+   = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:8:5
+   |
+LL |     f() || g();
+   |     ^^^^^^^^^^^ help: replace it with: `if !f() { g(); }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:11:5
+   |
+LL |     1 == 2 || g();
+   |     ^^^^^^^^^^^^^^ help: replace it with: `if 1 != 2 { g(); }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:14:5
+   |
+LL |     (f() || g()) && (H * 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `if f() || g() { H * 2; }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:17:5
+   |
+LL |     (f() || g()) || (H * 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `if !(f() || g()) { H * 2; }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:32:5
+   |
+LL |     mac!() && mac!();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if mac!() { mac!(); }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:35:5
+   |
+LL |     mac!() || mac!();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if !mac!() { mac!(); }`
+
+error: aborting due to 7 previous errors
+

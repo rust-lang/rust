@@ -1,0 +1,19 @@
+{"$message_type":"diagnostic","message":"`main` function not found in crate `json_short`","code":{"code":"E0601","explanation":"No `main` function was found in a binary crate.
+
+To fix this error, add a `main` function:
+
+```
+fn main() {
+    // Your program will start here.
+    println!(\"Hello world!\");
+}
+```
+
+If you don't know the basics of Rust, you can look at the
+[Rust Book][rust-book] to get started.
+
+[rust-book]: https://doc.rust-lang.org/book/
+"},"level":"error","spans":[{"file_name":"$DIR/json-short.rs","byte_start":122,"byte_end":122,"line_start":2,"line_end":2,"column_start":64,"column_end":64,"is_primary":true,"text":[{"text":"//@ compile-flags: --json=diagnostic-short --error-format=json","highlight_start":64,"highlight_end":64}],"label":"consider adding a `main` function to `$DIR/json-short.rs`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":"$DIR/json-short.rs:2:64: error[E0601]: `main` function not found in crate `json_short`: consider adding a `main` function to `$DIR/json-short.rs`
+"}
+{"$message_type":"diagnostic","message":"aborting due to 1 previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 1 previous error
+"}

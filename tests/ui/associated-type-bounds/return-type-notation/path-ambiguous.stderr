@@ -1,0 +1,49 @@
+error[E0221]: ambiguous associated function `method` in bounds of `T`
+  --> $DIR/path-ambiguous.rs:12:5
+   |
+LL |     fn method() -> impl Sized;
+   |     -------------------------- ambiguous `method` from `A`
+...
+LL |     fn method() -> impl Sized;
+   |     -------------------------- ambiguous `method` from `B`
+...
+LL |     T::method(..): Send,
+   |     ^^^^^^^^^^^^^ ambiguous associated function `method`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::method(..): Send,
+LL +     <T as B>::method(..): Send,
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::method(..): Send,
+LL +     <T as A>::method(..): Send,
+   |
+
+error[E0221]: ambiguous associated function `method` in bounds of `T`
+  --> $DIR/path-ambiguous.rs:21:5
+   |
+LL |     fn method() -> impl Sized;
+   |     -------------------------- ambiguous `method` from `A`
+...
+LL |     fn method() -> impl Sized;
+   |     -------------------------- ambiguous `method` from `B`
+...
+LL |     T::method(..): Send,
+   |     ^^^^^^^^^^^^^ ambiguous associated function `method`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::method(..): Send,
+LL +     <T as B>::method(..): Send,
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     T::method(..): Send,
+LL +     <T as A>::method(..): Send,
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0221`.

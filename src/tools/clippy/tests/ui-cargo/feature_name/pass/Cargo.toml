@@ -1,0 +1,9 @@
+
+# This file should not trigger the lint
+
+[package]
+name = "feature_name"
+version = "0.1.0"
+publish = false
+
+[workspace]

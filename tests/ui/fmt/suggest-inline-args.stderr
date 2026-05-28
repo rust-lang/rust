@@ -1,0 +1,57 @@
+error: format argument must be a string literal
+  --> $DIR/suggest-inline-args.rs:13:15
+   |
+LL |     eprintln!({stderr});
+   |               ^^^^^^^^
+   |
+help: quote your inlined format argument to use as string literal
+   |
+LL |     eprintln!("{stderr}");
+   |               +        +
+
+error: format argument must be a string literal
+  --> $DIR/suggest-inline-args.rs:16:15
+   |
+LL |     eprintln!({1});
+   |               ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     eprintln!("{}", {1});
+   |               +++++
+
+error: format argument must be a string literal
+  --> $DIR/suggest-inline-args.rs:19:15
+   |
+LL |     eprintln!({foo::bar()});
+   |               ^^^^^^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     eprintln!("{}", {foo::bar()});
+   |               +++++
+
+error: format argument must be a string literal
+  --> $DIR/suggest-inline-args.rs:22:15
+   |
+LL |     eprintln!({bar()});
+   |               ^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     eprintln!("{}", {bar()});
+   |               +++++
+
+error: format argument must be a string literal
+  --> $DIR/suggest-inline-args.rs:25:15
+   |
+LL |     eprintln!({1; 2});
+   |               ^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     eprintln!("{}", {1; 2});
+   |               +++++
+
+error: aborting due to 5 previous errors
+

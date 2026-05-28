@@ -1,0 +1,47 @@
+- // MIR for `cast_pointer_then_transmute` before GVN
++ // MIR for `cast_pointer_then_transmute` after GVN
+  
+  fn cast_pointer_then_transmute(_1: *mut u32, _2: *mut [u8]) -> () {
+      debug thin => _1;
+      debug fat => _2;
+      let mut _0: ();
+      let _3: usize;
+      let mut _4: *const ();
+      let mut _5: *mut u32;
+      let mut _7: *const ();
+      let mut _8: *mut [u8];
+      scope 1 {
+          debug thin_addr => _3;
+          let _6: usize;
+          scope 2 {
+              debug fat_addr => _6;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+-         _4 = move _5 as *const () (PtrToPtr);
++         _4 = copy _1 as *const () (PtrToPtr);
+          StorageDead(_5);
+-         _3 = move _4 as usize (Transmute);
++         _3 = copy _1 as usize (Transmute);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _2;
+-         _7 = move _8 as *const () (PtrToPtr);
++         _7 = copy _2 as *const () (PtrToPtr);
+          StorageDead(_8);
+          _6 = move _7 as usize (Transmute);
+          StorageDead(_7);
+          _0 = const ();
+          StorageDead(_6);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

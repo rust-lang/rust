@@ -1,0 +1,118 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n   "
+      WHERE_PRED
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'c"
+      COMMA ","
+      WHITESPACE "\n   "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Clone"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'static"
+      COMMA ","
+      WHITESPACE "\n   "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Iterator"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Item"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'a"
+      COMMA ","
+      WHITESPACE "\n   "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH
+              PATH_SEGMENT
+                TYPE_ANCHOR
+                  L_ANGLE "<"
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                  WHITESPACE " "
+                  AS_KW "as"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Iterator"
+                  R_ANGLE ">"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Item"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'a"
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,29 @@
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/auxiliary/nested-macro-rules.rs:7:9
+   |
+LL |   macro_rules! outer_macro {
+   |   ------------------------ in this expansion of `nested_macro_rules::outer_macro!`
+...
+LL | /         macro_rules! inner_macro {
+LL | |             ($bang_macro:ident, $attr_macro:ident) => {
+LL | |                 $bang_macro!($name);
+LL | |                 #[$attr_macro] struct $attr_struct_name {}
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+  ::: $DIR/nested-macro-rules.rs:23:5
+   |
+LL |       nested_macro_rules::outer_macro!(SecondStruct, SecondAttrStruct);
+   |       ---------------------------------------------------------------- in this macro invocation
+   |
+   = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current function `main`
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+note: the lint level is defined here
+  --> $DIR/nested-macro-rules.rs:8:9
+   |
+LL | #![warn(non_local_definitions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

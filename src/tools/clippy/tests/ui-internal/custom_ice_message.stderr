@@ -1,0 +1,26 @@
+note: no errors encountered even though delayed bugs were created
+
+note: those delayed bugs will now be shown as internal compiler errors
+
+error: internal compiler error: Would you like some help with that?
+  --> tests/ui-internal/custom_ice_message.rs:12:1
+   |
+LL | fn it_looks_like_you_are_trying_to_kill_clippy() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at clippy_lints_internal/src/produce_ice.rs - disabled backtrace
+  --> tests/ui-internal/custom_ice_message.rs:12:1
+   |
+LL | fn it_looks_like_you_are_trying_to_kill_clippy() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc <version> running on <target>
+
+note: compiler flags: -Z ui-testing -Z deduplicate-diagnostics=no
+
+note: Clippy version: foo
+

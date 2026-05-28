@@ -1,0 +1,92 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:17:25
+   |
+LL | const fn bar() -> u32 { foo() }
+   |                         ^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar() -> u32 { foo() }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:26:26
+   |
+LL | const fn bar2() -> u32 { foo2() }
+   |                          ^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar2() -> u32 { foo2() }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_async_blocks)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:32:13
+   |
+LL |     let x = async { 13 };
+   |             ^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar3() -> u32 {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:34:5
+   |
+LL |     foo()
+   |     ^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar3() -> u32 {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:46:32
+   |
+LL | const fn bar2_gated() -> u32 { foo2_gated() }
+   |                                ^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar2_gated() -> u32 { foo2_gated() }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:53:63
+   |
+LL |     pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_gated() }
+   |                                                               ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
+LL |     pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_gated() }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_fn_libstd_stability.rs:59:37
+   |
+LL | const fn stable_indirect() -> u32 { foo2_gated() }
+   |                                     ^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_indirect() -> u32 { foo2_gated() }
+   |
+
+error: aborting due to 7 previous errors
+

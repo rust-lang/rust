@@ -1,0 +1,457 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:12:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:31:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:53:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:77:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:100:17
+   |
+LL |     let mut c = #[rustc_capture_analysis]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:122:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:139:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:157:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:180:13
+   |
+LL |     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:198:13
+   |
+LL |     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:212:13
+   |
+LL |     let c = #[rustc_capture_analysis] move || x;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:212:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || x;
+   |                                       ^^^^^^^^^
+   |
+note: Capturing x[] -> Immutable
+  --> $DIR/move_closure.rs:212:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || x;
+   |                                               ^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:212:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || x;
+   |                                       ^^^^^^^^^
+   |
+note: Min Capture x[] -> ByValue
+  --> $DIR/move_closure.rs:212:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || x;
+   |                                               ^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:16:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new S".into();
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),(0, 0)] -> Mutable
+  --> $DIR/move_closure.rs:19:9
+   |
+LL |         t.0.0 = "new S".into();
+   |         ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:16:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new S".into();
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0),(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:19:9
+   |
+LL |         t.0.0 = "new S".into();
+   |         ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:35:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         *ref_s += 10;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing ref_s[Deref] -> Mutable
+  --> $DIR/move_closure.rs:38:9
+   |
+LL |         *ref_s += 10;
+   |         ^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:35:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         *ref_s += 10;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture ref_s[] -> ByValue
+  --> $DIR/move_closure.rs:38:9
+   |
+LL |         *ref_s += 10;
+   |         ^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:57:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new s".into();
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> Mutable
+  --> $DIR/move_closure.rs:60:9
+   |
+LL |         t.0.0 = "new s".into();
+   |         ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:57:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         t.0.0 = "new s".into();
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:60:9
+   |
+LL |         t.0.0 = "new s".into();
+   |         ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:81:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
+  --> $DIR/move_closure.rs:84:18
+   |
+LL |         let _t = t.0.0;
+   |                  ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:81:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:84:18
+   |
+LL |         let _t = t.0.0;
+   |                  ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:104:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:107:18
+   |
+LL |         let _t = t.0.0;
+   |                  ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:104:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:107:18
+   |
+LL |         let _t = t.0.0;
+   |                  ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:126:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = b.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing b[Deref,(0, 0)] -> Immutable
+  --> $DIR/move_closure.rs:129:18
+   |
+LL |         let _t = b.0;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:126:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         let _t = b.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture b[] -> ByValue
+  --> $DIR/move_closure.rs:129:18
+   |
+LL |         let _t = b.0;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:143:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", b.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing b[Deref,(0, 0)] -> Immutable
+  --> $DIR/move_closure.rs:146:24
+   |
+LL |         println!("{}", b.0);
+   |                        ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:143:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", b.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture b[] -> ByValue
+  --> $DIR/move_closure.rs:146:24
+   |
+LL |         println!("{}", b.0);
+   |                        ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:161:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", t.1.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(1, 0),Deref,(0, 0)] -> Immutable
+  --> $DIR/move_closure.rs:164:24
+   |
+LL |         println!("{}", t.1.0);
+   |                        ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:161:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", t.1.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(1, 0)] -> ByValue
+  --> $DIR/move_closure.rs:164:24
+   |
+LL |         println!("{}", t.1.0);
+   |                        ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:180:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Capturing box_p_foo[Deref,Deref,(0, 0)] -> Mutable
+  --> $DIR/move_closure.rs:180:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+   |                                               ^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:180:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Min Capture box_p_foo[] -> ByValue
+  --> $DIR/move_closure.rs:180:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+   |                                               ^^^^^^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:198:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Capturing p_foo[Deref,Deref,(0, 0)] -> Mutable
+  --> $DIR/move_closure.rs:198:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+   |                                               ^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:198:39
+   |
+LL |     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Min Capture p_foo[] -> ByValue
+  --> $DIR/move_closure.rs:198:47
+   |
+LL |     let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+   |                                               ^^^^^^^
+
+error: aborting due to 33 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

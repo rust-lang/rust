@@ -1,0 +1,40 @@
+warning: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/not-tied-to-crate.rs:8:31
+   |
+LL |     fn bar(x: &'static u8) -> &u8 {
+   |                -------        ^^^ the same lifetime is elided here
+   |                |
+   |                the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+note: the lint level is defined here
+  --> $DIR/not-tied-to-crate.rs:6:8
+   |
+LL | #[warn(mismatched_lifetime_syntaxes)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consistently use `'static`
+   |
+LL |     fn bar(x: &'static u8) -> &'static u8 {
+   |                                +++++++
+
+error: eliding a lifetime that's named elsewhere is confusing
+  --> $DIR/not-tied-to-crate.rs:14:31
+   |
+LL |     fn baz(x: &'static u8) -> &u8 {
+   |                -------        ^^^ the same lifetime is elided here
+   |                |
+   |                the lifetime is named here
+   |
+   = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+note: the lint level is defined here
+  --> $DIR/not-tied-to-crate.rs:13:12
+   |
+LL |     #[deny(mismatched_lifetime_syntaxes)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consistently use `'static`
+   |
+LL |     fn baz(x: &'static u8) -> &'static u8 {
+   |                                +++++++
+
+error: aborting due to 1 previous error; 1 warning emitted
+

@@ -1,0 +1,22 @@
+error: binary float literal is not supported
+  --> $DIR/no-binary-float-literal.rs:4:5
+   |
+LL |     0b101.010;
+   |     ^^^^^^^^^
+
+error: binary float literal is not supported
+  --> $DIR/no-binary-float-literal.rs:2:5
+   |
+LL |     0b101010f64;
+   |     ^^^^^^^^^^^ not supported
+
+error: invalid suffix `p4f64` for number literal
+  --> $DIR/no-binary-float-literal.rs:6:5
+   |
+LL |     0b101p4f64;
+   |     ^^^^^^^^^^ invalid suffix `p4f64`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 3 previous errors
+

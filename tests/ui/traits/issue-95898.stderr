@@ -1,0 +1,17 @@
+error[E0599]: no method named `clone` found for type parameter `T` in the current scope
+  --> $DIR/issue-95898.rs:5:7
+   |
+LL | fn foo<T:>(t: T) {
+   |        - method `clone` not found for this type parameter
+LL |     t.clone();
+   |       ^^^^^ method not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `clone`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn foo<T: Clone>(t: T) {
+   |           +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

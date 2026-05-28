@@ -1,0 +1,37 @@
+error: invalid Mach-O section specifier
+  --> $DIR/link-section-macho.rs:12:25
+   |
+LL | #[unsafe(link_section = "foo")]
+   |                         ^^^^^ not a valid Mach-O section specifier
+   |
+   = note: a Mach-O section specifier requires a segment and a section, separated by a comma
+   = help: an example of a valid Mach-O section specifier is `__TEXT,__cstring`
+
+error: invalid Mach-O section specifier
+  --> $DIR/link-section-macho.rs:17:25
+   |
+LL | #[unsafe(link_section = "foo,")]
+   |                         ^^^^^^ not a valid Mach-O section specifier
+   |
+   = note: a Mach-O section specifier requires a segment and a section, separated by a comma
+   = help: an example of a valid Mach-O section specifier is `__TEXT,__cstring`
+
+error: invalid Mach-O section specifier
+  --> $DIR/link-section-macho.rs:22:25
+   |
+LL | #[unsafe(link_section = "foo, ")]
+   |                         ^^^^^^^ not a valid Mach-O section specifier
+   |
+   = note: a Mach-O section specifier requires a segment and a section, separated by a comma
+   = help: an example of a valid Mach-O section specifier is `__TEXT,__cstring`
+
+error: invalid Mach-O section specifier
+  --> $DIR/link-section-macho.rs:27:25
+   |
+LL | #[unsafe(link_section = "foo,somelongwindedthing")]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ not a valid Mach-O section specifier
+   |
+   = note: section name `somelongwindedthing` is longer than 16 bytes
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,59 @@
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/attr-usage-repr.rs:3:1
+   |
+LL | #[repr(C)]
+   | ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
+error: `#[repr(i8)]` attribute cannot be used on structs
+  --> $DIR/attr-usage-repr.rs:15:1
+   |
+LL | #[repr(i8)]
+   | ^^^^^^^^^^^
+   |
+   = help: `#[repr(i8)]` can only be applied to enums
+
+error: `#[repr(packed)]` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:30:1
+   |
+LL | #[repr(packed)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(packed)]` can be applied to structs and unions
+
+error: `#[repr(simd)]` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:36:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(simd)]` can only be applied to structs
+
+error: `#[repr()]` attribute cannot be used on type aliases
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^
+   |
+   = help: `#[repr()]` can only be applied to data types
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:52:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+
+error: aborting due to 5 previous errors; 2 warnings emitted
+

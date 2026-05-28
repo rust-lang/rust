@@ -1,0 +1,528 @@
+error: casts from `u8` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:8:5
+   |
+LL |     0u8 as u16;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+help: use `u16::from` instead
+   |
+LL -     0u8 as u16;
+LL +     u16::from(0u8);
+   |
+
+error: casts from `u8` to `i16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:11:5
+   |
+LL |     0u8 as i16;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i16::from` instead
+   |
+LL -     0u8 as i16;
+LL +     i16::from(0u8);
+   |
+
+error: casts from `u8` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:14:5
+   |
+LL |     0u8 as u32;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u32::from` instead
+   |
+LL -     0u8 as u32;
+LL +     u32::from(0u8);
+   |
+
+error: casts from `u8` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:17:5
+   |
+LL |     0u8 as i32;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     0u8 as i32;
+LL +     i32::from(0u8);
+   |
+
+error: casts from `u8` to `u64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:20:5
+   |
+LL |     0u8 as u64;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u64::from` instead
+   |
+LL -     0u8 as u64;
+LL +     u64::from(0u8);
+   |
+
+error: casts from `u8` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:23:5
+   |
+LL |     0u8 as i64;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0u8 as i64;
+LL +     i64::from(0u8);
+   |
+
+error: casts from `u8` to `u128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:26:5
+   |
+LL |     0u8 as u128;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u128::from` instead
+   |
+LL -     0u8 as u128;
+LL +     u128::from(0u8);
+   |
+
+error: casts from `u8` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:29:5
+   |
+LL |     0u8 as i128;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0u8 as i128;
+LL +     i128::from(0u8);
+   |
+
+error: casts from `u16` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:32:5
+   |
+LL |     0u16 as u32;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u32::from` instead
+   |
+LL -     0u16 as u32;
+LL +     u32::from(0u16);
+   |
+
+error: casts from `u16` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:35:5
+   |
+LL |     0u16 as i32;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     0u16 as i32;
+LL +     i32::from(0u16);
+   |
+
+error: casts from `u16` to `u64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:38:5
+   |
+LL |     0u16 as u64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u64::from` instead
+   |
+LL -     0u16 as u64;
+LL +     u64::from(0u16);
+   |
+
+error: casts from `u16` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:41:5
+   |
+LL |     0u16 as i64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0u16 as i64;
+LL +     i64::from(0u16);
+   |
+
+error: casts from `u16` to `u128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:44:5
+   |
+LL |     0u16 as u128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u128::from` instead
+   |
+LL -     0u16 as u128;
+LL +     u128::from(0u16);
+   |
+
+error: casts from `u16` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:47:5
+   |
+LL |     0u16 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0u16 as i128;
+LL +     i128::from(0u16);
+   |
+
+error: casts from `u32` to `u64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:50:5
+   |
+LL |     0u32 as u64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u64::from` instead
+   |
+LL -     0u32 as u64;
+LL +     u64::from(0u32);
+   |
+
+error: casts from `u32` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:53:5
+   |
+LL |     0u32 as i64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0u32 as i64;
+LL +     i64::from(0u32);
+   |
+
+error: casts from `u32` to `u128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:56:5
+   |
+LL |     0u32 as u128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u128::from` instead
+   |
+LL -     0u32 as u128;
+LL +     u128::from(0u32);
+   |
+
+error: casts from `u32` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:59:5
+   |
+LL |     0u32 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0u32 as i128;
+LL +     i128::from(0u32);
+   |
+
+error: casts from `u64` to `u128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:62:5
+   |
+LL |     0u64 as u128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u128::from` instead
+   |
+LL -     0u64 as u128;
+LL +     u128::from(0u64);
+   |
+
+error: casts from `u64` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:65:5
+   |
+LL |     0u64 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0u64 as i128;
+LL +     i128::from(0u64);
+   |
+
+error: casts from `i8` to `i16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:68:5
+   |
+LL |     0i8 as i16;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i16::from` instead
+   |
+LL -     0i8 as i16;
+LL +     i16::from(0i8);
+   |
+
+error: casts from `i8` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:71:5
+   |
+LL |     0i8 as i32;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     0i8 as i32;
+LL +     i32::from(0i8);
+   |
+
+error: casts from `i8` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:74:5
+   |
+LL |     0i8 as i64;
+   |     ^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0i8 as i64;
+LL +     i64::from(0i8);
+   |
+
+error: casts from `i8` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:77:5
+   |
+LL |     0i8 as i128;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0i8 as i128;
+LL +     i128::from(0i8);
+   |
+
+error: casts from `i16` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:80:5
+   |
+LL |     0i16 as i32;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     0i16 as i32;
+LL +     i32::from(0i16);
+   |
+
+error: casts from `i16` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:83:5
+   |
+LL |     0i16 as i64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0i16 as i64;
+LL +     i64::from(0i16);
+   |
+
+error: casts from `i16` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:86:5
+   |
+LL |     0i16 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0i16 as i128;
+LL +     i128::from(0i16);
+   |
+
+error: casts from `i32` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:89:5
+   |
+LL |     0i32 as i64;
+   |     ^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i64::from` instead
+   |
+LL -     0i32 as i64;
+LL +     i64::from(0i32);
+   |
+
+error: casts from `i32` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:92:5
+   |
+LL |     0i32 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0i32 as i128;
+LL +     i128::from(0i32);
+   |
+
+error: casts from `i64` to `i128` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:95:5
+   |
+LL |     0i64 as i128;
+   |     ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i128::from` instead
+   |
+LL -     0i64 as i128;
+LL +     i128::from(0i64);
+   |
+
+error: casts from `u8` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:99:13
+   |
+LL |     let _ = (1u8 + 1u8) as u16;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `u16::from` instead
+   |
+LL -     let _ = (1u8 + 1u8) as u16;
+LL +     let _ = u16::from(1u8 + 1u8);
+   |
+
+error: casts from `i8` to `i64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:102:13
+   |
+LL |     let _ = 1i8 as I64Alias;
+   |             ^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `I64Alias::from` instead
+   |
+LL -     let _ = 1i8 as I64Alias;
+LL +     let _ = I64Alias::from(1i8);
+   |
+
+error: casts from `u8` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:105:18
+   |
+LL |     let _: u16 = 0u8 as _;
+   |                  ^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `Into::into` instead
+   |
+LL -     let _: u16 = 0u8 as _;
+LL +     let _: u16 = 0u8.into();
+   |
+
+error: casts from `i8` to `i16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:108:18
+   |
+LL |     let _: i16 = -1i8 as _;
+   |                  ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `Into::into` instead
+   |
+LL -     let _: i16 = -1i8 as _;
+LL +     let _: i16 = (-1i8).into();
+   |
+
+error: casts from `u8` to `u16` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:111:18
+   |
+LL |     let _: u16 = (1u8 + 2) as _;
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `Into::into` instead
+   |
+LL -     let _: u16 = (1u8 + 2) as _;
+LL +     let _: u16 = (1u8 + 2).into();
+   |
+
+error: casts from `u16` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:114:18
+   |
+LL |     let _: u32 = 1i8 as u16 as _;
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `Into::into` instead
+   |
+LL -     let _: u32 = 1i8 as u16 as _;
+LL +     let _: u32 = (1i8 as u16).into();
+   |
+
+error: casts from `i8` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:149:13
+   |
+LL |     let _ = sign_cast!(x, u8, i8) as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     let _ = sign_cast!(x, u8, i8) as i32;
+LL +     let _ = i32::from(sign_cast!(x, u8, i8));
+   |
+
+error: casts from `i8` to `i32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:152:13
+   |
+LL |     let _ = (sign_cast!(x, u8, i8) + 1) as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `i32::from` instead
+   |
+LL -     let _ = (sign_cast!(x, u8, i8) + 1) as i32;
+LL +     let _ = i32::from(sign_cast!(x, u8, i8) + 1);
+   |
+
+error: casts from `u8` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:159:13
+   |
+LL |             1u8 as u32
+   |             ^^^^^^^^^^
+...
+LL |     let _ = in_macro!();
+   |             ----------- in this macro invocation
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+   = note: this error originates in the macro `in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `u32::from` instead
+   |
+LL -             1u8 as u32
+LL +             u32::from(1u8)
+   |
+
+error: casts from `u8` to `u32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_integer.rs:174:13
+   |
+LL |     let _ = 0u8 as ty!();
+   |             ^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `<ty!()>::from` instead
+   |
+LL -     let _ = 0u8 as ty!();
+LL +     let _ = <ty!()>::from(0u8);
+   |
+
+error: aborting due to 40 previous errors
+

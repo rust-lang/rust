@@ -1,0 +1,22 @@
+// MIR for `arbitrary_let` after built
+
+fn arbitrary_let(_1: i32) -> i32 {
+    let mut _0: i32;
+    let mut _2: i32;
+    let mut _3: i32;
+
+    bb0: {
+        _2 = copy _1;
+        goto -> bb2;
+    }
+
+    bb1: {
+        _0 = copy _3;
+        return;
+    }
+
+    bb2: {
+        _3 = copy _2;
+        goto -> bb1;
+    }
+}

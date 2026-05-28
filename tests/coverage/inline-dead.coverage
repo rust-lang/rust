@@ -1,0 +1,27 @@
+   LL|       |// Regression test for issue #98833.
+   LL|       |//@ compile-flags: -Zinline-mir -Cdebug-assertions=off
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    println!("{}", live::<false>());
+   LL|       |
+   LL|      1|    let f = |x: bool| {
+   LL|      1|        debug_assert!(x);
+                                    ^0
+   LL|      1|    };
+   LL|      1|    f(false);
+   LL|      1|}
+   LL|       |
+   LL|       |#[inline]
+   LL|      1|fn live<const B: bool>() -> u32 {
+   LL|      1|    if B {
+   LL|      0|        dead() //
+   LL|       |    } else {
+   LL|      1|        0
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|       |#[inline]
+   LL|      0|fn dead() -> u32 {
+   LL|      0|    42
+   LL|      0|}
+

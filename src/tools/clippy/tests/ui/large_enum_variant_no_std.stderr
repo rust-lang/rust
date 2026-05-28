@@ -1,0 +1,22 @@
+error: large size difference between variants
+  --> tests/ui/large_enum_variant_no_std.rs:4:1
+   |
+LL | / enum Myenum {
+LL | |
+LL | |     Small(u8),
+   | |     --------- the second-largest variant contains at least 1 bytes
+LL | |     Large([u8; 1024]),
+   | |     ----------------- the largest variant contains at least 1024 bytes
+LL | | }
+   | |_^ the entire enum is at least 1025 bytes
+   |
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+  --> tests/ui/large_enum_variant_no_std.rs:7:5
+   |
+LL |     Large([u8; 1024]),
+   |     ^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+
+error: aborting due to 1 previous error
+

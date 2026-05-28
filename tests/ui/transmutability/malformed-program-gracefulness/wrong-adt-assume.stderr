@@ -1,0 +1,11 @@
+error: the constant `ASSUME` is not of type `Assume`
+  --> $DIR/wrong-adt-assume.rs:14:9
+   |
+LL |     u8: TransmuteFrom<u8, ASSUME>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Assume`, found `NotAssume`
+   |
+note: required by a const generic parameter in `TransmuteFrom`
+  --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
+
+error: aborting due to 1 previous error
+

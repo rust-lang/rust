@@ -1,0 +1,11 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-30906.rs:18:5
+   |
+LL |     test(Compose(f, |_| {}));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: `fn(&'2 str) -> T` must implement `FnOnce<(&'1 str,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 str,)>`, for some specific lifetime `'2`
+
+error: aborting due to 1 previous error
+

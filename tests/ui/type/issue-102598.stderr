@@ -1,0 +1,42 @@
+error: expected `+` between lifetime and Sized
+  --> $DIR/issue-102598.rs:1:20
+   |
+LL | fn foo<'a>(_: impl 'a Sized) {}
+   |                    ^^
+   |
+help: add `+`
+   |
+LL | fn foo<'a>(_: impl 'a + Sized) {}
+   |                       +
+
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/issue-102598.rs:1:28
+   |
+LL | fn foo<'a>(_: impl 'a Sized) {}
+   |                            ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a parameter name, give it a type
+   |
+LL | fn foo<'a>(_: impl 'a Sized: TypeName) {}
+   |                            ++++++++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn foo<'a>(_: impl 'a _: Sized) {}
+   |                       ++
+
+error: expected one of `)`, `+`, or `,`, found `Sized`
+  --> $DIR/issue-102598.rs:1:23
+   |
+LL | fn foo<'a>(_: impl 'a Sized) {}
+   |                      -^^^^^ expected one of `)`, `+`, or `,`
+   |                      |
+   |                      help: missing `,`
+
+error: at least one trait must be specified
+  --> $DIR/issue-102598.rs:1:15
+   |
+LL | fn foo<'a>(_: impl 'a Sized) {}
+   |               ^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,20 @@
+// MIR for `<impl at $DIR/issue_41697.rs:18:1: 18:25>::{constant#0}` after SimplifyCfg-promote-consts
+
+<impl at $DIR/issue_41697.rs:18:1: 18:25>::{constant#0}: usize = {
+    let mut _0: usize;
+    let mut _1: (usize, bool);
+
+    bb0: {
+        _1 = AddWithOverflow(const 1_usize, const 1_usize);
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _0 = move (_1.0: usize);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

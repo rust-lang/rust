@@ -1,0 +1,33 @@
+warning: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/closure-body-macro-fragment.rs:16:17
+   |
+LL |           let f = || $body;
+   |                   ^^
+...
+LL |       }};
+   |       - in Rust 2018, `a` is dropped here, but in Rust 2021, only `a.0` will be dropped here as part of the closure
+...
+LL | /     m!({
+LL | |
+LL | |         let x = a.0;
+   | |                 --- in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
+LL | |         println!("{:?}", x);
+LL | |     });
+   | |______- in this macro invocation
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+note: the lint level is defined here
+  --> $DIR/closure-body-macro-fragment.rs:4:9
+   |
+LL | #![warn(rust_2021_compatibility)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(rust_2021_incompatible_closure_captures)]` implied by `#[warn(rust_2021_compatibility)]`
+   = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add a dummy let to cause `a` to be fully captured
+   |
+LL ~     m!({
+LL +         let _ = &a;
+   |
+
+warning: 1 warning emitted
+

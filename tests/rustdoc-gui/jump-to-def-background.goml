@@ -1,0 +1,29 @@
+// We check the background color on the jump to definition links in the src code page.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
+
+define-function: (
+    "check-background-color",
+    [theme, background_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (
+            "body.src .example-wrap pre.rust a:not([data-nosnippet])",
+            {"background-color": |background_color|},
+            ALL,
+        )
+    },
+)
+
+call-function: ("check-background-color", {
+    "theme": "ayu",
+    "background_color": "#333",
+})
+call-function: ("check-background-color", {
+    "theme": "dark",
+    "background_color": "#333",
+})
+call-function: ("check-background-color", {
+    "theme": "light",
+    "background_color": "#eee",
+})

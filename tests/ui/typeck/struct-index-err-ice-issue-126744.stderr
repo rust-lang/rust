@@ -1,0 +1,10 @@
+error: expected identifier, found `,`
+  --> $DIR/struct-index-err-ice-issue-126744.rs:1:11
+   |
+LL | struct X {,}
+   |        -  ^ expected identifier
+   |        |
+   |        while parsing this struct
+
+error: aborting due to 1 previous error
+

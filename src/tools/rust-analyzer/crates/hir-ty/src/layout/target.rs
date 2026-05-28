@@ -1,0 +1,47 @@
+//! Target dependent parameters needed for layouts
+
+use base_db::{Crate, target::TargetLoadError};
+use hir_def::layout::TargetDataLayout;
+use rustc_abi::{AddressSpace, AlignFromBytesError, TargetDataLayoutError};
+
+use crate::db::HirDatabase;
+
+#[salsa_macros::tracked(returns(ref))]
+pub fn target_data_layout_query(
+    db: &dyn HirDatabase,
+    krate: Crate,
+) -> Result<TargetDataLayout, TargetLoadError> {
+    match &krate.workspace_data(db).target {
+        Ok(target) => match TargetDataLayout::parse_from_llvm_datalayout_string(&target.data_layout, AddressSpace::ZERO) {
+            Ok(it) => Ok(it),
+            Err(e) => {
+                Err(match e {
+                    TargetDataLayoutError::InvalidAddressSpace { addr_space, cause, err } => {
+                        format!(
+                            r#"invalid address space `{addr_space}` for `{cause}` in "data-layout": {err}"#
+                        )
+                    }
+                    TargetDataLayoutError::InvalidBits { kind, bit, cause, err } => format!(r#"invalid {kind} `{bit}` for `{cause}` in "data-layout": {err}"#),
+                    TargetDataLayoutError::MissingAlignment { cause } => format!(r#"missing alignment for `{cause}` in "data-layout""#),
+                    TargetDataLayoutError::InvalidAlignment { cause, err } => {
+                        let (align, err_kind) = match err {
+                            AlignFromBytesError::NotPowerOfTwo(align) => (align, "not a power of two"),
+                            AlignFromBytesError::TooLarge(align) => (align, "too large"),
+                        };
+                        format!(r#"invalid alignment for `{cause}` in "data-layout": `{align}` is {err_kind}"#)
+                    },
+                    TargetDataLayoutError::InconsistentTargetArchitecture { dl, target } => {
+                        format!(r#"inconsistent target specification: "data-layout" claims architecture is {dl}-endian, while "target-endian" is `{target}`"#)
+                    }
+                    TargetDataLayoutError::InconsistentTargetPointerWidth {
+                        pointer_size,
+                        target,
+                    } => format!(r#"inconsistent target specification: "data-layout" claims pointers are {pointer_size}-bit, while "target-pointer-width" is `{target}`"#),
+                    TargetDataLayoutError::InvalidBitsSize { err } => err,
+                    TargetDataLayoutError::UnknownPointerSpecification { err } => format!(r#"use of unknown pointer specifier in "data-layout": {err}"#),
+                }.into())
+            }
+        },
+        Err(e) => Err(e.clone()),
+    }
+}

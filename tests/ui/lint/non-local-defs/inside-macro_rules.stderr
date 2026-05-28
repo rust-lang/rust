@@ -1,0 +1,21 @@
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/inside-macro_rules.rs:9:13
+   |
+LL |         fn my_func() {
+   |         ------------ move the `impl` block outside of this function `my_func`
+LL |             impl MacroTrait for OutsideStruct {}
+   |             ^^^^^----------^^^^^-------------
+   |                  |              |
+   |                  |              `OutsideStruct` is not local
+   |                  `MacroTrait` is not local
+...
+LL | m!();
+   | ---- in this macro invocation
+   |
+   = note: the macro `m` defines the non-local `impl`, and may need to be changed
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: `#[warn(non_local_definitions)]` on by default
+   = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+

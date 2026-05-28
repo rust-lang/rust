@@ -1,0 +1,62 @@
+- // MIR for `match_trunc_u16_u8_failed` before MatchBranchSimplification
++ // MIR for `match_trunc_u16_u8_failed` after MatchBranchSimplification
+  
+  fn match_trunc_u16_u8_failed(_1: EnumAu16) -> u8 {
+      debug i => _1;
+      let mut _0: u8;
+      let mut _2: u16;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb9, 127: bb8, 128: bb7, 255: bb6, 65280: bb5, 65407: bb4, 65408: bb3, 65535: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const 127_u8;
+          goto -> bb10;
+      }
+  
+      bb3: {
+          _0 = const 128_u8;
+          goto -> bb10;
+      }
+  
+      bb4: {
+          _0 = const 127_u8;
+          goto -> bb10;
+      }
+  
+      bb5: {
+          _0 = const 0_u8;
+          goto -> bb10;
+      }
+  
+      bb6: {
+          _0 = const u8::MAX;
+          goto -> bb10;
+      }
+  
+      bb7: {
+          _0 = const 128_u8;
+          goto -> bb10;
+      }
+  
+      bb8: {
+          _0 = const 127_u8;
+          goto -> bb10;
+      }
+  
+      bb9: {
+          _0 = const 0_u8;
+          goto -> bb10;
+      }
+  
+      bb10: {
+          return;
+      }
+  }
+  

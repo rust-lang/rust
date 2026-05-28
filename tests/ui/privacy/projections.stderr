@@ -1,0 +1,62 @@
+error[E0446]: private type `Priv` in public interface
+  --> $DIR/projections.rs:24:5
+   |
+LL |     struct Priv;
+   |     ----------- `Priv` declared as private
+...
+LL |     type A<T> = m::Leak;
+   |     ^^^^^^^^^ can't leak private type
+
+error[E0446]: private type `Priv` in public interface
+  --> $DIR/projections.rs:39:5
+   |
+LL |     struct Priv;
+   |     ----------- `Priv` declared as private
+...
+LL |     type A<T: Trait> = T::A<m::Leak>;
+   |     ^^^^^^^^^^^^^^^^ can't leak private type
+
+warning: type `Priv` is more private than the item `Leak`
+  --> $DIR/projections.rs:3:5
+   |
+LL |     pub type Leak = Priv;
+   |     ^^^^^^^^^^^^^ type alias `Leak` is reachable at visibility `pub(crate)`
+   |
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/projections.rs:2:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+error: type `Priv` is private
+  --> $DIR/projections.rs:14:15
+   |
+LL | fn check() -> <u8 as Trait>::A<m::Leak> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/projections.rs:29:39
+   |
+LL |   fn check2() -> <u8 as Trait2>::A<u32> {
+   |  _______________________________________^
+LL | |
+LL | |     todo!()
+LL | | }
+   | |_^ private type
+
+error: type `Priv` is private
+  --> $DIR/projections.rs:24:17
+   |
+LL |     type A<T> = m::Leak;
+   |                 ^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/projections.rs:39:24
+   |
+LL |     type A<T: Trait> = T::A<m::Leak>;
+   |                        ^^^^^^^^^^^^^ private type
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0446`.

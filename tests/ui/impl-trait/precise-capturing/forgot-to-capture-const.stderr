@@ -1,0 +1,12 @@
+error: `impl Trait` must mention all const parameters in scope in `use<...>`
+  --> $DIR/forgot-to-capture-const.rs:1:34
+   |
+LL | fn constant<const C: usize>() -> impl Sized + use<> {}
+   |             --------------       ^^^^^^^^^^^^^^^^^^
+   |             |
+   |             const parameter is implicitly captured by this `impl Trait`
+   |
+   = note: currently, all const parameters are required to be mentioned in the precise captures list
+
+error: aborting due to 1 previous error
+

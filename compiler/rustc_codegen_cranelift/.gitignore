@@ -1,0 +1,17 @@
+# Build artifacts during normal use
+/download
+/build
+/dist
+/target
+/build_system/target
+
+# Downloaded by certain scripts
+/rust
+/git-fixed-subtree.sh
+
+# Various things that can be created during development
+*.rlib
+*.o
+perf.data
+perf.data.old
+*.mm_profdata

@@ -1,0 +1,17 @@
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/escaping_bound_vars.rs:11:35
+   |
+LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
+   |                                  -^
+   |                                  |
+   |                                  lifetime defined here
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/escaping_bound_vars.rs:11:28
+   |
+LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
+   |                            ^^^^^^^^^^ associated item constraint not allowed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0229`.

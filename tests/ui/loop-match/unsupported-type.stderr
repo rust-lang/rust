@@ -1,0 +1,10 @@
+error: this `#[loop_match]` state value has type `Option<bool>`, which is not supported
+  --> $DIR/unsupported-type.rs:12:9
+   |
+LL |         state = 'blk: {
+   |         ^^^^^
+   |
+   = note: only integers, floats, bool, char, and enums without fields are supported
+
+error: aborting due to 1 previous error
+

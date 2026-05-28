@@ -1,0 +1,11 @@
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_unchecked requires that the range is within the slice
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/ub-slice-get-unchecked.rs:7:27
+   |
+LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^ evaluation of `B` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

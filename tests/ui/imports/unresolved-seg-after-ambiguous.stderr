@@ -1,0 +1,23 @@
+error[E0659]: `E` is ambiguous
+  --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
+   |
+LL | use self::a::E::in_exist;
+   |              ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `E` could refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
+   |
+LL |         pub use self::c::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+note: `E` could also refer to the struct imported here
+  --> $DIR/unresolved-seg-after-ambiguous.rs:12:17
+   |
+LL |         pub use self::d::*;
+   |                 ^^^^^^^^^^
+   = help: consider adding an explicit import of `E` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

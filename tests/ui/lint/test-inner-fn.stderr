@@ -1,0 +1,16 @@
+error: cannot test inner items
+  --> $DIR/test-inner-fn.rs:5:5
+   |
+LL |     #[test]
+   |     ^^^^^^^
+   |
+   = note: requested on the command line with `-D unnameable-test-items`
+
+error: cannot test inner items
+  --> $DIR/test-inner-fn.rs:13:9
+   |
+LL |         #[test]
+   |         ^^^^^^^
+
+error: aborting due to 2 previous errors
+

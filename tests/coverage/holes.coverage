@@ -1,0 +1,101 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Nested items/closures should be treated as "holes", so that their spans are
+   LL|       |// not displayed as executable code in the enclosing function.
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    static MY_STATIC: () = ();
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    const MY_CONST: () = ();
+   LL|       |
+   LL|       |    // Splitting this across multiple lines makes it easier to see where the
+   LL|       |    // coverage mapping regions begin and end.
+   LL|       |    #[rustfmt::skip]
+   LL|      1|    let _closure =
+   LL|       |        |
+   LL|       |            _arg: (),
+   LL|       |        |
+   LL|      0|        {
+   LL|      0|            black_box(());
+   LL|      0|        }
+   LL|       |        ;
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|      0|    fn _unused_fn() {}
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    struct MyStruct {
+   LL|       |        _x: u32,
+   LL|       |        _y: u32,
+   LL|       |    }
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    impl MyStruct {
+   LL|      0|        fn _method(&self) {}
+   LL|       |    }
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    trait MyTrait {}
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    impl MyTrait for MyStruct {}
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    macro_rules! _my_macro {
+   LL|       |        () => {};
+   LL|       |    }
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    #[rustfmt::skip]
+   LL|      1|    let _const =
+   LL|       |        const
+   LL|       |        {
+   LL|       |            7 + 4
+   LL|       |        }
+   LL|       |        ;
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    #[rustfmt::skip]
+   LL|      1|    let _async =
+   LL|       |        async
+   LL|      0|        {
+   LL|      0|            7 + 4
+   LL|      0|        }
+   LL|       |        ;
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    // This tests the edge case of a const block nested inside an "anon const",
+   LL|       |    // such as the length of an array literal. Handling this case requires
+   LL|       |    // `nested_filter::OnlyBodies` or equivalent.
+   LL|       |    #[rustfmt::skip]
+   LL|      1|    let _const_block_inside_anon_const =
+   LL|       |        [
+   LL|       |            0
+   LL|       |            ;
+   LL|       |            7
+   LL|       |            +
+   LL|       |            const
+   LL|       |            {
+   LL|       |                3
+   LL|       |            }
+   LL|       |        ]
+   LL|       |        ;
+   LL|       |
+   LL|      1|    black_box(());
+   LL|      1|}
+

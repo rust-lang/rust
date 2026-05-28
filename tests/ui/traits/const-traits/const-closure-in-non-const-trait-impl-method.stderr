@@ -1,0 +1,25 @@
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/const-closure-in-non-const-trait-impl-method.rs:11:5
+   |
+LL |     const fn test() -> impl [const] Fn() {
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const` ...
+   |
+LL -     const fn test() -> impl [const] Fn() {
+LL +     fn test() -> impl [const] Fn() {
+   |
+help: ... and declare the impl to be const instead
+   |
+LL | impl<T: Foo> const Foo for &mut T {
+   |              +++++
+
+error: cannot use `const` closures outside of const contexts
+  --> $DIR/const-closure-in-non-const-trait-impl-method.rs:13:9
+   |
+LL |         const move || {}
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

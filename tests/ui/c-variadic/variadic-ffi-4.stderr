@@ -1,0 +1,85 @@
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:8:5
+   |
+LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaList<'f> {
+   |                                     --            -- has type `VaList<'1>`
+   |                                     |
+   |                                     lifetime `'f` defined here
+LL |     ap
+   |     ^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:13:5
+   |
+LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaList<'static> {
+   |                                               -- has type `VaList<'1>`
+LL |     ap
+   |     ^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:17:5
+   |
+LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'1>`
+   |                                               |
+   |                                               has type `&mut VaList<'2>`
+LL |     *ap0 = ap1;
+   |     ^^^^ assignment requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:22:5
+   |
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'1>`
+   |                                               |
+   |                                               has type `&mut VaList<'2>`
+LL |     ap0 = &mut ap1;
+   |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `VaList<'_>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:22:5
+   |
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'1>`
+   |                                               |
+   |                                               has type `&mut VaList<'2>`
+LL |     ap0 = &mut ap1;
+   |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of a mutable reference to `VaList<'_>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error[E0597]: `ap1` does not live long enough
+  --> $DIR/variadic-ffi-4.rs:22:11
+   |
+LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                                        -            ------- binding `ap1` declared here
+   |                                                        |
+   |                                                        let's call the lifetime of this reference `'3`
+LL |     ap0 = &mut ap1;
+   |     ------^^^^^^^^
+   |     |     |
+   |     |     borrowed value does not live long enough
+   |     assignment requires that `ap1` is borrowed for `'3`
+...
+LL | }
+   | - `ap1` dropped here while still borrowed
+
+error: lifetime may not live long enough
+  --> $DIR/variadic-ffi-4.rs:29:5
+   |
+LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
+   |                                               -------               ------- has type `VaList<'1>`
+   |                                               |
+   |                                               has type `&mut VaList<'2>`
+LL |     *ap0 = ap1.clone();
+   |     ^^^^ assignment requires that `'1` must outlive `'2`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

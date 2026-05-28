@@ -1,0 +1,35 @@
+error[E0408]: variable `s` is not bound in all patterns
+  --> $DIR/mismatched-bindings-async-fn.rs:4:13
+   |
+LL | async fn a((x | s): String) {}
+   |             ^   - variable not in all patterns
+   |             |
+   |             pattern doesn't bind `s`
+
+error[E0408]: variable `x` is not bound in all patterns
+  --> $DIR/mismatched-bindings-async-fn.rs:4:17
+   |
+LL | async fn a((x | s): String) {}
+   |             -   ^ pattern doesn't bind `x`
+   |             |
+   |             variable not in all patterns
+
+error[E0408]: variable `s` is not bound in all patterns
+  --> $DIR/mismatched-bindings-async-fn.rs:9:10
+   |
+LL |     let (x | s) = String::new();
+   |          ^   - variable not in all patterns
+   |          |
+   |          pattern doesn't bind `s`
+
+error[E0408]: variable `x` is not bound in all patterns
+  --> $DIR/mismatched-bindings-async-fn.rs:9:14
+   |
+LL |     let (x | s) = String::new();
+   |          -   ^ pattern doesn't bind `x`
+   |          |
+   |          variable not in all patterns
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0408`.

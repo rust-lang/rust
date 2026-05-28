@@ -1,0 +1,14 @@
+error: expected `usize`, found const array
+  --> $DIR/array-expr-type-mismatch-in-where-bound.rs:11:17
+   |
+LL |     T: Trait1<{ [] }>,
+   |                 ^^
+
+error: type annotations needed for the literal
+  --> $DIR/array-expr-type-mismatch-in-where-bound.rs:17:15
+   |
+LL |     T: Trait2<3>,
+   |               ^
+
+error: aborting due to 2 previous errors
+

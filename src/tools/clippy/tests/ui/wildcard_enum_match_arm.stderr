@@ -1,0 +1,56 @@
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:39:9
+   |
+LL |         _ => eprintln!("Not red"),
+   |         ^ help: try: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
+   |
+note: the lint level is defined here
+  --> tests/ui/wildcard_enum_match_arm.rs:2:9
+   |
+LL | #![deny(clippy::wildcard_enum_match_arm)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:44:9
+   |
+LL |         _not_red => eprintln!("Not red"),
+   |         ^^^^^^^^ help: try: `_not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan`
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:49:9
+   |
+LL |         not_red => format!("{:?}", not_red),
+   |         ^^^^^^^ help: try: `not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan`
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:66:9
+   |
+LL |         _ => "No red",
+   |         ^ help: try: `Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
+
+error: wildcard matches known variants and will also match future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:84:9
+   |
+LL |         _ => {},
+   |         ^ help: try: `ErrorKind::PermissionDenied | _`
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:103:13
+   |
+LL |             _ => (),
+   |             ^ help: try: `Enum::B | Enum::C(_) | Enum::D(..) | Enum::E { .. }`
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:118:13
+   |
+LL |             _ => (),
+   |             ^ help: try: `Enum::B | Enum::__Private`
+
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:133:9
+   |
+LL |         r#type => {},
+   |         ^^^^^^ help: try: `r#type @ Foo::B | r#type @ Foo::C`
+
+error: aborting due to 8 previous errors
+

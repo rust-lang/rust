@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>>>`
+  --> $DIR/coherence-fulfill-overflow.rs:14:1
+   |
+LL | impl<T: TwoW> Trait for W<T> {}
+   | ---------------------------- first implementation here
+LL | impl<T: TwoW> Trait for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<W<_>>>>>>>>>>>>>>>>>>>>>>>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,132 @@
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:17:5
+   |
+LL | /     if let Some(a) = Some(3) {
+LL | |         if let Some(b) = Some(4) {
+LL | |             let _ = a + b;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+LL ~     if let Some(a) = Some(3)
+LL ~         && let Some(b) = Some(4) {
+LL |             let _ = a + b;
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:24:5
+   |
+LL | /     if let Some(a) = Some(3) {
+LL | |         if a + 1 == 4 {
+LL | |             let _ = a;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if let Some(a) = Some(3)
+LL ~         && a + 1 == 4 {
+LL |             let _ = a;
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:31:5
+   |
+LL | /     if Some(3) == Some(4).map(|x| x - 1) {
+LL | |         if let Some(b) = Some(4) {
+LL | |             let _ = b;
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if Some(3) == Some(4).map(|x| x - 1)
+LL ~         && let Some(b) = Some(4) {
+LL |             let _ = b;
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:43:5
+   |
+LL | /     if let 0 = 1 {
+LL | |         if truth() {}
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if let 0 = 1
+LL ~         && truth() {}
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:49:5
+   |
+LL | /     if truth() {
+LL | |         if let 0 = 1 {}
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if truth()
+LL ~         && let 0 = 1 {}
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:56:5
+   |
+LL | /     if truth() {
+LL | |         if let 0 = 1 {
+LL | |             if truth() {}
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if truth()
+LL ~         && let 0 = 1 {
+LL |             if truth() {}
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:57:9
+   |
+LL | /         if let 0 = 1 {
+LL | |             if truth() {}
+LL | |         }
+   | |_________^
+   |
+help: collapse nested if block
+   |
+LL ~         if let 0 = 1
+LL ~             && truth() {}
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if_let_chains.rs:73:5
+   |
+LL | /     if let 0 = 1 {
+LL | |         if true {}
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if let 0 = 1
+LL ~         && true {}
+   |
+
+error: aborting due to 8 previous errors
+

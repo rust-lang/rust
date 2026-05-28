@@ -1,0 +1,47 @@
+error: ty
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
+   |
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   |                   ^^^^^^^^^^^^^^^^^^^^
+...
+LL | demo! { impl async Trait }
+   | -------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: ty
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:8:19
+   |
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   |                   ^^^^^^^^^^^^^^^^^^^^
+...
+LL | demo! { dyn async Trait }
+   | ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: `async` trait bounds are unstable
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:18:14
+   |
+LL | demo! { impl async Trait }
+   |              ^^^^^
+   |
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use the desugared name of the async trait, such as `AsyncFn`
+
+error[E0658]: `async` trait bounds are unstable
+  --> $DIR/macro-async-trait-bound-theoretical-regression.rs:20:13
+   |
+LL | demo! { dyn async Trait }
+   |             ^^^^^
+   |
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use the desugared name of the async trait, such as `AsyncFn`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

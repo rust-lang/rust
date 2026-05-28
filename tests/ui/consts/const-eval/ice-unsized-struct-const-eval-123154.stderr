@@ -1,0 +1,24 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ice-unsized-struct-const-eval-123154.rs:4:16
+   |
+LL |     pub data: [&usize]
+   |                ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ struct AA<'a> {
+LL ~     pub data: [&'a usize]
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ice-unsized-struct-const-eval-123154.rs:9:23
+   |
+LL |     const fn new() -> Self { }
+   |              ---      ^^^^ expected `AA`, found `()`
+   |              |
+   |              implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0106, E0308.
+For more information about an error, try `rustc --explain E0106`.

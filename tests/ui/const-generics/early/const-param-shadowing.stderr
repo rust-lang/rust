@@ -1,0 +1,14 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/const-param-shadowing.rs:3:34
+   |
+LL | fn test<const N: usize>() -> Foo<N> {
+   |                                  ^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL | fn test<const N: usize>() -> Foo<{ N }> {
+   |                                  +   +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0747`.

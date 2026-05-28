@@ -1,0 +1,20 @@
+#![allow(unused_variables, for_loops_over_fallibles)]
+//@ run-rustfix
+
+fn main() {
+    // Basic case from the issue: str slice
+    let o = Some("Hello, world!");
+    for s in o.map(|s| s[3..8]) {}
+    //~^ ERROR the size for values of type `str` cannot be known at compilation time
+    //~| ERROR the size for values of type `str` cannot be known at compilation time
+    //~| ERROR the size for values of type `str` cannot be known at compilation time
+    //~| ERROR `Option<str>` is not an iterator
+
+    // Byte slice case
+    let arr = Some(b"Hello, world!");
+    for s in arr.map(|s| s[3..8]) {}
+    //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
+    //~| ERROR the size for values of type `[u8]` cannot be known at compilation time
+    //~| ERROR the size for values of type `[u8]` cannot be known at compilation time
+    //~| ERROR `Option<[u8]>` is not an iterator
+}
