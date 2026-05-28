@@ -5199,7 +5199,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 match self.resolve_label(label.ident) {
                     Ok((node_id, _)) => {
                         // Since this res is a label, it is never read.
-                        self.r.label_res_map.insert(expr.id, node_id);
+                        self.r.current_owner.label_res_map.insert(expr.id, node_id);
                         self.diag_metadata.unused_labels.swap_remove(&node_id);
                     }
                     Err(error) => {

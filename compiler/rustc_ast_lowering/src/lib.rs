@@ -293,11 +293,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         self.import_res_map.get(&id).copied().unwrap_or_default()
     }
 
-    /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).copied()
-    }
-
     /// Obtains resolution for a lifetime with the given `NodeId`.
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
         self.lifetimes_res_map.get(&id).copied()
