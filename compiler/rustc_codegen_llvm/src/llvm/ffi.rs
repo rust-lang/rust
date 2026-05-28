@@ -1996,6 +1996,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Operations on all values
+    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGlobalAddMetadata`.
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
         Val: &'a Value,
         KindID: MetadataKindId,
@@ -2065,6 +2066,7 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
+    /// FIXME: After dropping LLVM 21, migrate to LLVM-C's `LLVMGetOrInsertFunction`.
     pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
         M: &'a Module,
         Name: *const c_char,
