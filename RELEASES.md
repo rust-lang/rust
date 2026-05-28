@@ -55,10 +55,11 @@ Cargo
 -----
 - [Allow a dependency to specify both a git repository and an alternate registry.](https://github.com/rust-lang/cargo/pull/16810/) Just like with crates.io, the git repository will be used locally, but the registry version will be used when published.
 - [Added `target.'cfg(..)'.rustdocflags` support in configuration.](https://github.com/rust-lang/cargo/pull/16846)
+- Fixed [CVE-2026-5222](https://blog.rust-lang.org/2026/05/25/cve-2026-5222/) and [CVE-2026-5223](https://blog.rust-lang.org/2026/05/25/cve-2026-5223/).
 
 Rustdoc
 -----
-- [Deprecation notes are now rendered like any other documentation](https://github.com/rust-lang/rust/pull/149931).  Previously they used the css `white-space: pre-wrap;` property and stripped any `<p>` elements from the rendered html, however this caused issues and unintuitive behavior.  The new behavior should be more predictable, however some multi-line deprecation notes will now be rendered as as single lines.  If this is undesirable, you can use the standard markdown method of forcing a linebreak, which is `"  \n"` (two spaces followed by a newline).
+- [Deprecation notes are now rendered like any other documentation](https://github.com/rust-lang/rust/pull/149931).  Previously they used the css `white-space: pre-wrap;` property and stripped any `<p>` elements from the rendered html, however this caused issues and unintuitive behavior.  The new behavior should be more predictable, however some multi-line deprecation notes will now be rendered as as single lines.  If this is undesirable, you can use the standard markdown method of forcing a linebreak, which is two spaces followed by a newline (`"\n"`).
 - [Don't emit rustdoc `missing_doc_code_examples` lint on impl items](https://github.com/rust-lang/rust/pull/154048)
 - [Seperate methods and associated functions in sidebar](https://github.com/rust-lang/rust/pull/154644)
 <a id="1.96.0-Compatibility-Notes"></a>
@@ -68,13 +69,13 @@ Compatibility Notes
 - [Fix layout of  `#[repr(Int)]` enums in some edge cases involving fields of uninhabited zero-sized types](https://github.com/rust-lang/rust/pull/146989)
 - [Prevent unsize-coercing into `Pin<Foo>` where `Foo` doesn't implement `Deref`. Some such coercions were previously allowed, but produce a type with no useful public API.](https://github.com/rust-lang/rust/pull/149218)
 - [rustc: Stop passing `--allow-undefined` on wasm targets](https://github.com/rust-lang/rust/pull/149868)
-- [Gate the accidentally stabilized #![reexport_test_harness_main] attribute](https://github.com/rust-lang/rust/pull/152210)
+- [Gate the accidentally stabilized `#![reexport_test_harness_main]` attribute](https://github.com/rust-lang/rust/pull/152210)
 - [Error on return-position-impl-trait-in-traits whose types are too private](https://github.com/rust-lang/rust/pull/152543)
 - [Report the `uninhabited_static` lint in dependencies and make it deny-by-default](https://github.com/rust-lang/rust/pull/152853)
 - [Distributed builds now contain non-split debuginfo for windows-gnu](https://github.com/rust-lang/rust/pull/152870)
   This appears to improve the quality of backtraces. This change has no effect on the defaults for the output of rustc/cargo on these targets.
 - [Check const generic arguments are correctly typed in more positions](https://github.com/rust-lang/rust/pull/152931)
-- [Remove -Csoft-float](https://github.com/rust-lang/rust/pull/152973)
+- [Remove `-Csoft-float`](https://github.com/rust-lang/rust/pull/152973)
 - [Importing structs with `::{self [as name]}`, e.g., `struct S {}; use S::{self as Other};`, is now no longer permitted because `{self}` imports require a module parent.](https://github.com/rust-lang/rust/pull/152996)
 - [For `export_name`, `link_name`, and `link_section` attributes, if multiple of the same attribute is present, the first one now takes precedence.](https://github.com/rust-lang/rust/pull/153041)
 - [Update the minimum external LLVM to 21](https://github.com/rust-lang/rust/pull/153684)
@@ -91,7 +92,7 @@ significant improvements to the performance or internals of rustc and related
 tools.
 
 - [JSON targets: `aarch64` softfloat targets now have to have `rustc_abi` set to `"softfloat"`](https://github.com/rust-lang/rust/pull/152941)
-- [target specs: stricter checks for LLVM ABI values, and correlate that with cfg(target_abi)](https://github.com/rust-lang/rust/pull/153769)
+- [target specs: stricter checks for LLVM ABI values, and correlate that with `cfg(target_abi)`](https://github.com/rust-lang/rust/pull/153769)
 
 
 
