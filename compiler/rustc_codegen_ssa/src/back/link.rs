@@ -76,9 +76,9 @@ fn eii_impl_crate_name(crate_info: &CrateInfo, cnum: CrateNum) -> Symbol {
 }
 
 fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &CrateInfo) {
-    let Some(eii_linkage) = &crate_info.eii_linkage else {
+    if crate_info.eii_linkage.is_empty() {
         return;
-    };
+    }
 
     // A crate can request multiple linked outputs with overlapping dependency
     // formats, so report each underlying conflict once.
@@ -87,7 +87,7 @@ fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &Crat
     // This needs the dependency formats selected for the final artifact. The
     // earlier EII pass still handles missing impls and duplicate explicit impls.
     for dependency_formats in crate_info.dependency_formats.values() {
-        for (eii_index, eii) in eii_linkage.iter().enumerate() {
+        for (eii_index, eii) in crate_info.eii_linkage.iter().enumerate() {
             let mut explicit_impls =
                 eii.impls.iter().enumerate().filter(|(_, imp)| !imp.is_default);
             let Some((explicit_index, explicit_impl)) = explicit_impls.next() else {
@@ -152,7 +152,14 @@ pub fn link_binary(
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
-    let mut checked_eii_linkage = false;
+
+    if outputs.outputs.should_link() {
+        sess.time("check_externally_implementable_item_linkage", || {
+            check_externally_implementable_item_linkage(sess, &crate_info);
+        });
+        sess.dcx().abort_if_errors();
+    }
+
     for &crate_type in &crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -178,14 +185,6 @@ pub fn link_binary(
         });
 
         if outputs.outputs.should_link() {
-            if !checked_eii_linkage {
-                sess.time("check_externally_implementable_item_linkage", || {
-                    check_externally_implementable_item_linkage(sess, &crate_info);
-                });
-                sess.dcx().abort_if_errors();
-                checked_eii_linkage = true;
-            }
-
             let output = out_filename(sess, crate_type, outputs, crate_info.local_crate_name);
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")

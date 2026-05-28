@@ -274,7 +274,7 @@ pub struct CrateInfo {
     pub dependency_formats: Arc<Dependencies>,
     /// EII implementations used by the link-time duplicate check, so `-Zno-link` can serialize the data needed by a
     /// later `-Zlink-only` invocation.
-    pub eii_linkage: Option<Vec<EiiLinkageInfo>>,
+    pub eii_linkage: Vec<EiiLinkageInfo>,
     pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_level_specs: CodegenLintLevelSpecs,
