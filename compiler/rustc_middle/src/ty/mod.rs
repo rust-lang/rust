@@ -209,6 +209,9 @@ pub struct PerOwnerResolverData {
     pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
     /// Whether lifetime elision was successful.
     pub lifetime_elision_allowed: bool = false,
+    /// Resolutions for labels.
+    /// Maps from NodeId of the break/continue expression to the NodeId of their corresponding blocks or loops.
+    pub label_res_map: NodeMap<ast::NodeId> = Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
@@ -220,6 +223,11 @@ impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
         PerOwnerResolverData { id, def_id, .. }
     }
+
+    /// Obtains resolution for a label with the given `NodeId`.
+    pub fn get_label_res(&self, id: ast::NodeId) -> Option<ast::NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
 }
 
 /// Resolutions that should only be used for lowering.
@@ -230,8 +238,6 @@ pub struct ResolverAstLowering<'tcx> {
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
