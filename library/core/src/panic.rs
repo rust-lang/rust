@@ -14,7 +14,7 @@ pub use self::panic_info::PanicInfo;
 pub use self::panic_info::PanicMessage;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
-use crate::{any::Any, fmt};
+use crate::any::Any;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]

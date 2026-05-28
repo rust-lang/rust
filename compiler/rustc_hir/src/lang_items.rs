@@ -448,6 +448,8 @@ language_item_table! {
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
+
+    RecoverOverflow,         sym::recover_overflow,     recover_integer_overflow,  Target::Fn,             GenericRequirement::Exact(0);
 }
 
 /// The requirement imposed on the generics of a lang item

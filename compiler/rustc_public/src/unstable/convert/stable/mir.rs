@@ -3,14 +3,14 @@
 use rustc_middle::mono::MonoItem;
 use rustc_middle::{bug, mir};
 use rustc_public_bridge::context::CompilerCtxt;
-use rustc_public_bridge::{Tables, bridge};
+use rustc_public_bridge::{bridge, Tables};
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
 use crate::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
 use crate::ty::{Allocation, ConstantKind, MirConst};
 use crate::unstable::Stable;
-use crate::{Error, alloc, opaque};
+use crate::{alloc, opaque, Error};
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = crate::mir::Body;
