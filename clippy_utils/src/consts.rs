@@ -893,7 +893,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
             if self
                 .tcx
-                .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+                .instantiate_and_check_impossible_clauses((owner_def_id, identity_args))
             {
                 return None;
             }
