@@ -948,9 +948,20 @@ where
         self.delegate.cx()
     }
 
+    pub(super) fn add_goal(&mut self, source: GoalSource, goal: Goal<I, I::Predicate>) {
+        self.add_goal_raw(source, goal, true);
+    }
+
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
-        goal.predicate = self.replace_alias_with_infer(goal.predicate, source, goal.param_env);
+    fn add_goal_raw(
+        &mut self,
+        source: GoalSource,
+        mut goal: Goal<I, I::Predicate>,
+        replace_alias: bool,
+    ) {
+        if replace_alias {
+            goal.predicate = self.replace_alias_with_infer(goal.predicate, source, goal.param_env);
+        }
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.push((source, goal, None));
     }
@@ -1740,9 +1751,10 @@ where
                     projection_term: alias.into(),
                     term: infer_ty.into(),
                 };
-                self.ecx.add_goal(
+                self.ecx.add_goal_raw(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, projection),
+                    false,
                 );
                 infer_ty
             }
@@ -1766,9 +1778,10 @@ where
                 let infer_ct = self.ecx.next_const_infer();
                 let projection =
                     ty::ProjectionPredicate { projection_term: uc.into(), term: infer_ct.into() };
-                self.ecx.add_goal(
+                self.ecx.add_goal_raw(
                     self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, projection),
+                    false,
                 );
                 infer_ct
             }
