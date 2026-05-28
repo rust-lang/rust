@@ -54,18 +54,20 @@ use self::public_api_hasher::{
 };
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::public_api_hasher::PublicApiHashState;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
 
-pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
+pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> {
     encoder: &'b mut EncodeContext<'a, 'tcx>,
     pub(super) tables: TableBuilders,
-    hcx: &'c mut PublicApiHashingContext<'h>,
+    hcx: &'c mut H,
+    _marker: PhantomData<&'h ()>,
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
+impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
     fn is_proc_macro(&self) -> bool {
         self.encoder.is_proc_macro()
     }
@@ -575,7 +577,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
+impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
     fn position(&self) -> usize {
         self.encoder.position()
     }
@@ -1549,7 +1551,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
+impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
         let mut state = AnalyzeAttrState {
@@ -1576,8 +1578,13 @@ impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
     /// Writing to a field of `tables` should be as simple as
     /// `self.table_writer().field(index, tcx.get_field_value(index))`, even for complex structs
     /// that require encoding as `LazyValue`/`LazyArray` first.
-    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_> {
-        super::TableWriter { encoder: self.encoder, hcx: self.hcx, tables: &mut self.tables }
+    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_, H> {
+        super::TableWriter {
+            encoder: self.encoder,
+            hcx: self.hcx,
+            tables: &mut self.tables,
+            _marker: Default::default(),
+        }
     }
 
     fn encode_def_ids(&mut self) {
@@ -2809,13 +2816,28 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
                     & !is_proc_macro
                     & tcx.sess.opts.incremental.is_some();
-                let mut hcx = PublicApiHashingContext::new(hash_public_api, hcx);
                 with_encode_metadata_header(tcx, path, |ecx| {
-                    let mut builder =
-                        MetadataBuilder { encoder: ecx, hcx: &mut hcx, tables: Default::default() };
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
-                    let (root, unhashed, public_crate_hash) = builder.encode_crate_root();
+                    let (root, unhashed, public_crate_hash) = if hash_public_api {
+                        let mut hcx = PublicApiHashingContext::<true>::new(hcx);
+                        let mut builder = MetadataBuilder {
+                            encoder: ecx,
+                            hcx: &mut hcx,
+                            tables: Default::default(),
+                            _marker: Default::default(),
+                        };
+                        builder.encode_crate_root()
+                    } else {
+                        let mut hcx = PublicApiHashingContext::<false>::new(hcx);
+                        let mut builder = MetadataBuilder {
+                            encoder: ecx,
+                            hcx: &mut hcx,
+                            tables: Default::default(),
+                            _marker: Default::default(),
+                        };
+                        builder.encode_crate_root()
+                    };
                     public_hash = public_crate_hash;
 
                     (root.position.get(), unhashed.position.get(), public_hash)

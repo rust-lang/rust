@@ -59,7 +59,7 @@ use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHasher, PublicApiHashingContext, RDRHashAll, RDRHashNone,
+    Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
 };
 use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
@@ -649,10 +649,10 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(
+            fn encode<'a>(
                 &self,
                 buf: &mut FileEncoder<'_>,
-                hcx: &mut PublicApiHashingContext<'_>,
+                hcx: &mut impl PublicApiHashState<'a>
             ) -> Hashed<LazyTables>
             {
                 let mut hasher = PublicApiHasher::default();
@@ -681,7 +681,7 @@ macro_rules! define_tables {
             }
         }
 
-        impl<'a, 'tcx, 'h, 'b, 'c, 'd> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd> {
+        impl<'a, 'tcx, 'h, 'b, 'c, 'd, H: PublicApiHashState<'h>> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H> {
             $(
                 /// Records a value into the corresponding `TableBuilders` field, encoding it in
                 /// the process when necessary
@@ -708,10 +708,11 @@ macro_rules! define_tables {
 
 /// Helper struct for writing values into [`TableBuilders`].
 #[must_use]
-struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd> {
+struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H: PublicApiHashState<'h>> {
     encoder: &'b mut EncodeContext<'a, 'tcx>,
-    hcx: &'c mut PublicApiHashingContext<'h>,
+    hcx: &'c mut H,
     tables: &'d mut TableBuilders,
+    _marker: PhantomData<&'h ()>,
 }
 
 define_tables! {

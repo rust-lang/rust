@@ -9,7 +9,7 @@ use rustc_serialize::Encodable;
 use rustc_span::Symbol;
 
 use crate::rmeta::encoder::EncodeContext;
-use crate::rmeta::encoder::public_api_hasher::{PublicApiHasher, PublicApiHashingContext};
+use crate::rmeta::encoder::public_api_hasher::{PublicApiHashState, PublicApiHasher};
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::{LazyArray, LazyValue, LocalDefId};
 
@@ -190,10 +190,10 @@ pub(super) trait EncodeFrom<'tcx, T> {
     /// encoding `value` with `encoder` in the process
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, value: T) -> Self;
 
-    fn encode_from_hashed<'a>(
+    fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: T,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
         hasher: &mut PublicApiHasher,
     ) -> Self;
 }
@@ -211,10 +211,10 @@ macro_rules! trivial_encode_from {
                     value
                 }
 
-                fn encode_from_hashed<'a>(
+                fn encode_from_hashed<'a, 'h>(
                     _encoder: &mut EncodeContext<'a, 'tcx>,
                     value: $ty,
-                    hcx: &mut PublicApiHashingContext<'_>,
+                    hcx: &mut impl PublicApiHashState<'h>,
                     hasher: &mut PublicApiHasher,
                 ) -> $ty {
                     hasher.digest(value, hcx);
@@ -242,10 +242,10 @@ macro_rules! lazy_encode_from {
                     encoder.lazy(value)
                 }
 
-                fn encode_from_hashed<'a>(
+                fn encode_from_hashed<'a, 'h>(
                     encoder: &mut EncodeContext<'a, 'tcx>,
                     value: B,
-                    hcx: &mut PublicApiHashingContext<'_>,
+                    hcx: &mut impl PublicApiHashState<'h>,
                     hasher: &mut PublicApiHasher,
                 ) -> LazyValue<$ty> {
                     hasher.digest(value.borrow(), hcx);
@@ -272,10 +272,10 @@ macro_rules! lazy_encode_from_unhashed {
                     encoder.lazy(value)
                 }
 
-                fn encode_from_hashed<'a>(
+                fn encode_from_hashed<'a, 'h>(
                     _encoder: &mut EncodeContext<'a, 'tcx>,
                     _value: B,
-                    _hcx: &mut PublicApiHashingContext<'_>,
+                    _hcx: &mut impl PublicApiHashState<'h>,
                     _hasher: &mut PublicApiHasher,
                 ) -> LazyValue<$ty> {
                     unreachable!()
@@ -290,10 +290,10 @@ impl<'tcx> EncodeFrom<'tcx, DefId> for RemappedRawDefId {
         RemappedRawDefId::create(value, &encoder.local_defs_remapping)
     }
 
-    fn encode_from_hashed<'a>(
+    fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: DefId,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
         hasher: &mut PublicApiHasher,
     ) -> Self {
         hasher.digest(value, hcx);
@@ -381,10 +381,10 @@ where
         value.map(|v| encoder.lazy(v))
     }
 
-    fn encode_from_hashed<'a>(
+    fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: Option<B>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
         hasher: &mut PublicApiHasher,
     ) -> Self {
         hasher.digest(&value, hcx);
@@ -403,10 +403,10 @@ where
         encoder.lazy_array(values)
     }
 
-    fn encode_from_hashed<'a>(
+    fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         values: I,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'h>,
         hasher: &mut PublicApiHasher,
     ) -> Self {
         encoder.lazy_array(values.into_iter().inspect(|b| hasher.digest(b, hcx)))

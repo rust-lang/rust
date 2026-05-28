@@ -32,33 +32,33 @@ use crate::rmeta::{
 pub(crate) struct PublicApiHasher(StableHasher);
 
 impl PublicApiHasher {
-    pub(crate) fn finish(self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then(|| self.0.finish())
+    pub(crate) fn finish<'a>(self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then(|| self.0.finish())
     }
 
     pub(crate) fn digest<'a, T: StableHash>(
         &mut self,
         value: T,
-        hcx: &mut PublicApiHashingContext<'a>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) {
-        if hcx.hash_public_api {
-            value.stable_hash(&mut hcx.hcx, &mut self.0);
+        if hcx.enabled() {
+            value.stable_hash(hcx.hcx_mut(), &mut self.0);
         }
     }
 }
 
 pub(crate) trait TablePublicApiHasher<I>: Default {
-    fn digest<'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V>(
         &mut self,
         index: I,
         value: V,
         encoder: &mut EncodeContext<'_, 'tcx>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
         T: EncodeFrom<'tcx, V>;
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint>;
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint>;
 }
 
 pub(crate) struct RDRHashAll<I> {
@@ -72,30 +72,47 @@ impl<I> Default for RDRHashAll<I> {
     }
 }
 
-pub(crate) struct PublicApiHashingContext<'a> {
-    pub(crate) hcx: StableHashState<'a>,
-    hash_public_api: bool,
+pub(crate) trait PublicApiHashState<'a> {
+    fn enabled(&self) -> bool;
+
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a>;
 }
 
-impl<'a> PublicApiHashingContext<'a> {
-    pub(crate) fn new(hash_public_api: bool, hcx: StableHashState<'a>) -> Self {
-        Self { hash_public_api, hcx }
+impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext<'a, ENABLED> {
+    #[inline(always)]
+    fn enabled(&self) -> bool {
+        ENABLED
+    }
+
+    #[inline(always)]
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a> {
+        &mut self.hcx
+    }
+}
+
+pub(crate) struct PublicApiHashingContext<'a, const ENABLED: bool> {
+    pub(crate) hcx: StableHashState<'a>,
+}
+
+impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
+    pub(crate) fn new(hcx: StableHashState<'a>) -> Self {
+        Self { hcx }
     }
 }
 
 impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
-    fn digest<'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V>(
         &mut self,
         index: I,
         value: V,
         encoder: &mut EncodeContext<'_, 'tcx>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
         T: EncodeFrom<'tcx, V>,
     {
-        if !hcx.hash_public_api {
+        if !hcx.enabled() {
             (index.to_encoded(encoder), T::encode_from(encoder, value))
         } else {
             let mut hasher = PublicApiHasher::default();
@@ -110,8 +127,8 @@ impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
         }
     }
 
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then_some(self.hash)
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then_some(self.hash)
     }
 }
 
@@ -124,12 +141,12 @@ impl<I> Default for RDRHashNone<I> {
 }
 
 impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
-    fn digest<'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V>(
         &mut self,
         index: I,
         value: V,
         encoder: &mut EncodeContext<'_, 'tcx>,
-        _hcx: &mut PublicApiHashingContext<'_>,
+        _hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
@@ -138,8 +155,8 @@ impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
         (index.to_encoded(encoder), T::encode_from(encoder, value))
     }
 
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then_some(Fingerprint::ZERO)
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then_some(Fingerprint::ZERO)
     }
 }
 
@@ -307,14 +324,14 @@ pub(crate) struct HashableCrateRoot {
 }
 
 impl HashableCrateRoot {
-    pub(super) fn into_crate_root(
+    pub(super) fn into_crate_root<'a>(
         self,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> (CrateRoot, Option<Svh>) {
-        let hashes = if hcx.hash_public_api {
+        let hashes = if hcx.enabled() {
             assert!(!self.header.is_proc_macro_crate);
             let mut hasher = StableHasher::default();
-            self.stable_hash(&mut hcx.hcx, &mut hasher);
+            self.stable_hash(hcx.hcx_mut(), &mut hasher);
             let public_api_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_api_hash);

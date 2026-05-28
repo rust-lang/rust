@@ -5,9 +5,7 @@ use rustc_index::Idx;
 use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
-use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHashingContext, TablePublicApiHasher,
-};
+use crate::rmeta::encoder::public_api_hasher::{Hashed, PublicApiHashState, TablePublicApiHasher};
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
@@ -506,12 +504,12 @@ impl<
     T: FixedSizeEncoding<ByteArray = [u8; N]>,
 > TableBuilder<H, I, T>
 {
-    pub(super) fn set_hashed<'tcx, V>(
+    pub(super) fn set_hashed<'a, 'tcx, V>(
         &mut self,
         i: I,
         value: V,
         encoder: &mut EncodeContext<'_, 'tcx>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: EncodeFrom<'tcx, V>,
     {
@@ -525,12 +523,12 @@ where
     I: TableIdx + StableHash,
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(super) fn set_some_hashed<'tcx, V>(
+    pub(super) fn set_some_hashed<'a, 'tcx, V>(
         &mut self,
         i: I,
         value: V,
         encoder: &mut EncodeContext<'_, 'tcx>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: EncodeFrom<'tcx, V>,
     {
@@ -569,10 +567,10 @@ impl<
         }
     }
 
-    pub(crate) fn encode(
+    pub(crate) fn encode<'a>(
         &self,
         buf: &mut FileEncoder<'_>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> Hashed<LazyTable<I, T>> {
         let pos = buf.position();
 
