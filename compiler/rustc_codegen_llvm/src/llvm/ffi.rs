@@ -252,6 +252,18 @@ pub(crate) enum UWTableKind {
     Async = 2,
 }
 
+/// Must match the layout of `llvm::FramePointerKind`.
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM")]
+pub(crate) enum FramePointerKind {
+    None = 0,
+    NonLeaf = 1,
+    All = 2,
+    Reserved = 3,
+    NonLeafNoReserve = 4,
+}
+
 /// Must match the layout of `LLVMRustAttributeKind`.
 /// Semantically a subset of the C++ enum llvm::Attribute::AttrKind,
 /// though it is not ABI compatible (since it's a C++ enum)
