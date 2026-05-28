@@ -155,6 +155,16 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::Flags for Clause<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.0.flags
+    }
+
+    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
+        self.0.outer_exclusive_binder
+    }
+}
+
 impl<'tcx> Clause<'tcx> {
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
