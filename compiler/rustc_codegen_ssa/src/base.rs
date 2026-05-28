@@ -973,10 +973,9 @@ impl CrateInfo {
         let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind) => *kind);
         let dependency_formats = Arc::clone(tcx.dependency_formats(()));
         let eii_linkage = if eii_linkage_needed(&dependency_formats) {
-            let eii_linkage = collect_eii_linkage(tcx);
-            (!eii_linkage.is_empty()).then_some(eii_linkage)
+            collect_eii_linkage(tcx)
         } else {
-            None
+            Vec::new()
         };
 
         // This list is used when generating the command line to pass through to
