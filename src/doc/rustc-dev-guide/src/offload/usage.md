@@ -96,7 +96,7 @@ You might afterwards need to copy your target/release/deps/<lib_name>.bc to lib.
 
 Now we generate the host (CPU) code.
 ```
-RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/p/lustre1/drehwald1/prog/offload/r/target/amdgcn-amd-amdhsa/release/deps/host.out -Zunstable-options" cargo +offload build -r
+RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/p/lustre1/drehwald1/prog/offload/r/target/amdgcn-amd-amdhsa/release/deps/device.bin -Zunstable-options" cargo +offload build -r
 ```
 This call also does a lot of work and generates multiple intermediate files for LLVM offload.
 While we integrated most offload steps into rustc by now, one binary invocation still remains for now:
