@@ -1500,9 +1500,7 @@ impl TwoWaySearcher {
                 // `self.position + i < haystack.len()`.
                 // Every path that mutates `self.position` below either returns or re-enters `'search`,
                 // which re-runs the check before reaching the loop again.
-                // `i < needle.len()` also guarantees `needle.get_unchecked(i)` is safe.
-                if unsafe { *needle.get_unchecked(i) != *haystack.get_unchecked(self.position + i) }
-                {
+                if needle[i] != unsafe { *haystack.get_unchecked(self.position + i) } {
                     self.position += i - self.crit_pos + 1;
                     if !long_period {
                         self.memory = 0;
@@ -1514,15 +1512,12 @@ impl TwoWaySearcher {
             // See if the left part of the needle matches
             let start = if long_period { 0 } else { self.memory };
             for i in (start..self.crit_pos).rev() {
-                // SAFETY: `crit_pos < needle.len()` by construction, so `i < needle.len()` and
-                // `needle.get_unchecked(i)` is safe.
-                // The same `self.position + i < haystack.len()` argument as the right-part
+                // SAFETY: The same `self.position + i < haystack.len()` argument as the right-part
                 // loop applies: `haystack.get(self.position + needle_last)` at the
                 // top of `'search` established the bound for this iteration, and every mutation
                 // of `self.position` is followed by `continue 'search` (which re-runs the check)
                 // or a `return` on match.
-                if unsafe { *needle.get_unchecked(i) != *haystack.get_unchecked(self.position + i) }
-                {
+                if needle[i] != unsafe { *haystack.get_unchecked(self.position + i) } {
                     self.position += self.period;
                     if !long_period {
                         self.memory = needle.len() - self.period;
@@ -1597,18 +1592,14 @@ impl TwoWaySearcher {
                 cmp::min(self.crit_pos_back, self.memory_back)
             };
             for i in (0..crit).rev() {
-                // SAFETY:
-                // - `i < crit <= crit_pos_back <= needle.len()`, so `needle.get_unchecked(i)` is safe.
-                // - On every iteration of `'search`, `haystack.get(self.end.wrapping_sub(needle.len()))`
+                // SAFETY: On every iteration of `'search`, `haystack.get(self.end.wrapping_sub(needle.len()))`
                 //   returned `Some`, so `self.end >= needle.len()` and `self.end - needle.len() < haystack.len()`.
                 //   Since `self.end <= haystack.len()` and `i < needle.len()`, we have
                 //   `self.end - needle.len() + i < self.end <= haystack.len()`, so
                 //   `haystack.get_unchecked(self.end - needle.len() + i)` is safe.
                 // - The path that mutates `self.end` either re-enters `'search`, which re-runs the checks
-                //   before reaching this loop again, or returns on match,so the invariant holds.
-                if unsafe {
-                    *needle.get_unchecked(i) != *haystack.get_unchecked(self.end - needle.len() + i)
-                } {
+                //   before reaching this loop again, or returns on match, so the invariant holds.
+                if needle[i] != unsafe { *haystack.get_unchecked(self.end - needle.len() + i) } {
                     self.end -= self.crit_pos_back - i;
                     if !long_period {
                         self.memory_back = needle.len();
@@ -1620,16 +1611,12 @@ impl TwoWaySearcher {
             // See if the right part of the needle matches
             let needle_end = if long_period { needle.len() } else { self.memory_back };
             for i in self.crit_pos_back..needle_end {
-                // SAFETY: `needle_end <= needle.len()`, so `i < needle.len()` and
-                // `needle.get_unchecked(i)` is safe.
-                // The same `self.end - needle.len() + i < haystack.len()` argument as the
+                // SAFETY: The same `self.end - needle.len() + i < haystack.len()` argument as the
                 // left-part loop applies: the `haystack.get(self.end.wrapping_sub(needle.len()))`
                 // check at the top of `'search` established the bound for this iteration, and
                 // every mutation of `self.end` is followed by `continue 'search` (which re-runs
                 // the check) or a `return` (which exits before any further unsafe access).
-                if unsafe {
-                    *needle.get_unchecked(i) != *haystack.get_unchecked(self.end - needle.len() + i)
-                } {
+                if needle[i] != unsafe { *haystack.get_unchecked(self.end - needle.len() + i) } {
                     self.end -= self.period;
                     if !long_period {
                         self.memory_back = self.period;
