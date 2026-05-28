@@ -5089,7 +5089,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 // Fix up partial res of segment from `resolve_path` call.
                 if let Some(id) = path[0].id {
-                    self.r.partial_res_map.insert(id, PartialRes::new(Res::PrimTy(prim)));
+                    let res = PartialRes::new(Res::PrimTy(prim));
+                    self.r.partial_res_map.insert(id, res);
+                    self.r.current_owner.partial_res_map.insert(id, res);
+                    assert_ne!(self.r.current_owner.id, DUMMY_NODE_ID);
                 }
 
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)

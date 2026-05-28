@@ -216,6 +216,10 @@ pub struct PerOwnerResolverData<'tcx> {
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> =
         Default::default(),
 
+
+    /// Resolutions for nodes that have a single resolution.
+    pub partial_res_map: NodeMap<PartialRes> = Default::default(),
+
     /// The id of the owner
     pub id: NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
