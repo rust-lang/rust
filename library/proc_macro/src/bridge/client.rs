@@ -255,7 +255,6 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
-// FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
     config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> crate::TokenStream,
