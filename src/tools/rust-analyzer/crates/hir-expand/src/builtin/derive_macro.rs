@@ -22,7 +22,7 @@ use crate::{
 use syntax::{
     ast::{
         self, AstNode, FieldList, HasAttrs, HasGenericArgs, HasGenericParams, HasModuleItem,
-        HasName, HasTypeBounds, make,
+        HasName, HasTypeBounds,
     },
     syntax_editor::{GetOrCreateWhereClause, SyntaxEditor},
 };
@@ -1435,6 +1435,7 @@ fn coerce_pointee_expand(
         param_name: &str,
         replacement: &str,
     ) -> bool {
+        let make = editor.make();
         return match ty {
             ast::Type::ArrayType(ty) => ty
                 .ty()
@@ -1462,8 +1463,8 @@ fn coerce_pointee_expand(
                 if path.as_single_name_ref().is_some_and(|name| name.text() == param_name) {
                     editor.replace(
                         path.syntax(),
-                        make::path_from_segments(
-                            [make::path_segment(make::name_ref(replacement))],
+                        make.path_from_segments(
+                            [make.path_segment(make.name_ref(replacement))],
                             false,
                         )
                         .syntax(),
