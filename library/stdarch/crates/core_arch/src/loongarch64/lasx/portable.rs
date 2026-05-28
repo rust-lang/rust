@@ -339,6 +339,10 @@ impl_gv!("lasx", lasx_xvreplgr2vr_h, ls::simd_splat, m256i, i16x16, i32);
 impl_gv!("lasx", lasx_xvreplgr2vr_w, ls::simd_splat, m256i, i32x8, i32);
 impl_gv!("lasx", lasx_xvreplgr2vr_d, ls::simd_splat, m256i, i64x4, i64);
 
+impl_ggv!("lasx", lasx_xvldx, simd_ldx, m256i, i8x32, *const i8, i64, unsafe);
+
+impl_gsv!("lasx", lasx_xvld, simd_ld, m256i, i8x32, *const i8, 12, const, unsafe);
+
 impl_sv!("lasx", lasx_xvrepli_b, ls::simd_splat, m256i, i8x32, 10);
 impl_sv!("lasx", lasx_xvrepli_h, ls::simd_splat, m256i, i16x16, 10);
 impl_sv!("lasx", lasx_xvrepli_w, ls::simd_splat, m256i, i32x8, 10);
@@ -498,6 +502,10 @@ impl_vvv!("lasx", lasx_xvpackod_b, simd_packod_b, m256i, i8x32);
 impl_vvv!("lasx", lasx_xvpackod_h, simd_packod_h, m256i, i16x16);
 impl_vvv!("lasx", lasx_xvpackod_w, simd_packod_w, m256i, i32x8);
 impl_vvv!("lasx", lasx_xvpackod_d, simd_packod_d, m256i, i64x4);
+
+impl_vgg!("lasx", lasx_xvstx, simd_stx, m256i, i8x32, *mut i8, i64, unsafe);
+
+impl_vgs!("lasx", lasx_xvst, simd_st, m256i, i8x32, *mut i8, 12, const, unsafe);
 
 impl_vuv!("lasx", lasx_xvslli_b, is::simd_shl, m256i, i8x32);
 impl_vuv!("lasx", lasx_xvslli_h, is::simd_shl, m256i, i16x16);

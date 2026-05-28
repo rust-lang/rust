@@ -3503,11 +3503,13 @@ asm-fmts = vd, vj, ui8
 data-types = V4SI, V4SI, V4SI, USI
 
 /// lsx_vld
+impl = portable
 name = lsx_vld
 asm-fmts = vd, rj, si12
 data-types = V16QI, CVPOINTER, SI
 
 /// lsx_vst
+impl = portable
 name = lsx_vst
 asm-fmts = vd, rj, si12
 data-types = VOID, V16QI, CVPOINTER, SI
@@ -3559,11 +3561,13 @@ asm-fmts = vd, vj, vk, va
 data-types = V16QI, V16QI, V16QI, V16QI
 
 /// lsx_vldx
+impl = portable
 name = lsx_vldx
 asm-fmts = vd, rj, rk
 data-types = V16QI, CVPOINTER, DI
 
 /// lsx_vstx
+impl = portable
 name = lsx_vstx
 asm-fmts = vd, rj, rk
 data-types = VOID, V16QI, CVPOINTER, DI
