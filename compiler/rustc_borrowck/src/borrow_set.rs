@@ -7,7 +7,7 @@ use rustc_hir::Mutability;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Body, Local, Location, traversal};
+use rustc_middle::mir::{self, Body, Local, Location, PlaceElem, traversal};
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{RegionUtilitiesExt, RegionVid, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
@@ -261,6 +261,152 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         }
         idx
     }
+
+    fn insert_borrows(
+        &mut self,
+        location: Location,
+        borrows: SmallVec<[BorrowData<'tcx>; 1]>,
+    ) -> SmallVec<[BorrowIndex; 1]> {
+        let mut idxs = SmallVec::<[BorrowIndex; 1]>::with_capacity(borrows.len());
+        // FIXME(reborrow): why doesn't SmallVec offer reserve?
+        for borrow in borrows {
+            idxs.push(self.borrows.push(borrow));
+        }
+        match self.location_map.entry(location) {
+            Entry::Occupied(entry) => {
+                bug!(
+                    "Inserting borrows {idxs:?} at {location:?} attempted to override an existing list {entry:?}"
+                );
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(idxs.clone());
+            }
+        }
+        idxs
+    }
+
+    fn gather_reborrows(
+        &mut self,
+        v: &mut SmallVec<[BorrowData<'tcx>; 1]>,
+        kind: mir::BorrowKind,
+        location: Location,
+        target_adt: ty::AdtDef<'tcx>,
+        target_args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        target_place: mir::Place<'tcx>,
+        source_adt: ty::AdtDef<'tcx>,
+        source_args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        source_place: mir::Place<'tcx>,
+    ) {
+        let mut did_reborrow = false;
+        for (source_idx, source_field) in source_adt.all_fields().enumerate() {
+            let source_field_ty = source_field.ty(self.tcx, source_args).skip_norm_wip();
+            match source_field_ty.kind() {
+                ty::Ref(source_region, _, source_mutability) if source_mutability.is_mut() => {
+                    if source_region.is_static() {
+                        bug!(
+                            "Cannot implement Reborrow on a type containing a &'static mut T field"
+                        );
+                    }
+                    let Some((target_idx, target_field)) = target_adt
+                        .all_fields()
+                        .enumerate()
+                        .find(|(_, f)| f.name == source_field.name)
+                    else {
+                        // Reborrow dropped this field.
+                        continue;
+                    };
+                    let ty::Ref(target_region, _, _) =
+                        target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
+                    else {
+                        bug!(
+                            "Reborrow source field type is &mut T but target field is not a reference"
+                        );
+                    };
+
+                    did_reborrow = true;
+                    let source_field_deref_place = source_place.project_deeper(
+                        &[PlaceElem::Field(source_idx.into(), source_field_ty), PlaceElem::Deref],
+                        self.tcx,
+                    );
+                    let target_field_place = target_place.project_to_field(
+                        target_idx.into(),
+                        &self.body.local_decls,
+                        self.tcx,
+                    );
+                    v.push(BorrowData {
+                        kind,
+                        region: target_region.as_var(),
+                        reserve_location: location,
+                        activation_location: TwoPhaseActivation::NotTwoPhase,
+                        borrowed_place: source_field_deref_place,
+                        assigned_place: target_field_place,
+                    });
+                }
+                ty::Adt(source_field_adt, source_field_args)
+                    if source_field_args.get(0).is_some_and(|f| f.as_region().is_some())
+                        && !self.tcx.type_is_copy_modulo_regions(
+                            self.body.typing_env(self.tcx),
+                            self.tcx.erase_and_anonymize_regions(source_field_ty),
+                        ) =>
+                {
+                    let Some((target_idx, target_field)) = target_adt
+                        .all_fields()
+                        .enumerate()
+                        .find(|(_, f)| f.name == source_field.name)
+                    else {
+                        // Reborrow dropped this field.
+                        continue;
+                    };
+                    let ty::Adt(target_field_adt, target_field_args) =
+                        target_field.ty(self.tcx, target_args).skip_norm_wip().kind()
+                    else {
+                        bug!("Reborrow source field type is a !Copy ADT but target field is not");
+                    };
+
+                    did_reborrow = true;
+                    let source_field_place = source_place.project_to_field(
+                        source_idx.into(),
+                        &self.body.local_decls,
+                        self.tcx,
+                    );
+                    let target_field_place = target_place.project_to_field(
+                        target_idx.into(),
+                        &self.body.local_decls,
+                        self.tcx,
+                    );
+                    self.gather_reborrows(
+                        v,
+                        kind,
+                        location,
+                        *target_field_adt,
+                        target_field_args,
+                        target_field_place,
+                        *source_field_adt,
+                        source_field_args,
+                        source_field_place,
+                    );
+                }
+                _ => continue,
+            }
+        }
+        if !did_reborrow {
+            // If source contained no reference, borrow it directly.
+            if target_args.regions().count() != 1 {
+                bug!(
+                    "ADT containing no '&mut T' or 'T: Reborrow' fields must only have one lifetime to implement Reborrow"
+                );
+            }
+            let target_region = target_args.regions().next().unwrap();
+            v.push(BorrowData {
+                kind,
+                region: target_region.as_var(),
+                reserve_location: location,
+                activation_location: TwoPhaseActivation::NotTwoPhase,
+                borrowed_place: source_place,
+                assigned_place: target_place,
+            });
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
@@ -319,23 +465,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             };
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
-        } else if let &mir::Rvalue::Reborrow(target, mutability, borrowed_place) = rvalue {
-            let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
-            let &ty::Adt(reborrowed_adt, _reborrowed_args) = borrowed_place_ty.kind() else {
-                unreachable!()
-            };
-            let &ty::Adt(target_adt, assigned_args) = target.kind() else { unreachable!() };
-            let Some(ty::GenericArgKind::Lifetime(region)) = assigned_args.get(0).map(|r| r.kind())
-            else {
-                bug!(
-                    "hir-typeck passed but {} does not have a lifetime argument",
-                    if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
-                );
-            };
-            let region = region.as_var();
+        } else if let &mir::Rvalue::Reborrow(target, mutability, source_place) = rvalue {
+            let source_ty = source_place.ty(self.body, self.tcx).ty;
+            let &ty::Adt(source_adt, source_args) = source_ty.kind() else { unreachable!() };
+            let &ty::Adt(target_adt, target_args) = target.kind() else { unreachable!() };
+
             let kind = if mutability == Mutability::Mut {
                 // Reborrow
-                if target_adt.did() != reborrowed_adt.did() {
+                if target_adt.did() != source_adt.did() {
                     bug!(
                         "hir-typeck passed but Reborrow involves mismatching types at {location:?}"
                     )
@@ -344,24 +481,33 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
             } else {
                 // CoerceShared
-                if target_adt.did() == reborrowed_adt.did() {
+                if target_adt.did() == source_adt.did() {
                     bug!(
                         "hir-typeck passed but CoerceShared involves matching types at {location:?}"
                     )
                 }
                 mir::BorrowKind::Shared
             };
-            let borrow = BorrowData {
-                kind,
-                region,
-                reserve_location: location,
-                activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place,
-                assigned_place: *assigned_place,
-            };
-            let idx = self.insert_borrow(location, borrow);
 
-            self.local_map.entry(borrowed_place.local).or_default().insert(idx);
+            let mut reborrows = smallvec![];
+            self.gather_reborrows(
+                &mut reborrows,
+                kind,
+                location,
+                target_adt,
+                target_args,
+                *assigned_place,
+                source_adt,
+                source_args,
+                source_place,
+            );
+
+            let idxs = self.insert_borrows(location, reborrows);
+
+            let locals = self.local_map.entry(source_place.local).or_default();
+            for idx in idxs {
+                locals.insert(idx);
+            }
         }
 
         self.super_assign(assigned_place, rvalue, location)

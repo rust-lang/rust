@@ -47,7 +47,6 @@ fn main() {
     let shared = get(wrapped);
 
     *wrapped.extra.value = 3;
-    //~^ ERROR cannot assign to `*wrapped.extra.value` because it is borrowed
 
     let _ = shared;
 }
