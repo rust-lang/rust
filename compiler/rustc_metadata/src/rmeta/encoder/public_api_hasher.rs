@@ -33,25 +33,25 @@ use crate::rmeta::{
 pub(crate) struct PublicApiHasher(StableHasher);
 
 impl PublicApiHasher {
-    pub(crate) fn finish(self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then(|| self.0.finish())
+    pub(crate) fn finish<'a>(self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then(|| self.0.finish())
     }
 
     pub(crate) fn digest<'a, T: StableHash>(
         &mut self,
         value: T,
-        hcx: &mut PublicApiHashingContext<'a>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) {
-        if hcx.hash_public_api {
-            value.stable_hash(&mut hcx.hcx, &mut self.0);
+        if hcx.enabled() {
+            value.stable_hash(hcx.hcx_mut(), &mut self.0);
         }
     }
-    pub(crate) fn digest_iter<'a, I>(&mut self, values: I, hcx: &mut PublicApiHashingContext<'a>)
+    pub(crate) fn digest_iter<'a, I>(&mut self, values: I, hcx: &mut impl PublicApiHashState<'a>)
     where
         I: IntoIterator,
         I::Item: StableHash,
     {
-        if hcx.hash_public_api {
+        if hcx.enabled() {
             for value in values {
                 self.digest(value, hcx);
             }
@@ -62,10 +62,10 @@ impl PublicApiHasher {
 pub(crate) trait TablePublicApiHasher<I: Idx>: Default {
     type IterHasher;
 
-    fn digest<V>(&mut self, index: I, value: V, hcx: &mut PublicApiHashingContext<'_>)
+    fn digest<'a, V>(&mut self, index: I, value: V, hcx: &mut impl PublicApiHashState<'a>)
     where
         V: StableHash;
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint>;
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint>;
 
     fn iter_hasher(&self) -> Self::IterHasher;
 }
@@ -81,35 +81,52 @@ impl<I: Idx> Default for RDRHashAll<I> {
     }
 }
 
-pub(crate) struct PublicApiHashingContext<'a> {
-    pub(crate) hcx: StableHashState<'a>,
-    hash_public_api: bool,
+pub(crate) trait PublicApiHashState<'a> {
+    fn enabled(&self) -> bool;
+
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a>;
 }
 
-impl<'a> PublicApiHashingContext<'a> {
-    pub(crate) fn new(hash_public_api: bool, hcx: StableHashState<'a>) -> Self {
-        Self { hash_public_api, hcx }
+impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext<'a, ENABLED> {
+    #[inline(always)]
+    fn enabled(&self) -> bool {
+        ENABLED
+    }
+
+    #[inline(always)]
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a> {
+        &mut self.hcx
+    }
+}
+
+pub(crate) struct PublicApiHashingContext<'a, const ENABLED: bool> {
+    pub(crate) hcx: StableHashState<'a>,
+}
+
+impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
+    pub(crate) fn new(hcx: StableHashState<'a>) -> Self {
+        Self { hcx }
     }
 }
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashAll<I> {
     type IterHasher = OrderedIterHasher;
-    fn digest<V>(&mut self, index: I, value: V, hcx: &mut PublicApiHashingContext<'_>)
+    fn digest<'a, V>(&mut self, index: I, value: V, hcx: &mut impl PublicApiHashState<'a>)
     where
         V: StableHash,
     {
-        if !hcx.hash_public_api {
+        if !hcx.enabled() {
             return;
         }
         let mut hasher = StableHasher::default();
         // add the non-stable hash of the index here to hash the order of items without storing them and iterating over it later
-        (index.index(), value).stable_hash(&mut hcx.hcx, &mut hasher);
+        (index.index(), value).stable_hash(hcx.hcx_mut(), &mut hasher);
         let hash: Fingerprint = hasher.finish();
         self.hash = self.hash.combine_commutative(hash);
     }
 
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then_some(self.hash)
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then_some(self.hash)
     }
 
     fn iter_hasher(&self) -> Self::IterHasher {
@@ -124,15 +141,15 @@ impl OrderedIterHasher {
     pub(crate) fn inspect_digest<'a: 'b, 'b, I>(
         &'b mut self,
         iter: I,
-        hcx: &'b mut PublicApiHashingContext<'a>,
+        hcx: &'b mut impl PublicApiHashState<'a>,
     ) -> impl Iterator<Item = I::Item> + 'b
     where
         I: IntoIterator + 'b,
         I::Item: StableHash,
     {
         iter.into_iter().inspect(move |item: &I::Item| {
-            if hcx.hash_public_api {
-                item.stable_hash(&mut hcx.hcx, &mut self.0)
+            if hcx.enabled() {
+                item.stable_hash(hcx.hcx_mut(), &mut self.0)
             }
         })
     }
@@ -152,7 +169,7 @@ impl<I> Default for RDRHashNone<I> {
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
     type IterHasher = RDRHashNone<()>;
-    fn digest<V>(&mut self, _index: I, _value: V, _hcx: &mut PublicApiHashingContext<'_>)
+    fn digest<'a, V>(&mut self, _index: I, _value: V, _hcx: &mut impl PublicApiHashState<'a>)
     where
         V: StableHash,
     {
@@ -162,8 +179,8 @@ impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
         Default::default()
     }
 
-    fn finish(&self, hcx: &mut PublicApiHashingContext<'_>) -> Option<Fingerprint> {
-        hcx.hash_public_api.then_some(Fingerprint::ZERO)
+    fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
+        hcx.enabled().then_some(Fingerprint::ZERO)
     }
 }
 
@@ -355,15 +372,15 @@ pub(crate) struct HashableCrateRoot {
 }
 
 impl HashableCrateRoot {
-    pub(super) fn into_crate_root(
+    pub(super) fn into_crate_root<'a>(
         self,
         tcx: TyCtxt<'_>,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> CrateRoot {
-        let hashes = if hcx.hash_public_api {
+        let hashes = if hcx.enabled() {
             assert!(!self.header.is_proc_macro_crate);
             let mut hasher = StableHasher::default();
-            self.stable_hash(&mut hcx.hcx, &mut hasher);
+            self.stable_hash(hcx.hcx_mut(), &mut hasher);
             let public_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_hash);

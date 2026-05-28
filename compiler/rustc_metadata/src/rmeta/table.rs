@@ -4,9 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 
 use crate::rmeta::decoder::MetaBlob;
-use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHashingContext, TablePublicApiHasher,
-};
+use crate::rmeta::encoder::public_api_hasher::{Hashed, PublicApiHashState, TablePublicApiHasher};
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -468,7 +466,7 @@ where
         i: I,
         value: T,
         hashed: HashedT,
-        hcx: &mut PublicApiHashingContext<'a>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         HashedT: StableHash,
     {
@@ -484,7 +482,7 @@ impl<H: TablePublicApiHasher<DefIndex>, const N: usize, T: FixedSizeEncoding<Byt
         &mut self,
         i: LocalDefId,
         value: T,
-        hcx: &mut PublicApiHashingContext<'a>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: StableHash + Copy,
     {
@@ -501,7 +499,7 @@ where
         &mut self,
         i: LocalDefId,
         value: T,
-        hcx: &mut PublicApiHashingContext<'a>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         T: StableHash + Copy,
     {
@@ -534,12 +532,12 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         self.hasher.iter_hasher()
     }
 
-    pub(super) fn set_hashed<HashedT>(
+    pub(super) fn set_hashed<'a, HashedT>(
         &mut self,
         i: I,
         value: T,
         hashed: HashedT,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) where
         HashedT: StableHash,
     {
@@ -575,10 +573,10 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
         }
     }
 
-    pub(crate) fn encode(
+    pub(crate) fn encode<'a>(
         &self,
         buf: &mut FileEncoder,
-        hcx: &mut PublicApiHashingContext<'_>,
+        hcx: &mut impl PublicApiHashState<'a>,
     ) -> Hashed<LazyTable<I, T>> {
         let pos = buf.position();
 

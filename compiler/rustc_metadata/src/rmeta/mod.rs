@@ -48,7 +48,7 @@ use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::encoder::public_api_hasher::{
-    Hashed, PublicApiHasher, PublicApiHashingContext, RDRHashAll, RDRHashNone,
+    Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
 };
 
 mod decoder;
@@ -387,10 +387,10 @@ macro_rules! define_tables {
         }
 
         impl TableBuilders {
-            fn encode(
+            fn encode<'a>(
                 &self,
                 buf: &mut FileEncoder,
-                hcx: &mut PublicApiHashingContext<'_>
+                hcx: &mut impl PublicApiHashState<'a>
             ) -> Hashed<LazyTables>
             {
                 let mut hasher = PublicApiHasher::default();
