@@ -353,6 +353,11 @@ fn kill_point_map<'a>(
 struct MatrixBuilder {
     matrix: SparseIntervalMatrix<Local, SplitPointIndex>,
     range_start: IndexVec<Local, Option<SplitPointIndex>>,
+
+    // Track locals that have been live at any point in a block so that at the
+    // end of a block we don't need to iterate over all locals. This
+    // significantly speeds up matrix building.
+    maybe_live_locals: Vec<Local>,
 }
 
 impl MatrixBuilder {
@@ -360,7 +365,10 @@ impl MatrixBuilder {
         let split_point = SplitPointIndex::new(point, effect);
 
         // No-op if the local is already live.
-        self.range_start[local].get_or_insert(split_point);
+        if self.range_start[local].is_none() {
+            self.range_start[local] = Some(split_point);
+            self.maybe_live_locals.push(local);
+        }
     }
 
     fn kill(&mut self, local: Local, point: PointIndex, effect: SplitPointEffect) {
@@ -370,6 +378,12 @@ impl MatrixBuilder {
         if let Some(start) = self.range_start[local].take() {
             debug_assert!(end >= start);
             self.matrix.append_range(local, start..=end);
+        }
+    }
+
+    fn kill_all(&mut self, point: PointIndex, effect: SplitPointEffect) {
+        while let Some(local) = self.maybe_live_locals.pop() {
+            self.kill(local, point, effect);
         }
     }
 }
@@ -388,6 +402,7 @@ pub fn liveness_matrix<'tcx>(
     let mut builder = MatrixBuilder {
         matrix: SparseIntervalMatrix::new(points.num_points() * 2),
         range_start: IndexVec::from_elem_n(None, body.local_decls.len()),
+        maybe_live_locals: Vec::new(),
     };
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         // We can mutate the state in-place since we're not using it any more
@@ -522,9 +537,7 @@ pub fn liveness_matrix<'tcx>(
         // End the lifetimes of all locals at the end of the block. Successor
         // blocks (which may not be continuous in the index space!) will
         // initialize the lifetimes again from their entry state.
-        for local in builder.range_start.indices() {
-            builder.kill(local, point, SplitPointEffect::Late);
-        }
+        builder.kill_all(point, SplitPointEffect::Late);
     }
 
     builder.matrix
