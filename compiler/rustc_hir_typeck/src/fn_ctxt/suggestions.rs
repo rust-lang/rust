@@ -2707,12 +2707,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
-                // Suggest constructor as deep into the block tree as possible.
-                // This fixes https://github.com/rust-lang/rust/issues/101065,
-                // and also just helps make the most minimal suggestions.
+                // Suggest constructor as deep into the block tree as possible,
+                // but don't cross macro contexts. This fixes #101065 while
+                // keeping suggestions out of macro definitions (#142359).
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
+                    && expr_.span.eq_ctxt(expr.span)
                 {
                     expr = expr_
                 }

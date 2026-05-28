@@ -14,6 +14,7 @@ pub(super) const trait SimdExt: Sized {
     unsafe fn splat(v: i64) -> Self;
 }
 
+#[rustfmt::skip] // FIXME: https://github.com/rust-lang/stdarch/pull/2133#issuecomment-4524350350
 macro_rules! impl_simd_ext {
     ($v:ident, $e:ty) => {
         #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
@@ -253,6 +254,20 @@ macro_rules! impl_vuv {
                 let a: $ity = transmute(a);
                 let b: $ity = ls::simd_splat(IMM.into());
                 let r: $ity = $op(a, b);
+                transmute(r)
+            }
+        }
+    };
+    ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ident, $ibs:expr, const) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[rustc_legacy_const_generics(1)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name<const IMM: u32>(a: $oty) -> $oty {
+            static_assert_uimm_bits!(IMM, $ibs);
+            unsafe {
+                let a: $ity = transmute(a);
+                let r: $ity = $op::<IMM, _>(a);
                 transmute(r)
             }
         }

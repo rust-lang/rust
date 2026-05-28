@@ -783,7 +783,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 }
             }
 
-            DefKind::TraitAlias | DefKind::Fn => {
+            DefKind::TraitAlias | DefKind::Fn | DefKind::TyAlias => {
                 self.ev.queue.insert(def_id);
             }
 
@@ -808,7 +808,6 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
 
             // Can't be reached
             DefKind::Impl { .. }
-            | DefKind::TyAlias
             | DefKind::Field
             | DefKind::Variant
             | DefKind::Static { .. }

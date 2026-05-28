@@ -171,7 +171,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .inspect(|vid| {
                 let origin = self.float_var_origin(*vid);
                 // Show the entire literal in the suggestion to make it clearer.
-                let literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
+                let mut literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
+                // A `.` at the end of the literal is no longer necessary if `f32` is explicitly specified
+                if let Some(ref mut literal) = literal
+                    && literal.ends_with('.')
+                {
+                    literal.pop();
+                }
                 self.tcx.emit_node_span_lint(
                     FLOAT_LITERAL_F32_FALLBACK,
                     origin.lint_id.unwrap_or(CRATE_HIR_ID),

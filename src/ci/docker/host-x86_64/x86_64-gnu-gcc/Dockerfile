@@ -1,3 +1,6 @@
+# This Dockerfile builds sysroot with the LLVM backendsthen run tests with the
+# GCC backend.
+
 FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive

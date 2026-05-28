@@ -10,6 +10,7 @@ use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
+use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -24,7 +25,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
 use rustc_target::spec::{Arch, Os};
@@ -174,9 +175,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, &'ll Value>],
-        result: PlaceRef<'tcx, &'ll Value>,
+        result_layout: ty::layout::TyAndLayout<'tcx>,
+        result_place: Option<PlaceValue<&'ll Value>>,
         span: Span,
-    ) -> Result<(), ty::Instance<'tcx>> {
+    ) -> IntrinsicResult<'tcx, &'ll Value> {
         let tcx = self.tcx;
         let llvm_version = crate::llvm_util::get_version();
 
@@ -221,8 +223,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
             sym::autodiff => {
+                let result = PlaceRef {
+                    val: result_place.unwrap(),
+                    layout: result_layout,
+                };
                 codegen_autodiff(self, tcx, instance, args, result);
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
@@ -234,7 +240,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
 
                 codegen_offload(self, tcx, instance, args);
-                return Ok(());
+                // offload *has* a return type, but somehow works without mentioning the place
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
@@ -263,8 +270,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let ptr = select(self, true_val.llval, false_val.llval);
                         let selected =
                             OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
+                        let result = PlaceRef {
+                            val: result_place.unwrap(),
+                            layout: result_layout,
+                        };
                         selected.store(self, result);
-                        return Ok(());
+                        return IntrinsicResult::WroteIntoPlace;
                     }
                     (OperandValue::Immediate(_), OperandValue::Immediate(_))
                     | (OperandValue::Pair(_, _), OperandValue::Pair(_, _)) => {
@@ -272,11 +283,15 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let false_val = args[2].immediate_or_packed_pair(self);
                         select(self, true_val, false_val)
                     }
-                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => return Ok(()),
+                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => return IntrinsicResult::Operand(OperandValue::ZeroSized),
                     _ => span_bug!(span, "Incompatible OperandValue for select_unpredictable"),
                 }
             }
             sym::catch_unwind => {
+                let result = PlaceRef {
+                    val: result_place.unwrap(),
+                    layout: result_layout,
+                };
                 catch_unwind_intrinsic(
                     self,
                     args[0].immediate(),
@@ -284,7 +299,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     args[2].immediate(),
                     result,
                 );
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
@@ -298,7 +313,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     feature_err(&*self.sess(), feature, span, msg).emit();
                 }
 
-                let BackendRepr::Scalar(scalar) = result.layout.backend_repr else {
+                let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
                     bug!("the va_arg intrinsic does not support non-scalar types")
                 };
 
@@ -315,7 +330,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         bug!("the va_arg intrinsic does not support `i128`/`u128`")
                     }
                     Primitive::Int(..) => {
-                        let int_width = self.cx().size_of(result.layout.ty).bits();
+                        let int_width = self.cx().size_of(result_layout.ty).bits();
                         let target_c_int_width = self.cx().sess().target.options.c_int_width;
                         if int_width < u64::from(target_c_int_width) {
                             // Smaller integer types are automatically promototed and `va_arg`
@@ -345,34 +360,39 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                 }
 
-                emit_va_arg(self, args[0], result.layout.ty)
+                emit_va_arg(self, args[0], result_layout.ty)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
+                let result = PlaceRef {
+                    val: result_place.unwrap(),
+                    layout: result_layout,
+                };
+
                 let ptr = args[0].immediate();
-                let load = self.volatile_load(result.layout.llvm_type(self), ptr);
+                let load = self.volatile_load(result_layout.llvm_type(self), ptr);
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    result.layout.align.bytes() as u32
+                    result_layout.align.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
                 }
-                if !result.layout.is_zst() {
+                if !result_layout.is_zst() {
                     self.store_to_place(load, result.val);
                 }
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.volatile_store(self, dst);
-                return Ok(());
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.unaligned_volatile_store(self, dst);
-                return Ok(());
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data
@@ -396,7 +416,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         self.const_i32(locality),
                         self.const_i32(cache_type),
                     ],
-                )
+                );
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
             sym::carrying_mul_add => {
                 let (size, signed) = fn_args.type_at(0).int_size_and_signed(self.tcx);
@@ -434,12 +455,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::carryless_mul if llvm_version >= (22, 0, 0) => {
                 let ty = args[0].layout.ty;
                 if !ty.is_integral() {
-                    tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                    let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                         span,
                         name,
                         ty,
                     });
-                    return Ok(());
+                    return IntrinsicResult::Err(err);
                 }
                 let (size, _) = ty.int_size_and_signed(self.tcx);
                 let width = size.bits();
@@ -463,12 +484,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::unchecked_funnel_shr => {
                 let ty = args[0].layout.ty;
                 if !ty.is_integral() {
-                    tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                    let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                         span,
                         name,
                         ty,
                     });
-                    return Ok(());
+                    return IntrinsicResult::Err(err);
                 }
                 let (size, signed) = ty.int_size_and_signed(self.tcx);
                 let width = size.bits();
@@ -484,12 +505,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         };
                         let ret =
                             self.call_intrinsic(llvm_name, &[llty], &[args[0].immediate(), y]);
-                        self.intcast(ret, result.layout.llvm_type(self), false)
+                        self.intcast(ret, result_layout.llvm_type(self), false)
                     }
                     sym::ctpop => {
                         let ret =
                             self.call_intrinsic("llvm.ctpop", &[llty], &[args[0].immediate()]);
-                        self.intcast(ret, result.layout.llvm_type(self), false)
+                        self.intcast(ret, result_layout.llvm_type(self), false)
                     }
                     sym::bswap => {
                         if width == 8 {
@@ -551,12 +572,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
                     SimdScalableVector { .. } => {
-                        tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                        let err = tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
                             span,
                             name: sym::raw_eq,
                             ty: tp_ty,
                         });
-                        return Ok(());
+                        return IntrinsicResult::Err(err);
                     }
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
@@ -594,6 +615,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::black_box => {
+                let result = PlaceRef {
+                    val: result_place.unwrap(),
+                    layout: result_layout,
+                };
                 args[0].val.store(self, result);
                 let result_val_span = [result.val.llval];
                 // We need to "use" the argument in some way LLVM can't introspect, and on
@@ -628,7 +653,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
 
                 // We have copied the value to `result` already.
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
 
             sym::gpu_launch_sized_workgroup_mem => {
@@ -652,7 +677,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.type_array(self.type_i8(), 0),
                     AddressSpace::GPU_WORKGROUP,
                 );
-                let ty::RawPtr(inner_ty, _) = result.layout.ty.kind() else { unreachable!() };
+                let ty::RawPtr(inner_ty, _) = result_layout.ty.kind() else { unreachable!() };
                 // The alignment of the global is used to specify the *minimum* alignment that
                 // must be obeyed by the GPU runtime.
                 // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
@@ -816,10 +841,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     );
                 }
 
-                let llret_ty = if result.layout.ty.is_simd()
-                    && let BackendRepr::Memory { .. } = result.layout.backend_repr
+                let llret_ty = if result_layout.ty.is_simd()
+                    && let BackendRepr::Memory { .. } = result_layout.backend_repr
                 {
-                    let (size, elem_ty) = result.layout.ty.simd_size_and_type(self.tcx());
+                    let (size, elem_ty) = result_layout.ty.simd_size_and_type(self.tcx());
                     let elem_ll_ty = match elem_ty.kind() {
                         ty::Float(f) => self.type_float_from_ty(*f),
                         ty::Int(i) => self.type_int_from_ty(*i),
@@ -829,7 +854,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     };
                     self.type_vector(elem_ll_ty, size)
                 } else {
-                    result.layout.llvm_type(self)
+                    result_layout.llvm_type(self)
                 };
 
                 match generic_simd_intrinsic(
@@ -837,14 +862,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     name,
                     fn_args,
                     &loaded_args,
-                    result.layout.ty,
+                    result_layout.ty,
                     llret_ty,
                     span,
                 ) {
                     Ok(llval) => llval,
                     // If there was an error, just skip this invocation... we'll abort compilation
                     // anyway, but we can keep codegen'ing to find more errors.
-                    Err(()) => return Ok(()),
+                    Err(err) => return IntrinsicResult::Err(err),
                 }
             }
 
@@ -874,17 +899,23 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             _ => {
                 debug!("unknown intrinsic '{}' -- falling back to default body", name);
                 // Call the fallback body instead of generating the intrinsic code
-                return Err(ty::Instance::new_raw(instance.def_id(), instance.args));
+                let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
+                return IntrinsicResult::Fallback(fallback);
             }
         };
 
-        if result.layout.ty.is_bool() {
-            let val = self.from_immediate(llval);
-            self.store_to_place(val, result.val);
-        } else if !result.layout.ty.is_unit() {
-            self.store_to_place(llval, result.val);
+        if let BackendRepr::Memory { .. } = result_layout.backend_repr {
+            // We have an llvm immediate, but that's not what cg_ssa expects,
+            // so write it into the place (that always exists for memory)
+            if !result_layout.is_zst() {
+                self.store_to_place(llval, result_place.unwrap());
+            }
+            IntrinsicResult::WroteIntoPlace
+        } else {
+            IntrinsicResult::Operand(
+                OperandRef::from_immediate_or_packed_pair(self, llval, result_layout).val,
+            )
         }
-        Ok(())
     }
 
     fn codegen_llvm_intrinsic_call(
@@ -1041,12 +1072,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         self.extract_value(type_checked_load, 0)
     }
 
-    fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_start", &[self.val_ty(va_list)], &[va_list])
+    fn va_start(&mut self, va_list: &'ll Value) {
+        self.call_intrinsic("llvm.va_start", &[self.val_ty(va_list)], &[va_list]);
     }
 
-    fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
+    fn va_end(&mut self, va_list: &'ll Value) {
+        self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list]);
     }
 
     fn retag_reg(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) -> Self::Value {
@@ -1999,11 +2030,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,
     span: Span,
-) -> Result<&'ll Value, ()> {
+) -> Result<&'ll Value, ErrorGuaranteed> {
     macro_rules! return_error {
         ($diag: expr) => {{
-            bx.sess().dcx().emit_err($diag);
-            return Err(());
+            let err = bx.sess().dcx().emit_err($diag);
+            return Err(err);
         }};
     }
 
@@ -2450,11 +2481,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         bx: &mut Builder<'_, 'll, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
-    ) -> Result<&'ll Value, ()> {
+    ) -> Result<&'ll Value, ErrorGuaranteed> {
         macro_rules! return_error {
             ($diag: expr) => {{
-                bx.sess().dcx().emit_err($diag);
-                return Err(());
+                let err = bx.sess().dcx().emit_err($diag);
+                return Err(err);
             }};
         }
 
@@ -3040,7 +3071,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
                         let r = bx.$red(input);
-                        Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
+                        Ok(r)
                     }
                     _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
                         span,

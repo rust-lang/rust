@@ -869,7 +869,6 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             style = "verbose"
         )]
         new_ty_span: Span,
-        #[skip_arg]
         new_ty: Ty<'a>,
     },
     #[diag("explicit lifetime required in parameter type", code = E0621)]
@@ -885,7 +884,6 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             style = "verbose"
         )]
         new_ty_span: Span,
-        #[skip_arg]
         new_ty: Ty<'a>,
     },
 }
@@ -1519,7 +1517,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     RemoveRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
     },
     #[suggestion(
@@ -1531,9 +1528,7 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
@@ -1545,7 +1540,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     Cast {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
@@ -1557,7 +1551,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastBoth {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
     },
@@ -1570,9 +1563,7 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastBothRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
-        #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
     },

@@ -781,9 +781,15 @@ fn report_linker_output(
 
         // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
         let deployment_mismatch = |line: &str| {
-            line.starts_with("ld: warning: object file (")
-                && line.contains("was built for newer 'macOS' version")
-                && line.contains("than being linked")
+            // ld64 (object files + dylibs) and ld_prime (object files only):
+            (line.starts_with("ld: ")
+                && line.contains("was built for newer")
+                && line.contains("than being linked"))
+            // ld_prime (Xcode 15+, dylibs only):
+            || (line.starts_with("ld: ")
+                && line.contains("building for")
+                && line.contains("but linking with")
+                && line.contains("which was built for newer version"))
         };
         // FIXME: This is a real warning we would like to show, but it hits too many crates
         // to want to turn it on immediately.

@@ -38,7 +38,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
                 (tcx.hir_attrs(id.hir_id)[id.attr_index as usize].id(), id.lint_index)
             }
         };
-        (attr_id, lint_index.expect("fulfilled expectations must have a lint index"))
+        (attr_id, lint_index)
     };
 
     let fulfilled_expectations: FxHashSet<_> =

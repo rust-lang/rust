@@ -4,6 +4,16 @@ use crate::common::intrinsic::Intrinsic;
 
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
+/// Generates a C source file containing wrapper functions around each specialisation of each
+/// intrinsic (that is, intrinsics with specific values for the the immediate arguments). Each
+/// wrapper function is invoked via FFI from the Rust binary doing the testing.
+///
+/// e.g.
+/// ```c
+/// void __crc32cd_wrapper(uint32_t* __dst, uint32_t a, uint64_t b) {
+///    *__dst = __crc32cd(a, b);
+/// }
+/// ```
 pub fn write_wrapper_c<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     notice: &str,

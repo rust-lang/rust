@@ -3,7 +3,9 @@ use std::str::FromStr;
 use itertools::Itertools;
 
 use super::intrinsic::X86IntrinsicType;
-use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
+use crate::common::intrinsic_helpers::{
+    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
+};
 use crate::x86::xml_parser::Parameter;
 
 impl IntrinsicTypeDefinition for X86IntrinsicType {
@@ -187,7 +189,7 @@ impl X86IntrinsicType {
                 Ok(num_bits) => self
                     .data
                     .bit_len
-                    .and_then(|bit_len| Some(num_bits / bit_len)),
+                    .and_then(|bit_len| Some(SimdLen::Fixed(num_bits / bit_len))),
                 Err(_) => None,
             };
         }
@@ -297,7 +299,7 @@ impl X86IntrinsicType {
                 // - _mm512_conj_pch
                 if param.type_data == "__m512h" && param.etype == "FP32" {
                     data.bit_len = Some(16);
-                    data.simd_len = Some(32);
+                    data.simd_len = Some(SimdLen::Fixed(32));
                 }
 
                 let mut result = X86IntrinsicType {

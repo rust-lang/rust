@@ -6,7 +6,9 @@ use cli::ProcessedCli;
 
 use crate::common::{
     gen_c::write_wrapper_c,
-    gen_rust::{write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs},
+    gen_rust::{
+        run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
+    },
     intrinsic::Intrinsic,
     intrinsic_helpers::IntrinsicTypeDefinition,
 };
@@ -19,7 +21,6 @@ pub mod intrinsic_helpers;
 
 mod gen_c;
 mod gen_rust;
-mod indentation;
 mod values;
 
 /// Architectures must support this trait
@@ -29,7 +30,7 @@ pub trait SupportedArchitectureTest {
 
     fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
 
-    fn create(cli_options: ProcessedCli) -> Self;
+    fn create(cli_options: &ProcessedCli) -> Self;
 
     const NOTICE: &str;
 
@@ -38,14 +39,14 @@ pub trait SupportedArchitectureTest {
     const PLATFORM_RUST_CFGS: &str;
     const PLATFORM_RUST_DEFINITIONS: &str;
 
-    fn arch_flags(&self) -> Vec<&str>;
+    fn arch_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {
-        let (chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
+        let (max_chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
 
         std::fs::create_dir_all("c_programs").unwrap();
         self.intrinsics()
-            .par_chunks(chunk_size)
+            .par_chunks(max_chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/wrapper_{i}.c");
@@ -56,25 +57,25 @@ pub trait SupportedArchitectureTest {
             .unwrap();
     }
 
-    fn generate_rust_file(&self) {
-        let arch_flags = self.arch_flags();
+    fn generate_rust_file(&self, cli_options: &ProcessedCli) {
+        let arch_flags = self.arch_flags(cli_options);
 
         std::fs::create_dir_all("rust_programs").unwrap();
 
-        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len());
+        let (max_chunk_size, chunk_count) = manual_chunk(self.intrinsics().len());
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
         write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
 
         self.intrinsics()
-            .chunks(chunk_size)
+            .chunks(max_chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 std::fs::create_dir_all(format!("rust_programs/mod_{i}/src"))?;
 
                 let rust_filename = format!("rust_programs/mod_{i}/src/lib.rs");
                 trace!("generating `{rust_filename}`");
-                let mut file = File::create(rust_filename)?;
+                let mut file = File::create(&rust_filename)?;
 
                 write_lib_rs(
                     &mut file,
@@ -84,6 +85,7 @@ pub trait SupportedArchitectureTest {
                     i,
                     chunk,
                 )?;
+                run_rustfmt(&rust_filename);
 
                 let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");
                 trace!("generating `{toml_filename}`");
@@ -93,9 +95,10 @@ pub trait SupportedArchitectureTest {
 
                 let build_rs_filename = format!("rust_programs/mod_{i}/build.rs");
                 trace!("generating `{build_rs_filename}`");
-                let mut file = File::create(build_rs_filename).unwrap();
+                let mut file = File::create(&build_rs_filename).unwrap();
 
-                write_build_rs(&mut file, i, &arch_flags).unwrap();
+                write_build_rs(&mut file, i, &arch_flags, &cli_options).unwrap();
+                run_rustfmt(&build_rs_filename);
 
                 Ok(())
             })
@@ -106,5 +109,7 @@ pub trait SupportedArchitectureTest {
 
 pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
     let ncores = std::thread::available_parallelism().unwrap().into();
-    (intrinsic_count.div_ceil(ncores), ncores)
+    let max_intrinsics_per_chunk = intrinsic_count.div_ceil(ncores);
+    let number_of_chunks = intrinsic_count.div_ceil(max_intrinsics_per_chunk);
+    (max_intrinsics_per_chunk, number_of_chunks)
 }

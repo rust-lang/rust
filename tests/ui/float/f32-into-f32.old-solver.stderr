@@ -27,7 +27,16 @@ LL |     foo(1e5);
    = note: for more information, see issue #154024 <https://github.com/rust-lang/rust/issues/154024>
 
 warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
-  --> $DIR/f32-into-f32.rs:19:14
+  --> $DIR/f32-into-f32.rs:18:9
+   |
+LL |     foo(0.);
+   |         ^^ help: explicitly specify the type as `f32`: `0_f32`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #154024 <https://github.com/rust-lang/rust/issues/154024>
+
+warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
+  --> $DIR/f32-into-f32.rs:22:14
    |
 LL |     let x = -4.0;
    |              ^^^ help: explicitly specify the type as `f32`: `4.0_f32`
@@ -35,5 +44,5 @@ LL |     let x = -4.0;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #154024 <https://github.com/rust-lang/rust/issues/154024>
 
-warning: 4 warnings emitted
+warning: 5 warnings emitted
 

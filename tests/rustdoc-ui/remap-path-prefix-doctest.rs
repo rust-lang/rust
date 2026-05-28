@@ -9,7 +9,7 @@
 //@ revisions: without-scope
 
 //@ compile-flags:--test --test-args --test-threads=1
-//@ compile-flags:-Z unstable-options --remap-path-prefix={{src-base}}=remapped_path
+//@ compile-flags:--remap-path-prefix={{src-base}}=remapped_path
 
 //@[with-diag-scope] compile-flags: -Zunstable-options --remap-path-scope=diagnostics
 //@[with-macro-scope] compile-flags: -Zunstable-options --remap-path-scope=macro

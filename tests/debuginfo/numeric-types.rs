@@ -213,8 +213,9 @@
 //@ lldb-command:v nz_i128
 //@ lldb-check:[...] 55 { 0 = { 0 = 55 } }
 
-//@ lldb-command:v nz_isize
-//@ lldb-check:[...] 66 { 0 = { 0 = 66 } }
+// FIXME(#156886): "error: Invalid type: Cannot determine size"
+//(DISABLED) @ lldb-command:v nz_isize
+//(DISABLED) @ lldb-check:[...] 66 { 0 = { 0 = 66 } }
 
 //@ lldb-command:v/d nz_u8
 //@ lldb-check:[...] 77 { 0 = { 0 = 77 } }
@@ -231,8 +232,9 @@
 //@ lldb-command:v nz_u128
 //@ lldb-check:[...] 111 { 0 = { 0 = 111 } }
 
-//@ lldb-command:v nz_usize
-//@ lldb-check:[...] 122 { 0 = { 0 = 122 } }
+// FIXME(#156886): "error: Invalid type: Cannot determine size"
+//(DISABLED) @ lldb-command:v nz_usize
+//(DISABLED) @ lldb-check:[...] 122 { 0 = { 0 = 122 } }
 
 use std::num::*;
 use std::sync::atomic::*;

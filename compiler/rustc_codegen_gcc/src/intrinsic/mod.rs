@@ -9,6 +9,7 @@ use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
+use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 #[cfg(feature = "master")]
@@ -194,10 +195,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         instance: Instance<'tcx>,
         args: &[OperandRef<'tcx, RValue<'gcc>>],
-        result: PlaceRef<'tcx, RValue<'gcc>>,
+        result_layout: ty::layout::TyAndLayout<'tcx>,
+        result_place: Option<PlaceValue<RValue<'gcc>>>,
         span: Span,
-    ) -> Result<(), Instance<'tcx>> {
+    ) -> IntrinsicResult<'tcx, RValue<'gcc>> {
         let tcx = self.tcx;
+
+        let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
 
         let name = tcx.item_name(instance.def_id());
         let name_str = name.as_str();
@@ -353,7 +357,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     args[2].immediate(),
                     result,
                 );
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::breakpoint => {
                 unimplemented!();
@@ -375,12 +379,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.volatile_store(self, dst);
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.unaligned_volatile_store(self, dst);
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data
@@ -448,12 +452,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         _ => bug!(),
                     },
                     None => {
-                        tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
                             ty: args[0].layout.ty,
                         });
-                        return Ok(());
+                        return IntrinsicResult::Err(err);
                     }
                 }
             }
@@ -544,7 +548,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 extended_asm.set_volatile_flag(true);
 
                 // We have copied the value to `result` already.
-                return Ok(());
+                return IntrinsicResult::WroteIntoPlace;
             }
 
             sym::ptr_mask => {
@@ -569,12 +573,15 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     span,
                 ) {
                     Ok(value) => value,
-                    Err(()) => return Ok(()),
+                    Err(err) => return IntrinsicResult::Err(err),
                 }
             }
 
             // Fall back to default body
-            _ => return Err(Instance::new_raw(instance.def_id(), instance.args)),
+            _ => {
+                let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                return IntrinsicResult::Fallback(fallback);
+            }
         };
 
         if result.layout.ty.is_bool() {
@@ -583,7 +590,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         } else if !result.layout.ty.is_unit() {
             self.store_to_place(value, result.val);
         }
-        Ok(())
+        IntrinsicResult::WroteIntoPlace
     }
 
     fn codegen_llvm_intrinsic_call(
@@ -694,13 +701,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
 
-    fn va_start(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
+    fn va_start(&mut self, _va_list: RValue<'gcc>) {
         unimplemented!();
     }
 
-    fn va_end(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
+    fn va_end(&mut self, _va_list: RValue<'gcc>) {
         // FIXME(antoyo): implement.
-        self.context.new_rvalue_from_int(self.int_type, 0)
     }
 
     fn retag_reg(&mut self, _ptr: Self::Value, _info: &RetagInfo<Self::Value>) -> Self::Value {
@@ -1352,7 +1358,10 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
     dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     if !bx.sess().panic_strategy().unwinds() {
-        bx.call(bx.type_void(), None, None, try_func, &[data], None, None);
+        let param_type = bx.u8_type.make_pointer();
+        let fn_type =
+            bx.context.new_function_pointer_type(None, bx.type_void(), &[param_type], false);
+        bx.call(fn_type, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
