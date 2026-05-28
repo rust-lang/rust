@@ -6,6 +6,7 @@ use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordItems;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
@@ -181,7 +182,7 @@ impl PassByRefOrValue {
                                 || typeck
                                     .adjustments()
                                     .items()
-                                    .flat_map(|(_, a)| a)
+                                    .flat_map(|(_, a)| UnordItems::new(a.iter()))
                                     .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
                         {
                             continue;
