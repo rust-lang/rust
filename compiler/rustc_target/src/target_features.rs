@@ -575,6 +575,11 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    (
+        "hard-float",
+        Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false },
+        &[],
+    ),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -584,6 +589,7 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
+    ("spe", Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
     // tidy-alphabetical-end
 ];
@@ -1139,12 +1145,12 @@ impl Target {
     /// the first list contains target features that must be enabled for ABI reasons,
     /// and the second list contains target feature that must be disabled for ABI reasons.
     ///
-    /// These features are automatically appended to whatever the target spec sets as default
-    /// features for the target.
+    /// These features are checked against the target features reported by LLVM based on
+    /// `-Ctarget-cpu` and `-Ctarget-features`. Constraint violations result in a warning.
     ///
-    /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
-    /// against this. We also check any implied features, based on the information above. If LLVM
-    /// implicitly enables more implied features than we do, that could bypass this check!
+    /// We also check features enabled via `#[target_features]` (and here, constraint violations
+    /// emit a hard error), including features enabled indirectly via implications -- but if LLVM
+    /// considers more features to be implied than we do, that could bypass this check!
     pub fn abi_required_features(&self) -> FeatureConstraints {
         const NOTHING: FeatureConstraints = FeatureConstraints { required: &[], incompatible: &[] };
         // Some architectures don't have a clean explicit ABI designation; instead, the ABI is
@@ -1313,6 +1319,14 @@ impl Target {
                         panic!("invalid Rust ABI for s390x: {r:?}");
                     }
                 }
+            }
+            Arch::PowerPC | Arch::PowerPC64 => {
+                // The main ABI-relevant target features are "hard-float" and "spe". There is also
+                // "efpu2" but that seems only relevant when "spe" is enabled. If we ever add a
+                // soft-float variant, it looks like we have to mark "altivec" as incompatible --
+                // unlike other targets, it looks like enabling "altivec" will have LLVM use
+                // different registers for float types even if "hard-float" is off.
+                FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
             }
             Arch::Avr => {
                 // We only support one ABI on AVR at the moment.
