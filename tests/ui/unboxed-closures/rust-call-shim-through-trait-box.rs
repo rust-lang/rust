@@ -1,8 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/16739>.
+//! Test that unboxing shim for calling rust-call ABI methods through a
+//! trait box works and does not cause an ICE.
+
 //@ run-pass
 #![feature(unboxed_closures, fn_traits)]
-
-// Test that unboxing shim for calling rust-call ABI methods through a
-// trait box works and does not cause an ICE.
 
 struct Foo { foo: u32 }
 
