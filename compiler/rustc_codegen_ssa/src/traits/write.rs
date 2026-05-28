@@ -83,3 +83,9 @@ pub trait WriteBackendMethods: Clone + 'static {
 pub trait ModuleBufferMethods: Send + Sync {
     fn data(&self) -> &[u8];
 }
+
+impl ModuleBufferMethods for Infallible {
+    fn data(&self) -> &[u8] {
+        match *self {}
+    }
+}
