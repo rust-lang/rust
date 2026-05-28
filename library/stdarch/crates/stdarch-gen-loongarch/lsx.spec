@@ -1657,16 +1657,19 @@ asm-fmts = vd, vj, ui8
 data-types = UV16QI, UV16QI, UV16QI, USI
 
 /// lsx_vshuf4i_b
+impl = portable
 name = lsx_vshuf4i_b
 asm-fmts = vd, vj, ui8
 data-types = V16QI, V16QI, USI
 
 /// lsx_vshuf4i_h
+impl = portable
 name = lsx_vshuf4i_h
 asm-fmts = vd, vj, ui8
 data-types = V8HI, V8HI, USI
 
 /// lsx_vshuf4i_w
+impl = portable
 name = lsx_vshuf4i_w
 asm-fmts = vd, vj, ui8
 data-types = V4SI, V4SI, USI
@@ -2366,6 +2369,7 @@ asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI, V8HI
 
 /// lsx_vshuf4i_d
+impl = portable
 name = lsx_vshuf4i_d
 asm-fmts = vd, vj, ui8
 data-types = V2DI, V2DI, V2DI, USI

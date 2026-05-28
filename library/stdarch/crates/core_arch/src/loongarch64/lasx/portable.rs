@@ -267,6 +267,53 @@ pub(crate) const unsafe fn simd_packod_d<T: Copy>(a: T, b: T) -> T {
     simd_shuffle!(b, a, [1, 5, 3, 7])
 }
 
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+const unsafe fn simd_shuf4i_b<const I: u32, T: Copy>(a: T) -> T {
+    simd_shuffle!(
+        a,
+        a,
+        [
+            ((I >> 0) & 3) + 0, ((I >> 2) & 3) + 0, ((I >> 4) & 3) + 0, ((I >> 6) & 3) + 0,
+            ((I >> 0) & 3) + 4, ((I >> 2) & 3) + 4, ((I >> 4) & 3) + 4, ((I >> 6) & 3) + 4,
+            ((I >> 0) & 3) + 8, ((I >> 2) & 3) + 8, ((I >> 4) & 3) + 8, ((I >> 6) & 3) + 8,
+            ((I >> 0) & 3) + 12, ((I >> 2) & 3) + 12, ((I >> 4) & 3) + 12, ((I >> 6) & 3) + 12,
+            ((I >> 0) & 3) + 16, ((I >> 2) & 3) + 16, ((I >> 4) & 3) + 16, ((I >> 6) & 3) + 16,
+            ((I >> 0) & 3) + 20, ((I >> 2) & 3) + 20, ((I >> 4) & 3) + 20, ((I >> 6) & 3) + 20,
+            ((I >> 0) & 3) + 24, ((I >> 2) & 3) + 24, ((I >> 4) & 3) + 24, ((I >> 6) & 3) + 24,
+            ((I >> 0) & 3) + 28, ((I >> 2) & 3) + 28, ((I >> 4) & 3) + 28, ((I >> 6) & 3) + 28
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+const unsafe fn simd_shuf4i_h<const I: u32, T: Copy>(a: T) -> T {
+    simd_shuffle!(
+        a,
+        a,
+        [
+            ((I >> 0) & 3) + 0, ((I >> 2) & 3) + 0, ((I >> 4) & 3) + 0, ((I >> 6) & 3) + 0,
+            ((I >> 0) & 3) + 4, ((I >> 2) & 3) + 4, ((I >> 4) & 3) + 4, ((I >> 6) & 3) + 4,
+            ((I >> 0) & 3) + 8, ((I >> 2) & 3) + 8, ((I >> 4) & 3) + 8, ((I >> 6) & 3) + 8,
+            ((I >> 0) & 3) + 12, ((I >> 2) & 3) + 12, ((I >> 4) & 3) + 12, ((I >> 6) & 3) + 12,
+        ]
+    )
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+const unsafe fn simd_shuf4i_w<const I: u32, T: Copy>(a: T) -> T {
+    simd_shuffle!(
+        a,
+        a,
+        [
+            ((I >> 0) & 3) + 0, ((I >> 2) & 3) + 0, ((I >> 4) & 3) + 0, ((I >> 6) & 3) + 0,
+            ((I >> 0) & 3) + 4, ((I >> 2) & 3) + 4, ((I >> 4) & 3) + 4, ((I >> 6) & 3) + 4
+        ]
+    )
+}
+
 impl_vv!("lasx", lasx_xvpcnt_b, is::simd_ctpop, m256i, i8x32);
 impl_vv!("lasx", lasx_xvpcnt_h, is::simd_ctpop, m256i, i16x16);
 impl_vv!("lasx", lasx_xvpcnt_w, is::simd_ctpop, m256i, i32x8);
@@ -488,6 +535,9 @@ impl_vuv!("lasx", lasx_xvrepl128vei_b, simd_replvei_b, m256i, i8x32, 4, const);
 impl_vuv!("lasx", lasx_xvrepl128vei_h, simd_replvei_h, m256i, i16x16, 3, const);
 impl_vuv!("lasx", lasx_xvrepl128vei_w, simd_replvei_w, m256i, i32x8, 2, const);
 impl_vuv!("lasx", lasx_xvrepl128vei_d, simd_replvei_d, m256i, i64x4, 1, const);
+impl_vuv!("lasx", lasx_xvshuf4i_b, simd_shuf4i_b, m256i, i8x32, 8, const);
+impl_vuv!("lasx", lasx_xvshuf4i_h, simd_shuf4i_h, m256i, i16x16, 8, const);
+impl_vuv!("lasx", lasx_xvshuf4i_w, simd_shuf4i_w, m256i, i32x8, 8, const);
 
 impl_vug!("lasx", lasx_xvpickve2gr_w, is::simd_extract, m256i, i32x8, i32, 3);
 impl_vug!("lasx", lasx_xvpickve2gr_d, is::simd_extract, m256i, i64x4, i64, 2);
