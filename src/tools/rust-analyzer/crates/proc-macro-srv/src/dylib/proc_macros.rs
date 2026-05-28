@@ -32,7 +32,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
                     if *trait_name == macro_name =>
                 {
-                    let res = client.run(
+                    let res = client.run1(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         macro_body,
@@ -41,7 +41,7 @@ impl ProcMacros {
                     return res.map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
-                    let res = client.run(
+                    let res = client.run1(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         macro_body,
@@ -50,7 +50,7 @@ impl ProcMacros {
                     return res.map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
-                    let res = client.run(
+                    let res = client.run2(
                         &bridge::server::SAME_THREAD,
                         S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         parsed_attributes,
