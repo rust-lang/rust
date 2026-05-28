@@ -2034,7 +2034,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 let def_id = id.to_def_id();
                 self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
-                self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
