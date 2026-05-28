@@ -441,6 +441,7 @@ fn return_position_impl_trait() {
             // but rustc actually runs this code.
             let pinned = pin!(inp);
             struct EmptyWaker;
+            #[expect(clippy::manual_noop_waker, reason = "we don't have access to std here")]
             impl Wake for EmptyWaker {
                 fn wake(self: Arc<Self>) {
                 }
