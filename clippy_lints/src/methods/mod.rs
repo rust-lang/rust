@@ -75,6 +75,7 @@ mod map_collect_result_unit;
 mod map_err_ignore;
 mod map_flatten;
 mod map_identity;
+mod map_or_identity;
 mod map_unwrap_or;
 mod map_unwrap_or_else;
 mod map_with_unused_argument_over_ranges;
@@ -2327,27 +2328,34 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
+    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator`, `Option`, and `Result`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
+    /// Readability. This can be written more concisely with `Iterator::flat_map`, `Option::and_then`, and
+    /// `Result::and_then`.
     ///
     /// ### Example
     /// ```no_run
     /// let vec = vec![vec![1]];
-    /// let opt = Some(5);
-    ///
     /// vec.iter().map(|x| x.iter()).flatten();
+    ///
+    /// let opt = Some(5);
     /// opt.map(|x| Some(x * 2)).flatten();
+    ///
+    /// let res: Result<i32, String> = Ok(5);
+    /// res.map(|x| Ok(x * 2)).flatten();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # let vec = vec![vec![1]];
-    /// # let opt = Some(5);
+    /// let vec = vec![vec![1]];
     /// vec.iter().flat_map(|x| x.iter());
+    ///
+    /// let opt = Some(5);
     /// opt.and_then(|x| Some(x * 2));
+    ///
+    /// let res: Result<i32, String> = Ok(5);
+    /// res.and_then(|x| Ok(x * 2));
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
@@ -2376,6 +2384,29 @@ declare_clippy_lint! {
     pub MAP_IDENTITY,
     complexity,
     "using iterator.map(|x| x)"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks the usage of `.map_or(...)` with an identity function for `Option` and `Result` types.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let opt = Some(1);
+    /// opt.map_or(42, |v| v);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let opt = Some(1);
+    /// opt.unwrap_or(42);
+    /// ```
+    #[clippy::version = "1.97.0"]
+    pub MAP_OR_IDENTITY,
+    complexity,
+    "using an identity function when mapping with `.map_or(|err| ..., |x| x)`"
 }
 
 declare_clippy_lint! {
@@ -4267,7 +4298,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub UNNECESSARY_GET_THEN_CHECK,
-    suspicious,
+    complexity,
     "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
 }
 
@@ -4910,6 +4941,7 @@ impl_lint_pass!(Methods => [
     MAP_ERR_IGNORE,
     MAP_FLATTEN,
     MAP_IDENTITY,
+    MAP_OR_IDENTITY,
     MAP_UNWRAP_OR,
     MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
     MUT_MUTEX_LOCK,
@@ -5813,7 +5845,7 @@ impl Methods {
             }
         }
         // Handle method calls whose receiver and arguments may come from expansion
-        if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+        if let ExprKind::MethodCall(path, recv, args, call_span) = expr.kind {
             let method_span = path.ident.span;
 
             // Those methods do their own method name checking as they deal with multiple methods.
@@ -5858,6 +5890,10 @@ impl Methods {
                 (sym::into_iter, []) => {
                     into_iter_on_ref::check(cx, expr, method_span, recv);
                 },
+                (sym::map_or, [def, map]) => {
+                    map_or_identity::check(cx, expr, recv, call_span, def, map);
+                },
+
                 (sym::to_string, []) => {
                     inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },

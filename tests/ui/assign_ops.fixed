@@ -102,7 +102,7 @@ mod issue14871 {
         fn constant(value: usize) -> Self;
     }
 
-    impl<T> const NumberConstants for T
+    const impl<T> NumberConstants for T
     where
         T: Number + [const] std::ops::Add,
     {
@@ -120,14 +120,14 @@ mod issue14871 {
 
     pub struct S;
 
-    impl const std::ops::Add for S {
+    const impl std::ops::Add for S {
         type Output = S;
         fn add(self, _rhs: S) -> S {
             S
         }
     }
 
-    impl const std::ops::AddAssign for S {
+    const impl std::ops::AddAssign for S {
         fn add_assign(&mut self, rhs: S) {}
     }
 

@@ -27,16 +27,19 @@ fn older_msrv() {
 #[clippy::msrv = "1.85"]
 fn main() {
     let a: u32 = 10;
-    let _ = (a + 5) / 2; //~ ERROR: manual implementation of `midpoint`
+    let _ = (a + 5) / 2; //~ manual_midpoint
+    let _ = (a + 5) >> 1; //~ manual_midpoint
 
     let f: f32 = 10.0;
-    let _ = (f + 5.0) / 2.0; //~ ERROR: manual implementation of `midpoint`
+    let _ = (f + 5.0) / 2.0; //~ manual_midpoint
+    let _ = (f + 10.0) * 0.5; //~ manual_midpoint
+    let _ = 0.5 * (f + 10.0); //~ manual_midpoint
 
-    let _: u32 = 5 + (8 + 8) / 2 + 2; //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = const { (8 + 8) / 2 }; //~ ERROR: manual implementation of `midpoint`
-    let _: f64 = const { (8.0f64 + 8.) / 2. }; //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = (u32::default() + u32::default()) / 2; //~ ERROR: manual implementation of `midpoint`
-    let _: u32 = (two!() + two!()) / 2; //~ ERROR: manual implementation of `midpoint`
+    let _: u32 = 5 + (8 + 8) / 2 + 2; //~ manual_midpoint
+    let _: u32 = const { (8 + 8) / 2 }; //~ manual_midpoint
+    let _: f64 = const { (8.0f64 + 8.) / 2. }; //~ manual_midpoint
+    let _: u32 = (u32::default() + u32::default()) / 2; //~ manual_midpoint
+    let _: u32 = (two!() + two!()) / 2; //~ manual_midpoint
 
     // Do not lint in presence of an addition with more than 2 operands
     let _: u32 = (10 + 20 + 30) / 2;
@@ -52,14 +55,15 @@ fn main() {
     // Do not lint on signed integer types
     let i: i32 = 10;
     let _ = (i + 5) / 2;
+    let _ = (i + 5) >> 1;
 
     // Do not lint on (x+1)/2 or (1+x)/2 as this looks more like a `div_ceil()` operation
     let _ = (i + 1) / 2;
     let _ = (1 + i) / 2;
 
     // But if we see (x+1.0)/2.0 or (x+1.0)/2.0, it is probably a midpoint operation
-    let _ = (f + 1.0) / 2.0; //~ ERROR: manual implementation of `midpoint`
-    let _ = (1.0 + f) / 2.0; //~ ERROR: manual implementation of `midpoint`
+    let _ = (f + 1.0) / 2.0; //~ manual_midpoint
+    let _ = (1.0 + f) / 2.0; //~ manual_midpoint
 }
 
 #[clippy::msrv = "1.86"]
@@ -70,5 +74,5 @@ fn older_signed_midpoint(i: i32) {
 
 #[clippy::msrv = "1.87"]
 fn signed_midpoint(i: i32) {
-    let _ = (i + 10) / 2; //~ ERROR: manual implementation of `midpoint`
+    let _ = (i + 10) / 2; //~ manual_midpoint
 }
