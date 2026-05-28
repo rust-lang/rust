@@ -341,9 +341,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+        unnormalized_env.caller_bounds().into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
-                return predicate;
+                return clause;
             }
 
             struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
@@ -407,7 +407,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            predicate.fold_with(&mut ConstNormalizer(tcx))
+            clause.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
     .collect();

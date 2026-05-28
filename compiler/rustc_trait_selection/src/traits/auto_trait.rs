@@ -228,8 +228,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
-        for predicate in param_env.caller_bounds() {
-            fresh_preds.insert(self.clean_pred(infcx, predicate.as_predicate()));
+        for clause in param_env.caller_bounds() {
+            fresh_preds.insert(self.clean_pred(infcx, clause.as_predicate()));
         }
 
         let mut select = SelectionContext::new(infcx);

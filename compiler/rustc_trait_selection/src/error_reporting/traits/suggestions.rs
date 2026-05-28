@@ -1536,8 +1536,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     } else {
                         DefIdOrName::Name("type parameter")
                     };
-                    param_env.caller_bounds().iter().find_map(|pred| {
-                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
+                    param_env.caller_bounds().iter().find_map(|clause| {
+                        if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder()
                             && self
                                 .tcx
                                 .is_lang_item(proj.def_id(), LangItem::FnOnceOutput)
@@ -1547,8 +1547,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             Some((
                                 name,
-                                pred.kind().rebind(proj.term.expect_type()),
-                                pred.kind().rebind(args.as_slice()),
+                                clause.kind().rebind(proj.term.expect_type()),
+                                clause.kind().rebind(args.as_slice()),
                             ))
                         } else {
                             None
