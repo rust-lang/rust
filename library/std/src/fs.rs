@@ -823,7 +823,7 @@ impl File {
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds a lock the exact behavior
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then an exclusive lock is held.
     ///
