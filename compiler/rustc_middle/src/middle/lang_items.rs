@@ -55,6 +55,25 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Given a [`DefId`], returns whether it is one of the built-in callable
+    /// traits: `Fn`/`FnMut`/`FnOnce` or `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`.
+    ///
+    /// These built-in callable traits all model their inputs using the
+    /// `rust-call` ABI, which is tupled at the type level.
+    pub fn is_callable_trait(self, id: DefId) -> bool {
+        matches!(
+            self.as_lang_item(id),
+            Some(
+                LangItem::Fn
+                    | LangItem::FnMut
+                    | LangItem::FnOnce
+                    | LangItem::AsyncFn
+                    | LangItem::AsyncFnMut
+                    | LangItem::AsyncFnOnce
+            )
+        )
+    }
+
     /// Given a [`ty::ClosureKind`], get the [`DefId`] of its corresponding `Fn`-family
     /// trait, if it is defined.
     pub fn fn_trait_kind_to_def_id(self, kind: ty::ClosureKind) -> Option<DefId> {
