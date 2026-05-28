@@ -157,7 +157,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         };
 
         for (fid, _) in fields.iter() {
-            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].get(), subst)?;
+            self.visit_field(field_vis.as_ref().map(|it| it[fid]), &field_tys[fid].ty(), subst)?;
         }
         CONTINUE_OPAQUELY_INHABITED
     }

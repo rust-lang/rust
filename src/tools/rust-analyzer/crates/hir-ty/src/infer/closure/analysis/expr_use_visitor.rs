@@ -774,7 +774,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                             with_expr.into(),
                             with_place.clone(),
                             adt_field_types[f_index]
-                                .get()
+                                .ty()
                                 .instantiate(self.cx.interner(), args)
                                 .skip_norm_wip(),
                             ProjectionKind::Field {

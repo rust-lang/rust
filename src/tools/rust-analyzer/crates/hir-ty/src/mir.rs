@@ -1250,7 +1250,7 @@ impl<'db> PlaceTy<'db> {
             match self_ty.kind() {
                 TyKind::Adt(adt_def, args) if adt_def.is_enum() => {
                     infcx.interner.db().field_types(variant_id)[f.to_local_field_id()]
-                        .get()
+                        .ty()
                         .instantiate(infcx.interner, args)
                         .skip_norm_wip()
                 }
@@ -1262,7 +1262,7 @@ impl<'db> PlaceTy<'db> {
                 TyKind::Adt(adt_def, args) if !adt_def.is_enum() => {
                     let variant_id = VariantId::from_non_enum(adt_def.def_id()).unwrap();
                     infcx.interner.db().field_types(variant_id)[f.to_local_field_id()]
-                        .get()
+                        .ty()
                         .instantiate(infcx.interner, args)
                         .skip_norm_wip()
                 }

@@ -1700,7 +1700,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 if let Some(ty) = field_types
                     .iter()
                     .last()
-                    .map(|it| it.1.get().instantiate(self.interner(), subst))
+                    .map(|it| it.1.ty().instantiate(self.interner(), subst))
                 {
                     return self.coerce_unsized_look_through_fields(ty.skip_norm_wip(), goal);
                 }
@@ -1781,11 +1781,11 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         not_supported!("unsizing struct without field");
                     };
                     let target_last_field = self.db.field_types(id.into())[last_field]
-                        .get()
+                        .ty()
                         .instantiate(self.interner(), target_subst)
                         .skip_norm_wip();
                     let current_last_field = self.db.field_types(id.into())[last_field]
-                        .get()
+                        .ty()
                         .instantiate(self.interner(), current_subst)
                         .skip_norm_wip();
                     return self.unsizing_ptr_from_addr(
@@ -2427,7 +2427,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 .offset(u32::from(f.into_raw()) as usize)
                                 .bytes_usize();
                             let ty = field_types[f]
-                                .get()
+                                .ty()
                                 .instantiate(this.interner(), subst)
                                 .skip_norm_wip();
                             let size = this.layout(ty)?.size.bytes_usize();
@@ -2456,7 +2456,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
                                 let ty = field_types[f]
-                                    .get()
+                                    .ty()
                                     .instantiate(this.interner(), subst)
                                     .skip_norm_wip();
                                 let size = this.layout(ty)?.size.bytes_usize();
@@ -2542,9 +2542,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
             }
             TyKind::Adt(id, args) => match id.def_id() {
                 AdtId::StructId(s) => {
-                    for (i, (_, ty)) in self.db.field_types(s.into()).iter().enumerate() {
+                    for (i, (_, field)) in self.db.field_types(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
-                        let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
+                        let ty = field.ty().instantiate(self.interner(), args).skip_norm_wip();
                         self.patch_addresses(
                             patch_map,
                             ty_of_bytes,
@@ -2563,9 +2563,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
-                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
+                        for (i, (_, field)) in self.db.field_types(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
-                            let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
+                            let ty = field.ty().instantiate(self.interner(), args).skip_norm_wip();
                             self.patch_addresses(
                                 patch_map,
                                 ty_of_bytes,
@@ -3080,7 +3080,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                         .bytes_usize();
                                     let addr = addr.offset(offset);
                                     let ty = field_types[field]
-                                        .get()
+                                        .ty()
                                         .instantiate(self.interner(), subst)
                                         .skip_norm_wip();
                                     self.run_drop_glue_deep(ty, locals, addr, &[], span)?;

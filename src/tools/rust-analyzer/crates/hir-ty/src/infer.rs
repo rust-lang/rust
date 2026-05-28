@@ -2046,7 +2046,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                             .field_types(struct_id.into())
                             .values()
                             .next_back()
-                            .map(|it| it.get())
+                            .map(|it| it.ty())
                         {
                             Some(field) => {
                                 ty = field.instantiate(self.interner(), substs).skip_norm_wip();

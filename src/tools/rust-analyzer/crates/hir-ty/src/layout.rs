@@ -148,7 +148,7 @@ fn layout_of_simd_ty<'db>(
     let mut fields = fields.iter();
     let Some(TyKind::Array(e_ty, e_len)) =
         fields.next().filter(|_| fields.next().is_none()).map(|f| {
-            (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip().kind()
+            (*f.1).ty().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip().kind()
         })
     else {
         return Err(LayoutError::InvalidSimdType);
@@ -565,7 +565,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip()
+    db.field_types(def)[fd].ty().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip()
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {

@@ -64,9 +64,9 @@ use crate::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const, ConstKind,
         DbInterner, DefaultAny, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FnSigKind,
         FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern, PolyFnSig,
-        Predicate, Region, StoredClauses, StoredEarlyBinder, StoredGenericArg, StoredGenericArgs,
-        StoredPolyFnSig, StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty, Tys, Unnormalized,
-        abi::Safety, util::BottomUpFolder,
+        Predicate, Region, StoredClauses, StoredConst, StoredEarlyBinder, StoredGenericArg,
+        StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty,
+        Tys, Unnormalized, abi::Safety, util::BottomUpFolder,
     },
 };
 
@@ -1703,8 +1703,26 @@ fn const_param_types_with_diagnostics_cycle_result(
 pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>> {
+) -> &ArenaMap<LocalFieldId, FieldType> {
     &field_types_with_diagnostics(db, variant_id).value
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FieldType {
+    ty: StoredEarlyBinder<StoredTy>,
+    default: Option<StoredEarlyBinder<StoredConst>>,
+}
+
+impl FieldType {
+    #[inline]
+    pub fn ty<'db>(&self) -> EarlyBinder<'db, Ty<'db>> {
+        self.ty.get()
+    }
+
+    #[inline]
+    pub fn default<'db>(&self) -> Option<EarlyBinder<'db, Const<'db>>> {
+        self.default.as_ref().map(|default| default.get_with(|it| it.as_ref()))
+    }
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
@@ -1712,7 +1730,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn field_types_with_diagnostics(
     db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> TyLoweringResult<ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>> {
+) -> TyLoweringResult<ArenaMap<LocalFieldId, FieldType>> {
     let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
@@ -1736,7 +1754,15 @@ pub(crate) fn field_types_with_diagnostics(
         LifetimeElisionKind::AnonymousReportError,
     );
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, StoredEarlyBinder::bind(ctx.lower_ty(field_data.type_ref).store()));
+        let ty = ctx.lower_ty(field_data.type_ref);
+        let default = field_data.default_value.map(|default| ctx.lower_const(default, ty));
+        res.insert(
+            field_id,
+            FieldType {
+                ty: StoredEarlyBinder::bind(ty.store()),
+                default: default.map(|default| StoredEarlyBinder::bind(default.store())),
+            },
+        );
     }
     TyLoweringResult::from_ctx(res, ctx)
 }
@@ -2637,7 +2663,7 @@ fn fn_sig_for_struct_constructor(
     def: StructId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
+    let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
     let ret = type_for_adt(db, def.into()).skip_binder();
 
     let inputs_and_output =
@@ -2653,7 +2679,7 @@ fn fn_sig_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
     let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, ty)| ty.get().skip_binder());
+    let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
     let parent = def.lookup(db).parent;
     let ret = type_for_adt(db, parent.into()).skip_binder();
 
