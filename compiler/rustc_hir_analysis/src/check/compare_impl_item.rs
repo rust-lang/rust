@@ -2635,7 +2635,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut predicates = param_env.caller_bounds().to_vec();
+    let mut clauses = param_env.caller_bounds().to_vec();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2732,7 +2732,7 @@ fn param_env_with_gat_bounds<'tcx>(
                 //
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
-            _ => predicates.push(
+            _ => clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_term: ty::AliasTerm::new_from_def_id(
@@ -2749,7 +2749,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

@@ -342,9 +342,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|predicate| {
+        unnormalized_env.caller_bounds().into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
-                return predicate;
+                return clause;
             }
 
             struct ConstNormalizer<'tcx>(TyCtxt<'tcx>);
@@ -408,7 +408,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             // compatibility. Eventually when lazy norm is implemented this can just be removed.
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
-            predicate.fold_with(&mut ConstNormalizer(tcx))
+            clause.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
     .collect();
@@ -492,12 +492,12 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
     unnormalized_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
-    let predicates: Vec<_> =
+    let clauses: Vec<_> =
         util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
 
-    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
+    debug!("normalize_param_env_or_error: elaborated-clauses={:?}", clauses);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -508,27 +508,27 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
         .with_next_trait_solver(true)
         .ignoring_regions()
         .build(TypingMode::non_body_analysis());
-    let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
+    let clauses = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
         infcx.at(&cause, elaborated_env),
-        Unnormalized::new_wip(predicates),
+        Unnormalized::new_wip(clauses),
     ) {
-        Ok(predicates) => predicates,
+        Ok(clauses) => clauses,
         Err(errors) => {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             // An unnormalized env is better than nothing.
-            debug!("normalize_param_env_or_error: errored resolving predicates");
+            debug!("normalize_param_env_or_error: errored resolving clauses");
             return elaborated_env;
         }
     };
 
-    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
+    debug!("do_normalize_predicates: normalized clauses = {:?}", clauses);
     // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
     // There're placeholder constraints `leaking` out.
     // See the fixme in the enclosing function's docs for more.
     let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
 
-    let predicates = match infcx.fully_resolve(predicates) {
-        Ok(predicates) => predicates,
+    let clauses = match infcx.fully_resolve(clauses) {
+        Ok(clauses) => clauses,
         Err(fixup_err) => {
             span_bug!(
                 span,
@@ -537,8 +537,8 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
             )
         }
     };
-    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
+    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
 #[derive(Debug)]

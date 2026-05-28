@@ -428,8 +428,8 @@ fn can_switch_ranges<'tcx>(
                 .param_env(id)
                 .caller_bounds()
                 .into_iter()
-                .any(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                .any(|c| {
+                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && t.polarity == PredicatePolarity::Positive
                         && matches!(
                             cx.tcx.get_diagnostic_name(t.trait_ref.def_id),

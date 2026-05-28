@@ -716,7 +716,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
@@ -815,39 +815,39 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
-    let env_predicates = data
+    let env_clauses = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id())
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
-    assemble_candidates_from_predicates(
+    assemble_candidates_from_clauses(
         selcx,
         obligation,
         candidate_set,
         ProjectionCandidate::Object,
-        env_predicates,
+        env_clauses,
         false,
     );
 }
 
 #[instrument(
     level = "debug",
-    skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
+    skip(selcx, candidate_set, ctor, env_clauses, potentially_unnormalized_candidates)
 )]
-fn assemble_candidates_from_predicates<'cx, 'tcx>(
+fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
-    env_predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
-    for predicate in env_predicates {
-        let bound_predicate = predicate.kind();
-        if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
-            let data = bound_predicate.rebind(data);
+    for clause in env_clauses {
+        let bound_clause = clause.kind();
+        if let ty::ClauseKind::Projection(data) = clause.kind().skip_binder() {
+            let data = bound_clause.rebind(data);
             if data.item_def_id() != obligation.predicate.def_id() {
                 continue;
             }

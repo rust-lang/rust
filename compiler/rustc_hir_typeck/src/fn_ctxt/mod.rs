@@ -311,10 +311,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         let span = tcx.def_span(def_id);
 
         ty::EarlyBinder::bind(tcx.arena.alloc_from_iter(
-            self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                match predicate.kind().skip_binder() {
+            self.param_env.caller_bounds().iter().filter_map(|clause| {
+                match clause.kind().skip_binder() {
                     ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
-                        Some((predicate, span))
+                        Some((clause, span))
                     }
                     _ => None,
                 }
