@@ -298,8 +298,6 @@ pub(crate) struct LongRunningWarn {
     pub span: Span,
     #[help("the constant being evaluated")]
     pub item_span: Span,
-    // Used for evading `-Z deduplicate-diagnostics`.
-    pub force_duplicate: usize,
 }
 
 #[derive(Subdiagnostic)]
