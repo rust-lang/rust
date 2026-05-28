@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use rustc_data_structures::sync::IntoDynSyncSend;
@@ -143,10 +144,154 @@ pub(crate) fn dlsym_proc_macros(
                     .map(|proc_macro| IntoDynSyncSend(proc_macro.into_dyn_client()))
                     .collect())
             }
-            Err(err) => {
-                debug!("failed to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
-                Err(err.into())
+            Err(_err) => {
+                let engine = wasmi::Engine::default();
+                let module = wasmi::Module::new(&engine, std::fs::read(path).unwrap()).unwrap();
+
+                let mut store = wasmi::Store::new(&engine, ());
+                let mut linker = wasmi::Linker::new(&engine);
+                linker
+                    .func_wrap("env", "__rustc_proc_macro_dispatch", |_: u32, _: u32| -> () {
+                        unreachable!()
+                    })
+                    .unwrap();
+                let instance = linker.instantiate_and_start(&mut store, &module).unwrap();
+
+                let memory = instance.get_export(&store, "memory").unwrap().into_memory().unwrap();
+
+                let sym = instance
+                    .get_export(&store, &sym_name)
+                    .unwrap()
+                    .into_global()
+                    .unwrap()
+                    .get(&store)
+                    .i32()
+                    .unwrap();
+
+                let mut data = [0; 8];
+                memory.read(&store, sym as usize, &mut data).unwrap();
+                let ptr = u32::from_le_bytes(data[..4].try_into().unwrap());
+                let len = u32::from_le_bytes(data[4..8].try_into().unwrap());
+
+                Ok((0..len)
+                    .map(|i| {
+                        let mut data = [0; 4];
+                        memory.read(&store, (ptr + 4 * i) as usize, &mut data).unwrap();
+                        let func_ptr = u32::from_le_bytes(data);
+
+                        IntoDynSyncSend(wasm_macro_client(engine.clone(), module.clone(), func_ptr))
+                    })
+                    .collect::<Vec<_>>())
             }
         }
+    }
+}
+
+fn wasm_macro_client(engine: wasmi::Engine, module: wasmi::Module, func_ptr: u32) -> DynClient {
+    DynClient {
+        run: Arc::new(move |config| {
+            struct Ctx<'a> {
+                dispatch: rustc_proc_macro::bridge::Closure<'a>,
+                client_refs: Option<ClientRefs>,
+            }
+
+            #[derive(Clone)]
+            struct ClientRefs {
+                memory: wasmi::Memory,
+                buffer_replace: wasmi::TypedFunc<(u32, u32), ()>,
+                buffer_ptr: wasmi::TypedFunc<(u32,), (u32,)>,
+                buffer_len: wasmi::TypedFunc<(u32,), (u32,)>,
+            }
+
+            impl ClientRefs {
+                fn read(
+                    &self,
+                    store: &mut impl wasmi::AsContextMut,
+                    buffer: u32,
+                ) -> Result<Vec<u8>, wasmi::Error> {
+                    let (buffer_ptr,) = self.buffer_ptr.call(&mut *store, (buffer,))?;
+                    let (buffer_len,) = self.buffer_len.call(&mut *store, (buffer,))?;
+                    let mut data = vec![0; buffer_len as usize];
+                    self.memory.read(store, buffer_ptr as usize, &mut data)?;
+                    Ok(data)
+                }
+            }
+
+            let mut store =
+                wasmi::Store::new(&engine, Ctx { dispatch: config.dispatch, client_refs: None });
+            let mut linker: wasmi::Linker<Ctx<'_>> = wasmi::Linker::new(&engine);
+            linker
+                .func_new(
+                    "env",
+                    "__rustc_proc_macro_dispatch",
+                    wasmi::FuncType::new([wasmi::ValType::I32, wasmi::ValType::I32], []),
+                    |mut caller, inputs, _outputs| {
+                        let client_refs = caller.data().client_refs.clone().unwrap();
+                        let input_buffer = inputs[0].i32().unwrap().cast_unsigned();
+                        let output_buffer = inputs[1].i32().unwrap().cast_unsigned();
+
+                        let input_buffer_data = client_refs.read(&mut caller, input_buffer)?;
+
+                        let output_buffer_data =
+                            caller.data_mut().dispatch.call(input_buffer_data.into());
+
+                        client_refs.buffer_replace.call(
+                            &mut caller,
+                            (output_buffer, output_buffer_data.len().try_into().unwrap()),
+                        )?;
+                        let (output_buffer_ptr,) =
+                            client_refs.buffer_ptr.call(&mut caller, (output_buffer,))?;
+                        client_refs.memory.write(
+                            &mut caller,
+                            output_buffer_ptr as usize,
+                            &output_buffer_data,
+                        )?;
+
+                        Ok(())
+                    },
+                )
+                .unwrap();
+            let instance = linker.instantiate_and_start(&mut store, &module).unwrap();
+
+            fn get_func<T: wasmi::WasmParams, U: wasmi::WasmResults>(
+                instance: &wasmi::Instance,
+                store: &impl wasmi::AsContext,
+                name: &str,
+            ) -> wasmi::TypedFunc<T, U> {
+                instance.get_export(store, name).unwrap().into_func().unwrap().typed(store).unwrap()
+            }
+
+            let client_refs = ClientRefs {
+                memory: instance.get_export(&store, "memory").unwrap().into_memory().unwrap(),
+                buffer_replace: get_func(&instance, &store, "__rustc_proc_macro_buffer_replace"),
+                buffer_ptr: get_func(&instance, &store, "__rustc_proc_macro_buffer_ptr"),
+                buffer_len: get_func(&instance, &store, "__rustc_proc_macro_buffer_len"),
+            };
+            store.data_mut().client_refs = Some(client_refs.clone());
+
+            let alloc_buffer: wasmi::TypedFunc<(u32,), (u32,)> =
+                get_func(&instance, &store, "__rustc_proc_macro_alloc_buffer");
+
+            let call_client: wasmi::TypedFunc<(u32, u32), (u32,)> =
+                get_func(&instance, &store, "__rustc_proc_macro_call_client");
+
+            let (input_buffer,) =
+                alloc_buffer.call(&mut store, (config.input.len().try_into().unwrap(),)).unwrap();
+            let input_buffer_ptr =
+                client_refs.buffer_ptr.call(&mut store, (input_buffer,)).unwrap().0;
+            instance
+                .get_export(&store, "memory")
+                .unwrap()
+                .into_memory()
+                .unwrap()
+                .write(&mut store, input_buffer_ptr as usize, &config.input)
+                .unwrap();
+
+            let (output_buffer,) = call_client.call(&mut store, (input_buffer, func_ptr)).unwrap();
+
+            let output_buffer_data = client_refs.read(&mut store, output_buffer).unwrap();
+
+            output_buffer_data.into()
+        }),
     }
 }

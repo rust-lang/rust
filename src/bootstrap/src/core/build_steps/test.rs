@@ -2297,11 +2297,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
-        // Build the standard library for wasm32-wasip2 (current target for wasm proc macros).
+        // Build the standard library for wasm32-unknown-unknown (current target for wasm proc macros).
         if builder.config.wasm_proc_macros {
             builder.ensure(compile::Std::new(
                 test_compiler,
-                TargetSelection::from_user("wasm32-wasip2"),
+                TargetSelection::from_user("wasm32-unknown-unknown"),
             ));
         }
 
