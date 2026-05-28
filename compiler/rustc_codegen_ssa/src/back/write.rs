@@ -1115,18 +1115,6 @@ fn do_thin_lto<B: WriteBackendMethods>(
     compiled_modules
 }
 
-fn execute_thin_lto_work_item<B: WriteBackendMethods>(
-    cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
-    shared_emitter: SharedEmitter,
-    tm_factory: TargetMachineFactoryFn<B>,
-    module: lto::ThinModule<B>,
-) -> CompiledModule {
-    let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
-
-    B::optimize_and_codegen_thin(cgcx, prof, &shared_emitter, tm_factory, module)
-}
-
 /// Messages sent to the coordinator.
 pub(crate) enum Message<B: WriteBackendMethods> {
     /// A jobserver token has become available. Sent from the jobserver helper
@@ -1891,7 +1879,8 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
                 execute_copy_from_cache_work_item(&cgcx, &prof, shared_emitter, m)
             }
             ThinLtoWorkItem::ThinLto(m) => {
-                execute_thin_lto_work_item(&cgcx, &prof, shared_emitter, tm_factory, m)
+                let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
+                B::optimize_and_codegen_thin(&cgcx, &prof, &shared_emitter, tm_factory, m)
             }
         }));
 
