@@ -5326,7 +5326,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(expr));
-                let const_args = self.r.legacy_const_generic_args(callee).unwrap_or_default();
+                let const_args = self
+                    .r
+                    .current_owner
+                    .legacy_const_generic_args(callee, self.r.tcx)
+                    .unwrap_or_default();
                 for (idx, argument) in arguments.iter().enumerate() {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.

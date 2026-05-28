@@ -60,10 +60,9 @@ use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
+    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate,
 };
 use rustc_index::{Idx, IndexVec};
-use rustc_macros::extension;
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
@@ -316,40 +315,6 @@ impl SpanLowerer {
             // Do not make spans relative when not using incremental compilation.
             span
         }
-    }
-}
-
-#[extension(trait ResolverAstLoweringExt<'tcx>)]
-impl<'tcx> ResolverAstLowering<'tcx> {
-    fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'tcx>) -> Option<Vec<usize>> {
-        let ExprKind::Path(None, path) = &expr.kind else {
-            return None;
-        };
-
-        // Don't perform legacy const generics rewriting if the path already
-        // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
-            return None;
-        }
-
-        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
-        // `self_param` locals. And here we are looking for the function definition that `expr`
-        // resolves to.
-        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
-
-        // We only support cross-crate argument rewriting. Uses
-        // within the same crate should be updated to use the new
-        // const generics style.
-        if def_id.is_local() {
-            return None;
-        }
-
-        // we can use parsed attrs here since for other crates they're already available
-        find_attr!(
-            tcx, def_id,
-            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
-        )
-        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 }
 
