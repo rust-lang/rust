@@ -1380,8 +1380,6 @@ pub struct Resolver<'ra, 'tcx> {
     import_res_map: NodeMap<PerNS<Option<Res>>> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
-    /// Resolutions for lifetimes.
-    lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
 
@@ -2013,7 +2011,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
-            lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             owners: self.owners,

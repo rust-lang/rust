@@ -2412,7 +2412,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         res: LifetimeRes,
         candidate: LifetimeElisionCandidate,
     ) {
-        if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
+        if let Some(prev_res) = self.r.current_owner.lifetimes_res_map.insert(id, res) {
             panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
 
@@ -2428,7 +2428,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
-        if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
+        if let Some(prev_res) = self.r.current_owner.lifetimes_res_map.insert(id, res) {
             panic!(
                 "lifetime parameter {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)"
             )
@@ -2637,11 +2637,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         let lt_id = if let Some(lt) = lt {
                             lt.id
                         } else {
-                            let res = self.r.lifetimes_res_map[&ty.id];
+                            let res = self.r.current_owner.lifetimes_res_map[&ty.id];
                             let LifetimeRes::ElidedAnchor { start, .. } = res else { bug!() };
                             start
                         };
-                        let lt_res = self.r.lifetimes_res_map[&lt_id];
+                        let lt_res = self.r.current_owner.lifetimes_res_map[&lt_id];
                         trace!("FindReferenceVisitor inserting res={:?}", lt_res);
                         self.lifetime.insert(lt_res);
                     }
