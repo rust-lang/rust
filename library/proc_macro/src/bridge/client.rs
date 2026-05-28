@@ -250,7 +250,7 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
 ) -> Buffer {
     let BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
 
-    panic::catch_unwind(panic::AssertUnwindSafe(|| {
+    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
 
         // Make sure the symbol store is empty before decoding inputs.
@@ -267,23 +267,12 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
         // Take the `cached_buffer` back out, for the output value.
         buf = RefCell::into_inner(state).cached_buffer;
 
-        // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-        // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-        // having handles outside the `bridge.enter(|| ...)` scope, and
-        // to catch panics that could happen while encoding the success.
-        //
-        // Note that panics should be impossible beyond this point, but
-        // this is defensively trying to avoid any accidental panicking
-        // reaching the `extern "C"` (which should `abort` but might not
-        // at the moment, so this is also potentially preventing UB).
-        buf.clear();
-        Ok::<_, ()>(output).encode(&mut buf, &mut ());
-    }))
-    .map_err(PanicMessage::from)
-    .unwrap_or_else(|e| {
-        buf.clear();
-        Err::<(), _>(e).encode(&mut buf, &mut ());
-    });
+        output
+    }));
+
+    // Serialize response of type `Result<R, PanicMessage>`.
+    buf.clear();
+    res.map_err(PanicMessage::from).encode(&mut buf, &mut ());
 
     // Now that a response has been serialized, invalidate all symbols
     // registered with the interner.
