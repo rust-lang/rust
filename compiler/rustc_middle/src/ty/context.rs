@@ -2361,6 +2361,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_sig(inputs, output, FnSigKind::default().set_safety(hir::Safety::Safe))
     }
 
+    /// `mk_fn_sig`, but with an **un**safe Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_unsafe_rust_abi<I, T>(self, inputs: I, output: I::Item) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safety(hir::Safety::Unsafe))
+    }
+
     pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
