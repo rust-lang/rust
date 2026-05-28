@@ -1588,7 +1588,7 @@ impl RuntimeChecks {
         match self {
             Self::UbChecks => sess.ub_checks(),
             Self::ContractChecks => sess.contract_checks(),
-            Self::OverflowChecks => sess.overflow_checks(),
+            Self::OverflowChecks => sess.overflow_checks().is_checked(),
         }
     }
 }

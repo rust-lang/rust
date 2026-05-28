@@ -73,6 +73,29 @@ pub struct Limits {
     pub pattern_complexity_limit: Limit,
 }
 
+#[derive(Clone, Copy, Debug, StableHash, PartialEq, Eq, Hash)]
+pub enum CheckOverflow {
+    /// The normal `-C check-overflow` behavior, where overflows panic
+    Checked,
+    /// Overflows are checked, and invoke a user-overridable function in core.
+    /// This function by default panics, but can be overridden by users to keep going instead.
+    /// Note that the performance cost is similar to `Checked`, *also* when overflows are recovered from.
+    Recoverable,
+    /// Overflows are ignored.
+    Ignore,
+}
+
+impl CheckOverflow {
+    /// Returns true if some form of overflow checking is enabled.
+    pub fn is_checked(&self) -> bool {
+        match self {
+            CheckOverflow::Checked => true,
+            CheckOverflow::Recoverable => true,
+            CheckOverflow::Ignore => false,
+        }
+    }
+}
+
 pub struct CompilerIO {
     pub input: Input,
     pub output_dir: Option<PathBuf>,
@@ -721,8 +744,12 @@ impl Session {
         self.opts.unstable_features.is_nightly_build()
     }
 
-    pub fn overflow_checks(&self) -> bool {
-        self.opts.cg.overflow_checks.unwrap_or(self.opts.debug_assertions)
+    pub fn overflow_checks(&self) -> CheckOverflow {
+        self.opts.cg.overflow_checks.unwrap_or(if self.opts.debug_assertions {
+            CheckOverflow::Checked
+        } else {
+            CheckOverflow::Ignore
+        })
     }
 
     pub fn ub_checks(&self) -> bool {

@@ -93,6 +93,7 @@ use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
+use rustc_session::CheckOverflow;
 use rustc_session::lint::Level;
 use rustc_span::{DUMMY_SP, Span, Spanned};
 use tracing::{debug, instrument};
@@ -1781,6 +1782,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.diverge_from(block);
 
         success_block
+    }
+
+    pub(crate) fn overflow_check(
+        &mut self,
+        block: BasicBlock,
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        span: Span,
+    ) -> BasicBlock {
+        match self.check_overflow {
+            CheckOverflow::Checked => self.assert(block, cond, expected, msg, span),
+            CheckOverflow::Recoverable => todo!(),
+            CheckOverflow::Ignore => unreachable!(),
+        }
     }
 
     /// Unschedules any drops in the top two scopes.

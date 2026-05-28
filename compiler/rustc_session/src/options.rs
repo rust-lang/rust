@@ -23,7 +23,7 @@ use rustc_target::spec::{
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{EarlyDiagCtxt, Session, lint};
+use crate::{CheckOverflow, EarlyDiagCtxt, Session, lint};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
@@ -763,6 +763,7 @@ mod desc {
     pub(crate) const parse_threads: &str = "a number or `sync`";
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
+    pub(crate) const parse_opt_check_overflow: &str = "one of `checked`, `recoverable`, or `ignore`, or one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false` to select `checked` or `ignore` respectively";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
@@ -850,6 +851,7 @@ pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    use crate::CheckOverflow;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// Ignore the value. Used for removed options where we don't actually want to store
@@ -1150,6 +1152,26 @@ pub mod parse {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
             Some("abort") => *slot = Some(PanicStrategy::Abort),
             Some("immediate-abort") => *slot = Some(PanicStrategy::ImmediateAbort),
+            _ => return false,
+        }
+        true
+    }
+
+    pub(crate) fn parse_opt_check_overflow(
+        slot: &mut Option<CheckOverflow>,
+        v: Option<&str>,
+    ) -> bool {
+        let mut bool_slot = None;
+        match v {
+            Some("checked") => *slot = Some(CheckOverflow::Checked),
+            Some("recoverable") => *slot = Some(CheckOverflow::Recoverable),
+            Some("ignore") => *slot = Some(CheckOverflow::Ignore),
+            _ if parse_opt_bool(&mut bool_slot, v) => {
+                *slot = bool_slot.map(|i| match i {
+                    true => CheckOverflow::Checked,
+                    false => CheckOverflow::Ignore,
+                });
+            }
             _ => return false,
         }
         true
@@ -2127,7 +2149,7 @@ options! {
     opt_level: String = ("0".to_string(), parse_string, [TRACKED],
         "optimization level (0-3, s, or z; default: 0)"),
     #[rustc_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field")]
-    overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    overflow_checks: Option<CheckOverflow> = (None, parse_opt_check_overflow, [TRACKED],
         "use overflow checks for integer arithmetic"),
     #[rustc_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field")]
     panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],

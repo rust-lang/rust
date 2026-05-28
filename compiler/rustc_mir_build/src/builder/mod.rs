@@ -39,7 +39,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
+use rustc_session::{CheckOverflow, lint};
 use rustc_span::{Span, Symbol};
 
 use crate::builder::expr::as_place::PlaceBuilder;
@@ -173,7 +173,7 @@ struct Builder<'a, 'tcx> {
     def_id: LocalDefId,
     hir_id: HirId,
     parent_module: DefId,
-    check_overflow: bool,
+    check_overflow: CheckOverflow,
     fn_span: Span,
     arg_count: usize,
     coroutine: Option<Box<CoroutineInfo<'tcx>>>,
@@ -752,17 +752,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         coroutine: Option<Box<CoroutineInfo<'tcx>>>,
     ) -> Builder<'a, 'tcx> {
         let tcx = infcx.tcx;
+        // Respect -C overflow-checks.
+        let mut check_overflow = tcx.sess.overflow_checks();
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are codegened in.
-        let mut check_overflow = find_attr!(tcx.hir_attrs(hir_id), RustcInheritOverflowChecks);
-        // Respect -C overflow-checks.
-        check_overflow |= tcx.sess.overflow_checks();
+        if find_attr!(tcx.hir_attrs(hir_id), RustcInheritOverflowChecks) {
+            check_overflow = CheckOverflow::Checked;
+        }
         // Constants always need overflow checks.
-        check_overflow |= matches!(
+        if matches!(
             tcx.hir_body_owner_kind(def),
             hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_)
-        );
+        ) {
+            check_overflow = CheckOverflow::Checked;
+        }
 
         let lint_level = LintLevel::Explicit(hir_id);
         let param_env = tcx.param_env(def);
