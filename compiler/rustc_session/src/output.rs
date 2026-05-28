@@ -130,8 +130,13 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
             return true;
         }
     }
-    if let CrateType::ProcMacro | CrateType::Dylib = crate_type
+    if crate_type == CrateType::Dylib && sess.target.only_cdylib {
+        return true;
+    }
+    if crate_type == CrateType::ProcMacro
         && sess.target.only_cdylib
+        && !(sess.target.families.contains(&"wasm".into())
+            && sess.opts.unstable_opts.wasm_proc_macros)
     {
         return true;
     }
