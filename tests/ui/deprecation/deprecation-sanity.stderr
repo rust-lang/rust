@@ -55,6 +55,12 @@ LL |     #[deprecated("test")]
    |     ^^^^^^^^^^^^^------^^
    |                  |
    |                  didn't expect a literal here
+   |
+help: try using `=` instead
+   |
+LL -     #[deprecated("test")]
+LL +     #[deprecated = "test"]
+   |
 
 error: multiple `deprecated` attributes
   --> $DIR/deprecation-sanity.rs:29:1

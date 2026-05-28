@@ -76,6 +76,16 @@ impl SingleAttributeParser for DeprecatedParser {
                 // ok
             }
             ArgParser::List(list) => {
+                // If the argument list contains a single string literal, suggest using NameValue syntax
+                if let Some(elem) = list.as_single() && let Some(lit) = elem.as_lit() && lit.kind.is_str() {
+                    let mut adcx = cx.adcx();
+                    if let Some(span) = args.span() {
+                        adcx.push_suggestion(String::from("try using `=` instead"), span, format!(" = {}", lit.kind));
+                    }
+                    adcx.expected_not_literal(elem.span());
+                    return None;
+                }
+
                 for param in list.mixed() {
                     let Some(param) = param.meta_item() else {
                         cx.adcx().expected_not_literal(param.span());
