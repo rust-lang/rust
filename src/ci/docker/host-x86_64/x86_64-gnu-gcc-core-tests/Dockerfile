@@ -1,5 +1,5 @@
-# This Dockerfile builds sysroot crates with the GCC backend and then run libcore tests
-# with it.
+# This Dockerfile builds sysroot crates with the GCC backend and then runs
+# libcore tests with the GCC backend.
 
 FROM ubuntu:22.04
 
@@ -40,8 +40,7 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs \
- --set llvm.libzstd=true \
- --set rust.codegen-backends=[\\\"gcc\\\"]"
+ --set llvm.libzstd=true"
 ENV SCRIPT="python3 ../x.py \
   --stage 1 \
   test library/coretests \
