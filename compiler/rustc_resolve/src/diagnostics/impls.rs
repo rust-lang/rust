@@ -56,7 +56,7 @@ use crate::{
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
     LateDecl, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
     PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError, path_names_to_string,
+    VisResolutionError, path_names_to_string, with_owner,
 };
 
 /// A vector of spans and replacements, a message and applicability.
@@ -381,13 +381,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn report_delayed_vis_resolution_errors(&mut self) {
-        for DelayedVisResolutionError { vis, parent_scope, error } in
+        for DelayedVisResolutionError { vis, parent_scope, error, owner } in
             mem::take(&mut self.delayed_vis_resolution_errors)
         {
-            match self.try_resolve_visibility(&parent_scope, &vis, true) {
-                Ok(_) => self.report_vis_error(error),
-                Err(error) => self.report_vis_error(error),
-            };
+            with_owner(self, owner, |this| {
+                match this.try_resolve_visibility(&parent_scope, &vis, true) {
+                    Ok(_) => this.report_vis_error(error),
+                    Err(error) => this.report_vis_error(error),
+                }
+            });
         }
     }
 

@@ -37,7 +37,7 @@ use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
     IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope,
     PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    names_to_string, with_owner,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -906,7 +906,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .expect("planting a glob cannot fail");
                     }
 
-                    self.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                    with_owner(self, *id, |this| {
+                        this.record_partial_res(*id, PartialRes::new(module.res().unwrap()))
+                    });
                 }
 
                 // Something weird happened, which shouldn't have happened.
@@ -936,7 +938,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .map(|i| (false, i))
             .chain(indeterminate_imports.iter().map(|(i, _, _)| (true, i)))
         {
-            let unresolved_import_error = self.finalize_import(*import);
+            let unresolved_import_error =
+                with_owner(self, import.id().unwrap(), |this| this.finalize_import(*import));
             // If this import is unresolved then create a dummy import
             // resolution for it so that later resolve stages won't complain.
             self.import_dummy_binding(*import, is_indeterminate);
@@ -1319,8 +1322,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Indeterminate => unreachable!(),
         };
 
-        let (ident, target, bindings, import_id) = match import.kind {
-            ImportKind::Single { source, target, ref decls, id, .. } => (source, target, decls, id),
+        let (ident, target, bindings) = match import.kind {
+            ImportKind::Single { source, target, ref decls, .. } => (source, target, decls),
             ImportKind::Glob { ref max_vis, id, def_id } => {
                 if import.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
@@ -1644,7 +1647,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| {
             if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
-                this.owners.get_mut(&import_id).unwrap().import_res[ns] = Some(binding.res());
+                this.current_owner.import_res[ns] = Some(binding.res());
             }
         });
 

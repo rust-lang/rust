@@ -491,6 +491,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     vis: vis.clone(),
                     parent_scope: self.parent_scope,
                     error,
+                    owner: self.r.current_owner.id,
                 });
                 Visibility::Public
             }

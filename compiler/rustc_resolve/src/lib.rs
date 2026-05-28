@@ -1061,6 +1061,7 @@ struct DelayedVisResolutionError<'ra> {
     vis: ast::Visibility,
     parent_scope: ParentScope<'ra>,
     error: VisResolutionError,
+    owner: NodeId,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -2361,7 +2362,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
+        // We insert into both the global and the owner-local partial res map.
+        // The global one is needed for many diagnostics, and looking it up in the owner is not always feasible,
+        // as we regularly look at e.g. the parent's ast and resolve some ids there.
+        // We want to keep doing that lazily instead of eagerly, as we only need the information in the error path.
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
+            panic!("path resolved multiple times ({prev_res:?} before, {resolution:?} now)");
+        }
+        assert_ne!(self.current_owner.id, DUMMY_NODE_ID);
+        if let Some(prev_res) = self.current_owner.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({prev_res:?} before, {resolution:?} now)");
         }
     }
