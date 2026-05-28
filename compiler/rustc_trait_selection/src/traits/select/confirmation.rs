@@ -539,7 +539,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
         for supertrait in tcx
-            .explicit_super_predicates_of(trait_predicate.def_id())
+            .explicit_super_clauses_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
             .map(|pred| pred.unzip().0)
         {

@@ -165,17 +165,18 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                         )
                     };
 
-                // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
+                // Get predicates implied by the trait, or only super predicates if we only care
+                // about self predicates.
                 match self.mode {
                     Filter::All => self.extend_deduped(
-                        cx.explicit_implied_predicates_of(data.def_id().into())
+                        cx.explicit_implied_clauses_of(data.def_id().into())
                             .iter_identity()
                             .map(Unnormalized::skip_norm_wip)
                             .enumerate()
                             .map(map_to_child_clause),
                     ),
                     Filter::OnlySelf => self.extend_deduped(
-                        cx.explicit_super_predicates_of(data.def_id())
+                        cx.explicit_super_clauses_of(data.def_id())
                             .iter_identity()
                             .map(Unnormalized::skip_norm_wip)
                             .enumerate()
@@ -329,12 +330,12 @@ pub fn supertrait_def_ids<I: Interner>(
     std::iter::from_fn(move || {
         let trait_def_id = stack.pop()?;
 
-        for (predicate, _) in cx
-            .explicit_super_predicates_of(trait_def_id)
+        for (clause, _) in cx
+            .explicit_super_clauses_of(trait_def_id)
             .iter_identity()
             .map(Unnormalized::skip_norm_wip)
         {
-            if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
+            if let ty::ClauseKind::Trait(data) = clause.kind().skip_binder()
                 && set.insert(data.def_id())
             {
                 stack.push(data.def_id());

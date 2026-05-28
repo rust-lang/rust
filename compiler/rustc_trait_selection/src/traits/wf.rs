@@ -579,20 +579,20 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             return Default::default();
         }
 
-        let predicates = self.tcx().predicates_of(def_id);
-        let mut origins = vec![def_id; predicates.predicates.len()];
-        let mut head = predicates;
+        let gen_clauses = self.tcx().clauses_of(def_id);
+        let mut origins = vec![def_id; gen_clauses.clauses.len()];
+        let mut head = gen_clauses;
         while let Some(parent) = head.parent {
-            head = self.tcx().predicates_of(parent);
-            origins.extend(iter::repeat(parent).take(head.predicates.len()));
+            head = self.tcx().clauses_of(parent);
+            origins.extend(iter::repeat(parent).take(head.clauses.len()));
         }
 
-        let predicates = predicates.instantiate(self.tcx(), args);
-        trace!("{:#?}", predicates);
-        debug_assert_eq!(predicates.predicates.len(), origins.len());
+        let gen_clauses = gen_clauses.instantiate(self.tcx(), args);
+        trace!("{:#?}", gen_clauses);
+        debug_assert_eq!(gen_clauses.clauses.len(), origins.len());
 
-        iter::zip(predicates, origins.into_iter().rev())
-            .map(|((pred, span), origin_def_id)| {
+        iter::zip(gen_clauses, origins.into_iter().rev())
+            .map(|((clause, span), origin_def_id)| {
                 let code = ObligationCauseCode::WhereClause(origin_def_id, span);
                 let cause = self.cause(code);
                 traits::Obligation::with_depth(
@@ -600,10 +600,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     cause,
                     self.recursion_depth,
                     self.param_env,
-                    pred.skip_norm_wip(),
+                    clause.skip_norm_wip(),
                 )
             })
-            .filter(|pred| !pred.has_escaping_bound_vars())
+            .filter(|clause| !clause.has_escaping_bound_vars())
             .collect()
     }
 

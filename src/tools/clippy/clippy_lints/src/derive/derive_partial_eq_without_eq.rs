@@ -65,9 +65,9 @@ fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) ->
         .map(|p| (p, matches!(p.kind, GenericParamDefKind::Type { .. })))
         .collect::<Vec<_>>();
 
-    let ty_predicates = tcx.predicates_of(did).predicates;
-    for (p, _) in ty_predicates {
-        if let ClauseKind::Trait(p) = p.kind().skip_binder()
+    let ty_clauses = tcx.clauses_of(did).clauses;
+    for (c, _) in ty_clauses {
+        if let ClauseKind::Trait(p) = c.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
         {
@@ -76,7 +76,7 @@ fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) ->
         }
     }
 
-    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
+    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_clauses.iter().map(|&(c, _)| c).chain(
         params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
             ClauseKind::Trait(TraitPredicate {
                 trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),

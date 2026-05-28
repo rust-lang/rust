@@ -324,20 +324,20 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(def_id)
+                .clauses_of(def_id)
                 .instantiate_own(infcx.tcx, free.args)
-                .map(|(pred, span)| (pred.skip_norm_wip(), span))
-                .map(|(mut predicate, span)| {
+                .map(|(clause, span)| (clause.skip_norm_wip(), span))
+                .map(|(mut clause, span)| {
                     if free.has_escaping_bound_vars() {
-                        (predicate, ..) = BoundVarReplacer::replace_bound_vars(
+                        (clause, ..) = BoundVarReplacer::replace_bound_vars(
                             infcx,
                             &mut self.universes,
-                            predicate,
+                            clause,
                         );
                     }
                     let mut cause = self.cause.clone();
                     cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, def_id));
-                    Obligation::new(infcx.tcx, cause, self.param_env, predicate)
+                    Obligation::new(infcx.tcx, cause, self.param_env, clause)
                 }),
         );
         self.depth += 1;

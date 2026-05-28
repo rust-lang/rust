@@ -168,7 +168,7 @@ parameterized_over_tcx! {
     rustc_middle::ty::Const,
     rustc_middle::ty::ConstConditions,
     rustc_middle::ty::FnSig,
-    rustc_middle::ty::GenericPredicates,
+    rustc_middle::ty::GenericClauses,
     rustc_middle::ty::ImplTraitHeader,
     rustc_middle::ty::TraitRef,
     rustc_middle::ty::Ty,

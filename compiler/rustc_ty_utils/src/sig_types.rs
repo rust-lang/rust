@@ -34,7 +34,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 visitor.visit(ty.span, tcx.type_of(item).instantiate_identity().skip_norm_wip())
             );
         }
-        for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
+        for (pred, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
             try_visit!(visitor.visit(span, pred.skip_norm_wip()));
         }
         V::Result::output()
@@ -55,8 +55,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             for (hir, ty) in hir_sig.inputs.iter().zip(ty_sig.inputs().iter()) {
                 try_visit!(visitor.visit(hir.span, ty.map_bound(|x| *x)));
             }
-            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
-                try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+            for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
+                try_visit!(visitor.visit(span, clause.skip_norm_wip()));
             }
         }
         // Walk over the type behind the alias or the type of the item
@@ -96,8 +96,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 let ty = field.ty(tcx, args);
                 try_visit!(visitor.visit(span, ty));
             }
-            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
-                try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+            for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
+                try_visit!(visitor.visit(span, clause.skip_norm_wip()));
             }
         }
         DefKind::Impl { of_trait } => {
@@ -122,13 +122,13 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             try_visit!(
                 visitor.visit(span, tcx.type_of(item).instantiate_identity().skip_norm_wip())
             );
-            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
-                try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+            for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
+                try_visit!(visitor.visit(span, clause.skip_norm_wip()));
             }
         }
         DefKind::TraitAlias | DefKind::Trait => {
-            for (pred, span) in tcx.explicit_predicates_of(item).instantiate_identity(tcx) {
-                try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+            for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
+                try_visit!(visitor.visit(span, clause.skip_norm_wip()));
             }
         }
         DefKind::Variant

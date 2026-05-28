@@ -4,7 +4,7 @@ We currently add implied region bounds to avoid explicit annotations. e.g.
 `fn foo<'a, T>(x: &'a T)` can freely assume that `T: 'a` holds without specifying it.
 
 There are two kinds of implied bounds: explicit and implicit. Explicit implied bounds
-get added to the `fn predicates_of` of the relevant item while implicit ones are
+get added to the `fn clauses_of` of the relevant item while implicit ones are
 handled... well... implicitly.
 
 ## explicit implied bounds
@@ -18,7 +18,7 @@ This function computes the outlives bounds for each component of the field using
 separate implementation.
 
 For ADTs, trait objects, and associated types the initially required predicates are
-computed in [`fn check_explicit_predicates`]. This simply uses `fn explicit_predicates_of`
+computed in [`fn check_explicit_predicates`]. This simply uses `fn explicit_clauses_of`
 without elaborating them.
 
 Region predicates are added via [`fn insert_outlives_predicate`]. This function takes
@@ -65,7 +65,7 @@ lexical region resolution [only uses the unnormalized types][notnorm].
 
 ### proving implicit implied bounds
 
-As the implicit implied bounds are not included in `fn predicates_of` we have to
+As the implicit implied bounds are not included in `fn clauses_of` we have to
 separately make sure they actually hold. We generally handle this by checking that
 all used types are well formed by emitting `WellFormed` predicates.
 
