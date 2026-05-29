@@ -489,6 +489,19 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
             }
+            "__builtin_ia32_fpclassph128_mask"
+            | "__builtin_ia32_fpclassph256_mask"
+            | "__builtin_ia32_fpclassph512_mask"
+            | "__builtin_ia32_fpclasspd128_mask"
+            | "__builtin_ia32_fpclassps128_mask"
+            | "__builtin_ia32_fpclasspd256_mask"
+            | "__builtin_ia32_fpclassps256_mask"
+            | "__builtin_ia32_fpclasspd512_mask" => {
+                let new_args = args.to_vec();
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                args = vec![new_args[0], new_args[1], minus_one].into();
+            }
             "__builtin_ia32_xrstor"
             | "__builtin_ia32_xrstor64"
             | "__builtin_ia32_xsavec"
@@ -1577,6 +1590,17 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.uitofp.round.v4f64.v4i64" => "__builtin_ia32_cvtuqq2pd256_mask",
         "llvm.x86.avx512.uitofp.round.v8f32.v8i64" => "__builtin_ia32_cvtuqq2ps512_mask",
         "llvm.x86.avx512.uitofp.round.v4f32.v4i64" => "__builtin_ia32_cvtuqq2ps256_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.128" => "__builtin_ia32_fpclassph128_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.128" => "__builtin_ia32_cmpph128_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.256" => "__builtin_ia32_fpclassph256_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.512" => "__builtin_ia32_fpclassph512_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.256" => "__builtin_ia32_cmpph256_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.512" => "__builtin_ia32_cmpph512_mask_round",
+        "llvm.x86.avx512.fpclass.pd.128" => "__builtin_ia32_fpclasspd128_mask",
+        "llvm.x86.avx512.fpclass.ps.128" => "__builtin_ia32_fpclassps128_mask",
+        "llvm.x86.avx512.fpclass.pd.256" => "__builtin_ia32_fpclasspd256_mask",
+        "llvm.x86.avx512.fpclass.ps.256" => "__builtin_ia32_fpclassps256_mask",
+        "llvm.x86.avx512.fpclass.pd.512" => "__builtin_ia32_fpclasspd512_mask",
 
         // FIXME: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",
