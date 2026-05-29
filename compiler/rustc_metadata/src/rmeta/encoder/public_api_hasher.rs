@@ -33,10 +33,12 @@ use crate::rmeta::{
 pub(crate) struct PublicApiHasher(StableHasher);
 
 impl PublicApiHasher {
+    #[inline(always)]
     pub(crate) fn finish<'a>(self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then(|| self.0.finish())
     }
 
+    #[inline(always)]
     pub(crate) fn digest<'a, T: StableHash>(
         &mut self,
         value: T,
@@ -46,6 +48,7 @@ impl PublicApiHasher {
             value.stable_hash(hcx.hcx_mut(), &mut self.0);
         }
     }
+    #[inline(always)]
     pub(crate) fn digest_iter<'a, I>(&mut self, values: I, hcx: &mut impl PublicApiHashState<'a>)
     where
         I: IntoIterator,
@@ -111,6 +114,7 @@ impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashAll<I> {
     type IterHasher = OrderedIterHasher;
+    #[inline(always)]
     fn digest<'a, V>(&mut self, index: I, value: V, hcx: &mut impl PublicApiHashState<'a>)
     where
         V: StableHash,
@@ -125,10 +129,12 @@ impl<I: Idx> TablePublicApiHasher<I> for RDRHashAll<I> {
         self.hash = self.hash.combine_commutative(hash);
     }
 
+    #[inline(always)]
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then_some(self.hash)
     }
 
+    #[inline(always)]
     fn iter_hasher(&self) -> Self::IterHasher {
         OrderedIterHasher::default()
     }
@@ -138,6 +144,7 @@ impl<I: Idx> TablePublicApiHasher<I> for RDRHashAll<I> {
 pub(crate) struct OrderedIterHasher(StableHasher);
 
 impl OrderedIterHasher {
+    #[inline(always)]
     pub(crate) fn inspect_digest<'a: 'b, 'b, I>(
         &'b mut self,
         iter: I,
@@ -154,6 +161,7 @@ impl OrderedIterHasher {
         })
     }
 
+    #[inline(always)]
     pub(crate) fn finish(self) -> Fingerprint {
         self.0.finish()
     }
@@ -169,16 +177,19 @@ impl<I> Default for RDRHashNone<I> {
 
 impl<I: Idx> TablePublicApiHasher<I> for RDRHashNone<I> {
     type IterHasher = RDRHashNone<()>;
+    #[inline(always)]
     fn digest<'a, V>(&mut self, _index: I, _value: V, _hcx: &mut impl PublicApiHashState<'a>)
     where
         V: StableHash,
     {
     }
 
+    #[inline(always)]
     fn iter_hasher(&self) -> Self::IterHasher {
         Default::default()
     }
 
+    #[inline(always)]
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then_some(Fingerprint::ZERO)
     }
