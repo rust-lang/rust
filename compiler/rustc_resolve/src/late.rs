@@ -3923,12 +3923,24 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             this.visit_path(&delegation.path);
         });
 
-        self.r.delegation_infos.insert(
-            self.r.current_owner.def_id,
-            DelegationInfo {
-                resolution_node: if is_in_trait_impl { item_id } else { delegation.id },
-            },
-        );
+        let resolution_id = if is_in_trait_impl { item_id } else { delegation.id };
+        let def_id = self
+            .r
+            .partial_res_map
+            .get(&resolution_id)
+            .and_then(|r| r.expect_full_res().opt_def_id());
+        if let Some(resolution_id) = def_id {
+            self.r
+                .delegation_infos
+                .insert(self.r.current_owner.def_id, DelegationInfo { resolution_id });
+        } else {
+            self.r.tcx.dcx().span_delayed_bug(
+                delegation.path.span,
+                format!(
+                    "LoweringContext: couldn't resolve node {resolution_id:?} in delegation item",
+                ),
+            );
+        };
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {

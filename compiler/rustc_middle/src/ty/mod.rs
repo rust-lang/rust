@@ -253,9 +253,12 @@ pub struct ResolverAstLowering<'tcx> {
 
 #[derive(Debug)]
 pub struct DelegationInfo {
-    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
-    pub resolution_node: ast::NodeId,
+    /// Refers to the next element in a delegation resolution chain.
+    /// Usually points to the final resolution, as most "chains" are just
+    /// one step to a trait or an impl.
+    pub resolution_id: DefId,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]
