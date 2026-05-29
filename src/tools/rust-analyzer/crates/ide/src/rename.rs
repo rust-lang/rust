@@ -16,7 +16,7 @@ use std::fmt::Write;
 use stdx::{always, format_to, never};
 use syntax::{
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
-    ast::{self, HasArgList, make, prec::ExprPrecedence},
+    ast::{self, HasArgList, prec::ExprPrecedence},
 };
 
 use ide_db::text_edit::TextEdit;
@@ -818,11 +818,12 @@ fn rename_elided_lifetime(
     let mut builder = SourceChangeBuilder::new(position.file_id);
 
     let editor = builder.make_editor(&root);
+    let make = editor.make();
 
-    editor.replace(lifetime_token, make::lifetime(new_name).syntax().clone());
+    editor.replace(lifetime_token, make.lifetime(new_name).syntax().clone());
 
     if let Some(has_generic_params) = parent.ancestors().find_map(ast::AnyHasGenericParams::cast) {
-        let lifetime_param = make::lifetime_param(make::lifetime(new_name));
+        let lifetime_param = make.lifetime_param(make.lifetime(new_name));
         editor.add_generic_param(&has_generic_params, lifetime_param.into());
     }
 
