@@ -5617,6 +5617,6 @@ declare_lint! {
     /// if std::env::var("CARGO_CFG_WINDOWS").is_ok() {}
     /// ```
     pub MISLEADING_CFG_IN_BUILD_SCRIPT,
-    Allow,
+    Deny,
     "use of host configs in `build.rs` scripts"
 }

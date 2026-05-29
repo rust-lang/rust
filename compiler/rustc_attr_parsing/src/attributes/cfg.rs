@@ -176,6 +176,9 @@ fn check_unexpected_cfgs(
     _span: Span,
     is_cfg_macro: bool,
 ) {
+    if !std::env::var("CARGO_CRATE_NAME").is_ok_and(|val| val == "build_script_build") {
+        return;
+    }
     let mut spans = Vec::new();
     let mut has_ok_cfgs = false;
     misleading_cfgs(entry, &mut spans, &mut has_ok_cfgs);
