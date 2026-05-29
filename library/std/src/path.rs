@@ -2854,7 +2854,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_is_empty)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("");
@@ -2866,7 +2865,7 @@ impl Path {
     /// let path = Path::new(".");
     /// assert!(!path.is_empty());
     /// ```
-    #[unstable(feature = "path_is_empty", issue = "148494")]
+    #[stable(feature = "path_is_empty", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_empty(&self) -> bool {
         self.as_os_str().is_empty()
     }
