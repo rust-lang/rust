@@ -52,7 +52,10 @@ fn arg_value<'a>(args: &'a [String], find_arg: &str, pred: impl Fn(&str) -> bool
 }
 
 fn has_arg(args: &[String], find_arg: &str) -> bool {
-    args.iter().any(|arg| find_arg == arg.split('=').next().unwrap())
+    args.iter().any(|arg| {
+        arg.strip_prefix(find_arg)
+            .is_some_and(|s| s.is_empty() || s.starts_with('='))
+    })
 }
 
 #[test]
