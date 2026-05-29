@@ -2140,7 +2140,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let impl_trait_ref = ocx.normalize(
                         &ObligationCause::dummy(),
                         param_env,
-                        ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
+                        ty::EarlyBinder::bind(self.tcx, single.trait_ref)
+                            .instantiate(self.tcx, impl_args),
                     );
 
                     ocx.register_obligations(

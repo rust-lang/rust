@@ -38,7 +38,7 @@ impl<'tcx> BodyBuilder<'tcx> {
             let mut mono_body = self.instance.instantiate_mir_and_normalize_erasing_regions(
                 self.tcx,
                 ty::TypingEnv::fully_monomorphized(),
-                ty::EarlyBinder::bind(body),
+                ty::EarlyBinder::bind(self.tcx, body),
             );
             self.visit_body(&mut mono_body);
             mono_body

@@ -83,7 +83,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                         // If the inner type matches the type bound by `Pointer`
                         if inner_ty == bound_ty {
                             // Do an instantiation using the parameters from the callsite
-                            let instantiated_ty = EarlyBinder::bind(inner_ty)
+                            let instantiated_ty = EarlyBinder::bind(self.tcx, inner_ty)
                                 .instantiate(self.tcx, args_ref)
                                 .skip_norm_wip();
                             if let Some((fn_id, fn_args)) =

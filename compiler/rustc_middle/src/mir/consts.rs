@@ -239,14 +239,17 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        ty::EarlyBinder::bind(Const::Unevaluated(
-            UnevaluatedConst {
-                def: def_id,
-                args: ty::GenericArgs::identity_for_item(tcx, def_id),
-                promoted: None,
-            },
-            tcx.type_of(def_id).skip_binder(),
-        ))
+        ty::EarlyBinder::bind(
+            tcx,
+            Const::Unevaluated(
+                UnevaluatedConst {
+                    def: def_id,
+                    args: ty::GenericArgs::identity_for_item(tcx, def_id),
+                    promoted: None,
+                },
+                tcx.type_of(def_id).skip_binder(),
+            ),
+        )
     }
 
     #[inline(always)]

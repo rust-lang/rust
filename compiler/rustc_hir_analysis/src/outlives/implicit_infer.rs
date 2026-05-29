@@ -81,8 +81,10 @@ pub(super) fn infer_predicates(
                 .map_or(0, |p| p.as_ref().skip_binder().len());
             if item_required_predicates.len() > item_predicates_len {
                 predicates_added.push(item_did);
-                global_inferred_outlives
-                    .insert(item_did.to_def_id(), ty::EarlyBinder::bind(item_required_predicates));
+                global_inferred_outlives.insert(
+                    item_did.to_def_id(),
+                    ty::EarlyBinder::bind_iter(item_required_predicates),
+                );
             }
         }
 

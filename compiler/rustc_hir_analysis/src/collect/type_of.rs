@@ -33,21 +33,27 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     return map[&trait_item_def_id];
                 }
                 Err(_) => {
-                    return ty::EarlyBinder::bind(Ty::new_error_with_message(
+                    return ty::EarlyBinder::bind(
                         tcx,
-                        DUMMY_SP,
-                        "Could not collect return position impl trait in trait tys",
-                    ));
+                        Ty::new_error_with_message(
+                            tcx,
+                            DUMMY_SP,
+                            "Could not collect return position impl trait in trait tys",
+                        ),
+                    );
                 }
             }
         }
         // For an RPITIT in a trait, just return the corresponding opaque.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            return ty::EarlyBinder::bind(Ty::new_opaque(
+            return ty::EarlyBinder::bind(
                 tcx,
-                opaque_def_id,
-                ty::GenericArgs::identity_for_item(tcx, opaque_def_id),
-            ));
+                Ty::new_opaque(
+                    tcx,
+                    opaque_def_id,
+                    ty::GenericArgs::identity_for_item(tcx, opaque_def_id),
+                ),
+            );
         }
         None => {}
     }
@@ -240,9 +246,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
     if let Err(e) = icx.check_tainted_by_errors()
         && !output.references_error()
     {
-        ty::EarlyBinder::bind(Ty::new_error(tcx, e))
+        ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e))
     } else {
-        ty::EarlyBinder::bind(output)
+        ty::EarlyBinder::bind(tcx, output)
     }
 }
 

@@ -543,7 +543,7 @@ fn impl_intersection_has_negative_obligation(
     // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
     assert!(!impl1_header_args.has_non_region_infer());
 
-    let param_env = ty::EarlyBinder::bind(tcx.param_env(impl1_def_id))
+    let param_env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl1_def_id))
         .instantiate(tcx, impl1_header_args)
         .skip_norm_wip();
 

@@ -245,7 +245,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
 
     // The type of the coroutine is the `by_move_coroutine_ty`.
-    body_def.type_of(ty::EarlyBinder::bind(by_move_coroutine_ty));
+    body_def.type_of(ty::EarlyBinder::bind(tcx, by_move_coroutine_ty));
 
     body_def.mir_built(tcx.arena.alloc(Steal::new(by_move_body)));
 

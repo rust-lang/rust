@@ -861,11 +861,10 @@ impl<'tcx> Instance<'tcx> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 
-    pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<'tcx, &T>) -> T
+    pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        let v = v.map_bound(|v| *v);
         if let Some(args) = self.args_for_mir_body() {
             v.instantiate(tcx, args).skip_norm_wip()
         } else {

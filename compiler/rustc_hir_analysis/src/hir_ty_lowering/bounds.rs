@@ -811,7 +811,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
         // and it's no coincidence why.
         let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args).skip_norm_wip())
+        Ok(ty::EarlyBinder::bind(tcx, shifted_output).instantiate(tcx, args).skip_norm_wip())
     }
 }
 
