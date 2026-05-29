@@ -58,7 +58,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -822,7 +822,7 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -1374,7 +1374,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),

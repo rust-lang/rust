@@ -991,8 +991,6 @@ pub enum LifetimeRes {
         ///
         /// Creating the associated `LocalDefId` is the responsibility of lowering.
         param: NodeId,
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
         /// Kind of elided lifetime
         kind: hir::MissingLifetimeKind,
     },

@@ -149,10 +149,8 @@ pub(super) struct ElisionFnParameter {
 /// This is used to suggest introducing an explicit lifetime.
 #[derive(Clone, Copy, Debug)]
 pub(super) enum LifetimeElisionCandidate {
-    /// This is not a real lifetime.
+    /// This is not a real lifetime, or it is a named lifetime, in which case we won't suggest anything.
     Ignore,
-    /// There is a named lifetime, we won't suggest anything.
-    Named,
     Missing(MissingLifetime),
 }
 
