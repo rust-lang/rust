@@ -1,12 +1,12 @@
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
-// Diagnostic: cannot-borrow-as-mutable
+// Diagnostic: mut-ref-in-imm-ref-pat
 //
 // This diagnostic is triggered when a binding tries to mutably borrow through
 // an `&` pattern.
-pub(crate) fn cannot_borrow_as_mutable(
+pub(crate) fn mut_ref_in_imm_ref_pat(
     ctx: &DiagnosticsContext<'_, '_>,
-    d: &hir::CannotBorrowAsMutable,
+    d: &hir::MutRefInImmRefPat,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
@@ -22,7 +22,7 @@ mod tests {
     use crate::tests::check_diagnostics;
 
     #[test]
-    fn cannot_borrow_as_mutable_inside_shared_ref_pattern() {
+    fn mut_ref_in_imm_ref_pat() {
         check_diagnostics(
             r#"
 #![feature(ref_pat_eat_one_layer_2024)]

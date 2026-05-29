@@ -34,7 +34,6 @@ mod handlers {
     pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod cannot_be_dereferenced;
-    pub(crate) mod cannot_borrow_as_mutable;
     pub(crate) mod cannot_implicitly_deref_trait_object;
     pub(crate) mod cannot_index_into;
     pub(crate) mod duplicate_field;
@@ -65,6 +64,7 @@ mod handlers {
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
     pub(crate) mod moved_out_of_ref;
+    pub(crate) mod mut_ref_in_imm_ref_pat;
     pub(crate) mod mutability_errors;
     pub(crate) mod mutable_ref;
     pub(crate) mod no_such_field;
@@ -438,7 +438,6 @@ pub fn semantic_diagnostics(
         let d = match diag {
             AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
             AnyDiagnostic::CannotBeDereferenced(d) => handlers::cannot_be_dereferenced::cannot_be_dereferenced(&ctx, &d),
-            AnyDiagnostic::CannotBorrowAsMutable(d) => handlers::cannot_borrow_as_mutable::cannot_borrow_as_mutable(&ctx, &d),
             AnyDiagnostic::CannotImplicitlyDerefTraitObject(d) => handlers::cannot_implicitly_deref_trait_object::cannot_implicitly_deref_trait_object(&ctx, &d),
             AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
@@ -479,6 +478,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
+            AnyDiagnostic::MutRefInImmRefPat(d) => handlers::mut_ref_in_imm_ref_pat::mut_ref_in_imm_ref_pat(&ctx, &d),
             AnyDiagnostic::MutableRefBinding(d) => handlers::mutable_ref::mutable_ref_binding(&ctx, &d),
             AnyDiagnostic::NeedMut(d) => match handlers::mutability_errors::need_mut(&ctx, &d) {
                 Some(it) => it,

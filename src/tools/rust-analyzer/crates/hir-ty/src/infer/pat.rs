@@ -916,7 +916,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if matches!(bm.0, ByRef::Yes(Mutability::Mut))
             && let MutblCap::WeaklyNot = pat_info.max_ref_mutbl
         {
-            self.push_diagnostic(InferenceDiagnostic::CannotBorrowAsMutable { pat });
+            self.push_diagnostic(InferenceDiagnostic::MutRefInImmRefPat { pat });
         }
 
         // ...and store it in a side table:

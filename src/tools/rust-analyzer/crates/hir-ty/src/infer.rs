@@ -405,7 +405,7 @@ pub enum InferenceDiagnostic {
         expr: ExprId,
         found: StoredTy,
     },
-    CannotBorrowAsMutable {
+    MutRefInImmRefPat {
         #[type_visitable(ignore)]
         pat: PatId,
     },

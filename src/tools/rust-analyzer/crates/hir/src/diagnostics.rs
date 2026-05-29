@@ -104,7 +104,6 @@ diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     CannotBeDereferenced<'db>,
-    CannotBorrowAsMutable,
     CannotImplicitlyDerefTraitObject<'db>,
     CannotIndexInto<'db>,
     CastToUnsized<'db>,
@@ -134,6 +133,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
+    MutRefInImmRefPat,
     MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
@@ -337,7 +337,7 @@ pub struct CannotBeDereferenced<'db> {
 }
 
 #[derive(Debug)]
-pub struct CannotBorrowAsMutable {
+pub struct MutRefInImmRefPat {
     pub pat: InFile<ExprOrPatPtr>,
 }
 
@@ -986,9 +986,9 @@ impl<'db> AnyDiagnostic<'db> {
                 let expr = expr_syntax(*expr)?;
                 CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
             }
-            InferenceDiagnostic::CannotBorrowAsMutable { pat } => {
+            InferenceDiagnostic::MutRefInImmRefPat { pat } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
-                CannotBorrowAsMutable { pat }.into()
+                MutRefInImmRefPat { pat }.into()
             }
             InferenceDiagnostic::CannotImplicitlyDerefTraitObject { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
