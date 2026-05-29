@@ -4756,6 +4756,7 @@ dependencies = [
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "object 0.37.3",
  "rustc_abi",

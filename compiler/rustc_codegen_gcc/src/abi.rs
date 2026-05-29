@@ -46,7 +46,7 @@ impl GccType for CastTarget {
             )
         };
 
-        if self.prefix.iter().all(|x| x.is_none()) {
+        if self.prefix.is_empty() {
             // Simplify to a single unit when there is no prefix and size <= unit size
             if self.rest.total <= self.rest.unit.size {
                 return rest_gcc_unit;
@@ -62,7 +62,7 @@ impl GccType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_reg| option_reg.map(|reg| reg.gcc_type(cx)))
+            .map(|reg| reg.gcc_type(cx))
             .chain((0..rest_count).map(|_| rest_gcc_unit))
             .collect();
 
