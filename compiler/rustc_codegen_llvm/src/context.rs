@@ -28,7 +28,8 @@ use rustc_session::config::{
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Arch, CfgAbi, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
+    Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -487,6 +488,20 @@ pub(crate) unsafe fn create_module<'ll>(
                 1,
             );
         }
+    }
+
+    let fp = attributes::frame_pointer(sess);
+    if fp != FramePointer::MayOmit {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "frame-pointer",
+            match fp {
+                FramePointer::Always => llvm::FramePointerKind::All as u32,
+                FramePointer::NonLeaf => llvm::FramePointerKind::NonLeaf as u32,
+                FramePointer::MayOmit => llvm::FramePointerKind::None as u32,
+            },
+        );
     }
 
     if sess.opts.unstable_opts.indirect_branch_cs_prefix {
