@@ -108,7 +108,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                 };
 
                 let mut body =
-                    EarlyBinder::bind(body.clone()).instantiate(tcx, args).skip_norm_wip();
+                    EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, args).skip_norm_wip();
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
                 pm::run_passes(

@@ -530,8 +530,8 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
-    pub fn bound_return_ty(&self) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
-        ty::EarlyBinder::bind(self.local_decls[RETURN_PLACE].ty)
+    pub fn bound_return_ty(&self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
+        ty::EarlyBinder::bind(tcx, self.local_decls[RETURN_PLACE].ty)
     }
 
     /// Gets the location of the terminator for the given block.
@@ -624,7 +624,7 @@ impl<'tcx> Body<'tcx> {
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,
                 typing_env,
-                crate::ty::EarlyBinder::bind(constant.const_),
+                crate::ty::EarlyBinder::bind(tcx, constant.const_),
             );
             mono_literal.try_eval_bits(tcx, typing_env)
         };

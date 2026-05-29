@@ -49,7 +49,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
             name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "impl",
         });
-        EarlyBinder::bind(Ty::new_error(tcx, guar))
+        EarlyBinder::bind(tcx, Ty::new_error(tcx, guar))
     }
 }
 
@@ -94,7 +94,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(
             name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "crate",
         });
-        EarlyBinder::bind(Ty::new_error(tcx, guar))
+        EarlyBinder::bind(tcx, Ty::new_error(tcx, guar))
     }
 }
 
@@ -247,14 +247,14 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         let guar = tcx
             .dcx()
             .span_delayed_bug(opaque_type_span, "cannot infer type for stranded opaque type");
-        return EarlyBinder::bind(Ty::new_error(tcx, guar));
+        return EarlyBinder::bind(tcx, Ty::new_error(tcx, guar));
     }
 
     match opaque_types_from {
         DefiningScopeKind::HirTypeck => {
             let tables = tcx.typeck(owner_def_id);
             if let Some(guar) = tables.tainted_by_errors {
-                EarlyBinder::bind(Ty::new_error(tcx, guar))
+                EarlyBinder::bind(tcx, Ty::new_error(tcx, guar))
             } else if let Some(hidden_ty) = tables.hidden_types.get(&def_id) {
                 hidden_ty.ty
             } else {
@@ -265,7 +265,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                EarlyBinder::bind(tcx.types.unit)
+                EarlyBinder::bind(tcx, tcx.types.unit)
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {
@@ -275,14 +275,14 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 } else {
                     let hir_ty = tcx.type_of_opaque_hir_typeck(def_id);
                     if let Err(guar) = hir_ty.skip_binder().error_reported() {
-                        EarlyBinder::bind(Ty::new_error(tcx, guar))
+                        EarlyBinder::bind(tcx, Ty::new_error(tcx, guar))
                     } else {
                         assert!(!tcx.next_trait_solver_globally());
                         hir_ty
                     }
                 }
             }
-            Err(guar) => EarlyBinder::bind(Ty::new_error(tcx, guar)),
+            Err(guar) => EarlyBinder::bind(tcx, Ty::new_error(tcx, guar)),
         },
     }
 }

@@ -430,7 +430,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             let bounds =
                 associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
-            return ty::EarlyBinder::bind(bounds);
+            return ty::EarlyBinder::bind_iter(bounds);
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
@@ -486,7 +486,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         node => bug!("item_bounds called on {def_id:?} => {node:?}"),
     };
 
-    ty::EarlyBinder::bind(bounds)
+    ty::EarlyBinder::bind_iter(bounds)
 }
 
 pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
@@ -515,9 +515,12 @@ pub(super) fn item_non_self_bounds(
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
     let own_bounds: FxIndexSet<_> = tcx.item_self_bounds(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
-        ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())
+        ty::EarlyBinder::bind(tcx, ty::ListWithCachedTypeInfo::empty())
     } else {
-        ty::EarlyBinder::bind(tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()))
+        ty::EarlyBinder::bind(
+            tcx,
+            tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()),
+        )
     }
 }
 
