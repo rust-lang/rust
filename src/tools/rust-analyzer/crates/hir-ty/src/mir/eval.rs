@@ -56,7 +56,7 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
-    Operand, OperandKind, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
+    Operand, OperandKind, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, StatementKind,
     TerminatorKind, UnOp, return_slot,
 };
 
@@ -567,26 +567,26 @@ impl std::fmt::Debug for MirEvalError {
 type Result<'db, T> = std::result::Result<T, MirEvalError>;
 
 #[derive(Debug, Default)]
-struct DropFlags {
-    need_drop: FxHashSet<Place>,
+struct DropFlags<'db> {
+    need_drop: FxHashSet<PlaceRef<'db>>,
 }
 
-impl DropFlags {
-    fn add_place(&mut self, p: Place, store: &ProjectionStore) {
-        if p.iterate_over_parents(store).any(|it| self.need_drop.contains(&it)) {
+impl<'db> DropFlags<'db> {
+    fn add_place(&mut self, p: PlaceRef<'db>) {
+        if p.iterate_over_parents().any(|it| self.need_drop.contains(&it)) {
             return;
         }
-        self.need_drop.retain(|it| !p.is_parent(it, store));
+        self.need_drop.retain(|it| !p.is_parent(*it));
         self.need_drop.insert(p);
     }
 
-    fn remove_place(&mut self, p: &Place, store: &ProjectionStore) -> bool {
+    fn remove_place(&mut self, p: PlaceRef<'db>) -> bool {
         // FIXME: replace parents with parts
-        if let Some(parent) = p.iterate_over_parents(store).find(|it| self.need_drop.contains(it)) {
+        if let Some(parent) = p.iterate_over_parents().find(|it| self.need_drop.contains(it)) {
             self.need_drop.remove(&parent);
             return true;
         }
-        self.need_drop.remove(p)
+        self.need_drop.remove(&p)
     }
 
     fn clear(&mut self) {
@@ -598,7 +598,7 @@ impl DropFlags {
 struct Locals<'a> {
     ptr: ArenaMap<LocalId, Interval>,
     body: &'a MirBody,
-    drop_flags: DropFlags,
+    drop_flags: DropFlags<'a>,
 }
 
 pub struct MirOutput {
@@ -757,9 +757,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         let mut addr = locals.ptr[p.local].addr;
         let mut ty: Ty<'db> = locals.body.locals[p.local].ty.as_ref();
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
-        for proj in p.projection.lookup(&locals.body.projection_store) {
+        for proj in p.projection.lookup() {
             let prev_ty = ty;
-            ty = self.projected_ty(ty, proj.clone());
+            ty = self.projected_ty(ty, *proj);
             match proj {
                 ProjectionElem::Deref => {
                     metadata = if self.size_align_of(ty, locals)?.is_none() {
@@ -955,7 +955,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 let addr = self.place_addr(l, locals)?;
                                 let result = self.eval_rvalue(r, locals)?;
                                 self.copy_from_interval_or_owned(addr, result)?;
-                                locals.drop_flags.add_place(*l, &locals.body.projection_store);
+                                locals.drop_flags.add_place(l.as_ref());
                             }
                             StatementKind::Deinit(_) => not_supported!("de-init statement"),
                             StatementKind::StorageLive(_)
@@ -1008,9 +1008,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 )?,
                                 it => not_supported!("unknown function type {it:?}"),
                             };
-                            locals
-                                .drop_flags
-                                .add_place(*destination, &locals.body.projection_store);
+                            locals.drop_flags.add_place(destination.as_ref());
                             if let Some(stack_frame) = stack_frame {
                                 self.code_stack.push(my_stack_frame);
                                 current_block_idx = stack_frame.locals.body.start_block;
@@ -1091,7 +1089,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
     ) -> Result<'db, ()> {
         let mut remain_args = body.param_locals.len();
         for ((l, interval), value) in locals.ptr.iter().skip(1).zip(args) {
-            locals.drop_flags.add_place(l.into(), &locals.body.projection_store);
+            locals.drop_flags.add_place(l.into());
             match value {
                 IntervalOrOwned::Owned(value) => interval.write_from_bytes(self, &value)?,
                 IntervalOrOwned::Borrowed(value) => interval.write_from_interval(self, value)?,
@@ -1915,7 +1913,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
     fn eval_operand(&mut self, it: &Operand, locals: &mut Locals<'a>) -> Result<'db, Interval> {
         Ok(match &it.kind {
             OperandKind::Copy(p) | OperandKind::Move(p) => {
-                locals.drop_flags.remove_place(p, &locals.body.projection_store);
+                locals.drop_flags.remove_place(p.as_ref());
                 self.eval_place(p, locals)?
             }
             OperandKind::Static(st) => {
@@ -3036,7 +3034,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         span: MirSpan,
     ) -> Result<'db, ()> {
         let (addr, ty, metadata) = self.place_addr_and_ty_and_metadata(place, locals)?;
-        if !locals.drop_flags.remove_place(place, &locals.body.projection_store) {
+        if !locals.drop_flags.remove_place(place.as_ref()) {
             return Ok(());
         }
         let metadata = match metadata {
