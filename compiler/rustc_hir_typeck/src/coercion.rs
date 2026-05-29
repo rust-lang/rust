@@ -1897,7 +1897,7 @@ impl<'tcx> CoerceMany<'tcx> {
                         if loop_src == hir::LoopSource::While
                             && let Some(pat) = irrefutable_if_let_expr(block)
                         {
-                            err.span_note(
+                            err.span_label(
                                 pat.span,
                                 "this pattern always matches, consider using `loop` instead",
                             );
