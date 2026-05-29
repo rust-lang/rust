@@ -47,12 +47,11 @@ use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, NoFieldOnType};
+use crate::errors::{BadReturnTypeNotation, NoFieldOnType};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -3736,48 +3735,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             err.emit();
         }
-    }
-
-    /// Given the bounds on an object, determines what single region bound (if any) we can
-    /// use to summarize this type.
-    ///
-    /// The basic idea is that we will use the bound the user
-    /// provided, if they provided one, and otherwise search the supertypes of trait bounds
-    /// for region bounds. It may be that we can derive no bound at all, in which case
-    /// we return `None`.
-    #[instrument(level = "debug", skip(self, span), ret)]
-    fn compute_object_lifetime_bound(
-        &self,
-        span: Span,
-        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ) -> Option<ty::Region<'tcx>> // if None, use the default
-    {
-        let tcx = self.tcx();
-
-        // No explicit region bound specified. Therefore, examine trait
-        // bounds and see if we can derive region bounds from those.
-        let derived_region_bounds = object_region_bounds(tcx, existential_predicates);
-
-        // If there are no derived region bounds, then report back that we
-        // can find no region bound. The caller will use the default.
-        if derived_region_bounds.is_empty() {
-            return None;
-        }
-
-        // If any of the derived region bounds are 'static, that is always
-        // the best choice.
-        if derived_region_bounds.iter().any(|r| r.is_static()) {
-            return Some(tcx.lifetimes.re_static);
-        }
-
-        // Determine whether there is exactly one unique region in the set
-        // of derived region bounds. If so, use that. Otherwise, report an
-        // error.
-        let r = derived_region_bounds[0];
-        if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            self.dcx().emit_err(AmbiguousLifetimeBound { span });
-        }
-        Some(r)
     }
 
     fn construct_const_ctor_value(
