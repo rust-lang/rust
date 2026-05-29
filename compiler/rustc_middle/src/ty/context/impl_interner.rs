@@ -355,6 +355,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.assumptions_on_binders()
     }
 
+    fn renormalize_rigid_aliases(self) -> bool {
+        self.renormalize_rigid_aliases()
+    }
+
     fn coroutine_hidden_types(
         self,
         def_id: DefId,

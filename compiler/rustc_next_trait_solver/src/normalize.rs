@@ -6,7 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
     self as ty, AliasTerm, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy,
     Interner, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, TypingMode, UniverseIndex,
+    TypeVisitor, UniverseIndex,
 };
 use tracing::instrument;
 
@@ -177,7 +177,8 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
         let infcx = self.infcx;
-        if !ty.has_non_rigid_aliases() {
+
+        if !self.cx().renormalize_rigid_aliases() && !ty.has_non_rigid_aliases() {
             return Ok(ty);
         }
 
@@ -216,13 +217,23 @@ where
         };
 
         assert!(self.cache.insert(ty, result).is_none(), "{ty:?} {result:?} {:?}", self.cache);
+
+        if self.cx().renormalize_rigid_aliases()
+            && let ty::Alias(alias) = ty.kind()
+            && alias.is_rigid == ty::IsRigid::Yes
+        {
+            // find out missing typing env change.
+            let original = crate::resolve::eager_resolve_vars_with_infcx(infcx, ty);
+            let normalized = crate::resolve::eager_resolve_vars_with_infcx(infcx, result);
+            assert_eq!(original, normalized, "rigid alias is further normalized");
         }
+        Ok(result)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
         let infcx = self.infcx;
-        if !ct.has_non_rigid_aliases() {
+        if !self.cx().renormalize_rigid_aliases() && !ct.has_non_rigid_aliases() {
             return Ok(ct);
         }
 

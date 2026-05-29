@@ -43,7 +43,7 @@ where
     let value = value.skip_normalization();
     let value = infcx.resolve_vars_if_possible(value);
 
-    if !value.has_non_rigid_aliases() {
+    if !infcx.tcx.renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
         return Normalized { value, obligations: Default::default() };
     }
 
