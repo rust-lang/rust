@@ -10,6 +10,7 @@
 
 use crate::core_arch::powerpc::*;
 use crate::core_arch::simd::*;
+use crate::intrinsics::simd::simd_add;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -68,6 +69,12 @@ mod sealed {
     pub trait VectorPermDI {
         #[unstable(feature = "stdarch_powerpc", issue = "111145")]
         unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorAdd<Other> {
+        type Result;
+        unsafe fn vec_add(self, other: Other) -> Self::Result;
     }
 
     // xxpermdi has an big-endian bias and extended mnemonics
@@ -171,6 +178,34 @@ mod sealed {
     vec_mergeeo! { vector_unsigned_int, mergee, mergeo }
     vec_mergeeo! { vector_bool_int, mergee, mergeo }
     vec_mergeeo! { vector_float, mergee, mergeo }
+
+    #[inline]
+    #[target_feature(enable = "vsx")]
+    #[cfg_attr(test, assert_instr(xvadddp))]
+    unsafe fn vec_add_double_double(a: vector_double, b: vector_double) -> vector_double {
+        simd_add(a, b)
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl sealed::VectorAdd<vector_double> for vector_double {
+        type Result = vector_double;
+        #[inline]
+        #[target_feature(enable = "vsx")]
+        unsafe fn vec_add(self, other: vector_double) -> Self::Result {
+            vec_add_double_double(self, other)
+        }
+    }
+}
+
+/// Vector add for double-precision floating-point vectors.
+#[inline]
+#[target_feature(enable = "vsx")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_add<T, U>(a: T, b: U) -> <T as sealed::VectorAdd<U>>::Result
+where
+    T: sealed::VectorAdd<U>,
+{
+    a.vec_add(b)
 }
 
 /// Vector permute.
@@ -255,4 +290,15 @@ mod tests {
     test_vec_xxpermdi! {test_vec_xxpermdi_i64x2, i64x2, vector_signed_long, [0], [-1], [2], [-3]}
     test_vec_xxpermdi! {test_vec_xxpermdi_m64x2, m64x2, vector_bool_long, [false], [true], [false], [true]}
     test_vec_xxpermdi! {test_vec_xxpermdi_f64x2, f64x2, vector_double, [0.0], [1.0], [2.0], [3.0]}
+
+    #[simd_test(enable = "vsx")]
+    fn test_vec_add_f64x2_f64x2() {
+        let a = vector_double::from(f64x2::from_array([1.0, 2.0]));
+        let b = vector_double::from(f64x2::from_array([3.0, 4.0]));
+        let expected = vector_double::from(f64x2::from_array([4.0, 6.0]));
+
+        unsafe {
+            assert_eq!(f64x2::from(vec_add(a, b)), f64x2::from(expected));
+        }
+    }
 }
