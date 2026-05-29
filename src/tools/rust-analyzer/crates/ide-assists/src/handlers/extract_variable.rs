@@ -13,7 +13,10 @@ use syntax::{
     syntax_editor::{Element, Position},
 };
 
-use crate::{AssistContext, AssistId, Assists, utils::is_body_const};
+use crate::{
+    AssistContext, AssistId, Assists,
+    utils::{cover_edit_range, is_body_const},
+};
 
 // Assist: extract_variable
 //
@@ -107,9 +110,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
             .skip_while(|it| !it.text_range().contains_range(range))
             .find_map(valid_target_expr(ctx))?;
         let original_range = ctx.sema.original_range(expr.syntax());
-        let (first, last) = extract_token_range_of(&node, original_range.range)?;
-        let to_extract = first.syntax_element()..=last.syntax_element();
-        (to_extract, expr)
+        (cover_edit_range(&node, original_range.range), expr)
     } else {
         let expr = node
             .descendants()
@@ -2999,6 +3000,28 @@ macro_rules! foo {
 fn main() {
     let $0var_name = 2+3;
     let x = foo!(= Foo { x: var_name + 4 });
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn regression_22441() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+//- minicore: option, write
+fn main() {
+    let maybe_str = Some("world");
+    write!((), "Hello, {}!", $0maybe_str.unwrap()$0);
+}
+"#,
+            r#"
+fn main() {
+    let maybe_str = Some("world");
+    let $0var_name = maybe_str.unwrap();
+    write!((), "Hello, {}!", var_name);
 }
 "#,
             "Extract into variable",
