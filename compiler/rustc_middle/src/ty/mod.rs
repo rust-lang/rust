@@ -205,7 +205,7 @@ pub struct ResolverGlobalCtxt {
 
 #[derive(Debug)]
 pub struct PerOwnerResolverData {
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -214,7 +214,7 @@ pub struct PerOwnerResolverData {
 
 impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
-        PerOwnerResolverData { node_id_to_def_id: Default::default(), id, def_id }
+        PerOwnerResolverData { id, def_id, .. }
     }
 }
 
