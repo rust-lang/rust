@@ -3,7 +3,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, set_file_times, submodule_path_of, symlink_dir,
+    check_cfg_arg, extract_beta_rev, hex_encode, make, set_file_times, submodule_path_of,
+    symlink_dir,
 };
 use crate::utils::tests::TestCtx;
 use crate::{Config, Flags};

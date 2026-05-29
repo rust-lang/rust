@@ -3520,7 +3520,14 @@ fn distcheck_rust_dev_ci_llvm(builder: &Builder<'_>, dir: &Path) {
         .current_dir(&plain_source_dir)
         .run(builder);
 
-    command("./x.py").arg("build").arg("library").current_dir(&plain_source_dir).run(builder);
+    let llvm_lib_dir = ci_llvm_dir.join("rust-dev").join("lib");
+
+    command("./x.py")
+        .arg("build")
+        .arg("library")
+        .env("DYLD_LIBRARY_PATH", &llvm_lib_dir)
+        .current_dir(&plain_source_dir)
+        .run(builder);
 
     builder.remove_dir(dir);
 }

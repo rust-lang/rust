@@ -285,17 +285,18 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     }
 }
 
-// pub fn make(host: &str) -> PathBuf {
-//     if host.contains("dragonfly")
-//         || host.contains("freebsd")
-//         || host.contains("netbsd")
-//         || host.contains("openbsd")
-//     {
-//         PathBuf::from("gmake")
-//     } else {
-//         PathBuf::from("make")
-//     }
-// }
+#[allow(dead_code)]
+pub fn make(host: &str) -> PathBuf {
+    if host.contains("dragonfly")
+        || host.contains("freebsd")
+        || host.contains("netbsd")
+        || host.contains("openbsd")
+    {
+        PathBuf::from("gmake")
+    } else {
+        PathBuf::from("make")
+    }
+}
 
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
