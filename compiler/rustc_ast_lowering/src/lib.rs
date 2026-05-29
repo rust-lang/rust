@@ -542,7 +542,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let ast_index = index_crate(&resolver, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
-        tcx.definitions_untracked().def_index_count(),
+        tcx.definitions_untracked().num_definitions(),
     );
 
     let mut lowerer = item::ItemLowerer {
