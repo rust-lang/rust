@@ -953,7 +953,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
 ) {
     static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
-    let mut lint = UnreachablePattern {
+    let mut lint = UnreachablePatternInner {
         span: Some(pat_span),
         matches_no_values: None,
         matches_no_values_ty: **pat.ty(),
@@ -961,13 +961,13 @@ fn report_unreachable_pattern<'p, 'tcx>(
         covered_by_catchall: None,
         covered_by_one: None,
         covered_by_many: None,
-        covered_by_many_n_more_count: 0,
         wanted_constant: None,
         accessible_constant: None,
         inaccessible_constant: None,
         pattern_let_binding: None,
         suggest_remove: None,
     };
+    let mut covered_by_many_n_more_count = None;
     match explanation.covered_by.as_slice() {
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
@@ -1006,7 +1006,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
             if remain == 0 {
                 multispan.push_span_label(pat_span, msg!("collectively making this unreachable"));
             } else {
-                lint.covered_by_many_n_more_count = remain;
+                covered_by_many_n_more_count = Some(remain);
                 multispan.push_span_label(
                     pat_span,
                     msg!("...and {$covered_by_many_n_more_count} other patterns collectively make this unreachable"),
@@ -1015,7 +1015,12 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_many = Some(multispan);
         }
     }
-    cx.tcx.emit_node_span_lint(UNREACHABLE_PATTERNS, hir_id, pat_span, lint);
+    cx.tcx.emit_node_span_lint(
+        UNREACHABLE_PATTERNS,
+        hir_id,
+        pat_span,
+        UnreachablePattern { inner: lint, covered_by_many_n_more_count },
+    );
 }
 
 /// Detect typos that were meant to be a `const` but were interpreted as a new pattern binding.
@@ -1023,7 +1028,7 @@ fn find_fallback_pattern_typo<'tcx>(
     cx: &PatCtxt<'_, 'tcx>,
     hir_id: HirId,
     pat: &Pat<'tcx>,
-    lint: &mut UnreachablePattern<'_>,
+    lint: &mut UnreachablePatternInner<'_>,
 ) {
     if cx.tcx.lint_level_spec_at_node(UNREACHABLE_PATTERNS, hir_id).is_allow() {
         // This is because we use `with_no_trimmed_paths` later, so if we never emit the lint we'd

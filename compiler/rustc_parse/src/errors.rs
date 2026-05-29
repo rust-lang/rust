@@ -3461,10 +3461,6 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// The unexpected expr's precedence. Not used directly in the error message, but needed for
-    /// the stashing of this error to work correctly. We store a `u32` rather than an
-    /// `ExprPrecedence` to avoid having to impl `IntoDiagArg` for `ExprPrecedence`.
-    pub expr_precedence: u32,
 }
 
 #[derive(Subdiagnostic)]
