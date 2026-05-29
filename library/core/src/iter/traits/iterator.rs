@@ -2422,11 +2422,13 @@ pub const trait Iterator {
     /// do something better than the default `for` loop implementation.
     ///
     /// In particular, try to have this call `try_fold()` on the internal parts
-    /// from which this iterator is composed. If multiple calls are needed,
-    /// the `?` operator may be convenient for chaining the accumulator value
-    /// along, but beware any invariants that need to be upheld before those
-    /// early returns. This is a `&mut self` method, so iteration needs to be
-    /// resumable after hitting an error here.
+    /// from which this iterator is composed. Note that some implementations may
+    /// rely on the unstable `Try` trait, which is not currently available on
+    /// stable Rust. If multiple calls are needed, the `?` operator may be
+    /// convenient for chaining the accumulator value along, but beware any
+    /// invariants that need to be upheld before those early returns. This is a
+    /// `&mut self` method, so iteration needs to be resumable after hitting an
+    /// error here.
     ///
     /// # Examples
     ///
