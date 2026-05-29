@@ -202,9 +202,13 @@ impl<'k> StatCollector<'k> {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut keys: Vec<_> = self.nodes.keys().collect();
-        keys.sort();
+        keys.sort(); // Ensure deterministic output
+        let mut total_size = 0;
+        let mut total_count = 0;
         for label in keys {
             let node = &self.nodes[label];
+            total_size += node.stats.accum_size();
+            total_count += node.stats.count;
             out.push((format!("{prefix}.{label}.count"), node.stats.count));
             out.push((format!("{prefix}.{label}.size"), node.stats.size));
             out.push((format!("{prefix}.{label}.cumulative_size"), node.stats.accum_size()));
@@ -222,8 +226,6 @@ impl<'k> StatCollector<'k> {
                 ));
             }
         }
-        let total_size = self.nodes.values().map(|node| node.stats.accum_size()).sum();
-        let total_count = self.nodes.values().map(|node| node.stats.count).sum();
         out.push((format!("{prefix}.total.count"), total_count));
         out.push((format!("{prefix}.total.size"), total_size));
         out
