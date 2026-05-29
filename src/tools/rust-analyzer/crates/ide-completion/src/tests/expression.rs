@@ -4190,7 +4190,6 @@ fn foo(t: T) {
 }
         "#,
         expect![[r#"
-                kw await    expr.await
                 sn box  Box::new(expr)
                 sn call function(expr)
                 sn const      const {}
