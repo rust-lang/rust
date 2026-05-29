@@ -479,6 +479,18 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn lifetime_param(&self, lifetime: ast::Lifetime) -> ast::LifetimeParam {
+        let ast = make::lifetime_param(lifetime.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(lifetime.syntax().clone(), ast.lifetime().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn generic_param_list(
         &self,
         params: impl IntoIterator<Item = ast::GenericParam>,
