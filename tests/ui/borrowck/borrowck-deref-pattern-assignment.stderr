@@ -1,0 +1,87 @@
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-deref-pattern-assignment.rs:7:9
+   |
+LL |     for &num in nums {
+   |          --- first assignment to `num`
+LL |         num *= 2;
+   |         ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL -     for &num in nums {
+LL +     for &(mut num) in nums {
+   |
+
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-deref-pattern-assignment.rs:15:5
+   |
+LL |     let &num = num_ref;
+   |          --- first assignment to `num`
+LL |
+LL |     num *= 2;
+   |     ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let &mut num = num_ref;
+   |          +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     let &ref mut num = num_ref;
+   |          +++++++
+
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-deref-pattern-assignment.rs:22:9
+   |
+LL |     if let Some(&num) = option_num_ref {
+   |                  --- first assignment to `num`
+LL |         num *= 2;
+   |         ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     if let Some(&mut num) = option_num_ref {
+   |                  +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     if let Some(&ref mut num) = option_num_ref {
+   |                  +++++++
+
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-deref-pattern-assignment.rs:31:9
+   |
+LL |     if let &Some(num) = num_option_ref {
+   |                  --- first assignment to `num`
+LL |         num *= 2;
+   |         ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     if let &Some(mut num) = num_option_ref {
+   |                  +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     if let &Some(ref mut num) = num_option_ref {
+   |                  +++++++
+
+error[E0384]: cannot assign twice to immutable variable `num`
+  --> $DIR/borrowck-deref-pattern-assignment.rs:41:5
+   |
+LL |     let &mut num = num_mut_ref;
+   |              --- first assignment to `num`
+LL |
+LL |     num *= 2;
+   |     ^^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let &mut mut num = num_mut_ref;
+   |              +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     let &mut ref mut num = num_mut_ref;
+   |              +++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0384`.
