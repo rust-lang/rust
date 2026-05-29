@@ -36,7 +36,6 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -1281,13 +1280,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
-        let tcx = self.tcx();
-
         let mut matching_candidates = all_candidates().filter(|r| {
             self.probe_trait_that_defines_assoc_item(r.def_id(), assoc_tag, assoc_ident)
         });
 
-        let Some(bound) = matching_candidates.next() else {
+        let Some(bound1) = matching_candidates.next() else {
             return Err(self.report_unresolved_assoc_item(
                 all_candidates,
                 qself,
@@ -1297,137 +1294,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint,
             ));
         };
-        debug!(?bound);
 
         if let Some(bound2) = matching_candidates.next() {
-            debug!(?bound2);
-
-            let assoc_kind_str = errors::assoc_tag_str(assoc_tag);
-            let qself_str = qself.to_string(tcx);
-            let mut err = self.dcx().create_err(crate::errors::AmbiguousAssocItem {
-                span,
-                assoc_kind: assoc_kind_str,
+            return Err(self.report_ambiguous_assoc_item(
+                bound1,
+                bound2,
+                matching_candidates,
+                qself,
+                assoc_tag,
                 assoc_ident,
-                qself: &qself_str,
-            });
-            // Provide a more specific error code index entry for equality bindings.
-            err.code(
-                if let Some(constraint) = constraint
-                    && let hir::AssocItemConstraintKind::Equality { .. } = constraint.kind
-                {
-                    E0222
-                } else {
-                    E0221
-                },
-            );
-
-            // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
-            // predicates!).
-            // FIXME: Turn this into a structured, translatable & more actionable suggestion.
-            let mut where_bounds = vec![];
-            for bound in [bound, bound2].into_iter().chain(matching_candidates) {
-                let bound_id = bound.def_id();
-                let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
-                    tcx,
-                    assoc_ident,
-                    assoc_tag,
-                    bound_id,
-                );
-                let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
-
-                if let Some(bound_span) = bound_span {
-                    err.span_label(
-                        bound_span,
-                        format!("ambiguous `{assoc_ident}` from `{}`", bound.print_trait_sugared(),),
-                    );
-                    if let Some(constraint) = constraint {
-                        match constraint.kind {
-                            hir::AssocItemConstraintKind::Equality { term } => {
-                                let term: ty::Term<'_> = match term {
-                                    hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                                    hir::Term::Const(ct) => {
-                                        let assoc_item =
-                                            assoc_item.expect("assoc_item should be present");
-                                        let projection_term = bound.map_bound(|trait_ref| {
-                                            let item_segment = hir::PathSegment {
-                                                ident: constraint.ident,
-                                                hir_id: constraint.hir_id,
-                                                res: Res::Err,
-                                                args: Some(constraint.gen_args),
-                                                infer_args: false,
-                                            };
-
-                                            let alias_args = self.lower_generic_args_of_assoc_item(
-                                                constraint.ident.span,
-                                                assoc_item.def_id,
-                                                &item_segment,
-                                                trait_ref.args,
-                                            );
-                                            ty::AliasTerm::new_from_def_id(
-                                                tcx,
-                                                assoc_item.def_id,
-                                                alias_args,
-                                            )
-                                        });
-
-                                        // FIXME(mgca): code duplication with other places we lower
-                                        // the rhs' of associated const bindings
-                                        let ty = projection_term.map_bound(|alias| {
-                                            tcx.type_of(alias.def_id())
-                                                .instantiate(tcx, alias.args)
-                                                .skip_norm_wip()
-                                        });
-                                        let ty = bounds::check_assoc_const_binding_type(
-                                            self,
-                                            constraint.ident,
-                                            ty,
-                                            constraint.hir_id,
-                                        );
-
-                                        self.lower_const_arg(ct, ty).into()
-                                    }
-                                };
-                                if term.references_error() {
-                                    continue;
-                                }
-                                // FIXME(#97583): This isn't syntactically well-formed!
-                                where_bounds.push(format!(
-                                    "        T: {trait}::{assoc_ident} = {term}",
-                                    trait = bound.print_only_trait_path(),
-                                ));
-                            }
-                            // FIXME: Provide a suggestion.
-                            hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
-                        }
-                    } else {
-                        err.span_suggestion_verbose(
-                            span.with_hi(assoc_ident.span.lo()),
-                            "use fully-qualified syntax to disambiguate",
-                            format!("<{qself_str} as {}>::", bound.print_only_trait_path()),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                } else {
-                    let trait_ =
-                        tcx.short_string(bound.print_only_trait_path(), err.long_ty_path());
-                    err.note(format!(
-                        "associated {assoc_kind_str} `{assoc_ident}` could derive from `{trait_}`",
-                    ));
-                }
-            }
-            if !where_bounds.is_empty() {
-                err.help(format!(
-                    "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {qself_str},\n{}",
-                    where_bounds.join(",\n"),
-                ));
-                let reported = err.emit();
-                return Err(reported);
-            }
-            err.emit();
+                span,
+                constraint,
+            ));
         }
 
-        Ok(bound)
+        Ok(bound1)
     }
 
     /// Lower a [type-relative](hir::QPath::TypeRelative) path in type position to a type.
