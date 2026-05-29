@@ -462,6 +462,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T> TableBuilder<H, I, O
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
+    #[inline(always)]
     pub(crate) fn set_some_hashed<'a, HashedT>(
         &mut self,
         i: I,
@@ -479,6 +480,7 @@ where
 impl<H: TablePublicApiHasher<DefIndex>, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
     TableBuilder<H, DefIndex, T>
 {
+    #[inline(always)]
     pub(crate) fn set_local_hashed<'a>(
         &mut self,
         i: LocalDefId,
@@ -496,6 +498,7 @@ impl<H: TablePublicApiHasher<DefIndex>, const N: usize, T> TableBuilder<H, DefIn
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
+    #[inline(always)]
     pub(crate) fn set_some_local_hashed<'a>(
         &mut self,
         i: LocalDefId,
@@ -512,6 +515,7 @@ where
 impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
     TableBuilder<RDRHashNone<I>, I, T>
 {
+    #[inline(always)]
     pub(super) fn set_unhashed(&mut self, i: I, value: T) {
         self.set(i, value);
     }
@@ -521,6 +525,7 @@ impl<I: Idx, const N: usize, T> TableBuilder<RDRHashNone<I>, I, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
+    #[inline(always)]
     pub(super) fn set_some_unhashed(&mut self, i: I, value: T) {
         self.set(i, Some(value));
     }
@@ -529,10 +534,12 @@ where
 impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
     TableBuilder<H, I, T>
 {
+    #[inline(always)]
     pub(super) fn iter_hasher(&self) -> H::IterHasher {
         self.hasher.iter_hasher()
     }
 
+    #[inline(always)]
     pub(super) fn set_hashed<'a, HashedT>(
         &mut self,
         i: I,
@@ -551,6 +558,7 @@ impl<H: TablePublicApiHasher<I>, I: Idx, const N: usize, T: FixedSizeEncoding<By
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
+    #[inline(always)]
     pub(super) fn set(&mut self, i: I, value: T) {
         #[cfg(debug_assertions)]
         {
