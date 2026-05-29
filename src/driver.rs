@@ -235,7 +235,7 @@ fn main() -> ExitCode {
             if let Some(sys_root) = sys_root_env
                 && !has_sysroot_arg(args)
             {
-                args.extend(vec!["--sysroot".into(), sys_root]);
+                args.extend(["--sysroot".to_string(), sys_root]);
             }
         };
 
