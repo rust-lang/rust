@@ -1127,10 +1127,6 @@ cc = [
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
-[mentions."tests/auxiliary/minicore.rs"]
-message = "This PR modifies `tests/auxiliary/minicore.rs`."
-cc = ["@jieyouxu"]
-
 [mentions."src/rustdoc-json-types"]
 message = """
 rustdoc-json-types is a **public** (although nightly-only) API. \
