@@ -7,7 +7,6 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
-use crate::AttributeParser;
 use crate::context::AcceptContext;
 use crate::errors::{
     InvalidAttrAtCrateLevel, InvalidTargetLint, ItemFollowingInnerAttr,
@@ -15,6 +14,7 @@ use crate::errors::{
 };
 use crate::session_diagnostics::InvalidTarget;
 use crate::target_checking::Policy::Allow;
+use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
@@ -92,6 +92,10 @@ impl<'sess> AttributeParser<'sess> {
         allowed_targets: &AllowedTargets,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
+        if matches!(cx.should_emit, ShouldEmit::Nothing) {
+            return;
+        }
+
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
         if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
