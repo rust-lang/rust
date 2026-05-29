@@ -7,6 +7,7 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::{env, fs, mem};
@@ -792,40 +793,50 @@ fn doc_std(
     // as a function parameter.
     let out_dir = target_dir.join(target).join("doc");
 
-    let mut cargo = builder::Cargo::new(
-        builder,
-        build_compiler,
-        Mode::Std,
-        SourceType::InTree,
-        target,
-        Kind::Doc,
-    );
+    let mut crates = requested_crates.to_vec();
+    let std_lib_crate_order = STD_PUBLIC_CRATES
+        .iter()
+        .enumerate()
+        .map(|(i, v)| (v.to_string(), i))
+        .collect::<HashMap<_, _>>();
+    crates.sort_by_key(|c| std_lib_crate_order.get(c).unwrap_or(&usize::MAX));
 
-    compile::std_cargo(builder, target, &mut cargo, requested_crates);
-    cargo
-        .arg("--no-deps")
-        .arg("--target-dir")
-        .arg(&*target_dir.to_string_lossy())
-        .arg("-Zskip-rustdoc-fingerprint")
-        .arg("-Zrustdoc-map")
-        .rustdocflag("--extern-html-root-url")
-        .rustdocflag("std_detect=https://docs.rs/std_detect/latest/")
-        .rustdocflag("--extern-html-root-takes-precedence")
-        .rustdocflag("--resource-suffix")
-        .rustdocflag(&builder.version);
-    for arg in extra_args {
-        cargo.rustdocflag(arg);
+    for krate in crates {
+        let mut cargo = builder::Cargo::new(
+            builder,
+            build_compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            Kind::Doc,
+        );
+
+        compile::std_cargo(builder, target, &mut cargo, std::slice::from_ref(&krate));
+        cargo
+            .arg("--no-deps")
+            .arg("--target-dir")
+            .arg(&*target_dir.to_string_lossy())
+            .arg("-Zskip-rustdoc-fingerprint")
+            .arg("-Zrustdoc-map")
+            .rustdocflag("--extern-html-root-url")
+            .rustdocflag("std_detect=https://docs.rs/std_detect/latest/")
+            .rustdocflag("--extern-html-root-takes-precedence")
+            .rustdocflag("--resource-suffix")
+            .rustdocflag(&builder.version);
+        for arg in extra_args {
+            cargo.rustdocflag(arg);
+        }
+
+        if builder.config.library_docs_private_items {
+            cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
+        }
+
+        let description =
+            format!("library{} in {} format", crate_description(&[krate]), format.as_str());
+        let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
+        cargo.into_cmd().run(builder);
     }
 
-    if builder.config.library_docs_private_items {
-        cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
-    }
-
-    let description =
-        format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
-
-    cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
 }
 
