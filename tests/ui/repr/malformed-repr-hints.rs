@@ -8,7 +8,7 @@
 struct S1;
 
 #[repr(align)]
-//~^ ERROR: invalid `repr(align)` attribute
+//~^ ERROR: malformed `repr` attribute input
 struct S2;
 
 #[repr(align(2, 4))]
@@ -21,23 +21,23 @@ struct S4;
 
 // Regression test for issue #118334:
 #[repr(Rust(u8))]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 #[repr(Rust(0))]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 #[repr(Rust = 0)]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 struct S5;
 
 #[repr(i8())]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 enum E1 { A, B }
 
 #[repr(u32(42))]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 enum E2 { A, B }
 
 #[repr(i64 = 2)]
-//~^ ERROR: invalid representation hint
+//~^ ERROR: malformed `repr` attribute input
 enum E3 { A, B }
 
 fn main() {}

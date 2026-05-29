@@ -1,9 +1,10 @@
 use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_hir::attrs::{IntType, ReprAttr};
+use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
+use rustc_hir::attrs::ReprAttr;
 
 use super::prelude::*;
-use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
+use crate::session_diagnostics;
 
 /// Parse #[repr(...)] forms.
 ///
@@ -56,122 +57,69 @@ impl CombineAttributeParser for ReprParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 }
 
-macro_rules! int_pat {
-    () => {
-        sym::i8
-            | sym::u8
-            | sym::i16
-            | sym::u16
-            | sym::i32
-            | sym::u32
-            | sym::i64
-            | sym::u64
-            | sym::i128
-            | sym::u128
-            | sym::isize
-            | sym::usize
-    };
-}
-
-fn int_type_of_word(s: Symbol) -> Option<IntType> {
-    use IntType::*;
-
-    match s {
-        sym::i8 => Some(SignedInt(IntTy::I8)),
-        sym::u8 => Some(UnsignedInt(UintTy::U8)),
-        sym::i16 => Some(SignedInt(IntTy::I16)),
-        sym::u16 => Some(UnsignedInt(UintTy::U16)),
-        sym::i32 => Some(SignedInt(IntTy::I32)),
-        sym::u32 => Some(UnsignedInt(UintTy::U32)),
-        sym::i64 => Some(SignedInt(IntTy::I64)),
-        sym::u64 => Some(UnsignedInt(UintTy::U64)),
-        sym::i128 => Some(SignedInt(IntTy::I128)),
-        sym::u128 => Some(UnsignedInt(UintTy::U128)),
-        sym::isize => Some(SignedInt(IntTy::Isize)),
-        sym::usize => Some(UnsignedInt(UintTy::Usize)),
-        _ => None,
-    }
-}
-
-fn parse_repr(cx: &AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<ReprAttr> {
+fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<ReprAttr> {
     use ReprAttr::*;
 
-    // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
-    // structure.
-    let (name, ident_span) = if let Some(ident) = param.path().word() {
-        (Some(ident.name), ident.span)
-    } else {
-        (None, DUMMY_SP)
-    };
+    macro_rules! no_args {
+        ($constructor: expr) => {{
+            cx.expect_no_args(param.args())?;
+            Some($constructor)
+        }};
+    }
 
-    let args = param.args();
-
-    match (name, args) {
-        (Some(sym::align), ArgParser::NoArgs) => {
-            cx.emit_err(session_diagnostics::InvalidReprAlignNeedArg { span: ident_span });
-            None
-        }
-        (Some(sym::align), ArgParser::List(l)) => {
+    match param.path().word_sym() {
+        Some(sym::align) => {
+            let l = cx.expect_list(param.args(), param.span())?;
             parse_repr_align(cx, l, param.span(), AlignKind::Align)
         }
-
-        (Some(sym::packed), ArgParser::NoArgs) => Some(ReprPacked(Align::ONE)),
-        (Some(sym::packed), ArgParser::List(l)) => {
-            parse_repr_align(cx, l, param.span(), AlignKind::Packed)
-        }
-
-        (Some(name @ sym::align | name @ sym::packed), ArgParser::NameValue(l)) => {
-            cx.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
-                span: param.span(),
-                // FIXME(jdonszelmann) can just be a string in the diag type
-                repr_arg: name,
-                cause: IncorrectReprFormatGenericCause::from_lit_kind(
-                    param.span(),
-                    &l.value_as_lit().kind,
-                    name,
-                ),
-            });
-            None
-        }
-
-        (Some(sym::Rust), ArgParser::NoArgs) => Some(ReprRust),
-        (Some(sym::C), ArgParser::NoArgs) => Some(ReprC),
-        (Some(sym::simd), ArgParser::NoArgs) => Some(ReprSimd),
-        (Some(sym::transparent), ArgParser::NoArgs) => Some(ReprTransparent),
-        (Some(name @ int_pat!()), ArgParser::NoArgs) => {
-            // int_pat!() should make sure it always parses
-            Some(ReprInt(int_type_of_word(name).unwrap()))
-        }
-
-        (
-            Some(
-                name @ sym::Rust
-                | name @ sym::C
-                | name @ sym::simd
-                | name @ sym::transparent
-                | name @ int_pat!(),
-            ),
-            ArgParser::NameValue(_),
-        ) => {
-            cx.emit_err(session_diagnostics::InvalidReprHintNoValue { span: param.span(), name });
-            None
-        }
-        (
-            Some(
-                name @ sym::Rust
-                | name @ sym::C
-                | name @ sym::simd
-                | name @ sym::transparent
-                | name @ int_pat!(),
-            ),
-            ArgParser::List(_),
-        ) => {
-            cx.emit_err(session_diagnostics::InvalidReprHintNoParen { span: param.span(), name });
-            None
-        }
-
+        Some(sym::packed) => match param.args() {
+            ArgParser::NoArgs => Some(ReprPacked(Align::ONE)),
+            ArgParser::List(l) => parse_repr_align(cx, l, param.span(), AlignKind::Packed),
+            ArgParser::NameValue(_) => {
+                cx.adcx().expected_list_or_no_args(param.span());
+                None
+            }
+        },
+        Some(sym::Rust) => no_args!(ReprRust),
+        Some(sym::C) => no_args!(ReprC),
+        Some(sym::simd) => no_args!(ReprSimd),
+        Some(sym::transparent) => no_args!(ReprTransparent),
+        Some(sym::i8) => no_args!(ReprInt(SignedInt(IntTy::I8))),
+        Some(sym::u8) => no_args!(ReprInt(UnsignedInt(UintTy::U8))),
+        Some(sym::i16) => no_args!(ReprInt(SignedInt(IntTy::I16))),
+        Some(sym::u16) => no_args!(ReprInt(UnsignedInt(UintTy::U16))),
+        Some(sym::i32) => no_args!(ReprInt(SignedInt(IntTy::I32))),
+        Some(sym::u32) => no_args!(ReprInt(UnsignedInt(UintTy::U32))),
+        Some(sym::i64) => no_args!(ReprInt(SignedInt(IntTy::I64))),
+        Some(sym::u64) => no_args!(ReprInt(UnsignedInt(UintTy::U64))),
+        Some(sym::i128) => no_args!(ReprInt(SignedInt(IntTy::I128))),
+        Some(sym::u128) => no_args!(ReprInt(UnsignedInt(UintTy::U128))),
+        Some(sym::isize) => no_args!(ReprInt(SignedInt(IntTy::Isize))),
+        Some(sym::usize) => no_args!(ReprInt(UnsignedInt(UintTy::Usize))),
         _ => {
-            cx.emit_err(session_diagnostics::UnrecognizedReprHint { span: param.span() });
+            cx.adcx().expected_specific_argument(
+                param.span(),
+                &[
+                    sym::align,
+                    sym::packed,
+                    sym::Rust,
+                    sym::C,
+                    sym::simd,
+                    sym::transparent,
+                    sym::i8,
+                    sym::u8,
+                    sym::i16,
+                    sym::u16,
+                    sym::i32,
+                    sym::u32,
+                    sym::i64,
+                    sym::u64,
+                    sym::i128,
+                    sym::u128,
+                    sym::isize,
+                    sym::usize,
+                ],
+            );
             None
         }
     }

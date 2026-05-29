@@ -4,11 +4,15 @@ error[E0552]: incorrect `repr(packed)` attribute format: `packed` takes exactly 
 LL | #[repr(packed())]
    |        ^^^^^^^^
 
-error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
-  --> $DIR/malformed-repr-hints.rs:10:8
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:10:1
    |
 LL | #[repr(align)]
-   |        ^^^^^ help: supply an argument here: `align(...)`
+   | ^^^^^^^-----^^
+   |        |
+   |        expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
   --> $DIR/malformed-repr-hints.rs:14:8
@@ -22,43 +26,67 @@ error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly on
 LL | #[repr(align())]
    |        ^^^^^^^
 
-error[E0552]: invalid representation hint: `Rust` does not take a parenthesized argument list
-  --> $DIR/malformed-repr-hints.rs:23:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:23:1
    |
 LL | #[repr(Rust(u8))]
-   |        ^^^^^^^^
+   | ^^^^^^^^^^^----^^
+   |            |
+   |            didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: invalid representation hint: `Rust` does not take a parenthesized argument list
-  --> $DIR/malformed-repr-hints.rs:25:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:25:1
    |
 LL | #[repr(Rust(0))]
-   |        ^^^^^^^
+   | ^^^^^^^^^^^---^^
+   |            |
+   |            didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: invalid representation hint: `Rust` does not take a value
-  --> $DIR/malformed-repr-hints.rs:27:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:27:1
    |
 LL | #[repr(Rust = 0)]
-   |        ^^^^^^^^
+   | ^^^^^^^^^^^^---^^
+   |             |
+   |             didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: invalid representation hint: `i8` does not take a parenthesized argument list
-  --> $DIR/malformed-repr-hints.rs:31:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:31:1
    |
 LL | #[repr(i8())]
-   |        ^^^^
+   | ^^^^^^^^^--^^
+   |          |
+   |          didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: invalid representation hint: `u32` does not take a parenthesized argument list
-  --> $DIR/malformed-repr-hints.rs:35:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:35:1
    |
 LL | #[repr(u32(42))]
-   |        ^^^^^^^
+   | ^^^^^^^^^^----^^
+   |           |
+   |           didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: invalid representation hint: `i64` does not take a value
-  --> $DIR/malformed-repr-hints.rs:39:8
+error[E0565]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:39:1
    |
 LL | #[repr(i64 = 2)]
-   |        ^^^^^^^
+   | ^^^^^^^^^^^---^^
+   |            |
+   |            didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0552, E0589, E0693.
-For more information about an error, try `rustc --explain E0552`.
+Some errors have detailed explanations: E0539, E0552, E0565, E0693.
+For more information about an error, try `rustc --explain E0539`.
