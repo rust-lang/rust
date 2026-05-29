@@ -6,14 +6,14 @@ LL |     ambiguous_4_extern::id();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function defined here
-  --> $DIR/auxiliary/../ambiguous-4-extern.rs:13:9
+  --> $DIR/ambiguous-4-extern.rs:13:9
    |
 LL | pub use evp::*;
    |         ^^^
    = help: consider updating this dependency to resolve this error
    = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `id` could also refer to the function defined here
-  --> $DIR/auxiliary/../ambiguous-4-extern.rs:14:9
+  --> $DIR/ambiguous-4-extern.rs:14:9
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^
@@ -32,14 +32,14 @@ LL |     ambiguous_4_extern::id();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function defined here
-  --> $DIR/auxiliary/../ambiguous-4-extern.rs:13:9
+  --> $DIR/ambiguous-4-extern.rs:13:9
    |
 LL | pub use evp::*;
    |         ^^^
    = help: consider updating this dependency to resolve this error
    = help: if updating the dependency does not resolve the problem report the problem to the author of the relevant crate
 note: `id` could also refer to the function defined here
-  --> $DIR/auxiliary/../ambiguous-4-extern.rs:14:9
+  --> $DIR/ambiguous-4-extern.rs:14:9
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^
