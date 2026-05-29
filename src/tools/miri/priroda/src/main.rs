@@ -1,7 +1,5 @@
 #![feature(rustc_private)]
 
-use std::task::Poll;
-
 extern crate miri;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
@@ -97,21 +95,12 @@ impl<'tcx> PrirodaContext<'tcx> {
         Self { ecx }
     }
 
-    // TODO: replace the bool with a StepResult enum once we distinguish
-    // running, finished, breakpoint stops, and other debugger states.
-    pub fn step(&mut self) -> InterpResult<'tcx, bool> {
-        if !self.ecx.step()? {
-            match self.ecx.run_on_stack_empty()? {
-                Poll::Pending => return interp_ok(true),
-                Poll::Ready(()) => {
-                    self.ecx.terminate_active_thread(TlsAllocAction::Deallocate)?;
-                    return interp_ok(false);
-                }
-            }
-        }
-
-        interp_ok(true)
+    // TODO: return a StepResult enum once we distinguish breakpoint stops,
+    // program exit, and other debugger states.
+    pub fn step(&mut self) -> InterpResult<'tcx> {
+        self.ecx.miri_step()
     }
+
     pub fn print_location(&self) {
         let span = self.ecx.machine.current_user_relevant_span();
         let location = self.ecx.tcx.sess.source_map().span_to_diagnostic_string(span);
@@ -120,7 +109,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         println!("{location}");
         io::stdout().flush().unwrap();
     }
-    fn run_command(&mut self, command: SessionCommand) -> InterpResult<'tcx, bool> {
+    fn run_command(&mut self, command: SessionCommand) -> InterpResult<'tcx> {
         match command {
             SessionCommand::Step => self.step(),
         }
@@ -149,13 +138,8 @@ fn run_cli_loop<'tcx>(session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> 
         io::stdin().read_line(&mut input).unwrap();
 
         if let Some(command) = parse_command(&input) {
-            match session.run_command(command)? {
-                false => {
-                    println!("program finished");
-                    return interp_ok(());
-                }
-                true => session.print_location(),
-            }
+            session.run_command(command)?;
+            session.print_location();
         } else {
             println!("no command");
         }
