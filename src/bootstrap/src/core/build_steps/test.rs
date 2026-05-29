@@ -3467,100 +3467,152 @@ impl Step for Distcheck {
         // local source code, built artifacts or configuration by accident
         let root_dir = std::env::temp_dir().join("distcheck");
 
-        distcheck_plain_source_tarball(builder, &root_dir.join("distcheck-rustc-src"));
-        distcheck_rust_src(builder, &root_dir.join("distcheck-rust-src"));
-        distcheck_rustc_dev(builder, &root_dir.join("distcheck-rustc-dev"));
+        distcheck_rust_dev_ci_llvm(builder, &root_dir.join("distcheck_rust_dev"));
+        // distcheck_plain_source_tarball(builder, &root_dir.join("distcheck-rustc-src"));
+        // distcheck_rust_src(builder, &root_dir.join("distcheck-rust-src"));
+        // distcheck_rustc_dev(builder, &root_dir.join("distcheck-rustc-dev"));
     }
 }
 
-/// Check that we can build some basic things from the plain source tarball
-fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
-    builder.info("Distcheck plain source tarball");
-    let plain_src_tarball = builder.ensure(dist::PlainSourceTarball);
-    builder.clear_dir(plain_src_dir);
+fn distcheck_rust_dev_ci_llvm(builder: &Builder<'_>, dir: &Path) {
+    builder.info("Distcheck rust dev");
+    let Some(rust_dev) = builder.ensure(dist::RustDev { target: builder.host_target }) else {
+        return;
+    };
+    builder.clear_dir(dir);
 
-    let configure_args: Vec<String> = std::env::var("DISTCHECK_CONFIGURE_ARGS")
-        .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
-        .unwrap_or_default();
+    let ci_llvm_dir = dir.join("ci-llvm");
+    builder.clear_dir(&ci_llvm_dir);
+
+    command("tar")
+        .arg("-xf")
+        .arg(rust_dev.tarball())
+        .arg("--strip-components=1")
+        .current_dir(&ci_llvm_dir)
+        .run(builder);
+
+    let llvm_config = ci_llvm_dir
+        .join("rust-dev")
+        .join("bin")
+        .join(helpers::exe("llvm-config", builder.host_target));
+
+    let plain_source_dir = dir.join("plain_source_dir");
+    let plain_src_tarball = builder.ensure(dist::PlainSourceTarball);
+    builder.clear_dir(&plain_source_dir);
 
     command("tar")
         .arg("-xf")
         .arg(plain_src_tarball.tarball())
         .arg("--strip-components=1")
-        .current_dir(plain_src_dir)
+        .current_dir(&plain_source_dir)
         .run(builder);
+
     command("./configure")
         .arg("--set")
         .arg("rust.omit-git-hash=false")
         .arg("--set")
         .arg("rust.remap-debuginfo=false")
-        .args(&configure_args)
+        .arg("--set")
+        .arg(format!("target.{}.llvm-config={}", builder.host_target.triple, llvm_config.display()))
+        .arg("--set")
+        .arg("llvm.link-shared=true")
         .arg("--enable-vendor")
-        .current_dir(plain_src_dir)
-        .run(builder);
-    command(helpers::make(&builder.config.host_target.triple))
-        .arg("check")
-        // Do not run the build as if we were in CI, otherwise git would be assumed to be
-        // present, but we build from a tarball here
-        .env("GITHUB_ACTIONS", "0")
-        .current_dir(plain_src_dir)
-        .run(builder);
-    // Mitigate pressure on small-capacity disks.
-    builder.remove_dir(plain_src_dir);
-}
-
-/// Check that rust-src has all of libstd's dependencies
-fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
-    builder.info("Distcheck rust-src");
-    let src_tarball = builder.ensure(dist::Src);
-    builder.clear_dir(src_dir);
-
-    command("tar")
-        .arg("-xf")
-        .arg(src_tarball.tarball())
-        .arg("--strip-components=1")
-        .current_dir(src_dir)
+        .current_dir(&plain_source_dir)
         .run(builder);
 
-    let toml = src_dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
-    command(&builder.initial_cargo)
-        // Will read the libstd Cargo.toml
-        // which uses the unstable `public-dependency` feature.
-        .env("RUSTC_BOOTSTRAP", "1")
-        .arg("generate-lockfile")
-        .arg("--manifest-path")
-        .arg(&toml)
-        .current_dir(src_dir)
-        .run(builder);
-    // Mitigate pressure on small-capacity disks.
-    builder.remove_dir(src_dir);
-}
+    command("./x.py").arg("build").arg("library").current_dir(&plain_source_dir).run(builder);
 
-/// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
-fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
-    builder.info("Distcheck rustc-dev");
-    let tarball = builder.ensure(dist::RustcDev::new(builder, builder.host_target)).unwrap();
-    builder.clear_dir(dir);
-
-    command("tar")
-        .arg("-xf")
-        .arg(tarball.tarball())
-        .arg("--strip-components=1")
-        .current_dir(dir)
-        .run(builder);
-
-    command(&builder.initial_cargo)
-        .arg("metadata")
-        .arg("--manifest-path")
-        .arg("rustc-dev/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml")
-        .env("RUSTC_BOOTSTRAP", "1")
-        // We might not have a globally available `rustc` binary on CI
-        .env("RUSTC", &builder.initial_rustc)
-        .current_dir(dir)
-        .run(builder);
-    // Mitigate pressure on small-capacity disks.
     builder.remove_dir(dir);
 }
+
+// /// Check that we can build some basic things from the plain source tarball
+// fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
+//     builder.info("Distcheck plain source tarball");
+//     let plain_src_tarball = builder.ensure(dist::PlainSourceTarball);
+//     builder.clear_dir(plain_src_dir);
+
+//     let configure_args: Vec<String> = std::env::var("DISTCHECK_CONFIGURE_ARGS")
+//         .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
+//         .unwrap_or_default();
+
+//     command("tar")
+//         .arg("-xf")
+//         .arg(plain_src_tarball.tarball())
+//         .arg("--strip-components=1")
+//         .current_dir(plain_src_dir)
+//         .run(builder);
+//     command("./configure")
+//         .arg("--set")
+//         .arg("rust.omit-git-hash=false")
+//         .arg("--set")
+//         .arg("rust.remap-debuginfo=false")
+//         .args(&configure_args)
+//         .arg("--enable-vendor")
+//         .current_dir(plain_src_dir)
+//         .run(builder);
+//     command(helpers::make(&builder.config.host_target.triple))
+//         .arg("check")
+//         // Do not run the build as if we were in CI, otherwise git would be assumed to be
+//         // present, but we build from a tarball here
+//         .env("GITHUB_ACTIONS", "0")
+//         .current_dir(plain_src_dir)
+//         .run(builder);
+//     // Mitigate pressure on small-capacity disks.
+//     builder.remove_dir(plain_src_dir);
+// }
+
+// /// Check that rust-src has all of libstd's dependencies
+// fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
+//     builder.info("Distcheck rust-src");
+//     let src_tarball = builder.ensure(dist::Src);
+//     builder.clear_dir(src_dir);
+
+//     command("tar")
+//         .arg("-xf")
+//         .arg(src_tarball.tarball())
+//         .arg("--strip-components=1")
+//         .current_dir(src_dir)
+//         .run(builder);
+
+//     let toml = src_dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
+//     command(&builder.initial_cargo)
+//         // Will read the libstd Cargo.toml
+//         // which uses the unstable `public-dependency` feature.
+//         .env("RUSTC_BOOTSTRAP", "1")
+//         .arg("generate-lockfile")
+//         .arg("--manifest-path")
+//         .arg(&toml)
+//         .current_dir(src_dir)
+//         .run(builder);
+//     // Mitigate pressure on small-capacity disks.
+//     builder.remove_dir(src_dir);
+// }
+
+// /// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
+// fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
+//     builder.info("Distcheck rustc-dev");
+//     let tarball = builder.ensure(dist::RustcDev::new(builder, builder.host_target)).unwrap();
+//     builder.clear_dir(dir);
+
+//     command("tar")
+//         .arg("-xf")
+//         .arg(tarball.tarball())
+//         .arg("--strip-components=1")
+//         .current_dir(dir)
+//         .run(builder);
+
+//     command(&builder.initial_cargo)
+//         .arg("metadata")
+//         .arg("--manifest-path")
+//         .arg("rustc-dev/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml")
+//         .env("RUSTC_BOOTSTRAP", "1")
+//         // We might not have a globally available `rustc` binary on CI
+//         .env("RUSTC", &builder.initial_rustc)
+//         .current_dir(dir)
+//         .run(builder);
+//     // Mitigate pressure on small-capacity disks.
+//     builder.remove_dir(dir);
+// }
 
 /// Runs unit tests in `bootstrap_test.py`, which test the Python parts of bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

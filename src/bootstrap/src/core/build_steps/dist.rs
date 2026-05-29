@@ -2856,7 +2856,8 @@ impl Step for RustDev {
         if src_bindir.exists() {
             for entry in walkdir::WalkDir::new(&src_bindir) {
                 let entry = t!(entry);
-                if entry.file_type().is_file() && !entry.path_is_symlink() {
+                //if entry.file_type().is_file() && !entry.path_is_symlink() {
+                if entry.path().is_file() {
                     let name = entry.file_name().to_str().unwrap();
                     tarball.add_file(src_bindir.join(name), "bin", FileType::Executable);
                 }
