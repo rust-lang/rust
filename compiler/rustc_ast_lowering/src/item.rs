@@ -1928,11 +1928,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
-        params.extend(extra_lifetimes.into_iter().filter_map(|&(ident, node_id, res)| {
+        params.extend(extra_lifetimes.into_iter().map(|&(ident, node_id, kind)| {
             self.lifetime_res_to_generic_param(
                 ident,
                 node_id,
-                res,
+                kind,
                 hir::GenericParamSource::Generics,
             )
         }));
