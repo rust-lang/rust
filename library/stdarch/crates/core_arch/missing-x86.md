@@ -35,7 +35,7 @@
 
 <details><summary>["CLFLUSHOPT"]</summary><p>
 
-  * [ ] [`_mm_clflushopt`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clflushopt)
+  * [x] [`_mm_clflushopt`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clflushopt)
 </p></details>
 
 

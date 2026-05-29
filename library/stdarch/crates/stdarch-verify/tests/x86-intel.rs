@@ -670,7 +670,7 @@ fn pointed_type(intrinsic: &Intrinsic) -> Result<Type, String> {
         {
             // AMX, KEYLOCKER and XSAVE intrinsics should take `*u8`
             U8
-        } else if intrinsic.name == "_mm_clflush" {
+        } else if intrinsic.name == "_mm_clflush" || intrinsic.name == "_mm_clflushopt" {
             // Just a false match in the following logic
             U8
         } else if ["_mm_storeu_si", "_mm_loadu_si"]
