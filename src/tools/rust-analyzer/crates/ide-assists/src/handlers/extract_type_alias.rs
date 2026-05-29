@@ -358,7 +358,6 @@ mod m {
         );
     }
 
-    // FIXME: This assists lost some information with early and late boud and this should be fixed(?)
     #[test]
     fn generics() {
         check_assist(

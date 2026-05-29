@@ -65,9 +65,7 @@ impl GenericParamsCollector {
             self.lower_param_list(ec, params)
         }
         if let Some(where_clause) = where_clause {
-            ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
-                self.lower_where_predicates(ec, where_clause)
-            });
+            self.lower_where_predicates(ec, where_clause)
         }
     }
 
@@ -163,33 +161,35 @@ impl GenericParamsCollector {
         ec: &mut ExprCollector<'_>,
         where_clause: ast::WhereClause,
     ) {
-        for pred in where_clause.predicates() {
-            let target = if let Some(type_ref) = pred.ty() {
-                Either::Left(
-                    ec.lower_type_ref(type_ref, &mut ExprCollector::impl_trait_error_allocator),
-                )
-            } else if let Some(lifetime) = pred.lifetime() {
-                Either::Right(ec.lower_lifetime_ref(lifetime))
-            } else {
-                continue;
-            };
+        ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
+            for pred in where_clause.predicates() {
+                let target = if let Some(type_ref) = pred.ty() {
+                    Either::Left(
+                        ec.lower_type_ref(type_ref, &mut ExprCollector::impl_trait_error_allocator),
+                    )
+                } else if let Some(lifetime) = pred.lifetime() {
+                    Either::Right(ec.lower_lifetime_ref(lifetime))
+                } else {
+                    continue;
+                };
 
-            let lifetimes: Option<Box<_>> =
-                pred.for_binder().and_then(|it| it.generic_param_list()).map(|param_list| {
-                    // Higher-Ranked Trait Bounds
-                    param_list
-                        .lifetime_params()
-                        .map(|lifetime_param| {
-                            lifetime_param
-                                .lifetime()
-                                .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
-                        })
-                        .collect()
-                });
-            for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
+                let lifetimes: Option<Box<_>> =
+                    pred.for_binder().and_then(|it| it.generic_param_list()).map(|param_list| {
+                        // Higher-Ranked Trait Bounds
+                        param_list
+                            .lifetime_params()
+                            .map(|lifetime_param| {
+                                lifetime_param
+                                    .lifetime()
+                                    .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text()))
+                            })
+                            .collect()
+                    });
+                for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
+                    self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
+                }
             }
-        }
+        });
     }
 
     fn lower_bounds(

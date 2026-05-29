@@ -1573,7 +1573,6 @@ fn check_signatures(src: &str, kind: CompletionItemKind, reduced: Expect, full: 
     full.assert_eq(completion[0].detail.as_ref().unwrap());
 }
 
-// FIXME: This assists lost some information with early and late boud and this should be fixed(?)
 #[test]
 fn respects_full_function_signatures() {
     check_signatures(

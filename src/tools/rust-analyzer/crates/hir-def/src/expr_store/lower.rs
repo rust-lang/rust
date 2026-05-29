@@ -595,7 +595,7 @@ impl NamedLifetimeStore {
                     self.lifetimes_in_output.insert(lifetime);
                 }
             }
-            _ => (),
+            None => (),
         };
     }
 }
@@ -3477,8 +3477,8 @@ impl ExprCollector<'_> {
 
             let constrained_lt_indices = get_constrained_lifetimes(self.db, id);
             let res = constrained_lt_indices
-                .into_iter()
-                .filter_map(|idx| {
+                .iter()
+                .filter_map(|&idx| {
                     if let GenericArg::Lifetime(lt_ref) = generic_args.args[idx as usize]
                         && let LifetimeRef::Named(name) = &self.store.lifetimes[lt_ref]
                     {
@@ -3494,11 +3494,14 @@ impl ExprCollector<'_> {
         };
         return res;
 
-        #[salsa::tracked(returns(clone), cycle_result = get_constrained_lifetimes_cycle_result)]
-        fn get_constrained_lifetimes(db: &dyn DefDatabase, type_alias_id: TypeAliasId) -> Vec<u32> {
+        #[salsa::tracked(returns(deref), cycle_result = get_constrained_lifetimes_cycle_result)]
+        fn get_constrained_lifetimes(
+            db: &dyn DefDatabase,
+            type_alias_id: TypeAliasId,
+        ) -> Box<[u32]> {
             let TypeAliasSignature { generic_params, store, ty, .. } =
                 TypeAliasSignature::of(db, type_alias_id);
-            let &Some(ty) = ty else { return Vec::new() };
+            let &Some(ty) = ty else { return Default::default() };
 
             let mut visitor = Visitor {
                 store,
@@ -3508,7 +3511,7 @@ impl ExprCollector<'_> {
             };
             store.visit_type_ref_children(ty, &mut visitor);
 
-            return visitor.constrained_lt_indices;
+            return visitor.constrained_lt_indices.into_boxed_slice();
 
             struct Visitor<'a> {
                 store: &'a ExpressionStore,
@@ -3540,8 +3543,8 @@ impl ExprCollector<'_> {
             _db: &dyn DefDatabase,
             _: salsa::Id,
             _id: TypeAliasId,
-        ) -> Vec<u32> {
-            Vec::new()
+        ) -> Box<[u32]> {
+            Default::default()
         }
     }
 }
