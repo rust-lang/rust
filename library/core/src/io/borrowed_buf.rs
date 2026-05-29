@@ -34,7 +34,7 @@ pub struct BorrowedBuf<'data, T = u8> {
     init: bool,
 }
 
-impl<T: Copy> Debug for BorrowedBuf<'_, T> {
+impl<T> Debug for BorrowedBuf<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowedBuf")
             .field("init", &self.init)
@@ -81,7 +81,7 @@ impl<'data, T: Copy> From<BorrowedCursor<'data, T>> for BorrowedBuf<'data, T> {
     }
 }
 
-impl<'data, T: Copy> BorrowedBuf<'data, T> {
+impl<'data, T> BorrowedBuf<'data, T> {
     /// Returns the total capacity of the buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -100,7 +100,9 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
     pub fn is_init(&self) -> bool {
         self.init
     }
+}
 
+impl<'data, T: Copy> BorrowedBuf<'data, T> {
     /// Returns a shared reference to the filled portion of the buffer.
     #[inline]
     pub fn filled(&self) -> &[T] {
@@ -200,7 +202,7 @@ pub struct BorrowedCursor<'a, T = u8> {
     buf: &'a mut BorrowedBuf<'a, T>,
 }
 
-impl<T: Copy> Debug for BorrowedCursor<'_, T> {
+impl<T> Debug for BorrowedCursor<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowedCursor").field("buf", &self.buf).finish()
     }
