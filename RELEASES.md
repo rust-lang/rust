@@ -57,7 +57,7 @@ Rustdoc
 -----
 - [Deprecation notes are now rendered like any other documentation](https://github.com/rust-lang/rust/pull/149931).  Previously they used the css `white-space: pre-wrap;` property and stripped any `<p>` elements from the rendered html, however this caused issues and unintuitive behavior.  The new behavior should be more predictable, however some multi-line deprecation notes will now be rendered as as single lines.  If this is undesirable, you can use the standard markdown method of forcing a linebreak, which is two spaces followed by a newline (`"\n"`).
 - [Don't emit rustdoc `missing_doc_code_examples` lint on impl items](https://github.com/rust-lang/rust/pull/154048)
-- [Seperate methods and associated functions in sidebar](https://github.com/rust-lang/rust/pull/154644)
+- [Separate methods and associated functions in sidebar](https://github.com/rust-lang/rust/pull/154644)
 
 <a id="1.96.0-Compatibility-Notes"></a>
 
