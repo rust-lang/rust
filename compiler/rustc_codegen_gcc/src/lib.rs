@@ -339,9 +339,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn supports_parallel(&self) -> bool {
-        false
-    }
+    type Module = GccContext;
 
     fn codegen_allocator(
         &self,
@@ -423,6 +421,10 @@ impl WriteBackendMethods for GccCodegenBackend {
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
     type ThinData = ();
+
+    fn supports_parallel(&self) -> bool {
+        false
+    }
 
     fn target_machine_factory(
         &self,
