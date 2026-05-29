@@ -1,6 +1,5 @@
 # `minicore` test auxiliary: using `core` stubs
 
-<!-- date-check: May 2026 -->
 
 [`tests/auxiliary/minicore.rs`][`minicore`] is a test auxiliary for ui/codegen/assembly/mir-opt test suites.
 It provides `core` stubs for tests that need to
