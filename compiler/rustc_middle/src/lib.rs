@@ -37,6 +37,7 @@
 #![feature(core_intrinsics)]
 #![feature(debug_closure_helpers)]
 #![feature(decl_macro)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(discriminant_kind)]
 #![feature(extern_types)]

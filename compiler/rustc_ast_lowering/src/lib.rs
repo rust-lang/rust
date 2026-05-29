@@ -293,16 +293,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         self.import_res_map.get(&id).copied().unwrap_or_default()
     }
 
-    /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).copied()
-    }
-
-    /// Obtains resolution for a lifetime with the given `NodeId`.
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
-    }
-
     /// Obtain the list of lifetimes parameters to add to an item.
     ///
     /// Extra lifetime parameters should only be added in places that can appear
@@ -320,10 +310,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
     fn owner_def_id(&self, id: NodeId) -> LocalDefId {
         self.owners[&id].def_id
-    }
-
-    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.lifetime_elision_allowed.contains(&id)
     }
 }
 
@@ -1625,7 +1611,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             None => {
                 let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-                    self.resolver.get_lifetime_res(t.id)
+                    self.owner.get_lifetime_res(t.id)
                 {
                     assert_eq!(start.plus(1), end);
                     start
@@ -1866,7 +1852,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     _ => hir::ImplicitSelfKind::None,
                 }
             }))
-            .set_lifetime_elision_allowed(self.resolver.lifetime_elision_allowed(fn_node_id))
+            .set_lifetime_elision_allowed(
+                self.owner.id == fn_node_id && self.owner.lifetime_elision_allowed,
+            )
             .set_c_variadic(c_variadic);
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
@@ -2032,7 +2020,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         source: LifetimeSource,
         syntax: LifetimeSyntax,
     ) -> &'hir hir::Lifetime {
-        let res = if let Some(res) = self.resolver.get_lifetime_res(id) {
+        let res = if let Some(res) = self.owner.get_lifetime_res(id) {
             match res {
                 LifetimeRes::Param { param, .. } => hir::LifetimeKind::Param(param),
                 LifetimeRes::Fresh { param, .. } => {
@@ -2118,13 +2106,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
                 let ident = self.lower_ident(param.ident);
-                let param_name = if let Some(LifetimeRes::Error(..)) =
-                    self.resolver.get_lifetime_res(param.id)
-                {
-                    ParamName::Error(ident)
-                } else {
-                    ParamName::Plain(ident)
-                };
+                let param_name =
+                    if let Some(LifetimeRes::Error(..)) = self.owner.get_lifetime_res(param.id) {
+                        ParamName::Error(ident)
+                    } else {
+                        ParamName::Plain(ident)
+                    };
                 let kind =
                     hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit };
 

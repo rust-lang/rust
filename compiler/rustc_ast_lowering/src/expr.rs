@@ -1549,7 +1549,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Some(loop_id) = self.resolver.get_label_res(id) {
+                if let Some(loop_id) = self.owner.get_label_res(id) {
                     let local_id = self.ident_and_label_to_local_id[&loop_id];
                     let loop_hir_id = HirId { owner: self.current_hir_id_owner, local_id };
                     Ok(loop_hir_id)
