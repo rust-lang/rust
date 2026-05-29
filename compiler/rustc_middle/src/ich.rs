@@ -79,17 +79,14 @@ impl<'a> StableHashState<'a> {
         self.stable_hash_controls
     }
 
-    #[inline]
-    fn stable_hash_span_data(&mut self, span: SpanData, hasher: &mut StableHasher) {
+    #[inline(always)]
+    fn stable_hash_span_data(&mut self, mut span: SpanData, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
-        if span.parent.is_some() && self.stable_hash_controls().hash_spans_as_parentless {
-            let mut span = span;
-            span.parent = None;
-            self.stable_hash_span_data(span, hasher);
-            return;
+        if self.stable_hash_controls().hash_spans_as_parentless {
+            span.parent = None
         }
         span.ctxt.stable_hash(self, hasher);
         span.parent.stable_hash(self, hasher);
