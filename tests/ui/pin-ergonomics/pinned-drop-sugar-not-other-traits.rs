@@ -12,7 +12,6 @@ trait NeedsPinDrop {
 }
 
 impl NeedsPinDrop for S {
-    //~^ ERROR not all trait items implemented, missing: `pin_drop` [E0046]
     fn drop(&pin mut self) {}
     //~^ ERROR method `drop` with `&pin mut self` is only supported for the `Drop` trait
 }
@@ -53,7 +52,6 @@ mod local_drop_trait {
     }
 
     impl Drop for S {
-        //~^ ERROR not all trait items implemented, missing: `pin_drop` [E0046]
         fn drop(&pin mut self) {}
         //~^ ERROR method `drop` with `&pin mut self` is only supported for the `Drop` trait
     }
