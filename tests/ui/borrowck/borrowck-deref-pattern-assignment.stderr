@@ -23,8 +23,9 @@ LL |     num *= 2;
    |
 help: consider making this binding mutable
    |
-LL |     let &mut num = num_ref;
-   |          +++
+LL -     let &num = num_ref;
+LL +     let &(mut num) = num_ref;
+   |
 help: to modify the original value, take a borrow instead
    |
 LL |     let &ref mut num = num_ref;
@@ -40,8 +41,9 @@ LL |         num *= 2;
    |
 help: consider making this binding mutable
    |
-LL |     if let Some(&mut num) = option_num_ref {
-   |                  +++
+LL -     if let Some(&num) = option_num_ref {
+LL +     if let Some(&(mut num)) = option_num_ref {
+   |
 help: to modify the original value, take a borrow instead
    |
 LL |     if let Some(&ref mut num) = option_num_ref {
