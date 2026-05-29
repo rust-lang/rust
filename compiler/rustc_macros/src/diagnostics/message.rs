@@ -1,11 +1,13 @@
+use std::collections::{HashMap, HashSet};
+
 use fluent_bundle::FluentResource;
 use fluent_syntax::ast::{Expression, InlineExpression, Pattern, PatternElement};
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::ext::IdentExt;
-use synstructure::VariantInfo;
 
 use crate::diagnostics::error::span_err;
+use crate::diagnostics::utils::FieldMap;
 
 #[derive(Clone)]
 pub(crate) struct Message {
@@ -15,50 +17,63 @@ pub(crate) struct Message {
 }
 
 impl Message {
+    pub(crate) fn new(
+        attr_span: Span,
+        message_span: Span,
+        message_str: String,
+        field_map: &FieldMap,
+        used_fields: &mut HashSet<proc_macro2::Ident>,
+    ) -> Self {
+        // Parse the fluent message
+        const GENERATED_MSG_ID: &str = "generated_msg";
+        let resource =
+            FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message_str}\n")).unwrap();
+        assert_eq!(resource.entries().count(), 1);
+        let Some(fluent_syntax::ast::Entry::Message(flt_message)) = resource.get_entry(0) else {
+            panic!("Did not parse into a message")
+        };
+
+        let mut fields: HashMap<String, (&syn::Ident, bool)> =
+            HashMap::with_capacity(field_map.len());
+        for (_, (ident, _)) in field_map {
+            fields.insert(ident.unraw().to_string(), (ident, false));
+        }
+        for variable in variable_references(&flt_message) {
+            match fields.get_mut(variable) {
+                Some((_, seen)) => *seen = true,
+                None => {
+                    span_err(
+                        message_span.unwrap(),
+                        format!("Variable `{variable}` not found in diagnostic "),
+                    )
+                    .help(format!(
+                        "Available fields: {:?}",
+                        fields.keys().map(|s| s.as_str()).collect::<Vec<&str>>().join(", ")
+                    ))
+                    .emit();
+                }
+            }
+        }
+        for (name, seen) in fields.values() {
+            if *seen {
+                used_fields.insert((*name).clone());
+            }
+        }
+        Self { attr_span, message_span, value: message_str }
+    }
+
     /// Get the diagnostic message for this diagnostic
     /// The passed `variant` is used to check whether all variables in the message are used.
     /// For subdiagnostics, we cannot check this.
-    pub(crate) fn diag_message(&self, variant: Option<&VariantInfo<'_>>) -> TokenStream {
+    pub(crate) fn diag_message(&self) -> TokenStream {
         let message = &self.value;
-        self.verify(variant);
+        self.verify();
         quote! { rustc_errors::DiagMessage::Inline(std::borrow::Cow::Borrowed(#message)) }
     }
 
-    fn verify(&self, variant: Option<&VariantInfo<'_>>) {
-        verify_variables_used(self.message_span, &self.value, variant);
+    fn verify(&self) {
         verify_message_style(self.message_span, &self.value);
         verify_message_formatting(self.attr_span, self.message_span, &self.value);
-    }
-}
-
-fn verify_variables_used(msg_span: Span, message_str: &str, variant: Option<&VariantInfo<'_>>) {
-    // Parse the fluent message
-    const GENERATED_MSG_ID: &str = "generated_msg";
-    let resource =
-        FluentResource::try_new(format!("{GENERATED_MSG_ID} = {message_str}\n")).unwrap();
-    assert_eq!(resource.entries().count(), 1);
-    let Some(fluent_syntax::ast::Entry::Message(message)) = resource.get_entry(0) else {
-        panic!("Did not parse into a message")
-    };
-
-    // Check if all variables are used
-    if let Some(variant) = variant {
-        let fields: Vec<String> = variant
-            .bindings()
-            .iter()
-            .flat_map(|b| b.ast().ident.as_ref())
-            .map(|id| id.unraw().to_string())
-            .collect();
-        for variable in variable_references(&message) {
-            if !fields.iter().any(|f| f == variable) {
-                span_err(
-                    msg_span.unwrap(),
-                    format!("Variable `{variable}` not found in diagnostic "),
-                )
-                .help(format!("Available fields: {:?}", fields.join(", ")))
-                .emit();
-            }
-        }
     }
 }
 

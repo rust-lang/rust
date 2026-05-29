@@ -253,61 +253,61 @@ LL |     #[label = "bar"]
    |     ^
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/diagnostic-derive-inline.rs:389:5
+  --> $DIR/diagnostic-derive-inline.rs:387:5
    |
 LL |     #[suggestion("with a suggestion", code = "...", applicability = "maybe-incorrect")]
    |     ^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive-inline.rs:391:24
+  --> $DIR/diagnostic-derive-inline.rs:389:24
    |
 LL |     suggestion: (Span, Applicability),
    |                        ^^^^^^^^^^^^^
 
 error: derive(Diagnostic): invalid applicability
-  --> $DIR/diagnostic-derive-inline.rs:397:69
+  --> $DIR/diagnostic-derive-inline.rs:395:69
    |
 LL |     #[suggestion("with a suggestion", code = "...", applicability = "batman")]
    |                                                                     ^^^^^^^^
 
 error: derive(Diagnostic): the `#[help(...)]` attribute can only be applied to fields of type `Span`, `MultiSpan`, `bool` or `()`
-  --> $DIR/diagnostic-derive-inline.rs:460:5
+  --> $DIR/diagnostic-derive-inline.rs:458:5
    |
 LL |     #[help("with a help")]
    |     ^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/diagnostic-derive-inline.rs:469:29
+  --> $DIR/diagnostic-derive-inline.rs:467:29
    |
 LL |     #[label("with a label", foo)]
    |                             ^^^
 
 error: derive(Diagnostic): a diagnostic message must be the first argument to the attribute
-  --> $DIR/diagnostic-derive-inline.rs:477:29
+  --> $DIR/diagnostic-derive-inline.rs:475:29
    |
 LL |     #[label("with a label", "and another one?")]
    |                             ^^^^^^^^^^^^^^^^^^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/diagnostic-derive-inline.rs:485:29
+  --> $DIR/diagnostic-derive-inline.rs:483:29
    |
 LL |     #[label("with a label", foo = "...")]
    |                             ^^^
 
 error: derive(Diagnostic): no nested attribute expected here
-  --> $DIR/diagnostic-derive-inline.rs:493:29
+  --> $DIR/diagnostic-derive-inline.rs:491:29
    |
 LL |     #[label("with a label", foo("..."))]
    |                             ^^^
 
 error: derive(Diagnostic): `#[error(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:513:1
+  --> $DIR/diagnostic-derive-inline.rs:511:1
    |
 LL | #[error("this is an example message", code = E0123)]
    | ^
 
 error: derive(Diagnostic): diagnostic message not specified
-  --> $DIR/diagnostic-derive-inline.rs:513:1
+  --> $DIR/diagnostic-derive-inline.rs:511:1
    |
 LL | #[error("this is an example message", code = E0123)]
    | ^
@@ -315,13 +315,13 @@ LL | #[error("this is an example message", code = E0123)]
    = help: specify the message as the first argument to the `#[diag(...)]` attribute, such as `#[diag("Example error")]`
 
 error: derive(Diagnostic): `#[warn_(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:520:1
+  --> $DIR/diagnostic-derive-inline.rs:518:1
    |
 LL | #[warn_("this is an example message", code = E0123)]
    | ^
 
 error: derive(Diagnostic): diagnostic message not specified
-  --> $DIR/diagnostic-derive-inline.rs:520:1
+  --> $DIR/diagnostic-derive-inline.rs:518:1
    |
 LL | #[warn_("this is an example message", code = E0123)]
    | ^
@@ -329,13 +329,13 @@ LL | #[warn_("this is an example message", code = E0123)]
    = help: specify the message as the first argument to the `#[diag(...)]` attribute, such as `#[diag("Example error")]`
 
 error: derive(Diagnostic): `#[lint(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:527:1
+  --> $DIR/diagnostic-derive-inline.rs:525:1
    |
 LL | #[lint("this is an example message", code = E0123)]
    | ^
 
 error: derive(Diagnostic): diagnostic message not specified
-  --> $DIR/diagnostic-derive-inline.rs:527:1
+  --> $DIR/diagnostic-derive-inline.rs:525:1
    |
 LL | #[lint("this is an example message", code = E0123)]
    | ^
@@ -343,19 +343,19 @@ LL | #[lint("this is an example message", code = E0123)]
    = help: specify the message as the first argument to the `#[diag(...)]` attribute, such as `#[diag("Example error")]`
 
 error: derive(Diagnostic): attribute specified multiple times
-  --> $DIR/diagnostic-derive-inline.rs:536:53
+  --> $DIR/diagnostic-derive-inline.rs:534:53
    |
 LL |     #[suggestion("with a suggestion", code = "...", code = ",,,")]
    |                                                     ^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive-inline.rs:536:39
+  --> $DIR/diagnostic-derive-inline.rs:534:39
    |
 LL |     #[suggestion("with a suggestion", code = "...", code = ",,,")]
    |                                       ^^^^
 
 error: derive(Diagnostic): wrong types for suggestion
-  --> $DIR/diagnostic-derive-inline.rs:545:24
+  --> $DIR/diagnostic-derive-inline.rs:543:24
    |
 LL |     suggestion: (Span, usize),
    |                        ^^^^^
@@ -363,7 +363,7 @@ LL |     suggestion: (Span, usize),
    = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
 
 error: derive(Diagnostic): wrong types for suggestion
-  --> $DIR/diagnostic-derive-inline.rs:553:17
+  --> $DIR/diagnostic-derive-inline.rs:551:17
    |
 LL |     suggestion: (Span,),
    |                 ^^^^^^^
@@ -371,13 +371,13 @@ LL |     suggestion: (Span,),
    = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
 
 error: derive(Diagnostic): suggestion without `code = "..."`
-  --> $DIR/diagnostic-derive-inline.rs:560:5
+  --> $DIR/diagnostic-derive-inline.rs:558:5
    |
 LL |     #[suggestion("with a suggestion")]
    |     ^
 
 error: derive(Diagnostic): `#[multipart_suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:567:1
+  --> $DIR/diagnostic-derive-inline.rs:565:1
    |
 LL | #[multipart_suggestion("with a suggestion")]
    | ^
@@ -385,7 +385,7 @@ LL | #[multipart_suggestion("with a suggestion")]
    = help: consider creating a `Subdiagnostic` instead
 
 error: derive(Diagnostic): `#[multipart_suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:570:1
+  --> $DIR/diagnostic-derive-inline.rs:568:1
    |
 LL | #[multipart_suggestion()]
    | ^
@@ -393,7 +393,7 @@ LL | #[multipart_suggestion()]
    = help: consider creating a `Subdiagnostic` instead
 
 error: derive(Diagnostic): `#[multipart_suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:574:5
+  --> $DIR/diagnostic-derive-inline.rs:572:5
    |
 LL |     #[multipart_suggestion("with a suggestion")]
    |     ^
@@ -401,7 +401,7 @@ LL |     #[multipart_suggestion("with a suggestion")]
    = help: consider creating a `Subdiagnostic` instead
 
 error: derive(Diagnostic): `#[suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:582:1
+  --> $DIR/diagnostic-derive-inline.rs:580:1
    |
 LL | #[suggestion("with a suggestion", code = "...")]
    | ^
@@ -409,7 +409,7 @@ LL | #[suggestion("with a suggestion", code = "...")]
    = help: `#[label]` and `#[suggestion]` can only be applied to fields
 
 error: derive(Diagnostic): `#[label]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:591:1
+  --> $DIR/diagnostic-derive-inline.rs:589:1
    |
 LL | #[label]
    | ^
@@ -417,67 +417,67 @@ LL | #[label]
    = help: subdiagnostic message is missing
 
 error: derive(Diagnostic): `#[subdiagnostic(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:625:5
+  --> $DIR/diagnostic-derive-inline.rs:623:5
    |
 LL |     #[subdiagnostic(bad)]
    |     ^
 
 error: derive(Diagnostic): `#[subdiagnostic = ...]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:633:5
+  --> $DIR/diagnostic-derive-inline.rs:631:5
    |
 LL |     #[subdiagnostic = "bad"]
    |     ^
 
 error: derive(Diagnostic): `#[subdiagnostic(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:641:5
+  --> $DIR/diagnostic-derive-inline.rs:639:5
    |
 LL |     #[subdiagnostic(bad, bad)]
    |     ^
 
 error: derive(Diagnostic): `#[subdiagnostic(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:649:5
+  --> $DIR/diagnostic-derive-inline.rs:647:5
    |
 LL |     #[subdiagnostic("bad")]
    |     ^
 
 error: derive(Diagnostic): `#[subdiagnostic(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:657:5
+  --> $DIR/diagnostic-derive-inline.rs:655:5
    |
 LL |     #[subdiagnostic(eager)]
    |     ^
 
 error: derive(Diagnostic): `#[subdiagnostic(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:678:5
+  --> $DIR/diagnostic-derive-inline.rs:676:5
    |
 LL |     #[subdiagnostic(eager)]
    |     ^
 
 error: derive(Diagnostic): expected at least one string literal for `code(...)`
-  --> $DIR/diagnostic-derive-inline.rs:709:44
+  --> $DIR/diagnostic-derive-inline.rs:707:44
    |
 LL |     #[suggestion("with a suggestion", code())]
    |                                            ^
 
 error: derive(Diagnostic): `code(...)` must contain only string literals
-  --> $DIR/diagnostic-derive-inline.rs:717:44
+  --> $DIR/diagnostic-derive-inline.rs:715:44
    |
 LL |     #[suggestion("with a suggestion", code(foo))]
    |                                            ^^^
 
 error: unexpected token, expected `)`
-  --> $DIR/diagnostic-derive-inline.rs:717:44
+  --> $DIR/diagnostic-derive-inline.rs:715:44
    |
 LL |     #[suggestion("with a suggestion", code(foo))]
    |                                            ^^^
 
 error: expected string literal
-  --> $DIR/diagnostic-derive-inline.rs:726:46
+  --> $DIR/diagnostic-derive-inline.rs:724:46
    |
 LL |     #[suggestion("with a suggestion", code = 3)]
    |                                              ^
 
 error: derive(Diagnostic): `#[suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive-inline.rs:741:5
+  --> $DIR/diagnostic-derive-inline.rs:739:5
    |
 LL |     #[suggestion("with a suggestion", code = "")]
    |     ^
@@ -487,7 +487,7 @@ LL |     #[suggestion("with a suggestion", code = "")]
    = help: to show a variable set of suggestions, use a `Vec` of `Subdiagnostic`s annotated with `#[suggestion(...)]`
 
 error: derive(Diagnostic): Variable `nosub` not found in diagnostic 
-  --> $DIR/diagnostic-derive-inline.rs:753:8
+  --> $DIR/diagnostic-derive-inline.rs:751:8
    |
 LL | #[diag("does not exist: {$nosub}")]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -507,7 +507,7 @@ LL |     #[nonsense]
    |       ^^^^^^^^
 
 error: cannot find attribute `error` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:513:3
+  --> $DIR/diagnostic-derive-inline.rs:511:3
    |
 LL | #[error("this is an example message", code = E0123)]
    |   ^^^^^
@@ -519,7 +519,7 @@ LL | struct ErrorAttribute {}
    |
 
 error: cannot find attribute `warn_` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:520:3
+  --> $DIR/diagnostic-derive-inline.rs:518:3
    |
 LL | #[warn_("this is an example message", code = E0123)]
    |   ^^^^^
@@ -531,7 +531,7 @@ LL + #[warn("this is an example message", code = E0123)]
    |
 
 error: cannot find attribute `lint` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:527:3
+  --> $DIR/diagnostic-derive-inline.rs:525:3
    |
 LL | #[lint("this is an example message", code = E0123)]
    |   ^^^^
@@ -543,7 +543,7 @@ LL + #[link("this is an example message", code = E0123)]
    |
 
 error: cannot find attribute `multipart_suggestion` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:567:3
+  --> $DIR/diagnostic-derive-inline.rs:565:3
    |
 LL | #[multipart_suggestion("with a suggestion")]
    |   ^^^^^^^^^^^^^^^^^^^^
@@ -555,7 +555,7 @@ LL | struct MultipartSuggestion {
    |
 
 error: cannot find attribute `multipart_suggestion` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:570:3
+  --> $DIR/diagnostic-derive-inline.rs:568:3
    |
 LL | #[multipart_suggestion()]
    |   ^^^^^^^^^^^^^^^^^^^^
@@ -567,36 +567,12 @@ LL | struct MultipartSuggestion {
    |
 
 error: cannot find attribute `multipart_suggestion` in this scope
-  --> $DIR/diagnostic-derive-inline.rs:574:7
+  --> $DIR/diagnostic-derive-inline.rs:572:7
    |
 LL |     #[multipart_suggestion("with a suggestion")]
    |       ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `multipart_suggestion` is an attribute that can be used by the derive macro `Subdiagnostic`, you might be missing a `derive` attribute
 
-error[E0277]: the trait bound `Hello: IntoDiagArg` is not satisfied
-  --> $DIR/diagnostic-derive-inline.rs:329:12
-   |
-LL | #[derive(Diagnostic)]
-   |          ---------- required by a bound introduced by this call
-...
-LL |     other: Hello,
-   |            ^^^^^ unsatisfied trait bound
-   |
-help: the nightly-only, unstable trait `IntoDiagArg` is not implemented for `Hello`
-  --> $DIR/diagnostic-derive-inline.rs:41:1
-   |
-LL | struct Hello {}
-   | ^^^^^^^^^^^^
-   = help: normalized in stderr
-   = note: there's an inherent method on `DiagInner` of the same name, which can be auto-dereferenced from `&mut DiagInner`
-note: required by a bound in `Diag::<'a, G>::arg`
-  --> $COMPILER_DIR/rustc_errors/src/diagnostic.rs:LL:CC
-  ::: $COMPILER_DIR/rustc_errors/src/diagnostic.rs:LL:CC
-   |
-   = note: in this macro invocation
-   = note: this error originates in the macro `with_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: aborting due to 75 previous errors
 
-error: aborting due to 76 previous errors
-
-For more information about this error, try `rustc --explain E0277`.
