@@ -26,7 +26,7 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level, StashKey,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, StashKey,
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -1549,54 +1549,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         mode: LowerTypeRelativePathMode,
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
-        struct AmbiguousAssocItem<'tcx> {
-            variant_def_id: DefId,
-            item_def_id: DefId,
-            span: Span,
-            segment_ident: Ident,
-            bound_def_id: DefId,
-            self_ty: Ty<'tcx>,
-            tcx: TyCtxt<'tcx>,
-            mode: LowerTypeRelativePathMode,
-        }
-
-        impl<'a, 'tcx> Diagnostic<'a, ()> for AmbiguousAssocItem<'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-                let Self {
-                    variant_def_id,
-                    item_def_id,
-                    span,
-                    segment_ident,
-                    bound_def_id,
-                    self_ty,
-                    tcx,
-                    mode,
-                } = self;
-                let mut lint = Diag::new(dcx, level, "ambiguous associated item");
-
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        segment_ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
-
-                lint.span_suggestion(
-                    span,
-                    "use fully-qualified syntax",
-                    format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),
-                    Applicability::MachineApplicable,
-                );
-                lint
-            }
-        }
-
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
 
@@ -1676,7 +1628,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 AMBIGUOUS_ASSOCIATED_ITEMS,
                 qpath_hir_id,
                 span,
-                AmbiguousAssocItem {
+                errors::AmbiguityBetweenVariantAndAssocItem {
                     variant_def_id,
                     item_def_id,
                     span,
