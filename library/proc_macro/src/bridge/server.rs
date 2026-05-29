@@ -1,6 +1,7 @@
 //! Server-side traits.
 
 use std::cell::Cell;
+use std::sync::atomic::AtomicU32;
 use std::sync::mpsc;
 
 use super::*;
@@ -11,10 +12,13 @@ pub(super) struct HandleStore<S: Server> {
 }
 
 impl<S: Server> HandleStore<S> {
-    fn new(handle_counters: &'static client::HandleCounters) -> Self {
+    fn new() -> Self {
+        static TOKEN_STREAM: AtomicU32 = AtomicU32::new(1);
+        static SPAN: AtomicU32 = AtomicU32::new(1);
+
         HandleStore {
-            token_stream: handle::OwnedStore::new(&handle_counters.token_stream),
-            span: handle::InternedStore::new(&handle_counters.span),
+            token_stream: handle::OwnedStore::new(&TOKEN_STREAM),
+            span: handle::InternedStore::new(&SPAN),
         }
     }
 }
@@ -246,13 +250,12 @@ fn run_server<
     O: for<'a, 's> Decode<'a, 's, HandleStore<S>>,
 >(
     strategy: &impl ExecutionStrategy,
-    handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
     run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
-    let mut dispatcher = Dispatcher { handle_store: HandleStore::new(handle_counters), server };
+    let mut dispatcher = Dispatcher { handle_store: HandleStore::new(), server };
 
     let globals = dispatcher.server.globals();
 
@@ -276,16 +279,9 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
     where
         S: Server,
     {
-        let client::Client { handle_counters, run, _marker } = *self;
-        run_server(
-            strategy,
-            handle_counters,
-            server,
-            <MarkedTokenStream<S>>::mark(input),
-            run,
-            force_show_panics,
-        )
-        .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
+        let client::Client { run, _marker } = *self;
+        run_server(strategy, server, <MarkedTokenStream<S>>::mark(input), run, force_show_panics)
+            .map(|s| <Option<MarkedTokenStream<S>>>::unmark(s).unwrap_or_default())
     }
 }
 
@@ -301,10 +297,9 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
     where
         S: Server,
     {
-        let client::Client { handle_counters, run, _marker } = *self;
+        let client::Client { run, _marker } = *self;
         run_server(
             strategy,
-            handle_counters,
             server,
             (<MarkedTokenStream<S>>::mark(input), <MarkedTokenStream<S>>::mark(input2)),
             run,
