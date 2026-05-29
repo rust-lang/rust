@@ -70,11 +70,11 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
     match param.path().word_sym() {
         Some(sym::align) => {
             let l = cx.expect_list(param.args(), param.span())?;
-            parse_repr_align(cx, l, param.span(), AlignKind::Align)
+            parse_repr_align(cx, l, AlignKind::Align)
         }
         Some(sym::packed) => match param.args() {
             ArgParser::NoArgs => Some(ReprPacked(Align::ONE)),
-            ArgParser::List(l) => parse_repr_align(cx, l, param.span(), AlignKind::Packed),
+            ArgParser::List(l) => parse_repr_align(cx, l, AlignKind::Packed),
             ArgParser::NameValue(_) => {
                 cx.adcx().expected_list_or_no_args(param.span());
                 None
@@ -131,44 +131,17 @@ enum AlignKind {
 }
 
 fn parse_repr_align(
-    cx: &AcceptContext<'_, '_>,
+    cx: &mut AcceptContext<'_, '_>,
     list: &MetaItemListParser,
-    param_span: Span,
     align_kind: AlignKind,
 ) -> Option<ReprAttr> {
-    use AlignKind::*;
-
     let Some(align) = list.as_single() else {
-        match align_kind {
-            Packed => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
-                    span: param_span,
-                });
-            }
-            Align => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
-                    span: param_span,
-                });
-            }
-        }
-
+        cx.adcx().expected_single_argument(list.span, list.len());
         return None;
     };
 
     let Some(lit) = align.as_lit() else {
-        match align_kind {
-            Packed => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatPackedExpectInteger {
-                    span: align.span(),
-                });
-            }
-            Align => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
-                    span: align.span(),
-                });
-            }
-        }
-
+        cx.adcx().expected_integer_literal(align.span());
         return None;
     };
 
@@ -178,12 +151,8 @@ fn parse_repr_align(
             AlignKind::Align => ReprAttr::ReprAlign(literal),
         }),
         Err(message) => {
-            cx.emit_err(session_diagnostics::InvalidReprGeneric {
+            cx.emit_err(session_diagnostics::InvalidAlignmentValue {
                 span: lit.span,
-                repr_arg: match align_kind {
-                    Packed => "packed".to_string(),
-                    Align => "align".to_string(),
-                },
                 error_part: message,
             });
             None
@@ -237,10 +206,7 @@ impl RustcAlignParser {
         };
 
         let Some(lit) = align.as_lit() else {
-            cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
-                span: align.span(),
-            });
-
+            cx.adcx().expected_integer_literal(align.span());
             return;
         };
 

@@ -1,8 +1,12 @@
-error[E0552]: incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
-  --> $DIR/malformed-repr-hints.rs:6:8
+error[E0805]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:6:1
    |
 LL | #[repr(packed())]
-   |        ^^^^^^^^
+   | ^^^^^^^^^^^^^--^^
+   |              |
+   |              expected an argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/malformed-repr-hints.rs:10:1
@@ -14,17 +18,25 @@ LL | #[repr(align)]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
-  --> $DIR/malformed-repr-hints.rs:14:8
+error[E0805]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:14:1
    |
 LL | #[repr(align(2, 4))]
-   |        ^^^^^^^^^^^
+   | ^^^^^^^^^^^^------^^
+   |             |
+   |             expected a single argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
-  --> $DIR/malformed-repr-hints.rs:18:8
+error[E0805]: malformed `repr` attribute input
+  --> $DIR/malformed-repr-hints.rs:18:1
    |
 LL | #[repr(align())]
-   |        ^^^^^^^
+   | ^^^^^^^^^^^^--^^
+   |             |
+   |             expected an argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0565]: malformed `repr` attribute input
   --> $DIR/malformed-repr-hints.rs:23:1
@@ -88,5 +100,5 @@ LL | #[repr(i64 = 2)]
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0539, E0552, E0565, E0693.
+Some errors have detailed explanations: E0539, E0565, E0805.
 For more information about an error, try `rustc --explain E0539`.

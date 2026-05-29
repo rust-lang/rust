@@ -182,45 +182,6 @@ pub(crate) struct MissingIssue {
     pub span: Span,
 }
 
-// FIXME: Why is this the same error code as `InvalidReprHintNoParen` and `InvalidReprHintNoValue`?
-// It is more similar to `IncorrectReprFormatGeneric`.
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all", code = E0552)]
-pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
-    #[primary_span]
-    pub span: Span,
-}
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(packed)` attribute format: `packed` expects a literal integer as argument", code = E0552)]
-pub(crate) struct IncorrectReprFormatPackedExpectInteger {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("invalid `repr({$repr_arg})` attribute: {$error_part}", code = E0589)]
-pub(crate) struct InvalidReprGeneric {
-    #[primary_span]
-    pub span: Span,
-
-    pub repr_arg: String,
-    pub error_part: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses", code = E0693)]
-pub(crate) struct IncorrectReprFormatAlignOneArg {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(align)` attribute format: `align` expects a literal integer as argument", code = E0693)]
-pub(crate) struct IncorrectReprFormatExpectInteger {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag("`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute", code = E0717)]
 pub(crate) struct RustcPromotablePairing {

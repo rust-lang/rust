@@ -4,7 +4,7 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #[repr(packed())]
-//~^ ERROR: incorrect `repr(packed)` attribute format
+//~^ ERROR: malformed `repr` attribute input
 struct S1;
 
 #[repr(align)]
@@ -12,11 +12,11 @@ struct S1;
 struct S2;
 
 #[repr(align(2, 4))]
-//~^ ERROR: incorrect `repr(align)` attribute format
+//~^ ERROR: malformed `repr` attribute input
 struct S3;
 
 #[repr(align())]
-//~^ ERROR: incorrect `repr(align)` attribute format
+//~^ ERROR: malformed `repr` attribute input
 struct S4;
 
 // Regression test for issue #118334:
