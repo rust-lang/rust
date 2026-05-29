@@ -1,9 +1,10 @@
-use rustc_ast::LitKind;
+use rustc_ast::{LitKind, MetaItemLit};
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
 
 use super::prelude::*;
 use super::util::parse_version;
+use crate::context::AttributeDiagnosticContext;
 use crate::session_diagnostics::{
     DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
 };
@@ -82,30 +83,17 @@ impl SingleAttributeParser for DeprecatedParser {
                 // otherwise, suggest using NameValue syntax
                 if let Some(elem) = list.as_single()
                     && let Some(lit) = elem.as_lit()
-                    && let LitKind::Str(text, _) = lit.kind
                 {
-                    let mut adcx = cx.adcx();
-
-                    match parse_since(text, true) {
-                        DeprecatedSince::Future | DeprecatedSince::RustcVersion(_) => {
-                            adcx.push_suggestion(
-                                String::from("try specifying a deprecated since version"),
-                                elem.span(),
-                                format!("since = {}", lit.kind),
-                            );
+                    match lit.kind {
+                        LitKind::Str(text, _) => {
+                            expected_not_str_literal(&mut cx.adcx(), args, elem, lit, text)
                         }
-                        _ => {
-                            if let Some(span) = args.span() {
-                                adcx.push_suggestion(
-                                    String::from("try using `=` instead"),
-                                    span,
-                                    format!(" = {}", lit.kind),
-                                );
-                            }
+                        LitKind::Err(_) => {
+                            expected_not_err_literal(&mut cx.adcx(), args, elem, lit.symbol);
                         }
-                    };
+                        _ => {}
+                    }
 
-                    adcx.expected_not_literal(elem.span());
                     return None;
                 }
 
@@ -202,4 +190,60 @@ fn parse_since(since: Symbol, is_rustc: bool) -> DeprecatedSince {
     } else {
         DeprecatedSince::Err
     }
+}
+
+fn expected_not_str_literal<'a, 'f, 'sess>(
+    adcx: &mut AttributeDiagnosticContext<'a, 'f, 'sess>,
+    args: &ArgParser,
+    elem: &MetaItemOrLitParser,
+    lit: &MetaItemLit,
+    text: Symbol,
+) {
+    if is_version_shaped(text) {
+        adcx.push_suggestion(
+            String::from("try specifying a deprecated since version"),
+            elem.span(),
+            format!("since = {}", lit.kind),
+        );
+    } else {
+        if let Some(span) = args.span() {
+            adcx.push_suggestion(
+                String::from("try using `=` instead"),
+                span,
+                format!(" = {}", lit.kind),
+            );
+        }
+    }
+
+    adcx.expected_not_literal(elem.span());
+}
+
+fn expected_not_err_literal<'a, 'f, 'sess>(
+    adcx: &mut AttributeDiagnosticContext<'a, 'f, 'sess>,
+    args: &ArgParser,
+    elem: &MetaItemOrLitParser,
+    text: Symbol,
+) {
+    let escaped = text.as_str().escape_debug().to_string();
+    if is_version_shaped(text) {
+        adcx.push_suggestion(
+            String::from("try specifying a deprecated since version"),
+            elem.span(),
+            format!(r#"since = "{}""#, escaped),
+        );
+    } else {
+        if let Some(span) = args.span() {
+            adcx.push_suggestion(
+                String::from("try using `=` instead"),
+                span,
+                format!(r#" = "{}""#, escaped),
+            );
+        }
+    }
+
+    adcx.expected_not_literal(elem.span());
+}
+
+fn is_version_shaped(text: Symbol) -> bool {
+    matches!(parse_since(text, true), DeprecatedSince::Future | DeprecatedSince::RustcVersion(_))
 }

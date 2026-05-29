@@ -75,20 +75,48 @@ help: try specifying a deprecated since version
 LL |     #[deprecated(since = "1.2.3")]
    |                  +++++++
 
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/deprecation-sanity.rs:30:5
+   |
+LL |     #[deprecated(deprecation "reason")]
+   |     ^^^^^^^^^^^^^--------------------^^
+   |                  |
+   |                  didn't expect a literal here
+   |
+help: try using `=` instead
+   |
+LL -     #[deprecated(deprecation "reason")]
+LL +     #[deprecated = "deprecation \"reason\""]
+   |
+
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/deprecation-sanity.rs:33:5
+   |
+LL |     #[deprecated(1.2.3)]
+   |     ^^^^^^^^^^^^^-----^^
+   |                  |
+   |                  didn't expect a literal here
+   |
+help: try specifying a deprecated since version
+   |
+LL -     #[deprecated(1.2.3)]
+LL +     #[deprecated(since = "1.2.3")]
+   |
+
 error: multiple `deprecated` attributes
-  --> $DIR/deprecation-sanity.rs:32:1
+  --> $DIR/deprecation-sanity.rs:38:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/deprecation-sanity.rs:31:1
+  --> $DIR/deprecation-sanity.rs:37:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0538]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:35:1
+  --> $DIR/deprecation-sanity.rs:41:1
    |
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^
@@ -96,7 +124,7 @@ LL | #[deprecated(since = "a", since = "b", note = "c")]
    |                           found `since` used as a key more than once
 
 error: `#[deprecated]` attribute cannot be used on trait impl blocks
-  --> $DIR/deprecation-sanity.rs:40:1
+  --> $DIR/deprecation-sanity.rs:46:1
    |
 LL | #[deprecated = "hello"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +133,7 @@ LL | #[deprecated = "hello"]
    = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
    = note: `#[deny(useless_deprecated)]` on by default
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0538, E0539, E0565.
 For more information about an error, try `rustc --explain E0538`.

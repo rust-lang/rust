@@ -19,7 +19,7 @@ use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr
 use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol, sym};
-use thin_vec::ThinVec;
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::ShouldEmit;
 use crate::session_diagnostics::{
@@ -124,6 +124,7 @@ impl ArgParser {
                         psess,
                         ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
                         allow_expr_metavar,
+                        true,
                     ) {
                         Ok(p) => return Some(ArgParser::List(p)),
                         Err(e) => {
@@ -155,6 +156,7 @@ impl ArgParser {
                         psess,
                         should_emit,
                         allow_expr_metavar,
+                        false,
                     )
                     .map_err(|e| should_emit.emit_err(e))
                     .ok()?,
@@ -643,7 +645,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         span: Span,
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
+        diagnostic: bool,
     ) -> PResult<'sess, MetaItemListParser> {
+        let inner_span = tokens
+            .get(0)
+            .and_then(|start| tokens.get(tokens.len() - 1).map(|end| start.span().to(end.span())));
         let mut parser = Parser::new(psess, tokens, None);
         if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
             parser = parser.recovery(recovery);
@@ -663,7 +669,24 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         }
 
         if parser.token != token::Eof {
-            parser.unexpected()?;
+            let unexpected = parser.unexpected();
+            if !diagnostic
+                && let Some(inner_span) = inner_span
+                && let Ok(symbol) = &psess.source_map().span_to_snippet(inner_span)
+                && let Err(e) = unexpected
+            {
+                return Ok(MetaItemListParser {
+                    sub_parsers: thin_vec![MetaItemOrLitParser::Lit(MetaItemLit {
+                        symbol: Symbol::intern(symbol),
+                        suffix: None,
+                        kind: LitKind::Err(e.delay_as_bug()),
+                        span: inner_span
+                    })],
+                    span,
+                });
+            } else {
+                unexpected?;
+            }
         }
 
         Ok(MetaItemListParser { sub_parsers, span })
@@ -683,6 +706,7 @@ impl MetaItemListParser {
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
+        diagnostic: bool,
     ) -> Result<Self, Diag<'sess>> {
         MetaItemListParserContext::parse(
             tokens.clone(),
@@ -690,6 +714,7 @@ impl MetaItemListParser {
             span,
             should_emit,
             allow_expr_metavar,
+            diagnostic,
         )
     }
 

@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use rustc_ast::{LitKind, MetaItemLit};
 use rustc_errors::E0232;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
@@ -207,6 +208,16 @@ fn parse_directive_items<'p>(
     let mut filters = ThinVec::new();
 
     for item in items {
+        // Minimum required to avoid delayed bug ICE
+        // TODO provide enhanced error message
+        if let MetaItemOrLitParser::Lit(lit @ MetaItemLit { kind: LitKind::Err(_), .. }) = item {
+            cx.emit_err(WrappedParserError {
+                description: "Expected `,`".to_string(),
+                span: lit.span,
+                label: "contains unexpected token".to_string(),
+            });
+        }
+
         let span = item.span();
 
         macro malformed() {{
