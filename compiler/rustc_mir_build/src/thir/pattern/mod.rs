@@ -657,7 +657,14 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let args = self.typeck_results.node_args(id);
         // FIXME(mgca): we will need to special case IACs here to have type system compatible
         // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
+        let c = ty::Const::new_unevaluated(
+            self.tcx,
+            ty::UnevaluatedConst::new(
+                self.tcx,
+                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
+                args,
+            ),
+        );
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written

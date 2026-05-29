@@ -469,7 +469,7 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::FreeTy { .. } => selcx.infcx.next_ty_var(cause.span).into(),
         ty::AliasTermKind::FreeConst { .. }
         | ty::AliasTermKind::InherentConst { .. }
-        | ty::AliasTermKind::UnevaluatedConst { .. }
+        | ty::AliasTermKind::AnonConst { .. }
         | ty::AliasTermKind::ProjectionConst { .. } => {
             selcx.infcx.next_const_var(cause.span).into()
         }

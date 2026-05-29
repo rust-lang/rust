@@ -1651,7 +1651,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         };
 
-                    if let Some(lhs) = lhs.to_alias_term(self.tcx)
+                    if let Some(lhs) = lhs.to_alias_term()
                         && let ty::AliasTermKind::ProjectionTy { .. }
                         | ty::AliasTermKind::ProjectionConst { .. } = lhs.kind(self.tcx)
                         && let Some((better_type_err, expected_term)) =
@@ -1661,7 +1661,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some((lhs, self.resolve_vars_if_possible(expected_term), rhs)),
                             better_type_err,
                         )
-                    } else if let Some(rhs) = rhs.to_alias_term(self.tcx)
+                    } else if let Some(rhs) = rhs.to_alias_term()
                         && let ty::AliasTermKind::ProjectionTy { .. }
                         | ty::AliasTermKind::ProjectionConst { .. } = rhs.kind(self.tcx)
                         && let Some((better_type_err, expected_term)) =
@@ -3732,10 +3732,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(uv) => {
                     let mut err =
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
-                    let const_span = self.tcx.def_span(uv.def);
+                    let const_span = self.tcx.def_span(uv.kind.def_id());
 
-                    let const_ty =
-                        self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args).skip_norm_wip();
+                    let const_ty = self
+                        .tcx
+                        .type_of(uv.kind.def_id())
+                        .instantiate(self.tcx, uv.args)
+                        .skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {

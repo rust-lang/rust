@@ -22,9 +22,10 @@ pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
 pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
+pub type UnevaluatedConstKind<'tcx> = ir::UnevaluatedConstKind<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstKind<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
@@ -107,7 +108,6 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn new_unevaluated(tcx: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Const<'tcx> {
-        tcx.debug_assert_args_compatible(uv.def, uv.args);
         Const::new(tcx, ty::ConstKind::Unevaluated(uv))
     }
 

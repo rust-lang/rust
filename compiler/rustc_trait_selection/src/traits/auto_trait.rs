@@ -774,7 +774,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
                                 self.tcx.dcx().emit_err(UnableToConstructConstantValue {
-                                    span: self.tcx.def_span(unevaluated.def),
+                                    span: self.tcx.def_span(unevaluated.kind.def_id()),
                                     unevaluated,
                                 });
                             }
