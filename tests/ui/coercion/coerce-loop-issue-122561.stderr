@@ -182,7 +182,7 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `while` loops evaluate to unit type `()`
-note: this pattern always matches, so the loop condition never fails
+note: this pattern always matches, consider using `loop` instead
   --> $DIR/coerce-loop-issue-122561.rs:73:15
    |
 LL |     while let x = false {
@@ -207,7 +207,7 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `while` loops evaluate to unit type `()`
-note: this pattern always matches, so the loop condition never fails
+note: this pattern always matches, consider using `loop` instead
   --> $DIR/coerce-loop-issue-122561.rs:82:15
    |
 LL |     while let (x, _) = (false, true) {

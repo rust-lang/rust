@@ -1895,11 +1895,11 @@ impl<'tcx> CoerceMany<'tcx> {
 
                         err.note(format!("{loop_type} evaluate to unit type `()`"));
                         if loop_src == hir::LoopSource::While
-                            && let Some(pat) = irrefutable_while_let_pattern(block)
+                            && let Some(pat) = irrefutable_if_let_expr(block)
                         {
                             err.span_note(
                                 pat.span,
-                                "this pattern always matches, so the loop condition never fails",
+                                "this pattern always matches, consider using `loop` instead",
                             );
                         }
                     }
@@ -2134,7 +2134,7 @@ impl<'tcx> CoerceMany<'tcx> {
     }
 }
 
-fn irrefutable_while_let_pattern<'hir>(block: &hir::Block<'hir>) -> Option<&'hir hir::Pat<'hir>> {
+fn irrefutable_if_let_expr<'hir>(block: &hir::Block<'hir>) -> Option<&'hir hir::Pat<'hir>> {
     let hir::ExprKind::If(cond, _, _) = block.expr?.kind else {
         return None;
     };
