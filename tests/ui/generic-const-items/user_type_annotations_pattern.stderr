@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/user_type_annotations_pattern.rs:8:9
+  --> $DIR/user_type_annotations_pattern.rs:9:9
    |
 LL | fn bar<'a>() {
    |        -- lifetime `'a` defined here

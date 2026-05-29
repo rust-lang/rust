@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
-#![allow(unconditional_recursion)]
+#![allow(unconditional_recursion, todo_macro_calls)]
 
 // Regression test for trait-system-refactor-initiative#182. If multiple
 // opaque types result in different item bounds, do not apply them.

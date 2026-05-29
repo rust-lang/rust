@@ -1,5 +1,5 @@
 error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
-  --> $DIR/noisy-follow-up-erro.rs:12:30
+  --> $DIR/noisy-follow-up-erro.rs:13:30
    |
 LL |     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
    |                              ^^^       ---- help: remove the lifetime argument
@@ -7,13 +7,13 @@ LL |     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
    |                              expected 2 lifetime arguments
    |
 note: struct defined here, with 2 lifetime parameters: `'c`, `'d`
-  --> $DIR/noisy-follow-up-erro.rs:1:8
+  --> $DIR/noisy-follow-up-erro.rs:2:8
    |
 LL | struct Foo<'c, 'd>(&'c (), &'d ());
    |        ^^^ --  --
 
 error[E0621]: explicit lifetime required in the type of `foo`
-  --> $DIR/noisy-follow-up-erro.rs:14:9
+  --> $DIR/noisy-follow-up-erro.rs:15:9
    |
 LL |         self.bar().map_err(|()| foo.acc(self))?;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required

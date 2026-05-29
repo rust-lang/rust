@@ -1,6 +1,7 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 pub trait Scalar: 'static {
     type RefType<'a>: ScalarRef<'a>;

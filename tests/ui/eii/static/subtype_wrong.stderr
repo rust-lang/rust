@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/subtype_wrong.rs:13:1
+  --> $DIR/subtype_wrong.rs:14:1
    |
 LL | static HELLO_IMPL: for<'a> fn(&'a u8) -> &'a u8 = |_| todo!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other

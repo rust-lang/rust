@@ -1,5 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
-#![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
+#![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations, todo_macro_calls)]
 #![feature(const_trait_impl)]
 
 use std::mem::transmute;

@@ -7,7 +7,7 @@
     clippy::single_match,
     clippy::uninlined_format_args,
     clippy::let_unit_value
-)]
+, todo_macro_calls)]
 
 fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>) {
     // match without block

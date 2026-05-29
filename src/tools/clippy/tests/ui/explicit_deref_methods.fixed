@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::explicit_deref_methods)]
-#![allow(unused_variables, unused_must_use)]
+#![allow(unused_variables, unused_must_use, todo_macro_calls)]
 #![allow(
     clippy::borrow_deref_ref,
     clippy::deref_addrof,

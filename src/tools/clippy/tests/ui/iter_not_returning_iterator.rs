@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::iter_not_returning_iterator)]
 
 struct Data {

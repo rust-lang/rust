@@ -1,5 +1,5 @@
 #![feature(proc_macro_quote, proc_macro_span)]
-#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::field_reassign_with_default, todo_macro_calls)]
 #![allow(clippy::eq_op)]
 #![allow(clippy::literal_string_with_formatting_args)]
 

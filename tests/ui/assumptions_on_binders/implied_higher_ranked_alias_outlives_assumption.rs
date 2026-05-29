@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver -Zassumptions-on-binders
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 #![feature(generic_const_items)]
 

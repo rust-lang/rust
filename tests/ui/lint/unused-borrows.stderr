@@ -1,11 +1,11 @@
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:6:5
+  --> $DIR/unused-borrows.rs:7:5
    |
 LL |     &42;
    |     ^^^ the borrow produces a value
    |
 note: the lint level is defined here
-  --> $DIR/unused-borrows.rs:1:9
+  --> $DIR/unused-borrows.rs:2:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     let _ = &42;
    |     +++++++
 
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:9:5
+  --> $DIR/unused-borrows.rs:10:5
    |
 LL |     &mut foo(42);
    |     ^^^^^^^^^^^^ the borrow produces a value
@@ -26,7 +26,7 @@ LL |     let _ = &mut foo(42);
    |     +++++++
 
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:12:5
+  --> $DIR/unused-borrows.rs:13:5
    |
 LL |     &&42;
    |     ^^^^ the borrow produces a value
@@ -37,7 +37,7 @@ LL |     let _ = &&42;
    |     +++++++
 
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:15:5
+  --> $DIR/unused-borrows.rs:16:5
    |
 LL |     &&mut 42;
    |     ^^^^^^^^ the borrow produces a value
@@ -48,7 +48,7 @@ LL |     let _ = &&mut 42;
    |     +++++++
 
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:18:5
+  --> $DIR/unused-borrows.rs:19:5
    |
 LL |     &mut &42;
    |     ^^^^^^^^ the borrow produces a value
@@ -59,7 +59,7 @@ LL |     let _ = &mut &42;
    |     +++++++
 
 error: unused borrow that must be used
-  --> $DIR/unused-borrows.rs:23:5
+  --> $DIR/unused-borrows.rs:24:5
    |
 LL |     && foo(42);
    |     ^^^^^^^^^^ the borrow produces a value

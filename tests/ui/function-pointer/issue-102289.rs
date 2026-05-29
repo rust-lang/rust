@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 pub(crate) trait Parser: Sized {
     type Output;

@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `MultiUse` captures lifetime that does not appear in bounds
-  --> $DIR/report-all-unexpected-hidden-errors.rs:18:19
+  --> $DIR/report-all-unexpected-hidden-errors.rs:19:19
    |
 LL | type MultiUse = impl Sized;
    |                 ---------- opaque type defined here
@@ -10,7 +10,7 @@ LL |     let _ = || -> MultiUse {
    = note: hidden type `Invar<'_>` captures lifetime `'_`
 
 error[E0700]: hidden type for `MultiUse` captures lifetime that does not appear in bounds
-  --> $DIR/report-all-unexpected-hidden-errors.rs:22:19
+  --> $DIR/report-all-unexpected-hidden-errors.rs:23:19
    |
 LL | type MultiUse = impl Sized;
    |                 ---------- opaque type defined here
@@ -21,7 +21,7 @@ LL |     let _ = || -> MultiUse {
    = note: hidden type `Invar<'_>` captures lifetime `'_`
 
 error[E0700]: hidden type for `MultiUse` captures lifetime that does not appear in bounds
-  --> $DIR/report-all-unexpected-hidden-errors.rs:27:23
+  --> $DIR/report-all-unexpected-hidden-errors.rs:28:23
    |
 LL | type MultiUse = impl Sized;
    |                 ---------- opaque type defined here

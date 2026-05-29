@@ -1,5 +1,5 @@
 #![warn(clippy::unused_self)]
-#![allow(clippy::boxed_local, clippy::fn_params_excessive_bools)]
+#![allow(clippy::boxed_local, clippy::fn_params_excessive_bools, todo_macro_calls)]
 
 mod unused_self {
     use std::pin::Pin;

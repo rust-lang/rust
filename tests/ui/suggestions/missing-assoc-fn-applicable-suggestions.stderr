@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Type`, `bar`, `baz`, `A`
-  --> $DIR/missing-assoc-fn-applicable-suggestions.rs:7:1
+  --> $DIR/missing-assoc-fn-applicable-suggestions.rs:8:1
    |
 LL | impl TraitA<()> for S {
    | ^^^^^^^^^^^^^^^^^^^^^ missing `Type`, `bar`, `baz`, `A` in implementation

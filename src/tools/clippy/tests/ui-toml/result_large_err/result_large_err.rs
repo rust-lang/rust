@@ -1,6 +1,6 @@
 //@compile-flags: --crate-name result_large_err
 #![warn(clippy::result_large_err)]
-#![allow(clippy::large_enum_variant)]
+#![allow(clippy::large_enum_variant, todo_macro_calls)]
 
 fn f() -> Result<(), [u8; 511]> {
     todo!()

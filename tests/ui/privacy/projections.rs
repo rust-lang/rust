@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 mod m {
     struct Priv;
     pub type Leak = Priv; //~ WARN: `Priv` is more private than the item `Leak`

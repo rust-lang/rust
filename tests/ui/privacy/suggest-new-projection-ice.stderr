@@ -1,5 +1,5 @@
 error: cannot construct `Foo` with struct literal syntax due to private fields
-  --> $DIR/suggest-new-projection-ice.rs:18:13
+  --> $DIR/suggest-new-projection-ice.rs:19:13
    |
 LL |     let _ = m::Foo {};
    |             ^^^^^^

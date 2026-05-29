@@ -11,7 +11,7 @@
     clippy::unnecessary_owned_empty_strings,
     arithmetic_overflow,
     unconditional_panic
-)]
+, todo_macro_calls)]
 #![warn(clippy::arithmetic_side_effects)]
 
 extern crate proc_macro_derive;

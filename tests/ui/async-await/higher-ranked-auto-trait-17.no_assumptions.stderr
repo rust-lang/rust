@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/higher-ranked-auto-trait-17.rs:12:5
+  --> $DIR/higher-ranked-auto-trait-17.rs:13:5
    |
 LL | /     async move {
 LL | |         let iter = Adaptor::new(a.iter().map(|_: &()| {}));
@@ -12,7 +12,7 @@ LL | |     }
    = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/higher-ranked-auto-trait-17.rs:12:5
+  --> $DIR/higher-ranked-auto-trait-17.rs:13:5
    |
 LL | /     async move {
 LL | |         let iter = Adaptor::new(a.iter().map(|_: &()| {}));

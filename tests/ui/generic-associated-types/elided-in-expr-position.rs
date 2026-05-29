@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 
 pub trait Trait  {
     type Assoc<'a> where Self: 'a;

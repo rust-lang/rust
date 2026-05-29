@@ -1,4 +1,5 @@
 //@ incremental
+#![allow(todo_macro_calls)]
 #![crate_type = "lib"]
 
 trait Q {

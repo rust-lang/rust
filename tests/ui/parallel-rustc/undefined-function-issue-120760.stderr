@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/undefined-function-issue-120760.rs:20:16
+  --> $DIR/undefined-function-issue-120760.rs:21:16
    |
 LL |     pub name: &'a str,
    |                ^^ undeclared lifetime
@@ -10,7 +10,7 @@ LL | pub struct User<'a, 'dep> {
    |                 +++
 
 error[E0560]: struct `User<'_>` has no field named `dep`
-  --> $DIR/undefined-function-issue-120760.rs:70:12
+  --> $DIR/undefined-function-issue-120760.rs:71:12
    |
 LL |     User { dep }.save().await;
    |            ^^^ `User<'_>` does not have this field
@@ -18,16 +18,16 @@ LL |     User { dep }.save().await;
    = note: available fields are: `name`
 
 error[E0425]: cannot find function `run` in this scope
-  --> $DIR/undefined-function-issue-120760.rs:61:17
-   |
-LL |         let _ = run("dependency").await;
-   |                 ^^^ not found in this scope
-
-error[E0425]: cannot find function `run` in this scope
-  --> $DIR/undefined-function-issue-120760.rs:14:5
+  --> $DIR/undefined-function-issue-120760.rs:15:5
    |
 LL |     run("dependency").await;
    |     ^^^ not found in this scope
+
+error[E0425]: cannot find function `run` in this scope
+  --> $DIR/undefined-function-issue-120760.rs:62:17
+   |
+LL |         let _ = run("dependency").await;
+   |                 ^^^ not found in this scope
 
 error: aborting due to 4 previous errors
 

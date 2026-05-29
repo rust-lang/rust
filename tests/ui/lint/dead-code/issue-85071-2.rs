@@ -1,6 +1,7 @@
 // A slight variation of issue-85071.rs. Here, a method is called instead
 // of a function, and the warning is about an unreachable definition
 // instead of an unreachable expression.
+#![allow(todo_macro_calls)]
 
 //@ check-pass
 

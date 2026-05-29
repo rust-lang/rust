@@ -1,5 +1,5 @@
 #![warn(clippy::assertions_on_result_states)]
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unnecessary_literal_unwrap, todo_macro_calls)]
 
 use std::result::Result;
 

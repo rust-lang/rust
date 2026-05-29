@@ -5,6 +5,7 @@
 //
 // Const traits aren't the only way to achieve this ICE, but it's a convenient way
 // to ensure the inliner is called.
+#![allow(todo_macro_calls)]
 
 //@ compile-flags: -Znext-solver -Zinline-mir=yes
 

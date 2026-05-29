@@ -3,6 +3,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ edition: 2024
+#![allow(todo_macro_calls)]
 
 // Regression test for <https://github.com/rust-lang/trait-system-refactor-initiative/issues/185>.
 // Avoid unnecessarily computing the RPITIT type of the first impl when checking the WF of the

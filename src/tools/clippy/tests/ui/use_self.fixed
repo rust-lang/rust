@@ -1,7 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
-#![allow(dead_code, unreachable_code)]
+#![allow(dead_code, unreachable_code, todo_macro_calls)]
 #![allow(
     clippy::should_implement_trait,
     clippy::upper_case_acronyms,

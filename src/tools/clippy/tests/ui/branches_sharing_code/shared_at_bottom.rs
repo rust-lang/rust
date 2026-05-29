@@ -4,7 +4,7 @@
     clippy::uninlined_format_args,
     clippy::redundant_pattern_matching,
     dead_code
-)]
+, todo_macro_calls)]
 //@no-rustfix
 // This tests the branches_sharing_code lint at the end of blocks
 

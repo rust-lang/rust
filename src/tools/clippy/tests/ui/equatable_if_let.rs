@@ -1,5 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::derive_partial_eq_without_eq, clippy::needless_ifs)]
+#![allow(clippy::derive_partial_eq_without_eq, clippy::needless_ifs, todo_macro_calls)]
 #![warn(clippy::equatable_if_let)]
 use proc_macros::{external, inline_macros};
 

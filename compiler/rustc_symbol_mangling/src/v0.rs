@@ -442,6 +442,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         Ok(())
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
         // Basic types, never cached (single-character).
         let basic_type = match ty.kind() {

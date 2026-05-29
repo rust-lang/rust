@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 trait Mirror {
     type Assoc;

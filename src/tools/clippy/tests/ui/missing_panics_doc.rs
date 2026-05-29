@@ -1,6 +1,6 @@
 //@aux-build:macro_rules.rs
 #![warn(clippy::missing_panics_doc)]
-#![allow(clippy::option_map_unit_fn, clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::option_map_unit_fn, clippy::unnecessary_literal_unwrap, todo_macro_calls)]
 
 #[macro_use]
 extern crate macro_rules;

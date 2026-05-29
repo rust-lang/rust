@@ -1,4 +1,5 @@
 // Ensure that we anonymize the output of a function for tail call signature compatibility.
+#![allow(todo_macro_calls)]
 
 //@ check-pass
 

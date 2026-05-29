@@ -1,0 +1,14 @@
+error: `todo!()` macro used
+  --> $DIR/todo-nostd.rs:12:5
+   |
+LL |     todo!();
+   |     ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/todo-nostd.rs:4:9
+   |
+LL | #![deny(todo_macro_calls)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

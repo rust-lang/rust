@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![allow(clippy::diverging_sub_expression)]
 #![no_main]
 

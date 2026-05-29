@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/method-resolution3.rs:21:11
+  --> $DIR/method-resolution3.rs:22:11
    |
 LL |         x.bar();
    |           ^^^ multiple `bar` found
    |
 note: candidate #1 is defined in an impl for the type `Bar<i32>`
-  --> $DIR/method-resolution3.rs:15:5
+  --> $DIR/method-resolution3.rs:16:5
    |
 LL |     fn bar(self) {}
    |     ^^^^^^^^^^^^
 note: candidate #2 is defined in an impl for the type `Bar<u32>`
-  --> $DIR/method-resolution3.rs:11:5
+  --> $DIR/method-resolution3.rs:12:5
    |
 LL |     fn bar(self) {}
    |     ^^^^^^^^^^^^

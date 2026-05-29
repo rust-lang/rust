@@ -1,0 +1,16 @@
+warning: unreachable statement
+  --> $DIR/todo.rs:18:5
+   |
+LL |     panic!("This is really unreachable");
+   |     ------------------------------------ any code following this expression is unreachable
+LL |     let really_unreachable = true;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/todo.rs:5:9
+   |
+LL | #![warn(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

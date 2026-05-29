@@ -501,6 +501,7 @@ mod llvm_enzyme {
     // ```
     // std::intrinsics::autodiff(source as fn(..) -> .., diff, (args))
     // ```
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn call_autodiff(
         ecx: &ExtCtxt<'_>,
         primal: Ident,

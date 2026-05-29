@@ -1,4 +1,4 @@
-#![allow(clippy::eq_op, clippy::nonminimal_bool)]
+#![allow(clippy::eq_op, clippy::nonminimal_bool, todo_macro_calls)]
 #![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]

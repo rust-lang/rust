@@ -1,4 +1,4 @@
-#![allow(unused_braces, unused_variables, dead_code)]
+#![allow(unused_braces, unused_variables, dead_code, todo_macro_calls)]
 #![allow(
     clippy::collapsible_else_if,
     clippy::unused_unit,

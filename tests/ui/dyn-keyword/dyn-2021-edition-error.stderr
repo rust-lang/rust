@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/dyn-2021-edition-error.rs:3:17
+  --> $DIR/dyn-2021-edition-error.rs:4:17
    |
 LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |                 ^^^^^^^^^
@@ -19,7 +19,7 @@ LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
    |                 +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/dyn-2021-edition-error.rs:3:35
+  --> $DIR/dyn-2021-edition-error.rs:4:35
    |
 LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |                                   ^^^^^^^^^
@@ -30,7 +30,7 @@ LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
    |                                   +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/dyn-2021-edition-error.rs:12:24
+  --> $DIR/dyn-2021-edition-error.rs:13:24
    |
 LL |     fn foo() -> *const SomeTrait;
    |                        ^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     fn foo() -> *const dyn SomeTrait;
    |                        +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/dyn-2021-edition-error.rs:6:14
+  --> $DIR/dyn-2021-edition-error.rs:7:14
    |
 LL |     let _x: &SomeTrait = todo!();
    |              ^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `*v`, which is behind a `&` reference
-  --> $DIR/issue-83309-ice-immut-in-for-loop.rs:11:9
+  --> $DIR/issue-83309-ice-immut-in-for-loop.rs:12:9
    |
 LL |     for v in Query.iter_mut() {
    |              ---------------- this iterator yields `&` references

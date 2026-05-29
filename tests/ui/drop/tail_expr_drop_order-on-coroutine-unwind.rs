@@ -1,4 +1,5 @@
 //@ edition: 2021
+#![allow(todo_macro_calls)]
 
 // Make sure we don't ICE when emitting the "lint" drop statement
 // used for tail_expr_drop_order.

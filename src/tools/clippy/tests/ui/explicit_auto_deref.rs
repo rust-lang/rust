@@ -12,7 +12,7 @@
     clippy::borrow_deref_ref,
     clippy::let_unit_value,
     clippy::needless_lifetimes
-)]
+, todo_macro_calls)]
 
 trait CallableStr {
     type T: Fn(&str);

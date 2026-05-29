@@ -4,7 +4,7 @@
     clippy::redundant_allocation,
     clippy::needless_pass_by_ref_mut,
     static_mut_refs
-)]
+, todo_macro_calls)]
 #![warn(clippy::must_use_candidate)]
 use std::rc::Rc;
 use std::sync::Arc;

@@ -1,6 +1,6 @@
 //@ edition:2024
 #![feature(pin_ergonomics)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 // This test ensures that at least and at most one of `drop` and `pin_drop`
 // are implemented for types that implement `Drop`.

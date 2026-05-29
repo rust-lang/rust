@@ -3,7 +3,7 @@
 //@[edition2021] edition:2021
 
 #![warn(clippy::manual_assert)]
-#![allow(dead_code, unused_doc_comments)]
+#![allow(dead_code, unused_doc_comments, todo_macro_calls)]
 #![allow(clippy::nonminimal_bool, clippy::uninlined_format_args, clippy::useless_vec)]
 
 macro_rules! one {

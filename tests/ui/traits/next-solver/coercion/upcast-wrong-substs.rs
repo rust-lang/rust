@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 trait Foo: Bar<i32> + Bar<u32> {}
 

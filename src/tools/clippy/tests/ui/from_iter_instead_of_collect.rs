@@ -1,5 +1,5 @@
 #![warn(clippy::from_iter_instead_of_collect)]
-#![allow(unused_imports)]
+#![allow(unused_imports, todo_macro_calls)]
 #![allow(clippy::useless_vec, clippy::manual_repeat_n)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};

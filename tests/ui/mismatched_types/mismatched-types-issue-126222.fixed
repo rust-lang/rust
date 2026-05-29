@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![allow(unreachable_code, dead_code)]
+#![allow(unreachable_code, dead_code, todo_macro_calls)]
 
 fn main() {
     fn mismatch_types1() -> i32 {

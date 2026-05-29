@@ -43,6 +43,7 @@ use crate::ops::ControlFlow;
 /// ```
 /// # #![feature(try_trait_v2)]
 /// # use std::ops::Try;
+/// # #[allow(todo_macro_calls)]
 /// fn simple_try_fold_1<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -57,6 +58,7 @@ use crate::ops::ControlFlow;
 /// ```
 /// # #![feature(try_trait_v2)]
 /// # use std::ops::{ControlFlow, Try};
+/// # #[allow(todo_macro_calls)]
 /// fn simple_try_fold_2<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,

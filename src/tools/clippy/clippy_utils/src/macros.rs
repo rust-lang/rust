@@ -13,6 +13,7 @@ use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
+use rustc_span::sym as rsym;
 use std::ops::ControlFlow;
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -30,7 +31,7 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::print_macro,
     sym::println_macro,
     sym::std_panic_macro,
-    sym::todo_macro,
+    rsym::todo_macro,
     sym::unimplemented_macro,
     sym::write_macro,
     sym::writeln_macro,

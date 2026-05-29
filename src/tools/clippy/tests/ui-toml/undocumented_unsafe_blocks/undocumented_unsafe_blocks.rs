@@ -9,7 +9,7 @@
     non_local_definitions,
     clippy::let_unit_value,
     clippy::missing_safety_doc
-)]
+, todo_macro_calls)]
 
 extern crate proc_macro_unsafe;
 

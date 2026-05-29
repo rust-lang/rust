@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 //@ check-pass
 // (should not pass, should be turned into a coherence-only test)

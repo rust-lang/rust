@@ -1,5 +1,5 @@
 #![warn(clippy::match_ref_pats)]
-#![allow(dead_code, unused_variables)]
+#![allow(dead_code, unused_variables, todo_macro_calls)]
 #![allow(
     clippy::enum_variant_names,
     clippy::equatable_if_let,

@@ -1,6 +1,7 @@
 // Test that rustc doesn't ICE as in #90024.
 //@ check-pass
 // edition=2018
+#![allow(todo_macro_calls)]
 
 #![warn(rust_2021_incompatible_closure_captures)]
 

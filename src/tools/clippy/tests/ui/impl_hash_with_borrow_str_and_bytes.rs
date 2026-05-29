@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::impl_hash_borrow_with_str_and_bytes)]
 
 use std::borrow::Borrow;

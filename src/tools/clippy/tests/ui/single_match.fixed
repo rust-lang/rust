@@ -7,7 +7,7 @@
     clippy::redundant_guards,
     clippy::redundant_pattern_matching,
     clippy::manual_unwrap_or_default
-)]
+, todo_macro_calls)]
 fn dummy() {}
 
 fn single_match() {

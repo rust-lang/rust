@@ -1,3 +1,5 @@
+#![allow(todo_macro_calls)]
+
 struct A<T>(std::sync::OnceLock<Self>);
 //~^ ERROR recursive type `A` has infinite size
 

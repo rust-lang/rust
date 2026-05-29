@@ -3,7 +3,7 @@
     clippy::redundant_closure,
     clippy::reversed_empty_ranges,
     clippy::identity_op
-)]
+, todo_macro_calls)]
 #![warn(clippy::map_with_unused_argument_over_ranges)]
 
 fn do_something() -> usize {

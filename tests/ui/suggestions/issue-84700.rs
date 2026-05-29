@@ -1,4 +1,5 @@
 // test for suggestion on fieldless enum variant
+#![allow(todo_macro_calls)]
 
 #[derive(PartialEq, Debug)]
 enum FarmAnimal {

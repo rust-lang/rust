@@ -1,5 +1,6 @@
 //@ compile-flags: -Z unstable-options
 //@ ignore-stage1
+#![allow(todo_macro_calls)]
 
 #![feature(rustc_private)]
 #![deny(rustc::bad_use_of_find_attr)]

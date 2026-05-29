@@ -3,7 +3,7 @@
     clippy::redundant_pattern_matching,
     clippy::unnecessary_lazy_evaluations,
     clippy::manual_filter
-)]
+, todo_macro_calls)]
 
 fn main() {
     // Should issue an error.

@@ -1,5 +1,5 @@
 error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:17:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
    |                                                           ^^^^^^^^^^^^---- help: remove the unnecessary generics
@@ -7,19 +7,19 @@ LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> 
    |                                                           expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:24:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:25:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
 
 error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:17:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
    |                                                           ^^^^^^^^^^^^ expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:24:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:25:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^ -
@@ -29,7 +29,7 @@ LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_, 
    |                                                                          +++
 
 error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:17:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
    |                                                           ^^^^^^^^^^^^---- help: remove the unnecessary generics
@@ -37,20 +37,20 @@ LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> 
    |                                                           expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:24:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:25:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:17:59
    |
 LL | async fn buy_lock(coroutine: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
    |                                                           ^^^^^^^^^^^^ expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:24:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:25:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^ -

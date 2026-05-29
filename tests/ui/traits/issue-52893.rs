@@ -1,6 +1,7 @@
 //@ check-fail
 //
 // regression test for issue 52893
+#![allow(todo_macro_calls)]
 trait At<Name> {
     type AtRes;
     fn at(self) -> Self::AtRes;

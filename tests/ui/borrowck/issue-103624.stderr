@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `self.b`, as `self` is a captured variable in an `Fn` closure
-  --> $DIR/issue-103624.rs:16:13
+  --> $DIR/issue-103624.rs:17:13
    |
 LL |     async fn foo(&self) {
    |                  -----
@@ -14,12 +14,12 @@ LL |             self.b;
    |             ^^^^^^ `self.b` is moved here
    |
 help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
-  --> $DIR/issue-103624.rs:7:36
+  --> $DIR/issue-103624.rs:8:36
    |
 LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {
    |                                    ^^^^^^^^^^^
 note: if `StructB` implemented `Clone`, you could clone the value
-  --> $DIR/issue-103624.rs:23:1
+  --> $DIR/issue-103624.rs:24:1
    |
 LL |             self.b;
    |             ------ you could clone this value
@@ -28,7 +28,7 @@ LL | struct StructB {}
    | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
 
 error[E0521]: borrowed data escapes outside of method
-  --> $DIR/issue-103624.rs:14:9
+  --> $DIR/issue-103624.rs:15:9
    |
 LL |       async fn foo(&self) {
    |                    -----

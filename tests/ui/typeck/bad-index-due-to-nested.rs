@@ -1,6 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
+#![allow(todo_macro_calls)]
 
 use std::hash::Hash;
 use std::marker::PhantomData;

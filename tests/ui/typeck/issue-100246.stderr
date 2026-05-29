@@ -1,5 +1,5 @@
 error[E0308]: `?` operator has incompatible types
-  --> $DIR/issue-100246.rs:28:24
+  --> $DIR/issue-100246.rs:29:24
    |
 LL |     let other: Other = downcast()?;
    |                        ^^^^^^^^^^^ expected `Other`, found `&_`
