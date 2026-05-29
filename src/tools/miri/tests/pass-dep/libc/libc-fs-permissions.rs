@@ -1,6 +1,7 @@
 //@ignore-target: windows # no libc
 //@ignore-host: windows # needs unix PermissionExt
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use std::ffi::{CStr, CString};
 use std::mem::MaybeUninit;

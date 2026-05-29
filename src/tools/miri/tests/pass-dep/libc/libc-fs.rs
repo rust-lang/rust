@@ -1,5 +1,6 @@
 //@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use std::ffi::{CStr, CString, OsString};
 use std::fs::{File, canonicalize, create_dir, remove_dir, remove_file};
@@ -396,17 +397,21 @@ fn test_posix_mkstemp() {
     drop(file);
     remove_file(path).unwrap();
 
-    let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
-    for t in invalid_templates {
-        let ptr = CString::new(t).unwrap().into_raw();
-        let fd = unsafe { libc::mkstemp(ptr) };
-        let _ = unsafe { CString::from_raw(ptr) };
-        // "On error, -1 is returned, and errno is set to
-        // indicate the error"
-        assert_eq!(fd, -1);
-        let e = std::io::Error::last_os_error();
-        assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
-        assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
+    // Test invalid inputs. We skip this on native macOS since macOS apparently does
+    // not bother to validate inputs.
+    if !cfg!(all(not(miri), target_vendor = "apple")) {
+        let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
+        for t in invalid_templates {
+            let ptr = CString::new(t).unwrap().into_raw();
+            let fd = unsafe { libc::mkstemp(ptr) };
+            let _ = unsafe { CString::from_raw(ptr) };
+            // "On error, -1 is returned, and errno is set to
+            // indicate the error"
+            assert_eq!(fd, -1, "mkstemp succeeded on invalid template {t:?}");
+            let e = std::io::Error::last_os_error();
+            assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
+            assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
+        }
     }
 
     env::set_current_dir(old_cwd).unwrap();
@@ -908,6 +913,11 @@ fn test_readv() {
 
 /// Test that vectored reads without any buffers return zero.
 fn test_readv_empty_bufs() {
+    if cfg!(all(not(miri), target_vendor = "apple")) {
+        // native macOS returns an error here :shrug:
+        return;
+    }
+
     let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
@@ -1036,6 +1046,11 @@ fn test_writev() {
 
 /// Test that vectored writes without any buffers return zero.
 fn test_writev_empty_bufs() {
+    if cfg!(all(not(miri), target_vendor = "apple")) {
+        // native macOS returns an error here :shrug:
+        return;
+    }
+
     let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
     let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };

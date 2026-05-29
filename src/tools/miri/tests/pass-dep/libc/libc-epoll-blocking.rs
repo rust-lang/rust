@@ -2,6 +2,7 @@
 // test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@revisions: edge_triggered level_triggered
+//@run-native
 
 use std::convert::TryInto;
 use std::thread;

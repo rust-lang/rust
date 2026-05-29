@@ -2,6 +2,7 @@
 //@ignore-target: solaris # Does not have flock
 //@ignore-target: android # Does not (always?) have flock
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 //@revisions: windows_host unix_host
 //@[unix_host] ignore-host: windows

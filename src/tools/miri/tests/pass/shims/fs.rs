@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
@@ -92,6 +93,11 @@ fn test_file() {
 }
 
 fn test_file_partial_reads_writes() {
+    if !cfg!(miri) {
+        // This test is not expected to work natively.
+        return;
+    }
+
     let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
     let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
 
