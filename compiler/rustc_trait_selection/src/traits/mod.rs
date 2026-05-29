@@ -294,6 +294,9 @@ fn do_normalize_predicates<'tcx>(
     // the fact that we don't support placeholder assumptions right now and is necessary
     // for `compare_method_predicate_entailment`. We should remove this once we
     // have proper support for implied bounds on binders.
+    //
+    // This is required by trait-system-refactor-initiative#166. The new solver encounters
+    // this more frequently as we entirely ignore outlives predicates with the old solver.
     let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
     match infcx.fully_resolve(predicates) {
         Ok(predicates) => Ok(predicates),
