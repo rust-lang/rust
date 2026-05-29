@@ -1530,7 +1530,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
                     LinkerFlavor::Llbc => "llvm-bitcode-linker",
-                    LinkerFlavor::Ptx => "rust-ptx-linker",
                 }),
                 flavor,
             )),
@@ -1571,7 +1570,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     let linker_flavor = match sess.opts.cg.linker_flavor {
         // The linker flavors that are non-target specific can be directly translated to LinkerFlavor
         Some(LinkerFlavorCli::Llbc) => Some(LinkerFlavor::Llbc),
-        Some(LinkerFlavorCli::Ptx) => Some(LinkerFlavor::Ptx),
         // The linker flavors that corresponds to targets needs logic that keeps the base LinkerFlavor
         linker_flavor => {
             linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor))
@@ -2764,8 +2762,6 @@ fn add_order_independent_options(
         if crate_info.target_features.len() > 0 {
             cmd.link_arg(&format!("--target-feature={}", &crate_info.target_features.join(",")));
         }
-    } else if flavor == LinkerFlavor::Ptx {
-        cmd.link_args(&["--fallback-arch", &crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {
         cmd.link_args(&["--cpu", &crate_info.target_cpu]);
         if let Some(feat) = [sess.opts.cg.target_feature.as_str(), &sess.target.options.features]
