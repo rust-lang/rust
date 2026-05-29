@@ -2232,7 +2232,7 @@ pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discrimina
 
 /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
 /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
-/// Returns `1` if unwinding occurred and `catch_fn` was called; returns `0` otherwise.
+/// Returns `true` if unwinding occurred and `catch_fn` was called; returns `false` otherwise.
 ///
 /// `catch_fn` must not unwind.
 ///
@@ -2249,11 +2249,11 @@ pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discrimina
 /// version of this intrinsic, `std::panic::catch_unwind`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn catch_unwind(
-    _try_fn: fn(*mut u8),
-    _data: *mut u8,
-    _catch_fn: fn(*mut u8, *mut u8),
-) -> i32;
+pub unsafe fn catch_unwind<Data: ptr::Thin>(
+    _try_fn: unsafe fn(*mut Data),
+    _data: *mut Data,
+    _catch_fn: unsafe fn(*mut Data, *mut u8),
+) -> bool;
 
 /// Emits a `nontemporal` store, which gives a hint to the CPU that the data should not be held
 /// in cache. Except for performance, this is fully equivalent to `ptr.write(val)`.

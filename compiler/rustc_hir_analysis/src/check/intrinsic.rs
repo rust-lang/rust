@@ -637,16 +637,18 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::catch_unwind => {
+            let mut_data = Ty::new_mut_ptr(tcx, param(0));
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
             let try_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8], tcx.types.unit));
-            let catch_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8, mut_u8], tcx.types.unit));
+                ty::Binder::dummy(tcx.mk_fn_sig_unsafe_rust_abi([mut_data], tcx.types.unit));
+            let catch_fn_ty = ty::Binder::dummy(
+                tcx.mk_fn_sig_unsafe_rust_abi([mut_data, mut_u8], tcx.types.unit),
+            );
             (
+                1,
                 0,
-                0,
-                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_u8, Ty::new_fn_ptr(tcx, catch_fn_ty)],
-                tcx.types.i32,
+                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_data, Ty::new_fn_ptr(tcx, catch_fn_ty)],
+                tcx.types.bool,
             )
         }
 

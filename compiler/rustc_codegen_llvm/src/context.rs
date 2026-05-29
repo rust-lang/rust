@@ -960,11 +960,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
         matches!(
             name,
-            sym::autodiff
-                | sym::catch_unwind
-                | sym::volatile_load
-                | sym::unaligned_volatile_load
-                | sym::black_box
+            sym::autodiff | sym::volatile_load | sym::unaligned_volatile_load | sym::black_box
         )
     }
 }

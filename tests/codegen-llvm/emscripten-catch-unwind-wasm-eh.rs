@@ -28,11 +28,11 @@ const fn size_of<T>() -> usize {
     loop {}
 }
 #[rustc_intrinsic]
-unsafe fn catch_unwind(
-    try_fn: fn(_: *mut u8),
-    data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8),
-) -> i32;
+unsafe fn catch_unwind<Data>(
+    try_fn: unsafe fn(_: *mut Data),
+    data: *mut Data,
+    catch_fn: unsafe fn(_: *mut Data, _: *mut u8),
+) -> bool;
 
 // CHECK-LABEL: @ptr_size
 #[no_mangle]
@@ -44,10 +44,10 @@ pub fn ptr_size() -> usize {
 // CHECK-LABEL: @test_catch_unwind
 #[no_mangle]
 pub unsafe fn test_catch_unwind(
-    try_fn: fn(_: *mut u8),
+    try_fn: unsafe fn(_: *mut u8),
     data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8),
-) -> i32 {
+    catch_fn: unsafe fn(_: *mut u8, _: *mut u8),
+) -> bool {
     // CHECK: start:
     // CHECK: invoke void %try_fn(ptr %data)
     // CHECK:         to label %__rust_try.exit unwind label %catchswitch.i
@@ -62,8 +62,8 @@ pub unsafe fn test_catch_unwind(
     // CHECK:   catchret from %catchpad2.i to label %__rust_try.exit
 
     // CHECK: __rust_try.exit:                                  ; preds = %start, %catchpad.i
-    // CHECK:   %common.ret.op.i = phi i32 [ 0, %start ], [ 1, %catchpad.i ]
-    // CHECK:   ret i32 %common.ret.op.i
+    // CHECK:   %common.ret.op.i = phi i1 [ false, %start ], [ true, %catchpad.i ]
+    // CHECK:   ret i1 %common.ret.op.i
 
     catch_unwind(try_fn, data, catch_fn)
 }
