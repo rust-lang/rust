@@ -192,8 +192,9 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
-    let env =
-        ty::EarlyBinder::bind(tcx.param_env(impl_def_id)).instantiate_identity().skip_norm_wip();
+    let env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl_def_id))
+        .instantiate_identity()
+        .skip_norm_wip();
     let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
     let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
     for field in tcx.adt_def(adt_def_id).all_fields() {
@@ -281,7 +282,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
+    let adt_env = ty::EarlyBinder::bind(tcx, tcx.param_env(adt_def_id))
         .instantiate(tcx, adt_to_impl_args)
         .skip_norm_wip();
 

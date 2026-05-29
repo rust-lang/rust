@@ -745,7 +745,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     assert_only_contains_predicates_from(filter, implied_bounds, tcx.types.self_param);
 
-    ty::EarlyBinder::bind(implied_bounds)
+    ty::EarlyBinder::bind_iter(implied_bounds)
 }
 
 // Make sure when elaborating supertraits, probing for associated types, etc.,
@@ -919,7 +919,7 @@ pub(super) fn type_param_predicates<'tcx>(
         let icx = ItemCtxt::new(tcx, parent);
         icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_ident)
     } else {
-        ty::EarlyBinder::bind(&[] as &[_])
+        ty::EarlyBinder::bind_iter(&[] as &[_])
     };
     let mut extend = None;
 
@@ -967,7 +967,7 @@ pub(super) fn type_param_predicates<'tcx>(
         self_ty,
     );
 
-    ty::EarlyBinder::bind(bounds)
+    ty::EarlyBinder::bind_iter(bounds)
 }
 
 impl<'tcx> ItemCtxt<'tcx> {

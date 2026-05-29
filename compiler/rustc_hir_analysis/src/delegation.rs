@@ -529,7 +529,9 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
 
                 let new_pred = pred.0.fold_with(&mut self.folder);
                 self.preds.push((
-                    EarlyBinder::bind(new_pred).instantiate(self.tcx, args).skip_norm_wip(),
+                    EarlyBinder::bind(self.tcx, new_pred)
+                        .instantiate(self.tcx, args)
+                        .skip_norm_wip(),
                     pred.1,
                 ));
             }
@@ -629,7 +631,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
-    let caller_sig = EarlyBinder::bind(caller_sig.skip_binder().fold_with(&mut folder));
+    let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
     let sig_iter = sig.inputs().iter().cloned().chain(std::iter::once(sig.output()));

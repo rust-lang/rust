@@ -419,9 +419,10 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = callsite
-                    .callee
-                    .instantiate_mir(tcx, ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty));
+                let ty = callsite.callee.instantiate_mir(
+                    tcx,
+                    ty::EarlyBinder::bind(tcx, place.ty(callee_body, tcx).ty),
+                );
                 if ty.needs_drop(tcx, self.typing_env())
                     && let UnwindAction::Cleanup(unwind) = unwind
                 {
@@ -637,7 +638,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
         tcx,
         inliner.typing_env(),
-        ty::EarlyBinder::bind(callee_body.clone()),
+        ty::EarlyBinder::bind(tcx, callee_body.clone()),
     ) else {
         debug!("failed to normalize callee body");
         return Err("implementation limitation -- could not normalize callee body");

@@ -117,7 +117,7 @@ fn make_mir_scope<'ll, 'tcx>(
             let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
                 cx.typing_env(),
-                ty::EarlyBinder::bind(callee),
+                ty::EarlyBinder::bind(cx.tcx, callee),
             );
             debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
                 let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());

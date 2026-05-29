@@ -116,7 +116,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip().args,
                     );
                     tcx.arena.alloc_from_iter(
-                        ty::EarlyBinder::bind(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
+                        ty::EarlyBinder::bind_iter(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
                             .iter_instantiated_copied(tcx, args)
                             .map(Unnormalized::skip_norm_wip)
                             .chain(tcx.assumed_wf_types(impl_def_id).into_iter().copied()),

@@ -286,7 +286,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj_ty))
     {
         item_ty
-            == EarlyBinder::bind(search_ty)
+            == EarlyBinder::bind(cx.tcx, search_ty)
                 .instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
                 .skip_norm_wip()
     } else {

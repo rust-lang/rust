@@ -1085,7 +1085,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     };
-    ty::EarlyBinder::bind(output)
+    ty::EarlyBinder::bind(tcx, output)
 }
 
 fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
@@ -1405,7 +1405,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
     let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
 
     ty::ImplTraitHeader {
-        trait_ref: ty::EarlyBinder::bind(trait_ref),
+        trait_ref: ty::EarlyBinder::bind(tcx, trait_ref),
         safety: of_trait.safety,
         polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
         constness: impl_.constness,
@@ -1625,7 +1625,7 @@ fn const_param_default<'tcx>(
         default_ct,
         tcx.type_of(def_id).instantiate(tcx, identity_args).skip_norm_wip(),
     );
-    ty::EarlyBinder::bind(ct)
+    ty::EarlyBinder::bind(tcx, ct)
 }
 
 fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKind {
@@ -1733,7 +1733,7 @@ fn const_of_item<'tcx>(
                 tcx.def_span(def_id),
                 "cannot call const_of_item on a non-type_const",
             );
-            return ty::EarlyBinder::bind(Const::new_error(tcx, e));
+            return ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e));
         }
     };
     let icx = ItemCtxt::new(tcx, def_id);
@@ -1745,8 +1745,8 @@ fn const_of_item<'tcx>(
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {
-        ty::EarlyBinder::bind(Const::new_error(tcx, e))
+        ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e))
     } else {
-        ty::EarlyBinder::bind(ct)
+        ty::EarlyBinder::bind(tcx, ct)
     }
 }

@@ -924,7 +924,9 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args).skip_norm_wip(),
+                ty::EarlyBinder::bind(tcx, *pred)
+                    .instantiate(tcx, impl_trait_ref.args)
+                    .skip_norm_wip(),
             )
         })
     });

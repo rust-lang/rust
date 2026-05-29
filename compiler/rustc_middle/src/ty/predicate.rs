@@ -419,7 +419,7 @@ impl<'tcx> Clause<'tcx> {
         let shifted_pred =
             tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
         // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(shifted_pred)
+        let new = EarlyBinder::bind(tcx, shifted_pred)
             .instantiate(tcx, trait_ref.skip_binder().args)
             .skip_norm_wip();
         // 3) ['x] + ['b] -> ['x, 'b]

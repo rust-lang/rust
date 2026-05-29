@@ -161,7 +161,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
                     layout.field_tys[*field].ty
                 } else {
-                    ty::EarlyBinder::bind(layout.field_tys[*field].ty)
+                    ty::EarlyBinder::bind(tcx, layout.field_tys[*field].ty)
                         .instantiate(tcx, self.args)
                         .skip_norm_wip()
                 }

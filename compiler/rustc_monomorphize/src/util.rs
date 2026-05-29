@@ -30,12 +30,12 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
         let before_feature_tys = tcx.instantiate_and_normalize_erasing_regions(
             closure_instance.args,
             typing_env,
-            ty::EarlyBinder::bind(before_feature_tys),
+            ty::EarlyBinder::bind(tcx, before_feature_tys),
         );
         let after_feature_tys = tcx.instantiate_and_normalize_erasing_regions(
             closure_instance.args,
             typing_env,
-            ty::EarlyBinder::bind(after_feature_tys),
+            ty::EarlyBinder::bind(tcx, after_feature_tys),
         );
 
         let new_size = tcx

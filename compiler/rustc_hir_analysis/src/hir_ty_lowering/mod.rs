@@ -2315,7 +2315,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants with lifetimes in their type are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
             // We must error if the instantiated type has any inference variables as we will
@@ -2326,7 +2329,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants with inferred types are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
             // We error when the type contains unsubstituted generics since we do not currently
@@ -2336,11 +2342,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     const_arg.span,
                     "anonymous constants referencing generics are not yet supported",
                 );
-                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                tcx.feed_anon_const_type(
+                    anon.def_id,
+                    ty::EarlyBinder::bind(tcx, Ty::new_error(tcx, e)),
+                );
                 return ty::Const::new_error(tcx, e);
             }
 
-            tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(ty));
+            tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(tcx, ty));
         }
 
         let hir_id = const_arg.hir_id;
