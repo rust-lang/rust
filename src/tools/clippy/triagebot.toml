@@ -94,13 +94,12 @@ users_on_vacation = [
     "Alexendoo",
     "y21",
     "blyxyas",
-    "dswij",
 ]
 
 [assign.owners]
 "/.github" = ["@flip1995"]
 "/triagebot.toml" = ["@flip1995"]
-"/book" = ["@flip1995"]
+"/book" = ["@ada4a", "@samueltardieu"]
 "*" = [
     "@Manishearth",
     "@llogiq",
@@ -109,4 +108,5 @@ users_on_vacation = [
     "@Jarcho",
     "@y21",
     "@samueltardieu",
+    "@ada4a",
 ]

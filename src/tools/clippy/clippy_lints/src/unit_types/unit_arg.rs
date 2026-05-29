@@ -159,7 +159,7 @@ fn lint_unit_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, args_to_
 fn is_expr_default_nested<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     is_expr_default(cx, expr)
         || matches!(expr.kind, ExprKind::Block(block, _)
-        if block.expr.is_some() && is_expr_default_nested(cx, block.expr.unwrap()))
+        if block.expr.is_some_and(|e| is_expr_default_nested(cx, e)))
 }
 
 enum MaybeTypeUncertain<'tcx> {
