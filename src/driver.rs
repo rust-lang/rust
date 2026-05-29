@@ -35,7 +35,7 @@ use std::process::ExitCode;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
-fn arg_value<'a>(args: &'a [String], find_arg: &str, pred: impl Fn(&str) -> bool) -> Option<&'a str> {
+fn arg_value(args: &[String], find_arg: &str, pred: impl Fn(&str) -> bool) -> bool {
     let mut args = args.iter().map(String::as_str);
     while let Some(arg) = args.next() {
         let mut arg = arg.splitn(2, '=');
@@ -44,11 +44,11 @@ fn arg_value<'a>(args: &'a [String], find_arg: &str, pred: impl Fn(&str) -> bool
         }
 
         match arg.next().or_else(|| args.next()) {
-            Some(v) if pred(v) => return Some(v),
+            Some(v) if pred(v) => return true,
             _ => {},
         }
     }
-    None
+    false
 }
 
 /// Returns true if this is `arg` or `arg=...`, otherwise returns false.
@@ -296,8 +296,8 @@ fn main() -> ExitCode {
             .collect::<Vec<String>>();
 
         // If no Clippy lints will be run we do not need to run Clippy
-        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
-            && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow")
+            && !arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::"));
 
         // If `--no-deps` is enabled only lint the primary package
         let relevant_package = !no_deps || env::var("CARGO_PRIMARY_PACKAGE").is_ok();
@@ -305,7 +305,7 @@ fn main() -> ExitCode {
         // Do not run Clippy for Cargo's info queries so that invalid CLIPPY_ARGS are not cached
         // https://github.com/rust-lang/cargo/issues/14385
         let info_query = args.iter().any(|arg| arg == "-vV")
-            || arg_value(&orig_args, "--print", |val| val != "crate-root-lint-levels").is_some();
+            || arg_value(&orig_args, "--print", |val| val != "crate-root-lint-levels");
 
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
