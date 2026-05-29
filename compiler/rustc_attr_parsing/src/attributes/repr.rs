@@ -7,12 +7,13 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 /// Parse #[repr(...)] forms.
 ///
-/// Valid repr contents: any of the primitive integral type names (see
-/// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
-/// the same discriminant size that the corresponding C enum would or C
-/// structure layout, `packed` to remove padding, and `transparent` to delegate representation
-/// concerns to the only non-ZST field.
-// FIXME(jdonszelmann): is a vec the right representation here even? isn't it just a struct?
+/// Valid repr contents:
+/// * any of the primitive integral type names to specify enum discriminant type
+/// * `Rust`, to use the default `Rust` layout of the type
+/// * `C`, to use the same layout for the type that C would use
+/// * `align(...)`, to change the alignment requirements of the type
+/// * `packed`, to remove padding
+/// * `transparent`, to delegate representation concerns to the only non-ZST field.
 pub(crate) struct ReprParser;
 
 impl CombineAttributeParser for ReprParser {
@@ -20,7 +21,6 @@ impl CombineAttributeParser for ReprParser {
     const PATH: &[Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::Repr { reprs: items, first_span };
-    // FIXME(jdonszelmann): never used
     const TEMPLATE: AttributeTemplate = template!(
         List: &["C", "Rust", "transparent", "align(...)", "packed(...)", "<integer type>"],
         "https://doc.rust-lang.org/reference/type-layout.html#representations"
@@ -30,29 +30,24 @@ impl CombineAttributeParser for ReprParser {
         cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        let mut reprs = Vec::new();
-
         let Some(list) = cx.expect_list(args, cx.attr_span) else {
-            return reprs;
+            return vec![];
         };
 
         if list.is_empty() {
             let attr_span = cx.attr_span;
             cx.adcx().warn_empty_attribute(attr_span);
-            return reprs;
+            return vec![];
         }
 
+        let mut reprs = Vec::new();
         for param in list.mixed() {
-            if let Some(_) = param.as_lit() {
-                cx.emit_err(session_diagnostics::ReprIdent { span: cx.attr_span });
+            let Some(item) = param.meta_item() else {
+                cx.adcx().expected_identifier(param.span());
                 continue;
-            }
-
-            reprs.extend(
-                param.meta_item().and_then(|mi| parse_repr(cx, &mi)).map(|r| (r, param.span())),
-            );
+            };
+            reprs.extend(parse_repr(cx, &item).map(|r| (r, param.span())));
         }
-
         reprs
     }
 

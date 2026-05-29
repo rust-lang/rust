@@ -485,13 +485,6 @@ pub(crate) struct InvalidAlignmentValue {
 }
 
 #[derive(Diagnostic)]
-#[diag("meta item in `repr` must be an identifier", code = E0565)]
-pub(crate) struct ReprIdent {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("unrecognized representation hint", code = E0552)]
 #[help(
     "valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`"
