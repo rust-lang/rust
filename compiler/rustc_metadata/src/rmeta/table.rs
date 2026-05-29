@@ -504,6 +504,7 @@ impl<
     T: FixedSizeEncoding<ByteArray = [u8; N]>,
 > TableBuilder<H, I, T>
 {
+    #[inline(always)]
     pub(super) fn set_hashed<'a, 'tcx, V>(
         &mut self,
         i: I,
@@ -523,6 +524,7 @@ where
     I: TableIdx + StableHash,
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
+    #[inline(always)]
     pub(super) fn set_some_hashed<'a, 'tcx, V>(
         &mut self,
         i: I,

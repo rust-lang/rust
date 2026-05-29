@@ -350,6 +350,7 @@ impl TableIdx for OnDiskSourceFileIdx {
     type Decoded = Self;
     type Encoded = Self;
 
+    #[inline(always)]
     fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
         self
     }
@@ -372,6 +373,7 @@ impl TableIdx for ProcMacroQuotedSpansIdx {
     type Decoded = Self;
     type Encoded = Self;
 
+    #[inline(always)]
     fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
         self
     }

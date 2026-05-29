@@ -32,10 +32,12 @@ use crate::rmeta::{
 pub(crate) struct PublicApiHasher(StableHasher);
 
 impl PublicApiHasher {
+    #[inline(always)]
     pub(crate) fn finish<'a>(self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then(|| self.0.finish())
     }
 
+    #[inline(always)]
     pub(crate) fn digest<'a, T: StableHash>(
         &mut self,
         value: T,
@@ -101,6 +103,7 @@ impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
 }
 
 impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
+    #[inline(always)]
     fn digest<'a, 'tcx, T, V>(
         &mut self,
         index: I,
@@ -127,6 +130,7 @@ impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
         }
     }
 
+    #[inline(always)]
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then_some(self.hash)
     }
@@ -141,6 +145,7 @@ impl<I> Default for RDRHashNone<I> {
 }
 
 impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
+    #[inline(always)]
     fn digest<'a, 'tcx, T, V>(
         &mut self,
         index: I,
@@ -155,6 +160,7 @@ impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
         (index.to_encoded(encoder), T::encode_from(encoder, value))
     }
 
+    #[inline(always)]
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint> {
         hcx.enabled().then_some(Fingerprint::ZERO)
     }

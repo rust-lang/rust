@@ -211,6 +211,7 @@ macro_rules! trivial_encode_from {
                     value
                 }
 
+                #[inline(always)]
                 fn encode_from_hashed<'a, 'h>(
                     _encoder: &mut EncodeContext<'a, 'tcx>,
                     value: $ty,
@@ -242,6 +243,7 @@ macro_rules! lazy_encode_from {
                     encoder.lazy(value)
                 }
 
+                #[inline(always)]
                 fn encode_from_hashed<'a, 'h>(
                     encoder: &mut EncodeContext<'a, 'tcx>,
                     value: B,
@@ -272,6 +274,7 @@ macro_rules! lazy_encode_from_unhashed {
                     encoder.lazy(value)
                 }
 
+                #[inline(always)]
                 fn encode_from_hashed<'a, 'h>(
                     _encoder: &mut EncodeContext<'a, 'tcx>,
                     _value: B,
@@ -290,6 +293,7 @@ impl<'tcx> EncodeFrom<'tcx, DefId> for RemappedRawDefId {
         RemappedRawDefId::create(value, &encoder.local_defs_remapping)
     }
 
+    #[inline(always)]
     fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: DefId,
@@ -381,6 +385,7 @@ where
         value.map(|v| encoder.lazy(v))
     }
 
+    #[inline(always)]
     fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: Option<B>,
@@ -403,6 +408,7 @@ where
         encoder.lazy_array(values)
     }
 
+    #[inline(always)]
     fn encode_from_hashed<'a, 'h>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         values: I,
