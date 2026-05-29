@@ -4529,28 +4529,21 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// #![deny(ambiguous_glob_imports)]
-    /// pub fn foo() -> u32 {
-    ///     use sub::*;
-    ///     C
-    /// }
+    /// ```rust,ignore (needs extern crate)
+    /// // library crate `my_library`
+    /// mod mod1 { pub const C: u32 = 1; }
+    /// mod mod2 { pub const C: u32 = 2; }
+    /// pub use mod1::*;
+    /// pub use mod2::*;
     ///
-    /// mod sub {
-    ///     mod mod1 { pub const C: u32 = 1; }
-    ///     mod mod2 { pub const C: u32 = 2; }
-    ///
-    ///     pub use mod1::*;
-    ///     pub use mod2::*;
-    /// }
+    /// // another crate using `my_library`
+    /// let c = my_library::C; // `C` is ambiguous
     /// ```
-    ///
-    /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust compile it successfully because it
-    /// had lost the ambiguity error when resolve `use sub::mod2::*`.
+    /// Previous versions of Rust compile it successfully because
+    /// ambiguous glob imports weren't preserved correctly over crate boundaries.
     ///
     /// This is a [future-incompatible] lint to transition this to a
     /// hard error in the future.
