@@ -141,6 +141,7 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     }
 
     // `RangeTo` `for` loop - don't trigger lint
+    #[expect(clippy::for_unbounded_range)]
     for i in 0.. {
         dst[i] = src[i];
     }

@@ -129,7 +129,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..0].copy_from_slice(&src[..0]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:162:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:163:5
    |
 LL | /     for i in 0..4 {
 LL | |
@@ -139,7 +139,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[..4]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:169:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:170:5
    |
 LL | /     for i in 0..5 {
 LL | |
@@ -149,7 +149,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..5].copy_from_slice(&src);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:176:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:177:5
    |
 LL | /     for i in 0..5 {
 LL | |
@@ -159,7 +159,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:224:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:225:5
    |
 LL | /     for i in 0..5 {
 LL | |
@@ -169,7 +169,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[0]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:231:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:232:5
    |
 LL | /     for i in 0..5 {
 LL | |
@@ -179,7 +179,7 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[0][1]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:240:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:241:5
    |
 LL | /     for i in 0..src.len() {
 LL | |
