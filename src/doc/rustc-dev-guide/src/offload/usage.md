@@ -89,6 +89,7 @@ In the final step, you can now run your binary
 
 ```
 ./main
+all checks passed!
 ```
 
 To receive more information about the memory transfer, you can enable info printing with
