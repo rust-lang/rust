@@ -2518,7 +2518,14 @@ fn maybe_install_llvm(
                 let major = llvm::get_llvm_version_major(builder, llvm_config_path);
                 let versioned_name = match &builder.config.llvm_version_suffix {
                     Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.dylib"),
-                    None => format!("libLLVM-{major}.dylib"),
+                    None => {
+                        // same logic as ./llvm.rs
+                        if builder.config.channel == "dev" {
+                            format!("libLLVM-{major}-rust-dev.dylib")
+                        } else {
+                            format!("libLLVM-rust-{}-{}", builder.version, builder.config.channel)
+                        }
+                    }
                 };
                 t!(builder.symlink_file("libLLVM.dylib", dst_libdir.join(versioned_name)));
             }
