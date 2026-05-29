@@ -60,6 +60,7 @@ nvptx
 pointee
 powitf
 reassoc
+retag
 riscv
 rlib
 roundevenf
