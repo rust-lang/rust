@@ -454,6 +454,8 @@ declare_features! (
     (unstable, cfg_version, "1.45.0", Some(64796)),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653)),
+    /// The `clflushopt` target feature on x86.
+    (unstable, clflushopt_target_feature, "CURRENT_RUSTC_VERSION", Some(157096)),
     /// Allows `for<...>` on closures and coroutines.
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
