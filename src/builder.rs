@@ -418,8 +418,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 self.location,
                 self.cx.context.new_call_through_ptr(self.location, func_ptr, &args),
             );
-            // Return dummy value when not having return value.
-            self.context.new_rvalue_zero(self.isize_type)
+            // Return dummy value when not having return value, unless the intrinsic adapter
+            // needs to synthesize a non-void LLVM-level result from out-parameters.
+            llvm::adjust_intrinsic_return_value(
+                self,
+                self.context.new_rvalue_zero(self.isize_type),
+                &func_name,
+                &args,
+                args_adjusted,
+                orig_args,
+            )
         }
     }
 
