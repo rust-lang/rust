@@ -430,8 +430,8 @@ fn write_scope_tree(
     // Coroutine debuginfo.
     if let Some(layout) = body.coroutine_layout_raw() {
         for (field, name) in layout.field_names.iter_enumerated() {
+            let source_info = layout.field_tys[field].source_info;
             if let Some(name) = name
-                && let source_info = layout.field_tys[field].source_info
                 && source_info.scope == parent
             {
                 let indented_debug_info =

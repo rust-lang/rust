@@ -1183,9 +1183,8 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
         return false;
     }
 
-    // Unwinds can only start at certain terminators.
+    // If we don't find an unwinding terminator, the function cannot unwind.
     body.basic_blocks.iter().any(|block| block.terminator().unwind().is_some())
-    // If we didn't find an unwinding terminator, the function cannot unwind.
 }
 
 // Poison the coroutine when it unwinds
