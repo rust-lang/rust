@@ -876,14 +876,14 @@ pub enum TerminatorKind<'tcx> {
     /// to the return place provided by the caller function, and execution continues in this caller
     /// function.
     ///
-    /// When the coroutine is polled, execution of this function continues at the `resume`
-    /// basic block, the `resume_arg` place is evaluated and the second argument to `poll` is
-    /// written to it.
+    /// When the coroutine is resumed/polled, execution of this function continues at the `resume`
+    /// basic block, the `resume_arg` place is evaluated and the second argument to `resume/poll`
+    /// is written to it.
     ///
     /// If the coroutine is dropped before then, execution of this function continues at the `drop`
-    /// basic block and the `resume_arg` place is evaluated. For async drop, the second argument to
-    /// the destructor `poll` method is written to `resume_arg`. For synchronous drops,
-    /// uninitialized bytes are written to `resume_arg`.
+    /// basic block and the `resume_arg` place expression is evaluated. For async drop, the second
+    /// argument to the destructor `resume/poll` method is written to `resume_arg`. For synchronous
+    /// drops, uninitialized bytes are written to `resume_arg`.
     ///
     /// Note that coroutines can be (unstably) cloned under certain conditions, which means that
     /// this terminator can **return multiple times**! MIR optimizations that reorder code into
