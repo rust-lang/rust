@@ -2054,6 +2054,21 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
 ///
+/// # Load splitting
+///
+/// Exactly which hardware loads are performed by this function is, in general, highly target-dependent.
+///
+/// For a simple scalar, such as when `T` is a thin pointer, this will typically be one load assuming
+/// your target supports a load of exactly that size and alignment.
+///
+/// For anything else, it will be split into multiple loads in some unspecified way.
+/// This can happen even for scalars: notably, on many targets loading a `u128` will still need to be split,
+/// despite being "one" scalar.  On many targets loading anything larger than a pointer will need to be split.
+/// On all current targets a load larger than 64 bytes will need to be split.
+/// Any load whose size is not a power of two will also almost certainly need to be split.
+///
+/// There is no stability guarantee on how that splitting happens.  It may change at any point.
+///
 /// # Safety
 ///
 /// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of whether `T` is
@@ -2146,6 +2161,21 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
+///
+/// # Store splitting
+///
+/// Exactly which hardware stores are performed by this function is, in general, highly target-dependent.
+///
+/// For a simple scalar, such as when `T` is a thin pointer, this will typically be one store assuming
+/// your target supports a store of exactly that size and alignment.
+///
+/// For anything else, it will be split into multiple stores in some unspecified way.
+/// This can happen even for scalars: notably, on many targets storing a `u128` will still need to be split,
+/// despite being "one" scalar.  On many targets storing anything larger than a pointer will need to be split.
+/// On all current targets a store larger than 64 bytes will need to be split.
+/// Any store whose size is not a power of two will also almost certainly need to be split.
+///
+/// There is no stability guarantee on how that splitting happens.  It may change at any point.
 ///
 /// # Safety
 ///
