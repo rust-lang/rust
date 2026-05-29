@@ -992,6 +992,12 @@ impl Step for StdarchVerify {
     }
 }
 
+/// Runs stdarch's intrinsic-test binary crate to verify that Rust's `core::arch`
+/// SIMD intrinsics produce the same results as their C counterparts.
+///
+/// First runs the `intrinsic-test` binary, which generates C wrapper programs
+/// and a Rust Cargo workspace. Then runs `cargo test` on that workspace
+/// which compiles both versions and compares their outputs on random inputs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntrinsicTest {
     host: TargetSelection,
@@ -1005,12 +1011,12 @@ impl Step for IntrinsicTest {
         run.path("library/stdarch/crates/intrinsic-test").path("library/stdarch/crates/core_arch")
     }
 
-    fn is_default_step(_builder: &Builder<'_>) -> bool {
-        true
-    }
-
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(IntrinsicTest { host: run.target });
+        let target = run.target;
+        if !target.contains("aarch64-unknown-linux") && !target.contains("x86_64-unknown-linux") {
+            return;
+        }
+        run.builder.ensure(IntrinsicTest { host: target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1037,7 +1043,7 @@ impl Step for IntrinsicTest {
                 None,
             )
         } else {
-            return;
+            panic!("intrinsic-test only supports aarch64/x86_64 Linux, got {host}");
         };
 
         let out_dir = builder.out.join(host).join("intrinsic-test");
@@ -1045,8 +1051,14 @@ impl Step for IntrinsicTest {
 
         let crates_link = out_dir.join("crates");
         if !crates_link.exists() {
-            std::os::unix::fs::symlink(builder.src.join("library/stdarch/crates"), &crates_link)
-                .unwrap();
+            t!(
+                helpers::symlink_dir(
+                    &builder.config,
+                    &builder.src.join("library/stdarch/crates"),
+                    &crates_link
+                ),
+                format!("failed to symlink stdarch crates into {}", crates_link.display())
+            );
         }
 
         let mut cmd = builder.tool_cmd(Tool::IntrinsicTest);
@@ -1055,7 +1067,7 @@ impl Step for IntrinsicTest {
         cmd.arg("--target").arg(&*host.triple);
         cmd.arg("--skip").arg(&skip_file);
         cmd.arg("--sample-percentage").arg("10");
-        cmd.env("CC", "clang");
+        cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
         cmd.run(builder);
 
@@ -1066,7 +1078,7 @@ impl Step for IntrinsicTest {
         cargo.arg("--manifest-path").arg(&manifest);
         cargo.arg("--target").arg(&*host.triple);
         cargo.arg("--profile").arg("release");
-        cargo.env("CC", "clang");
+        cargo.env("CC", builder.cc(host));
         cargo.env("CFLAGS", cflags);
         cargo.env("RUSTC", &builder.initial_rustc);
         cargo.env("RUSTC_BOOTSTRAP", "1");
