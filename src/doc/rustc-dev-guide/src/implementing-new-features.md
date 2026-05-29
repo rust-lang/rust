@@ -1,4 +1,3 @@
-<!-- date-check: Jul 2025 -->
 
 # Implementing new language features
 
