@@ -1,8 +1,17 @@
-error: expected one of `(`, `,`, `::`, or `=`, found `-`
-  --> $DIR/attr-incomplete.rs:1:13
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/attr-incomplete.rs:1:1
    |
 LL | #[cfg(target-os = "windows")]
-   |             ^ expected one of `(`, `,`, `::`, or `=`
+   | ^^^^^^---------------------^^
+   |       |
+   |       expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(target-os = "windows")]
+LL + #[cfg(predicate)]
+   |
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `%`
   --> $DIR/attr-incomplete.rs:5:19
@@ -10,11 +19,20 @@ error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `%`
 LL | #[cfg(target_os = %)]
    |                   ^
 
-error: expected one of `(`, `,`, `::`, or `=`, found `?`
-  --> $DIR/attr-incomplete.rs:9:16
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/attr-incomplete.rs:9:1
    |
 LL | #[cfg(target_os?)]
-   |                ^ expected one of `(`, `,`, `::`, or `=`
+   | ^^^^^^----------^^
+   |       |
+   |       expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(target_os?)]
+LL + #[cfg(predicate)]
+   |
 
 error: wrong meta list delimiters
   --> $DIR/attr-incomplete.rs:13:6
@@ -30,3 +48,4 @@ LL + #[cfg(target_os)]
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0539`.

@@ -1,5 +1,5 @@
 #[cfg(target-os = "windows")]
-//~^ ERROR expected one of `(`, `,`, `::`, or `=`, found `-`
+//~^ ERROR malformed `cfg` attribute input
 pub fn test1() { }
 
 #[cfg(target_os = %)]
@@ -7,7 +7,7 @@ pub fn test1() { }
 pub fn test2() { }
 
 #[cfg(target_os?)]
-//~^ ERROR expected one of `(`, `,`, `::`, or `=`, found `?`
+//~^ ERROR malformed `cfg` attribute input
 pub fn test3() { }
 
 #[cfg[target_os]]
