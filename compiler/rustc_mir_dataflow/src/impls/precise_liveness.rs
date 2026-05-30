@@ -1,4 +1,21 @@
-use std::fmt;
+//! Computes the points where each local must have a distinct allocation.
+//!
+//! The result is a [`SparseIntervalMatrix`] with one row per local. Two locals
+//! may share the same address only if their rows are disjoint. To model MIR
+//! statements where a source operand and destination place may share an address,
+//! each statement and terminator is split into an early point, where operands
+//! are read, and a late point, where destinations are written.
+//!
+//! A local live range starts at the late point of any statement or terminator
+//! that writes to it without a `Deref` projection. It ends at the early point of
+//! a `StorageDead`, a whole-local `Drop`, a whole-local move operand, or the
+//! last use of that local on a control-flow path (only for locals whose
+//! address is never observed).
+//!
+//! `Call` terminators are handled specially: move operands are kept live
+//! through the late point of the terminator so they conflict with each other and
+//! with the destination place. This matches the runtime behavior where the place
+//! is donated to the callee for the duration of the call.
 
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -10,19 +27,72 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location, MirDumper, PassWhere,
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-use crate::fmt::DebugWithContext;
-use crate::impls::{DefUse, MaybeBorrowedLocals, MaybeLiveLocals};
+use crate::impls::{DefUse, MaybeLiveLocals, borrowed_locals};
 use crate::points::{DenseLocationMap, PointIndex};
-use crate::{Analysis, GenKill, JoinSemiLattice, ResultsVisitor, visit_reachable_results};
+use crate::{Analysis, GenKill, ResultsVisitor, visit_reachable_results};
+
+// Backward dataflow pass
+// ======================
+//
+// This pass computes "kill points" for each local, indicating the location of
+// their last use in a particular control flow branch. These are later used in
+// the forward pass later to end the live range of locals that are never
+// borrowed at their last direct use.
+//
+// Borrowed locals are treated as always live by this pass since those need to
+// remain allocated until `StorageDead` or a whole-local move.
+//
+// This pass has 2 outputs: a set of kill points that mark the last use
+// locations of locals and a per-block bitset indicating which locals are live
+// on entry to that block.
+
+fn compute_kill_points<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    pass_name: Option<&'static str>,
+) -> (Vec<(Local, Location)>, IndexVec<BasicBlock, DenseBitSet<Local>>) {
+    let maybe_live_locals = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, pass_name);
+    let borrowed_locals = borrowed_locals(body);
+    let mut kill_points = vec![];
+    // Initialize all borrowed locals as live on entry.
+    let mut live_on_entry = IndexVec::from_elem_n(borrowed_locals.clone(), body.basic_blocks.len());
+    let mut visitor = KillPointsVisitor {
+        kill_points: &mut kill_points,
+        live_on_entry: &mut live_on_entry,
+        borrowed_locals: &borrowed_locals,
+    };
+    visit_reachable_results(body, &maybe_live_locals, &mut visitor);
+    trace!(?kill_points);
+    trace!(?live_on_entry);
+    (kill_points, live_on_entry)
+}
+
+/// Creates a mapping of `PointIndex` to the set of killed locals at that location.
+fn kill_point_map<'a>(
+    kill_points: &'a [(Local, Location)],
+    points: &DenseLocationMap,
+) -> IndexVec<PointIndex, &'a [(Local, Location)]> {
+    let mut out = IndexVec::from_elem_n(&[][..], points.num_points());
+    for chunk in kill_points.chunk_by(|a, b| a.1 == b.1) {
+        let point = points.point_from_location(chunk[0].1);
+        trace!("Kill points at {:?}: {:?}", chunk[0].1, chunk);
+        out[point] = chunk;
+    }
+    out
+}
 
 struct KillPointsVisitor<'a> {
     kill_points: &'a mut Vec<(Local, Location)>,
     live_on_entry: &'a mut IndexVec<BasicBlock, DenseBitSet<Local>>,
+    borrowed_locals: &'a DenseBitSet<Local>,
 }
 
 impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
     fn visit_block_start(&mut self, state: &DenseBitSet<Local>, block: BasicBlock) {
-        self.live_on_entry[block].clone_from(state);
+        // Borrowed locals are already marked as live when live_on_entry was
+        // initialized. This adds the non-borrowed locals that we have
+        // determined are live on entry to this block.
+        self.live_on_entry[block].union(state);
     }
 
     fn visit_after_early_statement_effect(
@@ -40,8 +110,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
             }
 
             // If a local is used in a statement but is dead after it then this
-            // location is a kill point.
-            if !state.contains(place.local) {
+            // location is a kill point. Don't emit a kill point for borrowed
+            // locals.
+            if !state.contains(place.local) && !self.borrowed_locals.contains(place.local) {
                 self.kill_points.push((place.local, location));
             }
         })
@@ -56,8 +127,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
         location: Location,
     ) {
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
-            // Ignore non-uses (they don't do anything) and edge uses (kill
-            // points for those go at the start of the corresponding successor).
+            // Ignore non-uses (they don't do anything) and edge uses (implicitly
+            // killed though live_on_entry at the start of the corresponding
+            // successor).
             match ctxt {
                 PlaceContext::MutatingUse(
                     MutatingUseContext::AsmOutput
@@ -69,8 +141,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
             }
 
             // If a local is used in a terminator but is dead after it then this
-            // location is a kill point.
-            if !state.contains(place.local) {
+            // location is a kill point. Don't emit a kill point for borrowed
+            // locals.
+            if !state.contains(place.local) && !self.borrowed_locals.contains(place.local) {
                 self.kill_points.push((place.local, location));
             }
         })
@@ -78,60 +151,8 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Domain {
-    maybe_live: DenseBitSet<Local>,
-    maybe_borrowed: DenseBitSet<Local>,
-}
-
-impl Clone for Domain {
-    fn clone(&self) -> Self {
-        Domain { maybe_live: self.maybe_live.clone(), maybe_borrowed: self.maybe_borrowed.clone() }
-    }
-
-    // Data flow engine when possible uses `clone_from` for domain values.
-    // Providing an implementation will avoid some intermediate memory allocations.
-    fn clone_from(&mut self, other: &Self) {
-        self.maybe_live.clone_from(&other.maybe_live);
-        self.maybe_borrowed.clone_from(&other.maybe_borrowed);
-    }
-}
-
-impl JoinSemiLattice for Domain {
-    fn join(&mut self, other: &Self) -> bool {
-        self.maybe_live.join(&other.maybe_live) | self.maybe_borrowed.join(&other.maybe_borrowed)
-    }
-}
-
-impl<C> DebugWithContext<C> for Domain {
-    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("maybe_live: ")?;
-        self.maybe_live.fmt_with(ctxt, f)?;
-        f.write_str("maybe_borrowed: ")?;
-        self.maybe_borrowed.fmt_with(ctxt, f)?;
-        Ok(())
-    }
-
-    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self == old {
-            return Ok(());
-        }
-
-        if self.maybe_live != old.maybe_live {
-            f.write_str("maybe_live: ")?;
-            self.maybe_live.fmt_diff_with(&old.maybe_live, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        if self.maybe_borrowed != old.maybe_borrowed {
-            f.write_str("maybe_borrowed: ")?;
-            self.maybe_borrowed.fmt_diff_with(&old.maybe_borrowed, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        Ok(())
-    }
-}
+// Forward dataflow pass
+// =====================
 
 struct PreciseLiveness<'a> {
     kill_point_map: &'a IndexVec<PointIndex, &'a [(Local, Location)]>,
@@ -140,37 +161,31 @@ struct PreciseLiveness<'a> {
 }
 
 impl PreciseLiveness<'_> {
-    fn apply_block_start_effect(&self, state: &mut Domain, block: BasicBlock) {
-        // Only keep locals that are either live or borrowed.
-        //
-        // Notably this kills any dead results produced by a predecessor's
-        // terminator.
-        state.maybe_live.intersect_with_union(&self.live_on_entry[block], &state.maybe_borrowed);
+    fn apply_block_start_effect(&self, state: &mut DenseBitSet<Local>, block: BasicBlock) {
+        // Notably this kills any dead results produced by a predecessor's terminator.
+        state.intersect(&self.live_on_entry[block]);
     }
 }
 
 impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
-    type Domain = Domain;
+    type Domain = DenseBitSet<Local>;
 
     const NAME: &'static str = "precise_liveness";
 
-    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Domain {
-        Domain {
-            maybe_live: DenseBitSet::new_empty(body.local_decls.len()),
-            maybe_borrowed: DenseBitSet::new_empty(body.local_decls.len()),
-        }
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> DenseBitSet<Local> {
+        DenseBitSet::new_empty(body.local_decls.len())
     }
 
-    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Domain) {
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut DenseBitSet<Local>) {
         // Function arguments start out as live.
         for arg in body.args_iter() {
-            state.maybe_live.gen_(arg);
+            state.gen_(arg);
         }
     }
 
     fn apply_primary_statement_effect(
         &self,
-        state: &mut Domain,
+        state: &mut DenseBitSet<Local>,
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -180,20 +195,15 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
 
         // StorageDead always kills a local, even if it has been borrowed.
         if let mir::StatementKind::StorageDead(local) = statement.kind {
-            state.maybe_live.kill(local);
-            state.maybe_borrowed.kill(local);
+            state.kill(local);
             return;
         }
-
-        MaybeBorrowedLocals::transfer_function(&mut state.maybe_borrowed)
-            .visit_statement(statement, location);
 
         // Kill moved operands if the whole local was moved.
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
             if ctxt == PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) {
                 if let Some(local) = place.as_local() {
-                    state.maybe_live.kill(local);
-                    state.maybe_borrowed.kill(local);
+                    state.kill(local);
                 }
             }
         })
@@ -201,33 +211,28 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
 
         // Gen destination places.
         VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def | DefUse::PartialWrite => state.maybe_live.gen_(place.local),
+            DefUse::Def | DefUse::PartialWrite => state.gen_(place.local),
             DefUse::Use | DefUse::NonUse => {}
         })
         .visit_statement(statement, location);
 
         // Apply kill points at this statement: if a variable is dead
-        // then it doesn't need storage, *except* if its address has been taken.
+        // then it doesn't need storage.
         let point = self.points.point_from_location(location);
         for &(local, _) in self.kill_point_map[point] {
-            if !state.maybe_borrowed.contains(local) {
-                state.maybe_live.kill(local);
-            }
+            state.kill(local);
         }
     }
 
     fn apply_primary_terminator_effect<'mir>(
         &self,
-        state: &mut Domain,
+        state: &mut DenseBitSet<Local>,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> mir::TerminatorEdges<'mir, 'tcx> {
         if location.statement_index == 0 {
             self.apply_block_start_effect(state, location.block);
         }
-
-        MaybeBorrowedLocals::transfer_function(&mut state.maybe_borrowed)
-            .visit_terminator(terminator, location);
 
         // Kill moved operands if the whole local was moved. Also kill dropped
         // places if the entire local was dropped.
@@ -236,8 +241,7 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
             | PlaceContext::MutatingUse(MutatingUseContext::Drop) = ctxt
             {
                 if let Some(local) = place.as_local() {
-                    state.maybe_live.kill(local);
-                    state.maybe_borrowed.kill(local);
+                    state.kill(local);
                 }
             }
         })
@@ -256,7 +260,7 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
             }
 
             match DefUse::for_place(place, ctxt) {
-                DefUse::Def | DefUse::PartialWrite => state.maybe_live.gen_(place.local),
+                DefUse::Def | DefUse::PartialWrite => state.gen_(place.local),
                 DefUse::Use | DefUse::NonUse => {}
             }
         })
@@ -267,13 +271,16 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
 
     fn apply_call_return_effect(
         &self,
-        state: &mut Domain,
+        state: &mut DenseBitSet<Local>,
         _block: BasicBlock,
         return_places: mir::CallReturnPlaces<'_, 'tcx>,
     ) {
-        return_places.for_each(|place| state.maybe_live.gen_(place.local));
+        return_places.for_each(|place| state.gen_(place.local));
     }
 }
+
+// Matrix construction
+// ===================
 
 /// Different "phases" of a single MIR statement, used to describe how
 /// overlapping operands are handled.
@@ -315,38 +322,6 @@ impl SplitPointIndex {
             _ => unreachable!(),
         }
     }
-}
-
-fn compute_kill_points<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mir::Body<'tcx>,
-    pass_name: Option<&'static str>,
-) -> (Vec<(Local, Location)>, IndexVec<BasicBlock, DenseBitSet<Local>>) {
-    let maybe_live_locals = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, pass_name);
-    let mut kill_points = vec![];
-    let mut live_on_entry = IndexVec::from_elem_n(
-        DenseBitSet::new_empty(body.local_decls.len()),
-        body.basic_blocks.len(),
-    );
-    let mut visitor =
-        KillPointsVisitor { kill_points: &mut kill_points, live_on_entry: &mut live_on_entry };
-    visit_reachable_results(body, &maybe_live_locals, &mut visitor);
-    trace!(?kill_points);
-    trace!(?live_on_entry);
-    (kill_points, live_on_entry)
-}
-
-fn kill_point_map<'a>(
-    kill_points: &'a [(Local, Location)],
-    points: &DenseLocationMap,
-) -> IndexVec<PointIndex, &'a [(Local, Location)]> {
-    let mut out = IndexVec::from_elem_n(&[][..], points.num_points());
-    for chunk in kill_points.chunk_by(|a, b| a.1 == b.1) {
-        let point = points.point_from_location(chunk[0].1);
-        trace!("Kill points at {:?}: {:?}", chunk[0].1, chunk);
-        out[point] = chunk;
-    }
-    out
 }
 
 /// Helper type to construct a `SparseIntervalMatrix`.
@@ -409,13 +384,10 @@ pub fn liveness_matrix<'tcx>(
         // after this point.
         let state = &mut results.entry_states[block];
 
-        // Only keep locals that are either live or borrowed.
-        //
-        // Notably this kills any dead results produced by a predecessor's
-        // terminator.
-        state.maybe_live.intersect_with_union(&live_on_entry[block], &state.maybe_borrowed);
+        // Notably this kills any dead results produced by a predecessor's terminator.
+        state.intersect(&live_on_entry[block]);
 
-        for local in state.maybe_live.iter() {
+        for local in state.iter() {
             builder.gen_(local, points.entry_point(block), SplitPointEffect::Early);
         }
 
@@ -426,30 +398,22 @@ pub fn liveness_matrix<'tcx>(
             // StorageDead always kills a local, even if it has been borrowed.
             if let mir::StatementKind::StorageDead(local) = statement.kind {
                 builder.kill(local, point, SplitPointEffect::Late);
-                state.maybe_borrowed.kill(local);
                 continue;
             }
-
-            MaybeBorrowedLocals::transfer_function(&mut state.maybe_borrowed)
-                .visit_statement(statement, location);
 
             // Kill moved operands if the whole local was moved.
             VisitPlacesWith(|place: Place<'tcx>, ctxt| {
                 if ctxt == PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) {
                     if let Some(local) = place.as_local() {
                         builder.kill(local, point, SplitPointEffect::Early);
-                        state.maybe_borrowed.kill(local);
                     }
                 }
             })
             .visit_statement(statement, location);
 
-            // Kill any locals which are no longer used after this statement,
-            // but only if they have not been borrowed.
+            // Kill any locals which are no longer used after this statement.
             for &(local, _) in kill_point_map[point] {
-                if !state.maybe_borrowed.contains(local) {
-                    builder.kill(local, point, SplitPointEffect::Early);
-                }
+                builder.kill(local, point, SplitPointEffect::Early);
             }
 
             // Gen destination places.
@@ -465,18 +429,13 @@ pub fn liveness_matrix<'tcx>(
             // the late point of the statement they are generated in, which is
             // sufficient for determining overlap.
             for &(local, _) in kill_point_map[point] {
-                if !state.maybe_borrowed.contains(local) {
-                    builder.kill(local, point, SplitPointEffect::Late);
-                }
+                builder.kill(local, point, SplitPointEffect::Late);
             }
         }
 
         let location = Location { block, statement_index: block_data.statements.len() };
         let point = points.point_from_location(location);
         let terminator = block_data.terminator();
-
-        MaybeBorrowedLocals::transfer_function(&mut state.maybe_borrowed)
-            .visit_terminator(terminator, location);
 
         // Kill moved operands if the whole local was moved. Also kill dropped
         // places if the entire local was dropped.
@@ -486,18 +445,14 @@ pub fn liveness_matrix<'tcx>(
             {
                 if let Some(local) = place.as_local() {
                     builder.kill(local, point, SplitPointEffect::Early);
-                    state.maybe_borrowed.kill(local);
                 }
             }
         })
         .visit_terminator(terminator, location);
 
-        // Kill any locals which are no longer used after this terminator,
-        // but only if they have not been borrowed.
+        // Kill any locals which are no longer used after this terminator.
         for &(local, _) in kill_point_map[point] {
-            if !state.maybe_borrowed.contains(local) {
-                builder.kill(local, point, SplitPointEffect::Early);
-            }
+            builder.kill(local, point, SplitPointEffect::Early);
         }
 
         // Gen destination places.
