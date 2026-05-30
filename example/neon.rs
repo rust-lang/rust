@@ -416,6 +416,116 @@ unsafe fn test_vqdmulhq_s32() {
 }
 
 #[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_s8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v4i16.v8i8
+    let a = i8x8::from([1, 2, 3, 4, -5, -6, -7, -8]);
+    let e = i16x4::from([3, 7, -11, -15]);
+    let r: i16x4 = unsafe { transmute(vpaddl_s8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_s16() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v2i32.v4i16
+    let a = i16x4::from([1, 2, -3, -4]);
+    let e = i32x2::from([3, -7]);
+    let r: i32x2 = unsafe { transmute(vpaddl_s16(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_s32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v1i64.v2i32
+    let a = i32x2::from([1, -2]);
+    let e = i64x1::from([-1]);
+    let r: i64x1 = unsafe { transmute(vpaddl_s32(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_s8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v8i16.v16i8
+    let a = i8x16::from([1, 2, 3, 4, 5, 6, 7, 8, -9, -10, -11, -12, -13, -14, -15, -16]);
+    let e = i16x8::from([3, 7, 11, 15, -19, -23, -27, -31]);
+    let r: i16x8 = unsafe { transmute(vpaddlq_s8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_s16() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v4i32.v8i16
+    let a = i16x8::from([1, 2, 3, 4, -5, -6, -7, -8]);
+    let e = i32x4::from([3, 7, -11, -15]);
+    let r: i32x4 = unsafe { transmute(vpaddlq_s16(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_s32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.saddlp.v2i64.v4i32
+    let a = i32x4::from([1, 2, -3, -4]);
+    let e = i64x2::from([3, -7]);
+    let r: i64x2 = unsafe { transmute(vpaddlq_s32(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v4i16.v8i8
+    let a = u8x8::from([255, 254, 253, 252, 251, 250, 249, 248]);
+    let e = u16x4::from([509, 505, 501, 497]);
+    let r: u16x4 = unsafe { transmute(vpaddl_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_u16() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v2i32.v4i16
+    let a = u16x4::from([65535, 65534, 65533, 65532]);
+    let e = u32x2::from([131069, 131065]);
+    let r: u32x2 = unsafe { transmute(vpaddl_u16(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddl_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v1i64.v2i32
+    let a = u32x2::from([4294967295, 4294967294]);
+    let e = u64x1::from([8589934589]);
+    let r: u64x1 = unsafe { transmute(vpaddl_u32(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v8i16.v16i8
+    let a = u8x16::from([
+        255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240,
+    ]);
+    let e = u16x8::from([509, 505, 501, 497, 493, 489, 485, 481]);
+    let r: u16x8 = unsafe { transmute(vpaddlq_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_u16() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v4i32.v8i16
+    let a = u16x8::from([65535, 65534, 65533, 65532, 65531, 65530, 65529, 65528]);
+    let e = u32x4::from([131069, 131065, 131061, 131057]);
+    let r: u32x4 = unsafe { transmute(vpaddlq_u16(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpaddlq_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.uaddlp.v2i64.v4i32
+    let a = u32x4::from([4294967295, 4294967294, 4294967293, 4294967292]);
+    let e = u64x2::from([8589934589, 8589934585]);
+    let r: u64x2 = unsafe { transmute(vpaddlq_u32(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -467,6 +577,20 @@ fn main() {
         test_vqdmulh_s32();
         test_vqdmulhq_s16();
         test_vqdmulhq_s32();
+
+        test_vpaddl_s8();
+        test_vpaddl_s16();
+        test_vpaddl_s32();
+        test_vpaddlq_s8();
+        test_vpaddlq_s16();
+        test_vpaddlq_s32();
+
+        test_vpaddl_u8();
+        test_vpaddl_u16();
+        test_vpaddl_u32();
+        test_vpaddlq_u8();
+        test_vpaddlq_u16();
+        test_vpaddlq_u32();
     }
 }
 
