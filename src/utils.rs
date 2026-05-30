@@ -147,6 +147,15 @@ pub(crate) fn format_pinnedness_and_mutability(
 }
 
 #[inline]
+pub(crate) fn format_range_end(end: ast::RangeEnd) -> &'static str {
+    match end {
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotDot) => "...",
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotEq) => "..=",
+        ast::RangeEnd::Excluded => "..",
+    }
+}
+
+#[inline]
 pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static, str> {
     match ext {
         ast::Extern::None => Cow::from(""),

@@ -84,6 +84,7 @@ mod overflow;
 mod pairs;
 mod parse;
 mod patterns;
+mod range;
 mod release_channel;
 mod reorder;
 mod rewrite;

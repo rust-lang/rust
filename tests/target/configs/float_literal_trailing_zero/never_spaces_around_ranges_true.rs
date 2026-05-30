@@ -1,5 +1,5 @@
 // rustfmt-float_literal_trailing_zero: Never
-// spaces_around_ranges: false is implied since it's the default
+// rustfmt-spaces_around_ranges: true
 
 fn float_literals() {
     let a = 0.;
@@ -24,10 +24,10 @@ fn float_literals() {
 }
 
 fn range_bounds() {
-    if (1. ..2.).contains(&1.) {}
-    if (1.1..2.2).contains(&1.1) {}
-    if (1e1..2e1).contains(&1e1) {}
-    let _binop_range = 3. / 2. ..4.;
+    if (1. .. 2.).contains(&1.) {}
+    if (1.1 .. 2.2).contains(&1.1) {}
+    if (1e1 .. 2e1).contains(&1e1) {}
+    let _binop_range = 3. / 2. .. 4.;
 }
 
 fn method_calls() {
@@ -45,5 +45,7 @@ fn line_wrapping() {
     println!("This is floaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaat {}", 10e3);
 }
 
-fn pattern_in_function_parameters_exactly_max_width_before_zero___(2. ..10.: std::ops::Range<f32>) {
+fn pattern_in_function_parameters_exactly_max_width_before_zero___(
+    2. .. 10.: std::ops::Range<f32>,
+) {
 }
