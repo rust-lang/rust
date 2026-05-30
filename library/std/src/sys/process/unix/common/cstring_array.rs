@@ -32,6 +32,11 @@ impl CStringArray {
         drop(unsafe { CString::from_raw(old.cast_mut()) });
     }
 
+    /// Returns the length of the array (null pointer excluded)
+    pub fn len(&self) -> usize {
+        self.ptrs.len() - 1
+    }
+
     /// Push an additional string to the array.
     pub fn push(&mut self, item: CString) {
         let argc = self.ptrs.len() - 1;

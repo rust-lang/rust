@@ -11,6 +11,7 @@ use libc::{c_int, pid_t};
 use libc::{gid_t, uid_t};
 
 use super::common::*;
+use crate::ffi::CString;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
 use crate::process::StdioPipes;
@@ -384,28 +385,101 @@ impl Command {
             callback()?;
         }
 
-        // Although we're performing an exec here we may also return with an
-        // error from this function (without actually exec'ing) in which case we
-        // want to be sure to restore the global environment back to what it
-        // once was, ensuring that our temporary override, when free'd, doesn't
-        // corrupt our process's environment.
-        let mut _reset = None;
-        if let Some(envp) = maybe_envp {
-            struct Reset(*const *const libc::c_char);
+        let file = self.get_program_cstr();
+        let file_as_bytes = file.to_bytes_with_nul();
+        let argv = self.get_argv();
+        let parent_path = crate::env::var("PATH")
+            .map(|var| CString::new(var))
+            .unwrap_or(CString::new("/bin:/usr/bin"))?;
+        let envp = maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(*sys::env::environ());
 
-            impl Drop for Reset {
-                fn drop(&mut self) {
-                    unsafe {
-                        *sys::env::environ() = self.0;
-                    }
+        // This is the value associated with the `PATH` environment variable with colon delimiters
+        let mut paths = match maybe_envp {
+            Some(envp) => {
+                match envp.iter().find(|var| var.to_bytes_with_nul().starts_with(b"PATH=")) {
+                    // Remove "PATH="
+                    Some(p) => &p.to_bytes_with_nul()[5..],
+                    // Falls back to this if PATH environment variable couldn't be found
+                    None => c"/bin:/usr/bin".to_bytes_with_nul(),
                 }
             }
+            None => parent_path.as_bytes_with_nul(),
+        };
 
-            _reset = Some(Reset(*sys::env::environ()));
-            *sys::env::environ() = envp.as_ptr();
+        // Can't exec on an empty file path
+        if file.is_empty() {
+            return Err(io::Error::from_raw_os_error(libc::ENOENT));
+        }
+        // Path searching does not occur when our file starts with a `/`
+        else if file_as_bytes.starts_with(&[b'/']) {
+            libc::execve(file.as_ptr(), argv.as_ptr(), envp);
+        }
+        // Ensure that our given file does not exceed the limit set by NAME_MAX
+        // Note: `file` is a CStr, so it should be guaranteed to have a nul terminated
+        // byte (hence no underflow occurs here)
+        else if file_as_bytes.len() - 1 >= libc::NAME_MAX as usize {
+            return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG));
+        } else {
+            let mut got_perm_denied = None;
+            while paths != &[b'\0'] {
+                let colon_pos =
+                    paths.iter().position(|byte| *byte == b':').unwrap_or(paths.len() - 1);
+                let dir = &paths[..colon_pos];
+                // Parsed path len from envp + file path len + 1 for separator byte
+                let mut binary_path = Vec::with_capacity(colon_pos + file.count_bytes() + 1);
+                binary_path.extend_from_slice(dir);
+                binary_path.push(b'/');
+                binary_path.extend_from_slice(file.to_bytes());
+                let cstr_path = CString::new(binary_path)?;
+
+                // Try execing with the path entry
+                libc::execve(cstr_path.as_ptr(), argv.as_ptr(), envp);
+
+                let err = io::Error::last_os_error();
+                // File is accessible, but not executable as a file; invoke the shell to interpret
+                // it as a script.
+                if let Some(err) = err.raw_os_error()
+                    && err == libc::ENOEXEC
+                {
+                    let mut new_argv = CStringArray::with_capacity(argv.len() + 2);
+                    new_argv.push(CString::new("/bin/sh")?);
+                    new_argv.push(file.to_owned());
+
+                    for arg in argv.iter() {
+                        new_argv.push(arg.to_owned());
+                    }
+
+                    libc::execve(new_argv[0].as_ptr(), new_argv.as_ptr(), envp);
+                }
+
+                match err.kind() {
+                    // Record that we got a 'Permission Denied' error in the event that if we
+                    // find no executable to use, we should report that there was usable executable
+                    // but we were denied access to it
+                    io::ErrorKind::PermissionDenied => {
+                        got_perm_denied = Some(err);
+                    }
+                    // Try the next path. Note on `ErrorKind::TimedOut`, unsure if this should
+                    // return the error or continue with the next path, as #55359, continues the
+                    // next path, but glibc posix impl of execvp breaks the path parsing loop
+                    // on this error
+                    io::ErrorKind::NotFound | io::ErrorKind::TimedOut => {}
+                    _ => return Err(err),
+                }
+
+                paths = &paths[colon_pos + 1..];
+            }
+
+            // At least one failure was due to lack of permissions, so we should
+            // report that failure first
+            if let Some(got_eaccess) = got_perm_denied {
+                return Err(got_eaccess);
+            }
+
+            // No paths were executable
+            return Err(io::Error::from_raw_os_error(libc::ENOENT));
         }
 
-        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
         Err(io::Error::last_os_error())
     }
 
