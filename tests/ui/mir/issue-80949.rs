@@ -1,4 +1,4 @@
-//@ build-pass
+//@ check-fail
 
 trait Trait { type Item; }
 
@@ -30,5 +30,6 @@ fn main() {
     let storage = vec![()];
     may_panic(());
     let storage_ref = &storage;
+    //~^ ERROR `storage` does not live long enough
     diff(dyn_trait, storage_ref);
 }
