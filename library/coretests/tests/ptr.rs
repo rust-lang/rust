@@ -384,7 +384,7 @@ fn align_offset_stride_one() {
 #[test]
 fn align_offset_various_strides() {
     unsafe fn test_stride<T>(ptr: *const T, align: usize) -> bool {
-        let numptr = ptr as usize;
+        let numptr = ptr.addr();
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
         for el in 0..align {

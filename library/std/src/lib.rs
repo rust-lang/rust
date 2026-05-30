@@ -246,6 +246,7 @@
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(lossy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -715,7 +716,13 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(
+    dead_code,
+    unused_attributes,
+    fuzzy_provenance_casts,
+    lossy_provenance_casts,
+    unsafe_op_in_unsafe_fn
+)]
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]
