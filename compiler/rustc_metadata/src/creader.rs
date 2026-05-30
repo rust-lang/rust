@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{cmp, env, iter};
 
 use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, AllocatorKind, global_fn_name};
@@ -27,13 +28,14 @@ use rustc_session::config::{
     TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
+use rustc_session::filesearch::FileSearch;
 use rustc_session::output::validate_crate_name;
-use rustc_session::search_paths::PathKind;
+use rustc_session::search_paths::{PathKind, SearchPath};
 use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
-use rustc_target::spec::{PanicStrategy, Target};
+use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 
 use crate::errors;
@@ -733,7 +735,35 @@ impl CStore {
             let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
             else {
-                return Ok(None);
+                let wasm_tuple = "wasm32-unknown-unknown";
+                let wasm_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(
+                    sess.opts.sysroot.path(),
+                    wasm_tuple,
+                ));
+                let wasm_tuple = TargetTuple::from_tuple(wasm_tuple);
+                let (wasm_target, _target_warnings) =
+                    Target::search(&wasm_tuple, sess.opts.sysroot.path(), sess.unstable_options())
+                        .unwrap_or_else(|e| {
+                            sess.dcx()
+                                .handle()
+                                .fatal(format!("Error loading host specification: {e}"))
+                        });
+                let wasm_filesearch =
+                    FileSearch::new(&sess.opts.search_paths, &wasm_tlib_path, &wasm_target);
+
+                proc_macro_locator.for_wasm_proc_macro(
+                    path_kind,
+                    wasm_tuple,
+                    &wasm_target,
+                    &wasm_filesearch,
+                );
+
+                match self.load(&mut proc_macro_locator, &mut CrateRejections::default())? {
+                    Some(host_result) => return Ok(Some((host_result, None))),
+                    None => {
+                        return Ok(None);
+                    }
+                }
             };
 
             Ok(Some((host_result, None)))
