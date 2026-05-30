@@ -285,11 +285,6 @@ impl<'sess> AttributeParser<'sess> {
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
-        // We store the attributes we intend to discard at the end of this function in order to
-        // check they are applied to the right target and error out if necessary. In practice, we
-        // end up dropping only derive attributes and derive helpers, both being fully processed
-        // at macro expansion.
-        let mut dropped_attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
@@ -437,20 +432,8 @@ impl<'sess> AttributeParser<'sess> {
                             self.check_invalid_crate_level_attr_item(&attr, n.item.span());
                         }
 
-                        let attr = Attribute::Unparsed(Box::new(attr));
-
-                        if self.tools.is_some_and(|tools| {
-                            tools.iter().any(|tool| tool.name == parts[0])
-                            // FIXME: this can be removed once #152369 has been merged.
-                            // https://github.com/rust-lang/rust/pull/152369
-                            || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
-                                .contains(&parts[0])
-                        }) {
-                            attributes.push(attr);
-                        } else {
-                            dropped_attributes.push(attr);
-                        }
-                    }
+                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                    };
                 }
             }
         }
@@ -466,7 +449,7 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
-            self.check_invalid_where_predicate_attrs(attributes.iter().chain(&dropped_attributes));
+            self.check_invalid_where_predicate_attrs(attributes.iter());
         }
 
         attributes

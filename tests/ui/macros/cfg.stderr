@@ -4,7 +4,7 @@ error: macro requires a cfg-pattern as an argument
 LL |     cfg!();
    |     ^^^^^^ cfg-pattern required
 
-error[E0539]: malformed `cfg` macro input
+error[E0565]: malformed `cfg` macro input
   --> $DIR/cfg.rs:3:5
    |
 LL |     cfg!(123);
@@ -53,4 +53,5 @@ LL |     cfg!(foo);
 
 error: aborting due to 4 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0539`.
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

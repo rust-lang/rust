@@ -872,11 +872,18 @@ pub enum TerminatorKind<'tcx> {
     /// Marks a suspend point.
     ///
     /// Like `Return` terminators in coroutine bodies, this computes `value` and then a
-    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
-    /// the return place of the function calling this one, and execution continues in the calling
-    /// function. When next invoked with the same first argument, execution of this function
-    /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
-    /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
+    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned
+    /// to the return place provided by the caller function, and execution continues in this caller
+    /// function.
+    ///
+    /// When the coroutine is resumed/polled, execution of this function continues at the `resume`
+    /// basic block, the `resume_arg` place is evaluated and the second argument to `resume/poll`
+    /// is written to it.
+    ///
+    /// If the coroutine is dropped before then, execution of this function continues at the `drop`
+    /// basic block and the `resume_arg` place expression is evaluated. For async drop, the second
+    /// argument to the destructor `resume/poll` method is written to `resume_arg`. For synchronous
+    /// drops, uninitialized bytes are written to `resume_arg`.
     ///
     /// Note that coroutines can be (unstably) cloned under certain conditions, which means that
     /// this terminator can **return multiple times**! MIR optimizations that reorder code into
@@ -884,8 +891,6 @@ pub enum TerminatorKind<'tcx> {
     /// See <https://github.com/rust-lang/rust/issues/95360>.
     ///
     /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
-    ///
-    /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
     Yield {
         /// The value to return.
         value: Operand<'tcx>,

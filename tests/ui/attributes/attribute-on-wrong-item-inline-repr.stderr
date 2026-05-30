@@ -35,23 +35,25 @@ LL |     #[inline(XYZ)]
    |
    = help: `#[inline]` can only be applied to functions
 
-error[E0552]: unrecognized representation hint
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:12
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:5
    |
 LL |     #[repr(nothing)]
-   |            ^^^^^^^
+   |     ^^^^^^^-------^^
+   |            |
+   |            valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
-   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
-   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0552]: unrecognized representation hint
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:21:12
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:21:5
    |
 LL |     #[repr(something_not_real)]
-   |            ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^------------------^^
+   |            |
+   |            valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
-   = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
-   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:27:5
@@ -100,5 +102,4 @@ LL |     let _z = #[repr] 1;
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0539, E0552.
-For more information about an error, try `rustc --explain E0539`.
+For more information about this error, try `rustc --explain E0539`.

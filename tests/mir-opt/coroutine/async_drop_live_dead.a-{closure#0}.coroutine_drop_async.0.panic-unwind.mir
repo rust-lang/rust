@@ -105,10 +105,12 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb16: {
+        _9 = move _2;
         goto -> bb7;
     }
 
     bb17: {
+        _13 = move _2;
         goto -> bb7;
     }
 

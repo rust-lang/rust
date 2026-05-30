@@ -59,7 +59,7 @@ LL - #[cfg(a, b)]
 LL + #[cfg(any(a, b))]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:25:1
    |
 LL | #[cfg("str")]
@@ -74,7 +74,7 @@ LL - #[cfg("str")]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:31:1
    |
 LL | #[cfg(a::b)]
@@ -133,5 +133,5 @@ LL | generate_s10!(concat!("nonexistent"));
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0537, E0539, E0805.
+Some errors have detailed explanations: E0537, E0539, E0565, E0805.
 For more information about an error, try `rustc --explain E0537`.
