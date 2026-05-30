@@ -26,6 +26,7 @@ cfg_select! {
     any(
         windows,
         target_family = "unix",
+        target_os = "qurt",
         all(target_vendor = "fortanix", target_env = "sgx"),
         target_os = "solid_asp3",
         target_os = "xous",

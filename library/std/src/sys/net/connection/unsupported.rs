@@ -1,7 +1,10 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
+#[cfg(not(target_os = "qurt"))]
 use crate::sys::unsupported;
+#[cfg(target_os = "qurt")]
+use crate::sys::unsupported::unsupported;
 use crate::time::Duration;
 
 pub struct TcpStream(!);

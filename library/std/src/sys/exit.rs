@@ -114,6 +114,7 @@ pub fn exit(code: i32) -> ! {
         }
         any(
             target_family = "unix",
+            target_os = "qurt",
             target_os = "wasi",
         ) => {
             unsafe { libc::exit(code as crate::ffi::c_int) }

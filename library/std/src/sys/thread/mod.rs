@@ -48,7 +48,7 @@ cfg_select! {
         mod unsupported;
         pub use unsupported::{Thread, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
-    any(target_family = "unix", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
         mod unix;
         pub use unix::{Thread, available_parallelism, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[cfg(not(any(
