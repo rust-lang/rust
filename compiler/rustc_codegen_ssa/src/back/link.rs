@@ -98,8 +98,13 @@ pub fn link_binary(
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
-            for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-                check_file_is_writeable(obj, sess);
+            for m in &compiled_modules.modules {
+                if let Some(obj) = &m.object {
+                    check_file_is_writeable(obj, sess);
+                }
+                if let Some(obj) = &m.global_asm_object {
+                    check_file_is_writeable(obj, sess);
+                }
             }
         });
 
@@ -199,6 +204,10 @@ pub fn link_binary(
         let maybe_remove_temps_from_module =
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
                 if !preserve_objects && let Some(ref obj) = module.object {
+                    ensure_removed(sess.dcx(), obj);
+                }
+
+                if !preserve_objects && let Some(ref obj) = module.global_asm_object {
                     ensure_removed(sess.dcx(), obj);
                 }
 
@@ -307,6 +316,7 @@ fn link_rlib<'a>(
         .modules
         .iter()
         .filter_map(|m| m.object.as_ref())
+        .chain(compiled_modules.modules.iter().filter_map(|m| m.global_asm_object.as_ref()))
         .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
         .collect();
 
@@ -352,6 +362,10 @@ fn link_rlib<'a>(
             ab.add_file(obj);
         }
 
+        if let Some(obj) = m.global_asm_object.as_ref() {
+            ab.add_file(obj);
+        }
+
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
             ab.add_file(dwarf_obj);
         }
@@ -360,9 +374,13 @@ fn link_rlib<'a>(
     match flavor {
         RlibFlavor::Normal => {}
         RlibFlavor::StaticlibBase => {
-            let obj = compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-            if let Some(obj) = obj {
-                ab.add_file(obj);
+            if let Some(m) = &compiled_modules.allocator_module {
+                if let Some(obj) = &m.object {
+                    ab.add_file(obj);
+                }
+                if let Some(obj) = &m.global_asm_object {
+                    ab.add_file(obj);
+                }
             }
         }
     }
@@ -632,8 +650,13 @@ fn link_dwarf_object(
         // Input objs contain .o/.dwo files from the current crate.
         match sess.opts.unstable_opts.split_dwarf_kind {
             SplitDwarfKind::Single => {
-                for input_obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-                    package.add_input_object(input_obj)?;
+                for m in &compiled_modules.modules {
+                    if let Some(input_obj) = &m.object {
+                        package.add_input_object(input_obj)?;
+                    }
+                    if let Some(input_obj) = &m.global_asm_object {
+                        package.add_input_object(input_obj)?;
+                    }
                 }
             }
             SplitDwarfKind::Split => {
@@ -2241,8 +2264,13 @@ fn add_linked_symbol_object(
 
 /// Add object files containing code from the current crate.
 fn add_local_crate_regular_objects(cmd: &mut dyn Linker, compiled_modules: &CompiledModules) {
-    for obj in compiled_modules.modules.iter().filter_map(|m| m.object.as_ref()) {
-        cmd.add_object(obj);
+    for m in &compiled_modules.modules {
+        if let Some(obj) = &m.object {
+            cmd.add_object(obj);
+        }
+        if let Some(obj) = &m.global_asm_object {
+            cmd.add_object(obj);
+        }
     }
 }
 
@@ -2253,10 +2281,13 @@ fn add_local_crate_allocator_objects(
     crate_info: &CrateInfo,
     crate_type: CrateType,
 ) {
-    if needs_allocator_shim_for_linking(&crate_info.dependency_formats, crate_type) {
-        if let Some(obj) =
-            compiled_modules.allocator_module.as_ref().and_then(|m| m.object.as_ref())
-        {
+    if needs_allocator_shim_for_linking(&crate_info.dependency_formats, crate_type)
+        && let Some(m) = &compiled_modules.allocator_module
+    {
+        if let Some(obj) = &m.object {
+            cmd.add_object(obj);
+        }
+        if let Some(obj) = &m.global_asm_object {
             cmd.add_object(obj);
         }
     }

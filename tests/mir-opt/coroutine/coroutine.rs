@@ -1,6 +1,7 @@
 //@ skip-filecheck
 //@ edition:2024
-//@ compile-flags: -Zmir-opt-level=0 -C panic=abort
+//@ compile-flags: -Zmir-opt-level=0
+//@ needs-unwind
 
 #![feature(stmt_expr_attributes)]
 #![feature(closure_track_caller)]
@@ -11,8 +12,8 @@ use std::ops::{Coroutine, CoroutineState};
 use std::panic::Location;
 use std::pin::Pin;
 
-// EMIT_MIR coroutine.main-{closure#0}.StateTransform.after.mir
-// EMIT_MIR coroutine.main-{closure#1}.StateTransform.after.mir
+// EMIT_MIR coroutine.main-{closure#0}.StateTransform.diff
+// EMIT_MIR coroutine.main-{closure#1}.StateTransform.diff
 fn main() {
     let simple = #[coroutine]
     |arg: String| {

@@ -4023,7 +4023,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && decl.can_be_made_mutable()
         {
             let mut is_for_loop = false;
-            let mut is_ref_pattern = false;
+            let mut is_immut_ref_pattern = false;
             if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                 opt_match_place: Some((_, match_span)),
                 ..
@@ -4031,55 +4031,52 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             {
                 if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop)) {
                     is_for_loop = true;
+                }
 
-                    if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
-                        struct RefPatternFinder<'tcx> {
-                            tcx: TyCtxt<'tcx>,
-                            binding_span: Span,
-                            is_ref_pattern: bool,
-                        }
-
-                        impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
-                            type NestedFilter = OnlyBodies;
-
-                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-                                self.tcx
-                            }
-
-                            fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
-                                if !self.is_ref_pattern
-                                    && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
-                                    && ident.span == self.binding_span
-                                {
-                                    self.is_ref_pattern =
-                                        self.tcx.hir_parent_iter(pat.hir_id).any(|(_, node)| {
-                                            matches!(
-                                                node,
-                                                hir::Node::Pat(hir::Pat {
-                                                    kind: hir::PatKind::Ref(..),
-                                                    ..
-                                                })
-                                            )
-                                        });
-                                }
-                                hir::intravisit::walk_pat(self, pat);
-                            }
-                        }
-
-                        let mut finder = RefPatternFinder {
-                            tcx: self.infcx.tcx,
-                            binding_span: decl.source_info.span,
-                            is_ref_pattern: false,
-                        };
-
-                        finder.visit_body(body);
-                        is_ref_pattern = finder.is_ref_pattern;
+                if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
+                    struct RefPatternFinder<'tcx> {
+                        tcx: TyCtxt<'tcx>,
+                        binding_span: Span,
+                        is_immut_ref_pattern: bool,
                     }
+
+                    impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
+                        type NestedFilter = OnlyBodies;
+
+                        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                            self.tcx
+                        }
+
+                        fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+                            if !self.is_immut_ref_pattern
+                                && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                                && ident.span == self.binding_span
+                                && matches!(
+                                    self.tcx.parent_hir_node(pat.hir_id),
+                                    hir::Node::Pat(hir::Pat {
+                                        kind: hir::PatKind::Ref(_, _, hir::Mutability::Not),
+                                        ..
+                                    })
+                                )
+                            {
+                                self.is_immut_ref_pattern = true;
+                            }
+                            hir::intravisit::walk_pat(self, pat);
+                        }
+                    }
+
+                    let mut finder = RefPatternFinder {
+                        tcx: self.infcx.tcx,
+                        binding_span: decl.source_info.span,
+                        is_immut_ref_pattern: false,
+                    };
+
+                    finder.visit_body(body);
+                    is_immut_ref_pattern = finder.is_immut_ref_pattern;
                 }
             }
 
-            let (span, message) = if is_for_loop
-                && is_ref_pattern
+            let (span, message) = if is_immut_ref_pattern
                 && let Ok(binding_name) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {

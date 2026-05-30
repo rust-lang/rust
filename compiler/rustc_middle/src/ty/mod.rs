@@ -31,7 +31,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -205,7 +205,15 @@ pub struct ResolverGlobalCtxt {
 
 #[derive(Debug)]
 pub struct PerOwnerResolverData {
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
+    /// Whether lifetime elision was successful.
+    pub lifetime_elision_allowed: bool = false,
+    /// Resolutions for labels.
+    /// Maps from NodeId of the break/continue expression to the NodeId of their corresponding blocks or loops.
+    pub label_res_map: NodeMap<ast::NodeId> = Default::default(),
+    /// Resolutions for lifetimes.
+    pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -214,7 +222,17 @@ pub struct PerOwnerResolverData {
 
 impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
-        PerOwnerResolverData { node_id_to_def_id: Default::default(), id, def_id }
+        PerOwnerResolverData { id, def_id, .. }
+    }
+
+    /// Obtains resolution for a label with the given `NodeId`.
+    pub fn get_label_res(&self, id: ast::NodeId) -> Option<ast::NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
+
+    /// Obtains resolution for a lifetime with the given `NodeId`.
+    pub fn get_lifetime_res(&self, id: ast::NodeId) -> Option<LifetimeRes> {
+        self.lifetimes_res_map.get(&id).copied()
     }
 }
 
@@ -226,10 +244,6 @@ pub struct ResolverAstLowering<'tcx> {
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
-    /// Resolutions for lifetimes.
-    pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
@@ -238,8 +252,6 @@ pub struct ResolverAstLowering<'tcx> {
     pub owners: NodeMap<PerOwnerResolverData>,
 
     pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
-    /// List functions and methods for which lifetime elision was successful.
-    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,

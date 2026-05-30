@@ -120,17 +120,6 @@ impl<V: Clone + HasBottom> State<V> {
         State::Reachable(StateData::new())
     }
 
-    pub fn all_bottom(&self) -> bool {
-        match self {
-            State::Unreachable => false,
-            State::Reachable(values) =>
-            {
-                #[allow(rustc::potential_query_instability)]
-                values.map.values().all(V::is_bottom)
-            }
-        }
-    }
-
     pub fn is_reachable(&self) -> bool {
         matches!(self, State::Reachable(_))
     }
@@ -168,7 +157,7 @@ impl<V: Clone + HasBottom> State<V> {
     ///
     /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
     /// as such.
-    pub fn flood_with_tail_elem(
+    fn flood_with_tail_elem(
         &mut self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
@@ -238,25 +227,19 @@ impl<V: Clone + HasBottom> State<V> {
     }
 
     /// Retrieve the value stored for a place, or `None` if it is not tracked.
-    pub fn try_get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
+    fn try_get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find(place)?;
         self.try_get_idx(place, map)
     }
 
     /// Retrieve the discriminant stored for a place, or `None` if it is not tracked.
-    pub fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
+    fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find_discr(place)?;
         self.try_get_idx(place, map)
     }
 
-    /// Retrieve the slice length stored for a place, or `None` if it is not tracked.
-    pub fn try_get_len(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
-        let place = map.find_len(place)?;
-        self.try_get_idx(place, map)
-    }
-
     /// Retrieve the value stored for a place index, or `None` if it is not tracked.
-    pub fn try_get_idx(&self, place: PlaceIndex, map: &Map<'_>) -> Option<V> {
+    fn try_get_idx(&self, place: PlaceIndex, map: &Map<'_>) -> Option<V> {
         match self {
             State::Reachable(values) => {
                 map.places[place].value_index.map(|v| values.get(v).clone())
@@ -288,20 +271,6 @@ impl<V: Clone + HasBottom> State<V> {
     {
         match self {
             State::Reachable(_) => self.try_get_discr(place, map).unwrap_or(V::TOP),
-            // Because this is unreachable, we can return any value we want.
-            State::Unreachable => V::BOTTOM,
-        }
-    }
-
-    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
-    ///
-    /// This method returns ⊥ the current state is unreachable.
-    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map<'_>) -> V
-    where
-        V: HasBottom + HasTop,
-    {
-        match self {
-            State::Reachable(_) => self.try_get_len(place, map).unwrap_or(V::TOP),
             // Because this is unreachable, we can return any value we want.
             State::Unreachable => V::BOTTOM,
         }
@@ -800,21 +769,6 @@ impl<'tcx> Map<'tcx> {
         self.places[place].value_index
     }
 
-    /// Locates the value corresponding to the given place.
-    pub fn find_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
-        self.value(self.find(place)?)
-    }
-
-    /// Locates the value corresponding to the given discriminant.
-    pub fn find_discr_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
-        self.value(self.find_discr(place)?)
-    }
-
-    /// Locates the value corresponding to the given length.
-    pub fn find_len_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
-        self.value(self.find_len(place)?)
-    }
-
     /// Iterate over all direct children.
     fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> {
         Children::new(self, parent)
@@ -882,12 +836,6 @@ impl<'tcx> Map<'tcx> {
         }
     }
 
-    /// Return the range of value indices inside this place.
-    pub fn values_inside(&self, root: PlaceIndex) -> &[ValueIndex] {
-        let range = self.inner_values[root].clone();
-        &self.inner_values_buffer[range]
-    }
-
     /// Invoke a function on each value in the given place and all descendants.
     #[tracing::instrument(level = "trace", skip(self, f))]
     fn for_each_value_inside(&self, root: PlaceIndex, f: &mut impl FnMut(ValueIndex)) {
@@ -937,7 +885,7 @@ impl<'tcx> Map<'tcx> {
 
     /// Recursively iterates on each value contained in `target`, paired with matching projection
     /// inside `source`.
-    pub fn for_each_value_pair(
+    fn for_each_value_pair(
         &self,
         target: PlaceIndex,
         source: PlaceIndex,

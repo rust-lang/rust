@@ -1,0 +1,56 @@
+- // MIR for `a::{closure#0}` before StateTransform
++ // MIR for `a::{closure#0}` after StateTransform
+  
+- fn a::{closure#0}(_1: {async fn body of a()}, _2: std::future::ResumeTy) -> ()
+- yields ()
+-  {
++ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
++     coroutine layout {
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++         }
++         storage_conflicts = BitMatrix(0x0) {}
++     }
+      debug _task_context => _2;
+-     let mut _0: ();
++     let mut _0: std::task::Poll<()>;
++     let mut _3: ();
++     let mut _4: u32;
++     let mut _5: &mut {async fn body of a()};
+  
+      bb0: {
+-         _0 = const ();
+-         drop(_1) -> [return: bb1, unwind: bb2];
++         _5 = copy (_1.0: &mut {async fn body of a()});
++         _4 = discriminant((*_5));
++         switchInt(move _4) -> [0: bb5, 1: bb3, otherwise: bb4];
+      }
+  
+      bb1: {
++         _0 = Poll::<()>::Ready(move _3);
++         discriminant((*_5)) = 1;
+          return;
+      }
+  
+-     bb2 (cleanup): {
+-         resume;
++     bb2: {
++         goto -> bb1;
++     }
++ 
++     bb3: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb3, unwind continue];
++     }
++ 
++     bb4: {
++         unreachable;
++     }
++ 
++     bb5: {
++         _3 = const ();
++         goto -> bb2;
+      }
+  }
+  

@@ -35,8 +35,7 @@ fn disable_incr_cache() -> bool {
 }
 
 struct ModuleCodegenResult {
-    module_regular: CompiledModule,
-    module_global_asm: Option<CompiledModule>,
+    module: CompiledModule,
     existing_work_product: Option<(WorkProductId, WorkProduct)>,
 }
 
@@ -80,29 +79,25 @@ impl OngoingCodegen {
                 Ok(module_codegen_result) => module_codegen_result,
                 Err(err) => sess.dcx().fatal(err),
             };
-            let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
-                module_codegen_result;
+            let ModuleCodegenResult { module, existing_work_product } = module_codegen_result;
 
             if let Some((work_product_id, work_product)) = existing_work_product {
                 work_products.insert(work_product_id, work_product);
             } else {
                 let work_product = if disable_incr_cache {
                     None
-                } else if let Some(module_global_asm) = &module_global_asm {
+                } else if let Some(global_asm_object) = &module.global_asm_object {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                         sess,
-                        &module_regular.name,
-                        &[
-                            ("o", module_regular.object.as_ref().unwrap()),
-                            ("asm.o", module_global_asm.object.as_ref().unwrap()),
-                        ],
+                        &module.name,
+                        &[("o", module.object.as_ref().unwrap()), ("asm.o", global_asm_object)],
                         &[],
                     )
                 } else {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                         sess,
-                        &module_regular.name,
-                        &[("o", module_regular.object.as_ref().unwrap())],
+                        &module.name,
+                        &[("o", module.object.as_ref().unwrap())],
                         &[],
                     )
                 };
@@ -111,10 +106,7 @@ impl OngoingCodegen {
                 }
             }
 
-            modules.push(module_regular);
-            if let Some(module_global_asm) = module_global_asm {
-                modules.push(module_global_asm);
-            }
+            modules.push(module);
         }
 
         self.concurrency_limiter.finished();
@@ -163,29 +155,17 @@ fn emit_cgu(
         debug.emit(&mut product);
     }
 
-    let module_regular = emit_module(
+    let module = emit_module(
         output_filenames,
         prof,
         product.object,
         ModuleKind::Regular,
         name.clone(),
+        global_asm_object_file,
         producer,
     )?;
 
-    Ok(ModuleCodegenResult {
-        module_regular,
-        module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
-            name: format!("{name}.asm"),
-            kind: ModuleKind::Regular,
-            object: Some(global_asm_object_file),
-            dwarf_object: None,
-            bytecode: None,
-            assembly: None,
-            llvm_ir: None,
-            links_from_incr_cache: Vec::new(),
-        }),
-        existing_work_product: None,
-    })
+    Ok(ModuleCodegenResult { module, existing_work_product: None })
 }
 
 fn emit_module(
@@ -194,6 +174,7 @@ fn emit_module(
     mut object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
     name: String,
+    global_asm_object: Option<PathBuf>,
     producer_str: &str,
 ) -> Result<CompiledModule, String> {
     if object.format() == cranelift_object::object::BinaryFormat::Elf {
@@ -235,6 +216,7 @@ fn emit_module(
         name,
         kind,
         object: Some(tmp_file),
+        global_asm_object,
         dwarf_object: None,
         bytecode: None,
         assembly: None,
@@ -265,7 +247,7 @@ fn reuse_workproduct_for_cgu(
     }
 
     let obj_out_global_asm =
-        crate::global_asm::add_file_stem_postfix(obj_out_regular.clone(), ".asm");
+        tcx.output_filenames(()).temp_path_ext_for_cgu("asm.o", cgu.name().as_str());
     let source_file_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
         let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(tcx.sess, asm_o);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
@@ -283,26 +265,21 @@ fn reuse_workproduct_for_cgu(
     };
 
     Ok(ModuleCodegenResult {
-        module_regular: CompiledModule {
+        module: CompiledModule {
             name: cgu.name().to_string(),
             kind: ModuleKind::Regular,
             object: Some(obj_out_regular),
+            global_asm_object: source_file_global_asm.as_ref().map(|_| obj_out_global_asm),
             dwarf_object: None,
             bytecode: None,
             assembly: None,
             llvm_ir: None,
-            links_from_incr_cache: vec![source_file_regular],
+            links_from_incr_cache: if let Some(source_file_global_asm) = source_file_global_asm {
+                vec![source_file_regular, source_file_global_asm]
+            } else {
+                vec![source_file_regular]
+            },
         },
-        module_global_asm: source_file_global_asm.map(|source_file| CompiledModule {
-            name: cgu.name().to_string(),
-            kind: ModuleKind::Regular,
-            object: Some(obj_out_global_asm),
-            dwarf_object: None,
-            bytecode: None,
-            assembly: None,
-            llvm_ir: None,
-            links_from_incr_cache: vec![source_file],
-        }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
 }
@@ -447,6 +424,7 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
             product.object,
             ModuleKind::Allocator,
             "allocator_shim".to_owned(),
+            None,
             &crate::debuginfo::producer(tcx.sess),
         ) {
             Ok(allocator_module) => Some(allocator_module),

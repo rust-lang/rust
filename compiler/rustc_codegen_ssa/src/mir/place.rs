@@ -500,7 +500,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
                 // around the `niche`'s type.
                 // The easiest way to do that is to do wrapping arithmetic on `u128` and then
                 // masking off any extra bits that occur because we did the arithmetic with too many bits.
-                let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
+                let niche_value = variant_index.as_u32() - niche_variants.start.as_u32();
                 let niche_value = (niche_value as u128).wrapping_add(niche_start);
                 let niche_value = niche_value & niche_layout.size.unsigned_int_max();
 
