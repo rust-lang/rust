@@ -1,7 +1,6 @@
 //! Serialization for client-server communication.
 
 use std::any::Any;
-use std::io::Write;
 use std::num::NonZero;
 
 use super::buffer::Buffer;
@@ -192,7 +191,7 @@ impl<S> Encode<S> for &str {
     fn encode(self, w: &mut Buffer, s: &mut S) {
         let bytes = self.as_bytes();
         bytes.len().encode(w, s);
-        w.write_all(bytes).unwrap();
+        w.extend_from_slice(bytes);
     }
 }
 
