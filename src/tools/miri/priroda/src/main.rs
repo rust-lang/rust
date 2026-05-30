@@ -112,17 +112,20 @@ impl<'tcx> PrirodaContext<'tcx> {
     fn run_command(&mut self, command: SessionCommand) -> InterpResult<'tcx> {
         match command {
             SessionCommand::Step => self.step(),
+            SessionCommand::Quit => unreachable!("quit is handled by the CLI loop"),
         }
     }
 }
 
 enum SessionCommand {
     Step,
+    Quit,
 }
 
 fn parse_command(input: &str) -> Option<SessionCommand> {
     match input.trim() {
         "" | "s" | "step" => Some(SessionCommand::Step),
+        "q" | "quit" => Some(SessionCommand::Quit),
         _ => None,
     }
 }
@@ -138,8 +141,17 @@ fn run_cli_loop<'tcx>(session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> 
         io::stdin().read_line(&mut input).unwrap();
 
         if let Some(command) = parse_command(&input) {
-            session.run_command(command)?;
-            session.print_location();
+            match command {
+                SessionCommand::Quit => {
+                    println!("quitting");
+                    return interp_ok(());
+                }
+
+                command => {
+                    session.run_command(command)?;
+                    session.print_location();
+                }
+            }
         } else {
             println!("no command");
         }
