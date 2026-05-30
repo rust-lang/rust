@@ -51,7 +51,7 @@ pub unsafe fn svld1sh_gather_s64offset_s64(
     offsets: svint64_t,
 ) -> svint64_t {
     unsafe extern "llvm-intrinsic" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16.p0")]
         fn _svld1sh_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i16,

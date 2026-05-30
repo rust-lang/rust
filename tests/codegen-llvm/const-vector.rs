@@ -27,7 +27,7 @@ use minisimd::{PackedSimd, Simd, f32x2, i8x2};
 extern "llvm-intrinsic" {
     #[link_name = "llvm.vector.reduce.add.v2i8"]
     fn test_i8x2(a: i8x2) -> i8;
-    #[link_name = "llvm.vector.partial.reduce.add.v2i8.v2i8.v2i8"]
+    #[link_name = "llvm.vector.partial.reduce.add.v2i8.v2i8"]
     fn test_i8x2_two_args(a: i8x2, b: i8x2) -> i8x2;
     #[link_name = "llvm.vector.insert.v2i8.v2i8"]
     fn test_i8x2_mixed_args(a: i8x2, b: i8x2, c: u64) -> i8x2;
