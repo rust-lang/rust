@@ -1,0 +1,100 @@
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/wrong-suggestion-result.rs:4:21
+   |
+LL |   async fn once<O, F: AsyncFnOnce() -> O>(f: F) -> O {
+   |  ____________________________________________________-
+LL | |     Ok::<(), ()>(())?;
+   | |                     ^ cannot use the `?` operator in an async function that returns `O`
+...  |
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
+   |
+help: consider restricting type parameter `O` with unstable trait `FromResidual`
+   |
+LL | async fn once<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFnOnce() -> O>(f: F) -> O {
+   |                +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-suggestion-result.rs:7:5
+   |
+LL | async fn once<O, F: AsyncFnOnce() -> O>(f: F) -> O {
+   |               - expected this type parameter     - expected `O` because of return type
+...
+LL |     f()
+   |     ^^^ expected type parameter `O`, found associated type
+   |
+   = note: expected type parameter `O`
+             found associated type `<F as AsyncFnOnce<()>>::CallOnceFuture`
+help: consider further restricting this bound
+   |
+LL | async fn once<O, F: AsyncFnOnce(, CallOnceFuture = O) -> O>(f: F) -> O {
+   |                                 ++++++++++++++++++++
+
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/wrong-suggestion-result.rs:12:21
+   |
+LL |   async fn fnref<O, F: AsyncFn() -> O>(f: F) -> O {
+   |  _________________________________________________-
+LL | |     Ok::<(), ()>(())?;
+   | |                     ^ cannot use the `?` operator in an async function that returns `O`
+...  |
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
+   |
+help: consider restricting type parameter `O` with unstable trait `FromResidual`
+   |
+LL | async fn fnref<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFn() -> O>(f: F) -> O {
+   |                 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-suggestion-result.rs:15:5
+   |
+LL | async fn fnref<O, F: AsyncFn() -> O>(f: F) -> O {
+   |                - expected this type parameter - expected `O` because of return type
+...
+LL |     f()
+   |     ^^^ expected type parameter `O`, found associated type
+   |
+   = note: expected type parameter `O`
+             found associated type `<F as AsyncFnMut<()>>::CallRefFuture<'_>`
+help: consider further restricting this bound
+   |
+LL | async fn fnref<O, F: AsyncFn() -> O<CallRefFuture<'_> = O>>(f: F) -> O {
+   |                                    +++++++++++++++++++++++
+
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/wrong-suggestion-result.rs:21:21
+   |
+LL |   async fn fnmut<O, F: AsyncFnMut() -> O>(f: F) -> O {
+   |  ____________________________________________________-
+LL | |     Ok::<(), ()>(())?;
+   | |                     ^ cannot use the `?` operator in an async function that returns `O`
+...  |
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
+   |
+help: consider restricting type parameter `O` with unstable trait `FromResidual`
+   |
+LL | async fn fnmut<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFnMut() -> O>(f: F) -> O {
+   |                 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/wrong-suggestion-result.rs:24:5
+   |
+LL | async fn fnmut<O, F: AsyncFnMut() -> O>(f: F) -> O {
+   |                - expected this type parameter    - expected `O` because of return type
+...
+LL |     f()
+   |     ^^^ expected type parameter `O`, found associated type
+   |
+   = note: expected type parameter `O`
+             found associated type `<F as AsyncFnMut<()>>::CallRefFuture<'_>`
+help: consider further restricting this bound
+   |
+LL | async fn fnmut<O, F: AsyncFnMut(, CallRefFuture<'_> = O) -> O>(f: F) -> O {
+   |                                 +++++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
