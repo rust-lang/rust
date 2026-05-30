@@ -31,6 +31,7 @@ use crate::{
         DbInterner, GenericArgs, ParamEnv, StoredClauses, Ty, TyKind,
         infer::{
             DbInternerInferExt, InferCtxt,
+            select::EvaluationResult,
             traits::{Obligation, ObligationCause},
         },
         obligation_ctxt::ObligationCtxt,
@@ -205,19 +206,39 @@ pub fn where_predicate_must_hold<'db>(
         };
     }
 
-    for clause in clauses {
-        let obligation = Obligation::new(
-            interner,
-            ObligationCause::dummy(),
-            env.param_env,
-            clause.as_predicate(),
-        );
-        if !infcx.predicate_must_hold_modulo_regions(&obligation) {
-            return WherePredicateEvaluation::NotProven;
+    let result = infcx.probe(|snapshot| {
+        let mut ocx = ObligationCtxt::new(&infcx);
+        for clause in clauses {
+            let obligation = Obligation::new(
+                interner,
+                ObligationCause::dummy(),
+                env.param_env,
+                clause.as_predicate(),
+            );
+            ocx.register_obligation(obligation);
         }
-    }
 
-    WherePredicateEvaluation::Holds
+        let mut result = EvaluationResult::EvaluatedToOk;
+        for error in ocx.evaluate_obligations_error_on_ambiguity() {
+            if error.is_true_error() {
+                return EvaluationResult::EvaluatedToErr;
+            }
+            result = result.max(EvaluationResult::EvaluatedToAmbig);
+        }
+        if infcx.opaque_types_added_in_snapshot(snapshot) {
+            result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
+        } else if infcx.region_constraints_added_in_snapshot(snapshot) {
+            result.max(EvaluationResult::EvaluatedToOkModuloRegions)
+        } else {
+            result
+        }
+    });
+
+    if result.must_apply_modulo_regions() {
+        WherePredicateEvaluation::Holds
+    } else {
+        WherePredicateEvaluation::NotProven
+    }
 }
 
 pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id: ImplId) -> bool {
