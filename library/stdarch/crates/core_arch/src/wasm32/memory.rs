@@ -2,9 +2,11 @@
 use stdarch_test::assert_instr;
 
 unsafe extern "unadjusted" {
-    #[link_name = "llvm.wasm.memory.grow"]
+    #[cfg_attr(target_pointer_width = "32", link_name = "llvm.wasm.memory.grow.i32")]
+    #[cfg_attr(target_pointer_width = "64", link_name = "llvm.wasm.memory.grow.i64")]
     fn llvm_memory_grow(mem: u32, pages: usize) -> usize;
-    #[link_name = "llvm.wasm.memory.size"]
+    #[cfg_attr(target_pointer_width = "32", link_name = "llvm.wasm.memory.size.i32")]
+    #[cfg_attr(target_pointer_width = "64", link_name = "llvm.wasm.memory.size.i64")]
     fn llvm_memory_size(mem: u32) -> usize;
 }
 

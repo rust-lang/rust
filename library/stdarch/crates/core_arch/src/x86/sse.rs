@@ -2040,7 +2040,7 @@ unsafe extern "C" {
     fn stmxcsr(p: *mut i8);
     #[link_name = "llvm.x86.sse.ldmxcsr"]
     fn ldmxcsr(p: *const i8);
-    #[link_name = "llvm.prefetch"]
+    #[link_name = "llvm.prefetch.p0"]
     fn prefetch(p: *const i8, rw: i32, loc: i32, ty: i32);
     #[link_name = "llvm.x86.sse.cmp.ss"]
     fn cmpss(a: __m128, b: __m128, imm8: i8) -> __m128;

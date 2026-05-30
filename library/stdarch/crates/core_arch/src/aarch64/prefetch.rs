@@ -2,7 +2,7 @@
 use stdarch_test::assert_instr;
 
 unsafe extern "unadjusted" {
-    #[link_name = "llvm.prefetch"]
+    #[link_name = "llvm.prefetch.p0"]
     fn prefetch(p: *const i8, rw: i32, loc: i32, ty: i32);
 }
 
