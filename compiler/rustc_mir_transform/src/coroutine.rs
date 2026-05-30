@@ -1077,7 +1077,7 @@ fn compute_layout<'tcx>(
 /// Replaces the entry point of `body` with a block that switches on the coroutine discriminant and
 /// dispatches to blocks according to `cases`.
 ///
-/// After this function, the former entry point of the function will be bb1.
+/// After this function, the former entry point of the function will be the last block.
 fn insert_switch<'tcx>(
     body: &mut Body<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
@@ -1085,23 +1085,34 @@ fn insert_switch<'tcx>(
     default_block: BasicBlock,
 ) {
     let (assign, discr) = transform.get_discr(body);
-    let switch_targets =
-        SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
-    let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
 
-    let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().raw.insert(
-        0,
-        BasicBlockData::new_stmts(
-            vec![assign],
-            Some(Terminator { source_info, kind: switch }),
-            false,
-        ),
-    );
-
-    for b in body.basic_blocks_mut().iter_mut() {
-        b.terminator_mut().successors_mut(|target| *target += 1);
+    // MIR validation ensures that no block targets `ENTRY_BLOCK`.
+    #[cfg(debug_assertions)]
+    for bb in body.basic_blocks.iter() {
+        for target in bb.terminator().successors() {
+            assert_ne!(target, START_BLOCK);
+        }
     }
+
+    // Add the switch as entry block, and put the former entry block at the end.
+    let former_entry = std::mem::replace(
+        &mut body.basic_blocks_mut()[START_BLOCK],
+        BasicBlockData::new_stmts(vec![assign], None, false),
+    );
+    let former_entry = body.basic_blocks_mut().push(former_entry);
+
+    // We may point to `START_BLOCK` in our `cases`, replace it with `former_entry`.
+    let mut switch_targets =
+        SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
+    for bb in switch_targets.all_targets_mut() {
+        if *bb == START_BLOCK {
+            *bb = former_entry;
+        }
+    }
+
+    let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
+    body.basic_blocks_mut()[START_BLOCK].terminator =
+        Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
@@ -1172,41 +1183,8 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
         return false;
     }
 
-    // Unwinds can only start at certain terminators.
-    for block in body.basic_blocks.iter() {
-        match block.terminator().kind {
-            // These never unwind.
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {}
-
-            // Resume will *continue* unwinding, but if there's no other unwinding terminator it
-            // will never be reached.
-            TerminatorKind::UnwindResume => {}
-
-            TerminatorKind::Yield { .. } => {
-                unreachable!("`can_unwind` called before coroutine transform")
-            }
-
-            // These may unwind.
-            TerminatorKind::Drop { .. }
-            | TerminatorKind::Call { .. }
-            | TerminatorKind::InlineAsm { .. }
-            | TerminatorKind::Assert { .. } => return true,
-
-            TerminatorKind::TailCall { .. } => {
-                unreachable!("tail calls can't be present in generators")
-            }
-        }
-    }
-
-    // If we didn't find an unwinding terminator, the function cannot unwind.
-    false
+    // If we don't find an unwinding terminator, the function cannot unwind.
+    body.basic_blocks.iter().any(|block| block.terminator().unwind().is_some())
 }
 
 // Poison the coroutine when it unwinds
