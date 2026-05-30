@@ -353,6 +353,7 @@
 #![feature(io_error_inprogress)]
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(io_slice_as_bytes)]
 #![feature(ip)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
