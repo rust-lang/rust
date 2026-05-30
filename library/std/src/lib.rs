@@ -367,6 +367,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_as_uninit)]
+#![feature(ptr_cast_slice)]
 #![feature(ptr_mask)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
