@@ -19,17 +19,20 @@ pub fn helper(_: usize) {}
 // CHECK-LABEL: @atomicptr_fetch_byte_add
 #[no_mangle]
 pub fn atomicptr_fetch_byte_add(a: &AtomicPtr<u8>, v: usize) -> *mut u8 {
-    // CHECK: llvm.lifetime.start
+    // CHECK: start
     // CHECK-NEXT: %[[RET:.*]] = atomicrmw add ptr %{{.*}}, [[USIZE]] %v
-    // CHECK-NEXT: inttoptr [[USIZE]] %[[RET]] to ptr
+    // CHECK-NEXT: %[[RETPTR:.*]] = inttoptr [[USIZE]] %[[RET]] to ptr
+    // CHECK-NEXT: ret ptr %[[RETPTR]]
     a.fetch_byte_add(v, Relaxed)
 }
 
 // CHECK-LABEL: @atomicptr_swap
 #[no_mangle]
 pub fn atomicptr_swap(a: &AtomicPtr<u8>, ptr: *mut u8) -> *mut u8 {
+    // CHECK: start
     // CHECK-NOT: ptrtoint
-    // CHECK: atomicrmw xchg ptr %{{.*}}, ptr %{{.*}} monotonic
+    // CHECK-NEXT: %[[RET:.*]] = atomicrmw xchg ptr %{{.*}}, ptr %{{.*}} monotonic
     // CHECK-NOT: inttoptr
+    // CHECK-NEXT: ret ptr %[[RET]]
     a.swap(ptr, Relaxed)
 }

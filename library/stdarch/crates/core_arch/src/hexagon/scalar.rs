@@ -11425,7 +11425,7 @@ pub unsafe fn Q6_l2fetch_AP(rs: i32, rtt: i64) {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11440,7 +11440,7 @@ pub unsafe fn Q6_P_rol_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11455,7 +11455,7 @@ pub unsafe fn Q6_P_rolacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11470,7 +11470,7 @@ pub unsafe fn Q6_P_roland_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11485,7 +11485,7 @@ pub unsafe fn Q6_P_rolnac_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11500,7 +11500,7 @@ pub unsafe fn Q6_P_rolor_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU6 = 0))]
@@ -11515,7 +11515,7 @@ pub unsafe fn Q6_P_rolxacc_PI<const IU6: u32>(rxx: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11530,7 +11530,7 @@ pub unsafe fn Q6_R_rol_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11545,7 +11545,7 @@ pub unsafe fn Q6_R_rolacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11560,7 +11560,7 @@ pub unsafe fn Q6_R_roland_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11575,7 +11575,7 @@ pub unsafe fn Q6_R_rolnac_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11590,7 +11590,7 @@ pub unsafe fn Q6_R_rolor_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V60
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v60"))]
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(rol, IU5 = 0))]
@@ -11605,7 +11605,7 @@ pub unsafe fn Q6_R_rolxacc_RI<const IU5: u32>(rx: i32, rs: i32) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V62
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v62"))]
 #[cfg_attr(test, assert_instr(vabsdiffb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11618,7 +11618,7 @@ pub unsafe fn Q6_P_vabsdiffb_PP(rtt: i64, rss: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V62
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v62"))]
 #[cfg_attr(test, assert_instr(vabsdiffub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11631,7 +11631,7 @@ pub unsafe fn Q6_P_vabsdiffub_PP(rtt: i64, rss: i64) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V62
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v62"))]
 #[cfg_attr(test, assert_instr(vsplatb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11644,7 +11644,7 @@ pub unsafe fn Q6_P_vsplatb_R(rs: i32) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 /// Requires: V62
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v62"))]
 #[cfg_attr(test, assert_instr(vtrunehb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11657,7 +11657,7 @@ pub unsafe fn Q6_P_vtrunehb_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 /// Requires: V62
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v62"))]
 #[cfg_attr(test, assert_instr(vtrunohb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11670,7 +11670,7 @@ pub unsafe fn Q6_P_vtrunohb_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: ALU64
 /// Execution Slots: SLOT23
 /// Requires: V65
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_p_not_any8_vcmpb_eq_PP(rss: i64, rtt: i64) -> i32 {
@@ -11682,7 +11682,7 @@ pub unsafe fn Q6_p_not_any8_vcmpb_eq_PP(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V66
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v66"))]
 #[cfg_attr(test, assert_instr(dfadd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11695,7 +11695,7 @@ pub unsafe fn Q6_P_dfadd_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V66
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v66"))]
 #[cfg_attr(test, assert_instr(dfsub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11708,7 +11708,7 @@ pub unsafe fn Q6_P_dfsub_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V66
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v66"))]
 #[cfg_attr(test, assert_instr(mpyi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11721,7 +11721,7 @@ pub unsafe fn Q6_R_mpyinac_RR(rx: i32, rs: i32, rt: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V66
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v66"))]
 #[rustc_legacy_const_generics(0, 1)]
 #[cfg_attr(test, assert_instr(mask, IU5 = 0, IU5_2 = 0))]
@@ -11737,7 +11737,7 @@ pub unsafe fn Q6_R_mask_II<const IU5: u32, const IU5_2: u32>() -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(clip, IU5 = 0))]
@@ -11752,7 +11752,7 @@ pub unsafe fn Q6_R_clip_RI<const IU5: u32>(rs: i32) -> i32 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(cround, IU6 = 0))]
@@ -11767,7 +11767,7 @@ pub unsafe fn Q6_P_cround_PI<const IU6: u32>(rss: i64) -> i64 {
 /// Instruction Type: S_3op
 /// Execution Slots: SLOT23
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cround))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11780,7 +11780,7 @@ pub unsafe fn Q6_P_cround_PR(rss: i64, rt: i32) -> i64 {
 /// Instruction Type: S_2op
 /// Execution Slots: SLOT23
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[rustc_legacy_const_generics(1)]
 #[cfg_attr(test, assert_instr(vclip, IU5 = 0))]
@@ -11795,7 +11795,7 @@ pub unsafe fn Q6_P_vclip_PI<const IU5: u32>(rss: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmax))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11808,7 +11808,7 @@ pub unsafe fn Q6_P_dfmax_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmin))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11821,7 +11821,7 @@ pub unsafe fn Q6_P_dfmin_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmpyfix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11834,7 +11834,7 @@ pub unsafe fn Q6_P_dfmpyfix_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmpyhh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11847,7 +11847,7 @@ pub unsafe fn Q6_P_dfmpyhhacc_PP(rxx: f64, rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmpylh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11860,7 +11860,7 @@ pub unsafe fn Q6_P_dfmpylhacc_PP(rxx: f64, rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT23
 /// Requires: V67
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67"))]
 #[cfg_attr(test, assert_instr(dfmpyll))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11873,7 +11873,7 @@ pub unsafe fn Q6_P_dfmpyll_PP(rss: f64, rtt: f64) -> f64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11886,7 +11886,7 @@ pub unsafe fn Q6_P_cmpyiw_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11899,7 +11899,7 @@ pub unsafe fn Q6_P_cmpyiwacc_PP(rxx: i64, rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11912,7 +11912,7 @@ pub unsafe fn Q6_P_cmpyiw_PP_conj(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11925,7 +11925,7 @@ pub unsafe fn Q6_P_cmpyiwacc_PP_conj(rxx: i64, rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11938,7 +11938,7 @@ pub unsafe fn Q6_P_cmpyrw_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11951,7 +11951,7 @@ pub unsafe fn Q6_P_cmpyrwacc_PP(rxx: i64, rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11964,7 +11964,7 @@ pub unsafe fn Q6_P_cmpyrw_PP_conj(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11977,7 +11977,7 @@ pub unsafe fn Q6_P_cmpyrwacc_PP_conj(rxx: i64, rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(vdmpyw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -11990,7 +11990,7 @@ pub unsafe fn Q6_P_vdmpyw_PP(rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(vdmpyw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12003,7 +12003,7 @@ pub unsafe fn Q6_P_vdmpywacc_PP(rxx: i64, rss: i64, rtt: i64) -> i64 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12016,7 +12016,7 @@ pub unsafe fn Q6_R_cmpyiw_PP_s1_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12029,7 +12029,7 @@ pub unsafe fn Q6_R_cmpyiw_PP_s1_rnd_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12042,7 +12042,7 @@ pub unsafe fn Q6_R_cmpyiw_PP_conj_s1_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyiw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12055,7 +12055,7 @@ pub unsafe fn Q6_R_cmpyiw_PP_conj_s1_rnd_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12068,7 +12068,7 @@ pub unsafe fn Q6_R_cmpyrw_PP_s1_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12081,7 +12081,7 @@ pub unsafe fn Q6_R_cmpyrw_PP_s1_rnd_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12094,7 +12094,7 @@ pub unsafe fn Q6_R_cmpyrw_PP_conj_s1_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: M
 /// Execution Slots: SLOT3
 /// Requires: V67, Audio
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v67,audio"))]
 #[cfg_attr(test, assert_instr(cmpyrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12107,7 +12107,7 @@ pub unsafe fn Q6_R_cmpyrw_PP_conj_s1_rnd_sat(rss: i64, rtt: i64) -> i32 {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmlink))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12120,7 +12120,7 @@ pub unsafe fn Q6_dmlink_AA(rs: i32, rt: i32) {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmpause))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12133,7 +12133,7 @@ pub unsafe fn Q6_R_dmpause() -> i32 {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmpoll))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12146,7 +12146,7 @@ pub unsafe fn Q6_R_dmpoll() -> i32 {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmresume))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12159,7 +12159,7 @@ pub unsafe fn Q6_dmresume_A(rs: i32) {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmstart))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -12172,7 +12172,7 @@ pub unsafe fn Q6_dmstart_A(rs: i32) {
 /// Instruction Type: ST
 /// Execution Slots: SLOT0
 /// Requires: V68
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "v68"))]
 #[cfg_attr(test, assert_instr(dmwait))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]

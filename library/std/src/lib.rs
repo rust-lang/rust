@@ -255,7 +255,10 @@
 #![allow(unused_features)]
 //
 // Features:
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
+#![cfg_attr(
+    test,
+    feature(internal_output_capture, print_internals, super_let, update_panic_count, rt)
+)]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -303,7 +306,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_inline_always)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
@@ -367,6 +369,7 @@
 #![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(seek_io_take_position)]
+#![feature(share_trait)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
@@ -488,9 +491,7 @@ extern crate std as realstd;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
-#[doc(hidden)]
-#[unstable(feature = "std_internals", issue = "none")]
-pub mod macros;
+mod macros;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler

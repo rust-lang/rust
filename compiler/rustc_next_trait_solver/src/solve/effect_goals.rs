@@ -374,7 +374,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        todo!("Iterator is not yet const")
+        Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution))
     }
 
     fn consider_builtin_fused_iterator_candidate(

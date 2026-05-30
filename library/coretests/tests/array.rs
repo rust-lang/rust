@@ -106,6 +106,34 @@ fn iterator_clone() {
     assert_eq!(clone.next_back(), Some(4));
     assert_eq!(it.next(), Some(2));
     assert_eq!(clone.next(), Some(2));
+    assert_eq!(it.next(), None);
+    assert_eq!(clone.next(), None);
+}
+
+#[test]
+fn iterator_clone_spec() {
+    #[derive(Debug, PartialEq)]
+    struct Foo(i32);
+
+    impl Clone for Foo {
+        fn clone(&self) -> Self {
+            // nontrivial clone
+            Foo(-self.0)
+        }
+    }
+
+    let mut it = IntoIterator::into_iter([Foo(0), Foo(2), Foo(4), Foo(6), Foo(8)]);
+    assert_eq!(it.next(), Some(Foo(0)));
+    assert_eq!(it.next_back(), Some(Foo(8)));
+    let mut clone = it.clone();
+    assert_eq!(it.next_back(), Some(Foo(6)));
+    assert_eq!(clone.next_back(), Some(Foo(-6)));
+    assert_eq!(it.next_back(), Some(Foo(4)));
+    assert_eq!(clone.next_back(), Some(Foo(-4)));
+    assert_eq!(it.next(), Some(Foo(2)));
+    assert_eq!(clone.next(), Some(Foo(-2)));
+    assert_eq!(it.next(), None);
+    assert_eq!(clone.next(), None);
 }
 
 #[test]

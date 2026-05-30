@@ -149,7 +149,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_pointer_width, Some(_))
             | (sym::target_vendor, None | Some(_))
             | (sym::target_has_atomic, Some(_))
-            | (sym::target_has_atomic_equal_alignment, Some(_))
+            | (sym::target_has_atomic_primitive_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_has_reliable_f16, None | Some(_))
             | (sym::target_has_reliable_f16_math, None | Some(_))
@@ -293,7 +293,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
                     ins_sym!(sym::target_has_atomic, sym);
                 }
                 if align.bits() == i {
-                    ins_sym!(sym::target_has_atomic_equal_alignment, sym);
+                    ins_sym!(sym::target_has_atomic_primitive_alignment, sym);
                 }
                 ins_sym!(sym::target_has_atomic_load_store, sym);
             };
@@ -485,13 +485,10 @@ impl CheckCfg {
             sym::integer(64usize),
             sym::integer(128usize),
         ];
-        for sym in [
-            sym::target_has_atomic,
-            sym::target_has_atomic_equal_alignment,
-            sym::target_has_atomic_load_store,
-        ] {
+        for sym in [sym::target_has_atomic, sym::target_has_atomic_load_store] {
             ins!(sym, no_values).extend(atomic_values);
         }
+        ins!(sym::target_has_atomic_primitive_alignment, empty_values).extend(atomic_values);
 
         ins!(sym::target_thread_local, no_values);
 

@@ -1,0 +1,72 @@
+error[E0423]: expected function, found unit variant `None`
+  --> $DIR/wrong-lifetime-rib.rs:11:15
+   |
+LL |         reuse None::<&()>;
+   |               ^^^^^^^^^^^ not a function
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/wrong-lifetime-rib.rs:26:10
+   |
+LL |     impl X {
+   |          ^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     impl dyn X {
+   |          +++
+help: you might have intended to implement this trait for a given type
+   |
+LL |     impl X for /* Type */ {
+   |            ++++++++++++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/wrong-lifetime-rib.rs:35:10
+   |
+LL |     impl X {
+   |          ^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     impl dyn X {
+   |          +++
+help: you might have intended to implement this trait for a given type
+   |
+LL |     impl X for /* Type */ {
+   |            ++++++++++++++
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/wrong-lifetime-rib.rs:9:5
+   |
+LL |     impl Trait {
+   |     ^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+error[E0223]: ambiguous associated type
+  --> $DIR/wrong-lifetime-rib.rs:27:16
+   |
+LL |         reuse<<<&Project> :: Ty> :: Ty as Iterator>::next;
+   |                ^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Ty` implemented for `&()`, you could use the fully-qualified path
+   |
+LL -         reuse<<<&Project> :: Ty> :: Ty as Iterator>::next;
+LL +         reuse<<<&() as Example>::Ty> :: Ty as Iterator>::next;
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/wrong-lifetime-rib.rs:37:21
+   |
+LL |             let _: &X;
+   |                     ^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |             let _: &dyn X;
+   |                     +++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0116, E0223, E0423, E0782.
+For more information about an error, try `rustc --explain E0116`.

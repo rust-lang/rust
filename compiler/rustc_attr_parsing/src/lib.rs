@@ -106,6 +106,7 @@ mod interface;
 /// like lists or name-value pairs.
 pub mod parser;
 
+mod check_cfg;
 mod early_parsed;
 mod errors;
 mod safety;

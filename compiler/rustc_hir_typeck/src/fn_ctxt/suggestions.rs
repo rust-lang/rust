@@ -18,7 +18,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
@@ -2679,8 +2679,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
-                        let variant_path =
-                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                        let variant_path = with_types_for_suggestion!(with_no_trimmed_paths!(
+                            self.tcx.def_path_str(variant.def_id)
+                        ));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
@@ -2707,12 +2708,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
-                // Suggest constructor as deep into the block tree as possible.
-                // This fixes https://github.com/rust-lang/rust/issues/101065,
-                // and also just helps make the most minimal suggestions.
+                // Suggest constructor as deep into the block tree as possible,
+                // but don't cross macro contexts. This fixes #101065 while
+                // keeping suggestions out of macro definitions (#142359).
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
+                    && expr_.span.eq_ctxt(expr.span)
                 {
                     expr = expr_
                 }

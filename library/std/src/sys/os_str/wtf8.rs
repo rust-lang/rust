@@ -240,6 +240,11 @@ impl Slice {
         unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
+    #[inline]
+    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
+        self.inner.try_check_utf8_boundary(index).ok()
+    }
+
     #[track_caller]
     #[inline]
     pub fn check_public_boundary(&self, index: usize) {

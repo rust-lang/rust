@@ -511,6 +511,20 @@ impl<'a> State<'a> {
         }
     }
 
+    pub(crate) fn print_mut_restriction(&mut self, mut_restriction: &ast::MutRestriction) {
+        match &mut_restriction.kind {
+            ast::RestrictionKind::Restricted { path, shorthand, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if *shorthand {
+                    self.word_nbsp(format!("mut({path})"))
+                } else {
+                    self.word_nbsp(format!("mut(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Unrestricted => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
@@ -537,6 +551,7 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
+                        s.print_mut_restriction(&field.mut_restriction);
                         s.print_type(&field.ty)
                     });
                     self.pclose();
@@ -562,6 +577,7 @@ impl<'a> State<'a> {
                         self.maybe_print_comment(field.span.lo());
                         self.print_outer_attributes(&field.attrs);
                         self.print_visibility(&field.vis);
+                        self.print_mut_restriction(&field.mut_restriction);
                         self.print_ident(field.ident.unwrap());
                         self.word_nbsp(":");
                         self.print_type(&field.ty);

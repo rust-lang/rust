@@ -159,9 +159,8 @@ LL | #[unsafe(export_name)]
    |
 help: must be of the form
    |
-LL - #[unsafe(export_name)]
-LL + #[export_name = "name"]
-   |
+LL | #[unsafe(export_name = "name")]
+   |                      ++++++++
 
 error: `rustc_allow_const_fn_unstable` expects a list of feature names
   --> $DIR/malformed-attrs.rs:31:1
@@ -330,7 +329,7 @@ LL | #[unsafe(naked())]
 help: must be of the form
    |
 LL - #[unsafe(naked())]
-LL + #[naked]
+LL + #[unsafe(naked)]
    |
 
 error[E0565]: malformed `track_caller` attribute input
@@ -651,7 +650,7 @@ LL |     #[unsafe(ffi_pure = 1)]
 help: must be of the form
    |
 LL -     #[unsafe(ffi_pure = 1)]
-LL +     #[ffi_pure]
+LL +     #[unsafe(ffi_pure)]
    |
 
 error[E0539]: malformed `link_ordinal` attribute input
@@ -677,7 +676,7 @@ LL |     #[unsafe(ffi_const = 1)]
 help: must be of the form
    |
 LL -     #[unsafe(ffi_const = 1)]
-LL +     #[ffi_const]
+LL +     #[unsafe(ffi_const)]
    |
 
 error[E0539]: malformed `linkage` attribute input

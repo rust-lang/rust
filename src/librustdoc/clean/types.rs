@@ -20,7 +20,7 @@ use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt, Visibility};
+use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
@@ -1755,6 +1755,40 @@ impl PrimitiveType {
             kw::Fn => Some(PrimitiveType::Fn),
             sym::never => Some(PrimitiveType::Never),
             _ => None,
+        }
+    }
+
+    pub(crate) fn from_ty(ty: Ty<'_>) -> Option<Self> {
+        match ty.kind() {
+            ty::Array(..) => Some(Self::Array),
+            ty::Bool => Some(Self::Bool),
+            ty::Char => Some(Self::Char),
+            ty::FnDef(..) | ty::FnPtr(..) => Some(Self::Fn),
+            ty::Int(int) => Some(Self::from(*int)),
+            ty::Uint(uint) => Some(Self::from(*uint)),
+            ty::Float(float) => Some(Self::from(*float)),
+            ty::Never => Some(Self::Never),
+            ty::Pat(..) => Some(Self::Pat),
+            ty::RawPtr(..) => Some(Self::RawPointer),
+            ty::Ref(..) => Some(Self::Reference),
+            ty::Slice(..) => Some(Self::Slice),
+            ty::Str => Some(Self::Str),
+            ty::Tuple(elems) if elems.is_empty() => Some(Self::Unit),
+            ty::Tuple(_) => Some(Self::Tuple),
+            ty::Adt(..)
+            | ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::Foreign(..)
+            | ty::Infer(..)
+            | ty::Param(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => None,
         }
     }
 

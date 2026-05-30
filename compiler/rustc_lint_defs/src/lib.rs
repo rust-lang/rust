@@ -109,7 +109,7 @@ pub enum LintExpectationId {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub struct UnstableLintExpectationId {
     pub attr_id: AttrId,
-    pub lint_index: Option<u16>,
+    pub lint_index: u16,
 }
 
 impl From<UnstableLintExpectationId> for LintExpectationId {
@@ -125,7 +125,7 @@ impl From<UnstableLintExpectationId> for LintExpectationId {
 pub struct StableLintExpectationId {
     pub hir_id: HirId,
     pub attr_index: u16,
-    pub lint_index: Option<u16>,
+    pub lint_index: u16,
 }
 
 impl StableHash for StableLintExpectationId {
@@ -135,7 +135,7 @@ impl StableHash for StableLintExpectationId {
 
         hir_id.stable_hash(hcx, hasher);
         attr_index.stable_hash(hcx, hasher);
-        lint_index.expect("must be filled to call `stable_hash`").stable_hash(hcx, hasher);
+        lint_index.stable_hash(hcx, hasher);
     }
 }
 

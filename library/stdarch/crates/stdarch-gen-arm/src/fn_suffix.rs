@@ -188,7 +188,7 @@ impl FromStr for SuffixKind {
             "rot90_lane" => Ok(SuffixKind::Rot90Lane),
             "rot90_laneq" => Ok(SuffixKind::Rot90LaneQ),
             "rot180" => Ok(SuffixKind::Rot180),
-            "rot180_lane" => Ok(SuffixKind::Rot180LaneQ),
+            "rot180_lane" => Ok(SuffixKind::Rot180Lane),
             "rot180_laneq" => Ok(SuffixKind::Rot180LaneQ),
             "u" => Ok(SuffixKind::Unsigned),
             "nox" => Ok(SuffixKind::NoX),

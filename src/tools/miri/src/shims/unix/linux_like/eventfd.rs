@@ -97,8 +97,9 @@ impl FileDescription for EventFd {
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
-        // Check the size of slice, and return error only if the size of the slice < 8.
-        if len < ty.layout.size.bytes_usize() {
+        // Check the size of slice, and return error if the size is wrong. The docs say we only
+        // error when the size is too small, but Linux seems to also error when the size is too big.
+        if len != ty.layout.size.bytes_usize() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 

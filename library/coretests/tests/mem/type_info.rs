@@ -67,6 +67,26 @@ fn test_tuples() {
             _ => unreachable!(),
         }
     }
+
+    const {
+        let ty_id = TypeId::of::<()>();
+        assert!(ty_id.size() == Some(size_of::<()>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 0);
+
+        let ty_id = TypeId::of::<(u8,)>();
+        assert!(ty_id.size() == Some(size_of::<(u8,)>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 1);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+
+        let ty_id = TypeId::of::<(u8, u16)>();
+        assert!(ty_id.size() == Some(size_of::<(u8, u16)>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
+    }
 }
 
 #[test]
@@ -95,6 +115,11 @@ fn test_structs() {
 
         let ty_id = TypeId::of::<TestStruct>();
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 3);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
+        assert!(ty_id.field(0, 2).type_id() == TypeId::of::<&u16>());
     }
 
     const {
@@ -116,6 +141,13 @@ fn test_structs() {
         assert!(ty.fields[0].ty == TypeId::of::<u8>());
         assert!(ty.fields[1].name == "1");
         assert!(ty.fields[1].ty == TypeId::of::<u16>());
+
+        let ty_id = TypeId::of::<TupleStruct>();
+        assert!(ty_id.size() == Some(size_of::<TupleStruct>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
     }
 
     const {
@@ -156,6 +188,10 @@ fn test_unions() {
 
         let ty_id = TypeId::of::<TestUnion>();
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<i16>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
     }
 
     const {
@@ -212,6 +248,13 @@ fn test_enums() {
 
         let ty_id = TypeId::of::<E>();
         assert!(ty_id.size() == Some(size_of::<E>()));
+        assert!(ty_id.variants() == 3);
+        assert!(ty_id.fields(0) == 1);
+        assert!(ty_id.fields(1) == 0);
+        assert!(ty_id.fields(2) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u32>());
+        assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
+        assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
     }
 
     const {
@@ -223,6 +266,10 @@ fn test_enums() {
 
         let ty_id = TypeId::of::<Option<i32>>();
         assert!(ty_id.size() == Some(size_of::<Option<i32>>()));
+        assert!(ty_id.variants() == 2);
+        assert!(ty_id.fields(0) == 0);
+        assert!(ty_id.fields(1) == 1);
+        assert!(ty_id.field(1, 0).type_id() == TypeId::of::<i32>());
     }
 }
 
@@ -234,43 +281,51 @@ fn test_primitives() {
         let Type { kind: Bool(_ty), .. } = (const { Type::of::<bool>() }) else { panic!() };
         let ty_id = TypeId::of::<bool>();
         assert!(ty_id.size() == Some(size_of::<bool>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Char(_ty), .. } = (const { Type::of::<char>() }) else { panic!() };
         let ty_id = TypeId::of::<char>();
         assert!(ty_id.size() == Some(size_of::<char>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Int(ty), .. } = (const { Type::of::<i32>() }) else { panic!() };
         assert!(ty.bits == 32);
         assert!(ty.signed);
         let ty_id = TypeId::of::<i32>();
         assert!(ty_id.size() == Some(size_of::<i32>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Int(ty), .. } = (const { Type::of::<isize>() }) else { panic!() };
         assert!(ty.bits as usize == size_of::<isize>() * 8);
         assert!(ty.signed);
         let ty_id = TypeId::of::<isize>();
         assert!(ty_id.size() == Some(size_of::<isize>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Int(ty), .. } = (const { Type::of::<u32>() }) else { panic!() };
         assert!(ty.bits == 32);
         assert!(!ty.signed);
         let ty_id = TypeId::of::<u32>();
         assert!(ty_id.size() == Some(size_of::<u32>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Int(ty), .. } = (const { Type::of::<usize>() }) else { panic!() };
         assert!(ty.bits as usize == size_of::<usize>() * 8);
         assert!(!ty.signed);
         let ty_id = TypeId::of::<usize>();
         assert!(ty_id.size() == Some(size_of::<usize>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Float(ty), .. } = (const { Type::of::<f32>() }) else { panic!() };
         assert!(ty.bits == 32);
         let ty_id = TypeId::of::<f32>();
         assert!(ty_id.size() == Some(size_of::<f32>()));
+        assert!(ty_id.variants() == 1);
 
         let Type { kind: Str(_ty), .. } = (const { Type::of::<str>() }) else { panic!() };
         let ty_id = TypeId::of::<str>();
         assert!(ty_id.size() == None);
+        assert!(ty_id.variants() == 1);
     }
 }
 

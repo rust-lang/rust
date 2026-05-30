@@ -21,6 +21,7 @@ use rustc_target::spec::Os;
 use crate::concurrency::GenmcCtx;
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
+use crate::helpers::is_no_core;
 use crate::shims::{global_ctor, tls};
 use crate::*;
 
@@ -289,14 +290,20 @@ pub fn create_ecx<'tcx>(
         MiriMachine::new(config, layout_cx, genmc_ctx),
     );
 
-    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel =
-        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
-    if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
-        tcx.dcx().fatal(
-            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
-            Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
+    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore. However,
+    // if the current crate is #![no_core] it's fine to be missing the usual items from libcore.
+    if !is_no_core(tcx) {
+        let sentinel = helpers::try_resolve_path(
+            tcx,
+            &["core", "ascii", "escape_default"],
+            Namespace::ValueNS,
         );
+        if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
+            tcx.dcx().fatal(
+                "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
+                Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
+            );
+        }
     }
 
     // Compute argc and argv from `config.args`.

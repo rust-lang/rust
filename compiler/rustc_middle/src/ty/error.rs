@@ -35,7 +35,7 @@ impl<'tcx> TypeError<'tcx> {
         }
 
         match self {
-            TypeError::CyclicTy(_) => "cyclic type of infinite size".into(),
+            TypeError::CyclicTy(_) => "recursive type with infinite-size name".into(),
             TypeError::CyclicConst(_) => "encountered a self-referencing constant".into(),
             TypeError::Mismatch => "types differ".into(),
             TypeError::PolarityMismatch(values) => {

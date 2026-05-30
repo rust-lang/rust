@@ -3630,6 +3630,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
             match use_set {
                 Some(LifetimeUseSet::Many) => {}
+                // A lifetime bound is a real use of that lifetime parameter, even
+                // though visiting a bound like `'b: 'a` only records a use of `'a`.
+                Some(LifetimeUseSet::One { .. }) if !param.bounds.is_empty() => {}
                 Some(LifetimeUseSet::One { use_span, use_ctxt }) => {
                     let param_ident = param.ident;
                     let deletion_span =

@@ -58,8 +58,8 @@ use smallvec::SmallVec;
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
 use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
 use crate::{
-    AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
-    ParamMode, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
+    ResolverAstLoweringExt,
 };
 
 mod generics;
@@ -144,7 +144,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
-                let body_id = self.lower_delegation_body(
+                let (body_id, call_expr_id) = self.lower_delegation_body(
                     delegation,
                     is_method,
                     param_count,
@@ -152,16 +152,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 );
 
-                let decl =
-                    self.lower_delegation_decl(sig_id, param_count, c_variadic, span, &generics);
+                let decl = self.lower_delegation_decl(
+                    sig_id,
+                    param_count,
+                    c_variadic,
+                    span,
+                    &generics,
+                    delegation.id,
+                    call_expr_id,
+                );
 
                 let sig = self.lower_delegation_sig(sig_id, decl, span);
                 let ident = self.lower_ident(delegation.ident);
 
                 let generics = self.arena.alloc(hir::Generics {
                     has_where_clause_predicates: false,
-                    params: self.arena.alloc_from_iter(generics.all_params(span, self)),
-                    predicates: self.arena.alloc_from_iter(generics.all_predicates(span, self)),
+                    params: self.arena.alloc_from_iter(generics.all_params()),
+                    predicates: self.arena.alloc_from_iter(generics.all_predicates()),
                     span,
                     where_clause_span: span,
                 });
@@ -280,6 +287,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         c_variadic: bool,
         span: Span,
         generics: &GenericsGenerationResults<'hir>,
+        call_path_node_id: NodeId,
+        call_expr_id: HirId,
     ) -> &'hir hir::FnDecl<'hir> {
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
@@ -297,7 +306,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(hir::InferDelegation::Sig(
                 sig_id,
-                hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationGenerics {
+                hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
+                    call_expr_id,
+                    call_path_res: self.get_resolution_id(call_path_node_id),
                     child_args_segment_id: generics.child.args_segment_id,
                     parent_args_segment_id: generics.parent.args_segment_id,
                     self_ty_id: generics.self_ty_id,
@@ -400,10 +411,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         param_count: usize,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
-    ) -> BodyId {
+    ) -> (BodyId, HirId) {
         let block = delegation.body.as_deref();
+        let mut call_expr_id = HirId::INVALID;
 
-        self.lower_body(|this| {
+        let block_id = self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
             let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
 
@@ -440,10 +452,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 args.push(this.lower_target_expr(&block));
             }
 
-            let final_expr = this.finalize_body_lowering(delegation, args, generics, span);
+            let (final_expr, hir_id) =
+                this.finalize_body_lowering(delegation, args, generics, span);
+
+            call_expr_id = hir_id;
 
             (this.arena.alloc_from_iter(parameters), final_expr)
-        })
+        });
+
+        debug_assert_ne!(call_expr_id, HirId::INVALID);
+
+        (block_id, call_expr_id)
     }
 
     // FIXME(fn_delegation): Alternatives for target expression lowering:
@@ -459,107 +478,58 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.mk_expr(hir::ExprKind::Block(block, None), block.span)
     }
 
-    // Generates expression for the resulting body. If possible, `MethodCall` is used
-    // to allow autoref/autoderef for target expression. For example in:
-    //
-    // trait Trait : Sized {
-    //     fn by_value(self) -> i32 { 1 }
-    //     fn by_mut_ref(&mut self) -> i32 { 2 }
-    //     fn by_ref(&self) -> i32 { 3 }
-    // }
-    //
-    // struct NewType(SomeType);
-    // impl Trait for NewType {
-    //     reuse Trait::* { self.0 }
-    // }
-    //
-    // `self.0` will automatically coerce.
     fn finalize_body_lowering(
         &mut self,
         delegation: &Delegation,
         args: Vec<hir::Expr<'hir>>,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
-    ) -> hir::Expr<'hir> {
-        let args = self.arena.alloc_from_iter(args);
+    ) -> (hir::Expr<'hir>, HirId) {
+        let path = self.lower_qpath(
+            delegation.id,
+            &delegation.qself,
+            &delegation.path,
+            ParamMode::Optional,
+            AllowReturnTypeNotation::No,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            None,
+        );
 
-        let has_generic_args =
-            delegation.path.segments.iter().rev().skip(1).any(|segment| segment.args.is_some());
+        let new_path = match path {
+            hir::QPath::Resolved(ty, path) => {
+                let mut new_path = path.clone();
+                let len = new_path.segments.len();
 
-        let call = if self
-            .get_resolution_id(delegation.id)
-            .map(|def_id| self.is_method(def_id, span))
-            .unwrap_or_default()
-            && delegation.qself.is_none()
-            && !has_generic_args
-            && !args.is_empty()
-        {
-            let ast_segment = delegation.path.segments.last().unwrap();
-            let segment = self.lower_path_segment(
-                delegation.path.span,
-                ast_segment,
-                ParamMode::Optional,
-                GenericArgsMode::Err,
-                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                None,
-            );
+                new_path.segments = self.arena.alloc_from_iter(
+                    new_path.segments.iter().enumerate().map(|(idx, segment)| {
+                        if idx + 2 == len {
+                            self.process_segment(span, segment, &mut generics.parent)
+                        } else if idx + 1 == len {
+                            self.process_segment(span, segment, &mut generics.child)
+                        } else {
+                            segment.clone()
+                        }
+                    }),
+                );
 
-            // FIXME(fn_delegation): proper support for parent generics propagation
-            // in method call scenario.
-            let segment = self.process_segment(span, &segment, &mut generics.child);
-            let segment = self.arena.alloc(segment);
-
-            self.arena.alloc(hir::Expr {
-                hir_id: self.next_id(),
-                kind: hir::ExprKind::MethodCall(segment, &args[0], &args[1..], span),
-                span,
-            })
-        } else {
-            let path = self.lower_qpath(
-                delegation.id,
-                &delegation.qself,
-                &delegation.path,
-                ParamMode::Optional,
-                AllowReturnTypeNotation::No,
-                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                None,
-            );
-
-            let new_path = match path {
-                hir::QPath::Resolved(ty, path) => {
-                    let mut new_path = path.clone();
-                    let len = new_path.segments.len();
-
-                    new_path.segments = self.arena.alloc_from_iter(
-                        new_path.segments.iter().enumerate().map(|(idx, segment)| {
-                            if idx + 2 == len {
-                                self.process_segment(span, segment, &mut generics.parent)
-                            } else if idx + 1 == len {
-                                self.process_segment(span, segment, &mut generics.child)
-                            } else {
-                                segment.clone()
-                            }
-                        }),
-                    );
-
-                    hir::QPath::Resolved(ty, self.arena.alloc(new_path))
-                }
-                hir::QPath::TypeRelative(ty, segment) => {
-                    let segment = self.process_segment(span, segment, &mut generics.child);
-
-                    hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
-                }
-            };
-
-            generics.self_ty_id = match new_path {
-                hir::QPath::Resolved(ty, _) => ty,
-                hir::QPath::TypeRelative(ty, _) => Some(ty),
+                hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            .map(|ty| ty.hir_id);
+            hir::QPath::TypeRelative(ty, segment) => {
+                let segment = self.process_segment(span, segment, &mut generics.child);
 
-            let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(new_path), span));
-            self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span))
+                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
+            }
         };
+
+        generics.self_ty_id = match new_path {
+            hir::QPath::Resolved(ty, _) => ty,
+            hir::QPath::TypeRelative(ty, _) => Some(ty),
+        }
+        .map(|ty| ty.hir_id);
+
+        let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(new_path), span));
+        let args = self.arena.alloc_from_iter(args);
+        let call = self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span));
 
         let block = self.arena.alloc(hir::Block {
             stmts: &[],
@@ -570,7 +540,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             targeted_by_break: false,
         });
 
-        self.mk_expr(hir::ExprKind::Block(block, None), span)
+        (self.mk_expr(hir::ExprKind::Block(block, None), span), call.hir_id)
     }
 
     fn process_segment(
@@ -581,8 +551,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::PathSegment<'hir> {
         let details = result.generics.args_propagation_details();
 
+        // Always uplift generic params, because if they are not empty then they
+        // should be generated in delegation.
+        let generics = result.generics.into_hir_generics(self, span);
         let segment = if details.should_propagate {
-            let generics = result.generics.into_hir_generics(self, span);
             let args = generics.into_generic_args(self, span);
 
             // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
