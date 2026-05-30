@@ -578,6 +578,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         default_block: Block<'gcc>,
         cases: impl ExactSizeIterator<Item = (u128, Block<'gcc>)>,
     ) {
+        // A switch with no cases is equivalent to an unconditional jump to the
+        // default block. Such a `SwitchInt` (one with only an `otherwise` target)
+        // is normally simplified into a `goto`, but `-Z mir-preserve-ub` keeps it,
+        // so it can reach here with e.g. the `bool` discriminant produced by a
+        // range-pattern comparison. `gcc_jit_block_end_with_switch` rejects a
+        // discriminant that is not of integer type, so emit a plain jump instead
+        // of a (pointless) switch.
+        if cases.len() == 0 {
+            self.block.end_with_jump(self.location, default_block);
+            return;
+        }
+
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
         // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
