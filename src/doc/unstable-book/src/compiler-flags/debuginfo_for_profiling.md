@@ -1,4 +1,4 @@
-# `debug-info-for-profiling`
+# `debuginfo-for-profiling`
 
 ---
 
@@ -22,7 +22,7 @@ external tool `create_llvm_prof` from [this repository] must be used.
 Given a Rust file `main.rs`, we can produce an optimized binary as follows:
 
 ```shell
-rustc -O -Zdebug-info-for-profiling main.rs -o main
+rustc -O -Zdebuginfo-for-profiling main.rs -o main
 perf record -b ./main
 create_llvm_prof --binary=main --out=code.prof
 rustc -O -Zprofile-sample-use=code.prof main.rs -o main2
