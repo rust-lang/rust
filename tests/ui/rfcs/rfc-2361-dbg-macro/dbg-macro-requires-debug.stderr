@@ -4,7 +4,6 @@ error[E0277]: `NotDebug` doesn't implement `Debug`
 LL |     let _: NotDebug = dbg!(NotDebug);
    |                       ^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `NotDebug`
    |
-   = note: add `#[derive(Debug)]` to `NotDebug` or manually `impl Debug for NotDebug`
 help: consider annotating `NotDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
