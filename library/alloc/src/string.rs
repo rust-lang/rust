@@ -409,6 +409,7 @@ pub struct FromUtf8Error {
 /// assert!(String::from_utf16(v).is_err());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(no_global_oom_handling, expect(unused_unconstructable_pub_structs))]
 #[derive(Debug)]
 pub struct FromUtf16Error {
     kind: FromUtf16ErrorKind,
