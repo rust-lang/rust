@@ -109,6 +109,7 @@ pub mod server;
 mod symbol;
 
 use buffer::Buffer;
+pub use closure::Closure;
 pub use panic_message::PanicMessage;
 use rpc::{Decode, Encode};
 
@@ -120,13 +121,13 @@ use rpc::{Decode, Encode};
 #[repr(C)]
 pub struct BridgeConfig<'a> {
     /// Buffer used to pass initial input to the client.
-    input: Buffer,
+    pub input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a>,
+    pub dispatch: closure::Closure<'a>,
 
     /// If 'true', always invoke the default panic hook
-    force_show_panics: bool,
+    pub force_show_panics: bool,
 }
 
 impl !Send for BridgeConfig<'_> {}
