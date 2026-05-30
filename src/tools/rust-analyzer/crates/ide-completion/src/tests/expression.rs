@@ -2372,7 +2372,7 @@ fn main() {
     $0
 }
 //- /std.rs crate:std
-#[unstable(feature = "intrinsics")]
+#[unstable(feature = "core_intrinsics")]
 pub mod intrinsics {}
     "#,
         expect![[r#"

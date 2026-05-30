@@ -611,7 +611,7 @@ impl<'db> CompletionContext<'_, 'db> {
         let Some(unstable_feature) = attrs.unstable_feature(self.db) else {
             return true;
         };
-        !INTERNAL_FEATURES.contains(&unstable_feature)
+        !is_internal_feature(&unstable_feature)
             || self.krate.is_unstable_feature_enabled(self.db, &unstable_feature)
     }
 
@@ -977,6 +977,7 @@ const INTERNAL_FEATURES_LIST: &[Symbol] = &[
     sym::eii_internals,
     sym::field_representing_type_raw,
     sym::intrinsics,
+    sym::core_intrinsics,
     sym::lang_items,
     sym::link_cfg,
     sym::more_maybe_bounds,
@@ -1000,3 +1001,12 @@ const INTERNAL_FEATURES_LIST: &[Symbol] = &[
 
 static INTERNAL_FEATURES: LazyLock<FxHashSet<Symbol>> =
     LazyLock::new(|| INTERNAL_FEATURES_LIST.iter().cloned().collect());
+
+fn is_internal_feature(feature: &Symbol) -> bool {
+    if INTERNAL_FEATURES.contains(feature) {
+        return true;
+    }
+    // Libs features are internal if they end in `_internal` or `_internals`.
+    let feature = feature.as_str();
+    feature.ends_with("_internal") || feature.ends_with("_internals")
+}
