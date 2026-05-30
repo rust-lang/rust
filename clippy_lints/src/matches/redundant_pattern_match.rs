@@ -1,5 +1,5 @@
 use super::REDUNDANT_PATTERN_MATCHING;
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
@@ -12,7 +12,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, kw};
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         ..
     }) = higher::WhileLet::hir(expr)
     {
-        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false, let_span);
+        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, kw::While, false, let_span);
         find_if_let_true(cx, let_pat, let_expr, let_span);
     }
 }
@@ -38,7 +38,7 @@ pub(super) fn check_if_let<'tcx>(
     let_span: Span,
 ) {
     find_if_let_true(cx, pat, scrutinee, let_span);
-    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else, let_span);
+    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, kw::If, has_else, let_span);
 }
 
 /// Looks for:
@@ -78,29 +78,28 @@ fn find_match_true<'tcx>(
         && let PatExprKind::Lit { lit, negated: false } = lit.kind
         && let LitKind::Bool(pat_is_true) = lit.node
     {
-        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_then(cx, REDUNDANT_PATTERN_MATCHING, span, message, |diag| {
+            let mut applicability = Applicability::MachineApplicable;
 
-        let mut sugg = Sugg::hir_with_context(
-            cx,
-            scrutinee,
-            scrutinee.span.source_callsite().ctxt(),
-            "..",
-            &mut applicability,
-        );
+            let mut sugg = Sugg::hir_with_context(
+                cx,
+                scrutinee,
+                scrutinee.span.source_callsite().ctxt(),
+                "..",
+                &mut applicability,
+            );
 
-        if !pat_is_true {
-            sugg = make_unop("!", sugg);
-        }
+            if !pat_is_true {
+                sugg = make_unop("!", sugg);
+            }
 
-        span_lint_and_sugg(
-            cx,
-            REDUNDANT_PATTERN_MATCHING,
-            span,
-            message,
-            "consider using the condition directly",
-            sugg.into_string(),
-            applicability,
-        );
+            diag.span_suggestion(
+                span,
+                "consider using the condition directly",
+                sugg.into_string(),
+                applicability,
+            );
+        });
     }
 }
 
@@ -179,7 +178,7 @@ fn find_method_sugg_for_if_let<'tcx>(
     expr: &'tcx Expr<'_>,
     let_pat: &Pat<'_>,
     let_expr: &'tcx Expr<'_>,
-    keyword: &'static str,
+    keyword: Symbol,
     has_else: bool,
     let_span: Span,
 ) {
@@ -196,25 +195,8 @@ fn find_method_sugg_for_if_let<'tcx>(
         return;
     };
 
-    // If this is the last expression in a block or there is an else clause then the whole
-    // type needs to be considered, not just the inner type of the branch being matched on.
-    // Note the last expression in a block is dropped after all local bindings.
-    let check_ty = if has_else
-        || (keyword == "if" && matches!(cx.tcx.hir_parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
-    {
-        op_ty
-    } else {
-        inner_ty
-    };
-
-    // All temporaries created in the scrutinee expression are dropped at the same time as the
-    // scrutinee would be, so they have to be considered as well.
-    // e.g. in `if let Some(x) = foo.lock().unwrap().baz.as_ref() { .. }` the lock will be held
-    // for the duration if body.
-    let needs_drop = needs_ordered_drop(cx, check_ty) || any_temporaries_need_ordered_drop(cx, let_expr);
-
     // check that `while_let_on_iterator` lint does not trigger
-    if keyword == "while"
+    if keyword == kw::While
         && let ExprKind::MethodCall(method_path, _, [], _) = let_expr.kind
         && method_path.ident.name == sym::next
         && cx.ty_based_def(let_expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
@@ -222,18 +204,36 @@ fn find_method_sugg_for_if_let<'tcx>(
         return;
     }
 
-    let result_expr = match &let_expr.kind {
-        ExprKind::AddrOf(_, _, borrowed) => borrowed,
-        ExprKind::Unary(UnOp::Deref, deref) => deref,
-        _ => let_expr,
-    };
-
     span_lint_and_then(
         cx,
         REDUNDANT_PATTERN_MATCHING,
         let_pat.span,
         format!("redundant pattern matching, consider using `{good_method}`"),
         |diag| {
+            // If this is the last expression in a block or there is an else clause then the whole
+            // type needs to be considered, not just the inner type of the branch being matched on.
+            // Note the last expression in a block is dropped after all local bindings.
+            let check_ty = if has_else
+                || (keyword == kw::If
+                    && matches!(cx.tcx.hir_parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
+            {
+                op_ty
+            } else {
+                inner_ty
+            };
+
+            // All temporaries created in the scrutinee expression are dropped at the same time as the
+            // scrutinee would be, so they have to be considered as well.
+            // e.g. in `if let Some(x) = foo.lock().unwrap().baz.as_ref() { .. }` the lock will be held
+            // for the duration if body.
+            let needs_drop = needs_ordered_drop(cx, check_ty) || any_temporaries_need_ordered_drop(cx, let_expr);
+
+            let result_expr = match &let_expr.kind {
+                ExprKind::AddrOf(_, _, borrowed) => borrowed,
+                ExprKind::Unary(UnOp::Deref, deref) => deref,
+                _ => let_expr,
+            };
+
             // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
             let expr_span = expr.span;
@@ -289,27 +289,28 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
 
         let expr_span = is_expn_of(expr.span, sym::matches).unwrap_or(expr.span);
 
-        let result_expr = match &op.kind {
-            ExprKind::AddrOf(_, _, borrowed) => borrowed,
-            _ => op,
-        };
-        let mut app = Applicability::MachineApplicable;
-        let receiver_sugg = Sugg::hir_with_context(cx, result_expr, expr_span.ctxt(), "_", &mut app).maybe_paren();
-        let mut sugg = format!("{receiver_sugg}.{good_method}");
-
-        if let Some(guard) = maybe_guard {
-            let guard = Sugg::hir_with_context(cx, guard, expr_span.ctxt(), "..", &mut app);
-            let _ = write!(sugg, " && {}", guard.maybe_paren());
-        }
-
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             REDUNDANT_PATTERN_MATCHING,
             expr_span,
             format!("redundant pattern matching, consider using `{good_method}`"),
-            "try",
-            sugg,
-            app,
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let ctxt = expr_span.ctxt();
+                let result_expr = match &op.kind {
+                    ExprKind::AddrOf(_, _, borrowed) => borrowed,
+                    _ => op,
+                };
+                let receiver_sugg = Sugg::hir_with_context(cx, result_expr, ctxt, "_", &mut app).maybe_paren();
+                let mut sugg = format!("{receiver_sugg}.{good_method}");
+
+                if let Some(guard) = maybe_guard {
+                    let guard = Sugg::hir_with_context(cx, guard, ctxt, "..", &mut app);
+                    let _ = write!(sugg, " && {}", guard.maybe_paren());
+                }
+
+                diag.span_suggestion(expr_span, "try", sugg, app);
+            },
         );
     }
 }
