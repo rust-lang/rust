@@ -98,6 +98,7 @@ jobs:
       run: |
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
+        CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
 
     - name: Run y.sh cargo build
       run: |
