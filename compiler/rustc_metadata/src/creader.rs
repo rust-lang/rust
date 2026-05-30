@@ -735,7 +735,7 @@ impl CStore {
             let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
             else {
-                let wasm_tuple = "wasm32-unknown-unknown";
+                let wasm_tuple = "wasm32-wasip1";
                 let wasm_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(
                     sess.opts.sysroot.path(),
                     wasm_tuple,
