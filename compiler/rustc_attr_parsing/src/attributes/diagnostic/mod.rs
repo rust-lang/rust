@@ -7,6 +7,7 @@ use rustc_hir::attrs::diagnostic::{
     Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
     NameValue, Piece, Predicate,
 };
+use rustc_lexer::{LiteralKind, Token, TokenKind, tokenize};
 use rustc_macros::Diagnostic;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
@@ -208,14 +209,16 @@ fn parse_directive_items<'p>(
     let mut filters = ThinVec::new();
 
     for item in items {
-        // Minimum required to avoid delayed bug ICE
-        // TODO provide enhanced error message
         if let MetaItemOrLitParser::Lit(lit @ MetaItemLit { kind: LitKind::Err(_), .. }) = item {
-            cx.emit_err(WrappedParserError {
-                description: "Expected `,`".to_string(),
-                span: lit.span,
-                label: "contains unexpected token".to_string(),
-            });
+            let span = if let Some(offset) = missing_comma_offset(lit.symbol.as_str()) {
+                let (_, after) = item.span().split_at(offset);
+                after.shrink_to_lo()
+            } else {
+                item.span()
+            };
+
+            cx.adcx().expected_comma(span);
+            continue;
         }
 
         let span = item.span();
@@ -384,6 +387,34 @@ fn parse_directive_items<'p>(
         notes,
         parent_label,
     })
+}
+
+fn missing_comma_offset(text: &str) -> Option<u32> {
+    let mut offset = 0;
+    let mut tokens = tokenize(text, rustc_lexer::FrontmatterAllowed::No).peekable();
+    loop {
+        let Some(Token { len, kind: TokenKind::Ident }) = tokens.next() else {
+            return None;
+        };
+        offset += len;
+        let Some(Token { len, kind: TokenKind::Eq }) = tokens.next() else {
+            return None;
+        };
+        offset += len;
+        let Some(Token {
+            len,
+            kind: TokenKind::Literal { kind: LiteralKind::Str { terminated: true }, .. },
+        }) = tokens.next()
+        else {
+            return None;
+        };
+        offset += len;
+        match tokens.peek() {
+            Some(Token { len, kind: TokenKind::Comma }) => offset += len,
+            Some(_) => return Some(offset),
+            None => return None,
+        }
+    }
 }
 
 pub(crate) fn parse_format_string(

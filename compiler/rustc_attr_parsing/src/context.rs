@@ -1096,6 +1096,10 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn expected_integer_literal(&mut self, span: Span) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
     }
+
+    pub(crate) fn expected_comma(&mut self, span: Span) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::ExpectedComma)
+    }
 }
 
 impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {

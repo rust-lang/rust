@@ -583,6 +583,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
+    ExpectedComma,
 }
 
 /// A description of a thing that can be parsed using an attribute parser.
@@ -849,6 +850,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+            }
+            AttributeParseErrorReason::ExpectedComma => {
+                diag.span_label(self.span, "expected `,` here");
             }
         }
 

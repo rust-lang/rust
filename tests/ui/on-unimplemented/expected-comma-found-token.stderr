@@ -1,10 +1,22 @@
-error: expected `,`, found `label`
-  --> $DIR/expected-comma-found-token.rs:8:5
+error[E0539]: malformed `rustc_on_unimplemented` attribute input
+  --> $DIR/expected-comma-found-token.rs:6:1
    |
-LL |     message="the message"
-   |                          - expected `,`
-LL |     label="the label"
-   |     ^^^^^ unexpected token
+LL | / #[rustc_on_unimplemented(
+LL | |     message="the message"
+   | |                          - expected `,` here
+LL | |     label="the label"
+LL | | )]
+   | |__^
+   |
+help: must be of the form
+   |
+LL - #[rustc_on_unimplemented(
+LL -     message="the message"
+LL -     label="the label"
+LL - )]
+LL + #[rustc_on_unimplemented(/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...")]
+   |
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.
