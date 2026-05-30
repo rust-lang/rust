@@ -29,6 +29,7 @@ fn associated_type_bounds<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
     filter: PredicateFilter,
+    icx: &ItemCtxt<'tcx>,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     ty::print::with_reduced_queries!({
         let item_ty = Ty::new_projection_from_args(
@@ -37,7 +38,6 @@ fn associated_type_bounds<'tcx>(
             GenericArgs::identity_for_item(tcx, assoc_item_def_id),
         );
 
-        let icx = ItemCtxt::new(tcx, assoc_item_def_id);
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             item_ty,
@@ -354,17 +354,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
 /// impl trait it isn't possible to write a suitable predicate on the
 /// containing function and for type-alias impl trait we don't have a backwards
 /// compatibility issue.
-#[instrument(level = "trace", skip(tcx, item_ty))]
+#[instrument(level = "trace", skip(tcx, item_ty, icx))]
 fn opaque_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    opaque_def_id: LocalDefId,
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     item_ty: Ty<'tcx>,
     span: Span,
     filter: PredicateFilter,
+    icx: &ItemCtxt<'tcx>,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     ty::print::with_reduced_queries!({
-        let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             item_ty,
@@ -408,28 +407,46 @@ pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
-    explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All)
+    tcx.explicit_item_bounds_with_type_dep_defs(def_id).0
+}
+
+pub(super) fn explicit_item_bounds_with_type_dep_defs(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> (ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]>, &'_ ty::TypeDepDefs) {
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let icx = ItemCtxt::new(tcx, def_id);
+    let bounds = explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All, &icx);
+    (
+        bounds,
+        tcx.arena.alloc(ty::TypeDepDefs {
+            hir_owner: hir_id.owner,
+            type_dependent_defs: icx.take_type_dependent_defs(),
+        }),
+    )
 }
 
 pub(super) fn explicit_item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
-    explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::SelfOnly)
+    let icx = ItemCtxt::new(tcx, def_id);
+    explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::SelfOnly, &icx)
 }
 
-pub(super) fn explicit_item_bounds_with_filter(
-    tcx: TyCtxt<'_>,
+pub(super) fn explicit_item_bounds_with_filter<'tcx>(
+    tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     filter: PredicateFilter,
-) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
+    icx: &ItemCtxt<'tcx>,
+) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             let bounds =
-                associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
+                associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter, icx);
             return ty::EarlyBinder::bind(bounds);
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
@@ -443,7 +460,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
             ..
-        }) => associated_type_bounds(tcx, def_id, bounds, *span, filter),
+        }) => associated_type_bounds(tcx, def_id, bounds, *span, filter, icx),
         hir::Node::OpaqueTy(hir::OpaqueTy { bounds, origin, span, .. }) => match origin {
             // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`,
             // when we're asking for the item bounds of the *opaques* in a trait's default
@@ -459,7 +476,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 let args = GenericArgs::identity_for_item(tcx, def_id);
                 let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
                 let bounds = &*tcx.arena.alloc_slice(
-                    &opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
+                    &opaque_type_bounds(tcx, bounds, item_ty, *span, filter, icx)
                         .to_vec()
                         .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: parent.to_def_id() }),
                 );
@@ -477,7 +494,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             | rustc_hir::OpaqueTyOrigin::TyAlias { parent: _, .. } => {
                 let args = GenericArgs::identity_for_item(tcx, def_id);
                 let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-                let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
+                let bounds = opaque_type_bounds(tcx, bounds, item_ty, *span, filter, icx);
                 assert_only_contains_predicates_from(filter, bounds, item_ty);
                 bounds
             }

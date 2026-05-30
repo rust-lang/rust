@@ -224,6 +224,25 @@ pub struct TypeckResults<'tcx> {
     offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, Debug, StableHash)]
+pub struct TypeDepDefs {
+    pub hir_owner: OwnerId,
+    pub type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
+}
+
+impl TypeDepDefs {
+    pub fn type_dependent_defs(
+        &self,
+    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.type_dependent_defs }
+    }
+
+    pub fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.type_dependent_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
+    }
+}
+
 impl<'tcx> TypeckResults<'tcx> {
     pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {

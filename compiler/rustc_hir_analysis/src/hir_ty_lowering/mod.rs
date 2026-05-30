@@ -1364,7 +1364,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
-                Ok((ty, tcx.def_kind(def_id), def_id))
+                let def_kind = tcx.def_kind(def_id);
+                Ok((ty, def_kind, def_id))
             }
             TypeRelativePath::Variant { adt, variant_did } => {
                 let adt = self.check_param_uses_if_mcg(adt, span, false);

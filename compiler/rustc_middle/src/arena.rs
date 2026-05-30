@@ -26,6 +26,7 @@ macro_rules! arena_types {
                     rustc_middle::mir::Body<'tcx>
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
+            [decode] type_dep_defs: rustc_middle::ty::TypeDepDefs,
             [] borrowck_result: rustc_data_structures::fx::FxIndexMap<
                 rustc_hir::def_id::LocalDefId,
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,

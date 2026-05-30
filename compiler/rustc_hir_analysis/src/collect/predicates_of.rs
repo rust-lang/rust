@@ -79,8 +79,12 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
 
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
-#[instrument(level = "trace", skip(tcx), ret)]
-fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericPredicates<'_> {
+#[instrument(level = "trace", skip(tcx, icx), ret)]
+fn gather_explicit_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    icx: &ItemCtxt<'tcx>,
+) -> ty::GenericPredicates<'tcx> {
     use rustc_hir::*;
 
     match tcx.opt_rpitit_info(def_id.to_def_id()) {
@@ -151,8 +155,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
-
-    let icx = ItemCtxt::new(tcx, def_id);
 
     const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
 
@@ -497,19 +499,43 @@ pub(super) fn trait_explicit_predicates_and_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::GenericPredicates<'_> {
+    tcx.trait_explicit_predicates_and_bounds_with_type_dep_defs(def_id).0
+}
+
+pub(super) fn trait_explicit_predicates_and_bounds_with_type_dep_defs(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> (ty::GenericPredicates<'_>, &'_ ty::TypeDepDefs) {
     assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
-    gather_explicit_predicates_of(tcx, def_id)
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let icx = ItemCtxt::new(tcx, def_id);
+    let predicates = gather_explicit_predicates_of(tcx, def_id, &icx);
+    (
+        predicates,
+        tcx.arena.alloc(ty::TypeDepDefs {
+            hir_owner: hir_id.owner,
+            type_dependent_defs: icx.take_type_dependent_defs(),
+        }),
+    )
 }
 
 pub(super) fn explicit_predicates_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::GenericPredicates<'tcx> {
+    tcx.explicit_predicates_of_with_type_dep_defs(def_id).0
+}
+
+pub(super) fn explicit_predicates_of_with_type_dep_defs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> (ty::GenericPredicates<'tcx>, &'tcx ty::TypeDepDefs) {
     let def_kind = tcx.def_kind(def_id);
     if let DefKind::Trait = def_kind {
         // Remove bounds on associated types from the predicates, they will be
         // returned by `explicit_item_bounds`.
-        let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id);
+        let (predicates_and_bounds, type_dep_defs) =
+            tcx.trait_explicit_predicates_and_bounds_with_type_dep_defs(def_id);
         let trait_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
         let is_assoc_item_ty = |ty: Ty<'tcx>| {
@@ -550,15 +576,25 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 _ => true,
             })
             .collect();
-        if predicates.len() == predicates_and_bounds.predicates.len() {
+        let predicates = if predicates.len() == predicates_and_bounds.predicates.len() {
             predicates_and_bounds
         } else {
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
             }
-        }
+        };
+        (predicates, type_dep_defs)
     } else {
+        let hir_id = tcx.local_def_id_to_hir_id(def_id);
+        let icx = ItemCtxt::new(tcx, def_id);
+        let type_dep_defs = || {
+            tcx.arena.alloc(ty::TypeDepDefs {
+                hir_owner: hir_id.owner,
+                type_dependent_defs: icx.take_type_dependent_defs(),
+            })
+        };
+
         if def_kind == DefKind::AnonConst
             && tcx.features().generic_const_exprs()
             && let Some(defaulted_param_def_id) =
@@ -604,12 +640,16 @@ pub(super) fn explicit_predicates_of<'tcx>(
                     }
                 })
                 .cloned();
-            return GenericPredicates {
-                parent: parent_preds.parent,
-                predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
-            };
+            return (
+                GenericPredicates {
+                    parent: parent_preds.parent,
+                    predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+                },
+                type_dep_defs(),
+            );
         }
-        gather_explicit_predicates_of(tcx, def_id)
+
+        (gather_explicit_predicates_of(tcx, def_id, &icx), type_dep_defs())
     }
 }
 
@@ -1183,11 +1223,12 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
         );
     }
 
+    let icx = ItemCtxt::new(tcx, def_id);
     let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { .. }) => {
-            explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+            explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst, &icx)
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => {
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
@@ -1203,7 +1244,7 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
             ),
             Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
             | Node::OpaqueTy(_) => {
-                explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+                explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst, &icx)
             }
             _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),
         },

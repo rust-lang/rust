@@ -143,6 +143,10 @@ impl<T: Erasable> Erasable for ty::EarlyBinder<'_, T> {
     type Storage = T::Storage;
 }
 
+impl<T0: Erasable, T1> Erasable for (ty::EarlyBinder<'_, T0>, &'_ T1) {
+    type Storage = (T0::Storage, [u8; size_of::<&'_ ()>()]);
+}
+
 impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
     type Storage = [u8; size_of::<(&'_ (), &'_ ())>()];
 }
@@ -168,6 +172,8 @@ impl_erasable_for_types_with_no_type_params! {
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>),
+    (ty::GenericPredicates<'_>, &'_ ty::TypeDepDefs),
+    (ty::ImplTraitHeader<'_>, &'_ ty::TypeDepDefs),
     Option<&'_ OsStr>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
     Option<(mir::ConstValue, Ty<'_>)>,
