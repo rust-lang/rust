@@ -2523,7 +2523,10 @@ fn maybe_install_llvm(
                         if builder.config.channel == "dev" {
                             format!("libLLVM-{major}-rust-dev.dylib")
                         } else {
-                            format!("libLLVM-rust-{}-{}", builder.version, builder.config.channel)
+                            format!(
+                                "libLLVM-{major}-rust-{}-{}.dylib",
+                                builder.version, builder.config.channel
+                            )
                         }
                     }
                 };
