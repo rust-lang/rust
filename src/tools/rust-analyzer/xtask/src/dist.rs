@@ -106,13 +106,12 @@ fn dist_server(
     dev_rel: bool,
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
+    let _e = sh.push_env("CARGO_PROFILE_RELEASE_DEBUG", "limited");
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
+    let _e = sh.push_env("CARGO_PROFILE_RELEASE_CODEGEN_UNITS", "1");
+    let _e = sh.push_env("CARGO_PROFILE_DEV_REL_DEBUG", "limited");
     let _e = sh.push_env("CARGO_PROFILE_DEV_REL_LTO", "thin");
-
-    // Uncomment to enable debug info for releases. Note that:
-    //   * debug info is split on windows and macs, so it does nothing for those platforms,
-    //   * on Linux, this blows up the binary size from 8MB to 43MB, which is unreasonable.
-    // let _e = sh.push_env("CARGO_PROFILE_RELEASE_DEBUG", "1");
+    let _e = sh.push_env("CARGO_PROFILE_DEV_REL_CODEGEN_UNITS", "1");
 
     let linux_target = target.is_linux();
     let target_name = match &target.libc_suffix {
