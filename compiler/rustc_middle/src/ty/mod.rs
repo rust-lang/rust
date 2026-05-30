@@ -37,12 +37,11 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{LangItem, attrs as attr, find_attr};
+use rustc_hir::{self as hir, LangItem, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -232,7 +231,7 @@ pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
@@ -253,9 +252,12 @@ pub struct ResolverAstLowering<'tcx> {
 
 #[derive(Debug)]
 pub struct DelegationInfo {
-    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
-    pub resolution_node: ast::NodeId,
+    /// Refers to the next element in a delegation resolution chain.
+    /// Usually points to the final resolution, as most "chains" are just
+    /// one step to a trait or an impl.
+    pub resolution_id: DefId,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]

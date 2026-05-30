@@ -464,6 +464,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("avxvnniint16", Stable, &["avx2"]),
     ("bmi1", Stable, &[]),
     ("bmi2", Stable, &[]),
+    ("clflushopt", Unstable(sym::clflushopt_target_feature), &[]),
     ("cmpxchg16b", Stable, &[]),
     ("ermsb", Unstable(sym::ermsb_target_feature), &[]),
     ("f16c", Stable, &["avx"]),
@@ -1312,10 +1313,16 @@ impl Target {
                 }
             }
             Arch::Avr => {
+                // We only support one ABI on AVR at the moment.
                 // SRAM is minimum requirement for C/C++ in both avr-gcc and Clang,
                 // and backends of them only support assembly for devices have no SRAM.
                 // See the discussion in https://github.com/rust-lang/rust/pull/146900 for more.
                 FeatureConstraints { required: &["sram"], incompatible: &[] }
+            }
+            Arch::Wasm32 | Arch::Wasm64 => {
+                // We only support one ABI on wasm at the moment.
+                // No ABI-relevant target features have been identified thus far.
+                NOTHING
             }
             _ => NOTHING,
         }

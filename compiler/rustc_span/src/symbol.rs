@@ -600,6 +600,7 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        clflushopt_target_feature,
         client,
         clippy,
         clobber_abi,

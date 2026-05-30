@@ -58,7 +58,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -822,7 +822,7 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
@@ -996,10 +996,7 @@ impl<'ra> fmt::Debug for LocalModule<'ra> {
 #[derive(Clone, Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
-    ambiguity: CmCell<Option<Decl<'ra>>>,
-    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
-    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: CmCell<bool>,
+    ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
     expansion: LocalExpnId,
     span: Span,
     initial_vis: Visibility<DefId>,
@@ -1160,7 +1157,7 @@ impl<'ra> DeclData<'ra> {
 
     fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
         match self.ambiguity.get() {
-            Some(ambig_binding) => Some((self, ambig_binding)),
+            Some((ambig_binding, _)) => Some((self, ambig_binding)),
             None => match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
                 _ => None,
@@ -1172,14 +1169,6 @@ impl<'ra> DeclData<'ra> {
         self.ambiguity.get().is_some()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
-                _ => false,
-            }
-    }
-
-    fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity.get()
-            || match self.kind {
-                DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -1385,7 +1374,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>> = Default::default(),
+    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
@@ -1595,7 +1584,6 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(None),
-            warn_ambiguity: CmCell::new(false),
             initial_vis: vis,
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
@@ -2261,17 +2249,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
-    }
-
-    fn record_use_inner(
-        &mut self,
-        ident: Ident,
-        used_decl: Decl<'ra>,
-        used: Used,
-        warn_ambiguity: bool,
-    ) {
-        if let Some(b2) = used_decl.ambiguity.get() {
+        if let Some((b2, warning)) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ambig_vis: None,
@@ -2280,7 +2258,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 scope1: Scope::ModuleGlobs(used_decl.parent_module.unwrap(), None),
                 scope2: Scope::ModuleGlobs(b2.parent_module.unwrap(), None),
-                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
+                warning: if warning { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
@@ -2330,12 +2308,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident.name);
-            self.record_use_inner(
-                ident,
-                source_decl,
-                Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity.get(),
-            );
+            self.record_use(ident, source_decl, Used::Other);
         }
     }
 

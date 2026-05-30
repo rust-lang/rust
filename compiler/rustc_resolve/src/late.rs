@@ -27,7 +27,7 @@ use rustc_errors::{
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
+use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{AssocTag, DelegationInfo, Visibility};
 use rustc_middle::{bug, span_bug};
@@ -781,8 +781,7 @@ pub(crate) struct DiagMetadata<'ast> {
 
     /// Accumulate the errors due to missed lifetime elision,
     /// and report them all at once for each function.
-    current_elision_failures:
-        Vec<(MissingLifetime, LifetimeElisionCandidate, Either<NodeId, Range<NodeId>>)>,
+    current_elision_failures: Vec<(MissingLifetime, Either<NodeId, Range<NodeId>>)>,
 }
 
 struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
@@ -1749,10 +1748,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let ident = lifetime.ident;
 
         if ident.name == kw::StaticLifetime {
-            self.record_lifetime_res(
+            self.record_lifetime_use(
                 lifetime.id,
                 LifetimeRes::Static,
-                LifetimeElisionCandidate::Named,
+                LifetimeElisionCandidate::Ignore,
             );
             return;
         }
@@ -1765,7 +1764,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
-                self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
+                self.record_lifetime_use(lifetime.id, res, LifetimeElisionCandidate::Ignore);
 
                 if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
@@ -1831,20 +1830,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 LifetimeRibKind::Item => break,
                 LifetimeRibKind::ConstParamTy => {
                     let guar = self.emit_non_static_lt_in_const_param_ty_error(lifetime);
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Error(guar),
-                        LifetimeElisionCandidate::Ignore,
-                    );
+                    self.record_lifetime_err(lifetime.id, guar);
                     return;
                 }
                 LifetimeRibKind::ConcreteAnonConst(cause) => {
                     let guar = self.emit_forbidden_non_static_lifetime_error(cause, lifetime);
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Error(guar),
-                        LifetimeElisionCandidate::Ignore,
-                    );
+                    self.record_lifetime_err(lifetime.id, guar);
                     return;
                 }
                 LifetimeRibKind::AnonymousCreateParameter { .. }
@@ -1862,11 +1853,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .find_map(|rib| rib.bindings.get_key_value(&normalized_ident).map(|(&outer, _)| outer));
 
         let guar = self.emit_undeclared_lifetime_error(lifetime, outer_res);
-        self.record_lifetime_res(
-            lifetime.id,
-            LifetimeRes::Error(guar),
-            LifetimeElisionCandidate::Named,
-        );
+        self.record_lifetime_err(lifetime.id, guar);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1893,7 +1880,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
                     let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
-                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
+                    self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::StaticIfNoLifetimeInScope { lint_id: node_id, emit_lint } => {
@@ -1911,7 +1898,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     }
                     if lifetimes_in_scope.is_empty() {
-                        self.record_lifetime_res(
+                        self.record_lifetime_use(
                             lifetime.id,
                             LifetimeRes::Static,
                             elision_candidate,
@@ -2015,23 +2002,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             span: lifetime.ident.span,
                         })
                     };
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Error(guar),
-                        elision_candidate,
-                    );
+                    self.record_lifetime_err(lifetime.id, guar);
                     return;
                 }
                 LifetimeRibKind::Elided(res) => {
-                    self.record_lifetime_res(lifetime.id, res, elision_candidate);
+                    self.record_lifetime_use(lifetime.id, res, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::ElisionFailure => {
-                    self.diag_metadata.current_elision_failures.push((
-                        missing_lifetime,
-                        elision_candidate,
-                        Either::Left(lifetime.id),
-                    ));
+                    self.diag_metadata
+                        .current_elision_failures
+                        .push((missing_lifetime, Either::Left(lifetime.id)));
                     return;
                 }
                 LifetimeRibKind::Item => break,
@@ -2045,7 +2026,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
         let guar = self.report_missing_lifetime_specifiers([&missing_lifetime], None);
-        self.record_lifetime_res(lifetime.id, LifetimeRes::Error(guar), elision_candidate);
+        self.record_lifetime_err(lifetime.id, guar);
     }
 
     fn point_at_impl_lifetimes(&mut self, err: &mut Diag<'_>, i: usize, lifetime: Span) {
@@ -2142,7 +2123,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let id = self.r.next_node_id();
         let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
 
-        self.record_lifetime_res(
+        self.record_lifetime_use(
             anchor_id,
             LifetimeRes::ElidedAnchor { start: id, end: id + 1 },
             LifetimeElisionCandidate::Ignore,
@@ -2162,15 +2143,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // Leave the responsibility to create the `LocalDefId` to lowering.
         let param = self.r.next_node_id();
-        let res = LifetimeRes::Fresh { param, binder, kind };
-        self.record_lifetime_param(param, res);
+        let res = LifetimeRes::Fresh { param, kind };
+        self.record_lifetime_def(param, res);
 
         // Record the created lifetime parameter so lowering can pick it up and add it to HIR.
         self.r
             .extra_lifetime_params_map
             .entry(binder)
             .or_insert_with(Vec::new)
-            .push((ident, param, res));
+            .push((ident, param, kind));
         res
     }
 
@@ -2226,7 +2207,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             let node_ids = self.r.next_node_ids(expected_lifetimes);
-            self.record_lifetime_res(
+            self.record_lifetime_use(
                 segment_id,
                 LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
                 LifetimeElisionCandidate::Ignore,
@@ -2252,10 +2233,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // Do not create a parameter for patterns and expressions: type checking can infer
                 // the appropriate lifetime for us.
                 for id in node_ids {
-                    self.record_lifetime_res(
+                    self.record_lifetime_use(
                         id,
                         LifetimeRes::Infer,
-                        LifetimeElisionCandidate::Named,
+                        LifetimeElisionCandidate::Ignore,
                     );
                 }
                 continue;
@@ -2311,11 +2292,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         should_lint = false;
 
                         for id in node_ids {
-                            self.record_lifetime_res(
-                                id,
-                                LifetimeRes::Error(guar),
-                                LifetimeElisionCandidate::Named,
-                            );
+                            self.record_lifetime_err(id, guar);
                         }
                         break;
                     }
@@ -2325,10 +2302,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
                             let res = self.create_fresh_lifetime(ident, binder, kind);
-                            self.record_lifetime_res(
+                            self.record_lifetime_use(
                                 id,
                                 res,
-                                replace(&mut candidate, LifetimeElisionCandidate::Named),
+                                replace(&mut candidate, LifetimeElisionCandidate::Ignore),
                             );
                         }
                         break;
@@ -2336,7 +2313,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeRibKind::Elided(res) => {
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            self.record_lifetime_res(
+                            self.record_lifetime_use(
                                 id,
                                 res,
                                 replace(&mut candidate, LifetimeElisionCandidate::Ignore),
@@ -2345,11 +2322,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         break;
                     }
                     LifetimeRibKind::ElisionFailure => {
-                        self.diag_metadata.current_elision_failures.push((
-                            missing_lifetime,
-                            LifetimeElisionCandidate::Ignore,
-                            Either::Right(node_ids),
-                        ));
+                        self.diag_metadata
+                            .current_elision_failures
+                            .push((missing_lifetime, Either::Right(node_ids)));
                         break;
                     }
                     // `LifetimeRes::Error`, which would usually be used in the case of
@@ -2360,11 +2335,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         let guar =
                             self.report_missing_lifetime_specifiers([&missing_lifetime], None);
                         for id in node_ids {
-                            self.record_lifetime_res(
-                                id,
-                                LifetimeRes::Error(guar),
-                                LifetimeElisionCandidate::Ignore,
-                            );
+                            self.record_lifetime_err(id, guar);
                         }
                         break;
                     }
@@ -2405,16 +2376,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// Register a use of an already defined lifetime.
     #[instrument(level = "debug", skip(self))]
-    fn record_lifetime_res(
+    fn record_lifetime_use(
         &mut self,
         id: NodeId,
         res: LifetimeRes,
         candidate: LifetimeElisionCandidate,
     ) {
-        if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
-            panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
-        }
+        self.record_lifetime_def(id, res);
 
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static { .. } => {
@@ -2426,8 +2396,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// Can be used for both definitions and uses of lifetimes, as an error
+    /// has already been reported.
     #[instrument(level = "debug", skip(self))]
-    fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
+    fn record_lifetime_err(&mut self, id: NodeId, guar: ErrorGuaranteed) {
+        self.record_lifetime_def(id, LifetimeRes::Error(guar));
+    }
+
+    /// Define a new lifetime (e.g. in generics)
+    #[instrument(level = "debug", skip(self))]
+    fn record_lifetime_def(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
                 "lifetime parameter {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)"
@@ -2470,15 +2448,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     elision_failures.iter().map(|(missing_lifetime, ..)| missing_lifetime),
                     Some(failure_info),
                 );
-                let mut record_res = |lifetime, candidate| {
-                    this.record_lifetime_res(lifetime, LifetimeRes::Error(guar), candidate)
-                };
-                for (_, candidate, nodes) in elision_failures {
+                let mut record_res = |lifetime| this.record_lifetime_err(lifetime, guar);
+                for (_, nodes) in elision_failures {
                     match nodes {
-                        Either::Left(node_id) => record_res(node_id, candidate),
+                        Either::Left(node_id) => record_res(node_id),
                         Either::Right(node_ids) => {
                             for lifetime in node_ids {
-                                record_res(lifetime, candidate)
+                                record_res(lifetime)
                             }
                         }
                     }
@@ -2553,9 +2529,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     });
                     all_candidates.extend(candidates.into_iter().filter_map(|(_, candidate)| {
                         match candidate {
-                            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {
-                                None
-                            }
+                            LifetimeElisionCandidate::Ignore => None,
                             LifetimeElisionCandidate::Missing(missing) => Some(missing),
                         }
                     }));
@@ -3146,7 +3120,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         param.ident,
                     );
                     // Record lifetime res, so lowering knows there is something fishy.
-                    self.record_lifetime_param(param.id, LifetimeRes::Error(guar));
+                    self.record_lifetime_err(param.id, guar);
                     continue;
                 }
 
@@ -3158,7 +3132,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         let rib = match param.kind {
                             GenericParamKind::Lifetime => {
                                 // Record lifetime res, so lowering knows there is something fishy.
-                                self.record_lifetime_param(param.id, LifetimeRes::Error(guar));
+                                self.record_lifetime_err(param.id, guar);
                                 continue;
                             }
                             GenericParamKind::Type { .. } => &mut function_type_rib,
@@ -3193,7 +3167,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .create_err(errors::UnderscoreLifetimeIsReserved { span: param.ident.span })
                         .emit_unless_delay(is_raw_underscore_lifetime);
                     // Record lifetime res, so lowering knows there is something fishy.
-                    self.record_lifetime_param(param.id, LifetimeRes::Error(guar));
+                    self.record_lifetime_err(param.id, guar);
                     continue;
                 }
 
@@ -3203,7 +3177,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         lifetime: param.ident,
                     });
                     // Record lifetime res, so lowering knows there is something fishy.
-                    self.record_lifetime_param(param.id, LifetimeRes::Error(guar));
+                    self.record_lifetime_err(param.id, guar);
                     continue;
                 }
 
@@ -3217,7 +3191,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                     GenericParamKind::Lifetime => {
                         let res = LifetimeRes::Param { param: def_id, binder };
-                        self.record_lifetime_param(param.id, res);
+                        self.record_lifetime_def(param.id, res);
                         function_lifetime_rib.bindings.insert(ident, (param.id, res));
                         continue;
                     }
@@ -3923,12 +3897,24 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             this.visit_path(&delegation.path);
         });
 
-        self.r.delegation_infos.insert(
-            self.r.current_owner.def_id,
-            DelegationInfo {
-                resolution_node: if is_in_trait_impl { item_id } else { delegation.id },
-            },
-        );
+        let resolution_id = if is_in_trait_impl { item_id } else { delegation.id };
+        let def_id = self
+            .r
+            .partial_res_map
+            .get(&resolution_id)
+            .and_then(|r| r.expect_full_res().opt_def_id());
+        if let Some(resolution_id) = def_id {
+            self.r
+                .delegation_infos
+                .insert(self.r.current_owner.def_id, DelegationInfo { resolution_id });
+        } else {
+            self.r.tcx.dcx().span_delayed_bug(
+                delegation.path.span,
+                format!(
+                    "LoweringContext: couldn't resolve node {resolution_id:?} in delegation item",
+                ),
+            );
+        };
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
@@ -4780,8 +4766,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
                     let item_name = path.last().unwrap().ident;
-                    let traits = self.traits_in_scope(item_name, ns);
-                    self.r.trait_map.insert(node_id, traits);
+                    self.record_traits_in_scope(node_id, item_name);
                 }
 
                 if PrimTy::from_name(path[0].ident.name).is_some() {
@@ -5382,13 +5367,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // we need to add any trait methods we find that match the
                 // field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.traits_in_scope(ident, ValueNS);
-                self.r.trait_map.insert(expr.id, traits);
+                self.record_traits_in_scope(expr.id, ident);
             }
             ExprKind::MethodCall(ref call) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.traits_in_scope(call.seg.ident, ValueNS);
-                self.r.trait_map.insert(expr.id, traits);
+                self.record_traits_in_scope(expr.id, call.seg.ident);
             }
             _ => {
                 // Nothing to do.
@@ -5396,13 +5379,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn traits_in_scope(&mut self, ident: Ident, ns: Namespace) -> &'tcx [TraitCandidate<'tcx>] {
-        self.r.traits_in_scope(
+    fn record_traits_in_scope(&mut self, node_id: NodeId, ident: Ident) {
+        let traits = self.r.traits_in_scope(
             self.current_trait_ref.as_ref().map(|(module, _)| *module),
             &self.parent_scope,
             ident.span,
-            Some((ident.name, ns)),
-        )
+            Some((ident.name, ValueNS)),
+        );
+        self.r.trait_map.insert(node_id, traits);
     }
 
     fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {
