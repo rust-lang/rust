@@ -21,7 +21,7 @@ LL - #![repr]
 LL + #[repr]
    |
 
-error[E0589]: invalid `repr(align)` attribute: not a power of two
+error[E0589]: invalid alignment value: not a power of two
   --> $DIR/malformed-reprs.rs:9:14
    |
 LL | #[repr(align(0))]

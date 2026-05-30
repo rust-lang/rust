@@ -7,7 +7,7 @@
 
 // This is a regression test for https://github.com/rust-lang/rust/issues/143479
 #[repr(align(0))]
-//~^ ERROR invalid `repr(align)` attribute: not a power of two
+//~^ ERROR not a power of two
 //~| ERROR unsupported representation for zero-variant enum [E0084]
 enum Foo {}
 
