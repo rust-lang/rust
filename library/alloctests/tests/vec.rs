@@ -2569,7 +2569,7 @@ fn test_box_zero_allocator() {
             } else {
                 unsafe { std::alloc::alloc(layout) }
             };
-            Ok(NonNull::slice_from_raw_parts(NonNull::new(ptr).ok_or(AllocError)?, layout.size()))
+            Ok(NonNull::new(ptr).ok_or(AllocError)?.cast_slice(layout.size()))
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
