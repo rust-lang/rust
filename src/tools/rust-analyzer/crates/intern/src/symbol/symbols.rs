@@ -646,6 +646,7 @@ define_symbols! {
     eii_internals,
     field_representing_type_raw,
     intrinsics,
+    core_intrinsics,
     link_cfg,
     more_maybe_bounds,
     negative_bounds,
