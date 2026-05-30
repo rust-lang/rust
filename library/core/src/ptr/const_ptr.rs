@@ -1400,11 +1400,11 @@ impl<T> *const T {
     ///
     /// ```rust
     /// #![feature(ptr_cast_slice)]
+    ///
     /// // create a slice pointer when starting out with a pointer to the first element
     /// let x = [5, 6, 7];
-    /// let raw_pointer = x.as_ptr();
-    /// let slice = raw_pointer.cast_slice(3);
-    /// assert_eq!(unsafe { &*slice }[2], 7);
+    /// let raw_slice = x.as_ptr().cast_slice(3);
+    /// assert_eq!(unsafe { &*raw_slice }[2], 7);
     /// ```
     ///
     /// You must ensure that the pointer is valid and not null before dereferencing

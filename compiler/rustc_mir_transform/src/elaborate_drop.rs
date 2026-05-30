@@ -842,9 +842,9 @@ where
         let mut values = Vec::with_capacity(adt.variants().len());
         let mut normal_blocks = Vec::with_capacity(adt.variants().len());
         let mut unwind_blocks =
-            if unwind.is_cleanup() { None } else { Some(Vec::with_capacity(adt.variants().len())) };
+            Vec::with_capacity(if unwind.is_cleanup() { 0 } else { adt.variants().len() });
         let mut dropline_blocks =
-            if dropline.is_none() { None } else { Some(Vec::with_capacity(adt.variants().len())) };
+            Vec::with_capacity(if dropline.is_none() { 0 } else { adt.variants().len() });
 
         let mut have_otherwise_with_drop_glue = false;
         let mut have_otherwise = false;
@@ -880,7 +880,6 @@ where
                     // I want to minimize the divergence between MSVC
                     // and non-MSVC.
 
-                    let unwind_blocks = unwind_blocks.as_mut().unwrap();
                     let unwind_ladder = vec![Unwind::InCleanup; fields.len() + 1];
                     let dropline_ladder: Vec<Option<BasicBlock>> = vec![None; fields.len() + 1];
                     let halfladder =
@@ -890,7 +889,7 @@ where
                 let (normal, _, drop_bb) = self.drop_ladder(fields, succ, unwind, dropline);
                 normal_blocks.push(normal);
                 if dropline.is_some() {
-                    dropline_blocks.as_mut().unwrap().push(drop_bb.unwrap());
+                    dropline_blocks.push(drop_bb.unwrap());
                 }
             } else {
                 have_otherwise = true;
@@ -911,28 +910,22 @@ where
         } else if !have_otherwise_with_drop_glue {
             normal_blocks.push(self.goto_block(succ, unwind));
             if let Unwind::To(unwind) = unwind {
-                unwind_blocks.as_mut().unwrap().push(self.goto_block(unwind, Unwind::InCleanup));
+                unwind_blocks.push(self.goto_block(unwind, Unwind::InCleanup));
             }
         } else {
             normal_blocks.push(self.drop_block(succ, unwind));
             if let Unwind::To(unwind) = unwind {
-                unwind_blocks.as_mut().unwrap().push(self.drop_block(unwind, Unwind::InCleanup));
+                unwind_blocks.push(self.drop_block(unwind, Unwind::InCleanup));
             }
         }
 
         (
             self.adt_switch_block(adt, normal_blocks, &values, succ, unwind),
             unwind.map(|unwind| {
-                self.adt_switch_block(
-                    adt,
-                    unwind_blocks.unwrap(),
-                    &values,
-                    unwind,
-                    Unwind::InCleanup,
-                )
+                self.adt_switch_block(adt, unwind_blocks, &values, unwind, Unwind::InCleanup)
             }),
             dropline.map(|dropline| {
-                self.adt_switch_block(adt, dropline_blocks.unwrap(), &values, dropline, unwind)
+                self.adt_switch_block(adt, dropline_blocks, &values, dropline, unwind)
             }),
         )
     }

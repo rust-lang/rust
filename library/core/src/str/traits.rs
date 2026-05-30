@@ -5,7 +5,7 @@ use crate::cmp::Ordering;
 use crate::intrinsics::unchecked_sub;
 use crate::slice::SliceIndex;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::{ops, ptr, range};
+use crate::{ops, range};
 
 /// Implements ordering of strings.
 ///
@@ -209,7 +209,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
         // which satisfies all the conditions for `add`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+            slice.as_ptr().add(self.start).cast_slice(new_len) as *const str
         }
     }
     #[inline]
@@ -230,7 +230,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
         // SAFETY: see comments for `get_unchecked`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+            slice.as_mut_ptr().add(self.start).cast_slice(new_len) as *mut str
         }
     }
     #[inline]
@@ -314,7 +314,7 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
         // which satisfies all the conditions for `add`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), new_len) as *const str
+            slice.as_ptr().add(self.start).cast_slice(new_len) as *const str
         }
     }
     #[inline]
@@ -335,7 +335,7 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
         // SAFETY: see comments for `get_unchecked`.
         unsafe {
             let new_len = unchecked_sub(self.end, self.start);
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), new_len) as *mut str
+            slice.as_mut_ptr().add(self.start).cast_slice(new_len) as *mut str
         }
     }
     #[inline]

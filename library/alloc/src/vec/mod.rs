@@ -1830,7 +1830,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 return;
             }
             let remaining_len = self.len - len;
-            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
+            let s = self.as_mut_ptr().add(len).cast_slice(remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
@@ -4289,7 +4289,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
             // use drop for [T]
             // use a raw slice to refer to the elements of the vector as weakest necessary type;
             // could avoid questions of validity in certain cases
-            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
+            self.as_mut_ptr().cast_slice(self.len).drop_in_place()
         }
         // RawVec handles deallocation
     }
