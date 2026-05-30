@@ -1105,6 +1105,33 @@ fn test_into_iter_drop_allocator() {
 }
 
 #[test]
+fn test_default_vec_in_custom_allocator() {
+    struct ReferenceCountedAllocator;
+
+    impl const Default for ReferenceCountedAllocator {
+        fn default() -> Self {
+            Self {}
+        }
+    }
+
+    unsafe impl Allocator for ReferenceCountedAllocator {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
+            System.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            // Safety: Invariants passed to caller.
+            unsafe { System.deallocate(ptr, layout) }
+        }
+    }
+
+    let mut vec = Vec::<i32, ReferenceCountedAllocator>::default();
+
+    vec.push(10);
+    assert_eq!(vec.len(), 1);
+}
+
+#[test]
 fn test_into_iter_zst() {
     #[derive(Debug, Clone)]
     struct AlignedZstWithDrop([u64; 0]);
