@@ -40,7 +40,7 @@ fn main() {
         test_canonicalize();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(not(any(target_os = "solaris", target_os = "android")))]
+        #[cfg(not(target_os = "solaris"))]
         test_flock();
         test_readv_writev();
         #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
@@ -406,11 +406,9 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// The standard library does not support this operation on Android
-// (https://github.com/rust-lang/rust/issues/148325).
 // Miri does not support the way this is implemented on Solaris
 // (https://github.com/rust-lang/miri/issues/5038).
-#[cfg(not(any(target_os = "solaris", target_os = "android")))]
+#[cfg(not(target_os = "solaris"))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);

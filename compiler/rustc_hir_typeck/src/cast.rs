@@ -175,6 +175,7 @@ enum CastError<'tcx> {
     NonScalar,
     UnknownExprPtrKind,
     UnknownCastPtrKind,
+    CastEnumDrop,
     /// Cast of int to (possibly) wide raw pointer.
     ///
     /// Argument is the specific name of the metadata in plain words, such as "a vtable"
@@ -635,6 +636,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 };
                 fcx.dcx().emit_err(errors::CastUnknownPointer { span, to: unknown_cast_to, sub });
             }
+            CastError::CastEnumDrop => {
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+
+                fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
+            }
             CastError::ForeignNonExhaustiveAdt => {
                 make_invalid_casting_error(
                     self.span,
@@ -870,11 +877,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             // fn-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
 
+            // enum -> int
+            (Int(CEnum), Int(_)) => self.check_enum_cast(fcx),
+
             // prim -> prim
-            (Int(CEnum), Int(_)) => {
-                self.err_if_cenum_impl_drop(fcx);
-                Ok(CastKind::EnumCast)
-            }
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
@@ -1109,21 +1115,20 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
+    fn check_enum_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError<'tcx>> {
+        if let ty::Adt(d, _) = self.expr_ty.kind()
+            && d.has_dtor(fcx.tcx)
+        {
+            Err(CastError::CastEnumDrop)
+        } else {
+            Ok(CastKind::EnumCast)
+        }
+    }
+
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<(), ty::error::TypeError<'tcx>> {
         match fcx.coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No, None) {
             Ok(_) => Ok(()),
             Err(err) => Err(err),
-        }
-    }
-
-    fn err_if_cenum_impl_drop(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        if let ty::Adt(d, _) = self.expr_ty.kind()
-            && d.has_dtor(fcx.tcx)
-        {
-            let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
-            let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-
-            fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
         }
     }
 

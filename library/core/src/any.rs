@@ -829,7 +829,7 @@ impl TypeId {
         }
     }
 
-    fn as_u128(self) -> u128 {
+    pub(crate) fn as_u128(self) -> u128 {
         let mut bytes = [0; 16];
 
         // This is a provenance-stripping memcpy.

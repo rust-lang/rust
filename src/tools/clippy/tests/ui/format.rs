@@ -1,3 +1,4 @@
+#![feature(decl_macro)]
 #![warn(clippy::useless_format)]
 #![allow(
     clippy::print_literal,
@@ -105,4 +106,42 @@ fn main() {
     let xx = "xx";
     let _ = format!("{xx}");
     //~^ useless_format
+}
+
+// `format!` as the tail expression of a block emitted by another macro
+// (e.g. rustc's `with_forced_trimmed_paths!`). The lint must still fire.
+mod block_wrap {
+    macro_rules! plain_mr {
+        ($e:expr) => {
+            $e
+        };
+    }
+    macro_rules! block_mr {
+        ($e:expr) => {{
+            let _g: i32 = 0;
+            $e
+        }};
+    }
+    pub macro plain_dm($e:expr) {
+        $e
+    }
+    pub macro block_dm($e:expr) {{
+        let _g: i32 = 0;
+        $e
+    }}
+
+    fn s() -> String {
+        String::from("x")
+    }
+
+    pub fn check() {
+        let _ = plain_mr!(format!("{}", s()));
+        //~^ useless_format
+        let _ = block_mr!(format!("{}", s()));
+        //~^ useless_format
+        let _ = plain_dm!(format!("{}", s()));
+        //~^ useless_format
+        let _ = block_dm!(format!("{}", s()));
+        //~^ useless_format
+    }
 }
