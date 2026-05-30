@@ -102,46 +102,6 @@ const unsafe fn get_offset_len_mut_noubcheck<T>(
     crate::intrinsics::aggregate_raw_ptr(ptr, len)
 }
 
-mod private_slice_index {
-    use super::{ops, range};
-
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    pub trait Sealed {}
-
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for usize {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::Range<usize> {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeTo<usize> {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeFrom<usize> {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeFull {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeInclusive<usize> {}
-    #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for ops::RangeToInclusive<usize> {}
-    #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
-    impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
-
-    #[stable(feature = "new_range_api", since = "1.96.0")]
-    impl Sealed for range::Range<usize> {}
-    #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-    impl Sealed for range::RangeInclusive<usize> {}
-    #[stable(feature = "new_range_to_inclusive_api", since = "1.96.0")]
-    impl Sealed for range::RangeToInclusive<usize> {}
-    #[stable(feature = "new_range_from_api", since = "1.96.0")]
-    impl Sealed for range::RangeFrom<usize> {}
-
-    impl Sealed for ops::IndexRange {}
-
-    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
-    impl Sealed for crate::index::Last {}
-    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
-    impl<T> Sealed for crate::index::Clamp<T> where T: Sealed {}
-}
-
 /// A helper trait used for indexing operations.
 ///
 /// Implementations of this trait have to promise that if the argument
@@ -160,7 +120,7 @@ mod private_slice_index {
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-pub const unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
+pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     type Output: ?Sized;

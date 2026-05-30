@@ -257,8 +257,6 @@ use crate::{fmt, intrinsics};
 )]
 #[expect(missing_debug_implementations)]
 mod private {
-    pub(super) trait Sealed {}
-
     #[cfg(target_has_atomic_load_store = "8")]
     #[repr(C, align(1))]
     pub struct Align1<T>(T);
@@ -291,8 +289,7 @@ mod private {
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-#[expect(private_bounds)]
-pub unsafe trait AtomicPrimitive: Sized + Copy + private::Sealed {
+pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
     /// Temporary implementation detail.
     type Storage: Sized;
 }
@@ -300,8 +297,6 @@ pub unsafe trait AtomicPrimitive: Sized + Copy + private::Sealed {
 macro impl_atomic_primitive(
     [$($T:ident)?] $Primitive:ty as $Storage:ident<$Operand:ty>, size($size:literal)
 ) {
-    impl $(<$T>)? private::Sealed for $Primitive {}
-
     #[unstable(
         feature = "atomic_internals",
         reason = "implementation detail which may disappear or be replaced at any time",
