@@ -266,23 +266,25 @@ macro_rules! deinterleaving_load {
         transmute((v0, v1))
     }};
 
+    // N = 3
     ($elem:ty, $lanes:literal, 3, $ptr:expr) => {{
         use $crate::core_arch::macros::deinterleave_mask;
         use $crate::core_arch::simd::Simd;
-        use $crate::mem::{MaybeUninit, transmute};
-
-        type V = Simd<$elem, $lanes>;
-        type W = Simd<$elem, { $lanes * 3 }>;
+        use $crate::mem::transmute;
 
         // NOTE: repr(simd) adds padding to make the total size a power of two.
-        // Hence reading W from ptr might read out of bounds.
-        let mut mem = MaybeUninit::<W>::uninit();
-        $crate::ptr::copy_nonoverlapping(
-            $ptr.cast::<$elem>(),
-            mem.as_mut_ptr().cast::<$elem>(),
-            $lanes * 3,
-        );
-        let w = mem.assume_init();
+        // Hence writing W to ptr might write out of bounds.
+        type V = Simd<$elem, $lanes>;
+        type Arr = [$elem; { $lanes * 3 }];
+
+        // NOTE: copy_nonoverlapping requires both pointers to be aligned to at least align_of::<$elem>(),
+        // passing a pointer that is not sufficiently aligned is an UB.
+        let arr: Arr = $crate::ptr::read_unaligned($ptr as *const Arr);
+
+        type W = Simd<$elem, { $lanes * 4 }>;
+        let mut tmp = [0 as $elem; { $lanes * 4 }];
+        tmp[..$lanes * 3].copy_from_slice(&arr);
+        let w: W = W::from_array(tmp);
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 0>());
         let v1: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 1>());
@@ -291,6 +293,7 @@ macro_rules! deinterleaving_load {
         transmute((v0, v1, v2))
     }};
 
+    // N = 4
     ($elem:ty, $lanes:literal, 4, $ptr:expr) => {{
         use $crate::core_arch::macros::deinterleave_mask;
         use $crate::core_arch::simd::Simd;
@@ -345,16 +348,22 @@ macro_rules! interleaving_store {
         let v2v2: Simd<$elem, { $lanes * 2 }> =
             simd_shuffle!($v.2, $v.2, identity::<{ $lanes * 2 }>());
 
-        type W = Simd<$elem, { $lanes * 3 }>;
-
         // NOTE: repr(simd) adds padding to make the total size a power of two.
         // Hence writing W to ptr might write out of bounds.
+
+        type W = Simd<$elem, { $lanes * 3 }>;
+
         let w: W = simd_shuffle!(v0v1, v2v2, interleave_mask::<{ $lanes * 3 }, $lanes, 3>());
-        $crate::ptr::copy_nonoverlapping(
-            (&w as *const W).cast::<$elem>(),
-            $ptr.cast::<$elem>(),
-            $lanes * 3,
-        );
+
+        let arr: [$elem; { $lanes * 3 }] = $crate::mem::transmute_copy(&w);
+
+        // NOTE: copy_nonoverlapping requires both pointers to be aligned to at least align_of::<$elem>(),
+        // passing a pointer that is not sufficiently aligned is an UB.
+        let mut i = 0;
+        while i < $lanes * 3 {
+            $crate::ptr::write_unaligned(($ptr as *mut $elem).add(i), arr[i]);
+            i += 1;
+        }
     }};
 
     // N = 4
