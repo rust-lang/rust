@@ -25,10 +25,8 @@ LL |     f()
    |
    = note: expected type parameter `O`
              found associated type `<F as AsyncFnOnce<()>>::CallOnceFuture`
-help: consider further restricting this bound
-   |
-LL | async fn once<O, F: AsyncFnOnce(, CallOnceFuture = O) -> O>(f: F) -> O {
-   |                                 ++++++++++++++++++++
+   = help: you may have forgotten to await an async function
+   = note: it is currently not possible to add bounds constraining the future returned from an async function (`CallOnceFuture`)
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/wrong-suggestion-result.rs:12:21
@@ -57,10 +55,8 @@ LL |     f()
    |
    = note: expected type parameter `O`
              found associated type `<F as AsyncFnMut<()>>::CallRefFuture<'_>`
-help: consider further restricting this bound
-   |
-LL | async fn fnref<O, F: AsyncFn() -> O<CallRefFuture<'_> = O>>(f: F) -> O {
-   |                                    +++++++++++++++++++++++
+   = help: you may have forgotten to await an async function
+   = note: it is currently not possible to add bounds constraining the future returned from an async function (`CallRefFuture`)
 
 error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/wrong-suggestion-result.rs:21:21
@@ -89,10 +85,8 @@ LL |     f()
    |
    = note: expected type parameter `O`
              found associated type `<F as AsyncFnMut<()>>::CallRefFuture<'_>`
-help: consider further restricting this bound
-   |
-LL | async fn fnmut<O, F: AsyncFnMut(, CallRefFuture<'_> = O) -> O>(f: F) -> O {
-   |                                 +++++++++++++++++++++++
+   = help: you may have forgotten to await an async function
+   = note: it is currently not possible to add bounds constraining the future returned from an async function (`CallRefFuture`)
 
 error: aborting due to 6 previous errors
 
