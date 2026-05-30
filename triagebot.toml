@@ -942,11 +942,21 @@ Issue #{number} "{title}" has been added.
 # ------------------------------------------------------------------------------
 
 [mentions."compiler/rustc_codegen_cranelift"]
-message = "The Cranelift subtree was changed"
+message = """
+`rustc_codegen_cranelift` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift) \
+instead.
+"""
 cc = ["@bjorn3"]
 
 [mentions."compiler/rustc_codegen_gcc"]
-message = "The GCC codegen subtree was changed"
+message = """
+`rustc_codegen_gcc` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc_codegen_gcc](https://github.com/rust-lang/rustc_codegen_gcc) \
+instead.
+"""
 cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/"]
@@ -1100,8 +1110,9 @@ cc = ["@tgross35"]
 
 [mentions."library/portable-simd"]
 message = """
-Portable SIMD is developed in its own repository. If possible, consider \
-making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
+`portable-simd` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
 instead.
 """
 cc = ["@calebzulawski", "@programmerjake"]
@@ -1144,7 +1155,12 @@ cc = [
 cc = ["@ehuss"]
 
 [mentions."src/tools/clippy"]
-message = "The Clippy subtree was changed"
+message = """
+`clippy` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rust-clippy](https://github.com/rust-lang/rust-clippy) \
+instead.
+"""
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
@@ -1157,7 +1173,12 @@ new or modified directive in `src/doc/rustc-dev-guide/`.
 """
 
 [mentions."src/tools/miri"]
-message = "The Miri subtree was changed"
+message = """
+`miri` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/miri](https://github.com/rust-lang/miri) \
+instead.
+"""
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/run-make-support"]
@@ -1166,15 +1187,20 @@ cc = ["@jieyouxu"]
 
 [mentions."src/tools/rust-analyzer"]
 message = """
-rust-analyzer is developed in its own repository. If possible, consider making \
-this change to [rust-lang/rust-analyzer] instead.
-
-[rust-lang/rust-analyzer]: https://github.com/rust-lang/rust-analyzer
+`rust-analyzer` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer) \
+instead.
 """
 cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
-message = "The Rustfmt subtree was changed"
+message = """
+`rustfmt` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustfmt](https://github.com/rust-lang/rustfmt) \
+instead.
+"""
 cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
@@ -1386,7 +1412,12 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
-message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
+message = """
+`rustc-dev-guide` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) \
+instead.
+"""
 cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
