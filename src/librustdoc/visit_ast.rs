@@ -6,10 +6,11 @@ use std::mem;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::attrs::DocInline;
 use rustc_hir::def::{DefKind, MacroKinds, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
 use rustc_hir::{Node, find_attr};
 use rustc_middle::hir::nested_filter;
@@ -114,10 +115,12 @@ impl Module<'_> {
 }
 
 // FIXME: Should this be replaced with tcx.def_path_str?
-fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
+fn def_id_to_path<A: Allocator + Copy>(tcx: TyCtxt<'_>, did: DefId, alloc: A) -> Vec<Symbol, A> {
     let crate_name = tcx.crate_name(did.krate);
     let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
-    std::iter::once(crate_name).chain(relative).collect()
+    let mut vec = Vec::new_in(alloc);
+    std::iter::once(crate_name).chain(relative).collect_into(&mut vec);
+    vec
 }
 
 pub(crate) struct RustdocVisitor<'a, 'tcx, A: Allocator + Copy> {
@@ -126,8 +129,8 @@ pub(crate) struct RustdocVisitor<'a, 'tcx, A: Allocator + Copy> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: DefIdMap<Vec<Symbol>>,
-    modules: Vec<Module<'tcx>>,
+    exact_paths: UnordMap<DefId, Vec<Symbol, A>, A>,
+    modules: Vec<Module<'tcx>, A>,
     is_importable_from_parent: bool,
     inside_body: bool,
 }
@@ -145,13 +148,19 @@ impl<'a, 'tcx, A: Allocator + Copy> RustdocVisitor<'a, 'tcx, A> {
             None,
         );
 
+        let alloc = *cx.cache.search_index.allocator();
+
         RustdocVisitor {
             cx,
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
-            exact_paths: Default::default(),
-            modules: vec![om],
+            exact_paths: UnordMap::new_in(alloc),
+            modules: {
+                let mut modules = Vec::new_in(alloc);
+                modules.push(om);
+                modules
+            },
             is_importable_from_parent: true,
             inside_body: false,
         }
@@ -159,7 +168,8 @@ impl<'a, 'tcx, A: Allocator + Copy> RustdocVisitor<'a, 'tcx, A> {
 
     fn store_path(&mut self, did: DefId) {
         let tcx = self.cx.tcx;
-        self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
+        let alloc = *self.cx.cache.search_index.allocator();
+        self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did, alloc));
     }
 
     pub(crate) fn visit(mut self) -> Module<'tcx> {

@@ -25,8 +25,9 @@ pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
 serde = { version = "1.0", features = ["derive"] }
-serde_alloc = "0.1.0-alpha.1"
+serde_alloc = "0.1.0-alpha.3"
 serde_json = "1.0"
+serde_with = "3.20.0"
 smallvec = "1.8.1"
 stringdex = "=0.0.6"
 tempfile = "3"

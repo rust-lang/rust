@@ -24,8 +24,9 @@ use std::marker::PhantomData;
 use std::path::{Component, Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::str::FromStr;
-use std::{fmt, fs};
+use std::{fmt, fs, mem};
 
+use bumpalo::Bump;
 use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
@@ -241,16 +242,54 @@ fn write_resources(
 }
 
 /// Contains pre-rendered contents to insert into the CCI template
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, DeserializeWithAlloc, Clone, Debug)]
 #[serde(bound = "")]
 pub(crate) struct CrateInfo<A: Allocator + Copy> {
+    #[deserialize_with_alloc(native)]
     pub(crate) version: CrateInfoVersion,
+    #[deserialize_with_alloc(native)]
     pub(crate) src_files_js: PartsAndLocations<SourcesPart>,
     pub(crate) search_index: SerializedSearchIndex<A>,
+    #[deserialize_with_alloc(native)]
     pub(crate) all_crates: PartsAndLocations<AllCratesPart>,
+    #[deserialize_with_alloc(native)]
     pub(crate) crates_index: PartsAndLocations<CratesIndexPart>,
+    #[deserialize_with_alloc(native)]
     pub(crate) trait_impl: PartsAndLocations<TraitAliasPart>,
+    #[deserialize_with_alloc(native)]
     pub(crate) type_impl: PartsAndLocations<TypeAliasPart>,
+}
+
+pub(crate) trait AllocatorExt: Allocator + Copy {
+    fn can_leak_memory() -> bool;
+}
+
+impl<T> AllocatorExt for T
+where
+    T: Allocator + Copy,
+{
+    default fn can_leak_memory() -> bool {
+        false
+    }
+}
+
+impl<'a> AllocatorExt for &'a Bump {
+    fn can_leak_memory() -> bool {
+        true
+    }
+}
+
+impl<A: AllocatorExt> Drop for CrateInfo<A> {
+    fn drop(&mut self) {
+        let alloc = self.search_index.allocator();
+        let can_leak = A::can_leak_memory();
+        let search_index =
+            mem::replace(&mut self.search_index, SerializedSearchIndex::empty(alloc));
+
+        if can_leak {
+            mem::forget(search_index);
+        }
+    }
 }
 
 impl<A: Allocator + Copy> CrateInfo<A> {
@@ -270,6 +309,7 @@ impl<A: Allocator + Copy> CrateInfo<A> {
                             }
                             let parts = try_err!(fs::read(file.path()), file.path());
                             let mut de = serde_json::Deserializer::from_slice(&parts);
+
                             let parts = try_err!(CrateInfo::deserialize_with_alloc(&mut de, alloc), file.path());
                             Ok(Some(parts))
                         };

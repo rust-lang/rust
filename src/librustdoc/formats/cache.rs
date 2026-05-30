@@ -3,6 +3,7 @@ use std::mem;
 
 use bumpalo::Bump;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
@@ -18,6 +19,7 @@ use crate::fold::DocFolder;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
+use crate::vec_in;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) trait AllocatorExt: Allocator + Copy {
@@ -55,18 +57,18 @@ pub(crate) struct Cache<A: AllocatorExt> {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub(crate) impls: DefIdMap<Vec<Impl>>,
+    pub(crate) impls: UnordMap<DefId, Vec<Impl, A>, A>,
 
     /// Maintains a mapping of local crate `DefId`s to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol, A>, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol, A>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -78,7 +80,7 @@ pub(crate) struct Cache<A: AllocatorExt> {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    pub(crate) exact_paths: DefIdMap<Vec<Symbol>>,
+    pub(crate) exact_paths: UnordMap<DefId, Vec<Symbol, A>, A>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -118,8 +120,8 @@ pub(crate) struct Cache<A: AllocatorExt> {
     pub(crate) masked_crates: FxHashSet<CrateNum>,
 
     // Private fields only used when initially crawling a crate to build a cache
-    stack: Vec<Symbol>,
-    parent_stack: Vec<ParentStackItem>,
+    stack: Vec<Symbol, A>,
+    parent_stack: Vec<ParentStackItem, A>,
     stripped_mod: bool,
 
     pub(crate) search_index: Vec<IndexItem<A>, A>,
@@ -129,7 +131,7 @@ pub(crate) struct Cache<A: AllocatorExt> {
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    pub(crate) orphan_impl_items: Vec<OrphanImplItem>,
+    pub(crate) orphan_impl_items: Vec<OrphanImplItem, A>,
 
     // Similarly to `orphan_impl_items`, sometimes trait impls are picked up
     // even though the trait itself is not exported. This can happen if a trait
@@ -138,7 +140,7 @@ pub(crate) struct Cache<A: AllocatorExt> {
     // crawl. In order to prevent crashes when looking for notable traits or
     // when gathering trait documentation on a type, hold impls here while
     // folding and add them to the cache later on if we find the trait.
-    orphan_trait_impls: Vec<(DefId, FxIndexSet<DefId>, Impl)>,
+    orphan_trait_impls: Vec<(DefId, FxIndexSet<DefId>, Impl), A>,
 
     /// All intra-doc links resolved so far.
     ///
@@ -177,10 +179,10 @@ impl<A: Allocator + Copy> Cache<A> {
         Cache {
             document_private,
             document_hidden,
-            impls: Default::default(),
+            impls: UnordMap::new_in(alloc),
             paths: Default::default(),
             external_paths: Default::default(),
-            exact_paths: Default::default(),
+            exact_paths: UnordMap::new_in(alloc),
             traits: Default::default(),
             implementors: Default::default(),
             extern_locations: Default::default(),
@@ -188,15 +190,19 @@ impl<A: Allocator + Copy> Cache<A> {
             effective_visibilities: Default::default(),
             crate_version: Default::default(),
             masked_crates: Default::default(),
-            stack: Default::default(),
-            parent_stack: Default::default(),
+            stack: Vec::new_in(alloc),
+            parent_stack: Vec::new_in(alloc),
             stripped_mod: Default::default(),
             search_index: Vec::new_in(alloc),
-            orphan_impl_items: Default::default(),
-            orphan_trait_impls: Default::default(),
+            orphan_impl_items: Vec::new_in(alloc),
+            orphan_trait_impls: Vec::new_in(alloc),
             intra_doc_links: Default::default(),
             inlined_items: Default::default(),
         }
+    }
+
+    pub fn allocator(&self) -> A {
+        *self.search_index.allocator()
     }
 
     fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {
@@ -215,6 +221,7 @@ impl<A: Allocator + Copy> Cache<A> {
         render_options: &RenderOptions,
     ) -> clean::Crate {
         let tcx = cx.tcx;
+        let alloc = *cx.cache.search_index.allocator();
 
         // Crawl the crate to build various caches used for the output
         debug!(?cx.cache.crate_version);
@@ -247,7 +254,9 @@ impl<A: Allocator + Copy> Cache<A> {
                     render_options.extern_html_root_urls.get(name.as_str()).map(|u| &**u);
                 e.location(extern_url, extern_url_takes_precedence, dst, tcx)
             });
-            cx.cache.external_paths.insert(e.def_id(), (vec![name], ItemType::Module));
+            cx.cache
+                .external_paths
+                .insert(e.def_id(), (vec_in![in: alloc, name], ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
@@ -256,14 +265,14 @@ impl<A: Allocator + Copy> Cache<A> {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.
             // If that restriction is ever lifted, this will have to include the relative paths instead.
-            cx.cache
-                .external_paths
-                .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
+            cx.cache.external_paths.insert(
+                def_id,
+                (vec_in![in: alloc, crate_name, prim.as_sym()], ItemType::Primitive),
+            );
         }
 
         let (krate, mut impl_ids) = {
             let is_json_output = cx.is_json_output();
-            let alloc = *cx.cache.search_index.allocator();
             let mut cache_builder = CacheBuilder {
                 tcx,
                 cache: &mut cx.cache,
@@ -274,11 +283,17 @@ impl<A: Allocator + Copy> Cache<A> {
             (krate, cache_builder.impl_ids)
         };
 
+        let alloc = *cx.cache.search_index.allocator();
+
         for (trait_did, dids, impl_) in cx.cache.orphan_trait_impls.drain(..) {
             if cx.cache.traits.contains_key(&trait_did) {
                 for did in dids {
                     if impl_ids.entry(did).or_default().insert(impl_.def_id()) {
-                        cx.cache.impls.entry(did).or_default().push(impl_.clone());
+                        cx.cache
+                            .impls
+                            .entry(did)
+                            .or_insert_with(|| Vec::new_in(alloc))
+                            .push(impl_.clone());
                     }
                 }
             }
@@ -520,7 +535,11 @@ impl<A: Allocator + Copy> DocFolder<A> for CacheBuilder<'_, '_, A> {
                 if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
                     for did in dids {
                         if self.impl_ids.entry(did).or_default().insert(impl_did) {
-                            self.cache.impls.entry(did).or_default().push(impl_item.clone());
+                            self.cache
+                                .impls
+                                .entry(did)
+                                .or_insert_with(|| Vec::new_in(alloc))
+                                .push(impl_item.clone());
                         }
                     }
                 } else {
@@ -666,7 +685,7 @@ fn add_item_to_search_index<A: Allocator + Copy>(
     let index_item = IndexItem {
         defid: Some(defid),
         name,
-        module_path: parent_path.to_vec(),
+        module_path: parent_path.to_vec_in(alloc),
         parent: parent_did,
         parent_idx: None,
         trait_parent,

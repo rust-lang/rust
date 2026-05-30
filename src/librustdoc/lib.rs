@@ -109,6 +109,7 @@ macro_rules! map {
     }}
 }
 
+mod alloc;
 mod clean;
 mod config;
 mod core;

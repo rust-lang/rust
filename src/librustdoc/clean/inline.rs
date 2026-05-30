@@ -235,18 +235,34 @@ pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [hir::Att
     tcx.get_all_attrs(did)
 }
 
-pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
-    tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
+pub(crate) fn item_relative_path<A: Allocator + Copy>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    alloc: A,
+) -> Vec<Symbol, A> {
+    let mut vec = Vec::new_in(alloc);
+    tcx.def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| elem.data.get_opt_name())
+        .collect_into(&mut vec);
+    vec
 }
 
 /// Get the public Rust path to an item. This is used to generate the URL to the item's page.
 ///
 /// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
 /// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.
-pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> Vec<Symbol> {
+pub(crate) fn get_item_path<A: Allocator + Copy>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    kind: ItemType,
+    alloc: A,
+) -> Vec<Symbol, A> {
     let crate_name = tcx.crate_name(def_id.krate);
-    let relative = item_relative_path(tcx, def_id);
+    let relative = item_relative_path(tcx, def_id, alloc);
 
+    let mut vec = Vec::new_in(alloc);
     if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
@@ -254,13 +270,17 @@ pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> V
             CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id),
             LoadedMacro::MacroDef { def, .. } if !def.macro_rules
         ) {
-            once(crate_name).chain(relative).collect()
+            once(crate_name).chain(relative).collect_into(&mut vec);
         } else {
-            vec![crate_name, *relative.last().expect("relative was empty")]
+            [crate_name, *relative.last().expect("relative was empty")]
+                .into_iter()
+                .collect_into(&mut vec);
         }
     } else {
-        once(crate_name).chain(relative).collect()
+        once(crate_name).chain(relative).collect_into(&mut vec);
     }
+
+    vec
 }
 
 /// Record an external fully qualified name in the external_paths cache.
@@ -280,7 +300,9 @@ pub(crate) fn record_extern_fqn<A: Allocator + Copy>(
         return;
     }
 
-    let item_path = get_item_path(cx.tcx, did, kind);
+    let alloc = *cx.cache.search_index.allocator();
+
+    let item_path = get_item_path(cx.tcx, did, kind, alloc);
 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, item_path);
