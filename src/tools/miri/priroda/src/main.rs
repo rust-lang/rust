@@ -104,6 +104,13 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.ecx.miri_step()
     }
 
+    pub fn continue_execution(&mut self) -> InterpResult<'tcx> {
+        // TODO: stop when execution reaches a breakpoint.
+        loop {
+            self.step()?;
+        }
+    }
+
     pub fn print_location(&self) {
         let span = self.ecx.machine.current_user_relevant_span();
         let location = self.ecx.tcx.sess.source_map().span_to_diagnostic_string(span);
@@ -116,6 +123,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         match command {
             SessionCommand::Step => self.step(),
             SessionCommand::Quit => unreachable!("quit is handled by the CLI loop"),
+            SessionCommand::Continue => self.continue_execution(),
         }
     }
 }
@@ -123,12 +131,14 @@ impl<'tcx> PrirodaContext<'tcx> {
 enum SessionCommand {
     Step,
     Quit,
+    Continue,
 }
 
 fn parse_command(input: &str) -> Option<SessionCommand> {
     match input.trim() {
         "" | "s" | "step" => Some(SessionCommand::Step),
         "q" | "quit" => Some(SessionCommand::Quit),
+        "c" | "continue" => Some(SessionCommand::Continue),
         _ => None,
     }
 }
