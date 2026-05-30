@@ -101,11 +101,13 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::Yield { resume, resume_arg, .. } if resume == block => {
+                mir::TerminatorKind::Yield { resume, drop, resume_arg, .. }
+                    if resume == block || drop == Some(block) =>
+                {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
-                        resume,
+                        block,
                         CallReturnPlaces::Yield(resume_arg),
                     );
                     propagate(pred, &tmp);
@@ -275,7 +277,7 @@ impl Direction for Forward {
 
                 if !return_.is_empty() {
                     analysis.apply_call_return_effect(exit_state, block, place);
-                    for &target in return_ {
+                    for target in return_ {
                         propagate(target, exit_state);
                     }
                 }
