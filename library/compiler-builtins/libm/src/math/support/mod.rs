@@ -69,9 +69,15 @@ pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
     }
 }
 
-// FIXME(msrv): `div_ceil` is stablein 1.73.
+// FIXME(msrv): `div_ceil` is stable in 1.73.
 pub fn div_ceil_u32(a: u32, b: u32) -> u32 {
     let d = a / b;
     let r = a % b;
     if r > 0 { d + 1 } else { d }
+}
+
+// FIXME(msrv): unbounded shifts are stable in 1.87
+#[allow(unused)]
+pub fn unbounded_shr_u64(x: u64, shift: u32) -> u64 {
+    x.checked_shr(shift).unwrap_or(0)
 }

@@ -282,6 +282,9 @@ declare_features! (
     /// Allows string patterns to dereference values to match them.
     (removed, string_deref_patterns, "1.94.0", Some(87121), Some("superseded by `deref_patterns`"), 150530),
     (removed, struct_inherit, "1.0.0", None, None),
+    /// Allows the use of target_feature when a function is marked inline(always).
+    (removed, target_feature_inline_always, "CURRENT_RUSTC_VERSION", Some(145574),
+     Some("removed because of unfixable soundness issues")),
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None),

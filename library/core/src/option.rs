@@ -1748,8 +1748,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    pub fn get_or_insert(&mut self, value: T) -> &mut T {
-        self.get_or_insert_with(|| value)
+    #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
+    pub const fn get_or_insert(&mut self, value: T) -> &mut T
+    where
+        T: [const] Destruct,
+    {
+        self.get_or_insert_with(const || value)
     }
 
     /// Inserts the default value into the option if it is [`None`], then
@@ -2649,7 +2653,8 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A> TrustedLen for IntoIter<A> {}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+unsafe impl<A> const TrustedLen for IntoIter<A> {}
 
 /// The iterator produced by [`Option::into_flat_iter`]. See its documentation for more.
 #[derive(Clone, Debug)]

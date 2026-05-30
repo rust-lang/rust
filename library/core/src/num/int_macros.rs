@@ -2777,32 +2777,6 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
-        /// Calculates the complete product `self * rhs` without the possibility to overflow.
-        ///
-        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
-        /// of the result as two separate values, in that order.
-        ///
-        /// If you also need to add a carry to the wide result, then you want
-        /// [`Self::carrying_mul`] instead.
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared among integer types, which is why `i32` is used.
-        ///
-        /// ```
-        /// #![feature(widening_mul)]
-        /// assert_eq!(5i32.widening_mul(-2), (4294967286, -1));
-        /// assert_eq!(1_000_000_000i32.widening_mul(-10), (2884901888, -3));
-        /// ```
-        #[unstable(feature = "widening_mul", issue = "152016")]
-        #[rustc_const_unstable(feature = "widening_mul", issue = "152016")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        pub const fn widening_mul(self, rhs: Self) -> ($UnsignedT, Self) {
-            Self::carrying_mul_add(self, rhs, 0, 0)
-        }
-
         /// Calculates the "full multiplication" `self * rhs + carry`
         /// without the possibility to overflow.
         ///
@@ -2812,8 +2786,6 @@ macro_rules! int_impl {
         /// Performs "long multiplication" which takes in an extra amount to add, and may return an
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
-        ///
-        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
         ///
         /// # Examples
         ///
@@ -2849,8 +2821,7 @@ macro_rules! int_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
-        /// If you don't need either `carry`, then you can use [`Self::widening_mul`] instead,
-        /// and if you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
+        /// If you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
         ///
         /// # Examples
         ///

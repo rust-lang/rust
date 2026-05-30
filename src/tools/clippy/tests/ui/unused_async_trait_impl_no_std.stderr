@@ -1,0 +1,21 @@
+error: unused `async` for async trait impl function with no `.await` statements
+  --> tests/ui/unused_async_trait_impl_no_std.rs:11:5
+   |
+LL | /     async fn do_something() -> u32 {
+LL | |
+LL | |         1
+LL | |     }
+   | |_____^
+   |
+   = note: `core::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
+help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
+   |
+LL ~     fn do_something() -> impl Future<Output = u32> {
+LL |
+LL ~         core::future::ready(1)
+   |
+
+error: aborting due to 1 previous error
+

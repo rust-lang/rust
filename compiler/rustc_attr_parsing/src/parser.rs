@@ -12,7 +12,7 @@ use rustc_ast::{
     AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Diag, PResult};
+use rustc_errors::{Applicability, Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
@@ -410,7 +410,20 @@ fn expr_to_lit<'sess>(
         // - `#[foo = include_str!("nonexistent-file.rs")]`:
         //   results in `ast::ExprKind::Err`.
         let msg = "attribute value must be a literal";
-        let err = psess.dcx().struct_span_err(span, msg);
+        let mut err = psess.dcx().struct_span_err(span, msg);
+
+        // Suggest adding quotation marks to turn an identifier into a string literal
+        if let ExprKind::Path(None, ref path) = expr.kind
+            && let [segment] = path.segments.as_slice()
+        {
+            err.span_suggestion(
+                expr.span,
+                "try adding quotation marks",
+                &format!("\"{}\"", segment.ident),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
         Err(err)
     }
 }

@@ -1,5 +1,5 @@
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:9:1
+  --> tests/ui/doc_unsafe.rs:12:1
    |
 LL | pub unsafe fn destroy_the_planet() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,31 +8,78 @@ LL | pub unsafe fn destroy_the_planet() {
    = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:33:5
+  --> tests/ui/doc_unsafe.rs:36:5
    |
 LL |     pub unsafe fn republished() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: docs for unsafe field missing `# Safety` section
+  --> tests/ui/doc_unsafe.rs:47:5
+   |
+LL |     unsafe field: u8,
+   |     ^^^^^^^^^^^^^^^^
+
+error: docs for unsafe field missing `# Safety` section
+  --> tests/ui/doc_unsafe.rs:53:9
+   |
+LL |         unsafe field: u8,
+   |         ^^^^^^^^^^^^^^^^
+
+error: docs for unsafe field missing `# Safety` section
+  --> tests/ui/doc_unsafe.rs:59:5
+   |
+LL |     unsafe field: u8,
+   |     ^^^^^^^^^^^^^^^^
+
+error: field with `# Safety` documentation is not marked unsafe
+  --> tests/ui/doc_unsafe.rs:65:5
+   |
+LL |     field: u8,
+   |     ^^^^^^^^^
+   |
+   = help: if the field has safety invariants, mark it `unsafe`
+note: the lint level is defined here
+  --> tests/ui/doc_unsafe.rs:4:9
+   |
+LL | #![deny(clippy::unnecessary_safety_doc)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field with `# Safety` documentation is not marked unsafe
+  --> tests/ui/doc_unsafe.rs:72:9
+   |
+LL |         field: u8,
+   |         ^^^^^^^^^
+   |
+   = help: if the field has safety invariants, mark it `unsafe`
+
+error: field with `# Safety` documentation is not marked unsafe
+  --> tests/ui/doc_unsafe.rs:79:5
+   |
+LL |     field: u8,
+   |     ^^^^^^^^^
+   |
+   = help: if the field has safety invariants, mark it `unsafe`
+
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:42:5
+  --> tests/ui/doc_unsafe.rs:84:5
    |
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe trait missing `# Safety` section
-  --> tests/ui/doc_unsafe.rs:49:1
+  --> tests/ui/doc_unsafe.rs:91:1
    |
 LL | pub unsafe trait UnsafeTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:80:5
+  --> tests/ui/doc_unsafe.rs:122:5
    |
 LL |     pub unsafe fn more_undocumented_unsafe() -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsafe function's docs are missing a `# Safety` section
-  --> tests/ui/doc_unsafe.rs:97:9
+  --> tests/ui/doc_unsafe.rs:139:9
    |
 LL |         pub unsafe fn whee() {
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -42,5 +89,5 @@ LL | very_unsafe!();
    |
    = note: this error originates in the macro `very_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+error: aborting due to 12 previous errors
 

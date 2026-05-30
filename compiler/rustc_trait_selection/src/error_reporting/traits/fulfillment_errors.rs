@@ -827,6 +827,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Keep more precise spans that still point within the parent obligation,
                     // but do not let hidden impl details move the span outside of it.
                     if code == *root_obligation.cause.code()
+                        && root_obligation.cause.span.eq_ctxt(obligation.cause.span)
                         && !root_obligation.cause.span.contains(obligation.cause.span)
                     {
                         obligation.cause.span = root_obligation.cause.span;

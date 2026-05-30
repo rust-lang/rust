@@ -352,7 +352,7 @@ pub struct CodegenContext {
     pub incr_comp_session_dir: Option<PathBuf>,
     /// `true` if the codegen should be run in parallel.
     ///
-    /// Depends on [`ExtraBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
+    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
     pub parallel: bool,
 }
 
@@ -416,7 +416,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
     }
 }
 
-pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
+pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     allocator_module: Option<ModuleCodegen<B::Module>>,
@@ -473,6 +473,9 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         let mut files = Vec::new();
         if let Some(object_file_path) = &module.object {
             files.push((OutputType::Object.extension(), object_file_path.as_path()));
+        }
+        if let Some(global_asm_object_file_path) = &module.global_asm_object {
+            files.push(("asm.o", global_asm_object_file_path.as_path()));
         }
         if let Some(dwarf_object_file_path) = &module.dwarf_object {
             files.push(("dwo", dwarf_object_file_path.as_path()));
@@ -617,6 +620,10 @@ pub fn produce_final_output_artifacts(
         for module in compiled_modules.modules.iter() {
             if !keep_numbered_objects {
                 if let Some(ref path) = module.object {
+                    ensure_removed(sess.dcx(), path);
+                }
+
+                if let Some(ref path) = module.global_asm_object {
                     ensure_removed(sess.dcx(), path);
                 }
 
@@ -924,6 +931,13 @@ fn execute_copy_from_cache_work_item(
     let llvm_ir = load_from_incr_cache(module_config.emit_ir, OutputType::LlvmAssembly);
     let bytecode = load_from_incr_cache(module_config.emit_bc, OutputType::Bitcode);
     let object = load_from_incr_cache(should_emit_obj, OutputType::Object);
+    let global_asm_object =
+        if should_emit_obj && let Some(saved_file) = module.source.saved_files.get("asm.o") {
+            let output_path = cgcx.output_filenames.temp_path_ext_for_cgu("asm.o", &module.name);
+            load_from_incr_comp_dir(output_path, &saved_file)
+        } else {
+            None
+        };
     if should_emit_obj && object.is_none() {
         dcx.emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
     }
@@ -933,6 +947,7 @@ fn execute_copy_from_cache_work_item(
         kind: ModuleKind::Regular,
         name: module.name,
         object,
+        global_asm_object,
         dwarf_object,
         bytecode,
         assembly,
@@ -1115,18 +1130,6 @@ fn do_thin_lto<B: WriteBackendMethods>(
     compiled_modules
 }
 
-fn execute_thin_lto_work_item<B: WriteBackendMethods>(
-    cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
-    shared_emitter: SharedEmitter,
-    tm_factory: TargetMachineFactoryFn<B>,
-    module: lto::ThinModule<B>,
-) -> CompiledModule {
-    let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
-
-    B::optimize_and_codegen_thin(cgcx, prof, &shared_emitter, tm_factory, module)
-}
-
 /// Messages sent to the coordinator.
 pub(crate) enum Message<B: WriteBackendMethods> {
     /// A jobserver token has become available. Sent from the jobserver helper
@@ -1208,7 +1211,7 @@ enum MainThreadState {
     Lending,
 }
 
-fn start_executing_work<B: ExtraBackendMethods>(
+fn start_executing_work<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     shared_emitter: SharedEmitter,
@@ -1891,7 +1894,8 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
                 execute_copy_from_cache_work_item(&cgcx, &prof, shared_emitter, m)
             }
             ThinLtoWorkItem::ThinLto(m) => {
-                execute_thin_lto_work_item(&cgcx, &prof, shared_emitter, tm_factory, m)
+                let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
+                B::optimize_and_codegen_thin(&cgcx, &prof, &shared_emitter, tm_factory, m)
             }
         }));
 

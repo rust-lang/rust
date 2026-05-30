@@ -187,6 +187,7 @@ fn file_test_io_seek_and_write() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -220,6 +221,7 @@ fn file_lock_multiple_shared() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -254,6 +256,7 @@ fn file_lock_blocking() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -285,6 +288,7 @@ fn file_lock_drop() {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "solaris",
+        target_os = "android",
         target_vendor = "apple",
     )),
     should_panic
@@ -305,18 +309,43 @@ fn file_lock_dup() {
 }
 
 #[test]
-#[cfg(windows)]
-fn file_lock_double_unlock() {
+#[cfg_attr(
+    not(any(
+        windows,
+        target_os = "aix",
+        target_os = "cygwin",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "hurd",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "android",
+        target_vendor = "apple",
+    )),
+    should_panic
+)]
+fn file_lock_double() {
     let tmpdir = tmpdir();
-    let filename = &tmpdir.join("file_lock_double_unlock_test.txt");
+    let filename = &tmpdir.join("file_lock_double_test.txt");
     let f1 = check!(File::create(filename));
     let f2 = check!(OpenOptions::new().write(true).open(filename));
 
-    // On Windows a file handle may acquire both a shared and exclusive lock.
-    // Check that both are released by unlock()
+    // A file handle may acquire both a shared and exclusive lock.
     check!(f1.lock());
     check!(f1.lock_shared());
+    // The behavior here differs between Windows and Unix: on Windows, f1 holds both locks;
+    // on Unix, the lock got downgraded so f1 only holds the shared lock.
     assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    if cfg!(windows) {
+        assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
+    } else {
+        check!(f2.try_lock_shared());
+        check!(f2.unlock());
+    }
+    // Check that both are released by unlock().
     check!(f1.unlock());
     check!(f2.try_lock());
 }

@@ -49,3 +49,6 @@ unexpected_cfgs = { level = "warn", check-cfg = [
   'cfg(feature, values("compiler-builtins"))',
   'cfg(feature, values("unmangled-names"))',
 ] }
+
+[package.metadata.docs.rs]
+features = ["unstable-float"]

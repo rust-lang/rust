@@ -504,10 +504,6 @@ macro_rules! uint_module {
                 assert_eq_const_safe!(($T, bool): $T::MAX.borrowing_sub($T::MAX, true), ($T::MAX, true));
             }
 
-            fn test_widening_mul() {
-                assert_eq_const_safe!(($T, $T): $T::MAX.widening_mul($T::MAX), (1, $T::MAX - 1));
-            }
-
             fn test_carrying_mul() {
                 assert_eq_const_safe!(($T, $T): $T::MAX.carrying_mul($T::MAX, 0), (1, $T::MAX - 1));
                 assert_eq_const_safe!(($T, $T): $T::MAX.carrying_mul($T::MAX, $T::MAX), (0, $T::MAX));

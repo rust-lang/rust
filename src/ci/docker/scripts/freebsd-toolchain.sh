@@ -46,6 +46,7 @@ mkdir -p "$sysroot"
 case $arch in
   (x86_64) freebsd_arch=amd64 ;;
   (i686) freebsd_arch=i386 ;;
+  (aarch64) freebsd_arch=arm64 ;;
 esac
 
 files_to_extract=(

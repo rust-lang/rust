@@ -1,10 +1,12 @@
+// ignore-tidy-linelength (target_has_atomic_primitive_alignment below overflows the linelength limit and  @ [revision]compile-flags isn't detected by tidy as something to ignore)
+
 //@ check-fail
 //@ revisions: overflow_checks_ debug_assertions_ ub_checks_ sanitize_
 //@ revisions: sanitizer_cfi_generalize_pointers_ sanitizer_cfi_normalize_integers_
 //@ revisions: proc_macro_ panic_ target_feature_ unix_ windows_ target_abi_
 //@ revisions: target_arch_ target_endian_ target_env_ target_family_ target_os_
 //@ revisions: target_object_format_ target_pointer_width_ target_vendor_
-//@ revisions: target_has_atomic_ target_has_atomic_equal_alignment_
+//@ revisions: target_has_atomic_ target_has_atomic_primitive_alignment_
 //@ revisions: target_has_atomic_load_store_ target_thread_local_ relocation_model_
 //@ revisions: fmt_debug_
 //@ revisions: emscripten_wasm_eh_
@@ -31,7 +33,7 @@
 //@ [target_pointer_width_]compile-flags: --cfg target_pointer_width="32"
 //@ [target_vendor_]compile-flags: --cfg target_vendor
 //@ [target_has_atomic_]compile-flags: --cfg target_has_atomic="32"
-//@ [target_has_atomic_equal_alignment_]compile-flags: --cfg target_has_atomic_equal_alignment="32"
+//@ [target_has_atomic_primitive_alignment_]compile-flags: --cfg target_has_atomic_primitive_alignment="32"
 //@ [target_has_atomic_load_store_]compile-flags: --cfg target_has_atomic_load_store="32"
 //@ [target_thread_local_]compile-flags: --cfg target_thread_local
 //@ [relocation_model_]compile-flags: --cfg relocation_model="a"

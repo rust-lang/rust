@@ -114,6 +114,13 @@ impl Step for Vendor {
                 cmd.arg("--sync").arg(sync_arg);
             }
 
+            // Reuse vendored dependencies when building source tarball for offline support.
+            if builder.config.vendor {
+                cmd.arg("--respect-source-config")
+                    .arg("--config")
+                    .arg(builder.src.join(".cargo").join("config.toml"));
+            }
+
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.
             cmd.env("RUSTC_BOOTSTRAP", "1");
@@ -133,6 +140,13 @@ impl Step for Vendor {
 
         if self.versioned_dirs {
             cmd.arg("--versioned-dirs");
+        }
+
+        // Reuse vendored dependencies when building source tarball for offline support.
+        if builder.config.vendor {
+            cmd.arg("--respect-source-config")
+                .arg("--config")
+                .arg(builder.src.join("library").join(".cargo").join("config.toml"));
         }
 
         // Will read the libstd Cargo.toml

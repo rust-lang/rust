@@ -61,11 +61,11 @@
     target_has_atomic = "32",
     target_has_atomic = "64",
     target_has_atomic = "ptr",
-    target_has_atomic_equal_alignment = "8",
-    target_has_atomic_equal_alignment = "16",
-    target_has_atomic_equal_alignment = "32",
-    target_has_atomic_equal_alignment = "64",
-    target_has_atomic_equal_alignment = "ptr",
+    target_has_atomic_primitive_alignment = "8",
+    target_has_atomic_primitive_alignment = "16",
+    target_has_atomic_primitive_alignment = "32",
+    target_has_atomic_primitive_alignment = "64",
+    target_has_atomic_primitive_alignment = "ptr",
     target_has_atomic_load_store = "8",
     target_has_atomic_load_store = "16",
     target_has_atomic_load_store = "32",
@@ -123,7 +123,6 @@
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
-#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
 #![feature(const_closures)]
 #![feature(const_precise_live_drops)]
@@ -167,7 +166,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_inline_always)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]

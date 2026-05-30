@@ -5,7 +5,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
-use rustc_ast::{AttrStyle, MetaItemLit};
+use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
@@ -356,6 +356,9 @@ pub struct AcceptContext<'f, 'sess> {
     ///
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
     pub(crate) template: &'f AttributeTemplate,
+
+    /// The safety attribute (if any) applied to the attribute.
+    pub(crate) attr_safety: Safety,
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
@@ -873,7 +876,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
             ParsedDescription::Macro => AttrSuggestionStyle::Macro,
         };
 
-        self.template.suggestions(style, &self.attr_path)
+        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
 }
 
@@ -1064,7 +1067,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
             ParsedDescription::Macro => AttrSuggestionStyle::Macro,
         };
 
-        self.template.suggestions(style, &self.attr_path)
+        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)

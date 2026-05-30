@@ -580,6 +580,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     // for dbg!(x) which may take ownership, suggest dbg!(&x) instead
+    // but here we actually do not check whether the macro name is `dbg!`
+    // so that we may extend the scope a bit larger to cover more cases
     fn suggest_ref_for_dbg_args(
         &self,
         body: &hir::Expr<'_>,
@@ -593,41 +595,29 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
         let Some(var_info) = var_info else { return };
         let arg_name = var_info.name;
-        struct MatchArgFinder<'tcx> {
-            tcx: TyCtxt<'tcx>,
-            move_span: Span,
+        struct MatchArgFinder {
+            expr_span: Span,
+            match_arg_span: Option<Span>,
             arg_name: Symbol,
-            match_arg_span: Option<Span> = None,
         }
-        impl Visitor<'_> for MatchArgFinder<'_> {
+        impl Visitor<'_> for MatchArgFinder {
             fn visit_expr(&mut self, e: &hir::Expr<'_>) {
                 // dbg! is expanded into a match pattern, we need to find the right argument span
-                if let hir::ExprKind::Match(scrutinee, ..) = &e.kind
-                    && let hir::ExprKind::Tup(args) = scrutinee.kind
-                    && e.span.macro_backtrace().any(|expn| {
-                        expn.macro_def_id.is_some_and(|macro_def_id| {
-                            self.tcx.is_diagnostic_item(sym::dbg_macro, macro_def_id)
-                        })
-                    })
+                if let hir::ExprKind::Match(expr, ..) = &e.kind
+                    && let hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        path @ Path { segments: [seg], .. },
+                    )) = &expr.kind
+                    && seg.ident.name == self.arg_name
+                    && self.expr_span.source_callsite().contains(expr.span)
                 {
-                    for arg in args {
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(
-                            _,
-                            path @ Path { segments: [seg], .. },
-                        )) = &arg.kind
-                            && seg.ident.name == self.arg_name
-                            && self.move_span.source_equal(arg.span)
-                        {
-                            self.match_arg_span = Some(path.span);
-                            return;
-                        }
-                    }
+                    self.match_arg_span = Some(path.span);
                 }
                 hir::intravisit::walk_expr(self, e);
             }
         }
 
-        let mut finder = MatchArgFinder { tcx: self.infcx.tcx, move_span, arg_name, .. };
+        let mut finder = MatchArgFinder { expr_span: move_span, match_arg_span: None, arg_name };
         finder.visit_expr(body);
         if let Some(macro_arg_span) = finder.match_arg_span {
             err.span_suggestion_verbose(
@@ -4033,7 +4023,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && decl.can_be_made_mutable()
         {
             let mut is_for_loop = false;
-            let mut is_ref_pattern = false;
+            let mut is_immut_ref_pattern = false;
             if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                 opt_match_place: Some((_, match_span)),
                 ..
@@ -4041,55 +4031,52 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             {
                 if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop)) {
                     is_for_loop = true;
+                }
 
-                    if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
-                        struct RefPatternFinder<'tcx> {
-                            tcx: TyCtxt<'tcx>,
-                            binding_span: Span,
-                            is_ref_pattern: bool,
-                        }
-
-                        impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
-                            type NestedFilter = OnlyBodies;
-
-                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-                                self.tcx
-                            }
-
-                            fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
-                                if !self.is_ref_pattern
-                                    && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
-                                    && ident.span == self.binding_span
-                                {
-                                    self.is_ref_pattern =
-                                        self.tcx.hir_parent_iter(pat.hir_id).any(|(_, node)| {
-                                            matches!(
-                                                node,
-                                                hir::Node::Pat(hir::Pat {
-                                                    kind: hir::PatKind::Ref(..),
-                                                    ..
-                                                })
-                                            )
-                                        });
-                                }
-                                hir::intravisit::walk_pat(self, pat);
-                            }
-                        }
-
-                        let mut finder = RefPatternFinder {
-                            tcx: self.infcx.tcx,
-                            binding_span: decl.source_info.span,
-                            is_ref_pattern: false,
-                        };
-
-                        finder.visit_body(body);
-                        is_ref_pattern = finder.is_ref_pattern;
+                if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
+                    struct RefPatternFinder<'tcx> {
+                        tcx: TyCtxt<'tcx>,
+                        binding_span: Span,
+                        is_immut_ref_pattern: bool,
                     }
+
+                    impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
+                        type NestedFilter = OnlyBodies;
+
+                        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                            self.tcx
+                        }
+
+                        fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+                            if !self.is_immut_ref_pattern
+                                && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                                && ident.span == self.binding_span
+                                && matches!(
+                                    self.tcx.parent_hir_node(pat.hir_id),
+                                    hir::Node::Pat(hir::Pat {
+                                        kind: hir::PatKind::Ref(_, _, hir::Mutability::Not),
+                                        ..
+                                    })
+                                )
+                            {
+                                self.is_immut_ref_pattern = true;
+                            }
+                            hir::intravisit::walk_pat(self, pat);
+                        }
+                    }
+
+                    let mut finder = RefPatternFinder {
+                        tcx: self.infcx.tcx,
+                        binding_span: decl.source_info.span,
+                        is_immut_ref_pattern: false,
+                    };
+
+                    finder.visit_body(body);
+                    is_immut_ref_pattern = finder.is_immut_ref_pattern;
                 }
             }
 
-            let (span, message) = if is_for_loop
-                && is_ref_pattern
+            let (span, message) = if is_immut_ref_pattern
                 && let Ok(binding_name) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {

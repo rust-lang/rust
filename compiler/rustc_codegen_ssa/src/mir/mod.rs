@@ -7,6 +7,7 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_span::ErrorGuaranteed;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -155,6 +156,29 @@ enum LocalRef<'tcx, V> {
     Operand(OperandRef<'tcx, V>),
     /// Will be a `Self::Operand` once we get to its definition.
     PendingOperand,
+}
+
+pub enum IntrinsicResult<'tcx, V> {
+    /// This intrinsic created an operand without using the `result_place` argument.
+    ///
+    /// `codegen_call_terminator` will handle writing the result into the place,
+    /// if doing so is needed.
+    ///
+    /// The vast majority of intrinsics can do this, see MCP#970
+    Operand(OperandValue<V>),
+
+    /// The intrinsic wrote its result into the `result_place` argument.
+    ///
+    /// Most things don't need to do this, but there are some: `volatile_load`
+    /// of a non-scalar type, for example, has to.
+    WroteIntoPlace,
+
+    /// Another instance should be called instead. This is used to invoke intrinsic
+    /// default bodies in case an intrinsic is not implemented by the backend.
+    Fallback(ty::Instance<'tcx>),
+
+    /// Arguably this shouldn't exist, per MCP#620, but a bunch do it.
+    Err(ErrorGuaranteed),
 }
 
 impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {

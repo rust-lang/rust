@@ -3,6 +3,7 @@
 use std::sync::LazyLock;
 
 use AttributeGate::*;
+use rustc_ast::ast::Safety;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::AttrStyle;
 use rustc_span::{Symbol, sym};
@@ -20,11 +21,6 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::ub_checks, sym::cfg_ub_checks, Features::cfg_ub_checks),
     (sym::contract_checks, sym::cfg_contract_checks, Features::cfg_contract_checks),
     (sym::target_thread_local, sym::cfg_target_thread_local, Features::cfg_target_thread_local),
-    (
-        sym::target_has_atomic_equal_alignment,
-        sym::cfg_target_has_atomic_equal_alignment,
-        Features::cfg_target_has_atomic_equal_alignment,
-    ),
     (
         sym::target_has_atomic_load_store,
         sym::cfg_target_has_atomic,
@@ -118,6 +114,7 @@ impl AttributeTemplate {
     pub fn suggestions(
         &self,
         style: AttrSuggestionStyle,
+        safety: Safety,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
         let (start, macro_call, end) = match style {
@@ -129,20 +126,32 @@ impl AttributeTemplate {
 
         let mut suggestions = vec![];
 
+        let (safety_start, safety_end) = match safety {
+            Safety::Unsafe(_) => ("unsafe(", ")"),
+            _ => ("", ""),
+        };
+
         if self.word {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
-            suggestions.push(format!("{start}{name}{end}"));
+            suggestions.push(format!("{start}{safety_start}{name}{safety_end}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!("{start}{name}{macro_call}({descr}){end}"));
+                suggestions.push(format!(
+                    "{start}{safety_start}{name}{macro_call}({descr}){safety_end}{end}"
+                ));
             }
         }
-        suggestions.extend(self.one_of.iter().map(|&word| format!("{start}{name}({word}){end}")));
+        suggestions.extend(
+            self.one_of
+                .iter()
+                .map(|&word| format!("{start}{safety_start}{name}({word}){safety_end}{end}")),
+        );
         if let Some(descr) = self.name_value_str {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
-                suggestions.push(format!("{start}{name} = \"{descr}\"{end}"));
+                suggestions
+                    .push(format!("{start}{safety_start}{name} = \"{descr}\"{safety_end}{end}"));
             }
         }
         suggestions.sort();

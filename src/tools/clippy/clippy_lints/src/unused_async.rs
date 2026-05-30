@@ -1,11 +1,13 @@
-use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_def_id_trait_method;
+use clippy_utils::source::{HasSession, snippet_with_applicability, walk_span_to_context};
 use clippy_utils::usage::is_todo_unimplemented_stub;
+use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{
-    Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId, Node,
-    TraitItem, YieldSource,
+    Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId,
+    ImplItem, ImplItemKind, IsAsync, Node, TraitItem, YieldSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -43,7 +45,52 @@ declare_clippy_lint! {
     "finds async functions with no await statements"
 }
 
-impl_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for trait method implementations that are declared `async` but have no `.await`s inside of them.
+    ///
+    /// ### Why is this bad?
+    /// Async functions with no async code create computational overhead.
+    /// Even though the trait requires the method to return a future,
+    /// returning a `core::future::ready` with the result is more efficient
+    /// as it reduces the number of states in the Future state machine by at least one.
+    ///
+    /// Note that the behaviour is slightly different when using `core::future::ready`,
+    /// as the value is computed immediately and stored in a future for later retrieval at the first (and only valid) call to `poll`.
+    /// An `async` block generates code that completely defers the computation of this value until the Future is polled.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// trait AsyncTrait {
+    ///     async fn get_random_number() -> i64;
+    /// }
+    ///
+    /// impl AsyncTrait for () {
+    ///     async fn get_random_number() -> i64 {
+    ///         4 // Chosen by fair dice roll. Guaranteed to be random.
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// trait AsyncTrait {
+    ///     async fn get_random_number() -> i64;
+    /// }
+    ///
+    /// impl AsyncTrait for () {
+    ///     fn get_random_number() -> impl Future<Output = i64> {
+    ///         core::future::ready(4) // Chosen by fair dice roll. Guaranteed to be random.
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.98.0"]
+    pub UNUSED_ASYNC_TRAIT_IMPL,
+    pedantic,
+    "finds async trait impl functions with no await statements"
+}
+
+impl_lint_pass!(UnusedAsync => [UNUSED_ASYNC, UNUSED_ASYNC_TRAIT_IMPL]);
 
 #[derive(Default)]
 pub struct UnusedAsync {
@@ -194,6 +241,72 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
             );
         }
     }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
+        if let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind
+            && let IsAsync::Async(async_span) = sig.header.asyncness
+            && let body = cx.tcx.hir_body(body_id)
+            && !async_fn_contains_todo_unimplemented_macro(cx, body)
+        {
+            let mut visitor = AsyncFnVisitor {
+                cx,
+                found_await: false,
+                await_in_async_block: None,
+                async_depth: 0,
+            };
+            visitor.visit_nested_body(body_id);
+
+            if !visitor.found_await
+                && let Some(builtin_crate) = clippy_utils::std_or_core(cx)
+                && let Some(inner) = unpack_async_fn_body(cx, body)
+                // Find the tail expression contained in the async fn (if any),
+                // which will be wrapped in std::future::ready.
+                && let ExprKind::Block(block, _) = inner.kind
+                && let Some(tail_expr) = block.expr
+            {
+                span_lint_and_then(
+                    cx,
+                    UNUSED_ASYNC_TRAIT_IMPL,
+                    impl_item.span,
+                    "unused `async` for async trait impl function with no `.await` statements",
+                    |diag| {
+                        diag.note(format!(
+                            "`{builtin_crate}::future::ready` creates a `Future` which returns the value immediately when `poll`ed"
+                        ));
+
+                        let ctxt = impl_item.span.ctxt();
+                        if let Some(signature_span) = walk_span_to_context(sig.decl.output.span(), ctxt)
+                            && let Some(tail_span) = walk_span_to_context(tail_expr.span, ctxt)
+                        {
+                            // The suggestion might be incorrect. The future changes from awaiting for the first poll to
+                            // evaluate the expression, to immediately evaluate the expression.
+                            let mut app = Applicability::MaybeIncorrect;
+
+                            let async_span = cx.sess().source_map().span_extend_while_whitespace(async_span);
+
+                            let signature_snippet = snippet_with_applicability(cx, signature_span, "_", &mut app);
+                            let tail_snippet = snippet_with_applicability(cx, tail_span, "_", &mut app).to_string();
+
+                            let sugg = vec![
+                                (async_span, String::new()),
+                                (signature_span, format!("impl Future<Output = {signature_snippet}>")),
+                                (tail_span, format!("{builtin_crate}::future::ready({tail_snippet})")),
+                            ];
+
+                            diag.multipart_suggestion(
+                                format!(
+                                    "consider removing the `async` from this function \
+                                    and returning `impl Future<Output = {signature_snippet}>` instead"
+                                ),
+                                sugg,
+                                app,
+                            );
+                        }
+                    },
+                );
+            }
+        }
+    }
 }
 
 fn is_default_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
@@ -206,7 +319,34 @@ fn is_default_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     )
 }
 
-fn async_fn_contains_todo_unimplemented_macro(cx: &LateContext<'_>, body: &Body<'_>) -> bool {
+/// Get the inner expression of the body of an async function.
+///
+/// If it is not an async function, returns `None`.
+///
+/// An async function like
+/// ```rs
+/// async fn get_random_number() -> i64 {
+///    do_something();
+///    4
+/// }
+/// ```
+/// (roughly) desugars to
+/// ```rs
+/// fn get_random_number() -> impl Future<Output = i64> {
+///     async move {
+///         do_something();
+///         4
+///     }
+/// }
+/// ```
+///
+/// We first get to the `async move {}` block,
+/// which is the one and only expression in the body of the function.
+/// This block is a coroutine wrapped in a closure.
+/// The expression in this block is contained in a terminating scope.
+///
+/// This function returns that expression in `Some(...)` if this body indeed is an async function.
+fn unpack_async_fn_body<'hir>(cx: &LateContext<'hir>, body: &Body<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::Closure(closure) = body.value.kind
         && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) = closure.kind
         && let body = cx.tcx.hir_body(closure.body)
@@ -214,8 +354,12 @@ fn async_fn_contains_todo_unimplemented_macro(cx: &LateContext<'_>, body: &Body<
         && let Some(expr) = block.expr
         && let ExprKind::DropTemps(inner) = expr.kind
     {
-        return is_todo_unimplemented_stub(cx, inner);
+        Some(inner)
+    } else {
+        None
     }
+}
 
-    false
+fn async_fn_contains_todo_unimplemented_macro<'hir>(cx: &LateContext<'hir>, body: &Body<'hir>) -> bool {
+    unpack_async_fn_body(cx, body).is_some_and(|inner| is_todo_unimplemented_stub(cx, inner))
 }

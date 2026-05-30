@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
             let sugg = if any_shorthand {
                 errors::UnusedVariableSugg::TryIgnore {
-                    name,
+                    name: name.to_ident_string(),
                     shorthands: introductions
                         .iter()
                         .filter_map(

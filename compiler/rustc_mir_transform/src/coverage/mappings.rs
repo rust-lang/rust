@@ -80,7 +80,7 @@ fn extract_branch_mappings(
 
     // For now, ignore any branch span that was introduced by
     // expansion. This makes things like assert macros less noisy.
-    let Some(node) = expn_tree.get(hir_info.body_span.ctxt().outer_expn()) else { return };
+    let Some(node) = expn_tree.get(hir_info.body_span.ctxt()) else { return };
     if node.expn_kind != ExpnKind::Root {
         return;
     }

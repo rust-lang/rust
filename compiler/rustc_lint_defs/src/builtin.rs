@@ -51,12 +51,10 @@ declare_lint_pass! {
         FLOAT_LITERAL_F32_FALLBACK,
         FORBIDDEN_LINT_GROUPS,
         FUNCTION_ITEM_REFERENCES,
-        FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
-        INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
         INLINE_NO_SANITIZE,
         INVALID_DOC_ATTRIBUTES,
         INVALID_MACRO_EXPORT_ARGUMENTS,
@@ -68,7 +66,6 @@ declare_lint_pass! {
         LINKER_INFO,
         LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
-        LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         MACRO_USE_EXTERN_CRATE,
         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -2595,96 +2592,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
-    /// and a pointer.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(strict_provenance_lints)]
-    /// #![warn(fuzzy_provenance_casts)]
-    ///
-    /// fn main() {
-    ///     let _dangling = 16_usize as *const u8;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is part of the strict provenance effort, see [issue #95228].
-    /// Casting an integer to a pointer is considered bad style, as a pointer
-    /// contains, besides the *address* also a *provenance*, indicating what
-    /// memory the pointer is allowed to read/write. Casting an integer, which
-    /// doesn't have provenance, to a pointer requires the compiler to assign
-    /// (guess) provenance. The compiler assigns "all exposed valid" (see the
-    /// docs of [`ptr::with_exposed_provenance`] for more information about this
-    /// "exposing"). This penalizes the optimiser and is not well suited for
-    /// dynamic analysis/dynamic program verification (e.g. Miri or CHERI
-    /// platforms).
-    ///
-    /// It is much better to use [`ptr::with_addr`] instead to specify the
-    /// provenance you want. If using this function is not possible because the
-    /// code relies on exposed provenance then there is as an escape hatch
-    /// [`ptr::with_exposed_provenance`].
-    ///
-    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.with_addr
-    /// [`ptr::with_exposed_provenance`]: https://doc.rust-lang.org/core/ptr/fn.with_exposed_provenance.html
-    pub FUZZY_PROVENANCE_CASTS,
-    Allow,
-    "a fuzzy integer to pointer cast is used",
-    @feature_gate = strict_provenance_lints;
-}
-
-declare_lint! {
-    /// The `lossy_provenance_casts` lint detects an `as` cast between a pointer
-    /// and an integer.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(strict_provenance_lints)]
-    /// #![warn(lossy_provenance_casts)]
-    ///
-    /// fn main() {
-    ///     let x: u8 = 37;
-    ///     let _addr: usize = &x as *const u8 as usize;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint is part of the strict provenance effort, see [issue #95228].
-    /// Casting a pointer to an integer is a lossy operation, because beyond
-    /// just an *address* a pointer may be associated with a particular
-    /// *provenance*. This information is used by the optimiser and for dynamic
-    /// analysis/dynamic program verification (e.g. Miri or CHERI platforms).
-    ///
-    /// Since this cast is lossy, it is considered good style to use the
-    /// [`ptr::addr`] method instead, which has a similar effect, but doesn't
-    /// "expose" the pointer provenance. This improves optimisation potential.
-    /// See the docs of [`ptr::addr`] and [`ptr::expose_provenance`] for more information
-    /// about exposing pointer provenance.
-    ///
-    /// If your code can't comply with strict provenance and needs to expose
-    /// the provenance, then there is [`ptr::expose_provenance`] as an escape hatch,
-    /// which preserves the behaviour of `as usize` casts while being explicit
-    /// about the semantics.
-    ///
-    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.addr
-    /// [`ptr::expose_provenance`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_provenance
-    pub LOSSY_PROVENANCE_CASTS,
-    Allow,
-    "a lossy pointer to integer cast is used",
-    @feature_gate = strict_provenance_lints;
-}
-
-declare_lint! {
     /// The `const_evaluatable_unchecked` lint detects a generic constant used
     /// in a type.
     ///
@@ -4622,28 +4529,21 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// #![deny(ambiguous_glob_imports)]
-    /// pub fn foo() -> u32 {
-    ///     use sub::*;
-    ///     C
-    /// }
+    /// ```rust,ignore (needs extern crate)
+    /// // library crate `my_library`
+    /// mod mod1 { pub const C: u32 = 1; }
+    /// mod mod2 { pub const C: u32 = 2; }
+    /// pub use mod1::*;
+    /// pub use mod2::*;
     ///
-    /// mod sub {
-    ///     mod mod1 { pub const C: u32 = 1; }
-    ///     mod mod2 { pub const C: u32 = 2; }
-    ///
-    ///     pub use mod1::*;
-    ///     pub use mod2::*;
-    /// }
+    /// // another crate using `my_library`
+    /// let c = my_library::C; // `C` is ambiguous
     /// ```
-    ///
-    /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust compile it successfully because it
-    /// had lost the ambiguity error when resolve `use sub::mod2::*`.
+    /// Previous versions of Rust compile it successfully because
+    /// ambiguous glob imports weren't preserved correctly over crate boundaries.
     ///
     /// This is a [future-incompatible] lint to transition this to a
     /// hard error in the future.
@@ -5492,61 +5392,6 @@ declare_lint! {
     "detects tail calls of functions marked with `#[track_caller]`",
     @feature_gate = explicit_tail_calls;
 }
-declare_lint! {
-    /// The `inline_always_mismatching_target_features` lint will trigger when a
-    /// function with the `#[inline(always)]` and `#[target_feature(enable = "...")]`
-    /// attributes is called and cannot be inlined due to missing target features in the caller.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (fails on x86_64)
-    /// #[inline(always)]
-    /// #[target_feature(enable = "fp16")]
-    /// unsafe fn callee() {
-    ///     // operations using fp16 types
-    /// }
-    ///
-    /// // Caller does not enable the required target feature
-    /// fn caller() {
-    ///     unsafe { callee(); }
-    /// }
-    ///
-    /// fn main() {
-    ///     caller();
-    /// }
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: call to `#[inline(always)]`-annotated `callee` requires the same target features. Function will not have `alwaysinline` attribute applied
-    ///   --> $DIR/builtin.rs:5192:14
-    ///    |
-    /// 10 |     unsafe { callee(); }
-    ///    |              ^^^^^^^^
-    ///    |
-    /// note: `fp16` target feature enabled in `callee` here but missing from `caller`
-    ///   --> $DIR/builtin.rs:5185:1
-    ///    |
-    /// 3  | #[target_feature(enable = "fp16")]
-    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    /// 4  | unsafe fn callee() {
-    ///    | ------------------
-    ///    = note: `#[warn(inline_always_mismatching_target_features)]` on by default
-    /// warning: 1 warning emitted
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Inlining a function with a target feature attribute into a caller that
-    /// lacks the corresponding target feature can lead to unsound behavior.
-    /// LLVM may select the wrong instructions or registers, or reorder
-    /// operations, potentially resulting in runtime errors.
-    pub INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
-    Warn,
-    r#"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"#,
-}
-
 declare_lint! {
     /// The `repr_c_enums_larger_than_int` lint detects `repr(C)` enums with discriminant
     /// values that do not fit into a C `int` or `unsigned int`.

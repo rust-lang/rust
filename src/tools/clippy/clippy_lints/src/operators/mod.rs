@@ -727,18 +727,27 @@ declare_clippy_lint! {
     /// Checks for manual implementation of `midpoint`.
     ///
     /// ### Why is this bad?
-    /// Using `(x + y) / 2` might cause an overflow on the intermediate
-    /// addition result.
+    /// Using `(x + y) / 2` or `(x + y) >> 1` on integer types might cause an overflow on the
+    /// intermediate addition result. The latter will only warn for unsigned integer types.
+    /// Similar for floating-point `(x + y) / 2.0` and `(x + y) * 0.5`.
     ///
     /// ### Example
     /// ```no_run
     /// # let a: u32 = 0;
     /// let c = (a + 10) / 2;
+    /// let d = (a + 10) >> 1;
+    /// let b: f32 = 0.0;
+    /// let e = (b + 10.0) / 2.0;
+    /// let f = (b + 10.0) * 0.5;
     /// ```
     /// Use instead:
     /// ```no_run
     /// # let a: u32 = 0;
     /// let c = u32::midpoint(a, 10);
+    /// let d = u32::midpoint(a, 10);
+    /// let b: f32 = 0.0;
+    /// let e = f32::midpoint(b, 10.0);
+    /// let f = f32::midpoint(b, 10.0);
     /// ```
     #[clippy::version = "1.87.0"]
     pub MANUAL_MIDPOINT,

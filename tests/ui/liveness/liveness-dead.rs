@@ -1,3 +1,4 @@
+//@ ignore-parallel-frontend unstable liveness diagnostics
 #![allow(dead_code)]
 #![deny(unused_assignments)]
 

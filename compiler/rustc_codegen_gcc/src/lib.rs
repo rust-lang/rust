@@ -98,7 +98,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
 
@@ -311,6 +311,10 @@ impl CodegenBackend for GccCodegenBackend {
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess, &self.target_info)
     }
+
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![sym::type_id_eq]
+    }
 }
 
 fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
@@ -335,9 +339,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn supports_parallel(&self) -> bool {
-        false
-    }
+    type Module = GccContext;
 
     fn codegen_allocator(
         &self,
@@ -419,6 +421,10 @@ impl WriteBackendMethods for GccCodegenBackend {
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
     type ThinData = ();
+
+    fn supports_parallel(&self) -> bool {
+        false
+    }
 
     fn target_machine_factory(
         &self,
