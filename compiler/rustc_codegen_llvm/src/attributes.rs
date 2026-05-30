@@ -171,10 +171,7 @@ pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) 
     llvm::CreateUWTableAttr(llcx, async_unwind)
 }
 
-pub(crate) fn frame_pointer_type_attr<'ll>(
-    cx: &SimpleCx<'ll>,
-    sess: &Session,
-) -> Option<&'ll Attribute> {
+pub(crate) fn frame_pointer(sess: &Session) -> FramePointer {
     let mut fp = sess.target.frame_pointer;
     let opts = &sess.opts;
     // "mcount" function relies on stack pointer.
@@ -183,6 +180,14 @@ pub(crate) fn frame_pointer_type_attr<'ll>(
         fp.ratchet(FramePointer::Always);
     }
     fp.ratchet(opts.cg.force_frame_pointers);
+    fp
+}
+
+pub(crate) fn frame_pointer_type_attr<'ll>(
+    cx: &SimpleCx<'ll>,
+    sess: &Session,
+) -> Option<&'ll Attribute> {
+    let fp = frame_pointer(sess);
     let attr_value = match fp {
         FramePointer::Always => "all",
         FramePointer::NonLeaf => "non-leaf",

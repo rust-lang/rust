@@ -114,6 +114,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::field_offset
+        | sym::field_representing_type_actual_type_id
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -213,6 +214,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf128
         | sym::type_id
         | sym::type_id_eq
+        | sym::type_id_field_representing_type
+        | sym::type_id_fields
+        | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
         | sym::type_of
@@ -319,6 +323,11 @@ pub(crate) fn check_intrinsic_type(
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
         sym::type_id => (1, 0, vec![], type_id_ty()),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
+        sym::type_id_field_representing_type => {
+            (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
+        }
+        sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
+        sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_vtable => {
             let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
             let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
@@ -339,6 +348,7 @@ pub(crate) fn check_intrinsic_type(
             vec![type_id_ty()],
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
+        sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
         sym::offload => (
             3,
             0,
@@ -627,16 +637,18 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::catch_unwind => {
+            let mut_data = Ty::new_mut_ptr(tcx, param(0));
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
             let try_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8], tcx.types.unit));
-            let catch_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8, mut_u8], tcx.types.unit));
+                ty::Binder::dummy(tcx.mk_fn_sig_unsafe_rust_abi([mut_data], tcx.types.unit));
+            let catch_fn_ty = ty::Binder::dummy(
+                tcx.mk_fn_sig_unsafe_rust_abi([mut_data, mut_u8], tcx.types.unit),
+            );
             (
+                1,
                 0,
-                0,
-                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_u8, Ty::new_fn_ptr(tcx, catch_fn_ty)],
-                tcx.types.i32,
+                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_data, Ty::new_fn_ptr(tcx, catch_fn_ty)],
+                tcx.types.bool,
             )
         }
 

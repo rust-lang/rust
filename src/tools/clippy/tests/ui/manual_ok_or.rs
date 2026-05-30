@@ -37,7 +37,15 @@ fn main() {
     foo.map_or(Ok::<i32, &str>(1), |v| Ok(v));
 
     // not applicable, expr is not a `Result` value
-    foo.map_or(42, |v| v);
+    foo.map_or(42, |v| v + 1);
+
+    // not applicable, closure isn't `Ok` wrapping
+    let bar: Option<Result<i32, &str>> = None;
+    #[allow(clippy::map_or_identity)]
+    bar.map_or(Err("error"), |v| v);
+
+    // not applicable, closure isn't using value
+    foo.map_or(Err("error"), |_| Ok(42));
 
     // TODO patterns not covered yet
     match foo {

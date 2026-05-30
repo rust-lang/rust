@@ -1,6 +1,5 @@
-//@ignore-target: windows # File handling is not implemented yet
+//@ignore-target: windows # no libc
 //@ignore-target: solaris # Does not have flock
-//@ignore-target: android # Does not (always?) have flock
 //@compile-flags: -Zmiri-disable-isolation
 
 //@revisions: windows_host unix_host
