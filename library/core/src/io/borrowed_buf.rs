@@ -4,11 +4,11 @@ use crate::fmt::{self, Debug, Formatter};
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;
 
-/// A borrowed buffer of initially uninitialized data, which is incrementally filled.
+/// A borrowed buffer of initially uninitialized elements, which is incrementally filled.
 ///
 /// This type makes it safer to work with `MaybeUninit` buffers, such as to read into a buffer
-/// without having to initialize it first. It tracks the region of data that has been filled and
-/// whether the unfilled region was initialized.
+/// without having to initialize it first. It tracks the region of elements that have been filled
+/// and whether the unfilled region was initialized.
 ///
 /// In summary, the contents of the buffer can be visualized as:
 /// ```not_rust
@@ -16,17 +16,17 @@ use crate::ptr;
 /// [ filled | unfilled (may be initialized) ]
 /// ```
 ///
-/// A `BorrowedBuf` is created around some existing data (or capacity for data) via a unique reference
-/// (`&mut`). The `BorrowedBuf` can be configured (e.g., using `clear` or `set_init`), but cannot be
-/// directly written. To write into the buffer, use `unfilled` to create a `BorrowedCursor`. The cursor
-/// has write-only access to the unfilled portion of the buffer (you can think of it as a
-/// write-only iterator).
+/// A `BorrowedBuf` is created around some existing elements (or capacity for elements) via a unique
+/// reference (`&mut`). The `BorrowedBuf` can be configured (e.g., using `clear` or `set_init`), but
+/// cannot be directly written. To write into the buffer, use `unfilled` to create a
+/// `BorrowedCursor`. The cursor has write-only access to the unfilled portion of the buffer (you
+/// can think of it as a write-only iterator).
 ///
-/// The lifetime `'data` is a bound on the lifetime of the underlying data.
+/// The lifetime `'data` is a bound on the lifetime of the underlying elements.
 ///
-/// The type defaults to managing bytes, but can manage any type of data.
+/// The type defaults to managing bytes, but can manage any type of elements.
 pub struct BorrowedBuf<'data, T = u8> {
-    /// The buffer's underlying data.
+    /// The buffer's underlying elements.
     buf: &'data mut [MaybeUninit<T>],
     /// The number of elements of `self.buf` that are known to be filled.
     filled: usize,
@@ -49,7 +49,7 @@ impl<'data, T: Copy> From<&'data mut [T]> for BorrowedBuf<'data, T> {
     #[inline]
     fn from(slice: &'data mut [T]) -> BorrowedBuf<'data, T> {
         BorrowedBuf {
-            // SAFETY: initialized data never becoming uninitialized is an invariant of BorrowedBuf
+            // SAFETY: no initialized element is ever uninitialized as per `BorrowedBuf`'s invariant
             buf: unsafe { &mut *(slice as *mut [T] as *mut [MaybeUninit<T>]) },
             filled: 0,
             init: true,
@@ -72,8 +72,7 @@ impl<'data, T: Copy> From<BorrowedCursor<'data, T>> for BorrowedBuf<'data, T> {
     #[inline]
     fn from(buf: BorrowedCursor<'data, T>) -> BorrowedBuf<'data, T> {
         BorrowedBuf {
-            // SAFETY: no initialized byte is ever uninitialized as per
-            // `BorrowedBuf`'s invariant
+            // SAFETY: no initialized element is ever uninitialized as per `BorrowedBuf`'s invariant
             buf: unsafe { buf.buf.buf.get_unchecked_mut(buf.buf.filled..) },
             filled: 0,
             init: buf.buf.init,
@@ -170,7 +169,7 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
     ///
     /// # Safety
     ///
-    /// All the bytes of the buffer must be initialized.
+    /// All the elements of the buffer must be initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "78485")]
     #[inline]
     pub unsafe fn set_init(&mut self) -> &mut Self {
@@ -188,12 +187,12 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
 /// indirect case, the caller must call [`advance`](BorrowedCursor::advance) after writing to inform
 /// the cursor how many elements have been written.
 ///
-/// Once data is written to the cursor, it becomes part of the filled portion of the underlying
-/// `BorrowedBuf` and can no longer be accessed or re-written by the cursor. I.e., the cursor tracks
-/// the unfilled part of the underlying `BorrowedBuf`.
+/// Once elements are written to the cursor, they become part of the filled portion of the
+/// underlying `BorrowedBuf` and can no longer be accessed or re-written by the cursor. In other
+/// words, the cursor tracks the unfilled part of the underlying `BorrowedBuf`.
 ///
 /// The lifetime `'a` is a bound on the lifetime of the underlying buffer (which means it is a bound
-/// on the data in that buffer by transitivity).
+/// on the elements in that buffer by transitivity).
 pub struct BorrowedCursor<'a, T = u8> {
     /// The underlying buffer.
     // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf` when
@@ -232,7 +231,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
         self.buf.capacity() - self.buf.filled
     }
 
-    /// Returns the number of bytes written to the `BorrowedBuf` this cursor was created from.
+    /// Returns the number of elements written to the `BorrowedBuf` this cursor was created from.
     ///
     /// In particular, the count returned is shared by all reborrows of the cursor.
     #[inline]
@@ -251,7 +250,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     ///
     /// # Safety
     ///
-    /// All the bytes of the cursor must be initialized.
+    /// All the elements of the cursor must be initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "78485")]
     #[inline]
     pub unsafe fn set_init(&mut self) {
@@ -262,7 +261,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     ///
     /// # Safety
     ///
-    /// The caller must not uninitialize any data of the cursor if it is initialized.
+    /// The caller must not uninitialize any elements of the cursor if it is initialized.
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
         // SAFETY: always in bounds
@@ -275,12 +274,12 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
     /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
     ///
-    /// If less than `n` bytes initialized (by the cursor's point of view), `set_init` should be
+    /// If less than `n` elements initialized (by the cursor's point of view), `set_init` should be
     /// called first.
     ///
     /// # Panics
     ///
-    /// Panics if there are less than `n` bytes initialized.
+    /// Panics if there are less than `n` elements initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "78485")]
     #[inline]
     pub fn advance_checked(&mut self, n: usize) -> &mut Self {
@@ -292,9 +291,9 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
         self
     }
 
-    /// Advances the cursor by asserting that `n` bytes have been filled.
+    /// Advances the cursor by asserting that `n` elements have been filled.
     ///
-    /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
+    /// After advancing, the `n` elements are no longer accessible via the cursor and can only be
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
     /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
     ///
@@ -307,7 +306,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
         self
     }
 
-    /// Appends data to the cursor, advancing position within its buffer.
+    /// Append elements to the cursor, advancing position within its buffer.
     ///
     /// # Panics
     ///
@@ -343,7 +342,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
 
         // Check that the caller didn't replace the `BorrowedBuf`.
         // This is necessary for the safety of the code below: if the check wasn't
-        // there, one could mark some bytes as initialized even though there aren't.
+        // there, one could mark some elements as initialized even though they aren't.
         assert!(core::ptr::eq(prev_ptr, buf.buf));
 
         let filled = buf.filled;
@@ -352,8 +351,8 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
         // Update `init` and `filled` fields with what was written to the buffer.
         // `self.buf.filled` was the starting length of the `BorrowedBuf`.
         //
-        // SAFETY: This data was initialized/filled in the `BorrowedBuf`, and therefore it is
-        // initialized/filled in the cursor too, because the buffer wasn't replaced.
+        // SAFETY: These elements were initialized/filled in the `BorrowedBuf`, and therefore they
+        // are initialized/filled in the cursor too, because the buffer wasn't replaced.
         self.buf.init = init;
         self.buf.filled += filled;
 
