@@ -1,5 +1,4 @@
-//@ run-fail
-//@ error-pattern:internal compiler error
+//@ run-pass
 //@ run-flags: --sysroot {{sysroot-base}} --edition=2021
 //@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 //@ ignore-cross-compile
@@ -10,6 +9,7 @@ extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_middle;
+extern crate rustc_mir_transform;
 extern crate rustc_span;
 
 use std::process::ExitCode;
@@ -66,7 +66,8 @@ impl rustc_driver::Callbacks for CompilerCalls {
         // Regression test for ICE due to the drop glue code not correctly handling generic
         // contexts.
         let ty = tcx.type_of(contains_array).instantiate_identity().skip_norm_wip();
-        tcx.instance_mir(ty::InstanceKind::DropGlue(drop_glue, Some(ty)));
+        let typing_env = ty::TypingEnv::post_analysis(tcx, contains_array);
+        rustc_mir_transform::build_drop_shim(tcx, drop_glue, Some(ty), typing_env);
 
         Compilation::Stop
     }

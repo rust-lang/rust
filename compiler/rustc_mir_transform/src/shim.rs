@@ -160,7 +160,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                 return body;
             }
 
-            build_drop_shim(tcx, def_id, ty)
+            build_drop_shim(tcx, def_id, ty, ty::TypingEnv::post_analysis(tcx, def_id))
         }
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
@@ -296,7 +296,16 @@ fn local_decls_for_sig<'tcx>(
         .collect()
 }
 
-fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
+/// Builds the drop glue for the provided type. The `def_id` is that of `core::ptr::drop_glue`.
+///
+/// Inside rustc this is only called on a monomorphic type, but we expose the function for
+/// rustc_driver writers to be able to generate drop glue for a polymorphic type.
+pub fn build_drop_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    ty: Option<Ty<'tcx>>,
+    typing_env: ty::TypingEnv<'tcx>,
+) -> Body<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     assert!(!matches!(ty, Some(ty) if ty.is_coroutine()));
@@ -368,7 +377,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         });
     } else {
         let patch = {
-            let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator = DropShimElaborator {
                 body: &body,
                 patch: MirPatch::new(&body),
