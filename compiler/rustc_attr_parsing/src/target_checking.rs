@@ -5,9 +5,8 @@ use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
-use crate::AttributeParser;
 use crate::context::AcceptContext;
 use crate::errors::{
     InvalidAttrAtCrateLevel, InvalidTargetLint, ItemFollowingInnerAttr,
@@ -15,6 +14,7 @@ use crate::errors::{
 };
 use crate::session_diagnostics::InvalidTarget;
 use crate::target_checking::Policy::Allow;
+use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
@@ -90,17 +90,20 @@ pub(crate) enum Policy {
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
         allowed_targets: &AllowedTargets,
-        target: Target,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
-        // For crate-level attributes we emit a specific set of lints to warn
-        // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(target, cx);
+        if matches!(cx.should_emit, ShouldEmit::Nothing) {
             return;
         }
 
-        if matches!(cx.attr_path.segments.as_ref(), [sym::repr]) && target == Target::Crate {
+        // For crate-level attributes we emit a specific set of lints to warn
+        // people about accidentally not using them on the crate.
+        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
+            Self::check_crate_level(cx);
+            return;
+        }
+
+        if matches!(cx.attr_path.segments.as_ref(), [sym::repr]) && cx.target == Target::Crate {
             // The allowed targets of `repr` depend on its arguments. They can't be checked using
             // the `AttributeParser` code.
             let span = cx.attr_span;
@@ -119,11 +122,12 @@ impl<'sess> AttributeParser<'sess> {
                 .emit();
         }
 
-        match allowed_targets.is_allowed(target) {
+        match allowed_targets.is_allowed(cx.target) {
             AllowedResult::Allowed => {}
             AllowedResult::Warn => {
                 let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
+                let (applied, only) =
+                    allowed_targets_applied(allowed_targets, cx.target, cx.features);
                 let name = cx.attr_path.clone();
 
                 let lint = if name.segments[0] == sym::deprecated
@@ -134,7 +138,7 @@ impl<'sess> AttributeParser<'sess> {
                         Target::Arm,
                         Target::MacroCall,
                     ]
-                    .contains(&target)
+                    .contains(&cx.target)
                 {
                     rustc_session::lint::builtin::USELESS_DEPRECATED
                 } else {
@@ -142,6 +146,7 @@ impl<'sess> AttributeParser<'sess> {
                 };
 
                 let attr_span = cx.attr_span;
+                let target = cx.target;
                 cx.emit_lint_with_sess(
                     lint,
                     move |dcx, level, _| {
@@ -161,12 +166,13 @@ impl<'sess> AttributeParser<'sess> {
             }
             AllowedResult::Error => {
                 let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
+                let (applied, only) =
+                    allowed_targets_applied(allowed_targets, cx.target, cx.features);
                 let name = cx.attr_path.clone();
                 cx.dcx().emit_err(InvalidTarget {
                     span: cx.attr_span.clone(),
                     name,
-                    target: target.plural_name(),
+                    target: cx.target.plural_name(),
                     only: if only { "only " } else { "" },
                     applied: DiagArgValue::StrListSepByAnd(
                         applied.into_iter().map(Cow::Owned).collect(),
@@ -176,8 +182,8 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(target: Target, cx: &mut AcceptContext<'_, 'sess>) {
-        if target == Target::Crate {
+    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>) {
+        if cx.target == Target::Crate {
             return;
         }
 
@@ -186,6 +192,21 @@ impl<'sess> AttributeParser<'sess> {
         let target_span = cx.target_span;
         let attr_span = cx.attr_span;
 
+        let (show_crate_root_help, crate_root_path) = is_used_as_inner
+            .then(|| cx.cx.sess.local_crate_source_file())
+            .flatten()
+            .filter(|src| {
+                !matches!(
+                    cx.cx.sess.source_map().span_to_filename(attr_span),
+                    FileName::Real(ref name) if name == src
+                )
+            })
+            .map(|src| {
+                (true, src.path(RemapPathScopeComponents::DIAGNOSTICS).display().to_string())
+            })
+            .unwrap_or_default();
+
+        let target = cx.target;
         cx.emit_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
             crate::errors::InvalidAttrStyle {
@@ -193,6 +214,8 @@ impl<'sess> AttributeParser<'sess> {
                 is_used_as_inner,
                 target_span: (!is_used_as_inner).then_some(target_span),
                 target: target.name(),
+                crate_root_path,
+                show_crate_root_help,
             },
             attr_span,
         );

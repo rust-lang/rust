@@ -23,8 +23,8 @@ use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
 use crate::html::format::HrefInfo;
 use crate::html::macro_expansion::ExpandedCode;
-use crate::html::render::span_map::{DUMMY_SP, Span};
-use crate::html::render::{Context, LinkFromSrc};
+use crate::html::render::Context;
+use crate::html::span_map::{DUMMY_SP, LinkFromSrc, Span};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
 pub(crate) struct HrefContext<'a, 'tcx> {
@@ -1001,8 +1001,8 @@ impl<'src> Classifier<'src> {
                 has_ident = true;
                 nb_items += 1;
             } else if nb > 0 && has_ident {
-                // Following `;` will be handled on its own.
-                break Some(nb_items - 1);
+                // Drop all the colons we just peeked (e.g. `Option::<T>` → keep `Option`).
+                break Some(nb_items - nb);
             } else if has_ident {
                 break Some(nb_items);
             } else {

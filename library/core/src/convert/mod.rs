@@ -5,11 +5,10 @@
 //!
 //! - Implement the [`AsRef`] trait for cheap reference-to-reference conversions
 //! - Implement the [`AsMut`] trait for cheap mutable-to-mutable conversions
-//! - Implement the [`From`] trait for consuming value-to-value conversions
-//! - Implement the [`Into`] trait for consuming value-to-value conversions to types
-//!   outside the current crate
-//! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`],
-//!   but should be implemented when the conversion can fail.
+//! - Implement the [`From`] trait for consuming value-to-value conversions that cannot fail. This
+//!   automatically provides an implementation of [`Into`]
+//! - Implement the [`TryFrom`] trait for consuming value-to-value conversions that can fail. This
+//!   automatically provides an implementation of [`TryInto`]
 //!
 //! The traits in this module are often used as trait bounds for generic functions such that
 //! arguments of multiple types are supported. See the documentation of each trait for examples.
@@ -18,9 +17,9 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library. When targeting a version prior to Rust 1.41, it
-//! may be necessary to implement [`Into`] or [`TryInto`] directly when converting to a type
-//! outside the current crate.
+//! blanket implementation in the standard library. In versions of Rust prior to Rust 1.41,
+//! it was sometimes necessary to implement [`Into`] or [`TryInto`] directly when converting to a
+//! type outside the current crate.
 //!
 //! # Generic Implementations
 //!

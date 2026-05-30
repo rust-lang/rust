@@ -1097,7 +1097,7 @@ where
                         } else {
                             VariantIdx::from_u32(0)
                         };
-                        assert_eq!(tagged_variant, *niche_variants.start());
+                        assert_eq!(tagged_variant, niche_variants.start);
                         if *niche_start == 0 {
                             // The other variant is encoded as "null", so we can recurse searching for
                             // a pointer here. This relies on the fact that the codegen backend

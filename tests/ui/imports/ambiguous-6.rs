@@ -5,7 +5,6 @@ pub fn foo() -> u32 {
     use sub::*;
     C
     //~^ ERROR `C` is ambiguous
-    //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 mod sub {

@@ -943,6 +943,9 @@ Tests on moves (destructive moves).
 
 Broad category of tests on mutability, such as the `mut` keyword, borrowing a value as both immutable and mutable (and the associated error), or adding mutable references to `const` declarations.
 
+## `tests/ui/mut-restriction/`
+Tests for `#![feature(mut_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
+
 ## `tests/ui/namespace/`
 
 Contains a single test. It imports a massive amount of very similar types from a crate, then attempts various permutations of their namespace paths, checking for errors or the lackthereof.
@@ -1243,6 +1246,10 @@ In this directory, multiple crates are compiled, but some of them have `inline` 
 ## `tests/ui/shadowed/`
 
 Tests on name shadowing.
+
+## `tests/ui/share-trait`
+
+Tests for the unstable `Share` trait.
 
 ## `tests/ui/shell-argfiles/`: `-Z shell-argfiles` command line flag
 

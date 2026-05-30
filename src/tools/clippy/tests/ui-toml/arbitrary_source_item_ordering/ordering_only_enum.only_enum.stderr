@@ -1,11 +1,11 @@
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_enum.rs:22:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_enum.rs:21:5
    |
 LL |     A,
    |     ^
    |
 note: should be placed before `B`
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_enum.rs:21:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_enum.rs:20:5
    |
 LL |     B,
    |     ^

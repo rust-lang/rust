@@ -8,7 +8,6 @@
 #![feature(ascii_char_variants)]
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
-#![feature(bool_to_result)]
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(cfg_target_has_reliable_f16_f128)]
@@ -68,6 +67,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_from_ascii)]
 #![feature(int_roundings)]
+#![feature(io_slice_as_bytes)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
 #![feature(iter_advance_by)]
@@ -126,7 +126,6 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
-#![feature(widening_mul)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]

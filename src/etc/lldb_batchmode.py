@@ -97,10 +97,9 @@ def execute_command(command_interpreter, command):
                 print_debug(
                     "registering breakpoint callback, id = " + str(breakpoint_id)
                 )
-                callback_command = (
-                    "breakpoint command add -F breakpoint_callback "
-                    + str(breakpoint_id)
-                )
+                callback_command = f"breakpoint command add -s python {str(breakpoint_id)} -o \
+                    'import lldb_batchmode; lldb_batchmode.breakpoint_callback'"
+
                 command_interpreter.HandleCommand(callback_command, res)
                 if res.Succeeded():
                     print_debug(

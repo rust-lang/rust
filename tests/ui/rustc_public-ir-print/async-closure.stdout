@@ -48,9 +48,15 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
+        switchInt(move _6) -> [0: bb3, 1: bb1, otherwise: bb2];
     }
     bb1: {
+        assert(false, `async fn` resumed after completion) -> [success: bb1, unwind unreachable];
+    }
+    bb2: {
+        unreachable;
+    }
+    bb3: {
         StorageLive(_3);
         _4 = no_retag ((*_7).0: &i32);
         _3 = (*_4);
@@ -59,12 +65,6 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
         _0 = Poll::Ready(move _5);
         discriminant((*_7)) = 1;
         return;
-    }
-    bb2: {
-        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
-    }
-    bb3: {
-        unreachable;
     }
 }
 fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-closure.rs:9:22: 11:6}>, _2: &mut Context<'_>) -> Poll<()> {
@@ -80,9 +80,15 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
-        switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
+        switchInt(move _6) -> [0: bb3, 1: bb1, otherwise: bb2];
     }
     bb1: {
+        assert(false, `async fn` resumed after completion) -> [success: bb1, unwind unreachable];
+    }
+    bb2: {
+        unreachable;
+    }
+    bb3: {
         StorageLive(_3);
         _4 = no_retag ((*_7).0: &i32);
         _3 = (*_4);
@@ -91,11 +97,5 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
         _0 = Poll::Ready(move _5);
         discriminant((*_7)) = 1;
         return;
-    }
-    bb2: {
-        assert(false, `async fn` resumed after completion) -> [success: bb2, unwind unreachable];
-    }
-    bb3: {
-        unreachable;
     }
 }

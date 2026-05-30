@@ -1,3 +1,4 @@
+use rustc_ast::LitKind;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
 
@@ -76,6 +77,38 @@ impl SingleAttributeParser for DeprecatedParser {
                 // ok
             }
             ArgParser::List(list) => {
+                // If the argument list contains a single string literal:
+                // check whether it may be a version and suggest since field
+                // otherwise, suggest using NameValue syntax
+                if let Some(elem) = list.as_single()
+                    && let Some(lit) = elem.as_lit()
+                    && let LitKind::Str(text, _) = lit.kind
+                {
+                    let mut adcx = cx.adcx();
+
+                    match parse_since(text, true) {
+                        DeprecatedSince::Future | DeprecatedSince::RustcVersion(_) => {
+                            adcx.push_suggestion(
+                                String::from("try specifying a deprecated since version"),
+                                elem.span(),
+                                format!("since = {}", lit.kind),
+                            );
+                        }
+                        _ => {
+                            if let Some(span) = args.span() {
+                                adcx.push_suggestion(
+                                    String::from("try using `=` instead"),
+                                    span,
+                                    format!(" = {}", lit.kind),
+                                );
+                            }
+                        }
+                    };
+
+                    adcx.expected_not_literal(elem.span());
+                    return None;
+                }
+
                 for param in list.mixed() {
                     let Some(param) = param.meta_item() else {
                         cx.adcx().expected_not_literal(param.span());
@@ -133,18 +166,11 @@ impl SingleAttributeParser for DeprecatedParser {
         }
 
         let since = if let Some(since) = since {
-            if since.as_str() == "TBD" {
-                DeprecatedSince::Future
-            } else if !is_rustc {
-                DeprecatedSince::NonStandard(since)
-            } else if since.as_str() == VERSION_PLACEHOLDER {
-                DeprecatedSince::RustcVersion(RustcVersion::CURRENT)
-            } else if let Some(version) = parse_version(since) {
-                DeprecatedSince::RustcVersion(version)
-            } else {
+            let since = parse_since(since, is_rustc);
+            if matches!(since, DeprecatedSince::Err) {
                 cx.emit_err(InvalidSince { span: cx.attr_span });
-                DeprecatedSince::Err
             }
+            since
         } else if is_rustc {
             cx.emit_err(MissingSince { span: cx.attr_span });
             DeprecatedSince::Err
@@ -161,5 +187,19 @@ impl SingleAttributeParser for DeprecatedParser {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
         })
+    }
+}
+
+fn parse_since(since: Symbol, is_rustc: bool) -> DeprecatedSince {
+    if since.as_str() == "TBD" {
+        DeprecatedSince::Future
+    } else if !is_rustc {
+        DeprecatedSince::NonStandard(since)
+    } else if since.as_str() == VERSION_PLACEHOLDER {
+        DeprecatedSince::RustcVersion(RustcVersion::CURRENT)
+    } else if let Some(version) = parse_version(since) {
+        DeprecatedSince::RustcVersion(version)
+    } else {
+        DeprecatedSince::Err
     }
 }

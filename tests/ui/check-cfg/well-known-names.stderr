@@ -26,8 +26,8 @@ LL | #[cfg(list_all_well_known_cfgs)]
 `target_family`
 `target_feature`
 `target_has_atomic`
-`target_has_atomic_equal_alignment`
 `target_has_atomic_load_store`
+`target_has_atomic_primitive_alignment`
 `target_object_format`
 `target_os`
 `target_pointer_width`

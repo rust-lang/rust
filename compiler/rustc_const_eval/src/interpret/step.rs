@@ -230,9 +230,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 })?;
             }
 
-            Reborrow(_, _, place) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+            Reborrow(_, mutability, place) => {
+                let op = self.eval_place_to_op(place, None)?;
+                if mutability.is_not() {
+                    // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
+                    // distinct same-layout target ADT.
+                    self.copy_op_allow_transmute(&op, &dest)?;
+                } else {
+                    self.copy_op(&op, &dest)?;
+                }
             }
 
             RawPtr(kind, place) => {

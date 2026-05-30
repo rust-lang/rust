@@ -234,6 +234,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_style,
             parsed_description,
             template,
+            attr_safety: attr_safety.unwrap_or(Safety::Default),
             attr_path,
         };
         parse_fn(&mut cx, args)
@@ -404,15 +405,14 @@ impl<'sess> AttributeParser<'sess> {
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
+                            attr_safety: n.item.unsafety,
                             attr_path: attr_path.clone(),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(accept.finalizer);
 
-                        if !matches!(cx.should_emit, ShouldEmit::Nothing) {
-                            Self::check_target(&accept.allowed_targets, target, &mut cx);
-                        }
+                        Self::check_target(&accept.allowed_targets, &mut cx);
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),

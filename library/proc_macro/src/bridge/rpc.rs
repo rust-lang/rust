@@ -15,20 +15,30 @@ pub(super) trait Decode<'a, 's, S>: Sized {
 }
 
 macro_rules! rpc_encode_decode {
-    (le $ty:ty) => {
+    (le $ty:ident $size:literal) => {
         impl<S> Encode<S> for $ty {
             fn encode(self, w: &mut Buffer, _: &mut S) {
-                w.extend_from_array(&self.to_le_bytes());
+                const N: usize = size_of::<$ty>();
+
+                // We can pad with zeros without changing the value because of
+                // little endian encoding.
+                let mut bytes = [0; $size];
+                bytes[..N].copy_from_slice(&self.to_le_bytes());
+
+                w.extend_from_array(&bytes);
             }
         }
 
         impl<S> Decode<'_, '_, S> for $ty {
             fn decode(r: &mut &[u8], _: &mut S) -> Self {
                 const N: usize = size_of::<$ty>();
+                const {
+                    assert!(N <= $size);
+                }
 
                 let mut bytes = [0; N];
                 bytes.copy_from_slice(&r[..N]);
-                *r = &r[N..];
+                *r = &r[$size..];
 
                 Self::from_le_bytes(bytes)
             }
@@ -108,8 +118,8 @@ impl<S> Decode<'_, '_, S> for u8 {
     }
 }
 
-rpc_encode_decode!(le u32);
-rpc_encode_decode!(le usize);
+rpc_encode_decode!(le u32 4);
+rpc_encode_decode!(le usize 8);
 
 impl<S> Encode<S> for bool {
     fn encode(self, w: &mut Buffer, s: &mut S) {

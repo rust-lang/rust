@@ -7,7 +7,7 @@ fn issue15376() {
         A,
         B,
     }
-    impl const PartialEq for ConstEq {
+    const impl PartialEq for ConstEq {
         fn eq(&self, _other: &Self) -> bool {
             true
         }

@@ -1,5 +1,6 @@
 //@ edition:2018
 //@ check-pass
+//@ ignore-parallel-frontend unstable liveness diagnostics
 #![feature(coroutines, stmt_expr_attributes)]
 #![warn(unused)]
 #![allow(unreachable_code)]
@@ -98,7 +99,7 @@ pub fn g<T: Default>(mut v: T) {
 }
 
 pub fn h<T: Copy + Default + std::fmt::Debug>() {
-    let mut z = T::default(); //~ WARN unused variable: `z`
+    let mut z = T::default();
     let _ = move |b| {
         loop {
             if b {

@@ -1,0 +1,87 @@
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:24:9
+   |
+LL |         S::static_self()
+   |         ^^^^^^^^^^^^^^^^ expected `&mut F`, found `F`
+   |
+help: consider mutably borrowing here
+   |
+LL |         &mut S::static_self()
+   |         ++++
+
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:24:9
+   |
+LL |         S::static_self()
+   |         ^^^^^^^^^^^^^^^^ expected `&F`, found `F`
+   |
+help: consider borrowing here
+   |
+LL |         &S::static_self()
+   |         +
+
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:35:9
+   |
+LL |         S1::static_self()
+   |         ^^^^^^^^^^^^^^^^^ expected `&mut F`, found `F`
+   |
+help: consider mutably borrowing here
+   |
+LL |         &mut S1::static_self()
+   |         ++++
+
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:35:9
+   |
+LL |         S1::static_self()
+   |         ^^^^^^^^^^^^^^^^^ expected `&F`, found `F`
+   |
+help: consider borrowing here
+   |
+LL |         &S1::static_self()
+   |         +
+
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:48:43
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
+   |                         -------           ^ expected `&mut _`, found `F`
+   |                         |
+   |                         arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut _`
+                         found struct `F`
+note: function defined here
+  --> $DIR/self-coercion-static-free.rs:44:12
+   |
+LL |     pub fn mut_ref(_: &mut impl Trait) -> i32 { 2 }
+   |            ^^^^^^^ ------------------
+help: consider mutably borrowing here
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { &mut F }
+   |                                           ++++
+
+error[E0308]: mismatched types
+  --> $DIR/self-coercion-static-free.rs:48:43
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
+   |                                  -----    ^ expected `&_`, found `F`
+   |                                  |
+   |                                  arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `F`
+note: function defined here
+  --> $DIR/self-coercion-static-free.rs:45:12
+   |
+LL |     pub fn r#ref(_: &impl Trait) -> i32 { 3 }
+   |            ^^^^^ --------------
+help: consider borrowing here
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { &F }
+   |                                           +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

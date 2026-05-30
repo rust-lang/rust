@@ -1,6 +1,12 @@
-/// Get a single value for an argument values array in a determistic way.
-/// * `bits`: The number of bits for the type, only 8, 16, 32, 64 are valid values
-/// * `index`: The position in the array we are generating for
+/// Returns a bit pattern for a value being output into a array of test values. Bit patterns come
+/// from one of many constant arrays of test values. The specific constant array used depends on
+/// the number of bits - `bits` - of the type having test values generated for it. This function
+/// is called repeatedly with incrementing values of `index` to produce an entire array of test
+/// values.
+///
+/// Each constant array of bit patterns should ideally be at least the length of the largest array
+/// of test values that will be requested (e.g. 51 for a `poly8x8x4` when `PASSES=20`:
+/// `(8 * 4) + 20 - 1`), otherwise values will be repeated.
 pub fn value_for_array(bits: u32, index: u32) -> u64 {
     let index = index as usize;
     match bits {

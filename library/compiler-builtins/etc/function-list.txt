@@ -54,6 +54,7 @@ floorf16
 fma
 fmaf
 fmaf128
+fmaf16
 fmax
 fmaxf
 fmaxf128
