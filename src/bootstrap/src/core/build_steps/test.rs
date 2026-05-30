@@ -3521,11 +3521,12 @@ fn distcheck_rust_dev_ci_llvm(builder: &Builder<'_>, dir: &Path) {
         .run(builder);
 
     let llvm_lib_dir = ci_llvm_dir.join("rust-dev").join("lib");
+    let llvm_rpath = format!("-Clink-arg=-Wl,-rpath,{}", llvm_lib_dir.display());
 
     command("./x.py")
         .arg("build")
         .arg("library")
-        .env("DYLD_LIBRARY_PATH", &llvm_lib_dir)
+        .env("RUSTFLAGS_BOOTSTRAP", llvm_rpath)
         .current_dir(&plain_source_dir)
         .run(builder);
 
