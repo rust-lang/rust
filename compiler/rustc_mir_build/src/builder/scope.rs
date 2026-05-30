@@ -159,6 +159,20 @@ struct DropData {
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
+
+    /// Whether this drop's `StorageDead` should be emitted on the unwind path.
+    /// For coroutines with yield points, `StorageDead` on the unwind path is
+    /// needed to prevent the coroutine drop handler from re-dropping locals
+    /// already dropped during unwinding. However, emitting them for every drop
+    /// in a coroutine causes O(n^2) MIR basic blocks for large aggregate
+    /// initialisers (each element's unwind chain becomes unique due to distinct
+    /// `StorageDead` locals, preventing tail-sharing).
+    ///
+    /// To avoid the quadratic blowup, this flag is only set when the coroutine
+    /// body contains yield points. A coroutine without yields (e.g. an async fn
+    /// with no `.await`) cannot have locals live across a yield, so the drop
+    /// handler issue does not arise.
+    storage_dead_on_unwind: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -263,12 +277,13 @@ impl Scope {
     ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    /// Note that for coroutines we do emit StorageDeads, for the
-    /// use of optimizations in the MIR coroutine transform.
+    /// Note that for coroutines we may also emit `StorageDead` on
+    /// unwind for drops scheduled after a yield point — see
+    /// `DropData::storage_dead_on_unwind`.
     fn needs_cleanup(&self) -> bool {
         self.drops.iter().any(|drop| match drop.kind {
             DropKind::Value | DropKind::ForLint => true,
-            DropKind::Storage => false,
+            DropKind::Storage => drop.storage_dead_on_unwind,
         })
     }
 
@@ -296,8 +311,12 @@ impl DropTree {
         // represents the block in the tree that should be jumped to once all
         // of the required drops have been performed.
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
-        let fake_data =
-            DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
+        let fake_data = DropData {
+            source_info: fake_source_info,
+            local: Local::MAX,
+            kind: DropKind::Storage,
+            storage_dead_on_unwind: false,
+        };
         let drop_nodes = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
         Self { drop_nodes, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
@@ -1111,7 +1130,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         return None;
                     }
 
-                    Some(DropData { source_info, local, kind: DropKind::Value })
+                    Some(DropData {
+                        source_info,
+                        local,
+                        kind: DropKind::Value,
+                        storage_dead_on_unwind: false,
+                    })
                 }
                 Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             })
@@ -1239,7 +1263,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             unwind_to,
             dropline_to,
-            is_coroutine && needs_cleanup,
             self.arg_count,
             |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
         )
@@ -1479,10 +1502,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // path, we only need to invalidate the cache for drops that happen on
         // the unwind or coroutine drop paths. This means that for
         // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.coroutine.is_some();
+        //
+        // For coroutines, `StorageDead` on the unwind path is needed for
+        // correct drop handling: without it, the coroutine drop handler may
+        // re-drop locals already dropped during unwinding. However, this is
+        // only relevant when the coroutine body contains yield points, because
+        // locals can only span a yield if one exists. For coroutines without
+        // yields (e.g. an async fn whose body has no `.await`), we skip
+        // `StorageDead` on unwind, avoiding O(n^2) MIR blowup. See #115327.
+        let storage_dead_on_unwind = self.coroutine_has_yields;
+        let invalidate_unwind = needs_drop || storage_dead_on_unwind;
+        let invalidate_dropline = needs_drop || self.coroutine.is_some();
         for scope in self.scopes.scopes.iter_mut().rev() {
-            if invalidate_caches {
-                scope.invalidate_cache();
+            if invalidate_unwind {
+                scope.cached_unwind_block = None;
+            }
+            if invalidate_dropline {
+                scope.cached_coroutine_drop_block = None;
             }
 
             if scope.region_scope == region_scope {
@@ -1494,6 +1530,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
                     kind: drop_kind,
+                    storage_dead_on_unwind,
                 });
 
                 return;
@@ -1525,6 +1562,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
                     kind: DropKind::ForLint,
+                    storage_dead_on_unwind: false,
                 });
 
                 return;
@@ -1627,10 +1665,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return cached_drop;
         }
 
-        let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
-                if is_coroutine || drop.kind == DropKind::Value {
+                if drop.kind == DropKind::Value || drop.storage_dead_on_unwind {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
                 }
             }
@@ -1816,7 +1853,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///   instructions on unwinding)
 /// * `dropline_to`, describes the drops that would occur at this point in the code if a
 ///    coroutine drop occurred.
-/// * `storage_dead_on_unwind`, if true, then we should emit `StorageDead` even when unwinding
 /// * `arg_count`, number of MIR local variables corresponding to fn arguments (used to assert that we don't drop those)
 fn build_scope_drops<'tcx, F>(
     cfg: &mut CFG<'tcx>,
@@ -1826,7 +1862,6 @@ fn build_scope_drops<'tcx, F>(
     block: BasicBlock,
     unwind_to: DropIdx,
     dropline_to: Option<DropIdx>,
-    storage_dead_on_unwind: bool,
     arg_count: usize,
     is_async_drop: F,
 ) -> BlockAnd<()>
@@ -1849,10 +1884,10 @@ where
     // drops panic (panicking while unwinding will abort, so there's no need for
     // another set of arrows).
     //
-    // For coroutines, we unwind from a drop on a local to its StorageDead
-    // statement. For other functions we don't worry about StorageDead. The
-    // drops for the unwind path should have already been generated by
-    // `diverge_cleanup_gen`.
+    // For drops in coroutines that were scheduled after a yield point, we
+    // unwind from a drop on a local to its StorageDead statement. For other
+    // drops we don't worry about StorageDead. The drops for the unwind path
+    // should have already been generated by `diverge_cleanup_gen`.
 
     // `unwind_to` indicates what needs to be dropped should unwinding occur.
     // This is a subset of what needs to be dropped when exiting the scope.
@@ -1927,7 +1962,7 @@ where
                 // so we can just leave `unwind_to` unmodified, but in some
                 // cases we emit things ALSO on the unwind path, so we need to adjust
                 // `unwind_to` in that case.
-                if storage_dead_on_unwind {
+                if drop_data.storage_dead_on_unwind {
                     debug_assert_eq!(
                         unwind_drops.drop_nodes[unwind_to].data.local,
                         drop_data.local
@@ -1958,10 +1993,11 @@ where
             DropKind::Storage => {
                 // Ordinarily, storage-dead nodes are not emitted on unwind, so we don't
                 // need to adjust `unwind_to` on this path. However, in some specific cases
-                // we *do* emit storage-dead nodes on the unwind path, and in that case now that
-                // the storage-dead has completed, we need to adjust the `unwind_to` pointer
-                // so that any future drops we emit will not register storage-dead.
-                if storage_dead_on_unwind {
+                // (drops scheduled after a yield in a coroutine) we *do* emit storage-dead
+                // nodes on the unwind path, and in that case now that the storage-dead has
+                // completed, we need to adjust the `unwind_to` pointer so that any future
+                // drops we emit will not register storage-dead.
+                if drop_data.storage_dead_on_unwind {
                     debug_assert_eq!(
                         unwind_drops.drop_nodes[unwind_to].data.local,
                         drop_data.local
