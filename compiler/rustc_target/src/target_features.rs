@@ -573,6 +573,8 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 ];
 
 static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // If you are thinking of adding "efpu2" here, please double-check that it really does not
+    // affect the ABI.
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     (
@@ -1181,6 +1183,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
+                    _ => unreachable!(),
                 }
             }
             Arch::X86_64 => {
@@ -1201,7 +1204,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
-                    Some(r) => panic!("invalid Rust ABI for x86_64: {r:?}"),
+                    _ => unreachable!(),
                 }
             }
             Arch::Arm => {
@@ -1238,7 +1241,7 @@ impl Target {
                         // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
                         FeatureConstraints { required: &["neon"], incompatible: &[] }
                     }
-                    Some(r) => panic!("invalid Rust ABI for aarch64: {r:?}"),
+                    _ => unreachable!(),
                 }
             }
             Arch::RiscV32 | Arch::RiscV64 => {
@@ -1315,17 +1318,31 @@ impl Target {
                         // llvm will switch to soft-float ABI just based on this feature.
                         FeatureConstraints { required: &["soft-float"], incompatible: &["vector"] }
                     }
-                    Some(r) => {
-                        panic!("invalid Rust ABI for s390x: {r:?}");
-                    }
+                    _ => unreachable!(),
                 }
             }
-            Arch::PowerPC | Arch::PowerPC64 => {
-                // The main ABI-relevant target features are "hard-float" and "spe". There is also
-                // "efpu2" but that seems only relevant when "spe" is enabled. If we ever add a
-                // soft-float variant, it looks like we have to mark "altivec" as incompatible --
-                // unlike other targets, it looks like enabling "altivec" will have LLVM use
-                // different registers for float types even if "hard-float" is off.
+            Arch::PowerPC => {
+                // The main ABI-relevant target features are "hard-float" and "spe". We use our own
+                // ABI indicator here.
+                match self.rustc_abi {
+                    None => {
+                        // Default hardfloat ABI.
+                        FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+                    }
+                    Some(RustcAbi::PowerPcSpe) => {
+                        // "efpu2" (which disables some register use in LLVM) *should* be okay
+                        // because SPE uses soft-float ABI's parameter passing rules and passes
+                        // floats via GPRs.
+                        // <https://github.com/rust-lang/rust/pull/157085#discussion_r3349260222>
+                        FeatureConstraints { required: &["hard-float", "spe"], incompatible: &[] }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Arch::PowerPC64 => {
+                // There's no SPE for PowerPC64, and we currently don't support any soft-float
+                // targets. (If we ever add one, we need to match on `RustcAbi::Softfloat` similar
+                // to other targets above.)
                 FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
             }
             Arch::Avr => {
