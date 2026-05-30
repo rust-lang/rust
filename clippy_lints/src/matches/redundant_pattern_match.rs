@@ -267,6 +267,26 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
     if let Ok(arms) = arms.try_into() // TODO: use `slice::as_array` once stabilized
         && let Some((good_method, maybe_guard)) = found_good_method(cx, arms)
     {
+        let has_nested_let_chain = maybe_guard.is_some_and(|guard|
+            // wow, the HIR for match guards in `PAT if let PAT = expr && expr => ...` is annoying!
+            // `guard` here is `Guard::If` with the let expression somewhere deep in the tree of exprs,
+            // counter to the intuition that it should be `Guard::IfLet`, so we need another check
+            // to see that there aren't any let chains anywhere in the guard, as that would break
+            // if we suggest `t.is_none() && (let X = y && z)` for:
+            // `match t { None if let X = y && z => true, _ => false }`
+            for_each_expr_without_closures(guard, |expr| {
+                if matches!(expr.kind, ExprKind::Let(..)) {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+            .is_some());
+
+        if has_nested_let_chain {
+            return;
+        }
+
         let expr_span = is_expn_of(expr.span, sym::matches).unwrap_or(expr.span);
 
         let result_expr = match &op.kind {
@@ -278,25 +298,6 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
         let mut sugg = format!("{receiver_sugg}.{good_method}");
 
         if let Some(guard) = maybe_guard {
-            // wow, the HIR for match guards in `PAT if let PAT = expr && expr => ...` is annoying!
-            // `guard` here is `Guard::If` with the let expression somewhere deep in the tree of exprs,
-            // counter to the intuition that it should be `Guard::IfLet`, so we need another check
-            // to see that there aren't any let chains anywhere in the guard, as that would break
-            // if we suggest `t.is_none() && (let X = y && z)` for:
-            // `match t { None if let X = y && z => true, _ => false }`
-            let has_nested_let_chain = for_each_expr_without_closures(guard, |expr| {
-                if matches!(expr.kind, ExprKind::Let(..)) {
-                    ControlFlow::Break(())
-                } else {
-                    ControlFlow::Continue(())
-                }
-            })
-            .is_some();
-
-            if has_nested_let_chain {
-                return;
-            }
-
             let guard = Sugg::hir_with_context(cx, guard, expr_span.ctxt(), "..", &mut app);
             let _ = write!(sugg, " && {}", guard.maybe_paren());
         }
