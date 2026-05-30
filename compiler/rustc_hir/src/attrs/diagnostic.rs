@@ -147,11 +147,12 @@ impl FormatString {
                     };
                     ret.push_str(&slf);
                 }
+                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
 
                 // It's only `rustc_onunimplemented` from here
-                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
-                Piece::Arg(FormatArg::Trait) => {
-                    let _ = fmt::write(&mut ret, format_args!("{}", &args.this_sugared));
+                Piece::Arg(FormatArg::ThisPath) => ret.push_str(&args.this_path),
+                Piece::Arg(FormatArg::ThisResolved) => {
+                    let _ = fmt::write(&mut ret, format_args!("{}", &args.this_resolved));
                 }
                 Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
             }
@@ -197,7 +198,7 @@ impl FormatString {
 /// ```rust,ignore (just an example)
 /// FormatArgs {
 ///     this: "FromResidual",
-///     this_sugared: "FromResidual<Option<Infallible>>",
+///     this_resolved: "FromResidual<Option<Infallible>>",
 ///     item_context: "an async function",
 ///     generic_args: [("Self", "u32"), ("R", "Option<Infallible>")],
 /// }
@@ -206,7 +207,8 @@ impl FormatString {
 pub struct FormatArgs {
     /// The name of the item the attribute is on.
     pub this: String,
-    pub this_sugared: String = String::new(),
+    pub this_resolved: String = String::new(),
+    pub this_path: String = String::new(),
     pub item_context: &'static str = "",
     pub generic_args: Vec<(Symbol, String)> = Vec::new(),
 }
@@ -226,10 +228,12 @@ pub enum FormatArg {
     },
     // `{Self}`
     SelfUpper,
-    /// `{This}` or `{TraitName}`
+    /// `{This}` and `{This:name}`.
     This,
-    /// The sugared form of the trait
-    Trait,
+    /// The sugared form: `{This:sugared}`.
+    ThisResolved,
+    /// The full path: `{This:path}`.
+    ThisPath,
     /// what we're in, like a function, method, closure etc.
     ItemContext,
     /// What the user typed, if it doesn't match anything we can use.

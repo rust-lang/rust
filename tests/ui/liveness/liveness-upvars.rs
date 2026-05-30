@@ -98,7 +98,7 @@ pub fn g<T: Default>(mut v: T) {
 }
 
 pub fn h<T: Copy + Default + std::fmt::Debug>() {
-    let mut z = T::default(); //~ WARN unused variable: `z`
+    let mut z = T::default();
     let _ = move |b| {
         loop {
             if b {

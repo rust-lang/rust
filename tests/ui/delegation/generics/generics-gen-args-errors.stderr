@@ -59,17 +59,6 @@ help: consider introducing lifetime `'a` here
 LL |     reuse foo'a, ::<"asdasd", asd, "askdn", 'static, 'a> as bar7;
    |              +++
 
-error[E0106]: missing lifetime specifiers
-  --> $DIR/generics-gen-args-errors.rs:116:19
-   |
-LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
-   |                   ^^^^^ expected 3 lifetime parameters
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     reuse Trait::<Trait<'a, 'a, 'a>, Clone, _, 'static, dyn Send, _>::foo'a, ::<1, 2, 3, _, 6> as bar7;
-   |                        ++++++++++++                                      +++
-
 error[E0423]: expected value, found struct `String`
   --> $DIR/generics-gen-args-errors.rs:13:33
    |
@@ -697,7 +686,7 @@ error[E0747]: constant provided when a type was expected
 LL |     reuse foo::<{}, {}, {}> as bar8;
    |                 ^^
 
-error: aborting due to 58 previous errors
+error: aborting due to 57 previous errors
 
-Some errors have detailed explanations: E0106, E0107, E0121, E0261, E0401, E0423, E0425, E0747.
-For more information about an error, try `rustc --explain E0106`.
+Some errors have detailed explanations: E0107, E0121, E0261, E0401, E0423, E0425, E0747.
+For more information about an error, try `rustc --explain E0107`.

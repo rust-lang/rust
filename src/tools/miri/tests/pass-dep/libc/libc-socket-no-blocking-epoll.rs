@@ -25,6 +25,7 @@ fn main() {
     test_shutdown_read();
     test_shutdown_write();
     test_readiness_after_short_read();
+    test_readiness_after_short_peek();
     test_readiness_after_short_write();
 }
 
@@ -293,10 +294,17 @@ fn test_send_nonblock() {
                 if written as usize == fill_buf.len() {
                     // When we didn't have a short write we should still be able to write more.
                     // Ensure the socket is still writable.
-                    assert_eq!(
-                        current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET),
-                        EPOLLOUT
-                    );
+                    let readiness = current_epoll_readiness::<8>(client_sockfd, EPOLLOUT | EPOLLET);
+                    if cfg!(miri) {
+                        // With Miri we keep the writable readiness until EWOULDBLOCK is returned.
+                        assert_eq!(readiness, EPOLLOUT);
+                    } else {
+                        // On native Linux hosts, the writable readiness is removed when the buffer
+                        // is "almost" full. We can't emulate this with Miri.
+                        // The buffer must not be "almost" full at the first write.
+                        let is_not_first_write = total_written > fill_buf.len();
+                        assert!(readiness == EPOLLOUT || (is_not_first_write && readiness == 0));
+                    }
                 }
             }
             Err(err) if err.kind() == ErrorKind::WouldBlock => break,
@@ -503,6 +511,47 @@ fn test_readiness_after_short_read() {
         )
         .unwrap()
     };
+}
+
+/// Test that Miri doesn't remove the readable readiness after a short peek.
+fn test_readiness_after_short_peek() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // Write some bytes into the peer socket.
+    libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+    // `buffer` is intentionally bigger than `TEST_BYTES.len()` to trigger a short peek.
+    let mut buffer = [0; 128];
+    let bytes_read = unsafe {
+        errno_result(libc::recv(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_PEEK,
+        ))
+        .unwrap()
+    } as usize;
+    assert_eq!(bytes_read, TEST_BYTES.len());
+
+    // Ensure that the readable readiness is still set.
+    assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET), EPOLLIN);
+
+    // We should be able to read the buffer without blocking indefinitely.
+    let bytes_read = unsafe {
+        errno_result(libc::recv(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
+            .unwrap()
+    } as usize;
+    assert_eq!(bytes_read, TEST_BYTES.len());
 }
 
 /// Test that Miri correctly removes the writable readiness or emits a new edge after a short write.

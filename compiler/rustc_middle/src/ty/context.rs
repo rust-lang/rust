@@ -52,6 +52,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -585,7 +586,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
     pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
         self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
+        TyCtxtFeed { tcx: self, key }.hir_delayed_owner(owner);
     }
 
     // Trait impl item visibility is inherited from its trait when not specified
@@ -626,8 +627,13 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes::synthetic())));
+        self.hir_owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo::new(
+            self.tcx.arena.alloc(hir::OwnerNodes::synthetic()),
+            self.tcx.arena.alloc(Default::default()),
+            self.tcx.arena.alloc(Default::default()),
+            self.tcx.arena.alloc(Steal::new(Default::default())),
+        )));
+
         self.feed_owner_id().hir_attr_map(hir::AttributeMap::EMPTY);
     }
 }

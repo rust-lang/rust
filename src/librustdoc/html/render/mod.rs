@@ -36,7 +36,6 @@ mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
 mod sorted_template;
-pub(crate) mod span_map;
 mod type_layout;
 mod write_shared;
 
@@ -64,7 +63,6 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
-pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};

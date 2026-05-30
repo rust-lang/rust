@@ -1691,7 +1691,11 @@ fn main() -> Result<(), String> {
     }
 
     // Generate output files
-    let hexagon_dir = crate_dir.join("../core_arch/src/hexagon");
+    let hexagon_dir = std::env::args()
+        .nth(1)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| crate_dir.join("../core_arch/src/hexagon"));
+    std::fs::create_dir_all(&hexagon_dir).map_err(|e| e.to_string())?;
 
     // Generate v64.rs (64-byte vector mode)
     let v64_path = hexagon_dir.join("v64.rs");

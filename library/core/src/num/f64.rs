@@ -292,6 +292,7 @@ pub mod consts {
     pub const TAU: f64 = 6.28318530717958647692528676655900577_f64;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[stable(feature = "euler_gamma_golden_ratio", since = "1.94.0")]
     pub const GOLDEN_RATIO: f64 = 1.618033988749894848204586834365638118_f64;
 

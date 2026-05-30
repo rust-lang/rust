@@ -987,6 +987,7 @@ fn report_invalid_references(
         // Collect all the implicit positions:
         let mut spans = Vec::new();
         let mut num_placeholders = 0;
+        let mut has_white_space_only_missing_arg = false;
         for piece in template {
             let mut placeholder = None;
             // `{arg:.*}`
@@ -1009,13 +1010,21 @@ fn report_invalid_references(
             }
             // `{}`
             if let FormatArgsPiece::Placeholder(FormatPlaceholder {
-                argument: FormatArgPosition { kind: FormatArgPositionKind::Implicit, .. },
+                argument: FormatArgPosition { kind: FormatArgPositionKind::Implicit, index, .. },
                 span,
                 ..
             }) = piece
             {
                 placeholder = *span;
                 num_placeholders += 1;
+                //  Check whether there's any non-space whitespace in the placeholder. If so, we should emit a note suggesting an escaping `{`.
+                if index.is_err()
+                    && let Some(span) = span
+                    && let Ok(snippet) = ecx.source_map().span_to_snippet(*span)
+                    && snippet.chars().any(|c| c.is_whitespace() && c != ' ')
+                {
+                    has_white_space_only_missing_arg = true;
+                }
             }
             // For `{:.*}`, we only push one span.
             spans.extend(placeholder);
@@ -1070,6 +1079,9 @@ fn report_invalid_references(
         }
         if has_precision_star {
             e.note("positional arguments are zero-based");
+        }
+        if has_white_space_only_missing_arg {
+            e.note("if you intended to print `{`, you can escape it with `{{`");
         }
     } else {
         let mut indexes: Vec<_> = invalid_refs.iter().map(|&(index, _, _, _)| index).collect();

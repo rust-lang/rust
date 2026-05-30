@@ -1059,23 +1059,8 @@ impl Intrinsic {
 
     /// Add a big endian implementation
     fn generate_big_endian(&self, variant: &mut Intrinsic) {
-        /* We can't always blindly reverse the bits only in certain conditions
-         * do we need a different order - thus this allows us to have the
-         * ability to do so without having to play codegolf with the yaml AST */
-        let should_reverse = {
-            if let Some(should_reverse) = variant.big_endian_inverse {
-                should_reverse
-            } else if variant.compose.len() == 1 {
-                match &variant.compose[0] {
-                    Expression::FnCall(fn_call) => fn_call.0.to_string() == "transmute",
-                    _ => false,
-                }
-            } else {
-                false
-            }
-        };
-
-        if !should_reverse {
+        // We only reverse if it was specifically requested
+        if !variant.big_endian_inverse.unwrap_or(false) {
             return;
         }
 

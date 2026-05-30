@@ -239,7 +239,6 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let annotation: Box<dyn pprust_ast::PpAnn> = match s {
                 Normal => Box::new(AstNoAnn),
                 Expanded => Box::new(AstNoAnn),
-                Identified => Box::new(AstIdentifiedAnn),
                 ExpandedIdentified => Box::new(AstIdentifiedAnn),
                 ExpandedHygiene => Box::new(AstHygieneAnn { sess }),
             };

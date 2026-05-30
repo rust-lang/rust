@@ -43,8 +43,7 @@ impl Category {
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
             | ExprKind::PlaceUnwrapUnsafeBinder { .. }
-            | ExprKind::ValueUnwrapUnsafeBinder { .. }
-            | ExprKind::Reborrow { .. } => Some(Category::Place),
+            | ExprKind::ValueUnwrapUnsafeBinder { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
             | ExprKind::Match { .. }
@@ -70,6 +69,10 @@ impl Category {
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
+            // A reborrow expression produces a value represented in MIR as
+            // `Rvalue::Reborrow`. Its source may be a place, but the reborrow
+            // expression itself does not denote an assignable place.
+            | ExprKind::Reborrow { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::WrapUnsafeBinder { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 

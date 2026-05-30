@@ -133,7 +133,7 @@ pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, EvalContextExt as _, TreeBorrowsParams,
 };
-pub use crate::clock::{Instant, MonotonicClock};
+pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutStyle};
 pub use crate::concurrency::blocking_io::{
     BlockingIoInterest, BlockingIoManager, BlockingIoSourceReadiness, EvalContextExt as _,
     SourceFileDescription,
@@ -146,7 +146,7 @@ pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
 pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
-    ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
+    ThreadManager, UnblockKind,
 };
 pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;

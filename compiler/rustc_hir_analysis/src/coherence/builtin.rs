@@ -563,8 +563,8 @@ pub(crate) fn reborrow_info<'tcx>(
         )
         .is_ok()
         {
-            // Field implements Reborrow.
-            return Ok(());
+            // Field implements Reborrow, check remaining fields.
+            continue;
         }
 
         // Field does not implement Reborrow: it must be Copy.

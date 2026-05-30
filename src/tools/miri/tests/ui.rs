@@ -1,5 +1,4 @@
 use std::env;
-use std::ffi::OsString;
 use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -330,13 +329,9 @@ fn main() -> Result<()> {
     let target = get_target(&host);
     let tmpdir = tempfile::Builder::new().prefix("miri-uitest-").tempdir()?;
 
-    let mut args = std::env::args_os();
-
-    // Skip the program name and check whether this is a `./miri run-dep` invocation
-    if let Some(first) = args.nth(1)
-        && first == "--miri-run-dep-mode"
-    {
-        return run_dep_mode(target, args);
+    // Check whether this is a `./miri run` invocation
+    if let Ok(mode) = env::var("MIRI_RUN_MODE") {
+        return run_mode(target, mode);
     }
 
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies, tmpdir.path())?;
@@ -366,21 +361,67 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_dep_mode(target: String, args: impl Iterator<Item = OsString>) -> Result<()> {
+fn run_mode(target: String, mode: String) -> Result<()> {
+    let native = mode == "native";
+
     let mut config =
         miri_config(&target, "", Mode::RunDep, Some(WithDependencies { bless: false }));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
+    if native {
+        // Patch things up so that we actually compile the program.
+        config.program.envs.push(("MIRI_BE_RUSTC".into(), Some("host".into())));
+        config.comment_defaults.base().set_custom(
+            "dependencies",
+            DependencyBuilder {
+                crate_manifest_path: Path::new("tests/deps").join("Cargo.toml"),
+                ..Default::default()
+            },
+        );
+    }
     config.fill_host_and_target()?;
-    let dep_builder = BuildManager::one_off(config.clone());
-    // Only set these for the actual run, not the dep builder, so invalid flags do not fail
-    // the dependency build.
-    config.program.args = args.collect();
-    let test_config = TestConfig::one_off_runner(config, PathBuf::new());
+    // Reset `args` (otherwise we'll get JSON output).
+    config.program.args = vec![];
 
+    // Compute the actual Miri invocation command.
+    let test_config = TestConfig::one_off_runner(config.clone(), PathBuf::new());
     let mut cmd = test_config.config.program.build(&test_config.config.out_dir);
-    cmd.arg("--target").arg(test_config.config.target.as_ref().unwrap());
-    // Build dependencies
-    test_config.apply_custom(&mut cmd, &dep_builder).expect("failed to build dependencies");
+    // For some reason we need to set the target ourselves.
+    cmd.arg("--target").arg(&target);
+    // Also forward arguments to the program (skipping the binary name).
+    // We don't put this in the `config` since we don't want it to affect the dependency build.
+    cmd.args({
+        let mut args = env::args_os();
+        args.next().unwrap();
+        args
+    });
 
-    if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
+    // Build dependencies (which will mutate that command)
+    test_config
+        .apply_custom(&mut cmd, &BuildManager::one_off(config.clone()))
+        .expect("failed to build dependencies");
+    // Finally, actually run Miri.
+    let exit_status = cmd.spawn()?.wait()?;
+    if !exit_status.success() {
+        std::process::exit(1)
+    }
+
+    if native {
+        // We just built the program, we still have to run it. We can't use the ui_test `Run` flag
+        // as that needs an actual BuildManager, not just the one-off stub we have here. So we
+        // implement the core logic ourselves.
+
+        // First, figure out the output binary by re-running the compiler with `--print`.
+        cmd.arg("--print").arg("file-names");
+        let output = cmd.output()?;
+        let exe = std::str::from_utf8(&output.stdout).unwrap().trim();
+        let exe = config.out_dir.join(exe);
+        // Then run that binary.
+        let mut cmd = Command::new(exe);
+        let exit_status = cmd.spawn()?.wait()?;
+        if !exit_status.success() {
+            std::process::exit(1)
+        }
+    }
+
+    Ok(())
 }

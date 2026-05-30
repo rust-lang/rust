@@ -433,12 +433,6 @@ macro_rules! int_module {
                 assert_eq_const_safe!(($T, bool): (0 as $T).borrowing_sub(MIN, true), (MAX, false));
             }
 
-            fn test_widening_mul() {
-                assert_eq_const_safe!(($U, $T): MAX.widening_mul(MAX), (1, MAX / 2));
-                assert_eq_const_safe!(($U, $T): MIN.widening_mul(MAX), (MIN as $U, MIN / 2));
-                assert_eq_const_safe!(($U, $T): MIN.widening_mul(MIN), (0, MAX / 2 + 1));
-            }
-
             fn test_carrying_mul() {
                 assert_eq_const_safe!(($U, $T): MAX.carrying_mul(MAX, 0), (1, MAX / 2));
                 assert_eq_const_safe!(($U, $T):
