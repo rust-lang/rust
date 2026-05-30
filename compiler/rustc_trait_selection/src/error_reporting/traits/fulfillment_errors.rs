@@ -458,12 +458,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let derive_suggestion_will_be_shown = main_trait_predicate
                             == leaf_trait_predicate
                             && self.can_suggest_derive(&obligation, leaf_trait_predicate);
-                        for note in notes {
-                            // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            if derive_suggestion_will_be_shown {
-                                continue;
+                        if !derive_suggestion_will_be_shown {
+                            for note in notes {
+                                // If it has a custom `#[rustc_on_unimplemented]` note, let's display
+                                // it.
+                                err.note(note);
                             }
-                            err.note(note);
                         }
                         if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
