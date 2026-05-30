@@ -1,6 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::AtomicRef;
+use rustc_data_structures::marker::IntoDynSyncSend;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
@@ -31,7 +32,7 @@ fn record_expand_proc_macro<'a>(
 }
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client,
+    pub client: IntoDynSyncSend<pm::bridge::server::DynClient>,
 }
 
 impl base::BangProcMacro for BangProcMacro {
@@ -58,7 +59,7 @@ impl base::BangProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: pm::bridge::client::Client,
+    pub client: IntoDynSyncSend<pm::bridge::server::DynClient>,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -88,7 +89,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct DeriveProcMacro {
-    pub client: DeriveClient,
+    pub client: IntoDynSyncSend<DeriveClient>,
 }
 
 impl MultiItemModifier for DeriveProcMacro {
@@ -113,9 +114,9 @@ impl MultiItemModifier for DeriveProcMacro {
         let res = if ecx.sess.opts.incremental.is_some()
             && ecx.sess.opts.unstable_opts.cache_proc_macros
         {
-            (*EXPAND_DERIVE_MACRO_CACHED)(invoc_id, input, ecx, self.client)
+            (*EXPAND_DERIVE_MACRO_CACHED)(invoc_id, input, ecx, self.client.0.clone())
         } else {
-            expand_derive_macro(invoc_id, input, ecx, self.client)
+            expand_derive_macro(invoc_id, input, ecx, &self.client)
         };
 
         let Ok(output) = res else {
@@ -156,13 +157,13 @@ impl MultiItemModifier for DeriveProcMacro {
     }
 }
 
-type DeriveClient = pm::bridge::client::Client;
+type DeriveClient = pm::bridge::server::DynClient;
 
 pub fn expand_derive_macro(
     invoc_id: LocalExpnId,
     input: TokenStream,
     ecx: &mut ExtCtxt<'_>,
-    client: DeriveClient,
+    client: &DeriveClient,
 ) -> Result<TokenStream, ()> {
     let _timer =
         ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
