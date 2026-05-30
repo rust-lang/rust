@@ -1,4 +1,4 @@
-// Regression test for #87290.
+// Regression test for <https://github.com/rust-lang/rust/issues/87290>.
 
 //@ check-pass
 
