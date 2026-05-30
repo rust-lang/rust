@@ -24,6 +24,17 @@ fn new_u64() {
     assert_eq!(rbuf.unfilled().capacity(), 16);
 }
 
+#[test]
+fn new_unit() {
+    let buf: &mut [_] = &mut [(); 16];
+    let mut rbuf = BorrowedBuf::from(buf);
+
+    assert_eq!(rbuf.filled().len(), 0);
+    assert!(rbuf.is_init());
+    assert_eq!(rbuf.capacity(), 16);
+    assert_eq!(rbuf.unfilled().capacity(), 16);
+}
+
 /// Test that BorrowedBuf has the correct numbers when created with uninit
 #[test]
 fn uninit() {
@@ -40,6 +51,17 @@ fn uninit() {
 fn uninit_u64() {
     let buf: &mut [_] = &mut [MaybeUninit::<u64>::uninit(); 16];
     let mut rbuf = BorrowedBuf::<u64>::from(buf);
+
+    assert_eq!(rbuf.filled().len(), 0);
+    assert!(!rbuf.is_init());
+    assert_eq!(rbuf.capacity(), 16);
+    assert_eq!(rbuf.unfilled().capacity(), 16);
+}
+
+#[test]
+fn uninit_unit() {
+    let buf: &mut [_] = &mut [MaybeUninit::<()>::uninit(); 16];
+    let mut rbuf = BorrowedBuf::<()>::from(buf);
 
     assert_eq!(rbuf.filled().len(), 0);
     assert!(!rbuf.is_init());
@@ -71,6 +93,17 @@ fn advance_filled() {
 #[test]
 fn advance_filled_u64() {
     let buf: &mut [_] = &mut [0u64; 16];
+    let mut rbuf = BorrowedBuf::from(buf);
+
+    rbuf.unfilled().advance_checked(1);
+
+    assert_eq!(rbuf.filled().len(), 1);
+    assert_eq!(rbuf.unfilled().capacity(), 15);
+}
+
+#[test]
+fn advance_filled_unit() {
+    let buf: &mut [_] = &mut [(); 16];
     let mut rbuf = BorrowedBuf::from(buf);
 
     rbuf.unfilled().advance_checked(1);
@@ -120,6 +153,28 @@ fn clear_u64() {
 }
 
 #[test]
+fn clear_unit() {
+    let buf: &mut [_] = &mut [(); 16];
+    let mut rbuf = BorrowedBuf::from(buf);
+
+    rbuf.unfilled().advance_checked(16);
+
+    assert_eq!(rbuf.filled().len(), 16);
+    assert_eq!(rbuf.unfilled().capacity(), 0);
+
+    rbuf.clear();
+
+    assert_eq!(rbuf.filled().len(), 0);
+    assert_eq!(rbuf.unfilled().capacity(), 16);
+
+    unsafe {
+        rbuf.set_init();
+    }
+    rbuf.unfilled().advance_checked(16);
+    assert_eq!(rbuf.filled(), [(); 16]);
+}
+
+#[test]
 fn set_init() {
     let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
     let mut rbuf: BorrowedBuf<'_, u8> = buf.into();
@@ -145,6 +200,20 @@ fn set_init_u64() {
     assert!(rbuf.is_init());
     rbuf.unfilled().advance_checked(16);
     assert_eq!(rbuf.filled(), [0; 16]);
+}
+
+#[test]
+fn set_init_unit() {
+    let buf: &mut [_] = &mut [MaybeUninit::<()>::zeroed(); 16];
+    let mut rbuf = BorrowedBuf::<()>::from(buf);
+
+    unsafe {
+        rbuf.set_init();
+    }
+
+    assert!(rbuf.is_init());
+    rbuf.unfilled().advance_checked(16);
+    assert_eq!(rbuf.filled(), [(); 16]);
 }
 
 #[test]
@@ -185,6 +254,26 @@ fn append_u64() {
     assert!(!rbuf.is_init());
     assert_eq!(rbuf.filled().len(), 16);
     assert_eq!(rbuf.filled(), [1; 16]);
+}
+
+#[test]
+fn append_unit() {
+    let buf: &mut [_] = &mut [MaybeUninit::new(()); 16];
+    let mut rbuf = BorrowedBuf::<()>::from(buf);
+
+    rbuf.unfilled().append(&[(); 8]);
+
+    assert!(!rbuf.is_init());
+    assert_eq!(rbuf.filled().len(), 8);
+    assert_eq!(rbuf.filled(), [(); 8]);
+
+    rbuf.clear();
+
+    rbuf.unfilled().append(&[(); 16]);
+
+    assert!(!rbuf.is_init());
+    assert_eq!(rbuf.filled().len(), 16);
+    assert_eq!(rbuf.filled(), [(); 16]);
 }
 
 #[test]
@@ -232,6 +321,28 @@ fn reborrow_written_u64() {
 }
 
 #[test]
+fn reborrow_written_unit() {
+    let buf: &mut [_] = &mut [MaybeUninit::new(()); 32];
+    let mut buf = BorrowedBuf::<()>::from(buf);
+
+    let mut cursor = buf.unfilled();
+    cursor.append(&[(); 16]);
+
+    let mut cursor2 = cursor.reborrow();
+    cursor2.append(&[(); 16]);
+
+    assert_eq!(cursor2.written(), 32);
+    assert_eq!(cursor.written(), 32);
+
+    assert_eq!(buf.unfilled().written(), 32);
+    assert!(!buf.is_init());
+    assert_eq!(buf.filled().len(), 32);
+    let filled = buf.filled();
+    assert_eq!(&filled[..16], [(); 16]);
+    assert_eq!(&filled[16..], [(); 16]);
+}
+
+#[test]
 fn cursor_set_init() {
     let buf: &mut [_] = &mut [MaybeUninit::zeroed(); 16];
     let mut rbuf: BorrowedBuf<'_, u8> = buf.into();
@@ -255,6 +366,26 @@ fn cursor_set_init() {
 fn cursor_set_init_u64() {
     let buf: &mut [_] = &mut [MaybeUninit::<u64>::zeroed(); 16];
     let mut rbuf = BorrowedBuf::<u64>::from(buf);
+    let mut cursor = rbuf.unfilled();
+
+    unsafe {
+        cursor.set_init();
+    }
+
+    assert!(cursor.is_init());
+    assert_eq!(unsafe { cursor.as_mut().len() }, 16);
+
+    cursor.advance_checked(4);
+
+    assert_eq!(unsafe { cursor.as_mut().len() }, 12);
+
+    assert!(rbuf.is_init());
+}
+
+#[test]
+fn cursor_set_init_unit() {
+    let buf: &mut [_] = &mut [MaybeUninit::<()>::zeroed(); 16];
+    let mut rbuf = BorrowedBuf::<()>::from(buf);
     let mut cursor = rbuf.unfilled();
 
     unsafe {
