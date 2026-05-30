@@ -1359,7 +1359,7 @@ impl<'test> TestCx<'test> {
             self.props.from_aux_file(&aux_path, self.variant.revision(), self.config);
         if aux_type == Some(AuxType::ProcMacro) {
             if self.config.wasm_proc_macros {
-                aux_props.compile_flags.push("--target=wasm32-unknown-unknown".to_owned());
+                aux_props.compile_flags.push("--target=wasm32-wasip1".to_owned());
                 // Override any earlier linkers for now, otherwise we fail to build since compiletest
                 // thinks we're building for a different target and passes its linker (if one is
                 // configured).
