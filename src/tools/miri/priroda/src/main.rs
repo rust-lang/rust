@@ -12,6 +12,7 @@ extern crate rustc_middle;
 extern crate rustc_session;
 
 use std::io::{self, Write};
+use std::path::PathBuf;
 
 use miri::*;
 use rustc_driver::Compilation;
@@ -89,19 +90,32 @@ fn create_ecx<'tcx>(tcx: TyCtxt<'tcx>) -> MiriInterpCx<'tcx> {
     miri::create_ecx(tcx, entry_id, entry_type, &config, None).unwrap()
 }
 
+struct SourceLocation {
+    local_path: Option<PathBuf>,
+    display: String,
+    line: usize,
+    column: usize,
+}
+
 pub struct PrirodaContext<'tcx> {
     ecx: MiriInterpCx<'tcx>,
+    current_location: Option<SourceLocation>,
+    last_location: Option<SourceLocation>,
 }
 
 impl<'tcx> PrirodaContext<'tcx> {
     fn new(ecx: MiriInterpCx<'tcx>) -> Self {
-        Self { ecx }
+        Self { ecx, current_location: None, last_location: None }
     }
 
     // TODO: return a StepResult enum once we distinguish breakpoint stops,
     // program exit, and other debugger states.
     pub fn step(&mut self) -> InterpResult<'tcx> {
-        self.ecx.miri_step()
+        // state inspection should happen only after a successful step
+        self.ecx.miri_step()?;
+        self.last_location = self.current_location.take();
+        self.current_location = self.resolve_current_location();
+        interp_ok(())
     }
 
     pub fn continue_execution(&mut self) -> InterpResult<'tcx> {
@@ -111,12 +125,30 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
-    pub fn print_location(&self) {
+    fn resolve_current_location(&self) -> Option<SourceLocation> {
         let span = self.ecx.machine.current_user_relevant_span();
-        let location = self.ecx.tcx.sess.source_map().span_to_diagnostic_string(span);
+        if span.is_dummy() {
+            return None;
+        }
+
+        let source_map = self.ecx.tcx.sess.source_map();
+        let loc = source_map.lookup_char_pos(span.lo());
+
+        Some(SourceLocation {
+            local_path: loc.file.name.clone().into_local_path(),
+            display: source_map.span_to_diagnostic_string(span),
+            line: loc.line,
+            column: loc.col_display + 1,
+        })
+    }
+
+    pub fn print_location(&self) {
         // TODO: skip noisy std/runtime spans and avoid printing `no-location`
         // once the basic command loop is solid.
-        println!("{location}");
+        match &self.current_location {
+            Some(location) => println!("{}", location.display),
+            None => println!("no-location"),
+        }
         io::stdout().flush().unwrap();
     }
     fn run_command(&mut self, command: SessionCommand) -> InterpResult<'tcx> {
