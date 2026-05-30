@@ -3,6 +3,7 @@
 //@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 //@ ignore-cross-compile
 //@ ignore-remote
+//@ ignore-backends: gcc
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
