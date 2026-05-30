@@ -4,10 +4,19 @@ error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
 LL | #[global_allocator]
    | ------------------- in this attribute macro expansion
 LL | static A: usize = 0;
-   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
    |
-help: the trait `GlobalAlloc` is implemented for `System`
-  --> $SRC_DIR/std/src/sys/alloc/unix.rs:LL:COL
+help: the following other types implement trait `GlobalAllocator`
+  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&A`
+  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&mut A`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   |
+   = note: `System`
+   = note: required for `usize` to implement `GlobalAlloc`
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
   --> $DIR/not-an-allocator.rs:5:11
@@ -15,10 +24,19 @@ error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
 LL | #[global_allocator]
    | ------------------- in this attribute macro expansion
 LL | static A: usize = 0;
-   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
    |
-help: the trait `GlobalAlloc` is implemented for `System`
-  --> $SRC_DIR/std/src/sys/alloc/unix.rs:LL:COL
+help: the following other types implement trait `GlobalAllocator`
+  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&A`
+  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&mut A`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   |
+   = note: `System`
+   = note: required for `usize` to implement `GlobalAlloc`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
@@ -27,10 +45,19 @@ error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
 LL | #[global_allocator]
    | ------------------- in this attribute macro expansion
 LL | static A: usize = 0;
-   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
    |
-help: the trait `GlobalAlloc` is implemented for `System`
-  --> $SRC_DIR/std/src/sys/alloc/unix.rs:LL:COL
+help: the following other types implement trait `GlobalAllocator`
+  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&A`
+  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&mut A`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   |
+   = note: `System`
+   = note: required for `usize` to implement `GlobalAlloc`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
@@ -39,10 +66,19 @@ error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
 LL | #[global_allocator]
    | ------------------- in this attribute macro expansion
 LL | static A: usize = 0;
-   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
    |
-help: the trait `GlobalAlloc` is implemented for `System`
-  --> $SRC_DIR/std/src/sys/alloc/unix.rs:LL:COL
+help: the following other types implement trait `GlobalAllocator`
+  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&A`
+  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&mut A`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   |
+   = note: `System`
+   = note: required for `usize` to implement `GlobalAlloc`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
