@@ -1,0 +1,56 @@
+- // MIR for `shorten_non_borrowed` before MoveElimination
++ // MIR for `shorten_non_borrowed` after MoveElimination
+  
+  fn shorten_non_borrowed(_1: u32) -> u32 {
+      debug x => _1;
+      let mut _0: u32;
+      let _2: u32;
+      let mut _3: u32;
+      let mut _5: u32;
+      scope 1 {
+-         debug a => _2;
++         debug a => _5;
+          let _4: u32;
+          scope 2 {
+-             debug b => _4;
++             debug b => _5;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         _3 = copy _1;
+-         _2 = opaque::<u32>(move _3) -> [return: bb1, unwind unreachable];
++         nop;
++         nop;
++         nop;
++         StorageLive(_5);
++         _5 = opaque::<u32>(move _1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_3);
+-         StorageLive(_4);
+-         _4 = copy _2;
+-         StorageLive(_5);
+-         _5 = copy _4;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          _0 = opaque::<u32>(move _5) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
