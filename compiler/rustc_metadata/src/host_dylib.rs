@@ -148,13 +148,15 @@ pub(crate) fn dlsym_proc_macros(
                 let engine = wasmi::Engine::default();
                 let module = wasmi::Module::new(&engine, std::fs::read(path).unwrap()).unwrap();
 
-                let mut store = wasmi::Store::new(&engine, ());
+                let mut store =
+                    wasmi::Store::new(&engine, wasmi_wasi::WasiCtxBuilder::new().build());
                 let mut linker = wasmi::Linker::new(&engine);
                 linker
                     .func_wrap("env", "__rustc_proc_macro_dispatch", |_: u32, _: u32| -> () {
                         unreachable!()
                     })
                     .unwrap();
+                wasmi_wasi::add_to_linker(&mut linker, |ctx| ctx).unwrap();
                 let instance = linker.instantiate_and_start(&mut store, &module).unwrap();
 
                 let memory = instance.get_export(&store, "memory").unwrap().into_memory().unwrap();
@@ -191,6 +193,7 @@ fn wasm_macro_client(engine: wasmi::Engine, module: wasmi::Module, func_ptr: u32
     DynClient {
         run: Arc::new(move |config| {
             struct Ctx<'a> {
+                wasi_ctx: wasmi_wasi::WasiCtx,
                 dispatch: rustc_proc_macro::bridge::Closure<'a>,
                 client_refs: Option<ClientRefs>,
             }
@@ -217,8 +220,17 @@ fn wasm_macro_client(engine: wasmi::Engine, module: wasmi::Module, func_ptr: u32
                 }
             }
 
-            let mut store =
-                wasmi::Store::new(&engine, Ctx { dispatch: config.dispatch, client_refs: None });
+            let mut store = wasmi::Store::new(
+                &engine,
+                Ctx {
+                    wasi_ctx: wasmi_wasi::WasiCtxBuilder::new()
+                        .inherit_stdout()
+                        .inherit_stderr()
+                        .build(),
+                    dispatch: config.dispatch,
+                    client_refs: None,
+                },
+            );
             let mut linker: wasmi::Linker<Ctx<'_>> = wasmi::Linker::new(&engine);
             linker
                 .func_new(
@@ -251,6 +263,7 @@ fn wasm_macro_client(engine: wasmi::Engine, module: wasmi::Module, func_ptr: u32
                     },
                 )
                 .unwrap();
+            wasmi_wasi::add_to_linker(&mut linker, |ctx| &mut ctx.wasi_ctx).unwrap();
             let instance = linker.instantiate_and_start(&mut store, &module).unwrap();
 
             fn get_func<T: wasmi::WasmParams, U: wasmi::WasmResults>(

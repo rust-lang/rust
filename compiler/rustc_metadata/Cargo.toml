@@ -32,6 +32,7 @@ rustc_target = { path = "../rustc_target" }
 tempfile = "3.7.1"
 tracing = "0.1"
 wasmi = "1.0.9"
+wasmi_wasi = "1.0.9"
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]
