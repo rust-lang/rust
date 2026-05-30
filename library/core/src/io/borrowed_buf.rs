@@ -24,8 +24,8 @@ use crate::ptr;
 ///
 /// The lifetime `'data` is a bound on the lifetime of the underlying elements.
 ///
-/// The type defaults to managing bytes, but can manage any type of elements.
-pub struct BorrowedBuf<'data, T = u8> {
+/// The type is most commonly used to manage bytes, but can manage any type of elements.
+pub struct BorrowedBuf<'data, T> {
     /// The buffer's underlying elements.
     buf: &'data mut [MaybeUninit<T>],
     /// The number of elements of `self.buf` that are known to be filled.
@@ -193,7 +193,7 @@ impl<'data, T: Copy> BorrowedBuf<'data, T> {
 ///
 /// The lifetime `'a` is a bound on the lifetime of the underlying buffer (which means it is a bound
 /// on the elements in that buffer by transitivity).
-pub struct BorrowedCursor<'a, T = u8> {
+pub struct BorrowedCursor<'a, T> {
     /// The underlying buffer.
     // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf` when
     // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into

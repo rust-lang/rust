@@ -65,7 +65,7 @@ impl TcpStream {
         moto_rt::fs::read(self.inner.as_raw_fd(), buf).map_err(map_motor_error)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 

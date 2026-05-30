@@ -63,7 +63,7 @@ fn test_buffered_reader_read_buf() {
     let mut reader = BufReader::with_capacity(2, inner);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -71,7 +71,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 2];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -79,7 +79,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), []);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
@@ -87,7 +87,7 @@ fn test_buffered_reader_read_buf() {
     assert_eq!(reader.buffer(), [3]);
 
     let buf: &mut [_] = &mut [MaybeUninit::uninit(); 3];
-    let mut buf: BorrowedBuf<'_> = buf.into();
+    let mut buf: BorrowedBuf<'_, u8> = buf.into();
 
     reader.read_buf(buf.unfilled()).unwrap();
 
