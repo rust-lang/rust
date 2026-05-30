@@ -93,7 +93,7 @@ fn find_match_true<'tcx>(
                 sugg = make_unop("!", sugg);
             }
 
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span,
                 "consider using the condition directly",
                 sugg.into_string(),
@@ -208,7 +208,7 @@ fn find_method_sugg_for_if_let<'tcx>(
         cx,
         REDUNDANT_PATTERN_MATCHING,
         let_pat.span,
-        format!("redundant pattern matching, consider using `{good_method}`"),
+        "redundant pattern matching",
         |diag| {
             // If this is the last expression in a block or there is an else clause then the whole
             // type needs to be considered, not just the inner type of the branch being matched on.
@@ -253,7 +253,12 @@ fn find_method_sugg_for_if_let<'tcx>(
                 .maybe_paren()
                 .to_string();
 
-            diag.span_suggestion(span, "try", format!("{keyword} {sugg}.{good_method}"), app);
+            diag.span_suggestion_verbose(
+                span,
+                format!("consider using `{good_method}`"),
+                format!("{keyword} {sugg}.{good_method}"),
+                app,
+            );
 
             if needs_drop {
                 diag.note("this will change drop order of the result, as well as all temporaries");
@@ -293,7 +298,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
             cx,
             REDUNDANT_PATTERN_MATCHING,
             expr_span,
-            format!("redundant pattern matching, consider using `{good_method}`"),
+            "redundant pattern matching",
             |diag| {
                 let mut app = Applicability::MachineApplicable;
                 let ctxt = expr_span.ctxt();
@@ -309,7 +314,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                     let _ = write!(sugg, " && {}", guard.maybe_paren());
                 }
 
-                diag.span_suggestion(expr_span, "try", sugg, app);
+                diag.span_suggestion_verbose(expr_span, format!("consider using `{good_method}`"), sugg, app);
             },
         );
     }
