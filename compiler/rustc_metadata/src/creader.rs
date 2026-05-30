@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
+use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard, IntoDynSyncSend};
 use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir as hir;
@@ -20,7 +20,7 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_proc_macro::bridge::server::DynClient;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
@@ -947,7 +947,7 @@ impl CStore {
         &self,
         path: &Path,
         stable_crate_id: StableCrateId,
-    ) -> Result<&'static [ProcMacroClient], CrateError> {
+    ) -> Result<Vec<IntoDynSyncSend<DynClient>>, CrateError> {
         Ok(crate::host_dylib::dlsym_proc_macros(path, stable_crate_id)?)
     }
 

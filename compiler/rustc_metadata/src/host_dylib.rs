@@ -2,8 +2,10 @@ use std::error::Error;
 use std::path::Path;
 use std::time::Duration;
 
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_fs_util::try_canonicalize;
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_proc_macro::bridge::server::DynClient;
 use rustc_session::StableCrateId;
 use tracing::debug;
 
@@ -126,17 +128,20 @@ pub unsafe fn load_symbol_from_dylib<T: Copy>(
 pub(crate) fn dlsym_proc_macros(
     path: &Path,
     stable_crate_id: StableCrateId,
-) -> Result<&'static [ProcMacroClient], DylibError> {
+) -> Result<Vec<IntoDynSyncSend<DynClient>>, DylibError> {
     let sym_name = rustc_session::generate_proc_macro_decls_symbol(stable_crate_id);
     debug!("trying to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
 
     unsafe {
         // FIXME(bjorn3) this depends on the unstable slice memory layout
-        let result = crate::load_symbol_from_dylib::<*const &[ProcMacroClient]>(path, &sym_name);
+        let result = load_symbol_from_dylib::<*const &[ProcMacroClient]>(path, &sym_name);
         match result {
             Ok(result) => {
                 debug!("loaded dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
-                Ok(*result)
+                Ok((*result)
+                    .iter()
+                    .map(|proc_macro| IntoDynSyncSend(proc_macro.into_dyn_client()))
+                    .collect())
             }
             Err(err) => {
                 debug!("failed to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);

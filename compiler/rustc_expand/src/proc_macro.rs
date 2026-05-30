@@ -1,5 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::marker::IntoDynSyncSend;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::{self, TyCtxt};
@@ -31,7 +32,7 @@ fn record_expand_proc_macro<'a>(
 }
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client,
+    pub client: IntoDynSyncSend<pm::bridge::server::DynClient>,
 }
 
 impl base::BangProcMacro for BangProcMacro {
@@ -56,7 +57,7 @@ impl base::BangProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: pm::bridge::client::Client,
+    pub client: IntoDynSyncSend<pm::bridge::server::DynClient>,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -86,7 +87,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct DeriveProcMacro {
-    pub client: DeriveClient,
+    pub client: IntoDynSyncSend<DeriveClient>,
 }
 
 impl MultiItemModifier for DeriveProcMacro {
@@ -115,12 +116,12 @@ impl MultiItemModifier for DeriveProcMacro {
                 let input = &*tcx.arena.alloc(input);
                 let key: (LocalExpnId, &TokenStream) = (invoc_id, input);
 
-                QueryDeriveExpandCtx::enter(ecx, self.client, move || {
+                QueryDeriveExpandCtx::enter(ecx, self.client.0.clone(), move || {
                     tcx.derive_macro_expansion(key).cloned()
                 })
             })
         } else {
-            expand_derive_macro(invoc_id, input, ecx, self.client)
+            expand_derive_macro(invoc_id, input, ecx, &self.client)
         };
 
         let Ok(output) = res else {
@@ -176,13 +177,13 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
     })
 }
 
-type DeriveClient = pm::bridge::client::Client;
+type DeriveClient = pm::bridge::server::DynClient;
 
 fn expand_derive_macro(
     invoc_id: LocalExpnId,
     input: TokenStream,
     ecx: &mut ExtCtxt<'_>,
-    client: DeriveClient,
+    client: &DeriveClient,
 ) -> Result<TokenStream, ()> {
     let _timer =
         ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
@@ -237,7 +238,7 @@ impl QueryDeriveExpandCtx {
     /// Must be called while the `enter` function is active.
     fn with<F, R>(f: F) -> R
     where
-        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, DeriveClient) -> R,
+        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, &DeriveClient) -> R,
     {
         DERIVE_EXPAND_CTX.with(|ctx| {
             let ectx = {
@@ -250,7 +251,7 @@ impl QueryDeriveExpandCtx {
                 unsafe { casted.as_mut().unwrap() }
             };
 
-            f(ectx, ctx.client)
+            f(ectx, &ctx.client)
         })
     }
 }
