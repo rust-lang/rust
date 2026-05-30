@@ -1297,7 +1297,7 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
-    let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-unknown-unknown");
+    let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-wasip1");
     let (wasm_proc_macro_target, target_warnings) = Target::search(
         &wasm_proc_macro_tuple,
         sopts.sysroot.path(),
