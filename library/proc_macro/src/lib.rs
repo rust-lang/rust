@@ -295,7 +295,7 @@ impl TokenStream {
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.as_ref().map(|h| BridgeMethods::ts_is_empty(h)).unwrap_or(true)
+        self.0.as_ref().map(BridgeMethods::ts_is_empty).unwrap_or(true)
     }
 
     /// Parses this `TokenStream` as an expression and attempts to expand any
@@ -574,9 +574,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(
-                self.0.map(|v| BridgeMethods::ts_into_trees(v)).unwrap_or_default().into_iter(),
-            )
+            IntoIter(self.0.map(BridgeMethods::ts_into_trees).unwrap_or_default().into_iter())
         }
     }
 }
