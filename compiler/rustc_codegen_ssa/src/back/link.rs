@@ -1,5 +1,6 @@
 mod raw_dylib;
 
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions, read};
@@ -47,7 +48,7 @@ use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
+    Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
@@ -2346,6 +2347,79 @@ fn add_rpath_args(
     }
 }
 
+fn strip_numeric_suffix<'a>(
+    base: &'a str,
+    suffix: impl AsRef<str>,
+    fallback: &'a str,
+) -> Cow<'a, str> {
+    if suffix.as_ref().parse::<u32>().is_ok() {
+        Cow::Owned(base.to_string())
+    } else {
+        Cow::Borrowed(fallback)
+    }
+}
+
+fn undecorate_c_symbol<'a>(
+    name: &'a str,
+    sess: &Session,
+    kind: SymbolExportKind,
+) -> Option<Cow<'a, str>> {
+    match sess.target.binary_format {
+        BinaryFormat::MachO => {
+            // Mach-O: strip the leading underscore that all external symbols have.
+            // The Darwin linker's export_symbols will add it back.
+            name.strip_prefix('_').map(|s| Cow::Owned(s.to_string()))
+        }
+        BinaryFormat::Coff => {
+            // MSVC C++ mangled names start with '?' and use a completely different
+            // decorating scheme that includes '@@' as structural delimiters.
+            // They must not be subjected to C calling-convention undecoration.
+            if name.starts_with('?') {
+                return Some(Cow::Borrowed(name));
+            }
+            Some(match sess.target.arch {
+                Arch::X86 => {
+                    // COFF 32-bit: strip calling-convention decorations.
+                    if let Some(rest) = name.strip_prefix('@') {
+                        // fastcall: @foo@N -> foo
+                        rest.rsplit_once('@')
+                            .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                            .unwrap_or(Cow::Borrowed(name))
+                    } else if let Some(stripped) = name.strip_prefix('_') {
+                        if let Some((base, suffix)) = stripped.rsplit_once('@') {
+                            // stdcall: _foo@N -> foo
+                            strip_numeric_suffix(base, suffix, stripped)
+                        } else {
+                            // cdecl: _foo -> foo
+                            Cow::Owned(stripped.to_string())
+                        }
+                    } else {
+                        // vectorcall: foo@@N -> foo
+                        name.rsplit_once("@@")
+                            .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                            .unwrap_or(Cow::Borrowed(name))
+                    }
+                }
+                Arch::X86_64 => {
+                    // COFF 64-bit: vectorcall mangling (foo@@N -> foo) also applies on x86_64.
+                    name.rsplit_once("@@")
+                        .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                        .unwrap_or(Cow::Borrowed(name))
+                }
+                Arch::Arm64EC if kind == SymbolExportKind::Text => {
+                    // Arm64EC: `#` prefix distinguishes ARM64EC text symbols from x64 thunks.
+                    name.strip_prefix('#')
+                        .map(|s| Cow::Owned(s.to_string()))
+                        .unwrap_or(Cow::Borrowed(name))
+                }
+                _ => Cow::Borrowed(name),
+            })
+        }
+        // ELF: no decoration
+        _ => Some(Cow::Borrowed(name)),
+    }
+}
+
 fn add_c_staticlib_symbols(
     sess: &Session,
     lib: &NativeLib,
@@ -2387,7 +2461,14 @@ fn add_c_staticlib_symbols(
         }
 
         for symbol in object.symbols() {
-            if symbol.scope() != object::SymbolScope::Dynamic {
+            // The `object` crate returns `Dynamic` for ELF/Mach-O global symbols,
+            // but always returns `Linkage` for COFF external symbols.
+            // Accept both for COFF (Windows and UEFI).
+            let scope = symbol.scope();
+            if scope != object::SymbolScope::Dynamic
+                && !(sess.target.binary_format == BinaryFormat::Coff
+                    && scope == object::SymbolScope::Linkage)
+            {
                 continue;
             }
 
@@ -2402,9 +2483,10 @@ fn add_c_staticlib_symbols(
                 _ => continue,
             };
 
-            // FIXME:The symbol mangle rules are slightly different in Windows(32-bit) and Apple.
-            // Need to be resolved.
-            out.push((name.to_string(), export_kind));
+            let Some(undecorated) = undecorate_c_symbol(name, sess, export_kind) else {
+                continue;
+            };
+            out.push((undecorated.into_owned(), export_kind));
         }
     }
 
