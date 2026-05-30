@@ -2,11 +2,11 @@ use rustc_hir::def_id::LocalDefId;
 
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
 pub use self::into_query_key::IntoQueryKey;
-pub use self::job::{QueryJob, QueryJobId, QueryLatch, QueryWaiter};
+pub use self::job::{QueryJob, QueryJobRef, QueryWaiter, QueryWaiterGuard, WorkerParkingArea};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
-    ActiveKeyStatus, Cycle, EnsureMode, QueryMode, QueryState, QuerySystem, QueryVTable, TyCtxtAt,
-    TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
+    Cycle, EnsureMode, QueryMode, QuerySystem, QueryVTable, TyCtxtAt, TyCtxtEnsureDone,
+    TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
 pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;

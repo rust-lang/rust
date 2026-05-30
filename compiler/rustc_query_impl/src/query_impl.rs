@@ -50,11 +50,11 @@ macro_rules! define_queries {
                     // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
                     // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
                     #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
+                    pub(crate) fn __rust_end_short_backtrace<'a, 'tcx>(
                         tcx: TyCtxt<'tcx>,
                         span: Span,
                         key: Key<'tcx>,
-                        mode: QueryMode,
+                        mode: QueryMode<'a, Erased<Value<'tcx>>>,
                     ) -> Option<Erased<Value<'tcx>>> {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
@@ -77,13 +77,14 @@ macro_rules! define_queries {
                         tcx: TyCtxt<'tcx>,
                         span: Span,
                         key: Key<'tcx>,
-                        __mode: QueryMode,
+                        mode: QueryMode<'_, Erased<Value<'tcx>>>,
                     ) -> Option<Erased<Value<'tcx>>> {
                         Some(crate::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
                             span,
                             key,
+                            mode
                         ))
                     }
                 }
@@ -151,7 +152,6 @@ macro_rules! define_queries {
                         depth_limit: $depth_limit,
                         feedable: $feedable,
                         dep_kind: rustc_middle::dep_graph::DepKind::$name,
-                        state: Default::default(),
                         cache: Default::default(),
 
                         invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
@@ -173,14 +173,14 @@ macro_rules! define_queries {
                         try_load_from_disk_fn: |_tcx, _prev_index| None,
 
                         #[cfg($handle_cycle_error)]
-                        handle_cycle_error_fn: |tcx, key, cycle, err| {
+                        handle_cycle_error_fn: |tcx, key, cycle| {
                             use rustc_middle::query::erase::erase_val;
 
-                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
+                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle))
                         },
                         #[cfg(not($handle_cycle_error))]
-                        handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            $crate::handle_cycle_error::default(err)
+                        handle_cycle_error_fn: |tcx, _key, cycle| {
+                            $crate::handle_cycle_error::default(tcx, cycle)
                         },
 
                         #[cfg($no_hash)]

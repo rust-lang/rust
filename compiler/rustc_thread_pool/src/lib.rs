@@ -109,7 +109,8 @@ pub use self::thread_pool::{
 /// the `RAYON_NUM_THREADS` environment variable, then it will be reduced to this maximum.
 ///
 /// The value may vary between different targets, and is subject to change in new Rayon versions.
-pub fn max_num_threads() -> usize {
+#[inline(always)]
+pub const fn max_num_threads() -> usize {
     // We are limited by the bits available in the sleep counter's `AtomicUsize`.
     crate::sleep::THREADS_MAX
 }

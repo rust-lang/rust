@@ -4,6 +4,7 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lock;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
@@ -19,17 +20,62 @@ use crate::job::create_cycle_error;
 
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.
-pub(crate) fn default(err: Diag<'_>) -> ! {
+pub(crate) fn default<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
+    let (_guard, err) = intro(tcx, &cycle);
     let guar = err.emit();
     guar.raise_fatal()
+}
+
+struct CycleHandlerNestingGuard<'tcx> {
+    nesting: &'tcx Lock<u8>,
+    nested: bool,
+}
+
+impl<'tcx> CycleHandlerNestingGuard<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        let mutex = &tcx.query_system.cycle_handler_nesting;
+        let mut nesting = mutex.lock();
+        let nested = match *nesting {
+            0 => false,
+            1 => true,
+            _ => {
+                // Don't print further nested errors to avoid cases of infinite recursion
+                tcx.dcx().delayed_bug("doubly nested cycle error").raise_fatal()
+            }
+        };
+        *nesting += 1;
+        CycleHandlerNestingGuard { nesting: mutex, nested }
+    }
+}
+
+impl<'tcx> Drop for CycleHandlerNestingGuard<'tcx> {
+    fn drop(&mut self) {
+        *self.nesting.lock() -= 1;
+    }
+}
+
+fn intro<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cycle: &Cycle<'tcx>,
+) -> (CycleHandlerNestingGuard<'tcx>, Diag<'tcx>) {
+    let guard = CycleHandlerNestingGuard::new(tcx);
+
+    let error = create_cycle_error(tcx, &cycle, guard.nested);
+
+    if guard.nested {
+        // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
+        error.emit().raise_fatal()
+    }
+
+    (guard, error)
 }
 
 pub(crate) fn fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    _: Cycle<'tcx>,
-    err: Diag<'_>,
+    cycle: Cycle<'tcx>,
 ) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+    let (_guard, err) = intro(tcx, &cycle);
     let guar = err.delay_as_bug();
 
     let err = Ty::new_error(tcx, guar);
@@ -52,7 +98,6 @@ pub(crate) fn check_representability<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: LocalDefId,
     cycle: Cycle<'tcx>,
-    _err: Diag<'_>,
 ) {
     check_representability_inner(tcx, cycle);
 }
@@ -61,12 +106,12 @@ pub(crate) fn check_representability_adt_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: Ty<'tcx>,
     cycle: Cycle<'tcx>,
-    _err: Diag<'_>,
 ) {
     check_representability_inner(tcx, cycle);
 }
 
 fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> ! {
+    let (_guard, _diag) = intro(tcx, &cycle);
     let mut item_and_field_ids = Vec::new();
     let mut representable_ids = FxHashSet::default();
     for frame in &cycle.frames {
@@ -100,9 +145,9 @@ fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: Cycle<'tcx>) -> 
 pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    _cycle: Cycle<'tcx>,
-    err: Diag<'_>,
+    cycle: Cycle<'tcx>,
 ) -> &'tcx [ty::Variance] {
+    let (_guard, err) = intro(tcx, &cycle);
     let _guar = err.delay_as_bug();
     let n = tcx.generics_of(def_id).own_params.len();
     tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
@@ -131,8 +176,8 @@ pub(crate) fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
     cycle: Cycle<'tcx>,
-    err: Diag<'_>,
 ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
+    let (_guard, err) = intro(tcx, &cycle);
     let _guar = err.delay_as_bug();
     let diag = search_for_cycle_permutation(
         &cycle.frames,

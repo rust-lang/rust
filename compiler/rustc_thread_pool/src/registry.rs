@@ -320,6 +320,11 @@ impl Registry {
     }
 
     pub fn current() -> Arc<Registry> {
+        Self::with_current(Arc::clone)
+    }
+
+    #[inline]
+    pub fn with_current<R>(f: impl FnOnce(&Arc<Registry>) -> R) -> R {
         unsafe {
             let worker_thread = WorkerThread::current();
             let registry = if worker_thread.is_null() {
@@ -327,7 +332,7 @@ impl Registry {
             } else {
                 &(*worker_thread).registry
             };
-            Arc::clone(registry)
+            f(registry)
         }
     }
 
@@ -360,7 +365,7 @@ impl Registry {
         RegistryId { addr: self as *const Self as usize }
     }
 
-    pub(super) fn num_threads(&self) -> usize {
+    pub fn num_threads(&self) -> usize {
         self.thread_infos.len()
     }
 
@@ -628,8 +633,8 @@ pub fn mark_blocked() {
 
 /// Mark a previously blocked Rayon worker thread as unblocked
 #[inline]
-pub fn mark_unblocked(registry: &Registry) {
-    registry.sleep.mark_unblocked()
+pub fn mark_unblocked(registry: &Registry, thread_count: usize) {
+    registry.sleep.mark_unblocked(thread_count)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

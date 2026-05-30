@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
+use std::mem::transmute;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
@@ -30,7 +31,7 @@ use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_sto
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
@@ -979,17 +980,17 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     // Similarly, by creating `arena` here and passing in `&arena`, that reference has the type
     // `&'tcx WorkerLocal<Arena<'tcx>>`, also with one lifetime. And likewise for `hir_arena`.
 
-    let gcx_cell = OnceLock::new();
+    let gcx_cell: OnceLock<GlobalCtxt<'_>> = OnceLock::new();
     let arena = WorkerLocal::new(|_| Arena::default());
     let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
 
     TyCtxt::create_global_ctxt(
-        &gcx_cell,
+        unsafe { transmute(&gcx_cell) },
         &compiler.sess,
         crate_types,
         stable_crate_id,
-        &arena,
-        &hir_arena,
+        unsafe { transmute(&arena) },
+        unsafe { transmute(&hir_arena) },
         untracked,
         dep_graph,
         rustc_query_impl::make_dep_kind_vtables(&arena),

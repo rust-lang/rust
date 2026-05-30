@@ -41,6 +41,7 @@ pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_join, par_map, parallel_guard, spawn,
     try_par_for_each_in,
 };
+pub use self::parker::{Parker, Unparker};
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
@@ -48,6 +49,7 @@ pub use crate::marker::*;
 mod freeze;
 mod lock;
 mod parallel;
+mod parker;
 mod vec;
 mod worker_local;
 

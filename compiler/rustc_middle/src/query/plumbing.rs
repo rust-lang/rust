@@ -1,12 +1,10 @@
 use std::fmt;
 use std::ops::Deref;
 
+use rustc_data_structures::cache_entry::{CacheEntry, EntryInProgress};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::hash_table::HashTable;
-use rustc_data_structures::sharded::Sharded;
-use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
-use rustc_errors::Diag;
+use rustc_data_structures::sync::{Lock, WorkerLocal};
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
@@ -14,39 +12,8 @@ use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNode
 use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
+use crate::query::{IntoQueryKey, QueryCache, QueryStackFrame};
 use crate::ty::{self, TyCtxt};
-
-/// For a particular query, keeps track of "active" keys, i.e. keys whose
-/// evaluation has started but has not yet finished successfully.
-///
-/// (Successful query evaluation for a key is represented by an entry in the
-/// query's in-memory cache.)
-pub struct QueryState<'tcx, K> {
-    pub active: Sharded<HashTable<(K, ActiveKeyStatus<'tcx>)>>,
-}
-
-impl<'tcx, K> Default for QueryState<'tcx, K> {
-    fn default() -> QueryState<'tcx, K> {
-        QueryState { active: Default::default() }
-    }
-}
-
-/// For a particular query and key, tracks the status of a query evaluation
-/// that has started, but has not yet finished successfully.
-///
-/// (Successful query evaluation for a key is represented by an entry in the
-/// query's in-memory cache.)
-pub enum ActiveKeyStatus<'tcx> {
-    /// Some thread is already evaluating the query for this key.
-    ///
-    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
-    Started(QueryJob<'tcx>),
-
-    /// The query panicked. Queries trying to wait on this will raise a fatal error which will
-    /// silently panic.
-    Poisoned,
-}
 
 #[derive(Debug)]
 pub struct Cycle<'tcx> {
@@ -57,12 +24,11 @@ pub struct Cycle<'tcx> {
     pub frames: Vec<QueryStackFrame<'tcx>>,
 }
 
-#[derive(Debug)]
-pub enum QueryMode {
+pub enum QueryMode<'tcx, V> {
     /// This is a normal query call to `tcx.$query(..)` or `tcx.at(span).$query(..)`.
-    Get,
+    Get { entry: EntryInProgress<'tcx, V> },
     /// This is a call to `tcx.ensure_ok().$query(..)` or `tcx.ensure_done().$query(..)`.
-    Ensure { ensure_mode: EnsureMode },
+    Ensure { entry: &'tcx CacheEntry<V>, ensure_mode: EnsureMode },
 }
 
 /// Distinguishes between `tcx.ensure_ok()` and `tcx.ensure_done()` in shared
@@ -87,7 +53,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub feedable: bool,
 
     pub dep_kind: DepKind,
-    pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
     /// Function pointer that actually calls this query's provider.
@@ -114,8 +79,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
     /// error is created and emitted). A value may be returned, or (more commonly) the function may
     /// just abort after emitting the error.
-    pub handle_cycle_error_fn:
-        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
+    pub handle_cycle_error_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>) -> C::Value,
 
     pub format_value: fn(&C::Value) -> String,
 
@@ -130,7 +94,17 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    // FIXME: Substituting bound lifetime 'a with 'tcx causes x120 compile time slowdown for some reason.
+    pub execute_query_fn:
+        for<'a> fn(TyCtxt<'tcx>, Span, C::Key, QueryMode<'a, C::Value>) -> Option<C::Value>,
+}
+
+impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
+    #[inline]
+    pub fn cycle_handler(&self, key: C::Key) -> impl FnOnce(TyCtxt<'tcx>, Cycle<'tcx>) -> C::Value {
+        let handle_cycle_error = self.handle_cycle_error_fn;
+        move |tcx, cycle| handle_cycle_error(tcx, key, cycle)
+    }
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -164,8 +138,6 @@ pub struct QuerySystem<'tcx> {
 
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
-
-    pub jobs: AtomicU64,
 
     pub cycle_handler_nesting: Lock<u8>,
 }
@@ -408,8 +380,7 @@ macro_rules! define_callbacks {
             }
         )*
 
-        /// Identifies a query by kind and key. This is in contrast to `QueryJobId` which is just a
-        /// number.
+        /// Identifies a query by kind and key.
         #[allow(non_camel_case_types)]
         #[derive(Clone, Copy, Debug)]
         pub enum TaggedQueryKey<'tcx> {

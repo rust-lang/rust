@@ -224,7 +224,7 @@ fn alloc_self_profile_query_strings_inner<'tcx, C>(
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
             let mut query_keys_and_indices = Vec::new();
-            query.cache.for_each(&mut |k, _, i| query_keys_and_indices.push((*k, i)));
+            query.cache.for_each(|k, _, i| query_keys_and_indices.push((k, i)));
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but
@@ -252,7 +252,7 @@ fn alloc_self_profile_query_strings_inner<'tcx, C>(
             // instead of passing the `DepNodeIndex` to `finish_with_query_invocation_id`,
             // when recording the event in the first place.
             let mut query_invocation_ids = Vec::new();
-            query.cache.for_each(&mut |_, _, i| {
+            query.cache.for_each(|_, _, i| {
                 query_invocation_ids.push(i.into());
             });
 
