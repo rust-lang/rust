@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use super::Buffer;
 
 #[repr(C)]
-pub(super) struct Closure<'a> {
+pub struct Closure<'a> {
     call: extern "C" fn(*mut Env, Buffer) -> Buffer,
     env: *mut Env,
     // Prevent Send and Sync impls.
@@ -26,7 +26,7 @@ impl<'a, F: FnMut(Buffer) -> Buffer> From<&'a mut F> for Closure<'a> {
 }
 
 impl<'a> Closure<'a> {
-    pub(super) fn call(&mut self, arg: Buffer) -> Buffer {
+    pub fn call(&mut self, arg: Buffer) -> Buffer {
         (self.call)(self.env, arg)
     }
 }
