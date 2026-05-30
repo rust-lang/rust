@@ -94,10 +94,6 @@ pub struct OsString {
     inner: Buf,
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsString {}
-
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
 /// This type represents a borrowed reference to a string in the operating system's preferred
@@ -119,10 +115,6 @@ impl crate::sealed::Sealed for OsString {}
 pub struct OsStr {
     inner: Slice,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
