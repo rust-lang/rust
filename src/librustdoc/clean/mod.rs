@@ -243,8 +243,8 @@ fn generate_item_with_correct_attrs(
             ) || (is_glob_import(tcx, import_id)
                 && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)))
                 || macro_reexport_is_inline(tcx, import_id, def_id);
-            attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
+            attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
         }
         let keep_target_cfg = is_inline || matches!(kind, ItemKind::TypeAliasItem(..));
         add_without_unwanted_attributes(&mut attrs, target_attrs, keep_target_cfg, None);
