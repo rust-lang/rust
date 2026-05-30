@@ -1,3 +1,4 @@
+#![feature(impl_restriction)]
 #![cfg_attr(
     feature = "as_crate",
     feature(core_intrinsics),
@@ -13,16 +14,6 @@ use core_simd::simd;
 use core::intrinsics::simd as intrinsics;
 
 use simd::Simd;
-
-#[cfg(feature = "as_crate")]
-mod experimental {
-    pub trait Sealed {}
-}
-
-#[cfg(feature = "as_crate")]
-use experimental as sealed;
-
-use crate::sealed::Sealed;
 
 /// This trait provides a possibly-temporary implementation of float functions
 /// that may, in the absence of hardware support, canonicalize to calling an
@@ -43,7 +34,7 @@ use crate::sealed::Sealed;
 /// when either the compiler or its supporting runtime functions are improved.
 /// For now this trait is available to permit experimentation with SIMD float
 /// operations that may lack hardware support, such as `mul_add`.
-pub trait StdFloat: Sealed + Sized {
+pub impl(self) trait StdFloat: Sized {
     /// Elementwise fused multiply-add. Computes `(self * a) + b` with only one rounding error,
     /// yielding a more accurate result than an unfused multiply-add.
     ///
@@ -169,10 +160,6 @@ pub trait StdFloat: Sealed + Sized {
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn fract(self) -> Self;
 }
-
-impl<const N: usize> Sealed for Simd<f16, N> {}
-impl<const N: usize> Sealed for Simd<f32, N> {}
-impl<const N: usize> Sealed for Simd<f64, N> {}
 
 impl<const N: usize> StdFloat for Simd<f16, N> {
     #[inline]
