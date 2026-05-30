@@ -556,10 +556,6 @@ impl server::Server for Rustc<'_, '_> {
         diag.emit();
     }
 
-    fn ts_drop(&mut self, stream: Self::TokenStream) {
-        drop(stream);
-    }
-
     fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
         stream.clone()
     }

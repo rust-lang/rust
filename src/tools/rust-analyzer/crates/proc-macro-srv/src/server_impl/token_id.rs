@@ -74,10 +74,6 @@ impl server::Server for SpanIdServer<'_> {
 
     fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
 
-    fn ts_drop(&mut self, stream: Self::TokenStream) {
-        drop(stream);
-    }
-
     fn ts_clone(&mut self, stream: &Self::TokenStream) -> Self::TokenStream {
         stream.clone()
     }

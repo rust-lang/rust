@@ -12,13 +12,6 @@ pub(crate) struct TokenStream {
 impl !Send for TokenStream {}
 impl !Sync for TokenStream {}
 
-// Forward `Drop::drop` to the inherent `drop` method.
-impl Drop for TokenStream {
-    fn drop(&mut self) {
-        Methods::ts_drop(TokenStream { handle: self.handle });
-    }
-}
-
 impl<S> Encode<S> for TokenStream {
     fn encode(self, w: &mut Buffer, s: &mut S) {
         mem::ManuallyDrop::new(self).handle.encode(w, s);

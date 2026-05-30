@@ -40,7 +40,6 @@ macro_rules! with_api {
             fn literal_from_str(s: &str) -> Result<Literal<$Span, $Symbol>, String>;
             fn emit_diagnostic(diagnostic: Diagnostic<$Span>);
 
-            fn ts_drop(stream: $TokenStream);
             fn ts_clone(stream: &$TokenStream) -> $TokenStream;
             fn ts_is_empty(stream: &$TokenStream) -> bool;
             fn ts_expand_expr(stream: &$TokenStream) -> Result<$TokenStream, ()>;
