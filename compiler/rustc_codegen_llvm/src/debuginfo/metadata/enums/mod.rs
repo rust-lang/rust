@@ -426,7 +426,7 @@ fn compute_discriminant_value<'ll, 'tcx>(
                 DiscrResult::Range(min, max)
             } else {
                 let value = (variant_index.as_u32() as u128)
-                    .wrapping_sub(niche_variants.start().as_u32() as u128)
+                    .wrapping_sub(niche_variants.start.as_u32() as u128)
                     .wrapping_add(niche_start);
                 let value = tag.size(cx).truncate(value);
                 DiscrResult::Value(value)
