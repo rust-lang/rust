@@ -136,9 +136,12 @@ fn run_cli_loop<'tcx>(session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> 
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
-        // TODO: handle EOF explicitly so scripted input can stop the CLI instead
-        // of being treated like an empty Enter step.
-        io::stdin().read_line(&mut input).unwrap();
+        let bytes_read = io::stdin().read_line(&mut input).unwrap();
+
+        if bytes_read == 0 {
+            println!("stdin closed, stopping");
+            return interp_ok(());
+        }
 
         if let Some(command) = parse_command(&input) {
             match command {
