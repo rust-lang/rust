@@ -515,6 +515,48 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
     }
 
+    /// Given the bounds on an object, determines what single region bound (if any) we can
+    /// use to summarize this type.
+    ///
+    /// The basic idea is that we will use the bound the user
+    /// provided, if they provided one, and otherwise search the supertypes of trait bounds
+    /// for region bounds. It may be that we can derive no bound at all, in which case
+    /// we return `None`.
+    #[instrument(level = "debug", skip(self, span), ret)]
+    fn compute_object_lifetime_bound(
+        &self,
+        span: Span,
+        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    ) -> Option<ty::Region<'tcx>> // if None, use the default
+    {
+        let tcx = self.tcx();
+
+        // No explicit region bound specified. Therefore, examine trait
+        // bounds and see if we can derive region bounds from those.
+        let derived_region_bounds = traits::wf::object_region_bounds(tcx, existential_predicates);
+
+        // If there are no derived region bounds, then report back that we
+        // can find no region bound. The caller will use the default.
+        if derived_region_bounds.is_empty() {
+            return None;
+        }
+
+        // If any of the derived region bounds are 'static, that is always
+        // the best choice.
+        if derived_region_bounds.iter().any(|r| r.is_static()) {
+            return Some(tcx.lifetimes.re_static);
+        }
+
+        // Determine whether there is exactly one unique region in the set
+        // of derived region bounds. If so, use that. Otherwise, report an
+        // error.
+        let r = derived_region_bounds[0];
+        if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
+            self.dcx().emit_err(crate::errors::AmbiguousLifetimeBound { span });
+        }
+        Some(r)
+    }
+
     /// Prohibit or lint against *bare* trait object types depending on the edition.
     ///
     /// *Bare* trait object types are ones that aren't preceded by the keyword `dyn`.
