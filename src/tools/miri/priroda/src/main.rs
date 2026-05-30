@@ -69,7 +69,10 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
             Ok(()) => {}
             Err(err) =>
                 if let Some((return_code, _leak_check)) = report_result(&session.ecx, err) {
-                    //TODO: print the evaluated program's exit code and return to the debugger prompt instead of exiting Priroda.
+                    // TODO: translate Miri termination into a Priroda execution-state enum so
+                    // the CLI loop can distinguish whole-program exit from individual thread
+                    // completion, print the exit code, and return to the debugger prompt.
+                    println!("program finished with exit code {return_code}");
                     if return_code != 0 {
                         std::process::exit(return_code);
                     }
