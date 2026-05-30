@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         cargo_runner: [
-          "sde -future -rtm_mode full --",
+          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
           "",
         ]
 

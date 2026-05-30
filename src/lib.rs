@@ -98,7 +98,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
@@ -291,8 +291,8 @@ impl CodegenBackend for GccCodegenBackend {
         target_cpu(sess).to_owned()
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>, crate_info: &CrateInfo) -> Box<dyn Any> {
-        Box::new(codegen_crate(self.clone(), tcx, crate_info))
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+        Box::new(codegen_crate(self.clone(), tcx))
     }
 
     fn join_codegen(
@@ -300,15 +300,20 @@ impl CodegenBackend for GccCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess)
+            .join(sess, crate_info)
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess, &self.target_info)
+    }
+
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![sym::type_id_eq]
     }
 }
 
