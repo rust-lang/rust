@@ -32,7 +32,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
-    InferBodyId, InferenceResult,
+    InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
     infer_query_with_inspect,
@@ -2601,6 +2601,7 @@ impl<'db> SemanticsImpl<'db> {
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
+                    LoweringMode::Ide,
                 );
                 let data: Vec<ProofTreeData> =
                     RESULT.with(|data| data.borrow_mut().drain(..).collect());

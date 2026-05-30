@@ -27,6 +27,7 @@ use crate::{
     LifetimeElisionKind, Span, TyLoweringContext,
     db::HirDatabase,
     generics::Generics,
+    lower::LoweringMode,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, StoredClauses, Ty, TyKind,
         infer::{
@@ -188,7 +189,8 @@ pub fn where_predicate_must_hold<'db>(
         generic_def,
         &generics,
         LifetimeElisionKind::Infer,
-    );
+    )
+    .with_interning_mode(LoweringMode::Ide);
     let clauses =
         ctx.lower_where_predicate(predicate, false).map(|(clause, _)| clause).collect::<Vec<_>>();
 

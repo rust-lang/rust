@@ -21,13 +21,13 @@ impl Tidy {
 }
 
 fn check_lsp_extensions_docs(sh: &Shell) {
-    let expected_hash = {
+    let actual_hash = {
         let lsp_ext_rs =
             sh.read_file(project_root().join("crates/rust-analyzer/src/lsp/ext.rs")).unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
-    let actual_hash = {
+    let expected_hash = {
         let lsp_extensions_md = sh
             .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
             .unwrap();

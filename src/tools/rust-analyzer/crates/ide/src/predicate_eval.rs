@@ -1,3 +1,5 @@
+//! Evaluates type predicates at a given position in the source code.
+
 use hir::{PredicateEvaluationResult, Semantics};
 use ide_db::{FilePosition, RootDatabase};
 use syntax::{AstNode, SourceFile, ast};
