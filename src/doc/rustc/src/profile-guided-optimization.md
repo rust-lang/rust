@@ -182,6 +182,11 @@ with the `-Cdebuginfo-for-profiling` option. For example:
 rustc -Cdebuginfo=line-tables-only -Cdebuginfo-for-profiling -O main.rs
 ```
 
+Additionally emitted by `debuginfo-for-profiling` information helps the
+compiler distinguish different basic blocks during the optimization even
+if they have the same source line location, that consequently improves
+the accuracy of the profile-guided optimization.
+
 2. Run the executable under a sampling profiler. The specific profiler you use
 does not really matter, as long as its output can be converted into the format
 that the LLVM optimizer understands.
