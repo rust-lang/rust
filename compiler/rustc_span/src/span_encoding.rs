@@ -79,6 +79,7 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 /// This is performed using the callback `SPAN_TRACK` to access the query engine.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
+#[repr(C)] // we transmute to u64 and under -Zrandomize-layout this is otherwise 96 bits.
 pub struct Span {
     lo_or_index: u32,
     len_with_tag_or_marker: u16,
@@ -453,6 +454,16 @@ impl Span {
     pub fn from_raw_span(RawSpan(a, b, c): RawSpan) -> Span {
         // Field order must match `to_raw_span`.
         Span { lo_or_index: a, len_with_tag_or_marker: b, ctxt_or_parent_or_marker: c }
+    }
+
+    #[inline]
+    pub fn encode_raw(self) -> u64 {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    #[inline]
+    pub fn decode_raw(sp: u64) -> Span {
+        unsafe { std::mem::transmute(sp) }
     }
 }
 

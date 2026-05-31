@@ -7,6 +7,7 @@
 //! Rust ABIs (e.g., stage0/bin/rustc vs stage1/bin/rustc during bootstrap).
 
 #![deny(unsafe_code)]
+#![cfg_attr(target_family = "wasm", allow(unused))]
 
 use std::hash::Hash;
 use std::marker;
@@ -87,30 +88,46 @@ pub(crate) struct Methods;
 #[allow(unsafe_code)]
 mod arena;
 #[allow(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 mod buffer;
 #[deny(unsafe_code)]
+#[cfg_attr(target_family = "wasm", path = "client_wasi.rs")]
+#[cfg_attr(not(target_family = "wasm"), path = "client.rs")]
 pub mod client;
 #[allow(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 mod closure;
 #[forbid(unsafe_code)]
 mod fxhash;
 #[forbid(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 mod rpc;
 #[forbid(unsafe_code)]
 mod panic_message;
 #[allow(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 mod selfless_reify;
 #[forbid(unsafe_code)]
+#[cfg(not(target_family = "wasm"))]
 pub mod server;
 #[allow(unsafe_code)]
 mod symbol;
 
+#[cfg(not(target_family = "wasm"))]
 use buffer::Buffer;
+#[cfg(not(target_family = "wasm"))]
 pub use panic_message::PanicMessage;
+#[cfg(not(target_family = "wasm"))]
 use rpc::{Decode, Encode};
+
+#[cfg(target_family = "wasm")]
+macro_rules! rpc_encode_decode {
+    ($($t:tt)*) => {};
+}
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
@@ -118,6 +135,7 @@ use rpc::{Decode, Encode};
 /// of `client::Client`. The client constructs a local `Bridge` from the config
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
+#[cfg(not(target_family = "wasm"))]
 pub struct BridgeConfig<'a> {
     /// Buffer used to pass initial input to the client.
     input: Buffer,
@@ -129,7 +147,9 @@ pub struct BridgeConfig<'a> {
     force_show_panics: bool,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl !Send for BridgeConfig<'_> {}
+#[cfg(not(target_family = "wasm"))]
 impl !Sync for BridgeConfig<'_> {}
 
 macro_rules! declare_tags {
@@ -140,6 +160,7 @@ macro_rules! declare_tags {
         pub(super) enum ApiTags {
             $($method),*
         }
+        #[cfg(not(target_family = "wasm"))]
         rpc_encode_decode!(enum ApiTags { $($method),* });
     }
 }
@@ -323,7 +344,9 @@ macro_rules! mark_compound {
 
 macro_rules! compound_traits {
     ($($t:tt)*) => {
+        #[cfg(not(target_family = "wasm"))]
         rpc_encode_decode!($($t)*);
+        #[cfg(not(target_family = "wasm"))]
         mark_compound!($($t)*);
     };
 }

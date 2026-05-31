@@ -235,6 +235,12 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         );
     }
 
+    builder.cond(
+        "wasm-proc-macro",
+        config.wasm_proc_macro,
+        "when wasm-proc-macro is enabled in bootstrap.toml",
+    );
+
     // Coverage tests run the same test file in multiple modes.
     // If a particular test should not be run in one of the modes, ignore it
     // with "ignore-coverage-map" or "ignore-coverage-run".

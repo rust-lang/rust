@@ -23,12 +23,12 @@
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(negative_impls)]
-#![feature(panic_can_unwind)]
+#![cfg_attr(not(target_family = "wasm"), feature(panic_can_unwind))]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(extend_one)]
-#![feature(mem_conjure_zst)]
 #![feature(f16)]
+#![cfg_attr(not(target_family = "wasm"), feature(mem_conjure_zst))]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
@@ -45,7 +45,6 @@ mod diagnostic;
 mod escape;
 mod to_tokens;
 
-use core::convert::From;
 use core::ops::BitOr;
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -53,6 +52,31 @@ use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
+
+#[cfg(target_family = "wasm")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
+#[doc(hidden)]
+#[allow(unreachable_pub)]
+pub mod wasi_bindgen {
+    // There's a cli (wit-bindgen-cli) that can be used to do this instead of this rustc internal
+    // macro, but then we'd need to check in the output and setup tidy to enforce it's always been
+    // run. Since the majority of these dependencies are part of the rustc closure anyway (from
+    // wasmtime::bindgen's own parsing of the same wit file), we went with this builtin macro hack.
+    //
+    // Note that even if we could use the macro directly we'd still need some post-processing (or
+    // upstream a change to the macro to add an option / gate on cfg), see the string replacement
+    // done on the internal macro's implementation for details.
+    //
+    // Note also that if this used a normal proc macro we'd also need to worry about downstream user
+    // code supporting cross-compilation (notably to wasm, since that's not a host target).
+    #[allow_internal_unstable(proc_macro_internals)]
+    #[rustc_builtin_macro]
+    macro internal_wit_bindgen($($t:tt)*) {
+        /* compiler built-in */
+    }
+
+    internal_wit_bindgen!();
+}
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
@@ -427,7 +451,7 @@ impl ConcatTreesHelper {
         if self.trees.is_empty() {
             return;
         }
-        stream.0 = Some(BridgeMethods::ts_concat_trees(stream.0.take(), self.trees))
+        stream.0 = Some(BridgeMethods::ts_concat_trees(stream.0.take(), self.trees));
     }
 }
 
