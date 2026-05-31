@@ -1,4 +1,4 @@
-// MIR for `std::ops::Fn::call` before AddMovesForPackedDrops
+// MIR for `std::ops::Fn::call` 0 make_shim
 
 fn std::ops::Fn::call(_1: &fn(), _2: ()) -> <fn() as FnOnce<()>>::Output {
     let mut _0: <fn() as std::ops::FnOnce<()>>::Output;

@@ -1,4 +1,4 @@
-// MIR for `std::ptr::drop_glue` before AddMovesForPackedDrops
+// MIR for `std::ptr::drop_glue` 0 make_shim
 
 fn std::ptr::drop_glue(_1: &mut Vec<i32>) -> () {
     let mut _0: ();

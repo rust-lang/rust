@@ -17,7 +17,7 @@ impl Foo {
 impl Drop for Foo {
     fn drop(&mut self) {}
 }
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.[Foo;1].MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.[Foo;1].make_shim.0.mir
 impl AsyncDrop for Foo {
     async fn drop(self: Pin<&mut Self>) {}
 }
