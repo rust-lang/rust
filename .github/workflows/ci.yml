@@ -26,7 +26,7 @@ jobs:
           - { gcc: "gcc-15.deb" }
           - { gcc: "gcc-15-without-int128.deb" }
         commands: [
-          "--std-tests",
+          "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
           "--test-libcore",
