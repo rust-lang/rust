@@ -19,9 +19,11 @@ use miri::*;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
+use rustc_middle::mir;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
+
 fn find_sysroot() -> String {
     std::env::var("MIRI_SYSROOT")
         .expect("set MIRI_SYSROOT to the path from `cargo miri setup --print-sysroot`")
@@ -115,24 +117,42 @@ fn normalize_path(path: PathBuf) -> PathBuf {
     path.canonicalize().unwrap_or(path)
 }
 
+enum InstructionVisibility {
+    NoInstruction,
+    Hidden,
+    Visible,
+}
+
 impl<'tcx> PrirodaContext<'tcx> {
     fn new(ecx: MiriInterpCx<'tcx>) -> Self {
         Self { ecx, breakpoints: HashSet::new(), current_location: None, last_location: None }
     }
 
-    // TODO: return a StepResult enum once we distinguish breakpoint stops,
-    // program exit, and other debugger states.
-    pub fn step(&mut self) -> InterpResult<'tcx> {
+    /// Advance Miri by one interpreter-loop transition.
+    fn advance(&mut self) -> InterpResult<'tcx> {
         // state inspection should happen only after a successful step
         self.ecx.miri_step()?;
         self.last_location = self.current_location.take();
         self.current_location = self.resolve_current_location();
         interp_ok(())
     }
+    // TODO: return a StepResult enum once we distinguish breakpoint stops,
+    // program exit, and other debugger states.
+    /// Step to the next visible MIR instruction
+    pub fn step(&mut self) -> InterpResult<'tcx> {
+        loop {
+            self.advance()?;
+
+            match self.current_instruction_visibility() {
+                InstructionVisibility::NoInstruction | InstructionVisibility::Hidden => {}
+                InstructionVisibility::Visible => return interp_ok(()),
+            }
+        }
+    }
 
     pub fn continue_execution(&mut self) -> InterpResult<'tcx> {
         loop {
-            self.step()?;
+            self.advance()?;
             if self.is_at_breakpoint() {
                 return interp_ok(());
             }
@@ -141,6 +161,34 @@ impl<'tcx> PrirodaContext<'tcx> {
 
     fn set_breakpoint(&mut self, path: PathBuf, line: usize) {
         self.breakpoints.insert(Breakpoint { path: normalize_path(path), line });
+    }
+
+    fn current_instruction_visibility(&self) -> InstructionVisibility {
+        // If the active thread has no stack frame, there is no MIR instruction to show.
+        let Some(frame) = self.ecx.active_thread_stack().last() else {
+            return InstructionVisibility::NoInstruction;
+        };
+
+        // `Right(span)` means the frame has source context but no precise MIR program-counter location.
+        let Either::Left(location) = frame.current_loc() else {
+            return InstructionVisibility::NoInstruction;
+        };
+
+        let basic_block = &frame.body().basic_blocks[location.block];
+
+        // `statement_index == statements.len()` points at the block terminator.
+        // Terminators affect control flow, so they are always visible.
+        let Some(statement) = basic_block.statements.get(location.statement_index) else {
+            return InstructionVisibility::Visible;
+        };
+
+        // Hide bookkeeping-only MIR statements during manual stepping.
+        match statement.kind {
+            mir::StatementKind::StorageLive(_)
+            | mir::StatementKind::StorageDead(_)
+            | mir::StatementKind::Nop => InstructionVisibility::Hidden,
+            _ => InstructionVisibility::Visible,
+        }
     }
 
     fn is_at_breakpoint(&self) -> bool {
