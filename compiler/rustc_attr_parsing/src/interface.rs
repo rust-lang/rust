@@ -337,11 +337,12 @@ impl<'sess> AttributeParser<'sess> {
 
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let inner_span = lower_span(n.item.span());
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             accept.safety,
                             &mut emit_lint,
@@ -396,7 +397,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                             },
                             attr_span,
-                            inner_span: lower_span(n.item.span()),
+                            inner_span,
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
@@ -420,7 +421,7 @@ impl<'sess> AttributeParser<'sess> {
 
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             AttributeSafety::Normal,
                             &mut emit_lint,
@@ -429,7 +430,7 @@ impl<'sess> AttributeParser<'sess> {
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
                             && target == Target::Crate
                         {
-                            self.check_invalid_crate_level_attr_item(&attr, n.item.span());
+                            self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
 
                         attributes.push(Attribute::Unparsed(Box::new(attr)));
