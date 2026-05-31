@@ -601,40 +601,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let oldpath_ptr = this.read_pointer(oldpath_op)?;
         let newpath_ptr = this.read_pointer(newpath_op)?;
 
+        // Relevant libc constants
+        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`linkat`", reject_with)?;
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        // Read flags- only support 0
+        // Read flags - only support 0.
         if flags != 0 {
             throw_unsup_format!("unsupported linkat flags {:#x}", flags);
         }
 
-        // Read file descriptors
-        let at_fdcwd = this.eval_libc_i32("AT_FDCWD");
-
         // Resolve oldpath
-        let oldpath = if oldfd == at_fdcwd {
-            if oldpath_ptr == Pointer::null() {
-                return this.set_errno_and_return_neg1_i32(ErrorKind::InvalidInput);
-            }
-            this.read_path_from_c_str(oldpath_ptr)?.into_owned()
-        } else {
-            // We don't support linkat with a real fd yet
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
+        if oldfd != at_fdcwd {
+            throw_unsup_format!("linkat with `olddirfd` not equal to `AT_FDCWD` is not supported");
+        }
+        if oldpath_ptr == Pointer::null() {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let oldpath = this.read_path_from_c_str(oldpath_ptr)?.into_owned();
 
         // Resolve newpath
-        let newpath = if newfd == at_fdcwd {
-            if newpath_ptr == Pointer::null() {
-                return this.set_errno_and_return_neg1_i32(ErrorKind::InvalidInput);
-            }
-            this.read_path_from_c_str(newpath_ptr)?.into_owned()
-        } else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        };
+        if newfd != at_fdcwd {
+            throw_unsup_format!("linkat with `newdirfd` not equal to `AT_FDCWD` is not supported");
+        }
+        if newpath_ptr == Pointer::null() {
+            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+        }
+        let newpath = this.read_path_from_c_str(newpath_ptr)?.into_owned();
 
         let result = fs::hard_link(&oldpath, &newpath).map(|()| 0);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))

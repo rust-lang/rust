@@ -2,8 +2,8 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{File, canonicalize, create_dir, remove_dir, remove_file};
-use std::io::{Error, ErrorKind, Read, Write};
+use std::fs::{self, File, canonicalize, create_dir, remove_dir, remove_file};
+use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
@@ -22,7 +22,6 @@ fn main() {
     test_dup_stdout_stderr();
     test_canonicalize_too_long();
     test_rename();
-    test_linkat();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
@@ -69,11 +68,12 @@ fn main() {
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
     test_pwrite();
+    test_linkat();
 }
 
 #[cfg(target_os = "linux")]
 #[track_caller]
-fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, expected_size: u64) {
+fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expected_size: u64) {
     use std::os::unix::fs::MetadataExt;
     let mask = stx.stx_mask;
 
@@ -153,7 +153,7 @@ fn test_statx_on_file_path() {
         assert_eq!(ret, 0, "statx failed: {}", std::io::Error::last_os_error());
 
         let stx = stx.assume_init();
-        let meta = std::fs::metadata(&path).unwrap();
+        let meta = fs::metadata(&path).unwrap();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
@@ -1167,15 +1167,10 @@ fn test_linkat() {
         ));
     }
 
-    // Verify that the hard link works
-    // Modifications to one are visible through the other
-    let mut file = std::fs::File::create(&source).unwrap();
-    file.write_all(b"hello world").unwrap();
-    drop(file);
-
-    let mut file = std::fs::File::open(&link).unwrap();
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents).unwrap();
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
     assert_eq!(contents, b"hello world");
 
     // Cleanup
