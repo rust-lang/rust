@@ -16,6 +16,8 @@ use crate::sys::random as sys;
 /// security is not a concern,  consider using an alternative random number
 /// generator (potentially seeded from this one).
 ///
+/// If you need to fill a buffer with random bytes, use `DefaultRandomSource.fill_bytes(&mut buf)`.
+///
 /// # Underlying sources
 ///
 /// Platform               | Source
