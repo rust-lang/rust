@@ -1,41 +1,4 @@
 
-<details><summary>["AMX-BF16"]</summary><p>
-
-  * [ ] [`__tile_dpbf16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbf16ps)
-</p></details>
-
-
-<details><summary>["AMX-COMPLEX"]</summary><p>
-
-  * [ ] [`__tile_cmmimfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmimfp16ps)
-  * [ ] [`__tile_cmmrlfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_cmmrlfp16ps)
-</p></details>
-
-
-<details><summary>["AMX-FP16"]</summary><p>
-
-  * [ ] [`__tile_dpfp16ps`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpfp16ps)
-</p></details>
-
-
-<details><summary>["AMX-INT8"]</summary><p>
-
-  * [ ] [`__tile_dpbssd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbssd)
-  * [ ] [`__tile_dpbsud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbsud)
-  * [ ] [`__tile_dpbusd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbusd)
-  * [ ] [`__tile_dpbuud`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_dpbuud)
-</p></details>
-
-
-<details><summary>["AMX-TILE"]</summary><p>
-
-  * [ ] [`__tile_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_loadd)
-  * [ ] [`__tile_stored`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stored)
-  * [ ] [`__tile_stream_loadd`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_stream_loadd)
-  * [ ] [`__tile_zero`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__tile_zero)
-</p></details>
-
-
 <details><summary>["AVX512_FP16"]</summary><p>
 
   * [ ] [`_mm256_set1_pch`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_pch)
