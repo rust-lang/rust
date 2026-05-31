@@ -3,9 +3,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #![unstable()]
    | ^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:7:1
@@ -24,9 +21,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:12:1
@@ -45,9 +39,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL |         #![unstable()]
    |         ^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:18:9
@@ -66,9 +57,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:24:5
@@ -87,9 +75,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:30:5
@@ -108,9 +93,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:36:5
@@ -129,9 +111,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL |     #[unstable()]
    |     ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/issue-43106-gating-of-unstable.rs:42:5

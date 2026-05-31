@@ -9,9 +9,6 @@ LL | |     link = "https://github.com/rust-lang/rust/issues/141617",
 LL | |     since="1.92.0"
 LL | | )]
    | |__^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0557]: feature `old_feature` has been removed
   --> $DIR/unstable_removed.rs:3:12

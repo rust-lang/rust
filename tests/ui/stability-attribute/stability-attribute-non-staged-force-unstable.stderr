@@ -3,9 +3,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-non-staged-force-unstable.rs:3:1
@@ -24,9 +21,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #[stable()]
    | ^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-non-staged-force-unstable.rs:7:1

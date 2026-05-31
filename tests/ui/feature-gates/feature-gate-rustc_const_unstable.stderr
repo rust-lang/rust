@@ -3,9 +3,6 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #[rustc_const_unstable(feature="fzzzzzt")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0547]: missing 'issue'
   --> $DIR/feature-gate-rustc_const_unstable.rs:3:1

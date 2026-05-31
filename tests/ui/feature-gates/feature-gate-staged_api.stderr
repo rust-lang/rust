@@ -3,18 +3,12 @@ error[E0658]: stability attributes may not be used outside of the standard libra
    |
 LL | #![stable(feature = "a", since = "3.3.3")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/feature-gate-staged_api.rs:8:1
    |
 LL | #[stable(feature = "a", since = "3.3.3")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(staged_api)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 

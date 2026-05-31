@@ -58,6 +58,13 @@ impl<'sess> AttributeParser<'sess> {
 
         let mut diag = feature_err(self.sess, gate_name, attr_span, explain);
 
+        // Remove the suggestion for `#![feature(staged_api)]` as these attributes are currently
+        // not usable outside std. If we do ever expose `#[stable]` etc under a different feature
+        // name then it would be unfortunate to have nightlies out there suggesting `staged_api`.
+        if gate_name == sym::staged_api {
+            diag.children.clear();
+        }
+
         for note in default_notes {
             diag.note(note.clone());
         }
