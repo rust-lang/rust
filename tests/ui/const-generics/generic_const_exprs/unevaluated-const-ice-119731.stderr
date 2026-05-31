@@ -10,6 +10,19 @@ LL - pub use v20::{v13, v17};
 LL + pub use v20::{v11, v17};
    |
 
+error[E0425]: cannot find function `v6` in this scope
+  --> $DIR/unevaluated-const-ice-119731.rs:13:35
+   |
+LL |     const v0: [[usize; v4]; v4] = v6(v8);
+   |                                   ^^ not found in this scope
+   |
+help: consider importing one of these similarly named tuple variants
+   |
+LL +     use std::net::IpAddr::V6;
+   |
+LL +     use std::net::SocketAddr::V6;
+   |
+
 error[E0425]: cannot find value `v8` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:13:38
    |
@@ -86,12 +99,6 @@ help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable 
    |
 LL + #![feature(min_adt_const_params)]
    |
-
-error[E0425]: cannot find function `v6` in this scope
-  --> $DIR/unevaluated-const-ice-119731.rs:13:35
-   |
-LL |     const v0: [[usize; v4]; v4] = v6(v8);
-   |                                   ^^ not found in this scope
 
 error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37
