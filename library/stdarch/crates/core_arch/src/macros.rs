@@ -350,7 +350,6 @@ macro_rules! interleaving_store {
 
         // NOTE: repr(simd) adds padding to make the total size a power of two.
         // Hence writing W to ptr might write out of bounds.
-
         type W = Simd<$elem, { $lanes * 3 }>;
 
         let w: W = simd_shuffle!(v0v1, v2v2, interleave_mask::<{ $lanes * 3 }, $lanes, 3>());
