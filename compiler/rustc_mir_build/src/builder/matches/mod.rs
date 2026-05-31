@@ -376,7 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &scrutinee_place,
             match_start_span,
             patterns,
-            false,
+            Exhaustive::Yes,
         );
 
         self.lower_match_arms(
@@ -649,7 +649,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &initializer,
             irrefutable_pat.span,
             vec![(irrefutable_pat, HasMatchGuard::No)],
-            false,
+            Exhaustive::Yes,
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 
@@ -1565,6 +1565,14 @@ pub(crate) enum HasMatchGuard {
     No,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Exhaustive {
+    /// `let` and `match` are exhaustive.
+    Yes,
+    /// `if let` and `let else` are not exhaustive.
+    No,
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The entrypoint of the matching algorithm. Create the decision tree for the match expression,
     /// starting from `block`.
@@ -1572,9 +1580,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `patterns` is a list of patterns, one for each arm. The associated boolean indicates whether
     /// the arm has a guard.
     ///
-    /// `refutable` indicates whether the candidate list is refutable (for `if let` and `let else`)
-    /// or not (for `let` and `match`). In the refutable case we return the block to which we branch
-    /// on failure.
+    /// `exhaustive` indicates whether the candidate list is exhaustive (for `if let` and `let else`)
+    /// or not (for `let` and `match`). In the non-exhaustive case we return the block to which we
+    /// branch on failure.
     pub(crate) fn lower_match_tree(
         &mut self,
         block: BasicBlock,
@@ -1582,7 +1590,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
         patterns: Vec<(&Pat<'tcx>, HasMatchGuard)>,
-        refutable: bool,
+        exhaustive: Exhaustive,
     ) -> BuiltMatchTree<'tcx> {
         // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
         // input patterns, but other parts of match lowering also introduce subcandidates (for
@@ -1611,9 +1619,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Set up false edges so that the borrow-checker cannot make use of the specific CFG we
         // generated. We falsely branch from each candidate to the one below it to make it as if we
-        // were testing match branches one by one in order. In the refutable case we also want a
+        // were testing match branches one by one in order. In the non-exhaustive case we also want a
         // false edge to the final failure block.
-        let mut next_candidate_start_block = if refutable { Some(otherwise_block) } else { None };
+        let mut next_candidate_start_block = match exhaustive {
+            Exhaustive::Yes => None,
+            Exhaustive::No => Some(otherwise_block),
+        };
         for candidate in candidates.iter_mut().rev() {
             let has_guard = candidate.has_guard;
             candidate.visit_leaves_rev(|leaf_candidate| {
@@ -1647,8 +1658,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             });
         }
 
-        if !refutable {
-            // Match checking ensures `otherwise_block` is actually unreachable in irrefutable
+        if exhaustive == Exhaustive::Yes {
+            // Match checking ensures `otherwise_block` is actually unreachable in exhaustive
             // cases.
             let source_info = self.source_info(scrutinee_span);
 
@@ -2362,7 +2373,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &scrutinee,
             pat.span,
             vec![(pat, HasMatchGuard::No)],
-            true,
+            Exhaustive::No,
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 
