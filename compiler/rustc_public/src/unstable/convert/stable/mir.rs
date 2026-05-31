@@ -712,16 +712,18 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::Goto { target } => {
                 TerminatorKind::Goto { target: target.as_usize() }
             }
-            mir::TerminatorKind::SwitchInt { discr, targets } => TerminatorKind::SwitchInt {
-                discr: discr.stable(tables, cx),
-                targets: {
-                    let branches = targets.iter().map(|(val, target)| (val, target.as_usize()));
-                    crate::mir::SwitchTargets::new(
-                        branches.collect(),
-                        targets.otherwise().as_usize(),
-                    )
-                },
-            },
+            mir::TerminatorKind::SwitchInt { discr, targets, indirect_br: _ } => {
+                TerminatorKind::SwitchInt {
+                    discr: discr.stable(tables, cx),
+                    targets: {
+                        let branches = targets.iter().map(|(val, target)| (val, target.as_usize()));
+                        crate::mir::SwitchTargets::new(
+                            branches.collect(),
+                            targets.otherwise().as_usize(),
+                        )
+                    },
+                }
+            }
             mir::TerminatorKind::UnwindResume => TerminatorKind::Resume,
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,

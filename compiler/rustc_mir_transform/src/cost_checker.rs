@@ -123,7 +123,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::TailCall { .. } => {
                 self.penalty += CALL_PENALTY;
             }
-            TerminatorKind::SwitchInt { discr, targets } => {
+            TerminatorKind::SwitchInt { discr, targets, indirect_br: _ } => {
                 if matches!(discr, Operand::Constant(_) | Operand::RuntimeChecks(_)) {
                     // Not only will this become a `Goto`, but likely other
                     // things will be removable as unreachable.

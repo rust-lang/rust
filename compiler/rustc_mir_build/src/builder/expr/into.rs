@@ -57,13 +57,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { scrutinee, ref arms, .. } => this.match_expr(
+            ExprKind::Match { scrutinee, ref arms, indirect_br, .. } => this.match_expr(
                 destination,
                 block,
                 scrutinee,
                 arms,
                 expr_span,
                 this.thir[scrutinee].span,
+                indirect_br,
             ),
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
                 let then_span = this.thir[then].span;
@@ -323,6 +324,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         match_start_span,
                         patterns,
                         false,
+                        false, // FIXME we can probably indirect_branch work?
                     );
 
                     let state_place = scrutinee_place_builder.to_place(this);

@@ -1054,6 +1054,9 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
+    /// Represents `#[indirect_branch]`.
+    IndirectBranch(Span),
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 

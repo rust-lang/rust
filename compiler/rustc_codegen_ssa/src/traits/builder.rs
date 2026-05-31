@@ -123,6 +123,18 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.switch(v, else_llbb, cases.map(|(val, bb, _)| (val, bb)))
     }
 
+    // A switch that duplicates the branching logic. Used in C for computed-goto.
+    //
+    // Default implementation calls `switch()`
+    fn indirect_br(
+        &mut self,
+        v: Self::Value,
+        else_llbb: Self::BasicBlock,
+        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)>,
+    ) {
+        self.switch(v, else_llbb, cases)
+    }
+
     fn invoke(
         &mut self,
         llty: Self::FunctionSignature,

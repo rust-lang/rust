@@ -356,6 +356,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         arms: &[ArmId],
         span: Span,
         scrutinee_span: Span,
+        indirect_br: bool,
     ) -> BlockAnd<()> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
@@ -370,13 +371,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 (&*arm.pattern, has_match_guard)
             })
             .collect();
+        let refutable = false;
         let built_tree = self.lower_match_tree(
             block,
             scrutinee_span,
             &scrutinee_place,
             match_start_span,
             patterns,
-            false,
+            refutable,
+            indirect_br,
         );
 
         self.lower_match_arms(
@@ -650,6 +653,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             irrefutable_pat.span,
             vec![(irrefutable_pat, HasMatchGuard::No)],
             false,
+            false, // this match is derived from a let
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 
@@ -1583,6 +1587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_start_span: Span,
         patterns: Vec<(&Pat<'tcx>, HasMatchGuard)>,
         refutable: bool,
+        indirect_br: bool,
     ) -> BuiltMatchTree<'tcx> {
         // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
         // input patterns, but other parts of match lowering also introduce subcandidates (for
@@ -1606,8 +1611,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // If none of the arms match, we branch to `otherwise_block`. When lowering a `match`
         // expression, exhaustiveness checking ensures that this block is unreachable.
         let mut candidate_refs = candidates.iter_mut().collect::<Vec<_>>();
-        let otherwise_block =
-            self.match_candidates(match_start_span, scrutinee_span, block, &mut candidate_refs);
+        let otherwise_block = self.match_candidates(
+            match_start_span,
+            scrutinee_span,
+            block,
+            &mut candidate_refs,
+            indirect_br,
+        );
 
         // Set up false edges so that the borrow-checker cannot make use of the specific CFG we
         // generated. We falsely branch from each candidate to the one below it to make it as if we
@@ -1752,9 +1762,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'tcx>],
+        indirect_br: bool,
     ) -> BasicBlock {
         ensure_sufficient_stack(|| {
-            self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
+            self.match_candidates_inner(span, scrutinee_span, start_block, candidates, indirect_br)
         })
     }
 
@@ -1766,6 +1777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         mut start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'tcx>],
+        indirect_br: bool,
     ) -> BasicBlock {
         if let [first, ..] = candidates {
             if first.false_edge_start_block.is_none() {
@@ -1794,17 +1806,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // But by expanding other candidates as early as possible, we unlock more
                 // opportunities to include them in test outcomes, making the match tree
                 // smaller and simpler.
-                self.expand_and_match_or_candidates(span, scrutinee_span, start_block, candidates)
+                self.expand_and_match_or_candidates(
+                    span,
+                    scrutinee_span,
+                    start_block,
+                    candidates,
+                    indirect_br,
+                )
             }
             candidates => {
                 // The first candidate has some unsatisfied match pairs; we proceed to do more tests.
-                self.test_candidates(span, scrutinee_span, candidates, start_block)
+                self.test_candidates(span, scrutinee_span, candidates, start_block, indirect_br)
             }
         };
 
         // Process any candidates that remain.
         let remaining_candidates = unpack!(start_block = rest);
-        self.match_candidates(span, scrutinee_span, start_block, remaining_candidates)
+        self.match_candidates(span, scrutinee_span, start_block, remaining_candidates, indirect_br)
     }
 
     /// Link up matched candidates.
@@ -1858,6 +1876,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         start_block: BasicBlock,
         candidates: &'b mut [&'c mut Candidate<'tcx>],
+        indirect_br: bool,
     ) -> BlockAnd<&'b mut [&'c mut Candidate<'tcx>]> {
         // We can't expand or-patterns freely. The rule is:
         // - If a candidate doesn't start with an or-pattern, we include it in
@@ -1925,6 +1944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scrutinee_span,
             start_block,
             expanded_candidates.as_mut_slice(),
+            indirect_br,
         );
 
         // Postprocess subcandidates, and process any leftover match pairs.
@@ -1943,7 +1963,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // with remaining match pairs, to avoid exponential blowup if possible
         // (for trivial or-patterns), and avoid useless work (for never patterns).
         if let Some(last_candidate) = candidates_to_expand.last_mut() {
-            self.test_remaining_match_pairs_after_or(span, scrutinee_span, last_candidate);
+            self.test_remaining_match_pairs_after_or(
+                span,
+                scrutinee_span,
+                last_candidate,
+                indirect_br,
+            );
         }
 
         remainder_start.and(remaining_candidates)
@@ -2107,6 +2132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         candidate: &mut Candidate<'tcx>,
+        indirect_br: bool,
     ) {
         if candidate.match_pairs.is_empty() {
             return;
@@ -2139,8 +2165,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
 
             let or_start = leaf_candidate.pre_binding_block.unwrap();
-            let otherwise =
-                self.match_candidates(span, scrutinee_span, or_start, &mut [leaf_candidate]);
+            let otherwise = self.match_candidates(
+                span,
+                scrutinee_span,
+                or_start,
+                &mut [leaf_candidate],
+                indirect_br,
+            );
             // In a case like `(P | Q, R | S)`, if `P` succeeds and `R | S` fails, we know `(Q,
             // R | S)` will fail too. If there is no guard, we skip testing of `Q` by branching
             // directly to `last_otherwise`. If there is a guard,
@@ -2286,6 +2317,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         candidates: &'b mut [&'c mut Candidate<'tcx>],
         start_block: BasicBlock,
+        indirect_br: bool,
     ) -> BlockAnd<&'b mut [&'c mut Candidate<'tcx>]> {
         // Choose a match pair from the first candidate, and use it to determine a
         // test to perform that will confirm or refute that match pair.
@@ -2307,8 +2339,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|(branch, mut candidates)| {
                 let branch_start = self.cfg.start_new_block();
                 // Recursively lower the rest of the match tree after the relevant outcome.
-                let branch_otherwise =
-                    self.match_candidates(span, scrutinee_span, branch_start, &mut *candidates);
+                let branch_otherwise = self.match_candidates(
+                    span,
+                    scrutinee_span,
+                    branch_start,
+                    &mut *candidates,
+                    indirect_br,
+                );
 
                 // Link up the `otherwise` block of the subtree to `remainder_start`.
                 let source_info = self.source_info(span);
@@ -2327,6 +2364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_place,
             &test,
             target_blocks,
+            indirect_br,
         );
 
         remainder_start.and(remaining_candidates)
@@ -2363,6 +2401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             pat.span,
             vec![(pat, HasMatchGuard::No)],
             true,
+            false,
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 

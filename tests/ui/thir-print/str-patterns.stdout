@@ -216,6 +216,7 @@ Thir {
                     a2,
                 ],
                 match_source: Normal,
+                indirect_br: false,
             },
             ty: (),
             temp_scope_id: 4,

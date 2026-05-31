@@ -243,7 +243,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
-            TerminatorKind::SwitchInt { discr, targets } => {
+            TerminatorKind::SwitchInt { discr, targets, indirect_br: _ } => {
                 return self.handle_switch_int(discr, targets, state);
             }
             TerminatorKind::TailCall { .. } => {

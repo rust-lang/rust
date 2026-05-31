@@ -1178,6 +1178,11 @@ unsafe extern "C" {
         Then: &'a BasicBlock,
         Else: &'a BasicBlock,
     ) -> &'a Value;
+    pub(crate) fn LLVMBuildIndirectBr<'a>(
+        B: &Builder<'a>,
+        Addr: &'a Value,
+        NumDests: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMBuildSwitch<'a>(
         B: &Builder<'a>,
         V: &'a Value,
@@ -1230,6 +1235,12 @@ unsafe extern "C" {
 
     // Add a case to the switch instruction
     pub(crate) fn LLVMAddCase<'a>(Switch: &'a Value, OnVal: &'a Value, Dest: &'a BasicBlock);
+
+    // Add a destination to the indirectbr instruction
+    pub(crate) fn LLVMAddDestination<'a>(IndirectBr: &'a Value, Dest: &'a BasicBlock);
+
+    // Get the block address of the given block in the given function
+    pub(crate) fn LLVMBlockAddress<'a>(Func: &'a Value, Block: &'a BasicBlock) -> &'a Value;
 
     // Add a clause to the landing pad instruction
     pub(crate) fn LLVMAddClause<'a>(LandingPad: &'a Value, ClauseVal: &'a Value);

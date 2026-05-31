@@ -878,7 +878,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
         self.check_activations(loc, span, state);
 
         match &term.kind {
-            TerminatorKind::SwitchInt { discr, targets: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _, indirect_br: _ } => {
                 self.consume_operand(loc, (discr, span), state);
             }
             TerminatorKind::Drop {

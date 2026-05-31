@@ -113,7 +113,7 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
+                mir::TerminatorKind::SwitchInt { ref targets, ref discr, indirect_br: _ } => {
                     if let Some(_data) = analysis.get_switch_int_data(pred, targets, discr) {
                         bug!(
                             "SwitchInt edge effects are unsupported in backward dataflow analyses"

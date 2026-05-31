@@ -343,7 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, discr: _ } => {
+            TerminatorKind::SwitchInt { targets, discr: _, indirect_br: _ } => {
                 for (_, target) in targets.iter() {
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
@@ -1569,7 +1569,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
-            TerminatorKind::SwitchInt { targets, discr } => {
+            TerminatorKind::SwitchInt { targets, discr, indirect_br: _ } => {
                 let switch_ty = discr.ty(&self.body.local_decls, self.tcx);
 
                 let target_width = self.tcx.sess.target.pointer_width;

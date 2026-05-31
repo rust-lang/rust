@@ -169,7 +169,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     self.insert_range(place, successor, range);
                 }
             }
-            TerminatorKind::SwitchInt { discr, targets }
+            TerminatorKind::SwitchInt { discr, targets, indirect_br: _ }
                 if let Some(place) = discr.place()
                     && self.is_ssa(place)
                     // Reduce the potential compile-time overhead.

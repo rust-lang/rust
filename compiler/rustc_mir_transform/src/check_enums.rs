@@ -394,6 +394,7 @@ fn insert_direct_enum_check<'tcx>(
                     .map(|discr_val| (discr.size.truncate(discr_val), new_block)),
                 invalid_discr_block,
             ),
+            indirect_br: false,
         },
     });
 

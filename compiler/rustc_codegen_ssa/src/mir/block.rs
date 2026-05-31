@@ -386,6 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
+        indirect_br: bool,
     ) {
         let discr = self.codegen_operand(bx, discr);
         let discr_value = discr.immediate();
@@ -498,12 +499,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             {
                 // All targets have the same weight,
                 // or `otherwise` is unreachable and it's the only target with a different weight.
-                bx.switch(
-                    discr_value,
-                    helper.llbb_with_cleanup(self, targets.otherwise()),
-                    target_iter
-                        .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
-                );
+                if indirect_br {
+                    bx.indirect_br(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, targets.otherwise()),
+                        target_iter
+                            .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                    );
+                } else {
+                    bx.switch(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, targets.otherwise()),
+                        target_iter
+                            .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                    );
+                }
             } else {
                 // Targets have different weights
                 bx.switch_with_weights(
@@ -1570,8 +1580,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, bx, target, mergeable_succ())
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, targets);
+            mir::TerminatorKind::SwitchInt { ref discr, ref targets, indirect_br } => {
+                self.codegen_switchint_terminator(helper, bx, discr, targets, indirect_br);
                 MergingSucc::False
             }
 
