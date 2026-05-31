@@ -730,8 +730,10 @@ impl TraitAliasPart {
                         None
                     } else {
                         let impl_ = imp.inner_impl();
+                        let print = print_impl(impl_, false, cx);
                         Some(Implementor {
-                            text: print_impl(impl_, false, cx).to_string(),
+                            text: format!("{}", print),
+                            cmp_text: format!("{:#}", print),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                             is_negative: impl_.is_negative_trait_impl(),
@@ -759,7 +761,7 @@ impl TraitAliasPart {
                 match (a.is_negative, b.is_negative) {
                     (false, true) => Ordering::Greater,
                     (true, false) => Ordering::Less,
-                    _ => compare_names(&a.text, &b.text),
+                    _ => compare_names(&a.cmp_text, &b.cmp_text),
                 }
             });
 
@@ -777,7 +779,11 @@ impl TraitAliasPart {
 }
 
 struct Implementor {
+    // HTML text used in generated output.
     text: String,
+    // Plain text used just for sorting output. This is a performance win, because this plain text
+    // is much shorter than the HTML output and sorting is hot.
+    cmp_text: String,
     synthetic: bool,
     types: Vec<String>,
     is_negative: bool,

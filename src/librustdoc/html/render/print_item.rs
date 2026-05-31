@@ -2324,7 +2324,9 @@ where
 
 #[derive(PartialEq, Eq)]
 struct ImplString {
-    rendered: String,
+    // Plain text (not HTML text) because this is only used for sorting purposes, and the plain
+    // text is much shorter and thus faster to compare.
+    cmp_text: String,
     is_negative: bool,
 }
 
@@ -2333,7 +2335,7 @@ impl ImplString {
         let impl_ = i.inner_impl();
         ImplString {
             is_negative: impl_.is_negative_trait_impl(),
-            rendered: format!("{}", print_impl(impl_, false, cx)),
+            cmp_text: format!("{:#}", print_impl(impl_, false, cx)),
         }
     }
 }
@@ -2350,7 +2352,7 @@ impl Ord for ImplString {
         match (self.is_negative, other.is_negative) {
             (false, true) => Ordering::Greater,
             (true, false) => Ordering::Less,
-            _ => compare_names(&self.rendered, &other.rendered),
+            _ => compare_names(&self.cmp_text, &other.cmp_text),
         }
     }
 }
