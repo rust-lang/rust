@@ -41,7 +41,7 @@ fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) ->
 
 fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span) -> bool {
     // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
-    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
+    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains(&attribute) {
         return true;
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });

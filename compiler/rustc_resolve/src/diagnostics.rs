@@ -1282,9 +1282,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // These trace attributes are compiler-generated and have
                                 // deliberately invalid names.
                                 .filter(|attr| {
-                                    !matches!(attr.name, sym::cfg_trace | sym::cfg_attr_trace)
+                                    !matches!(**attr, sym::cfg_trace | sym::cfg_attr_trace)
                                 })
-                                .map(|attr| TypoSuggestion::typo_from_name(attr.name, res)),
+                                .map(|attr| TypoSuggestion::typo_from_name(*attr, res)),
                         );
                     }
                 }
