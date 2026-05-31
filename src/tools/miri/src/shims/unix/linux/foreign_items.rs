@@ -8,6 +8,7 @@ use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use self::shims::unix::linux_like::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
 use crate::shims::unix::foreign_items::EvalContextExt as _;
+use crate::shims::unix::linux_like::thread::prctl;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -197,6 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
+            "prctl" => prctl(this, link_name, abi, args, dest)?,
 
             // Dynamically invoked syscalls
             "syscall" => {
