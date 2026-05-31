@@ -135,6 +135,8 @@ macro_rules! define_client_side {
         }
     }
 }
+
+#[cfg(not(target_family = "wasm"))]
 with_api!(define_client_side, TokenStream, Span, Symbol);
 
 struct Bridge<'a> {

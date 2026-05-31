@@ -234,7 +234,8 @@ fn parse_config(args: Vec<String>) -> Config {
             "number of parallel threads to use for the frontend when building test artifacts",
             "THREADS_COUNT",
         )
-        .optopt("", "iteration-count", "number of times to execute each test", "COUNT");
+        .optopt("", "iteration-count", "number of times to execute each test", "COUNT")
+        .optflag("", "wasm-proc-macro", "compile proc macros for wasm");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -523,6 +524,7 @@ fn parse_config(args: Vec<String>) -> Config {
 
         parallel_frontend_threads,
         iteration_count,
+        wasm_proc_macro: matches.opt_present("wasm-proc-macro"),
     }
 }
 

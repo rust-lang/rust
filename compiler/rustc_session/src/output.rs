@@ -96,9 +96,23 @@ pub fn filename_for_input(
         CrateType::Rlib => {
             OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}.rlib")))
         }
-        CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib | CrateType::Sdylib => {
+        CrateType::Cdylib | CrateType::Dylib | CrateType::Sdylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
             OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
+        }
+        CrateType::ProcMacro => {
+            if sess.target.is_like_wasm {
+                // Override the output file to start with `lib`.
+                // FIXME: This is a bit of a hack to make our crate loading code avoid needing a
+                // 'wasm_proc_macro' search path. We probably *do* actually want wasm proc macros to
+                // have their own search path inside the session, in which case this wouldn't be
+                // needed.
+                let (prefix, suffix) = ("lib", &sess.target.dll_suffix);
+                OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
+            } else {
+                let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
+                OutFileName::Real(outputs.out_directory.join(&format!("{prefix}{libname}{suffix}")))
+            }
         }
         CrateType::StaticLib => {
             let (prefix, suffix) = sess.staticlib_components(false);
@@ -130,7 +144,7 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
             return true;
         }
     }
-    if let CrateType::ProcMacro | CrateType::Dylib = crate_type
+    if let CrateType::Dylib = crate_type
         && sess.target.only_cdylib
     {
         return true;

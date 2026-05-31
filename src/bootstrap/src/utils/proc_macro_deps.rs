@@ -76,6 +76,8 @@ pub static CRATES: &[&str] = &[
     "wasm-encoder",
     "wasm-metadata",
     "wasmparser",
+    "wasmtime-internal-component-util",
+    "wasmtime-internal-wit-bindgen",
     "winnow",
     "wit-bindgen-core",
     "wit-bindgen-rust",

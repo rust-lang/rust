@@ -3,9 +3,9 @@
 use std::cell::Cell;
 use std::hash::Hash;
 use std::ops::{Bound, Range};
+use std::panic;
 use std::sync::atomic::AtomicU32;
 use std::sync::mpsc;
-use std::{panic, thread};
 
 use crate::bridge::{
     ApiTags, BridgeConfig, Buffer, Decode, Diagnostic, Encode, ExpnGlobals, Literal, Mark, Marked,
@@ -113,7 +113,7 @@ macro_rules! define_dispatcher {
                         // If client and server happen to use the same `std`,
                         // `catch_unwind` asserts that the panic counter was 0,
                         // even when the closure passed to it didn't panic.
-                        let r = if thread::panicking() {
+                        let r = if std::thread::panicking() {
                             Ok(call_method())
                         } else {
                             panic::catch_unwind(panic::AssertUnwindSafe(call_method))
@@ -194,7 +194,7 @@ impl ExecutionStrategy for MaybeCrossThread {
         if self.cross_thread || ALREADY_RUNNING_SAME_THREAD.get() {
             let (mut server, mut client) = MessagePipe::new();
 
-            let join_handle = thread::spawn(move || {
+            let join_handle = std::thread::spawn(move || {
                 let mut dispatch = |b: Buffer| -> Buffer {
                     client.send(b);
                     client.recv().expect("server died while client waiting for reply")

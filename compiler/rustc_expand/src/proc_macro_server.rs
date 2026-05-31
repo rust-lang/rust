@@ -420,10 +420,10 @@ fn cancel_diags_into_string(diags: Vec<Diag<'_>>) -> String {
 }
 
 pub(crate) struct Rustc<'a, 'b> {
-    ecx: &'a mut ExtCtxt<'b>,
-    def_site: Span,
-    call_site: Span,
-    mixed_site: Span,
+    pub(crate) ecx: &'a mut ExtCtxt<'b>,
+    pub(crate) def_site: Span,
+    pub(crate) call_site: Span,
+    pub(crate) mixed_site: Span,
     krate: CrateNum,
     rebased_spans: FxHashMap<usize, Span>,
 }

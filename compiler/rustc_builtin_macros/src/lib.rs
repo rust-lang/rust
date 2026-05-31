@@ -145,4 +145,9 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register(sym::contracts_requires, requires);
     let ensures = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandEnsures));
     register(sym::contracts_ensures, ensures);
+
+    register(
+        sym::internal_wit_bindgen,
+        SyntaxExtensionKind::Bang(Arc::new(proc_macro_harness::InternalWitBindgen)),
+    );
 }
