@@ -86,7 +86,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::from_u32_safe(0),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -94,7 +94,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::from_u32_safe(0),
     };
     let mixed_site = call_site;
 
@@ -189,7 +189,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::from_u32_safe(0),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -197,7 +197,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::from_u32_safe(0),
     };
     let mixed_site = call_site;
 

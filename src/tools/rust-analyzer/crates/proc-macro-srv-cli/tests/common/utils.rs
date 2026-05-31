@@ -144,11 +144,8 @@ pub(crate) fn create_empty_token_tree(
         file_id: EditionedFileId::new(FileId::from_raw(0), Edition::CURRENT),
         ast_id: span::ROOT_ERASED_FILE_AST_ID,
     };
-    let span = Span {
-        range: TextRange::empty(0.into()),
-        anchor,
-        ctx: SyntaxContext::root(Edition::CURRENT),
-    };
+    let span =
+        Span { range: TextRange::empty(0.into()), anchor, ctx: SyntaxContext::from_u32_safe(0) };
 
     let builder = TopSubtreeBuilder::new(Delimiter {
         open: span,

@@ -193,9 +193,7 @@ impl Message for Response {
 #[cfg(test)]
 mod tests {
     use intern::Symbol;
-    use span::{
-        Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
-    };
+    use span::{ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
     use tt::{
         Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,
         TopSubtreeBuilder,
@@ -204,6 +202,11 @@ mod tests {
     use crate::version;
 
     use super::*;
+
+    fn make_ctx() -> SyntaxContext {
+        // SAFETY: Tests do not use a Database, so this won't ever be used within salsa.
+        unsafe { SyntaxContext::from_u32(0) }
+    }
 
     fn fixture_token_tree_top_many_none() -> TopSubtree {
         let anchor = SpanAnchor {
@@ -215,16 +218,8 @@ mod tests {
         };
 
         let mut builder = TopSubtreeBuilder::new(Delimiter {
-            open: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
-            close: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
+            open: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
+            close: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
             kind: DelimiterKind::Invisible,
         });
 
@@ -234,7 +229,7 @@ mod tests {
                 span: Span {
                     range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                     anchor,
-                    ctx: SyntaxContext::root(Edition::CURRENT),
+                    ctx: make_ctx(),
                 },
                 is_raw: tt::IdentIsRaw::No,
             }
@@ -246,7 +241,7 @@ mod tests {
                 span: Span {
                     range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
                     anchor,
-                    ctx: SyntaxContext::root(Edition::CURRENT),
+                    ctx: make_ctx(),
                 },
                 is_raw: tt::IdentIsRaw::Yes,
             }
@@ -257,7 +252,7 @@ mod tests {
             Span {
                 range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                 anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
+                ctx: make_ctx(),
             },
             tt::LitKind::Str,
         )));
@@ -266,7 +261,7 @@ mod tests {
             span: Span {
                 range: TextRange::at(TextSize::new(13), TextSize::of('@')),
                 anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
+                ctx: make_ctx(),
             },
             spacing: Spacing::Joint,
         }));
@@ -275,7 +270,7 @@ mod tests {
             Span {
                 range: TextRange::at(TextSize::new(14), TextSize::of('{')),
                 anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
+                ctx: make_ctx(),
             },
         );
         builder.open(
@@ -283,7 +278,7 @@ mod tests {
             Span {
                 range: TextRange::at(TextSize::new(15), TextSize::of('[')),
                 anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
+                ctx: make_ctx(),
             },
         );
         builder.push(Leaf::Literal(Literal::new(
@@ -291,7 +286,7 @@ mod tests {
             Span {
                 range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
                 anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
+                ctx: make_ctx(),
             },
             tt::LitKind::Integer,
             "u32",
@@ -299,13 +294,13 @@ mod tests {
         builder.close(Span {
             range: TextRange::at(TextSize::new(20), TextSize::of(']')),
             anchor,
-            ctx: SyntaxContext::root(Edition::CURRENT),
+            ctx: make_ctx(),
         });
 
         builder.close(Span {
             range: TextRange::at(TextSize::new(21), TextSize::of('}')),
             anchor,
-            ctx: SyntaxContext::root(Edition::CURRENT),
+            ctx: make_ctx(),
         });
 
         builder.build()
@@ -321,16 +316,8 @@ mod tests {
         };
 
         let builder = TopSubtreeBuilder::new(Delimiter {
-            open: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
-            close: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
+            open: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
+            close: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
             kind: DelimiterKind::Invisible,
         });
 
@@ -347,16 +334,8 @@ mod tests {
         };
 
         let builder = TopSubtreeBuilder::new(Delimiter {
-            open: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
-            close: Span {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor,
-                ctx: SyntaxContext::root(Edition::CURRENT),
-            },
+            open: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
+            close: Span { range: TextRange::empty(TextSize::new(0)), anchor, ctx: make_ctx() },
             kind: DelimiterKind::Brace,
         });
 
