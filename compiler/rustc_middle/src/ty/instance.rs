@@ -151,6 +151,9 @@ pub enum InstanceKind<'tcx> {
     ///
     /// The `DefId` is for `core::ptr::drop_glue`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop glue.
+    ///
+    /// The type must be monomorphic; for polymorphic drop glue use
+    /// `rustc_mir_transform::build_drop_shim`.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     /// Compiler-generated `<T as Clone>::clone` implementation.
