@@ -3,14 +3,13 @@ use std::ffi::CString;
 use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
-use rustc_codegen_ssa::MemFlags;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
 
 use crate::builder::Builder;
+use crate::builder::gpu_helper::*;
 use crate::common::CodegenCx;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
@@ -534,36 +533,6 @@ fn declare_offload_fn<'ll>(
     )
 }
 
-pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
-    match cx.type_kind(ty) {
-        TypeKind::Half
-        | TypeKind::Float
-        | TypeKind::Double
-        | TypeKind::X86_FP80
-        | TypeKind::FP128
-        | TypeKind::PPC_FP128 => cx.float_width(ty) as u64,
-        TypeKind::Integer => cx.int_width(ty),
-        other => bug!("scalar_width was called on a non scalar type {other:?}"),
-    }
-}
-
-fn get_runtime_size<'ll, 'tcx>(
-    builder: &mut Builder<'_, 'll, 'tcx>,
-    args: &[&'ll Value],
-    index: usize,
-    meta: &OffloadMetadata,
-) -> &'ll Value {
-    match meta.payload_size {
-        OffloadSize::Slice { element_size } => {
-            let length_idx = index + 1;
-            let length = args[length_idx];
-            let length_i64 = builder.intcast(length, builder.cx.type_i64(), false);
-            builder.mul(length_i64, builder.cx.get_const_i64(element_size))
-        }
-        _ => bug!("unexpected offload size {:?}", meta.payload_size),
-    }
-}
-
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
 // the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
@@ -613,134 +582,19 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let end_mapper_decl = offload_globals.end_mapper;
     let fn_ty = offload_globals.mapper_fn_ty;
 
+    let (ty, ty2, a1, a2, a4) =
+        preper_datatransfers(builder, args, types, offload_sizes, metadata, has_dynamic);
     let num_args = types.len() as u64;
-    let bb = builder.llbb();
+    assert_eq!(num_args as usize, args.len());
 
-    // Step 0)
+    let bb = builder.llbb();
     unsafe {
         llvm::LLVMRustPositionBuilderPastAllocas(&builder.llbuilder, builder.llfn());
     }
-
-    let ty = cx.type_array(cx.type_ptr(), num_args);
-    // Baseptr are just the input pointer to the kernel, stored in a local alloca
-    let a1 = builder.direct_alloca(ty, Align::EIGHT, ".offload_baseptrs");
-    // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
-    let a2 = builder.direct_alloca(ty, Align::EIGHT, ".offload_ptrs");
-    // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
-    let ty2 = cx.type_array(cx.type_i64(), num_args);
-
-    let a4 = if has_dynamic {
-        let alloc = builder.direct_alloca(ty2, Align::EIGHT, ".offload_sizes");
-
-        builder.memcpy(
-            alloc,
-            Align::EIGHT,
-            offload_sizes,
-            Align::EIGHT,
-            cx.get_const_i64(8 * args.len() as u64),
-            MemFlags::empty(),
-            None,
-        );
-
-        alloc
-    } else {
-        offload_sizes
-    };
-
     //%kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
     let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
-
-    // Step 1)
     unsafe {
         llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, bb);
-    }
-
-    // Now we allocate once per function param, a copy to be passed to one of our maps.
-    let mut vals = vec![];
-    let mut geps = vec![];
-    let i32_0 = cx.get_const_i32(0);
-    for &v in args {
-        let ty = cx.val_ty(v);
-        let ty_kind = cx.type_kind(ty);
-        let (base_val, gep_base) = match ty_kind {
-            TypeKind::Pointer => (v, v),
-            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::Integer => {
-                // FIXME(Sa4dUs): check for `f128` support, latest NVIDIA cards support it
-                let num_bits = scalar_width(cx, ty);
-
-                let bb = builder.llbb();
-                unsafe {
-                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, builder.llfn());
-                }
-                let addr = builder.direct_alloca(cx.type_i64(), Align::EIGHT, "addr");
-                unsafe {
-                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder, bb);
-                }
-
-                let cast = builder.bitcast(v, cx.type_ix(num_bits));
-                let value = builder.zext(cast, cx.type_i64());
-                builder.store(value, addr, Align::EIGHT);
-                (value, addr)
-            }
-            other => bug!("offload does not support {other:?}"),
-        };
-
-        let gep = builder.inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
-
-        vals.push(base_val);
-        geps.push(gep);
-    }
-
-    for i in 0..num_args {
-        let idx = cx.get_const_i32(i);
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
-        builder.store(vals[i as usize], gep1, Align::EIGHT);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
-        builder.store(geps[i as usize], gep2, Align::EIGHT);
-
-        if !matches!(metadata[i as usize].payload_size, OffloadSize::Static(_)) {
-            let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
-            let size_val = get_runtime_size(builder, args, i as usize, &metadata[i as usize]);
-            builder.store(size_val, gep3, Align::EIGHT);
-        }
-    }
-
-    // For now we have a very simplistic indexing scheme into our
-    // offload_{baseptrs,ptrs,sizes}. We will probably improve this along with our gpu frontend pr.
-    fn get_geps<'ll, 'tcx>(
-        builder: &mut Builder<'_, 'll, 'tcx>,
-        ty: &'ll Type,
-        ty2: &'ll Type,
-        a1: &'ll Value,
-        a2: &'ll Value,
-        a4: &'ll Value,
-        is_dynamic: bool,
-    ) -> [&'ll Value; 3] {
-        let cx = builder.cx;
-        let i32_0 = cx.get_const_i32(0);
-
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-        let gep3 = if is_dynamic { builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]) } else { a4 };
-        [gep1, gep2, gep3]
-    }
-
-    fn generate_mapper_call<'ll, 'tcx>(
-        builder: &mut Builder<'_, 'll, 'tcx>,
-        geps: [&'ll Value; 3],
-        o_type: &'ll Value,
-        fn_to_call: &'ll Value,
-        fn_ty: &'ll Type,
-        num_args: u64,
-        s_ident_t: &'ll Value,
-    ) {
-        let cx = builder.cx;
-        let nullptr = cx.const_null(cx.type_ptr());
-        let i64_max = cx.get_const_i64(u64::MAX);
-        let num_args = cx.get_const_i32(num_args);
-        let args =
-            vec![s_ident_t, i64_max, num_args, geps[0], geps[1], geps[2], o_type, nullptr, nullptr];
-        builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
     }
 
     // Step 2)
@@ -767,6 +621,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above
+    let i32_0 = cx.get_const_i32(0);
     for (i, value) in values.iter().enumerate() {
         let ptr = builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
         let name = std::ffi::CString::new(value.1).unwrap();
