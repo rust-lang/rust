@@ -57,6 +57,12 @@ unsafe extern "Rust" {
 #[lang = "global_alloc_ty"]
 pub struct Global;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::AllocatorClone for Global {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::PinSafeAllocator for Global {}
+
 /// Allocates memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::alloc`] method

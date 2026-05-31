@@ -794,6 +794,15 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
+#[doc(hidden)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
+    v: Box<[u8], A>,
+) -> Box<str, A> {
+    let (ptr, alloc) = Box::into_raw_with_allocator(v);
+    unsafe { Box::from_raw_in(ptr as *mut str, alloc) }
+}
+
 /// Converts leading ascii bytes in `s` by calling the `convert` function.
 ///
 /// For better average performance, this happens in chunks of `2*size_of::<usize>()`.
