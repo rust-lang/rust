@@ -106,6 +106,11 @@ struct Breakpoint {
     line: usize,
 }
 
+enum ResumeMode {
+    MirInstruction,
+    Continue,
+}
+
 pub struct PrirodaContext<'tcx> {
     ecx: MiriInterpCx<'tcx>,
     breakpoints: HashSet<Breakpoint>,
@@ -128,35 +133,50 @@ impl<'tcx> PrirodaContext<'tcx> {
         Self { ecx, breakpoints: HashSet::new(), current_location: None, last_location: None }
     }
 
+    /// Advance execution until the selected resume mode reaches a stopping point.
+    // TODO: return a StepResult enum once we distinguish breakpoint stops,
+    // program exit, and other debugger states.
+    fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx> {
+        loop {
+            self.advance()?;
+
+            // An explicit breakpoint should stop execution even when the current
+            // MIR instruction would normally be hidden during manual stepping.
+            if self.is_at_breakpoint() {
+                return interp_ok(());
+            }
+
+            match mode {
+                ResumeMode::MirInstruction
+                    if matches!(
+                        self.current_instruction_visibility(),
+                        InstructionVisibility::Visible
+                    ) =>
+                {
+                    return interp_ok(());
+                }
+                ResumeMode::MirInstruction | ResumeMode::Continue => {}
+            }
+        }
+    }
+
     /// Advance Miri by one interpreter-loop transition.
     fn advance(&mut self) -> InterpResult<'tcx> {
-        // state inspection should happen only after a successful step
+        // State inspection should happen only after a successful step.
         self.ecx.miri_step()?;
         self.last_location = self.current_location.take();
         self.current_location = self.resolve_current_location();
         interp_ok(())
     }
-    // TODO: return a StepResult enum once we distinguish breakpoint stops,
-    // program exit, and other debugger states.
-    /// Step to the next visible MIR instruction
-    pub fn step(&mut self) -> InterpResult<'tcx> {
-        loop {
-            self.advance()?;
 
-            match self.current_instruction_visibility() {
-                InstructionVisibility::NoInstruction | InstructionVisibility::Hidden => {}
-                InstructionVisibility::Visible => return interp_ok(()),
-            }
-        }
+    /// Step to the next visible MIR instruction.
+    pub fn step(&mut self) -> InterpResult<'tcx> {
+        self.resume(ResumeMode::MirInstruction)
     }
 
+    /// Continue execution until reaching a breakpoint or program termination.
     pub fn continue_execution(&mut self) -> InterpResult<'tcx> {
-        loop {
-            self.advance()?;
-            if self.is_at_breakpoint() {
-                return interp_ok(());
-            }
-        }
+        self.resume(ResumeMode::Continue)
     }
 
     fn set_breakpoint(&mut self, path: PathBuf, line: usize) {
