@@ -1,6 +1,8 @@
 //! Client-side types.
 
 use std::cell::RefCell;
+use std::mem;
+use std::sync::Once;
 
 use super::*;
 
@@ -129,6 +131,8 @@ macro_rules! define_client_side {
         }
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
 with_api!(define_client_side, TokenStream, Span, Symbol);
 
 struct Bridge<'a> {

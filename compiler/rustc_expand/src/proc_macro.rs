@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::profiling::TimingGuard;
@@ -55,6 +57,28 @@ impl base::BangProcMacro for BangProcMacro {
     }
 }
 
+pub struct WasmBangProcMacro {
+    pub client: WasmExpand1,
+}
+
+impl base::BangProcMacro for WasmBangProcMacro {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt<'_>,
+        span: Span,
+        input: TokenStream,
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        let _timer = record_expand_proc_macro(ecx, "expand_proc_macro", span);
+
+        (self.client)(ecx, ecx.current_expansion.id, input).map_err(|e| {
+            ecx.dcx().emit_err(errors::ProcMacroPanicked {
+                span,
+                message: e.map(|message| errors::ProcMacroPanickedHelp { message }),
+            })
+        })
+    }
+}
+
 pub struct AttrProcMacro {
     pub client: pm::bridge::client::Client,
 }
@@ -85,8 +109,31 @@ impl base::AttrProcMacro for AttrProcMacro {
     }
 }
 
+pub struct WasmAttrProcMacro {
+    pub client: WasmExpand2,
+}
+
+impl base::AttrProcMacro for WasmAttrProcMacro {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt<'_>,
+        span: Span,
+        annotation: TokenStream,
+        annotated: TokenStream,
+    ) -> Result<TokenStream, ErrorGuaranteed> {
+        let _timer = record_expand_proc_macro(ecx, "expand_proc_macro", span);
+
+        (self.client)(ecx, ecx.current_expansion.id, annotation, annotated).map_err(|e| {
+            ecx.dcx().emit_err(errors::CustomAttributePanicked {
+                span,
+                message: e.map(|message| errors::CustomAttributePanickedHelp { message }),
+            })
+        })
+    }
+}
+
 pub struct DeriveProcMacro {
-    pub client: DeriveClient,
+    pub client: pm::bridge::client::Client,
 }
 
 impl MultiItemModifier for DeriveProcMacro {
@@ -120,45 +167,89 @@ impl MultiItemModifier for DeriveProcMacro {
                 })
             })
         } else {
-            expand_derive_macro(invoc_id, input, ecx, self.client)
+            expand_derive_macro(invoc_id, input, ecx, &self.client)
         };
 
-        let Ok(output) = res else {
-            // error will already have been emitted
-            return ExpandResult::Ready(vec![]);
+        finish_derive_expansion(ecx, span, is_stmt, res)
+    }
+}
+
+pub struct WasmDeriveProcMacro {
+    pub client: WasmExpand1,
+}
+
+impl MultiItemModifier for WasmDeriveProcMacro {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt<'_>,
+        span: Span,
+        _meta_item: &ast::MetaItem,
+        item: Annotatable,
+        _is_derive_const: bool,
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        let _timer = record_expand_proc_macro(ecx, "expand_derive_proc_macro_outer", span);
+
+        // We need special handling for statement items
+        // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
+        let is_stmt = matches!(item, Annotatable::Stmt(..));
+
+        let input = item.to_tokens();
+
+        let invoc_id = ecx.current_expansion.id;
+
+        let res = if ecx.sess.opts.incremental.is_some()
+            && ecx.sess.opts.unstable_opts.cache_proc_macros
+        {
+            unimplemented!("wasm proc macros don't yet support -Zcache-proc-macros")
+        } else {
+            expand_wasm_derive_macro(invoc_id, input, ecx, &self.client)
         };
 
-        let error_count_before = ecx.dcx().err_count();
-        let mut parser = Parser::new(&ecx.sess.psess, output, Some("proc-macro derive"));
-        let mut items = vec![];
+        finish_derive_expansion(ecx, span, is_stmt, res)
+    }
+}
 
-        loop {
-            match parser.parse_item(
-                ForceCollect::No,
-                if is_stmt { AllowConstBlockItems::No } else { AllowConstBlockItems::Yes },
-            ) {
-                Ok(None) => break,
-                Ok(Some(item)) => {
-                    if is_stmt {
-                        items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
-                    } else {
-                        items.push(Annotatable::Item(item));
-                    }
-                }
-                Err(err) => {
-                    err.emit();
-                    break;
+fn finish_derive_expansion(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    is_stmt: bool,
+    res: Result<TokenStream, ()>,
+) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    let Ok(output) = res else {
+        // error will already have been emitted
+        return ExpandResult::Ready(vec![]);
+    };
+
+    let error_count_before = ecx.dcx().err_count();
+    let mut parser = Parser::new(&ecx.sess.psess, output, Some("proc-macro derive"));
+    let mut items = vec![];
+
+    loop {
+        match parser.parse_item(
+            ForceCollect::No,
+            if is_stmt { AllowConstBlockItems::No } else { AllowConstBlockItems::Yes },
+        ) {
+            Ok(None) => break,
+            Ok(Some(item)) => {
+                if is_stmt {
+                    items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
+                } else {
+                    items.push(Annotatable::Item(item));
                 }
             }
+            Err(err) => {
+                err.emit();
+                break;
+            }
         }
-
-        // fail if there have been errors emitted
-        if ecx.dcx().err_count() > error_count_before {
-            ecx.dcx().emit_err(errors::ProcMacroDeriveTokens { span });
-        }
-
-        ExpandResult::Ready(items)
     }
+
+    // fail if there have been errors emitted
+    if ecx.dcx().err_count() > error_count_before {
+        ecx.dcx().emit_err(errors::ProcMacroDeriveTokens { span });
+    }
+
+    ExpandResult::Ready(items)
 }
 
 /// Provide a query for computing the output of a derive macro.
@@ -172,17 +263,37 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
     let _ = tcx.crate_hash(invoc_id.expn_data().macro_def_id.unwrap().krate);
 
     QueryDeriveExpandCtx::with(|ecx, client| {
-        expand_derive_macro(invoc_id, input.clone(), ecx, client).map(|ts| &*tcx.arena.alloc(ts))
+        expand_derive_macro(invoc_id, input.clone(), ecx, &client).map(|ts| &*tcx.arena.alloc(ts))
     })
 }
 
 type DeriveClient = pm::bridge::client::Client;
 
+pub type WasmExpand1 = rustc_data_structures::sync::IntoDynSyncSend<
+    Arc<
+        dyn Fn(&mut ExtCtxt<'_>, LocalExpnId, TokenStream) -> Result<TokenStream, Option<String>>
+            + Send
+            + Sync,
+    >,
+>;
+pub type WasmExpand2 = rustc_data_structures::sync::IntoDynSyncSend<
+    Arc<
+        dyn Fn(
+                &mut ExtCtxt<'_>,
+                LocalExpnId,
+                TokenStream,
+                TokenStream,
+            ) -> Result<TokenStream, Option<String>>
+            + Send
+            + Sync,
+    >,
+>;
+
 fn expand_derive_macro(
     invoc_id: LocalExpnId,
     input: TokenStream,
     ecx: &mut ExtCtxt<'_>,
-    client: DeriveClient,
+    client: &DeriveClient,
 ) -> Result<TokenStream, ()> {
     let _timer =
         ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
@@ -212,6 +323,32 @@ fn expand_derive_macro(
             Err(())
         }
     }
+}
+
+fn expand_wasm_derive_macro(
+    invoc_id: LocalExpnId,
+    input: TokenStream,
+    ecx: &mut ExtCtxt<'_>,
+    client: &WasmExpand1,
+) -> Result<TokenStream, ()> {
+    let _timer =
+        ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+            let invoc_expn_data = invoc_id.expn_data();
+            let span = invoc_expn_data.call_site;
+            let event_arg = invoc_expn_data.kind.descr();
+            recorder.record_arg_with_span(ecx.sess.source_map(), event_arg, span);
+        });
+
+    client(ecx, invoc_id, input).map_err(|e| {
+        let invoc_expn_data = invoc_id.expn_data();
+        let span = invoc_expn_data.call_site;
+        ecx.dcx().emit_err({
+            errors::ProcMacroDerivePanicked {
+                span,
+                message: e.map(|message| errors::ProcMacroDerivePanickedHelp { message }),
+            }
+        });
+    })
 }
 
 /// Stores the context necessary to expand a derive proc macro via a query.

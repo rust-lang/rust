@@ -31,6 +31,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 tempfile = "3.7.1"
 tracing = "0.1"
+wasmparser = "0.250.0"
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]

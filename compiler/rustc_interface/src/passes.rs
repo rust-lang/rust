@@ -275,13 +275,20 @@ fn configure_and_expand(
         }
         if is_proc_macro_crate {
             sess.dcx().emit_err(errors::MixedProcMacroCrate);
+
+            if sess.target.is_like_wasm && !sess.opts.unstable_opts.wasm_proc_macros {
+                sess.dcx().emit_err(errors::UnstableWasmProcMacro);
+            }
         }
     }
     if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }
 
-    if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
+    // Wasm targets today don't unwind, but they also generally don't crash the compiler since
+    // at least today proc-macros are run in a separate wasm runtime than the compiler. (The
+    // compiler probably won't run in wasm itself anyway).
+    if is_proc_macro_crate && !sess.panic_strategy().unwinds() && !sess.target.is_like_wasm {
         sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
     }
 

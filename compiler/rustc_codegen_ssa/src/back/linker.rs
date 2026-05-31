@@ -1811,13 +1811,25 @@ pub(crate) fn exported_symbols(
             .collect();
     }
 
-    let mut symbols = if let CrateType::ProcMacro = crate_type {
-        exported_symbols_for_proc_macro_crate(tcx)
-    } else {
-        exported_symbols_for_non_proc_macro(tcx, crate_type)
-    };
+    let mut symbols = Vec::new();
 
-    if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
+    // We include all symbols in the export list if this is a regular crate, or if the
+    // -Zwasm-proc-macros flag is passed. With wasm proc macros we need to expose more than just the
+    // global static (in fact, that static is not used on wasm targets at all), and for now that
+    // just means letting it use 'normal' crate rules.
+    if crate_type != CrateType::ProcMacro || tcx.sess.opts.unstable_opts.wasm_proc_macros {
+        symbols.extend(exported_symbols_for_non_proc_macro(tcx, crate_type));
+    }
+
+    // If this is a proc macro, then add the proc macro specific symbols too.
+    // See comment above for more details.
+    if let CrateType::ProcMacro = crate_type {
+        symbols.extend(exported_symbols_for_proc_macro_crate(tcx));
+    }
+
+    if crate_type == CrateType::Dylib
+        || (crate_type == CrateType::ProcMacro && !tcx.sess.target.is_like_wasm)
+    {
         let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
         symbols.push((metadata_symbol_name, SymbolExportKind::Data));
     }

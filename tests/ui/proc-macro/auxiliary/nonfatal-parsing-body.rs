@@ -34,7 +34,11 @@ where
             println!("{:?}", T::from_str(s));
         }
         OtherWithPanic => {
-            if catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
+            // FIXME: We need to catch panics in Literal/Stream parsing in rustc, and then bubble those
+            // out as some kind of err into wasm. Note that either way we'll have behavior differences
+            // because catch_unwind in wasm won't work.
+            // Maybe we 'just' need to fix the bugs and return Err(...) here...
+            if cfg!(panic = "unwind") && catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
                 eprintln!("{s} did not panic");
             }
         }

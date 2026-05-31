@@ -85,7 +85,7 @@ pub fn fill_compilers(build: &mut Build) {
         }
     };
 
-    for target in targets.into_iter() {
+    for target in targets.into_iter().chain([TargetSelection::from_user("wasm32-wasip2")]) {
         fill_target_compiler(build, target);
     }
 }

@@ -1,17 +1,17 @@
 #![feature(proc_macro_quote)]
 #![feature(proc_macro_internals)] // FIXME - this shouldn't be necessary
 
-extern crate proc_macro;
 extern crate custom_quote;
+extern crate proc_macro;
 
-use proc_macro::{quote, TokenStream};
+use proc_macro::{TokenStream, quote};
 
 macro_rules! expand_to_quote {
     () => {
         quote! {
             let bang_error: bool = 25;
         }
-    }
+    };
 }
 
 #[proc_macro]

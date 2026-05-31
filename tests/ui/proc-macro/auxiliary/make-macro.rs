@@ -1,4 +1,4 @@
-//@ force-host
+//@ compile-flags: --target=wasm32-wasip2 --crate-type=rlib
 
 #[macro_export]
 macro_rules! make_it {
@@ -7,10 +7,13 @@ macro_rules! make_it {
         pub fn $name(input: TokenStream) -> TokenStream {
             println!("Def site: {:?}", Span::def_site());
             println!("Input: {:?}", input);
-            let new: TokenStream = input.into_iter().map(|mut t| {
-                t.set_span(Span::def_site());
-                t
-            }).collect();
+            let new: TokenStream = input
+                .into_iter()
+                .map(|mut t| {
+                    t.set_span(Span::def_site());
+                    t
+                })
+                .collect();
             println!("Respanned: {:?}", new);
             new
         }

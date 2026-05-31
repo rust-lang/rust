@@ -1,0 +1,185 @@
+package rust-lang:rust;
+
+interface host {
+    resource token-stream {
+        constructor();
+        clone: func() -> token-stream;
+
+        is-empty: func() -> bool;
+        expand-expr: func() -> result<token-stream>;
+        from-str: static func(src: string) -> result<token-stream, string>;
+        to-string: func() -> string;
+
+        from-token-tree: static func(tt: token-tree) -> token-stream;
+        concat-trees: static func(base: option<token-stream>, trees: list<token-tree>) -> token-stream;
+        concat-streams: static func(base: option<token-stream>, trees: list<token-stream>) -> token-stream;
+        into-trees: func() -> list<token-tree>;
+    }
+
+    record symbol {
+        s: string,
+    }
+
+    enum bound {
+        included,
+        excluded,
+        unbounded,
+    }
+
+    record range-bound {
+        value: u64,
+        bound: bound,
+    }
+
+    resource span {
+        is-same: static func(a: borrow<span>, b: borrow<span>) -> bool;
+        def-site: static func() -> span;
+        call-site: static func() -> span;
+        mixed-site: static func() -> span;
+        parent: func() -> option<span>;
+        source: func() -> span;
+
+        byte-range-start: func() -> u64;
+        byte-range-end: func() -> u64;
+
+        debug: func() -> string;
+        clone: func() -> span;
+
+        line: func() -> u64;
+        column: func() -> u64;
+        file: func() -> string;
+        local-file: func() -> option<string>;
+
+        start: func() -> span;
+        end: func() -> span;
+
+        join: func(other: borrow<span>) -> option<span>;
+
+        source-text: func() -> option<string>;
+        resolved-at: func(other: borrow<span>) -> span;
+
+        subspan: func(start: range-bound, end: range-bound) -> option<span>;
+
+        save: func() -> u64;
+        recover: static func(id: u64) -> span;
+    }
+
+    record delim-span {
+        open: span,
+        close: span,
+        entire: span,
+    }
+
+    enum delimiter {
+        parenthesis,
+        brace,
+        bracket,
+        none,
+    }
+
+    record group {
+        delimiter: delimiter,
+        %stream: option<token-stream>,
+        span: delim-span,
+    }
+
+    record punct {
+        ch: u8,
+        joint: bool,
+        span: span,
+    }
+
+    record ident {
+        sym: symbol,
+        is-raw: bool,
+        span: span,
+    }
+
+    record literal {
+        kind: literal-kind,
+        symbol: symbol,
+        suffix: option<symbol>,
+        span: span,
+    }
+
+    variant literal-kind {
+        byte,
+        %char,
+        integer,
+        float,
+        str,
+        str-raw(u8),
+        byte-str,
+        byte-str-raw(u8),
+        c-str,
+        c-str-raw(u8),
+        // This should have an `ErrorGuaranteed`, except that type isn't available
+        // in this crate. (Imagine it is there.) Hence the `WithGuar` suffix. Must
+        // only be constructed in `LitKind::from_internal`, where an
+        // `ErrorGuaranteed` is available.
+        err-with-guar,
+    }
+
+    variant token-tree {
+        group(group),
+        punct(punct),
+        ident(ident),
+        literal(literal),
+    }
+
+    enum level {
+        error,
+        warning,
+        note,
+        help,
+    }
+
+    record diagnostic-inner {
+        level: level,
+        message: string,
+        spans: list<borrow<span>>,
+        children: list<diagnostic>,
+    }
+
+    resource diagnostic {
+        constructor(d: diagnostic-inner);
+    }
+
+    emit-diagnostic: func(diag: diagnostic);
+    literal-from-str: func(s: string) -> result<literal, string>;
+    symbol-normalize-and-validate-ident: func(s: string) -> result<symbol>;
+
+    injected-env-var: func(k: string) -> option<string>;
+    track-env-var: func(k: string, v: option<string>);
+    track-path: func(path: string);
+
+    // Today we don't report additional metadata but we could.
+    // Returns whether or not to also emit the panic to stderr (via the default panic hook).
+    report-panic: func(msg: option<string>) -> bool;
+}
+
+interface custom-derive {
+    use host.{token-stream};
+
+    enum derive-kind {
+        expand1,
+        expand2,
+    }
+
+    resource custom-derive {
+        get-kind: func() -> derive-kind;
+
+        // for derive and bang macros
+        expand1: func(tokens: token-stream) -> token-stream;
+
+        // defined for attr macros only
+        expand2: func(tokens: token-stream, tokens2: token-stream) -> token-stream;
+    }
+
+    get-custom-derives: func() -> list<custom-derive>;
+}
+
+world proc-macro {
+    import host;
+    export custom-derive;
+}

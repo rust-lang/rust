@@ -98,7 +98,8 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
-        AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
+        AuxType::Dylib => Some(dylib_name(name)),
+        AuxType::ProcMacro => Some(format!("lib{name}.wasm")),
     }
 }
 
@@ -1352,7 +1353,23 @@ impl<'test> TestCx<'test> {
         let aux_path = self.resolve_aux_path(source_path);
         let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
         if aux_type == Some(AuxType::ProcMacro) {
-            aux_props.force_host = true;
+            aux_props.compile_flags.push("--target=wasm32-wasip2".to_owned());
+            // Override any earlier linkers for now, otherwise we fail to build since compiletest
+            // thinks we're building for a different target and passes its linker (if one is
+            // configured).
+            //
+            // wasm32-wasip2 should in principle always be able to link with wasm-component-ld +
+            // wasm-ld. This does mean that rust.lld needs to be enabled to build wasm-ld wrapper
+            // around rust-lld.
+            aux_props.compile_flags.push("-Clinker=wasm-component-ld".to_owned());
+            aux_props.compile_flags.push(format!(
+                "-Clink-arg=--wasm-ld-path={}",
+                self.config
+                    .sysroot_base
+                    .join("lib/rustlib")
+                    .join(&self.config.host)
+                    .join("bin/gcc-ld/wasm-ld")
+            ));
         }
         let mut aux_dir = aux_dir.to_path_buf();
         if aux_type == Some(AuxType::Bin) {
@@ -1579,6 +1596,9 @@ impl<'test> TestCx<'test> {
 
         // Use a single thread for efficiency and a deterministic error message order
         compiler.arg("-Zthreads=1");
+
+        // Enable wasm proc macros.
+        compiler.arg("-Zwasm-proc-macros");
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.

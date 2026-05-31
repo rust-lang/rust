@@ -224,11 +224,11 @@ use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
+use rustc_session::Session;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
-use rustc_session::{Session, config};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::Builder as TempFileBuilder;
@@ -275,6 +275,7 @@ pub(crate) enum CrateFlavor {
     Rmeta,
     Dylib,
     SDylib,
+    Wasm,
 }
 
 impl fmt::Display for CrateFlavor {
@@ -283,6 +284,7 @@ impl fmt::Display for CrateFlavor {
             CrateFlavor::Rlib => "rlib",
             CrateFlavor::Rmeta => "rmeta",
             CrateFlavor::Dylib => "dylib",
+            CrateFlavor::Wasm => "wasm",
             CrateFlavor::SDylib => "sdylib",
         })
     }
@@ -294,6 +296,7 @@ impl IntoDiagArg for CrateFlavor {
             CrateFlavor::Rlib => DiagArgValue::Str(Cow::Borrowed("rlib")),
             CrateFlavor::Rmeta => DiagArgValue::Str(Cow::Borrowed("rmeta")),
             CrateFlavor::Dylib => DiagArgValue::Str(Cow::Borrowed("dylib")),
+            CrateFlavor::Wasm => DiagArgValue::Str(Cow::Borrowed("wasm")),
             CrateFlavor::SDylib => DiagArgValue::Str(Cow::Borrowed("sdylib")),
         }
     }
@@ -347,7 +350,7 @@ impl<'a> CrateLocator<'a> {
     pub(crate) fn for_proc_macro(&mut self, sess: &'a Session, path_kind: PathKind) {
         self.is_proc_macro = true;
         self.target = &sess.host;
-        self.tuple = TargetTuple::from_tuple(config::host_tuple());
+        self.tuple = TargetTuple::from_tuple("wasm32-wasip2");
         self.filesearch = sess.host_filesearch();
         self.path_kind = path_kind;
     }
@@ -355,7 +358,7 @@ impl<'a> CrateLocator<'a> {
     pub(crate) fn for_target_proc_macro(&mut self, sess: &'a Session, path_kind: PathKind) {
         self.is_proc_macro = true;
         self.target = &sess.target;
-        self.tuple = sess.opts.target_triple.clone();
+        self.tuple = TargetTuple::from_tuple("wasm32-wasip2");
         self.filesearch = sess.target_filesearch();
         self.path_kind = path_kind;
     }
@@ -390,16 +393,20 @@ impl<'a> CrateLocator<'a> {
         let staticlib_prefix =
             &format!("{}{}{}", self.target.staticlib_prefix, self.crate_name, extra_prefix);
         let interface_prefix = rmeta_prefix;
+        // Right now CrateFlavor::Wasm is only supported for proc-macros, where we inject `lib`
+        // artificially for the output artifact despite the target not having it normally.
+        let wasm_prefix = &format!("lib{}", self.crate_name);
 
         let rmeta_suffix = ".rmeta";
         let rlib_suffix = ".rlib";
         let dylib_suffix = &self.target.dll_suffix;
         let staticlib_suffix = &self.target.staticlib_suffix;
         let interface_suffix = ".rs";
+        let wasm_suffix = ".wasm";
 
         let mut candidates: FxIndexMap<
             _,
-            (FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>),
+            (FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>, FxIndexSet<_>),
         > = Default::default();
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -422,26 +429,32 @@ impl<'a> CrateLocator<'a> {
         // given that `extra_filename` comes from the `-C extra-filename`
         // option and thus can be anything, and the incorrect match will be
         // handled safely in `extract_one`.
+        let search_params = [
+            (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
+            (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (wasm_prefix, wasm_suffix, CrateFlavor::Wasm),
+            (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
+            (interface_prefix, interface_suffix, CrateFlavor::SDylib),
+        ];
+        debug!("searching with params={:?}", search_params);
         for search_path in self.filesearch.search_paths(self.path_kind) {
-            debug!("searching {}", search_path.dir.display());
+            debug!("searching {} {:?}", search_path.dir.display(), search_path);
             let spf = &search_path.files;
 
             let mut should_check_staticlibs = true;
-            for (prefix, suffix, kind) in [
-                (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
-                (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
-                (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
-                (interface_prefix, interface_suffix, CrateFlavor::SDylib),
-            ] {
+            for (prefix, suffix, kind) in search_params.iter().copied() {
                 if prefix == staticlib_prefix && suffix == staticlib_suffix {
                     should_check_staticlibs = false;
                 }
                 if let Some(matches) = spf.query(prefix, suffix) {
                     for (hash, spf) in matches {
                         let spf_path = spf.path(&search_path.dir);
-                        info!("lib candidate: {}", spf_path.display());
+                        info!(
+                            "lib candidate: {} (kind={kind:?} hash={hash:?})",
+                            spf_path.display()
+                        );
 
-                        let (rlibs, rmetas, dylibs, interfaces) =
+                        let (rlibs, rmetas, dylibs, interfaces, wasms) =
                             candidates.entry(hash).or_default();
                         {
                             // As a performance optimisation we canonicalize the path and skip
@@ -462,6 +475,7 @@ impl<'a> CrateLocator<'a> {
                             CrateFlavor::Rmeta => rmetas.insert(spf_path),
                             CrateFlavor::Dylib => dylibs.insert(spf_path),
                             CrateFlavor::SDylib => interfaces.insert(spf_path),
+                            CrateFlavor::Wasm => wasms.insert(spf_path),
                         };
                     }
                 }
@@ -488,9 +502,9 @@ impl<'a> CrateLocator<'a> {
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
         let mut libraries = FxIndexMap::default();
-        for (_hash, (rlibs, rmetas, dylibs, interfaces)) in candidates {
+        for (_hash, (rlibs, rmetas, dylibs, interfaces, wasms)) in candidates {
             if let Some((svh, lib)) =
-                self.extract_lib(crate_rejections, rlibs, rmetas, dylibs, interfaces)?
+                self.extract_lib(crate_rejections, rlibs, rmetas, dylibs, interfaces, wasms)?
             {
                 libraries.insert(svh, lib);
             }
@@ -526,6 +540,7 @@ impl<'a> CrateLocator<'a> {
         rmetas: FxIndexSet<PathBuf>,
         dylibs: FxIndexSet<PathBuf>,
         interfaces: FxIndexSet<PathBuf>,
+        wasm_proc_macros: FxIndexSet<PathBuf>,
     ) -> Result<Option<(Svh, Library)>, CrateError> {
         let mut slot = None;
         // Order here matters, rmeta should come first.
@@ -538,17 +553,23 @@ impl<'a> CrateLocator<'a> {
         let sdylib_interface =
             self.extract_one(crate_rejections, interfaces, CrateFlavor::SDylib, &mut slot)?;
         let dylib = self.extract_one(crate_rejections, dylibs, CrateFlavor::Dylib, &mut slot)?;
+        let wasm =
+            self.extract_one(crate_rejections, wasm_proc_macros, CrateFlavor::Wasm, &mut slot)?;
 
         if sdylib_interface.is_some() && dylib.is_none() {
             return Err(CrateError::FullMetadataNotFound(self.crate_name, CrateFlavor::SDylib));
         }
 
-        let source = CrateSource { rmeta, rlib, dylib, sdylib_interface };
+        let source = CrateSource { rmeta, rlib, dylib, wasm, sdylib_interface };
         Ok(slot.map(|(svh, metadata, _, _)| (svh, Library { source, metadata })))
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
         if flavor == CrateFlavor::Dylib && self.is_proc_macro {
+            return true;
+        }
+
+        if flavor == CrateFlavor::Wasm && self.is_proc_macro {
             return true;
         }
 
@@ -749,6 +770,7 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxIndexSet::default();
         let mut dylibs = FxIndexSet::default();
         let mut sdylib_interfaces = FxIndexSet::default();
+        let mut wasm_proc_macros = FxIndexSet::default();
         for loc in &self.exact_paths {
             let loc_canon = loc.canonicalized();
             let loc_orig = loc.original();
@@ -786,14 +808,25 @@ impl<'a> CrateLocator<'a> {
                 dylibs.insert(loc_canon.clone());
                 continue;
             }
+            if file.ends_with(".wasm") {
+                wasm_proc_macros.insert(loc_canon.clone());
+                continue;
+            }
             crate_rejections
                 .via_filename
                 .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
         }
 
         // Extract the dylib/rlib/rmeta triple.
-        self.extract_lib(crate_rejections, rlibs, rmetas, dylibs, sdylib_interfaces)
-            .map(|opt| opt.map(|(_, lib)| lib))
+        self.extract_lib(
+            crate_rejections,
+            rlibs,
+            rmetas,
+            dylibs,
+            sdylib_interfaces,
+            wasm_proc_macros,
+        )
+        .map(|opt| opt.map(|(_, lib)| lib))
     }
 
     pub(crate) fn into_error(
@@ -906,6 +939,49 @@ fn get_metadata_section<'p>(
             buf.slice(|buf| &buf[data_start..(data_start + metadata_len)])
         }
         CrateFlavor::Rmeta => get_rmeta_metadata_section(filename)?,
+        CrateFlavor::Wasm => {
+            let buf = std::fs::read(filename).expect("could read");
+            let buf = slice_owned(buf, Deref::deref);
+            let mut section = None;
+            for payload in wasmparser::Parser::new(0).parse_all(&buf.clone()) {
+                let payload = payload.expect("could parse");
+                let wasmparser::Payload::CustomSection(reader) = payload else {
+                    continue;
+                };
+                if reader.name() != ".rustc" {
+                    // compiler/rustc_codegen_ssa/src/back/metadata.rs
+                    continue;
+                }
+                let contents = buf.clone().slice(|s| &s[reader.data_offset()..reader.range().end]);
+
+                let header_len = METADATA_HEADER.len();
+                // header + u64 length of data
+                let data_start = header_len + 8;
+
+                debug!("checking {} bytes of metadata-version stamp", header_len);
+                let header = &contents[..cmp::min(header_len, contents.len())];
+                if header != METADATA_HEADER {
+                    return Err(MetadataError::LoadFailure(format!(
+                        "invalid metadata version found: {}",
+                        filename.display()
+                    )));
+                }
+
+                // Length of the metadata - this allows linkers to pad the section if they want
+                let Ok(len_bytes) = <[u8; 8]>::try_from(
+                    &contents[header_len..cmp::min(data_start, contents.len())],
+                ) else {
+                    return Err(MetadataError::LoadFailure(
+                        "invalid metadata length found".to_string(),
+                    ));
+                };
+                let metadata_len = u64::from_le_bytes(len_bytes) as usize;
+
+                section = Some(contents.slice(|b| &b[data_start..(data_start + metadata_len)]));
+                break;
+            }
+            section.expect("found rustc metadata in wasm component")
+        }
     };
     let Ok(blob) = MetadataBlob::new(raw_bytes) else {
         return Err(MetadataError::LoadFailure(format!(
