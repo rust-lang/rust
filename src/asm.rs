@@ -592,6 +592,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.llbb().add_eval(None, self.context.new_call(None, builtin_unreachable, &[]));
         }
 
+        if !options.contains(InlineAsmOptions::NORETURN)
+            && let Some(dest) = dest
+        {
+            self.switch_to_block(dest);
+        }
+
         // Write results to outputs.
         //
         // We need to do this because:
