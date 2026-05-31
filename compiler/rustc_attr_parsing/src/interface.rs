@@ -240,6 +240,8 @@ impl<'sess> AttributeParser<'sess> {
             template,
             attr_safety: attr_safety.unwrap_or(Safety::Default),
             attr_path,
+            #[cfg(debug_assertions)]
+            has_target_been_checked: false,
         };
         parse_fn(&mut cx, args)
     }
@@ -410,6 +412,8 @@ impl<'sess> AttributeParser<'sess> {
                             template: &accept.template,
                             attr_safety: n.item.unsafety,
                             attr_path: attr_path.clone(),
+                            #[cfg(debug_assertions)]
+                            has_target_been_checked: false,
                         };
 
                         (accept.accept_fn)(&mut cx, &args);

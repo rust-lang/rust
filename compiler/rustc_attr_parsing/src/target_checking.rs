@@ -19,6 +19,10 @@ use crate::{AttributeParser, ShouldEmit};
 pub(crate) enum AllowedTargets {
     AllowList(&'static [Policy]),
     AllowListWarnRest(&'static [Policy]),
+    /// This is useful for argument-dependent target checking.
+    /// If debug assertions are enabled,
+    /// this emits a delayed bug if the `cx.check_target(...)` method is not called during attribute parsing.
+    ManuallyChecked,
 }
 
 pub(crate) enum AllowedResult {
@@ -52,6 +56,7 @@ impl AllowedTargets {
                     AllowedResult::Warn
                 }
             }
+            AllowedTargets::ManuallyChecked => unreachable!(),
         }
     }
 
@@ -59,6 +64,7 @@ impl AllowedTargets {
         match self {
             AllowedTargets::AllowList(list) => list,
             AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::ManuallyChecked => unreachable!(),
         }
         .iter()
         .filter_map(|target| match target {
@@ -93,6 +99,15 @@ impl<'sess> AttributeParser<'sess> {
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
+            return;
+        }
+
+        if let AllowedTargets::ManuallyChecked = allowed_targets {
+            #[cfg(debug_assertions)]
+            if !cx.has_target_been_checked {
+                cx.dcx().delayed_bug("Attribute target has not been checked");
+            }
+
             return;
         }
 
@@ -407,6 +422,10 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
         attribute_args: &'static str,
         allowed_targets: &AllowedTargets,
     ) {
+        #[cfg(debug_assertions)]
+        {
+            self.has_target_been_checked = true;
+        }
         AttributeParser::check_target(allowed_targets, attribute_args, self);
     }
 }
