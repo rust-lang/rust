@@ -18,7 +18,7 @@ use crate::alloc::{Allocator, Global};
 pub struct Drain<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // We can't just use a &mut VecDeque<T, A>, as that would make Drain invariant over T
     // and we want it to be covariant instead

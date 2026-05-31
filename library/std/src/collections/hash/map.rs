@@ -246,7 +246,7 @@ pub struct HashMap<
     K,
     V,
     S = RandomState,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::HashMap<K, V, S, A>,
 }
@@ -299,7 +299,7 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::collections::HashMap;
     /// use std::alloc::Global;
     ///
@@ -307,7 +307,7 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn new_in(alloc: A) -> Self {
         HashMap::with_hasher_in(Default::default(), alloc)
     }
@@ -322,7 +322,7 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::collections::HashMap;
     /// use std::alloc::Global;
     ///
@@ -330,7 +330,7 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         HashMap::with_capacity_and_hasher_in(capacity, Default::default(), alloc)
     }
@@ -418,7 +418,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::alloc::Global;
     /// use std::collections::HashMap;
     /// use std::hash::RandomState;
@@ -428,7 +428,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_hasher_in(hash_builder, alloc) }
     }
@@ -451,7 +451,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::alloc::Global;
     /// use std::collections::HashMap;
     /// use std::hash::RandomState;
@@ -461,7 +461,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_capacity_and_hasher_in(capacity, hash_builder, alloc) }
     }
@@ -1660,7 +1660,7 @@ impl<K, V> Default for IterMut<'_, K, V> {
 pub struct IntoIter<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::IntoIter<K, V, A>,
 }
@@ -1798,7 +1798,7 @@ pub struct Drain<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::Drain<'a, K, V, A>,
 }
@@ -1835,7 +1835,7 @@ pub struct ExtractIf<
     K,
     V,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::ExtractIf<'a, K, V, F, A>,
 }
@@ -1892,7 +1892,7 @@ impl<K, V> Default for ValuesMut<'_, K, V> {
 pub struct IntoKeys<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -1926,7 +1926,7 @@ impl<K, V> Default for IntoKeys<K, V> {
 pub struct IntoValues<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -1950,7 +1950,7 @@ pub enum Entry<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1978,7 +1978,7 @@ pub struct OccupiedEntry<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::RustcOccupiedEntry<'a, K, V, A>,
 }
@@ -2000,7 +2000,7 @@ pub struct VacantEntry<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::RustcVacantEntry<'a, K, V, A>,
 }
@@ -2021,7 +2021,7 @@ pub struct OccupiedError<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,

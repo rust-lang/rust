@@ -14,7 +14,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(char_internals)]
 #![feature(const_alloc_error)]

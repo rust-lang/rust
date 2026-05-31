@@ -8,6 +8,7 @@ LL |         EMPTY => {}
    |         ^^^^^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` is not usable in patterns
    |

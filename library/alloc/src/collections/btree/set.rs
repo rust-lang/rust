@@ -77,7 +77,7 @@ pub use self::entry::{Entry, OccupiedEntry, VacantEntry};
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     map: BTreeMap<T, SetValZST, A>,
 }
@@ -153,7 +153,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 #[derive(Debug)]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     iter: super::map::IntoIter<T, SetValZST, A>,
 }
@@ -183,7 +183,7 @@ pub struct Range<'a, T: 'a> {
 pub struct Difference<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     inner: DifferenceInner<'a, T, A>,
 }
@@ -257,7 +257,7 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 pub struct Intersection<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     inner: IntersectionInner<'a, T, A>,
 }
@@ -353,7 +353,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// ```
     /// # #![allow(unused_mut)]
-    /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
     ///
     /// use std::collections::BTreeSet;
@@ -1559,7 +1558,7 @@ pub struct ExtractIf<
     T,
     R,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     pred: F,
     inner: super::map::ExtractIfInner<'a, T, SetValZST, R>,
@@ -2156,8 +2155,11 @@ impl<K: Debug> Debug for Cursor<'_, K> {
 /// A `CursorMut` is created with the [`BTreeSet::lower_bound_mut`] and [`BTreeSet::upper_bound_mut`]
 /// methods.
 #[unstable(feature = "btree_cursors", issue = "107540")]
-pub struct CursorMut<'a, K: 'a, #[unstable(feature = "allocator_api", issue = "32838")] A = Global>
-{
+pub struct CursorMut<
+    'a,
+    K: 'a,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A = Global,
+> {
     inner: super::map::CursorMut<'a, K, SetValZST, A>,
 }
 
@@ -2193,7 +2195,7 @@ impl<K: Debug, A> Debug for CursorMut<'_, K, A> {
 pub struct CursorMutKey<
     'a,
     K: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A = Global,
 > {
     inner: super::map::CursorMutKey<'a, K, SetValZST, A>,
 }

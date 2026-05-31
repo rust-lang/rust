@@ -8,6 +8,7 @@ LL |     if let CONST_STRING = empty_str {}
    |            ^^^^^^^^^^^^ constant of non-structural type
    |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<u8>` is not usable in patterns
    |

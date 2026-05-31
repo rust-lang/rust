@@ -323,7 +323,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 
 pub struct Rc<
     T: ?Sized,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
     phantom: PhantomData<RcInner<T>>,
@@ -561,13 +561,13 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::try_new(5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
         // There is an implicit weak pointer owned by all the strong
         // pointers, which ensures that the weak destructor never frees
@@ -590,7 +590,7 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     ///
@@ -604,7 +604,7 @@ impl<T> Rc<T> {
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
@@ -624,7 +624,7 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     ///
@@ -636,7 +636,7 @@ impl<T> Rc<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
@@ -749,7 +749,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -757,7 +757,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// let five = Rc::new_in(5, System);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn new_in(value: T, alloc: A) -> Rc<T, A> {
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -774,7 +774,7 @@ impl<T, A: Allocator> Rc<T, A> {
     ///
     /// ```
     /// #![feature(get_mut_unchecked)]
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -791,7 +791,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -815,7 +815,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -828,7 +828,7 @@ impl<T, A: Allocator> Rc<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -873,7 +873,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// [`new_cyclic`]: Rc::new_cyclic
     /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Rc<T, A>
     where
         F: FnOnce(&Weak<T, A>) -> T,
@@ -925,14 +925,14 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///
     /// let five = Rc::try_new_in(5, System);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn try_new_in(value: T, alloc: A) -> Result<Self, AllocError> {
         // There is an implicit weak pointer owned by all the strong
@@ -952,7 +952,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::rc::Rc;
@@ -970,7 +970,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -995,7 +995,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1008,7 +1008,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -1026,7 +1026,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// Constructs a new `Pin<Rc<T>>` in the provided allocator. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn pin_in(value: T, alloc: A) -> Pin<Self>
     where
@@ -1178,7 +1178,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     ///
     /// ```
     /// #![feature(get_mut_unchecked)]
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1197,7 +1197,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Rc<[mem::MaybeUninit<T>], A> {
         unsafe { Rc::from_ptr_in(Rc::allocate_for_slice_in(len, &alloc), alloc) }
@@ -1212,7 +1212,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1225,7 +1225,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Rc<[mem::MaybeUninit<T>], A> {
         unsafe {
@@ -1333,14 +1333,13 @@ impl<T: ?Sized + CloneToUninit> Rc<T> {
     ///
     /// ```
     /// #![feature(clone_from_ref)]
-    /// #![feature(allocator_api)]
     /// use std::rc::Rc;
     ///
     /// let hello: Rc<str> = Rc::try_clone_from_ref("hello")?;
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
-    //#[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn try_clone_from_ref(value: &T) -> Result<Rc<T>, AllocError> {
         Rc::try_clone_from_ref_in(value, Global)
     }
@@ -1353,7 +1352,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
     ///
     /// ```
     /// #![feature(clone_from_ref)]
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///
@@ -1361,7 +1360,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "clone_from_ref", issue = "149075")]
-    //#[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn clone_from_ref_in(value: &T, alloc: A) -> Rc<T, A> {
         // `in_progress` drops the allocation if we panic before finishing initializing it.
         let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::new(value, alloc);
@@ -1381,7 +1380,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
     ///
     /// ```
     /// #![feature(clone_from_ref)]
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///
@@ -1389,7 +1388,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Rc<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
-    //#[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn try_clone_from_ref_in(value: &T, alloc: A) -> Result<Rc<T, A>, AllocError> {
         // `in_progress` drops the allocation if we panic before finishing initializing it.
         let mut in_progress: UniqueRcUninit<T, A> = UniqueRcUninit::try_new(value, alloc)?;
@@ -1618,7 +1617,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// to call it as `Rc::allocator(&r)` instead of `r.allocator()`. This
     /// is so that there is no conflict with a method on the inner type.
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(this: &Self) -> &A {
         &this.alloc
     }
@@ -1631,7 +1630,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///
@@ -1642,7 +1641,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// assert_eq!(&*x, "hello");
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = mem::ManuallyDrop::new(this);
         let ptr = Self::as_ptr(&this);
@@ -1713,7 +1712,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1735,7 +1734,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// Convert a slice back into its original array:
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1748,7 +1747,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///     assert_eq!(&*x, &[1, 2, 3]);
     /// }
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         let offset = unsafe { data_offset(ptr) };
 
@@ -1834,7 +1833,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1852,7 +1851,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub unsafe fn increment_strong_count_in(ptr: *const T, alloc: A)
     where
         A: AllocatorClone,
@@ -1880,7 +1879,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::rc::Rc;
     /// use std::alloc::System;
@@ -1898,7 +1897,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub unsafe fn decrement_strong_count_in(ptr: *const T, alloc: A) {
         unsafe { drop(Rc::from_raw_in(ptr, alloc)) };
     }
@@ -3005,7 +3004,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, A: AllocatorClone> From<Vec<T, A>> for Rc<[T], A> {
+impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
     /// Allocates a reference-counted slice and moves `v`'s items into it.
     ///
     /// # Example
@@ -3205,7 +3204,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 #[rustc_diagnostic_item = "RcWeak"]
 pub struct Weak<
     T: ?Sized,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
@@ -3270,7 +3269,7 @@ impl<T, A: Allocator> Weak<T, A> {
     /// assert!(empty.upgrade().is_none());
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
         Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc }
     }
@@ -3373,7 +3372,7 @@ impl<T: ?Sized> Weak<T> {
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// Returns a reference to the underlying allocator.
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(&self) -> &A {
         &self.alloc
     }
@@ -3432,7 +3431,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     /// use std::rc::{Rc, Weak};
     /// use std::alloc::System;
     ///
@@ -3451,7 +3450,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// [`as_ptr`]: Weak::as_ptr
     #[must_use = "losing the pointer will leak memory"]
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn into_raw_with_allocator(self) -> (*const T, A) {
         let this = mem::ManuallyDrop::new(self);
         let result = this.as_ptr();
@@ -3503,7 +3502,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         // See Weak::as_ptr for context on how the input pointer is derived.
 
@@ -3936,7 +3935,7 @@ fn data_offset_alignment(alignment: Alignment) -> usize {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 pub struct UniqueRc<
     T: ?Sized,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
     // Define the ownership of `RcInner<T>` for drop-check
@@ -4562,7 +4561,7 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -4614,5 +4613,5 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}
