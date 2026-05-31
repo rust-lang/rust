@@ -33,14 +33,14 @@ fn main() {
     epoll_ctl_add(epfd, fd2, EPOLL_IN_OUT_ET as i32).unwrap();
 
     // Consume the initial events.
-    check_epoll_wait::<8>(
+    check_epoll_wait(
         epfd,
         &[Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }],
         -1,
     );
 
     let thread1 = thread::spawn(move || {
-        check_epoll_wait::<2>(
+        check_epoll_wait(
             epfd,
             &[Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }],
             -1,
@@ -48,7 +48,7 @@ fn main() {
     });
     let thread2 = thread::spawn(move || {
         //~vERROR: deadlocked
-        check_epoll_wait::<2>(
+        check_epoll_wait(
             epfd,
             &[Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }],
             -1,

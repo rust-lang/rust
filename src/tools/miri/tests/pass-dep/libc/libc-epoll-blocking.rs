@@ -41,15 +41,15 @@ fn test_epoll_block_without_notification() {
     epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // epoll_wait to clear notification.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: fd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fd }], -1);
 
     if cfg!(edge_triggered) {
         // This epoll wait blocks, and timeout without notification.
-        check_epoll_wait::<1>(epfd, &[], 5);
+        check_epoll_wait(epfd, &[], 5);
     } else {
         // In level-triggered mode we should receive the same events
         // as before without timing out.
-        check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: fd }], -1);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fd }], -1);
     }
 }
 
@@ -68,7 +68,7 @@ fn test_epoll_block_then_unblock() {
     epoll_ctl_add(epfd, fds[0], EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // epoll_wait to clear notification.
-    check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
 
     let thread1 = thread::spawn(move || {
         thread::yield_now();
@@ -80,11 +80,11 @@ fn test_epoll_block_then_unblock() {
         // Edge-triggered epoll will block until the write succeeds and the buffer
         // becomes readable. This is because we already read the writable edge
         // before so at the time of calling `epoll_wait` there is no active readiness.
-        check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
     } else {
         // Level-triggered epoll won't wait for the write to succeed because
         // _some_ readiness is already set (in this case the EPOLLOUT).
-        check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
     }
 
     thread1.join().unwrap();
@@ -104,23 +104,23 @@ fn test_notification_after_timeout() {
     epoll_ctl_add(epfd, fds[0], EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // epoll_wait to clear notification.
-    check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
 
     if cfg!(edge_triggered) {
         // Edge-triggered epoll wait times out without notification because
         // we just processed the edge.
-        check_epoll_wait::<1>(epfd, &[], 10);
+        check_epoll_wait(epfd, &[], 10);
     } else {
         // Level-triggered epoll just returns the same events as before
         // without blocking.
-        check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
     }
 
     // Trigger epoll notification after timeout.
     write_all(fds[1], b"abcde").unwrap();
 
     // Check the result of the notification.
-    check_epoll_wait::<2>(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
 }
 
 // This test shows a data race before epoll had vector clocks added.
@@ -144,7 +144,7 @@ fn test_epoll_race() {
     });
     thread::yield_now();
     // epoll_wait for EPOLLIN.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN, data: fd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fd }], -1);
     // Read from the static mut variable.
     assert_eq!(unsafe { VAL }, 1);
     thread1.join().unwrap();
@@ -165,7 +165,7 @@ fn wakeup_on_new_interest() {
 
     // Block a thread on the epoll instance.
     let t = std::thread::spawn(move || {
-        check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[1] }], -1);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[1] }], -1);
     });
     // Ensure the thread is blocked.
     std::thread::yield_now();
@@ -196,7 +196,7 @@ fn multiple_events_wake_multiple_threads() {
 
     // Consume the initial events.
     let expected = [Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }];
-    check_epoll_wait::<8>(epfd, &expected, -1);
+    check_epoll_wait(epfd, &expected, -1);
 
     // Block two threads on the epoll, both wanting to get just one event.
     let t1 = thread::spawn(move || {
