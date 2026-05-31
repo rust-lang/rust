@@ -1598,6 +1598,25 @@ impl Dir {
             .open_file(path.as_ref(), &OpenOptions::new().read(true).0)
             .map(|f| File { inner: f })
     }
+
+    /// Queries metadata about the underlying directory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.inner.metadata().map(Metadata)
+    }
 }
 
 impl AsInner<fs_imp::Dir> for Dir {
@@ -2144,6 +2163,12 @@ impl fmt::Debug for Metadata {
             debug.field("created", &created);
         }
         debug.finish_non_exhaustive()
+    }
+}
+
+impl IntoInner<fs_imp::FileAttr> for Metadata {
+    fn into_inner(self) -> fs_imp::FileAttr {
+        self.0
     }
 }
 
