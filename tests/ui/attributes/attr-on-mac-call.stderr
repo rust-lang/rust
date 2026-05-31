@@ -201,5 +201,76 @@ LL |     #[should_panic]
    = help: `#[should_panic]` can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: 22 warnings emitted
+warning: `#[repr()]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:74:5
+   |
+LL |     #[repr()]
+   |     ^^^^^^^^^
+   |
+   = help: `#[repr()]` can only be applied to data types
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: unused attribute
+  --> $DIR/attr-on-mac-call.rs:74:5
+   |
+LL |     #[repr()]
+   |     ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+
+warning: `#[repr(u8)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:79:5
+   |
+LL |     #[repr(u8)]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[repr(u8)]` can only be applied to enums
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[repr(align(...))]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:83:5
+   |
+LL |     #[repr(align(8))]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(align(...))]` can only be applied to data types
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[repr(packed)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:87:5
+   |
+LL |     #[repr(packed)]
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(packed)]` can only be applied to data types
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[repr(C)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:91:5
+   |
+LL |     #[repr(C)]
+   |     ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[repr(Rust)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:95:5
+   |
+LL |     #[repr(Rust)]
+   |     ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(Rust)]` can only be applied to data types
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[repr(simd)]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:99:5
+   |
+LL |     #[repr(simd)]
+   |     ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(simd)]` can only be applied to structs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: 30 warnings emitted
 

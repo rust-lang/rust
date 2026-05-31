@@ -70,4 +70,34 @@ fn main() {
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     unreachable!();
+
+    #[repr()]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    //~| WARN unused attribute
+    unreachable!();
+    #[repr(u8)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(align(8))]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(packed)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(C)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(Rust)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(simd)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
 }
