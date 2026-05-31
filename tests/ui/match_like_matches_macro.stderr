@@ -19,7 +19,7 @@ LL -     };
 LL +     let _y = matches!(x, Some(0));
    |
 
-error: redundant pattern matching, consider using `is_some()`
+error: redundant pattern matching
   --> tests/ui/match_like_matches_macro.rs:21:14
    |
 LL |       let _w = match x {
@@ -27,12 +27,20 @@ LL |       let _w = match x {
 LL | |         Some(_) => true,
 LL | |         _ => false,
 LL | |     };
-   | |_____^ help: try: `x.is_some()`
+   | |_____^
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+help: consider using `is_some()`
+   |
+LL -     let _w = match x {
+LL -         Some(_) => true,
+LL -         _ => false,
+LL -     };
+LL +     let _w = x.is_some();
+   |
 
-error: redundant pattern matching, consider using `is_none()`
+error: redundant pattern matching
   --> tests/ui/match_like_matches_macro.rs:28:14
    |
 LL |       let _z = match x {
@@ -40,7 +48,16 @@ LL |       let _z = match x {
 LL | |         Some(_) => false,
 LL | |         None => true,
 LL | |     };
-   | |_____^ help: try: `x.is_none()`
+   | |_____^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _z = match x {
+LL -         Some(_) => false,
+LL -         None => true,
+LL -     };
+LL +     let _z = x.is_none();
+   |
 
 error: match expression looks like `matches!` macro
   --> tests/ui/match_like_matches_macro.rs:35:15
