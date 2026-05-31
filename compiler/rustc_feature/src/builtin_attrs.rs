@@ -393,6 +393,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     //
     // - https://github.com/rust-lang/rust/issues/132306
     gated!(const_continue, loop_match, experimental!(const_continue)),
+    gated!(indirect_branch, loop_match, experimental!(indirect_branch)),
     gated!(loop_match, loop_match, experimental!(loop_match)),
 
     // The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment

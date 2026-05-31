@@ -70,6 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         test: &Test<'tcx>,
         target_blocks: FxIndexMap<TestBranch<'tcx>, BasicBlock>,
+        indirect_br: bool,
     ) {
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty);
@@ -104,7 +105,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::SwitchInt {
                         discr: Operand::Move(discr),
                         targets: switch_targets,
-                        indirect_br: false,
+                        indirect_br,
                     },
                 );
             }
@@ -126,7 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let terminator = TerminatorKind::SwitchInt {
                     discr: Operand::Copy(place),
                     targets: switch_targets,
-                    indirect_br: false,
+                    indirect_br,
                 };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }

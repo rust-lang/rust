@@ -1110,7 +1110,11 @@ fn insert_switch<'tcx>(
         }
     }
 
-    let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
+    let switch = TerminatorKind::SwitchInt {
+        discr: Operand::Move(discr),
+        targets: switch_targets,
+        indirect_br: false,
+    };
     body.basic_blocks_mut()[START_BLOCK].terminator =
         Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
 }

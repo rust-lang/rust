@@ -1236,7 +1236,7 @@ unsafe extern "C" {
     // Add a case to the switch instruction
     pub(crate) fn LLVMAddCase<'a>(Switch: &'a Value, OnVal: &'a Value, Dest: &'a BasicBlock);
 
-    // Add a destintation to the indirectbr instruction
+    // Add a destination to the indirectbr instruction
     pub(crate) fn LLVMAddDestination<'a>(IndirectBr: &'a Value, Dest: &'a BasicBlock);
 
     // Get the block address of the given block in the given function

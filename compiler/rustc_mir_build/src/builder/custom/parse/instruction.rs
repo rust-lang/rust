@@ -72,9 +72,13 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             @call(mir_tail_call, args) => {
                 self.parse_tail_call(args)
             },
-            ExprKind::Match { scrutinee, arms, .. } => {
+            ExprKind::Match { scrutinee, arms, indirect_br, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
-                self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt { discr, targets: t, indirect_br: false })
+                self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt {
+                    discr,
+                    targets: t,
+                    indirect_br: *indirect_br,
+                })
             },
         )
     }

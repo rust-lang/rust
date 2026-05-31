@@ -386,7 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
-        _indirect_br: bool,
+        indirect_br: bool,
     ) {
         let discr = self.codegen_operand(bx, discr);
         let discr_value = discr.immediate();
@@ -499,12 +499,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             {
                 // All targets have the same weight,
                 // or `otherwise` is unreachable and it's the only target with a different weight.
-                bx.switch(
-                    discr_value,
-                    helper.llbb_with_cleanup(self, targets.otherwise()),
-                    target_iter
-                        .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
-                );
+                if indirect_br {
+                    bx.indirect_br(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, targets.otherwise()),
+                        target_iter
+                            .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                    );
+                } else {
+                    bx.switch(
+                        discr_value,
+                        helper.llbb_with_cleanup(self, targets.otherwise()),
+                        target_iter
+                            .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                    );
+                }
             } else {
                 // Targets have different weights
                 bx.switch_with_weights(

@@ -382,6 +382,7 @@ pub enum ExprKind<'tcx> {
         scrutinee: ExprId,
         arms: Box<[ArmId]>,
         match_source: MatchSource,
+        indirect_br: bool,
     },
     /// A block.
     Block {

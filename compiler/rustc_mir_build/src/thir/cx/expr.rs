@@ -925,6 +925,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 scrutinee: self.mirror_expr(discr),
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
                 match_source,
+                indirect_br: find_attr!(self.tcx, expr.hir_id, IndirectBranch(_)),
             },
             hir::ExprKind::Loop(body, ..) => {
                 if find_attr!(self.tcx, expr.hir_id, LoopMatch(_)) {
