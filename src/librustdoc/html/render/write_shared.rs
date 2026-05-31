@@ -14,7 +14,6 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
@@ -756,14 +755,9 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let mut implementors = implementors.collect::<Vec<_>>();
-            implementors.sort_unstable_by(|a, b| {
-                // We sort negative impls first.
-                match (a.is_negative, b.is_negative) {
-                    (false, true) => Ordering::Greater,
-                    (true, false) => Ordering::Less,
-                    _ => compare_names(&a.cmp_text, &b.cmp_text),
-                }
-            });
+            // Negative impls are naturally sorted first, because `impl !A` is less than `impl B`
+            // for any value of `B`, because `!` is less than any identifier-starting char.
+            implementors.sort_unstable_by(|a, b| compare_names(&a.cmp_text, &b.cmp_text));
 
             let part = OrderedJson::array_unsorted(
                 implementors

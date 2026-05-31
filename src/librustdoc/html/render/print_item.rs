@@ -2327,16 +2327,12 @@ struct ImplString {
     // Plain text (not HTML text) because this is only used for sorting purposes, and the plain
     // text is much shorter and thus faster to compare.
     cmp_text: String,
-    is_negative: bool,
 }
 
 impl ImplString {
     fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
         let impl_ = i.inner_impl();
-        ImplString {
-            is_negative: impl_.is_negative_trait_impl(),
-            cmp_text: format!("{:#}", print_impl(impl_, false, cx)),
-        }
+        ImplString { cmp_text: format!("{:#}", print_impl(impl_, false, cx)) }
     }
 }
 
@@ -2348,12 +2344,9 @@ impl PartialOrd for ImplString {
 
 impl Ord for ImplString {
     fn cmp(&self, other: &Self) -> Ordering {
-        // We sort negative impls first.
-        match (self.is_negative, other.is_negative) {
-            (false, true) => Ordering::Greater,
-            (true, false) => Ordering::Less,
-            _ => compare_names(&self.cmp_text, &other.cmp_text),
-        }
+        // Negative impls are naturally sorted first, because `impl !A` is less than `impl B` for
+        // any value of `B`, because `!` is less than any identifier-starting char.
+        compare_names(&self.cmp_text, &other.cmp_text)
     }
 }
 
