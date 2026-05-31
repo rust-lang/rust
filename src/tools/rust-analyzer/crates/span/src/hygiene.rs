@@ -460,6 +460,13 @@ impl SyntaxContext {
     pub const unsafe fn from_u32(u32: u32) -> Self {
         Self(u32)
     }
+
+    /// Alternative to [`from_u32`] that is safe to call.
+    ///
+    /// The split exists to keep API parity.
+    pub const fn from_u32_safe(u32: u32) -> Self {
+        Self(u32)
+    }
 }
 
 /// A property of a macro expansion that determines how identifiers
