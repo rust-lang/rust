@@ -3,6 +3,9 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
 use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::mir::IntrinsicResult;
+use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
+use rustc_codegen_ssa::mir::place::PlaceValue;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::RustcAutodiff;
@@ -11,7 +14,7 @@ use rustc_middle::{bug, ty};
 use rustc_target::callconv::PassMode;
 use tracing::debug;
 
-use crate::builder::{Builder, PlaceRef, UNNAMED};
+use crate::builder::{Builder, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::llvm::{self, TRUE, Type, Value};
@@ -296,9 +299,10 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     ret_ty: &'ll Type,
     fn_args: &[&'ll Value],
     attrs: &RustcAutodiff,
-    dest: PlaceRef<'tcx, &'ll Value>,
+    dest_layout: ty::layout::TyAndLayout<'tcx>,
+    dest_place: Option<PlaceValue<&'ll Value>>,
     fnc_tree: FncTree,
-) {
+) -> IntrinsicResult<'tcx, &'ll Value> {
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
@@ -381,11 +385,18 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
     let fn_ret_ty = builder.cx.val_ty(call);
-    if fn_ret_ty != builder.cx.type_void() && fn_ret_ty != builder.cx.type_struct(&[], false) {
+    if fn_ret_ty == builder.cx.type_void() || fn_ret_ty == builder.cx.type_struct(&[], false) {
         // If we return void or an empty struct, then our caller (due to how we generated it)
         // does not expect a return value. As such, we have no pointer (or place) into which
         // we could store our value, and would store into an undef, which would cause UB.
         // As such, we just ignore the return value in those cases.
-        builder.store_to_place(call, dest.val);
+        IntrinsicResult::Operand(OperandValue::ZeroSized)
+    } else if let Some(dest_place) = dest_place {
+        builder.store_to_place(call, dest_place);
+        IntrinsicResult::WroteIntoPlace
+    } else {
+        IntrinsicResult::Operand(
+            OperandRef::from_immediate_or_packed_pair(builder, call, dest_layout).val,
+        )
     }
 }
