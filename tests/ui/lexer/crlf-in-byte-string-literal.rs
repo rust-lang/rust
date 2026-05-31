@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/16278>.
+
 //@ run-pass
 // ignore-tidy-cr
 

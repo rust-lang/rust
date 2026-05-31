@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/16530>.
+//! Tests that unit struct produce same constant hash instead of ICE'ing.
+
 //@ run-pass
 #![allow(deprecated)]
 
