@@ -1089,7 +1089,13 @@ fn clean_fn_or_proc_macro<'tcx>(
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx.tcx),
         None => {
-            let mut func = clean_function(cx, sig, generics, ParamsSrc::Body(body_id));
+            let mut func = clean_function(
+                cx,
+                sig,
+                generics,
+                ParamsSrc::Body(body_id),
+                item.owner_id.to_def_id(),
+            );
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -1127,18 +1133,30 @@ fn clean_function<'tcx>(
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     params: ParamsSrc<'tcx>,
+    def_id: DefId,
 ) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: Generics must be cleaned before params.
         let generics = clean_generics(generics, cx);
-        let params = match params {
-            ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
-            // Let's not perpetuate anon params from Rust 2015; use `_` for them.
-            ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
-                Some(ident.map_or(kw::Underscore, |ident| ident.name))
-            }),
+        let decl = if sig.decl.opt_delegation_sig_id().is_some() {
+            // A delegation item (`reuse path::method`) has no resolved signature in the
+            // HIR: its inputs and return type are `InferDelegation` nodes that clean to
+            // `_`, and an `async` header over that inferred return type would panic in
+            // `sugared_async_return_type`. The resolved signature only exists on the ty
+            // side, so clean that instead, exactly like an inlined item. This both fixes
+            // the rendered `-> _` / `self: _` and makes the async sugaring well-defined.
+            let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+            clean_poly_fn_sig(cx, Some(def_id), sig)
+        } else {
+            let params = match params {
+                ParamsSrc::Body(body_id) => clean_params_via_body(cx, sig.decl.inputs, body_id),
+                // Let's not perpetuate anon params from Rust 2015; use `_` for them.
+                ParamsSrc::Idents(idents) => clean_params(cx, sig.decl.inputs, idents, |ident| {
+                    Some(ident.map_or(kw::Underscore, |ident| ident.name))
+                }),
+            };
+            clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params)
         };
-        let decl = clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params);
         (generics, decl)
     });
     Box::new(Function { decl, generics })
@@ -1270,11 +1288,18 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body));
+                let m =
+                    clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body), local_did);
                 MethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
-                let m = clean_function(cx, sig, trait_item.generics, ParamsSrc::Idents(idents));
+                let m = clean_function(
+                    cx,
+                    sig,
+                    trait_item.generics,
+                    ParamsSrc::Idents(idents),
+                    local_did,
+                );
                 RequiredMethodItem(m, Defaultness::from_trait_item(trait_item.defaultness))
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
@@ -1315,7 +1340,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body));
+                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
                 let defaultness = match impl_.impl_kind {
                     hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
                     hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
@@ -3254,7 +3279,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(sig, idents, generics) => ForeignFunctionItem(
-                clean_function(cx, &sig, generics, ParamsSrc::Idents(idents)),
+                clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id),
                 sig.header.safety(),
             ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
