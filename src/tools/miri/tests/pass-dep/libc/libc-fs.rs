@@ -2,7 +2,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{File, canonicalize, create_dir, remove_dir, remove_file};
+use std::fs::{self, File, canonicalize, create_dir, remove_dir, remove_file};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
@@ -68,11 +68,12 @@ fn main() {
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
     test_pwrite();
+    test_linkat();
 }
 
 #[cfg(target_os = "linux")]
 #[track_caller]
-fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, expected_size: u64) {
+fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expected_size: u64) {
     use std::os::unix::fs::MetadataExt;
     let mask = stx.stx_mask;
 
@@ -152,7 +153,7 @@ fn test_statx_on_file_path() {
         assert_eq!(ret, 0, "statx failed: {}", std::io::Error::last_os_error());
 
         let stx = stx.assume_init();
-        let meta = std::fs::metadata(&path).unwrap();
+        let meta = fs::metadata(&path).unwrap();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
@@ -1146,4 +1147,33 @@ fn test_pwrite() {
 
     // The write should start at the provided byte offset.
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+fn test_linkat() {
+    let source = utils::prepare_with_content("miri_test_libc_linkat_source.txt", b"hello");
+    let link = utils::prepare("miri_test_libc_linkat_link.txt");
+
+    let c_source = CString::new(source.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_link = CString::new(link.as_os_str().as_bytes()).expect("CString::new failed");
+
+    // Call linkat
+    unsafe {
+        libc_utils::errno_check(libc::linkat(
+            libc::AT_FDCWD,
+            c_source.as_ptr(),
+            libc::AT_FDCWD,
+            c_link.as_ptr(),
+            0,
+        ));
+    }
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Cleanup
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }

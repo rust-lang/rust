@@ -38,11 +38,14 @@ fn main() {
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
-        #[cfg(unix)]
-        test_pread_pwrite();
         #[cfg(not(target_os = "solaris"))]
         test_flock();
+        #[cfg(not(target_os = "android"))]
+        test_hard_link();
+
         test_readv_writev();
+        #[cfg(unix)]
+        test_pread_pwrite();
         #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
         test_preadv_pwritev();
     }
@@ -510,4 +513,35 @@ fn test_preadv_pwritev() {
     let mut written_bytes = vec![0u8; bytes_written];
     f.read_exact(&mut written_bytes).unwrap();
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+// std uses `libc::link` on Android which we do not support.
+#[cfg(not(target_os = "android"))]
+fn test_hard_link() {
+    let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
+    let link = utils::prepare("miri_test_fs_hard_link_link.txt");
+
+    fs::hard_link(&source, &link).unwrap();
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Only on Unix: verify both files have same inode
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let source_meta = std::fs::metadata(&source).unwrap();
+        let link_meta = std::fs::metadata(&link).unwrap();
+        assert_eq!(source_meta.ino(), link_meta.ino());
+    }
+
+    // Test error: link already exists
+    assert_eq!(ErrorKind::AlreadyExists, fs::hard_link(&source, &link).unwrap_err().kind());
+
+    // Cleanup after test
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }
