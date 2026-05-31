@@ -68,6 +68,22 @@ pub fn confstr(
     Ok(OsString::from_vec(buf))
 }
 
+/// Returns the value for [`confstr(key, ...)`][posix_confstr]. This should work on
+/// any unix platform and it returns an Option<`CString`> where `None` is returned
+/// if the key lookup from confstr read 0 bytes.
+///
+/// [posix_confstr]:
+///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
+pub fn confstr_as_cstring(key: crate::ffi::c_int) -> Option<crate::ffi::CString> {
+    let n = unsafe { libc::confstr(key, crate::ptr::null_mut(), 0) };
+    let mut buf = Vec::with_capacity(n);
+    let res = unsafe { libc::confstr(key, buf.as_mut_ptr(), n) };
+    if res == 0 {
+        return None;
+    }
+    Some(unsafe { crate::ffi::CStr::from_ptr(buf.as_ptr()) }.into())
+}
+
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub fn glibc_version() -> Option<(usize, usize)> {
     use crate::ffi::CStr;

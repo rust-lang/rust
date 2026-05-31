@@ -92,6 +92,11 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
+
+        let envp = envp
+            .map(|envp| envp)
+            .unwrap_or(unsafe { CStringArray::from_ptr(*sys::env::environ()) });
+        let paths = self.compute_paths(&envp)?;
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -102,7 +107,7 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
-            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            let Err(err) = unsafe { self.do_exec(theirs, &envp, paths) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
             let bytes = [
@@ -236,13 +241,45 @@ impl Command {
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
                     let _lock = sys::env::env_read_lock();
-
-                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    let envp = envp
+                        .map(|envp| envp)
+                        .unwrap_or(CStringArray::from_ptr(*sys::env::environ()));
+                    let paths = match self.compute_paths(&envp) {
+                        Ok(paths) => paths,
+                        Err(e) => return e,
+                    };
+                    let Err(e) = self.do_exec(theirs, &envp, paths);
                     e
                 }
             }
             Err(e) => e,
         }
+    }
+
+    fn compute_paths(&self, envp: &CStringArray) -> Result<Vec<CString>, io::Error> {
+        let mut paths = Vec::new();
+        let file = self.get_program_cstr();
+        // This is the value associated with the `PATH` environment variable with colon delimiters
+        let mut v = match envp.iter().find(|var| var.to_bytes_with_nul().starts_with(b"PATH=")) {
+            // Remove "PATH="
+            Some(p) => &p.to_bytes_with_nul()[5..],
+            // Falls back to this if PATH environment variable couldn't be found
+            None => self.get_default_path().to_bytes_with_nul(),
+        };
+
+        while !v.is_empty() && v != &[b'\0'] {
+            let colon_pos = v.iter().position(|byte| *byte == b':').unwrap_or(v.len() - 1);
+            let dir = &v[..colon_pos];
+            // Parsed path len from envp + file path len + 1 for separator byte
+            let mut binary_path = Vec::with_capacity(colon_pos + file.count_bytes() + 1);
+            binary_path.extend_from_slice(dir);
+            binary_path.push(b'/');
+            binary_path.extend_from_slice(file.to_bytes());
+            paths.push(CString::new(binary_path)?);
+            v = &v[colon_pos + 1..];
+        }
+
+        Ok(paths)
     }
 
     // And at this point we've reached a special time in the life of the
@@ -279,7 +316,8 @@ impl Command {
     unsafe fn do_exec(
         &mut self,
         stdio: ChildPipes,
-        maybe_envp: Option<&CStringArray>,
+        envp: &CStringArray,
+        paths: Vec<CString>,
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -388,70 +426,30 @@ impl Command {
         let file = self.get_program_cstr();
         let file_as_bytes = file.to_bytes_with_nul();
         let argv = self.get_argv();
-        let parent_path = crate::env::var("PATH")
-            .map(|var| CString::new(var))
-            .unwrap_or(CString::new("/bin:/usr/bin"))?;
-        let envp = maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(*sys::env::environ());
 
-        // This is the value associated with the `PATH` environment variable with colon delimiters
-        let mut paths = match maybe_envp {
-            Some(envp) => {
-                match envp.iter().find(|var| var.to_bytes_with_nul().starts_with(b"PATH=")) {
-                    // Remove "PATH="
-                    Some(p) => &p.to_bytes_with_nul()[5..],
-                    // Falls back to this if PATH environment variable couldn't be found
-                    None => c"/bin:/usr/bin".to_bytes_with_nul(),
-                }
-            }
-            None => parent_path.as_bytes_with_nul(),
-        };
-
-        // Can't exec on an empty file path
-        if file.is_empty() {
-            return Err(io::Error::from_raw_os_error(libc::ENOENT));
-        }
         // Path searching does not occur when our file starts with a `/`
-        else if file_as_bytes.starts_with(&[b'/']) {
-            libc::execve(file.as_ptr(), argv.as_ptr(), envp);
-        }
-        // Ensure that our given file does not exceed the limit set by NAME_MAX
-        // Note: `file` is a CStr, so it should be guaranteed to have a nul terminated
-        // byte (hence no underflow occurs here)
-        else if file_as_bytes.len() - 1 >= libc::NAME_MAX as usize {
-            return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG));
+        if file_as_bytes.contains(&b'/') {
+            libc::execve(file.as_ptr(), argv.as_ptr(), envp.as_ptr());
         } else {
             let mut got_perm_denied = None;
-            while paths != &[b'\0'] {
-                let colon_pos =
-                    paths.iter().position(|byte| *byte == b':').unwrap_or(paths.len() - 1);
-                let dir = &paths[..colon_pos];
-                // Parsed path len from envp + file path len + 1 for separator byte
-                let mut binary_path = Vec::with_capacity(colon_pos + file.count_bytes() + 1);
-                binary_path.extend_from_slice(dir);
-                binary_path.push(b'/');
-                binary_path.extend_from_slice(file.to_bytes());
-                let cstr_path = CString::new(binary_path)?;
-
-                // Try execing with the path entry
-                libc::execve(cstr_path.as_ptr(), argv.as_ptr(), envp);
-
+            for path in paths {
+                libc::execve(path.as_ptr(), argv.as_ptr(), envp.as_ptr());
                 let err = io::Error::last_os_error();
+
+                // Unsure we should do this on ENOEXEC because that's implementation
+                // defined + we should not be allocating here (should this be stored in
+                // `Command`?)
                 // File is accessible, but not executable as a file; invoke the shell to interpret
                 // it as a script.
                 if let Some(err) = err.raw_os_error()
                     && err == libc::ENOEXEC
                 {
-                    let mut new_argv = CStringArray::with_capacity(argv.len() + 2);
-                    new_argv.push(CString::new("/bin/sh")?);
-                    new_argv.push(file.to_owned());
-
-                    for arg in argv.iter() {
-                        new_argv.push(arg.to_owned());
-                    }
-
-                    libc::execve(new_argv[0].as_ptr(), new_argv.as_ptr(), envp);
+                    libc::execve(
+                        self.get_shell_argv()[0].as_ptr(),
+                        self.get_shell_argv().as_ptr(),
+                        envp.as_ptr(),
+                    );
                 }
-
                 match err.kind() {
                     // Record that we got a 'Permission Denied' error in the event that if we
                     // find no executable to use, we should report that there was usable executable
@@ -466,14 +464,12 @@ impl Command {
                     io::ErrorKind::NotFound | io::ErrorKind::TimedOut => {}
                     _ => return Err(err),
                 }
-
-                paths = &paths[colon_pos + 1..];
             }
 
             // At least one failure was due to lack of permissions, so we should
             // report that failure first
-            if let Some(got_eaccess) = got_perm_denied {
-                return Err(got_eaccess);
+            if let Some(got_perm_denied) = got_perm_denied {
+                return Err(got_perm_denied);
             }
 
             // No paths were executable
