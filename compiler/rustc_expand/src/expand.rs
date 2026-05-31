@@ -1250,7 +1250,7 @@ enum AddSemicolon {
 
 /// A trait implemented for all `AstFragment` nodes and providing all pieces
 /// of functionality used by `InvocationCollector`.
-trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
+trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized + DeclaredIdents {
     type OutputTy = SmallVec<[Self; 1]>;
     type ItemKind = ItemKind;
     const KIND: AstFragmentKind;
@@ -1302,13 +1302,15 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
+    fn as_target(&self) -> Target;
+}
+
+pub trait DeclaredIdents {
     /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
     fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
-
-    fn as_target(&self) -> Target;
 }
 
 impl InvocationCollectorNode for Box<ast::Item> {
@@ -1440,6 +1442,12 @@ impl InvocationCollectorNode for Box<ast::Item> {
         res
     }
 
+    fn as_target(&self) -> Target {
+        Target::from_ast_item(self)
+    }
+}
+
+impl DeclaredIdents for Box<ast::Item> {
     fn declared_idents(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
@@ -1460,13 +1468,10 @@ impl InvocationCollectorNode for Box<ast::Item> {
             self.kind.ident().into_iter().collect()
         }
     }
-
-    fn as_target(&self) -> Target {
-        Target::from_ast_item(self)
-    }
 }
 
 struct TraitItemTag;
+impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1511,6 +1516,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
 }
 
 struct ImplItemTag;
+impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1555,6 +1561,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
 }
 
 struct TraitImplItemTag;
+impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1598,6 +1605,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     }
 }
 
+impl DeclaredIdents for Box<ast::ForeignItem> {}
 impl InvocationCollectorNode for Box<ast::ForeignItem> {
     const KIND: AstFragmentKind = AstFragmentKind::ForeignItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1628,6 +1636,7 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
     }
 }
 
+impl DeclaredIdents for ast::Variant {}
 impl InvocationCollectorNode for ast::Variant {
     const KIND: AstFragmentKind = AstFragmentKind::Variants;
     fn to_annotatable(self) -> Annotatable {
@@ -1644,6 +1653,7 @@ impl InvocationCollectorNode for ast::Variant {
     }
 }
 
+impl DeclaredIdents for ast::WherePredicate {}
 impl InvocationCollectorNode for ast::WherePredicate {
     const KIND: AstFragmentKind = AstFragmentKind::WherePredicates;
     fn to_annotatable(self) -> Annotatable {
@@ -1660,6 +1670,7 @@ impl InvocationCollectorNode for ast::WherePredicate {
     }
 }
 
+impl DeclaredIdents for ast::FieldDef {}
 impl InvocationCollectorNode for ast::FieldDef {
     const KIND: AstFragmentKind = AstFragmentKind::FieldDefs;
     fn to_annotatable(self) -> Annotatable {
@@ -1676,6 +1687,7 @@ impl InvocationCollectorNode for ast::FieldDef {
     }
 }
 
+impl DeclaredIdents for ast::PatField {}
 impl InvocationCollectorNode for ast::PatField {
     const KIND: AstFragmentKind = AstFragmentKind::PatFields;
     fn to_annotatable(self) -> Annotatable {
@@ -1692,6 +1704,7 @@ impl InvocationCollectorNode for ast::PatField {
     }
 }
 
+impl DeclaredIdents for ast::ExprField {}
 impl InvocationCollectorNode for ast::ExprField {
     const KIND: AstFragmentKind = AstFragmentKind::ExprFields;
     fn to_annotatable(self) -> Annotatable {
@@ -1708,6 +1721,7 @@ impl InvocationCollectorNode for ast::ExprField {
     }
 }
 
+impl DeclaredIdents for ast::Param {}
 impl InvocationCollectorNode for ast::Param {
     const KIND: AstFragmentKind = AstFragmentKind::Params;
     fn to_annotatable(self) -> Annotatable {
@@ -1724,6 +1738,7 @@ impl InvocationCollectorNode for ast::Param {
     }
 }
 
+impl DeclaredIdents for ast::GenericParam {}
 impl InvocationCollectorNode for ast::GenericParam {
     const KIND: AstFragmentKind = AstFragmentKind::GenericParams;
     fn to_annotatable(self) -> Annotatable {
@@ -1756,6 +1771,7 @@ impl InvocationCollectorNode for ast::GenericParam {
     }
 }
 
+impl DeclaredIdents for ast::Arm {}
 impl InvocationCollectorNode for ast::Arm {
     const KIND: AstFragmentKind = AstFragmentKind::Arms;
     fn to_annotatable(self) -> Annotatable {
@@ -1772,6 +1788,7 @@ impl InvocationCollectorNode for ast::Arm {
     }
 }
 
+impl DeclaredIdents for ast::Stmt {}
 impl InvocationCollectorNode for ast::Stmt {
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
@@ -1848,6 +1865,7 @@ impl InvocationCollectorNode for ast::Stmt {
     }
 }
 
+impl DeclaredIdents for ast::Crate {}
 impl InvocationCollectorNode for ast::Crate {
     type OutputTy = ast::Crate;
     const KIND: AstFragmentKind = AstFragmentKind::Crate;
@@ -1877,6 +1895,7 @@ impl InvocationCollectorNode for ast::Crate {
     }
 }
 
+impl DeclaredIdents for ast::Ty {}
 impl InvocationCollectorNode for ast::Ty {
     type OutputTy = Box<ast::Ty>;
     const KIND: AstFragmentKind = AstFragmentKind::Ty;
@@ -1914,6 +1933,7 @@ impl InvocationCollectorNode for ast::Ty {
     }
 }
 
+impl DeclaredIdents for ast::Pat {}
 impl InvocationCollectorNode for ast::Pat {
     type OutputTy = Box<ast::Pat>;
     const KIND: AstFragmentKind = AstFragmentKind::Pat;
@@ -1940,6 +1960,7 @@ impl InvocationCollectorNode for ast::Pat {
     }
 }
 
+impl DeclaredIdents for ast::Expr {}
 impl InvocationCollectorNode for ast::Expr {
     type OutputTy = Box<ast::Expr>;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
@@ -1970,6 +1991,7 @@ impl InvocationCollectorNode for ast::Expr {
 }
 
 struct OptExprTag;
+impl DeclaredIdents for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
     type OutputTy = Option<Box<ast::Expr>>;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
@@ -2005,6 +2027,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
 /// It can be removed once that feature is stabilized.
 struct MethodReceiverTag;
 
+impl DeclaredIdents for AstNodeWrapper<ast::Expr, MethodReceiverTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     type OutputTy = AstNodeWrapper<Box<ast::Expr>, MethodReceiverTag>;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;

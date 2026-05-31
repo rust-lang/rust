@@ -3,8 +3,17 @@ pub mod inner {
     pub fn uwu() {}
 
     #[cfg(false)]
-    pub mod doesnt_exist {
+    pub mod cfgd_out {
         pub fn hello() {}
+    }
+
+    cfg_select! {
+        false => {
+            pub mod selected_out {
+                pub fn hello() {}
+            }
+        }
+        _ => {}
     }
 
     pub mod wrong {
