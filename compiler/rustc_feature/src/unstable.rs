@@ -257,7 +257,7 @@ declare_features! (
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows skipping `ConstParamTy_` trait implementation checks
-    (internal, const_param_ty_unchecked, "CURRENT_RUSTC_VERSION", None),
+    (internal, const_param_ty_unchecked, "1.97.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Implementation details of externally implementable items
@@ -381,7 +381,7 @@ declare_features! (
     /// Allows `extern "riscv-interrupt-m" fn()` and `extern "riscv-interrupt-s" fn()`.
     (unstable, abi_riscv_interrupt, "1.73.0", Some(111889)),
     /// Allows `extern "Swift" fn()`.
-    (unstable, abi_swift, "CURRENT_RUSTC_VERSION", Some(156481)),
+    (unstable, abi_swift, "1.97.0", Some(156481)),
     /// Allows `extern "x86-interrupt" fn()`.
     (unstable, abi_x86_interrupt, "1.17.0", Some(40180)),
     /// Allows additional const parameter types, such as `[u8; 10]` or user defined types
@@ -426,7 +426,7 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows defining c-variadic functions on targets where this feature has not yet
     /// undergone sufficient testing for stabilization.
-    (unstable, c_variadic_experimental_arch, "CURRENT_RUSTC_VERSION", Some(155973)),
+    (unstable, c_variadic_experimental_arch, "1.97.0", Some(155973)),
     /// Allows defining c-variadic naked functions with any extern ABI that is allowed
     /// on c-variadic foreign functions.
     (unstable, c_variadic_naked_functions, "1.93.0", Some(148767)),
@@ -445,7 +445,7 @@ declare_features! (
     /// Allows `cfg(target_has_atomic_load_store = "...")`.
     (unstable, cfg_target_has_atomic, "1.60.0", Some(94039)),
     /// Allows `cfg(target_object_format = "...")`.
-    (unstable, cfg_target_object_format, "CURRENT_RUSTC_VERSION", Some(152586)),
+    (unstable, cfg_target_object_format, "1.97.0", Some(152586)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
     /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
@@ -515,7 +515,7 @@ declare_features! (
     /// Allows giving unresolved imports a custom diagnostic message
     (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (unstable, diagnostic_on_unmatch_args, "CURRENT_RUSTC_VERSION", Some(155642)),
+    (unstable, diagnostic_on_unmatch_args, "1.97.0", Some(155642)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -551,7 +551,7 @@ declare_features! (
     /// Allows marking trait functions as `final` to prevent overriding impls
     (unstable, final_associated_functions, "1.95.0", Some(131179)),
     /// fma4 target feature on x86.
-    (unstable, fma4_target_feature, "CURRENT_RUSTC_VERSION", Some(155233)),
+    (unstable, fma4_target_feature, "1.97.0", Some(155233)),
     /// Controlling the behavior of fmt::Debug
     (unstable, fmt_debug, "1.82.0", Some(129709)),
     /// Allows using `#[align(...)]` on function items
@@ -584,7 +584,7 @@ declare_features! (
     /// Target features on hexagon.
     (unstable, hexagon_target_feature, "1.27.0", Some(150250)),
     /// Allows `impl(crate) trait Foo` restrictions.
-    (unstable, impl_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
+    (unstable, impl_restriction, "1.97.0", Some(105077)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` in bindings (`let`).
@@ -641,7 +641,7 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows `move(expr)` in closures.
-    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(155050)),
+    (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -762,7 +762,7 @@ declare_features! (
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows view types.
-    (unstable, view_types, "CURRENT_RUSTC_VERSION", Some(155938)),
+    (unstable, view_types, "1.97.0", Some(155938)),
     /// Target features on wasm.
     (unstable, wasm_target_feature, "1.30.0", Some(150260)),
     /// Allows use of attributes in `where` clauses.
