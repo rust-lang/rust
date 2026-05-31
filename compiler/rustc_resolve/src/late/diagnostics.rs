@@ -1657,11 +1657,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 {
                     for field in fields {
                         if field.name == segment.ident.name {
-                            if spans.iter().all(|(_, had_error)| had_error.is_err()) {
+                            if spans.iter().all(|(_, _, had_error)| had_error.is_err()) {
                                 // This resolution error will likely be fixed by fixing a
                                 // syntax error in a pattern, so it is irrelevant to the user.
                                 let multispan: MultiSpan =
-                                    spans.iter().map(|(s, _)| *s).collect::<Vec<_>>().into();
+                                    spans.iter().map(|(s, _, _)| *s).collect::<Vec<_>>().into();
                                 err.span_note(
                                     multispan,
                                     "this pattern had a recovered parse error which likely lost \
@@ -1670,7 +1670,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 err.downgrade_to_delayed_bug();
                             }
                             let ty = self.r.tcx.item_name(*def_id);
-                            for (span, _) in spans {
+                            for (span, dotdot_span, _) in spans {
                                 err.span_label(
                                     *span,
                                     format!(
@@ -1678,6 +1678,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                          available in `{ty}`",
                                     ),
                                 );
+                                if let Some(dotdot_span) = dotdot_span {
+                                    err.tool_only_span_suggestion(
+                                        *dotdot_span,
+                                        format!("include `{field}` in the pattern"),
+                                        format!("{field}, .."),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                             }
                         }
                     }

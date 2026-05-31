@@ -286,7 +286,8 @@ impl RibKind<'_> {
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: FxIndexMap<Ident, R>,
-    pub patterns_with_skipped_bindings: UnordMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
+    pub patterns_with_skipped_bindings:
+        UnordMap<DefId, Vec<(Span, Option<Span>, Result<(), ErrorGuaranteed>)>>,
     pub kind: RibKind<'ra>,
 }
 
@@ -4322,6 +4323,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .or_default()
                         .push((
                             pat.span,
+                            match rest {
+                                ast::PatFieldsRest::Rest(span) => Some(*span),
+                                _ => None,
+                            },
                             match rest {
                                 ast::PatFieldsRest::Recovered(guar) => Err(*guar),
                                 _ => Ok(()),
