@@ -10,6 +10,7 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
 use crate::process::StdioPipes;
+use crate::sys::conf::confstr_as_cstring;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(any(target_os = "fuchsia", target_os = "l4re")))]
@@ -90,7 +91,9 @@ cfg_select! {
 pub struct Command {
     program: CString,
     args: CStringArray,
+    shell_argv: CStringArray,
     env: CommandEnv,
+    default_path: CString,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
@@ -168,10 +171,20 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         let mut args = CStringArray::with_capacity(1);
         args.push(program.clone());
+        let mut shell_argv = CStringArray::with_capacity(args.len() + 2);
+        // Shell path value is implementation defined, so this could be a different
+        // value. Is there a platform dependent constant for this? In glibc it's
+        // _PATH_BSHELL, but that's not a constant available in libc
+        shell_argv.push(c"/bin/sh".into());
+        shell_argv.push(program.clone());
+        args.iter().for_each(|arg| shell_argv.push(arg.to_owned()));
+
         Command {
             program,
             args,
+            shell_argv,
             env: Default::default(),
+            default_path: confstr_as_cstring(libc::_CS_PATH).unwrap_or(c"".into()),
             program_kind,
             cwd: None,
             chroot: None,
@@ -271,6 +284,10 @@ impl Command {
         self.env.does_clear()
     }
 
+    pub fn get_default_path(&self) -> &CStr {
+        &self.default_path
+    }
+
     pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
         CommandResolvedEnvs::new(self.env.capture())
     }
@@ -281,6 +298,10 @@ impl Command {
 
     pub fn get_argv(&self) -> &CStringArray {
         &self.args
+    }
+
+    pub fn get_shell_argv(&self) -> &CStringArray {
+        &self.shell_argv
     }
 
     pub fn get_program_cstr(&self) -> &CStr {
