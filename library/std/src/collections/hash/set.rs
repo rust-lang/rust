@@ -126,7 +126,7 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 pub struct HashSet<
     T,
     S = RandomState,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::HashSet<T, S, A>,
 }
@@ -179,7 +179,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     ///
@@ -187,7 +187,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn new_in(alloc: A) -> HashSet<T, RandomState, A> {
         HashSet::with_hasher_in(Default::default(), alloc)
     }
@@ -201,7 +201,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::collections::HashSet;
     /// use std::alloc::Global;
     ///
@@ -209,7 +209,7 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> HashSet<T, RandomState, A> {
         HashSet::with_capacity_and_hasher_in(capacity, Default::default(), alloc)
     }
@@ -297,7 +297,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     /// use std::hash::RandomState;
@@ -307,7 +307,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_hasher_in(hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_hasher_in(hasher, alloc) }
     }
@@ -330,7 +330,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
+    /// # #![feature(allocator_ext)]
     /// use std::alloc::Global;
     /// use std::collections::HashSet;
     /// use std::hash::RandomState;
@@ -340,7 +340,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_capacity_and_hasher_in(capacity, hasher, alloc) }
     }
@@ -1468,7 +1468,7 @@ impl<K> Default for Iter<'_, K> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     K,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::IntoIter<K, A>,
 }
@@ -1502,7 +1502,7 @@ impl<K> Default for IntoIter<K> {
 pub struct Drain<
     'a,
     K: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::Drain<'a, K, A>,
 }
@@ -1529,7 +1529,7 @@ pub struct ExtractIf<
     'a,
     K,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::ExtractIf<'a, K, F, A>,
 }
@@ -1558,7 +1558,7 @@ pub struct Intersection<
     'a,
     T: 'a,
     S: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // iterator of the first set
     iter: Iter<'a, T>,
@@ -1590,7 +1590,7 @@ pub struct Difference<
     'a,
     T: 'a,
     S: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // iterator of the first set
     iter: Iter<'a, T>,
@@ -1622,7 +1622,7 @@ pub struct SymmetricDifference<
     'a,
     T: 'a,
     S: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     iter: Chain<Difference<'a, T, S, A>, Difference<'a, T, S, A>>,
 }
@@ -1651,7 +1651,7 @@ pub struct Union<
     'a,
     T: 'a,
     S: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S, A>>,
 }
@@ -2145,7 +2145,7 @@ pub enum Entry<
     'a,
     T,
     S,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     /// An occupied entry.
     ///
@@ -2237,7 +2237,7 @@ pub struct OccupiedEntry<
     'a,
     T,
     S,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::OccupiedEntry<'a, T, S, A>,
 }
@@ -2282,7 +2282,7 @@ pub struct VacantEntry<
     'a,
     T,
     S,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     base: base::VacantEntry<'a, T, S, A>,
 }

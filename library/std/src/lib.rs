@@ -388,7 +388,7 @@
 //
 // Library features (alloc):
 // tidy-alphabetical-start
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]

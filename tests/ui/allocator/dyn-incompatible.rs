@@ -1,6 +1,6 @@
 // Check that `Allocator` is dyn-incompatible, to keep the design space open.
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{Allocator, System};
 

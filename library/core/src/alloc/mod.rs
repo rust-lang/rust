@@ -27,19 +27,15 @@ use crate::ptr::{self, NonNull};
 /// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
 /// allocator.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
 
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 impl Error for AllocError {}
 
 // (we need this for downstream impl of trait Error)
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Display for AllocError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
@@ -100,8 +96,6 @@ impl fmt::Display for AllocError {
 ///    (For example, the type `&'a T` becomes invalid when `'a` expires.
 ///    More generally, a type becomes invalid when any of its lifetime parameters has expired.)
 ///
-/// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it.
-/// A copied or cloned allocator must behave like the original allocator.
 ///
 /// A memory block which is [*currently allocated*] may be passed to
 /// any method of the allocator that accepts such an argument.
@@ -132,7 +126,7 @@ impl fmt::Display for AllocError {
 /// Implementors of the trait must guarantee that none of the methods on this trait unwind.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustc_dyn_incompatible_trait]
 pub const unsafe trait Allocator {
@@ -162,6 +156,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
     /// Behaves like `allocate`, but also ensures that the returned memory is zero-initialized.
@@ -179,6 +174,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = self.allocate(layout)?;
         // SAFETY: `alloc` returns a valid memory block
@@ -200,6 +196,7 @@ pub const unsafe trait Allocator {
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
     /// Attempts to extend the memory block.
@@ -240,6 +237,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -303,6 +301,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -367,6 +366,7 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -399,7 +399,7 @@ pub const unsafe trait Allocator {
 /// (i.e. is is possible to free memory with one that was allocated with the other).
 /// Further, mutable accesses such as moving or dropping the allocator must not invalidate
 /// its currently allocated blocks at least so long as clones exist.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
 
 /// Marks a type's [`PartialEq`] implementation as sound with regard to [`Allocator`].
@@ -407,7 +407,7 @@ pub unsafe trait AllocatorClone: Allocator + Clone {}
 /// (i.e. is is possible to free memory with one that was allocated with the other), and
 /// that the two allocators behave "as if" they are clones of each other as per
 /// [`AllocatorClone`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 pub unsafe trait AllocatorEq<T = Self>: Allocator + PartialEq<T>
 where
     T: ?Sized + AllocatorEq<Self>,
@@ -419,10 +419,10 @@ where
 /// global state, e.g. `System` or `Global`.
 ///
 /// [`Pin`]: ../../core/pin/struct.Pin.html
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 pub unsafe trait PinSafeAllocator: Allocator + 'static {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 unsafe impl<A> const Allocator for &A
 where
@@ -478,7 +478,7 @@ where
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<A> Allocator for &mut A
 where
     A: Allocator + ?Sized,
@@ -530,5 +530,39 @@ where
     ) -> Result<NonNull<[u8]>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
+    }
+}
+
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+#[diagnostic::do_not_recommend]
+unsafe impl<A: Allocator + Sync + ?Sized> GlobalAlloc for A {
+    default unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.allocate(layout).map(|p| p.as_ptr().cast::<u8>()).ok().unwrap_or(ptr::null_mut())
+    }
+
+    default unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // SAFETY: Upheld by caller
+        unsafe { self.deallocate(NonNull::new_unchecked(ptr), layout) }
+    }
+
+    default unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        self.allocate_zeroed(layout)
+            .map(|p| p.as_ptr().cast::<u8>())
+            .ok()
+            .unwrap_or(ptr::null_mut())
+    }
+
+    default unsafe fn realloc(&self, ptr: *mut u8, old_layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: Upheld by caller
+        unsafe {
+            let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
+            let ptr = NonNull::new_unchecked(ptr);
+            let ret = if new_size > old_layout.size() {
+                self.grow(ptr, old_layout, new_layout)
+            } else {
+                self.shrink(ptr, old_layout, new_layout)
+            };
+            ret.map(|p| p.as_ptr().cast::<u8>()).ok().unwrap_or(ptr::null_mut())
+        }
     }
 }

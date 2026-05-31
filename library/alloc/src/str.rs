@@ -795,7 +795,7 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 pub unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
     v: Box<[u8], A>,
 ) -> Box<str, A> {

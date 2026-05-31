@@ -20,7 +20,7 @@ use crate::alloc::{Allocator, Global};
 pub struct Splice<
     'a,
     I: Iterator + 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + 'a = Global,
 > {
     pub(super) drain: Drain<'a, I::Item, A>,
     pub(super) replace_with: I,

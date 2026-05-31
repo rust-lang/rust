@@ -189,7 +189,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 pub struct BTreeMap<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     root: Option<Root<K, V>>,
     length: usize,
@@ -444,7 +444,7 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
 pub struct IntoIter<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     range: LazyLeafRange<marker::Dying, K, V>,
     length: usize,
@@ -552,7 +552,7 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 pub struct IntoKeys<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -575,7 +575,7 @@ impl<K: fmt::Debug, V, A: Allocator + Clone> fmt::Debug for IntoKeys<K, V, A> {
 pub struct IntoValues<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -682,7 +682,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
     ///
     /// use std::collections::BTreeMap;
@@ -2133,7 +2132,7 @@ pub struct ExtractIf<
     V,
     R,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + Clone = Global,
 > {
     pred: F,
     inner: ExtractIfInner<'a, K, V, R>,
@@ -3143,7 +3142,7 @@ pub struct CursorMut<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A = Global,
 > {
     inner: CursorMutKey<'a, K, V, A>,
 }
@@ -3181,7 +3180,7 @@ pub struct CursorMutKey<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A = Global,
 > {
     // If current is None then it means the tree has not been allocated yet.
     current: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,

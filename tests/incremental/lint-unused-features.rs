@@ -10,8 +10,8 @@
 // Used library features
 #![feature(error_iter)]
 //[bfail]~^ ERROR feature `error_iter` is declared but not used
-#![cfg_attr(all(), feature(allocator_api))]
-//[bfail]~^ ERROR feature `allocator_api` is declared but not used
+#![cfg_attr(all(), feature(allocator_ext))]
+//[bfail]~^ ERROR feature `allocator_ext` is declared but not used
 
 macro m() {}
 pub fn use_decl_macro() {
@@ -28,8 +28,7 @@ pub fn use_error_iter(e: &(dyn std::error::Error + 'static)) {
 
 #[cfg(rpass)]
 pub fn use_allocator_api() {
-    use std::alloc::Global;
-    let _ = Vec::<i32>::new_in(Global);
+    let _a: Box<usize, std::alloc::Global>;
 }
 
 fn main() {}

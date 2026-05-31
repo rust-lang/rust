@@ -381,7 +381,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::alloc::System;
     ///
@@ -392,7 +392,7 @@ impl<T> [T] {
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
