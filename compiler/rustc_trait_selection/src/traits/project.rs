@@ -16,6 +16,7 @@ use rustc_middle::ty::{
     self, FieldInfo, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use tracing::{debug, instrument};
 
@@ -1607,48 +1608,15 @@ fn confirm_closure_candidate<'cx, 'tcx>(
         // I didn't see a good way to unify those.
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
-            let kind_ty = args.kind_ty();
             args.coroutine_closure_sig().map_bound(|sig| {
-                // If we know the kind and upvars, use that directly.
-                // Otherwise, defer to `AsyncFnKindHelper::Upvars` to delay
-                // the projection, like the `AsyncFn*` traits do.
-                let output_ty = if let Some(_) = kind_ty.to_opt_closure_kind()
-                    // Fall back to projection if upvars aren't constrained
-                    && !args.tupled_upvars_ty().is_ty_var()
-                {
-                    sig.to_coroutine_given_kind_and_upvars(
-                        tcx,
-                        args.parent_args(),
-                        tcx.coroutine_for_closure(def_id),
-                        ty::ClosureKind::FnOnce,
-                        tcx.lifetimes.re_static,
-                        args.tupled_upvars_ty(),
-                        args.coroutine_captures_by_ref_ty(),
-                    )
-                } else {
-                    let upvars_projection_def_id =
-                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
-                    let tupled_upvars_ty = Ty::new_projection(
-                        tcx,
-                        upvars_projection_def_id,
-                        [
-                            ty::GenericArg::from(kind_ty),
-                            Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce).into(),
-                            tcx.lifetimes.re_static.into(),
-                            sig.tupled_inputs_ty.into(),
-                            args.tupled_upvars_ty().into(),
-                            args.coroutine_captures_by_ref_ty().into(),
-                        ],
-                    );
-                    sig.to_coroutine(
-                        tcx,
-                        args.parent_args(),
-                        Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce),
-                        tcx.coroutine_for_closure(def_id),
-                        tupled_upvars_ty,
-                    )
-                };
-
+                let output_ty = coroutine_closure_output_coroutine(
+                    tcx,
+                    obligation,
+                    ty::ClosureKind::FnOnce,
+                    tcx.lifetimes.re_static,
+                    def_id,
+                    args,
+                );
                 tcx.mk_fn_sig([sig.tupled_inputs_ty], output_ty, sig.fn_sig_kind)
             })
         }
@@ -1725,59 +1693,12 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
     let poly_cache_entry = match *self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
-            let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
 
             let term = match item_name {
-                sym::CallOnceFuture | sym::CallRefFuture => {
-                    if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
-                        // Fall back to projection if upvars aren't constrained
-                        && !args.tupled_upvars_ty().is_ty_var()
-                    {
-                        if !closure_kind.extends(goal_kind) {
-                            bug!("we should not be confirming if the closure kind is not met");
-                        }
-                        sig.to_coroutine_given_kind_and_upvars(
-                            tcx,
-                            args.parent_args(),
-                            tcx.coroutine_for_closure(def_id),
-                            goal_kind,
-                            env_region,
-                            args.tupled_upvars_ty(),
-                            args.coroutine_captures_by_ref_ty(),
-                        )
-                    } else {
-                        let upvars_projection_def_id = tcx
-                            .require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
-                        // When we don't know the closure kind (and therefore also the closure's upvars,
-                        // which are computed at the same time), we must delay the computation of the
-                        // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
-                        // goal functions similarly to the old `ClosureKind` predicate, and ensures that
-                        // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
-                        // will project to the right upvars for the generator, appending the inputs and
-                        // coroutine upvars respecting the closure kind.
-                        // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
-                        let tupled_upvars_ty = Ty::new_projection(
-                            tcx,
-                            upvars_projection_def_id,
-                            [
-                                ty::GenericArg::from(kind_ty),
-                                Ty::from_closure_kind(tcx, goal_kind).into(),
-                                env_region.into(),
-                                sig.tupled_inputs_ty.into(),
-                                args.tupled_upvars_ty().into(),
-                                args.coroutine_captures_by_ref_ty().into(),
-                            ],
-                        );
-                        sig.to_coroutine(
-                            tcx,
-                            args.parent_args(),
-                            Ty::from_closure_kind(tcx, goal_kind),
-                            tcx.coroutine_for_closure(def_id),
-                            tupled_upvars_ty,
-                        )
-                    }
-                }
+                sym::CallOnceFuture | sym::CallRefFuture => coroutine_closure_output_coroutine(
+                    tcx, obligation, goal_kind, env_region, def_id, args,
+                ),
                 sym::Output => sig.return_ty,
                 name => bug!("no such associated type: {name}"),
             };
@@ -1864,6 +1785,71 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
 
     confirm_param_env_candidate(selcx, obligation, poly_cache_entry, true)
         .with_addl_obligations(nested)
+}
+
+/// Given a `CoroutineClosure(def_id, args)`, interpret it as a closure,
+/// and return its output type for the given `goal_kind` and `env_region`.
+fn coroutine_closure_output_coroutine<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    obligation: &ProjectionTermObligation<'tcx>,
+    goal_kind: ty::ClosureKind,
+    env_region: ty::Region<'tcx>,
+    def_id: DefId,
+    args: ty::CoroutineClosureArgs<TyCtxt<'tcx>>,
+) -> Ty<'tcx> {
+    let kind_ty = args.kind_ty();
+    let sig = args.coroutine_closure_sig().skip_binder();
+
+    // If we know the kind and upvars, use that directly.
+    // Otherwise, defer to `AsyncFnKindHelper::Upvars` to delay
+    // the projection, like the `AsyncFn*` traits do.
+    if let Some(closure_kind) = kind_ty.to_opt_closure_kind()
+        // Fall back to projection if upvars aren't constrained
+        && !args.tupled_upvars_ty().is_ty_var()
+    {
+        if !closure_kind.extends(goal_kind) {
+            bug!("we should not be confirming if the closure kind is not met");
+        }
+        sig.to_coroutine_given_kind_and_upvars(
+            tcx,
+            args.parent_args(),
+            tcx.coroutine_for_closure(def_id),
+            goal_kind,
+            env_region,
+            args.tupled_upvars_ty(),
+            args.coroutine_captures_by_ref_ty(),
+        )
+    } else {
+        let upvars_projection_def_id =
+            tcx.require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
+        // When we don't know the closure kind (and therefore also the closure's upvars,
+        // which are computed at the same time), we must delay the computation of the
+        // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
+        // goal functions similarly to the old `ClosureKind` predicate, and ensures that
+        // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
+        // will project to the right upvars for the generator, appending the inputs and
+        // coroutine upvars respecting the closure kind.
+        // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
+        let tupled_upvars_ty = Ty::new_projection(
+            tcx,
+            upvars_projection_def_id,
+            [
+                ty::GenericArg::from(kind_ty),
+                Ty::from_closure_kind(tcx, goal_kind).into(),
+                env_region.into(),
+                sig.tupled_inputs_ty.into(),
+                args.tupled_upvars_ty().into(),
+                args.coroutine_captures_by_ref_ty().into(),
+            ],
+        );
+        sig.to_coroutine(
+            tcx,
+            args.parent_args(),
+            Ty::from_closure_kind(tcx, goal_kind),
+            tcx.coroutine_for_closure(def_id),
+            tupled_upvars_ty,
+        )
+    }
 }
 
 fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
