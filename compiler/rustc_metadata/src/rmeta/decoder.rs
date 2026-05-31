@@ -930,6 +930,16 @@ impl MetadataBlob {
 
         Ok(())
     }
+
+    pub(crate) fn get_proc_macro_info(&self) -> Vec<ProcMacroKind> {
+        self.get_root()
+            .proc_macro_data
+            .unwrap()
+            .macros
+            .decode(self)
+            .map(|(_id, kind)| kind.decode(self))
+            .collect::<Vec<_>>()
+    }
 }
 
 impl CrateRoot {

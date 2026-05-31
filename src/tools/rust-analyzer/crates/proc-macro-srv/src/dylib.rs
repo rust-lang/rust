@@ -1,9 +1,14 @@
 //! Handles dynamic library loading for proc macro
 
 mod proc_macros;
-mod version;
 
+use rustc_codegen_ssa::back::metadata::DefaultMetadataLoader;
+use rustc_interface::util::rustc_version_str;
+use rustc_metadata::locator::MetadataError;
 use rustc_proc_macro::bridge;
+use rustc_session::config::host_tuple;
+use rustc_target::spec::{Target, TargetTuple};
+use std::path::Path;
 use std::{fmt, fs, io, time::SystemTime};
 use temp_dir::TempDir;
 
@@ -13,7 +18,8 @@ use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
     PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv,
-    dylib::proc_macros::ProcMacros, token_stream::TokenStream,
+    dylib::proc_macros::{ProcMacroClients, ProcMacros},
+    token_stream::TokenStream,
 };
 
 pub(crate) struct Expander {
@@ -76,18 +82,15 @@ impl Expander {
 pub enum LoadProcMacroDylibError {
     Io(io::Error),
     LibLoading(libloading::Error),
-    AbiMismatch(String),
+    MetadataError(MetadataError<'static>),
 }
 
 impl fmt::Display for LoadProcMacroDylibError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(e) => e.fmt(f),
-            Self::AbiMismatch(v) => {
-                use crate::RUSTC_VERSION_STRING;
-                write!(f, "mismatched ABI expected: `{RUSTC_VERSION_STRING}`, got `{v}`")
-            }
             Self::LibLoading(e) => e.fmt(f),
+            Self::MetadataError(e) => e.fmt(f),
         }
     }
 }
@@ -104,25 +107,44 @@ impl From<libloading::Error> for LoadProcMacroDylibError {
     }
 }
 
+impl From<MetadataError<'_>> for LoadProcMacroDylibError {
+    fn from(e: MetadataError<'_>) -> Self {
+        LoadProcMacroDylibError::MetadataError(match e {
+            MetadataError::NotPresent(path) => MetadataError::NotPresent(path.into_owned().into()),
+            MetadataError::LoadFailure(err) => MetadataError::LoadFailure(err),
+            MetadataError::VersionMismatch { expected_version, found_version } => {
+                MetadataError::VersionMismatch { expected_version, found_version }
+            }
+        })
+    }
+}
+
 struct ProcMacroLibrary {
-    // 'static is actually the lifetime of library, so make sure this drops before _lib
-    proc_macros: &'static ProcMacros,
+    // this contains references to the library, so make sure this drops before _lib
+    proc_macros: ProcMacros,
     // Hold on to the library so it doesn't unload
     _lib: Library,
 }
 
 impl ProcMacroLibrary {
     fn open(path: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
+        let proc_macro_kinds = rustc_span::create_default_session_globals_then(|| {
+            let (target, _) =
+                Target::search(&TargetTuple::from_tuple(host_tuple()), Path::new(""), false)
+                    .unwrap();
+            rustc_metadata::locator::get_proc_macro_info(
+                &target,
+                path.as_ref(),
+                &DefaultMetadataLoader,
+                rustc_version_str().unwrap_or("unknown"),
+            )
+        })?;
+
         let file = fs::File::open(path)?;
         #[allow(clippy::undocumented_unsafe_blocks)] // FIXME
         let file = unsafe { memmap2::Mmap::map(&file) }?;
         let obj = object::File::parse(&*file)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        let version_info = version::read_dylib_info(&obj)?;
-        if version_info.version_string != crate::RUSTC_VERSION_STRING {
-            return Err(LoadProcMacroDylibError::AbiMismatch(version_info.version_string));
-        }
-
         let symbol_name =
             find_registrar_symbol(&obj).map_err(invalid_data_err)?.ok_or_else(|| {
                 invalid_data_err(format!("Cannot find registrar symbol in file {path}"))
@@ -135,9 +157,12 @@ impl ProcMacroLibrary {
         // due to self-referentiality
         // But we make sure that we do not drop it before the symbol is dropped
         let proc_macros =
-            unsafe { lib.get::<&'static &'static ProcMacros>(symbol_name.as_bytes()) };
+            unsafe { lib.get::<&'static &'static ProcMacroClients>(symbol_name.as_bytes()) };
         match proc_macros {
-            Ok(proc_macros) => Ok(ProcMacroLibrary { proc_macros: *proc_macros, _lib: lib }),
+            Ok(proc_macros) => Ok(ProcMacroLibrary {
+                proc_macros: ProcMacros::new(*proc_macros, proc_macro_kinds),
+                _lib: lib,
+            }),
             Err(e) => Err(e.into()),
         }
     }
