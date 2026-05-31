@@ -228,6 +228,42 @@ The below steps needs to be followed in order to implement a new unstable featur
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
 
+## Adding unstable compiler flags
+
+For compiler-internal experiments, diagnostics, debugging aids, and temporary implementation
+controls, a `-Z` flag can be more appropriate than a language feature gate.
+Feature gates should still be preferred for user-facing language features,
+especially when crates need to opt in from source code.
+
+When adding a new `-Z` flag:
+
+1. Add the option to `UnstableOptions` in
+   `compiler/rustc_session/src/options.rs`.
+   The option name is written as snake_case in the struct and is exposed as
+   kebab-case on the command line.
+   Choose the parser, default value, and dependency tracking marker carefully.
+   Use `[UNTRACKED]` for flags that only affect diagnostics or debugging output,
+   and use `[TRACKED]` when changing the flag can change compilation results.
+
+1. Update the option tests in `compiler/rustc_interface/src/tests.rs`.
+   `options.rs` also has a short checklist near the `UnstableOptions` list for
+   files that need to stay in sync.
+
+1. Use the option through `sess.opts.unstable_opts.$flag_name` or
+   `tcx.sess.opts.unstable_opts.$flag_name`.
+   If bootstrap or rustdoc needs to pass the flag internally,
+   thread it through the relevant command construction code as part of the same
+   change.
+
+1. Add focused tests for the behavior controlled by the flag.
+   For example, UI tests can use `//@ compile-flags: -Zyour-flag`,
+   while rustdoc behavior usually belongs in `tests/rustdoc`.
+
+1. If the flag is meant for users of nightly rustc or rustdoc,
+   document it in the unstable book under `src/doc/unstable-book/src/compiler-flags`.
+
+Before opening the PR, run `./x test tidy` and the narrow test suite that exercises the new flag.
+
 ## Call for testing
 
 Once the implementation is complete,
