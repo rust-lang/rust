@@ -210,6 +210,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ) && !(self
                             .tcx
                             .is_diagnostic_item(sym::FromResidual, main_trait_predicate.def_id())
+                            || self.tcx.is_diagnostic_item(
+                                sym::FromOutput,
+                                main_trait_predicate.def_id(),
+                            )
                             || self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::Try));
                         let is_unsize =
                             self.tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Unsize);
@@ -2308,7 +2312,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 candidates = specific_candidates;
             }
             if let &[(cand, def_id)] = &candidates[..] {
-                if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
+                if (self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
+                    || self.tcx.is_diagnostic_item(sym::FromOutput, cand.def_id))
                     && !self.tcx.features().enabled(sym::try_trait_v2)
                 {
                     return false;

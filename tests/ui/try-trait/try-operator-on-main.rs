@@ -12,6 +12,7 @@ fn main() {
 
     // an unrelated use of `Try`
     try_trait_generic::<()>(); //~ ERROR the trait bound
+    //~^ ERROR the trait bound
 }
 
 fn try_trait_generic<T: Try>() -> T {

@@ -1,20 +1,27 @@
 error[E0046]: not all trait items implemented, missing: `from_residual`
-  --> $DIR/ice-126148-failed-to-normalize.rs:8:1
+  --> $DIR/ice-126148-failed-to-normalize.rs:13:1
    |
 LL | impl const FromResidual<Error> for TryMe {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_residual` in implementation
    |
    = help: implement the missing item: `fn from_residual(_: Error) -> Self { todo!() }`
 
-error[E0046]: not all trait items implemented, missing: `from_output`, `branch`
-  --> $DIR/ice-126148-failed-to-normalize.rs:11:1
+error[E0046]: not all trait items implemented, missing: `branch`
+  --> $DIR/ice-126148-failed-to-normalize.rs:16:1
    |
-LL | impl const Try for TryMe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_output`, `branch` in implementation
+LL | impl const Branch for TryMe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `branch` in implementation
    |
-   = help: implement the missing item: `fn from_output(_: <Self as Try>::Output) -> Self { todo!() }`
-   = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Try>::Residual, <Self as Try>::Output> { todo!() }`
+   = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Branch>::Residual, <Self as Branch>::Output> { todo!() }`
 
-error: aborting due to 2 previous errors
+error[E0046]: not all trait items implemented, missing: `from_output`
+  --> $DIR/ice-126148-failed-to-normalize.rs:21:1
+   |
+LL | impl const FromOutput<()> for TryMe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `from_output` in implementation
+   |
+   = help: implement the missing item: `fn from_output(_: <Self as Branch>::Output) -> Self { todo!() }`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0046`.
