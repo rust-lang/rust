@@ -642,8 +642,8 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
 
     let variances = tcx.variances_of(opaque_def_id);
     let mut def_id = Some(opaque_def_id.to_def_id());
-    while let Some(generics) = def_id {
-        let generics = tcx.generics_of(generics);
+    while let Some(current_def_id) = def_id {
+        let generics = tcx.generics_of(current_def_id);
         def_id = generics.parent;
 
         for param in &generics.own_params {
