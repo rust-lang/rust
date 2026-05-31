@@ -31,6 +31,7 @@ LL | #[repr(align(16))]
    | ^^^^^^^^^^^^^^^^^^
    |
    = help: `#[repr(align(...))]` can only be applied to data types
+   = help: use `#[rustc_align_static(...)]` instead
 
 error: `#[rustc_align_static]` attribute cannot be used on structs
   --> $DIR/malformed-static-align.rs:16:1

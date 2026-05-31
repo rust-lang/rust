@@ -347,10 +347,20 @@ pub(crate) struct InvalidTarget {
     pub applied: DiagArgValue,
     pub only: &'static str,
     pub attribute_args: &'static str,
+    #[subdiagnostic]
+    pub help: Option<InvalidTargetHelp>,
     #[warning(
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub previously_accepted: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidTargetHelp {
+    #[help("use `#[rustc_align(...)]` instead")]
+    UseRustcAlign,
+    #[help("use `#[rustc_align_static(...)]` instead")]
+    UseRustcAlignStatic,
 }
 
 #[derive(Diagnostic)]

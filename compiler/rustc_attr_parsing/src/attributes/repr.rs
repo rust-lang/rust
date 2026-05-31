@@ -37,12 +37,15 @@ impl CombineAttributeParser for ReprParser {
         };
 
         if list.is_empty() {
-            cx.check_target("()", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Enum),
-                Allow(Target::Union),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "()",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
 
             let attr_span = cx.attr_span;
             cx.adcx().warn_empty_attribute(attr_span);
@@ -71,10 +74,10 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
 
     macro_rules! repr_int {
         ($arg: ident, $constructor: expr) => {{
-            cx.check_target(concat!("(", stringify!($arg), ")"), &AllowedTargets::AllowList(&[
-                Allow(Target::Enum),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                concat!("(", stringify!($arg), ")"),
+                &AllowedTargets::AllowList(&[Allow(Target::Enum), Warn(Target::MacroCall)]),
+            );
             cx.expect_no_args(param.args())?;
             Some($constructor)
         }};
@@ -82,21 +85,27 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
 
     match param.path().word_sym() {
         Some(sym::align) => {
-            cx.check_target("(align(...))", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Enum),
-                Allow(Target::Union),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "(align(...))",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
             let l = cx.expect_list(param.args(), param.span())?;
             parse_repr_align(cx, l, AlignKind::Align)
         }
         Some(sym::packed) => {
-            cx.check_target("(packed)", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Union),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "(packed)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
             match param.args() {
                 ArgParser::NoArgs => Some(ReprPacked(Align::ONE)),
                 ArgParser::List(l) => parse_repr_align(cx, l, AlignKind::Packed),
@@ -108,40 +117,52 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
         }
 
         Some(sym::Rust) => {
-            cx.check_target("(Rust)",&AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Enum),
-                Allow(Target::Union),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "(Rust)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
             cx.expect_no_args(param.args())?;
             Some(ReprRust)
         }
         Some(sym::C) => {
-            cx.check_target("(C)", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Enum),
-                Allow(Target::Union),
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "(C)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union),
+                    Warn(Target::MacroCall),
+                ]),
+            );
             cx.expect_no_args(param.args())?;
             Some(ReprC)
         }
         Some(sym::simd) => {
-            cx.check_target("(simd)", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),   // Feature gated in `rustc_ast_passes`
-                Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
-            ]));
+            cx.check_target(
+                "(simd)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),   // Feature gated in `rustc_ast_passes`
+                    Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
+                ]),
+            );
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
         Some(sym::transparent) => {
-            cx.check_target("(transparent)", &AllowedTargets::AllowList(&[
-                Allow(Target::Struct),
-                Allow(Target::Enum),
-                Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
-                Warn(Target::MacroCall),
-            ]));
+            cx.check_target(
+                "(transparent)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct),
+                    Allow(Target::Enum),
+                    Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
+                    Warn(Target::MacroCall),
+                ]),
+            );
             cx.expect_no_args(param.args())?;
             Some(ReprTransparent)
         }

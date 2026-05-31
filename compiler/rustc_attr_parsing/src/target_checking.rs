@@ -11,7 +11,7 @@ use crate::context::AcceptContext;
 use crate::errors::{
     InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
 };
-use crate::session_diagnostics::InvalidTarget;
+use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
 use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
@@ -117,6 +117,7 @@ impl<'sess> AttributeParser<'sess> {
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args,
+            help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn),
         };
 
@@ -144,6 +145,24 @@ impl<'sess> AttributeParser<'sess> {
             AllowedResult::Error => {
                 cx.dcx().emit_err(diag);
             }
+        }
+    }
+
+    fn target_checking_help(
+        attribute_args: &'static str,
+        cx: &AcceptContext<'_, '_>,
+    ) -> Option<InvalidTargetHelp> {
+        match &*cx.attr_path.segments {
+            [sym::repr] if attribute_args == "(align(...))" => match cx.target {
+                Target::Fn | Target::Method(..) if cx.features().fn_align() => {
+                    Some(InvalidTargetHelp::UseRustcAlign)
+                }
+                Target::Static if cx.features().static_align() => {
+                    Some(InvalidTargetHelp::UseRustcAlignStatic)
+                }
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -383,7 +402,11 @@ fn filter_targets(
 }
 
 impl<'f, 'sess> AcceptContext<'f, 'sess> {
-    pub(crate) fn check_target(&mut self, attribute_args: &'static str, allowed_targets: &AllowedTargets) {
+    pub(crate) fn check_target(
+        &mut self,
+        attribute_args: &'static str,
+        allowed_targets: &AllowedTargets,
+    ) {
         AttributeParser::check_target(allowed_targets, attribute_args, self);
     }
 }
