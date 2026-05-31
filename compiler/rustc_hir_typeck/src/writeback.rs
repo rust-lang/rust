@@ -347,6 +347,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         intravisit::walk_ty(self, hir_ty);
+        // HACK:
+        if let hir::TyKind::Path(hir::QPath::TypeRelative(..)) = hir_ty.kind
+            && let Some(def) =
+                self.fcx.typeck_results.borrow_mut().type_dependent_defs_mut().remove(hir_ty.hir_id)
+        {
+            self.typeck_results.type_dependent_defs_mut().insert(hir_ty.hir_id, def);
+        }
         // If there are type checking errors, Type privacy pass will stop,
         // so we may not get the type from hid_id, see #104513
         if let Some(ty) = self.fcx.node_ty_opt(hir_ty.hir_id) {
