@@ -125,6 +125,11 @@ fn to_titlecase() {
     );
 }
 
+/// This test verifies some assumptions we currently make about Unicode casings
+/// which might be falsified by future versions of the standard.
+/// It's important that it gets run with debug assertions enabled,
+/// so that the debug assertions in `core/src/unicode/unicode_data.rs`
+/// `conversions::to_casefold` get run with every possible Unicode character as input.
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_casefold() {

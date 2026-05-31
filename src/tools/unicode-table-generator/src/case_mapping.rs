@@ -427,17 +427,36 @@ pub fn to_casefold(c: char) -> [char; 3] {
 
 
     lookup(c, &CASEFOLD_LUT).unwrap_or_else(|| {
-        // fall back to lowercase of uppercase
+        // Fall back to lowercase of uppercase
 
         let uppercase = lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0']);
+
+        // We need to take the lowercase of each character in `uppercase`,
+        // and then concatenate them together.
+
+        // Lowercase the first uppercased char
         let mut final_result = to_lower(uppercase[0]);
+
         if uppercase[1] != '\0' {
+            // There's a 2nd uppercase char, lowercase it as well
             let lowercase_1 = to_lower(uppercase[1]);
+
+            // The lowercase of the second uppercase character
+            // can't be 3 chars long;
+            // that would bring the total case-folding length
+            // above 3 characters, which would violate
+            // a Unicode stability guarantee.
             debug_assert_eq!(lowercase_1[2], '\0');
 
+            // Currently, in every case where there
+            // are multiple uppercased characters,
+            // the lowercase of the first uppercase
+            // has length 1. However, Unicode doesn't
+            // guarantee this.
             // If, after updating the Unicode data
             // to a new Unicode version, the below
-            // assertion starts to fail in tests,
+            // assertion starts to fail in
+            // `coretests/tests/unicode.rs` `to_casefold()`,
             // delete it, and uncomment the
             // `if` condition and corresponding
             // `else` block below it.
@@ -447,15 +466,25 @@ pub fn to_casefold(c: char) -> [char; 3] {
             final_result[1] = lowercase_1[0];
 
             if uppercase[2] != '\0' {
+                // There's a 3rd uppercased char, lowercase it as well.
+                // Because of the Unicode stability guarantee that case-folding
+                // does not expand a string more than 3x in length,
+                // we know this lowercase must be 1 char long.
+
                 debug_assert_eq!(lowercase_1[1], '\0');
                 let lowercase_2 = to_lower(uppercase[2]);
                 debug_assert_eq!(lowercase_2[1], '\0');
                 debug_assert_eq!(lowercase_2[2], '\0');
                 final_result[2] = lowercase_2[0];
             } else {
+                // Currently, the lowercase of
+                // the second uppercase character
+                // can't be 2 chars long either,
+                // but Unicode doesn't guarantee this.
                 // If, after updating the Unicode data
                 // to a new Unicode version, the below
-                // assertion starts to fail in tests,
+                // assertion starts to fail in
+                // `coretests/tests/unicode.rs` `to_casefold()`,
                 // delete it and uncomment the line
                 // below it.
                 debug_assert_eq!(lowercase_1[1], '\0');
