@@ -22,9 +22,9 @@
 -         StorageLive(_2);
 -         _2 = [const 2_u8; 8];
 -         StorageLive(_3);
--         _3 = copy _1;
+-         _3 = move _1;
 -         StorageLive(_4);
--         _4 = copy _2;
+-         _4 = move _2;
 -         _0 = Pair { a: move _3, b: move _4 };
 -         StorageDead(_4);
 -         StorageDead(_3);

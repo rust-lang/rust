@@ -1,0 +1,19 @@
+- // MIR for `indirect_tail_read` before TailCopyToMove
++ // MIR for `indirect_tail_read` after TailCopyToMove
+  
+  fn indirect_tail_read(_1: u32) -> (u32, u32) {
+      let mut _0: (u32, u32);
+      let mut _2: *const u32;
+      let mut _3: u32;
+      let mut _4: u32;
+  
+      bb0: {
+          _2 = &raw const _1;
+          _3 = copy _1;
+          _4 = copy (*_2);
+-         _0 = (copy _3, copy _4);
++         _0 = (move _3, move _4);
+          return;
+      }
+  }
+  

@@ -1,0 +1,17 @@
+- // MIR for `index_dest` before TailCopyToMove
++ // MIR for `index_dest` after TailCopyToMove
+  
+  fn index_dest(_1: [usize; 4], _2: usize) -> [usize; 4] {
+      let mut _0: [usize; 4];
+      let mut _3: [usize; 4];
+  
+      bb0: {
+-         _3 = copy _1;
++         _3 = move _1;
+          _3[_2] = copy _2;
+-         _0 = copy _3;
++         _0 = move _3;
+          return;
+      }
+  }
+  

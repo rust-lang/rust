@@ -1,34 +1,34 @@
 //@ test-mir-pass: MoveElimination
-//@ compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort -Zmir-enable-passes=+TailCopyToMove
 
 struct Pair {
     a: [u8; 8],
     b: [u8; 8],
 }
 
-fn init(_: &mut String) {}
+fn init(_: &mut [u8; 8]) {}
 
 // EMIT_MIR basic.nrvo_unborrowed.MoveElimination.diff
-pub fn nrvo_unborrowed() -> String {
+pub fn nrvo_unborrowed() -> [u8; 8] {
     // This checks the simplest NRVO-style case: the local should be merged with
-    // the return place instead of being copied into it at the end.
+    // the return place even though it has `Copy` type.
     // CHECK-LABEL: fn nrvo_unborrowed(
     // CHECK: debug buf => _0;
-    // CHECK: _0 = String::new()
-    let buf = String::new();
+    // CHECK: _0 = [const 1_u8; 8]
+    let buf = [1; 8];
     buf
 }
 
 // EMIT_MIR basic.nrvo_borrowed.MoveElimination.diff
-pub fn nrvo_borrowed() -> String {
+pub fn nrvo_borrowed() -> [u8; 8] {
     // This checks that taking a temporary mutable borrow does not prevent
-    // merging a non-Copy local once the borrow has ended.
+    // merging a `Copy` local once the borrow has ended.
     // CHECK-LABEL: fn nrvo_borrowed(
     // CHECK: debug buf => _0;
-    // CHECK: _0 = String::new()
+    // CHECK: _0 = [const 1_u8; 8]
     // CHECK: init(move {{_.*}})
     // CHECK-NOT: _0 = move
-    let mut buf = String::new();
+    let mut buf = [1; 8];
     init(&mut buf);
     buf
 }
