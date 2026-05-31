@@ -85,22 +85,24 @@ fn struct_can_be_constructed_directly(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
         return true;
     }
 
-    // Such types often declared in Rust but constructed by FFI, so ignore
+    // Such types may be declared in Rust but constructed by FFI, so skip them
     if adt_def.repr().c() || adt_def.repr().transparent() {
         return true;
     }
 
-    // Skip types contain fields of unit, never or PhantomData,
-    // it's usually intentional to make the type not constructible
-    if adt_def.all_fields().any(|field| {
-        let field_type = tcx.type_of(field.did).skip_binder();
-        field_type.is_unit() || field_type.is_never()
-    }) {
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, id);
+    let struct_ty = tcx.type_of(id).skip_binder();
+
+    // Skip if uninhabited, containing only ZST fields, or containing unit fields.
+    // Since such types are usually intentional type-level markers
+    if struct_ty.is_privately_uninhabited(tcx, typing_env)
+        || tcx.layout_of(typing_env.as_query_input(struct_ty)).is_ok_and(|layout| layout.is_zst())
+        || adt_def.all_fields().any(|field| tcx.type_of(field.did).skip_binder().is_unit())
+    {
         return true;
     }
 
     adt_def.all_fields().all(|field| field.vis.is_public())
-        || adt_def.all_fields().all(|field| tcx.type_of(field.did).skip_binder().is_phantom_data())
 }
 
 fn method_has_receiver(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {

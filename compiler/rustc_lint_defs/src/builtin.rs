@@ -843,8 +843,7 @@ declare_lint! {
     ///   cannot construct a value of the type.
     /// * It is not used locally and does not appear in any reachable path from
     ///   external APIs other than the public struct item itself.
-    /// * It has no field that marks intentional unconstructability, such as a
-    ///   field with unit or never type.
+    /// * It is not uninhabited, is not composed only of ZST fields, and has no unit field.
     ///
     /// Such structs may have been unused for a long time, but are now effectively dead code.
     /// This lint helps find those items.
