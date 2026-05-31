@@ -272,19 +272,15 @@ macro_rules! deinterleaving_load {
         use $crate::core_arch::simd::Simd;
         use $crate::mem::transmute;
 
-        // NOTE: repr(simd) adds padding to make the total size a power of two.
-        // Hence writing W to ptr might write out of bounds.
         type V = Simd<$elem, $lanes>;
         type Arr = [$elem; { $lanes * 3 }];
 
         // NOTE: copy_nonoverlapping requires both pointers to be aligned to at least align_of::<$elem>(),
         // passing a pointer that is not sufficiently aligned is an UB.
-        let arr: Arr = $crate::ptr::read_unaligned($ptr as *const Arr);
-
-        type W = Simd<$elem, { $lanes * 4 }>;
-        let mut tmp = [0 as $elem; { $lanes * 4 }];
-        tmp[..$lanes * 3].copy_from_slice(&arr);
-        let w: W = W::from_array(tmp);
+        let arr: Arr = std::array::from_fn(|x| $crate::ptr::read_unaligned(($ptr as *const $elem).add(x)));
+        // NOTE: repr(simd) adds padding to make the total size a power of two.
+        // Hence writing W to ptr might write out of bounds.
+        let w: W = W::from_array(arr);
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 0>());
         let v1: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 1>());
