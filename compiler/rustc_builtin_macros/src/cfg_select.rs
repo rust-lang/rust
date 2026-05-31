@@ -1,16 +1,15 @@
-use rustc_ast::attr::mk_attr_from_item;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{
-    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
-    TokenStream,
+use rustc_ast::attr::{AttrIdGenerator, mk_attr_from_item};
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{
+    AttrItem, AttrItemKind, EarlyParsedAttribute, Expr, Path, Safety, ast, token,
+    tokenstream as tts,
 };
-use rustc_ast::{AttrItem, AttrItemKind, EarlyParsedAttribute, Expr, Path, Safety, ast};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{CfgSelectBranches, EvalConfigResult, parse_cfg_select};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult};
 use rustc_expand::expand::DeclaredIdents;
 use rustc_hir::attrs::CfgEntry;
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{Ident, Span, sym};
 use smallvec::SmallVec;
 
 use crate::errors::CfgSelectNoMatches;
@@ -82,50 +81,10 @@ macro_rules! forward_to_parser_any_macro {
                     items
                         .into_iter()
                         .map(|mut item| {
-                            let g = &ecx.sess.psess.attr_id_generator;
-                            let args = AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(
+                            item.attrs.push(mk_attr(
+                                &ecx.sess.psess.attr_id_generator,
                                 cfg_entry.clone(),
                             ));
-                            let trees = vec![
-                                AttrTokenTree::Token(
-                                    Token { kind: TokenKind::Pound, span: DUMMY_SP },
-                                    Spacing::JointHidden,
-                                ),
-                                AttrTokenTree::Delimited(
-                                    DelimSpan::dummy(),
-                                    DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
-                                    Delimiter::Bracket,
-                                    AttrTokenStream::new(vec![AttrTokenTree::Token(
-                                        Token {
-                                            kind: TokenKind::Ident(
-                                                sym::cfg_trace,
-                                                token::IdentIsRaw::No,
-                                            ),
-                                            span: DUMMY_SP,
-                                        },
-                                        Spacing::Alone,
-                                    )]),
-                                ),
-                            ];
-                            let tokens =
-                                Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
-                            let attr_item = AttrItem {
-                                unsafety: Safety::Default,
-                                path: Path::from_ident(Ident::new(
-                                    sym::cfg_trace,
-                                    cfg_entry.span(),
-                                )),
-                                args,
-                                tokens: None,
-                            };
-                            let attr = mk_attr_from_item(
-                                g,
-                                attr_item,
-                                tokens,
-                                ast::AttrStyle::Outer,
-                                cfg_entry.span(),
-                            );
-                            item.attrs.push(attr);
                             item
                         })
                         .collect()
@@ -133,6 +92,39 @@ macro_rules! forward_to_parser_any_macro {
             )
         }
     };
+}
+
+/// Construct a `#[<cfg_trace>]` attribute from a `CfgEntry`. This allows us to keep track of items
+/// that were behind a `cfg_select!`, which is relevant for some diagnostics.
+fn mk_attr(g: &AttrIdGenerator, cfg_entry: CfgEntry) -> ast::Attribute {
+    let cfg_span = cfg_entry.span();
+    let args = AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg_entry));
+    let trees = vec![
+        tts::AttrTokenTree::Token(
+            token::Token { kind: token::TokenKind::Pound, span: cfg_span },
+            tts::Spacing::JointHidden,
+        ),
+        tts::AttrTokenTree::Delimited(
+            tts::DelimSpan::dummy(),
+            tts::DelimSpacing::new(tts::Spacing::JointHidden, tts::Spacing::Alone),
+            token::Delimiter::Bracket,
+            tts::AttrTokenStream::new(vec![tts::AttrTokenTree::Token(
+                token::Token {
+                    kind: token::TokenKind::Ident(sym::cfg_trace, token::IdentIsRaw::No),
+                    span: cfg_span,
+                },
+                tts::Spacing::Alone,
+            )]),
+        ),
+    ];
+    let tokens = Some(tts::LazyAttrTokenStream::new_direct(tts::AttrTokenStream::new(trees)));
+    let attr_item = AttrItem {
+        unsafety: Safety::Default,
+        path: Path::from_ident(Ident::new(sym::cfg_trace, cfg_span)),
+        args,
+        tokens: None,
+    };
+    mk_attr_from_item(g, attr_item, tokens, ast::AttrStyle::Outer, cfg_span)
 }
 
 impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
