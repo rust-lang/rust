@@ -22,7 +22,7 @@ pub trait RandomSource {
     fn next_u32(&mut self) -> u32 {
         let mut buf = [0; size_of::<u32>()];
         self.fill_bytes(&mut buf);
-        u32::from_ne_bytes(buf)
+        u32::from_le_bytes(buf)
     }
 
     /// Returns a random 64-bit integer.
@@ -34,7 +34,7 @@ pub trait RandomSource {
     fn next_u64(&mut self) -> u64 {
         let mut buf = [0; size_of::<u64>()];
         self.fill_bytes(&mut buf);
-        u64::from_ne_bytes(buf)
+        u64::from_le_bytes(buf)
     }
 }
 
@@ -71,7 +71,7 @@ macro_rules! impl_primitive {
             fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> $t {
                 let mut bytes = (0 as $t).to_ne_bytes();
                 source.fill_bytes(&mut bytes);
-                <$t>::from_ne_bytes(bytes)
+                <$t>::from_le_bytes(bytes)
             }
         }
     };
