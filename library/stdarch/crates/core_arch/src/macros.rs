@@ -277,9 +277,10 @@ macro_rules! deinterleaving_load {
 
         // NOTE: copy_nonoverlapping requires both pointers to be aligned to at least align_of::<$elem>(),
         // passing a pointer that is not sufficiently aligned is an UB.
-        let arr: Arr = std::array::from_fn(|x| $crate::ptr::read_unaligned(($ptr as *const $elem).add(x)));
+        let arr: Arr = $crate::ptr::read_unaligned($ptr as *const [$elem; { $lanes * 3 }]);
         // NOTE: repr(simd) adds padding to make the total size a power of two.
-        // Hence writing W to ptr might write out of bounds.
+        // Hence reading a W from ptr might read out of bounds.
+        type W = Simd<$elem, { $lanes * 3 }>;
         let w: W = W::from_array(arr);
 
         let v0: V = simd_shuffle!(w, w, deinterleave_mask::<$lanes, 3, 0>());
@@ -354,11 +355,7 @@ macro_rules! interleaving_store {
 
         // NOTE: copy_nonoverlapping requires both pointers to be aligned to at least align_of::<$elem>(),
         // passing a pointer that is not sufficiently aligned is an UB.
-        let mut i = 0;
-        while i < $lanes * 3 {
-            $crate::ptr::write_unaligned(($ptr as *mut $elem).add(i), arr[i]);
-            i += 1;
-        }
+        $ptr.cast::<[$elem; { $lanes * 3 }]>().write_unaligned(arr);
     }};
 
     // N = 4
