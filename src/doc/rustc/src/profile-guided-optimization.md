@@ -150,7 +150,7 @@ Sampling profilers are used to collect runtime information, such as hardware cou
 
 Using the data from a sample profiler requires some changes in the way a program is built. Before the compiler can use profiling information, the code needs to execute under the profiler. The following is the usual build cycle when using sample profilers for optimization:
 
-1. Build the code with source line table information. You can use all the usual build flags that you always build your application with. The only requirement is that DWARF debug info including source line information is generated. This DWARF information is important for the profiler to be able to map instructions back to source line locations. The usefulness of this DWARF information can be improved with the `-Cdebuginfo-for-profiling` option. For example:
+1. Build the code with source line table information. You can use all the usual build flags that you always build your application with. The only requirement is that DWARF debug info including source line information is generated. This DWARF information is important for the profiler to be able to map instructions back to source line locations. The accuracy of this DWARF information can be improved with the `-Cdebuginfo-for-profiling` option. For example:
 
 ```bash
 rustc -Cdebuginfo=line-tables-only -Cdebuginfo-for-profiling -O main.rs

@@ -89,7 +89,10 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 
 ## debuginfo-for-profiling
 
-Emit extra debug info (currently it's [DWARF descriminators](https://llvm.org/doxygen/AddDiscriminators_8cpp.html)) to make sample profile more accurate. See the chapter on [profile-guided optimization] for more information.
+Emit extra debug info (currently it's [DWARF descriminators](https://llvm.org/doxygen/AddDiscriminators_8cpp.html)) to make a
+sample profile more accurate. See the chapter on [profile-guided optimization]
+for more information. This flag is often used when creating a profile for use
+with [`profile-sample-use`](#profile-sample-use).
 
 ## default-linker-libraries
 
@@ -532,9 +535,11 @@ instrumented binary will emit the collected data. See the chapter on
 ## profile-sample-use
 
 This flag specifies the profiling data file to be used for sample-based
-profile-guided optimization (SPGO). The flag takes a mandatory argument which is
-the path to a valid `.prof` file. See the chapter on [profile-guided optimization]
-for more information.
+profile-guided optimization (SPGO). The flag takes a mandatory argument which
+is the path to a valid `.prof` file. See the chapter on
+[profile-guided optimization] for more information.
+The [`debuginfo-for-profiling` flag](#debuginfo-for-profiling) can be used to
+improve the quality of the profiling data.
 
 ## profile-use
 
