@@ -1,15 +1,46 @@
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/stability-attribute-non-staged-force-unstable.rs:3:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(staged_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-non-staged-force-unstable.rs:3:1
    |
 LL | #[unstable()]
    | ^^^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/stability-attribute-non-staged-force-unstable.rs:4:1
+error[E0547]: missing 'issue'
+  --> $DIR/stability-attribute-non-staged-force-unstable.rs:3:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0658]: stability attributes may not be used outside of the standard library
+  --> $DIR/stability-attribute-non-staged-force-unstable.rs:7:1
+   |
+LL | #[stable()]
+   | ^^^^^^^^^^^
+   |
+   = help: add `#![feature(staged_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0546]: missing 'feature'
+  --> $DIR/stability-attribute-non-staged-force-unstable.rs:7:1
    |
 LL | #[stable()]
    | ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0542]: missing 'since'
+  --> $DIR/stability-attribute-non-staged-force-unstable.rs:7:1
+   |
+LL | #[stable()]
+   | ^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0734`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0542, E0546, E0547, E0658.
+For more information about an error, try `rustc --explain E0542`.

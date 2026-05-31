@@ -1,4 +1,4 @@
-error[E0734]: stability attributes may not be used outside of the standard library
+error[E0658]: stability attributes may not be used outside of the standard library
   --> $DIR/unstable_removed.rs:9:1
    |
 LL | / #![unstable_removed(
@@ -9,6 +9,9 @@ LL | |     link = "https://github.com/rust-lang/rust/issues/141617",
 LL | |     since="1.92.0"
 LL | | )]
    | |__^
+   |
+   = help: add `#![feature(staged_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0557]: feature `old_feature` has been removed
   --> $DIR/unstable_removed.rs:3:12
@@ -30,5 +33,5 @@ LL | #![feature(concat_idents)]
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0557, E0734.
+Some errors have detailed explanations: E0557, E0658.
 For more information about an error, try `rustc --explain E0557`.
