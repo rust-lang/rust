@@ -5,7 +5,7 @@ use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
+use crate::core::config::{DebuginfoLevel, Merge, OverrideAllocator, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
@@ -56,7 +56,7 @@ define_config! {
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
-        jemalloc: Option<bool> = "jemalloc",
+        override_allocator: Option<OverrideAllocator> = "override-allocator",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         control_flow_guard: Option<bool> = "control-flow-guard",
@@ -326,7 +326,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         llvm_bitcode_linker,
         stack_protector,
         strip,
-        jemalloc,
+        override_allocator,
         rpath,
         channel,
         default_linker,
@@ -395,7 +395,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.strip, strip, "rust");
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
-    err!(current_rust_config.jemalloc, jemalloc, "rust");
+    err!(current_rust_config.override_allocator, override_allocator, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
     err!(current_rust_config.std_features, std_features, "rust");
