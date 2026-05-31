@@ -1,5 +1,5 @@
 error: declaration of an `unsafe` function
-  --> $DIR/lint-unsafe-code.rs:64:1
+  --> $DIR/lint-unsafe-code.rs:67:1
    |
 LL | unsafe fn baz() {}
    | ^^^^^^^^^^^^^^^^^^
@@ -11,79 +11,79 @@ LL | #![deny(unsafe_code)]
    |         ^^^^^^^^^^^
 
 error: declaration of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:65:1
+  --> $DIR/lint-unsafe-code.rs:68:1
    |
 LL | unsafe trait Foo {}
    | ^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:66:1
+  --> $DIR/lint-unsafe-code.rs:69:1
    |
 LL | unsafe impl Foo for Bar {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: declaration of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:69:5
+  --> $DIR/lint-unsafe-code.rs:72:5
    |
 LL |     unsafe fn baz(&self);
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:70:5
+  --> $DIR/lint-unsafe-code.rs:73:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:71:5
+  --> $DIR/lint-unsafe-code.rs:74:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:75:5
+  --> $DIR/lint-unsafe-code.rs:78:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:76:5
+  --> $DIR/lint-unsafe-code.rs:79:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:95:5
+  --> $DIR/lint-unsafe-code.rs:98:5
    |
 LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:106:5
+  --> $DIR/lint-unsafe-code.rs:109:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:112:5
+  --> $DIR/lint-unsafe-code.rs:115:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:116:5
+  --> $DIR/lint-unsafe-code.rs:119:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:127:5
+  --> $DIR/lint-unsafe-code.rs:130:5
    |
 LL |     unsafe {}
    |     ^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:27:9
+  --> $DIR/lint-unsafe-code.rs:30:9
    |
 LL |         unsafe {}
    |         ^^^^^^^^^
@@ -94,7 +94,7 @@ LL |     unsafe_in_macro!()
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:31:3
+  --> $DIR/lint-unsafe-code.rs:34:3
    |
 LL | #[no_mangle] fn foo() {}
    |   ^^^^^^^^^
@@ -102,7 +102,7 @@ LL | #[no_mangle] fn foo() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:32:3
+  --> $DIR/lint-unsafe-code.rs:35:3
    |
 LL | #[no_mangle] static FOO: u32 = 5;
    |   ^^^^^^^^^
@@ -110,7 +110,7 @@ LL | #[no_mangle] static FOO: u32 = 5;
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:41:7
+  --> $DIR/lint-unsafe-code.rs:44:7
    |
 LL |     #[no_mangle] fn foo() {}
    |       ^^^^^^^^^
@@ -118,7 +118,7 @@ LL |     #[no_mangle] fn foo() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:45:7
+  --> $DIR/lint-unsafe-code.rs:48:7
    |
 LL |     #[no_mangle] fn foo() {}
    |       ^^^^^^^^^
@@ -126,7 +126,7 @@ LL |     #[no_mangle] fn foo() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:48:3
+  --> $DIR/lint-unsafe-code.rs:51:3
    |
 LL | #[export_name = "bar"] fn bar() {}
    |   ^^^^^^^^^^^^^^^^^^^
@@ -134,7 +134,7 @@ LL | #[export_name = "bar"] fn bar() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:49:3
+  --> $DIR/lint-unsafe-code.rs:52:3
    |
 LL | #[export_name = "BAR"] static BAR: u32 = 5;
    |   ^^^^^^^^^^^^^^^^^^^
@@ -142,7 +142,7 @@ LL | #[export_name = "BAR"] static BAR: u32 = 5;
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[link_section]` attribute
-  --> $DIR/lint-unsafe-code.rs:51:3
+  --> $DIR/lint-unsafe-code.rs:54:3
    |
 LL | #[link_section = "__TEXT,__text"] fn uwu() {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL | #[link_section = "__TEXT,__text"] fn uwu() {}
    = note: the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[link_section]` attribute
-  --> $DIR/lint-unsafe-code.rs:52:3
+  --> $DIR/lint-unsafe-code.rs:55:3
    |
 LL | #[link_section = "__TEXT,__text"] static UWU: u32 = 5;
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -158,7 +158,7 @@ LL | #[link_section = "__TEXT,__text"] static UWU: u32 = 5;
    = note: the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:57:7
+  --> $DIR/lint-unsafe-code.rs:60:7
    |
 LL |     #[export_name = "bar"] fn bar() {}
    |       ^^^^^^^^^^^^^^^^^^^
@@ -166,7 +166,7 @@ LL |     #[export_name = "bar"] fn bar() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:61:7
+  --> $DIR/lint-unsafe-code.rs:64:7
    |
 LL |     #[export_name = "bar"] fn foo() {}
    |       ^^^^^^^^^^^^^^^^^^^
@@ -174,7 +174,7 @@ LL |     #[export_name = "bar"] fn foo() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:21:11
+  --> $DIR/lint-unsafe-code.rs:24:11
    |
 LL |         #[no_mangle] fn foo() {}
    |           ^^^^^^^^^
@@ -186,7 +186,7 @@ LL |     unsafe_in_macro!()
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `#[no_mangle]` attribute
-  --> $DIR/lint-unsafe-code.rs:22:11
+  --> $DIR/lint-unsafe-code.rs:25:11
    |
 LL |         #[no_mangle] static FOO: u32 = 5;
    |           ^^^^^^^^^
@@ -198,7 +198,7 @@ LL |     unsafe_in_macro!()
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:23:11
+  --> $DIR/lint-unsafe-code.rs:26:11
    |
 LL |         #[export_name = "bar"] fn bar() {}
    |           ^^^^^^^^^^^^^^^^^^^
@@ -210,7 +210,7 @@ LL |     unsafe_in_macro!()
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `#[export_name]` attribute
-  --> $DIR/lint-unsafe-code.rs:25:11
+  --> $DIR/lint-unsafe-code.rs:28:11
    |
 LL |         #[export_name = "BAR"] static BAR: u32 = 5;
    |           ^^^^^^^^^^^^^^^^^^^
@@ -221,5 +221,37 @@ LL |     unsafe_in_macro!()
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 28 previous errors
+error: usage of the unsafe `#[naked]` attribute
+  --> $DIR/lint-unsafe-code.rs:135:10
+   |
+LL | #[unsafe(naked)] fn naked1() { naked_asm!("halt") }
+   |          ^^^^^
+   |
+   = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
+
+error: usage of the unsafe `#[naked]` attribute
+  --> $DIR/lint-unsafe-code.rs:140:14
+   |
+LL |     #[unsafe(naked)] fn naked2() { naked_asm!("halt") }
+   |              ^^^^^
+   |
+   = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
+
+error: usage of the unsafe `#[naked]` attribute
+  --> $DIR/lint-unsafe-code.rs:145:14
+   |
+LL |     #[unsafe(naked)] fn naked3() { naked_asm!("halt") }
+   |              ^^^^^
+   |
+   = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
+
+error: usage of the unsafe `#[naked]` attribute
+  --> $DIR/lint-unsafe-code.rs:150:14
+   |
+LL |     #[unsafe(naked)] fn naked4() { naked_asm!("halt") }
+   |              ^^^^^
+   |
+   = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
+
+error: aborting due to 32 previous errors
 

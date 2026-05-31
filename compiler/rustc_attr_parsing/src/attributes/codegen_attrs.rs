@@ -220,7 +220,10 @@ impl AttributeParser for NakedParser {
                 this.span = Some(cx.attr_span);
             }
         })];
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).",
+        unsafe_since: None,
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),

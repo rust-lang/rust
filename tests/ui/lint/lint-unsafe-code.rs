@@ -1,6 +1,9 @@
 #![allow(unused_unsafe)]
 #![allow(dead_code)]
 #![deny(unsafe_code)]
+#![feature(naked_functions_rustic_abi)]
+
+use std::arch::naked_asm;
 
 struct Bar;
 struct Bar2;
@@ -127,4 +130,23 @@ fn main() {
     unsafe {} //~ ERROR: usage of an `unsafe` block
 
     unsafe_in_macro!()
+}
+
+#[unsafe(naked)] fn naked1() { naked_asm!("halt") }
+//~^ ERROR usage of the unsafe `#[naked]` attribute
+
+struct Naked;
+impl Naked {
+    #[unsafe(naked)] fn naked2() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
+}
+
+trait NakedTrait {
+    #[unsafe(naked)] fn naked3() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
+    fn naked4();
+}
+impl NakedTrait for Naked {
+    #[unsafe(naked)] fn naked4() { naked_asm!("halt") }
+    //~^ ERROR usage of the unsafe `#[naked]` attribute
 }
