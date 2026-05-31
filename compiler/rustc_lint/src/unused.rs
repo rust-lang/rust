@@ -649,8 +649,8 @@ impl UnusedParens {
                 PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
-                // Avoid bindings that start with `mut`, like `mut x`, `mut x @ p`,
-                // and `mut ref pin const x`, if we should.
+                // Avoid bindings whose own binding mutability is `mut`, like `mut x`,
+                // `mut x @ p`, and `mut ref pin const x`, if we should.
                 PatKind::Ident(BindingMode(_, Mutability::Mut), ..) if avoid_mut => {
                     return;
                 }
