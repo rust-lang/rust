@@ -1960,7 +1960,7 @@ impl<T> Option<T> {
         mem::replace(self, Some(value))
     }
 
-    /// Zips `self` with another `Option`.
+    /// Makes a tuple of the value in `self` and the value in another `Option`.
     ///
     /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some((s, o))`.
     /// Otherwise, `None` is returned.
@@ -1988,7 +1988,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Zips `self` and another `Option` with function `f`.
+    /// Combines the value in `self` with the value in another `Option`, using the function `f`.
     ///
     /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
     /// Otherwise, `None` is returned.
