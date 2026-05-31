@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct RustcAsPtrParser;
@@ -10,6 +12,7 @@ impl NoArgsAttributeParser for RustcAsPtrParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAsPtr;
 }
 
@@ -21,6 +24,7 @@ impl NoArgsAttributeParser for RustcPubTransparentParser {
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPubTransparent;
 }
 
@@ -32,6 +36,7 @@ impl NoArgsAttributeParser for RustcPassByValueParser {
         Allow(Target::Enum),
         Allow(Target::TyAlias),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPassByValue;
 }
 
@@ -42,6 +47,7 @@ impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcShouldNotBeCalledOnConstItems;
 }
 
@@ -54,5 +60,6 @@ impl NoArgsAttributeParser for AutomaticallyDerivedParser {
         Error(Target::Crate),
         Error(Target::WherePredicate),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AutomaticallyDerived;
 }

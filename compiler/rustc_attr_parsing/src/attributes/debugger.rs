@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{DebugVisualizer, DebuggerVisualizerType};
 
 use super::prelude::*;
@@ -12,6 +13,7 @@ impl CombineAttributeParser for DebuggerViualizerParser {
         List: &[r#"natvis_file = "...", gdb_script_file = "...""#],
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     type Item = DebugVisualizer;
     const CONVERT: ConvertFn<Self::Item> = |v, _| AttributeKind::DebuggerVisualizer(v);

@@ -1,6 +1,6 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_errors::{Applicability, msg};
-use rustc_feature::template;
+use rustc_feature::{AttributeStability, template};
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -702,6 +702,7 @@ impl AttributeParser for DocParser {
             ],
             NameValueStr: "string"
         ),
+        AttributeStability::Stable, // Some parts of the attribute are unstable, manually checked in parser
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },

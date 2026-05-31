@@ -346,6 +346,7 @@ impl<'sess> AttributeParser<'sess> {
                             accept.safety,
                             &mut emit_lint,
                         );
+                        self.check_attribute_stability(&attr_path, attr_span, accept.stability);
 
                         let Some(args) = ArgParser::from_attr_args(
                             args,
