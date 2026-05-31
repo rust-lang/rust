@@ -919,6 +919,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     fn_span,
                 );
 
+                if Some(instance.def_id()) == bx.tcx().lang_items().preload_fn() {
+                    let cg_args: Vec<_> =
+                        args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
+
+                    bx.codegen_offload_preload_call(
+                        instance, &cg_args, false, // immutable preload
+                    );
+                }
+
+                if Some(instance.def_id()) == bx.tcx().lang_items().preload_mut_fn() {
+                    let cg_args: Vec<_> =
+                        args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
+
+                    bx.codegen_offload_preload_call(
+                        instance, &cg_args, true, // mutable preload
+                    );
+                }
+
                 match instance.def {
                     // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
                     // it is `func returning noop future`

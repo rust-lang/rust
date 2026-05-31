@@ -31,6 +31,13 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         span: Span,
     ) -> IntrinsicResult<'tcx, Self::Value>;
 
+    fn codegen_offload_preload_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        is_mut: bool,
+    );
+
     fn codegen_llvm_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
