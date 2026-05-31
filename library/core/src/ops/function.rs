@@ -255,7 +255,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const Fn<A> for &F
+    const impl<A: Tuple, F: ?Sized> Fn<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -266,7 +266,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
+    const impl<A: Tuple, F: ?Sized> FnMut<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -277,7 +277,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
+    const impl<A: Tuple, F: ?Sized> FnOnce<A> for &F
     where
         F: [const] Fn<A>,
     {
@@ -290,7 +290,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
+    const impl<A: Tuple, F: ?Sized> FnMut<A> for &mut F
     where
         F: [const] FnMut<A>,
     {
@@ -301,7 +301,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
-    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
+    const impl<A: Tuple, F: ?Sized> FnOnce<A> for &mut F
     where
         F: [const] FnMut<A>,
     {
