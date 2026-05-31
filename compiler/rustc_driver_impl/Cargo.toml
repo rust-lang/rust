@@ -38,6 +38,9 @@ shlex = "1.0"
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
+syn = { version = "2", features = ["extra-traits", "visit", "visit-mut"] }
+quote = "1.0.45"
+
 [target.'cfg(all(unix, any(target_env = "gnu", target_os = "macos")))'.dependencies]
 # tidy-alphabetical-start
 libc = "0.2"

@@ -30,6 +30,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 tempfile = "3.7.1"
 tracing = "0.1"
+wasmparser = { version = "0.252.0", default-features = false, features = ["std", "component-model", "simd"] }
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]

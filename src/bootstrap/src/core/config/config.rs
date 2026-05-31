@@ -336,6 +336,8 @@ pub struct Config {
     pub skip_std_check_if_no_download_rustc: bool,
 
     pub exec_ctx: ExecutionContext,
+
+    pub wasm_proc_macro: bool,
 }
 
 impl Config {
@@ -608,6 +610,7 @@ impl Config {
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
+            wasm_proc_macro,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -1601,6 +1604,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            wasm_proc_macro: wasm_proc_macro.unwrap_or(false),
             windows_rc: build_windows_rc.map(PathBuf::from),
             yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end

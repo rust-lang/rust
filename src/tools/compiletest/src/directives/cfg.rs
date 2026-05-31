@@ -209,6 +209,12 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         "when std is built with remapping of debuginfo",
     );
 
+    builder.cond(
+        "wasm-proc-macro",
+        config.wasm_proc_macro,
+        "when wasm-proc-macro is enabled in bootstrap.toml",
+    );
+
     for &debugger in Debugger::STR_VARIANTS {
         builder.cond(
             debugger,

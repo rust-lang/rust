@@ -1009,7 +1009,7 @@ fn test_supported_crate_types() {
     let config = cfg().target("wasm32-unknown-unknown").build();
     assert_eq!(
         config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
-        HashSet::from(["bin", "cdylib", "lib", "rlib", "staticlib"]),
+        HashSet::from(["bin", "cdylib", "lib", "rlib", "staticlib", "proc-macro"]),
     );
 
     // rlib is supported

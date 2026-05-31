@@ -2192,6 +2192,14 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
+        // Build the standard library for wasm32-wasip2 (current target for wasm proc macros).
+        if builder.config.wasm_proc_macro {
+            builder.ensure(compile::Std::new(
+                test_compiler,
+                TargetSelection::from_user("wasm32-wasip2"),
+            ));
+        }
+
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(test_compiler).to_path_buf(),
@@ -2240,6 +2248,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             .arg(builder.src.join("tests").join("auxiliary").join("minicore.rs"));
 
         let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
+
+        if builder.config.wasm_proc_macro {
+            cmd.arg("--wasm-proc-macro");
+        }
 
         // There are (potentially) 2 `cargo`s to consider:
         //

@@ -89,7 +89,14 @@ pub fn inject(
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
-            self.dcx.emit_err(diagnostics::ProcMacro { span: sp });
+            // On wasm we end up generating other public exports (though the exact specifics are
+            // internal). For now omit this check, we'll need to refine it before stabilizing wasm
+            // proc macros.
+            if !(self.session.opts.unstable_opts.wasm_proc_macros
+                && self.session.target.is_like_wasm)
+            {
+                self.dcx.emit_err(diagnostics::ProcMacro { span: sp });
+            }
         }
     }
 
@@ -270,6 +277,9 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
+//
+// If we're targeting wasm32, we also inject a macro call to generate_export!(DECLS). This produces
+// the WASI component model ABI exports/imports to support the proc macro's execution.
 fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
@@ -361,9 +371,33 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         cx.attr_nested_word(sym::allow, sym::deprecated, span),
     ]);
 
-    let block = ast::ConstItemRhsKind::new_body(cx.expr_block(
-        cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
-    ));
+    // For wasm targets, exporting from proc-macros requires that we generate additional symbols
+    // (not just the single #[used] static). We use a macro defined in the proc_macro crate to do
+    // so.
+    let block_contents = if cx.sess.target.is_like_wasm {
+        let mac_call = cx.stmt_semi(cx.expr_macro_call(
+            span,
+            cx.macro_call(
+                span,
+                cx.path(
+                    span,
+                    vec![proc_macro, bridge, client, Ident::new(sym::generate_export, span)],
+                ),
+                rustc_ast::token::Delimiter::Parenthesis,
+                rustc_ast::tokenstream::TokenStream::new(vec![
+                    rustc_ast::tokenstream::TokenTree::Token(
+                        rustc_ast::token::Token::from_ast_ident(Ident::new(sym::_DECLS, span)),
+                        rustc_ast::tokenstream::Spacing::Alone,
+                    ),
+                ]),
+            ),
+        ));
+        thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static), mac_call]
+    } else {
+        thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]
+    };
+
+    let block = ast::ConstItemRhsKind::new_body(cx.expr_block(cx.block(span, block_contents)));
 
     let anon_constant = cx.item_const(
         span,
@@ -375,4 +409,70 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     // Integrate the new item into existing module structures.
     let items = AstFragment::Items(smallvec![anon_constant]);
     cx.monotonic_expander().fully_expand_fragment(items).make_items().pop().unwrap()
+}
+
+pub(crate) struct InternalWitBindgen;
+
+impl rustc_expand::base::BangProcMacro for InternalWitBindgen {
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
+        _ts: rustc_ast::tokenstream::TokenStream,
+    ) -> Result<rustc_ast::tokenstream::TokenStream, rustc_span::ErrorGuaranteed> {
+        let mut options = wit_bindgen_rust::Opts::default();
+        options.pub_export_macro = true;
+        options.format = false;
+
+        let mut resolve = wit_bindgen_core::wit_parser::Resolve::default();
+        let pkg_id = resolve
+            .push_str(
+                "proc-macro-wasm.wit",
+                include_str!("../../../library/proc_macro/wasm-interface.wit"),
+            )
+            .unwrap();
+        let world = resolve.select_world(&[pkg_id], None).unwrap();
+
+        let mut generator = options.build();
+        let mut files = Default::default();
+        wit_bindgen_core::WorldGenerator::generate(&mut generator, &mut resolve, world, &mut files)
+            .expect("generation successful");
+        let (_, src) = files.iter().next().unwrap();
+        let src = std::str::from_utf8(src).unwrap();
+
+        let expn_data = ecx.current_expansion.id.expn_data();
+        let call_site = ecx.with_call_site_ctxt(expn_data.call_site);
+
+        let needle = "macro_rules! ";
+        let src = src.replace(
+            needle,
+            // #[allow_internal_unstable(...)] is not transitive on macro expansions and so
+            // doesn't apply to this inner macro -- which also references unstable types from
+            // the generated bindings.
+            //
+            // This string replacement is obviously a hack, but it works OK in practice. If you
+            // can remove this and keep wasm proc macro tests passing, go for it.
+            &format!("#[allow_internal_unstable(proc_macro_internals)] {needle}"),
+        );
+        assert!(src.contains(needle), "{}", src);
+        let output = rustc_parse::source_str_to_stream(
+            ecx.psess(),
+            rustc_span::FileName::proc_macro_source_code(&src),
+            src,
+            Some(call_site),
+        );
+
+        match output {
+            Ok(o) => Ok(o),
+            Err(diags) => {
+                for diag in diags {
+                    diag.emit();
+                }
+
+                Err(ecx
+                    .dcx()
+                    .span_delayed_bug(span, "failed to parse wit-bindgen generated source"))
+            }
+        }
+    }
 }

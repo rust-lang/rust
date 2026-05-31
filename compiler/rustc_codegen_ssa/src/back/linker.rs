@@ -1800,11 +1800,7 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<Sy
             .collect();
     }
 
-    let mut symbols = if let CrateType::ProcMacro = crate_type {
-        exported_symbols_for_proc_macro_crate(tcx)
-    } else {
-        exported_symbols_for_non_proc_macro(tcx, crate_type)
-    };
+    let mut symbols = Vec::new();
 
     // Preserve the metadata symbol to ensure the metadata section doesn't get removed by the
     // linker. On wasm however the metadata is put in a custom section, to which symbols can't
@@ -1819,6 +1815,20 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<Sy
             metadata_symbol_name,
             SymbolExportKind::Data,
         ));
+    }
+
+    // We include all symbols in the export list if this is a regular crate, or if the
+    // -Zwasm-proc-macros flag is passed. With wasm proc macros we need to expose more than just the
+    // global static (in fact, that static is not used on wasm targets at all), and for now that
+    // just means letting it use 'normal' crate rules.
+    if crate_type != CrateType::ProcMacro || tcx.sess.opts.unstable_opts.wasm_proc_macros {
+        symbols.extend(exported_symbols_for_non_proc_macro(tcx, crate_type));
+    }
+
+    // If this is a proc macro, then add the proc macro specific symbols too.
+    // See comment above for more details.
+    if let CrateType::ProcMacro = crate_type {
+        symbols.extend(exported_symbols_for_proc_macro_crate(tcx));
     }
 
     symbols

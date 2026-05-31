@@ -1,5 +1,6 @@
 use std::any::Any;
 
+#[cfg(not(target_family = "wasm"))]
 use crate::bridge::{Buffer, Decode, Encode};
 
 /// Simplified version of panic payloads, ignoring
@@ -53,6 +54,7 @@ impl PanicMessage {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<S> Encode<S> for PanicMessage {
     #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
@@ -60,6 +62,7 @@ impl<S> Encode<S> for PanicMessage {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<S> Decode<'_, '_, S> for PanicMessage {
     #[inline]
     fn decode(r: &mut &[u8], s: &mut S) -> Self {

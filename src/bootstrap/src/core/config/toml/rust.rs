@@ -75,6 +75,7 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        wasm_proc_macro: Option<bool> = "wasm-proc-macro",
     }
 }
 
@@ -382,6 +383,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         bootstrap_override_lld: _,
         bootstrap_override_lld_legacy: _,
         rustflags: _,
+        wasm_proc_macro: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
