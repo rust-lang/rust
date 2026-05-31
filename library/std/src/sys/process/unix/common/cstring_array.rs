@@ -20,6 +20,25 @@ impl CStringArray {
         result
     }
 
+    /// Creates a new `CStringArray` from `*const *const c_char` pointer.
+    /// This is only safe to use if the internal items in the ptr is nul
+    /// terminated and that we have null pointer at the end.
+    pub unsafe fn from_ptr(ptr: *const *const c_char) -> Self {
+        let mut ptr = ptr;
+        let mut result = CStringArray { ptrs: Vec::new() };
+
+        if !ptr.is_null() {
+            while !(*ptr).is_null() {
+                let c_str = CStr::from_ptr(*ptr).to_owned();
+                result.ptrs.push(c_str.into_raw());
+                ptr = ptr.add(1);
+            }
+        }
+
+        result.ptrs.push(ptr::null());
+        result
+    }
+
     /// Replace the string at position `index`.
     pub fn write(&mut self, index: usize, item: CString) {
         let argc = self.ptrs.len() - 1;
@@ -32,7 +51,7 @@ impl CStringArray {
         drop(unsafe { CString::from_raw(old.cast_mut()) });
     }
 
-    /// Returns the length of the array (null pointer excluded)
+    /// Returns the length of the array (null pointer excluded).
     pub fn len(&self) -> usize {
         self.ptrs.len() - 1
     }
