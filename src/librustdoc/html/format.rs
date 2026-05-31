@@ -184,9 +184,9 @@ pub(crate) fn print_where_clause(
 
         let clause = if f.alternate() {
             if ending == Ending::Newline {
-                format!(" where{where_preds},")
+                format!(" where{where_preds:#},")
             } else {
-                format!(" where{where_preds}")
+                format!(" where{where_preds:#}")
             }
         } else {
             let mut br_with_padding = String::with_capacity(6 * indent + 28);
