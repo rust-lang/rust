@@ -2218,6 +2218,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
+        // don't suggest missing `.expect()` or `?` in destructuring assignments LHS.
+        // If the immediate parent is an Assign Expr, and the LHS and the RHS of that Expr
+        // overlap with each other, it's guaranteed that the expression came from desugaring
+        // a destructuring assignment.
+        let parent_node = self.tcx.parent_hir_node(expr.hir_id);
+        if let hir::Node::Expr(e) = parent_node
+            && let hir::ExprKind::Assign(lhs, rhs, _) = e.kind
+            && rhs.hir_id == expr.hir_id
+            && lhs.span.overlaps(rhs.span)
+        {
+            return false;
+        }
+
         let ty::Adt(adt, args) = found.kind() else {
             return false;
         };
