@@ -18,9 +18,8 @@ pub fn prctl<'tcx>(
 ) -> InterpResult<'tcx> {
     let ([op], varargs) = ecx.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
 
-    // FIXME: Use constants once https://github.com/rust-lang/libc/pull/3941 backported to the 0.2 branch.
-    let pr_set_name = 15;
-    let pr_get_name = 16;
+    let pr_set_name = ecx.eval_libc_i32("PR_SET_NAME");
+    let pr_get_name = ecx.eval_libc_i32("PR_GET_NAME");
 
     let res = match ecx.read_scalar(op)?.to_i32()? {
         op if op == pr_set_name => {
