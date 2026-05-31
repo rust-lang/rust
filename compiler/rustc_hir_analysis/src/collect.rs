@@ -554,26 +554,12 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {
-        if hir_id.owner != self.hir_id().owner {
-            return;
-        }
-        if !matches!(
-            self.tcx.hir_node(hir_id),
-            Node::Ty(hir::Ty { kind: hir::TyKind::Path(hir::QPath::TypeRelative(..)), .. })
-        ) {
-            return;
-        }
-        if let ty::Alias(ty::AliasTy {
-            kind: ty::AliasTyKind::Projection { def_id } | ty::AliasTyKind::Inherent { def_id },
-            ..
-        }) = *ty.kind()
-        {
-            let def_id = def_id.into();
-            self.type_dependent_defs
-                .borrow_mut()
-                .insert(hir_id.local_id, Ok((self.tcx.def_kind(def_id), def_id)));
-        }
+    fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
+        // There's no place to record types from signatures.
+    }
+
+    fn record_res(&self, hir: HirId, res: Result<(DefKind, DefId), ErrorGuaranteed>) {
+        self.type_dependent_defs.borrow_mut().insert(hir.local_id, res);
     }
 
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {

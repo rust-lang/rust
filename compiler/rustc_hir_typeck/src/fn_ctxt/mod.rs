@@ -10,6 +10,7 @@ use std::ops::Deref;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::attrs::{DivergingBlockBehavior, DivergingFallbackBehavior};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::{
@@ -446,6 +447,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             ty
         };
         self.write_ty(hir_id, ty)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn record_res(&self, hir_id: hir::HirId, res: Result<(DefKind, DefId), ErrorGuaranteed>) {
+        self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, res);
     }
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
