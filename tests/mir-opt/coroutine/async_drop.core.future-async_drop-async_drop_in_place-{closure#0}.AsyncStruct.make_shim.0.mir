@@ -1,4 +1,4 @@
-// MIR for `std::future::async_drop_in_place::{closure#0}` after MentionedItems
+// MIR for `std::future::async_drop_in_place::{closure#0}` 0 make_shim
 
 fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<AsyncStruct>()}, _2: std::future::ResumeTy) -> ()
 yields ()
