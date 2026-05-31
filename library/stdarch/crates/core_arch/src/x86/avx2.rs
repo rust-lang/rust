@@ -3906,7 +3906,7 @@ pub const fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.avx2.pmadd.wd"]
     fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]

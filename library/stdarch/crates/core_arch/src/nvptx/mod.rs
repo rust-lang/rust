@@ -19,7 +19,7 @@ mod packed;
 pub use packed::*;
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.nvvm.barrier.cta.sync.aligned.all"]
     fn syncthreads(a: u32) -> ();
     #[link_name = "llvm.nvvm.read.ptx.sreg.ntid.x"]

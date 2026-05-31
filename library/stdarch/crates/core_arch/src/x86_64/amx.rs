@@ -595,7 +595,7 @@ pub unsafe fn _tile_movrowi<const TILE: i32, const ROW: i32>() -> __m512i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.ldtilecfg"]
     fn ldtilecfg(mem_addr: *const u8);
     #[link_name = "llvm.x86.sttilecfg"]

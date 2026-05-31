@@ -131,7 +131,7 @@ pub const fn _mm_tzcnt_32(x: u32) -> i32 {
     x.trailing_zeros() as i32
 }
 
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.bmi.bextr.32"]
     fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
 }
