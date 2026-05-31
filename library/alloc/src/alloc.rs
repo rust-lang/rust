@@ -51,17 +51,17 @@ unsafe extern "Rust" {
 ///
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](self#functions).
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Copy, Debug)]
 #[derive_const(Clone, Default)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
 #[lang = "global_alloc_ty"]
 pub struct Global;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl core::alloc::AllocatorClone for Global {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl core::alloc::StaticAllocator for Global {}
 
 /// Allocates memory with the global allocator.
@@ -539,7 +539,7 @@ impl Global {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl Allocator for Global {
     #[inline]
@@ -690,13 +690,13 @@ pub mod __alloc_error_handler {
 /// a type with an `#[unstable] A: Allocator = Global` parameter may be
 /// callable for `A != Global`.
 #[marker]
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[doc(hidden)]
 pub trait AllocatorNightly: Allocator {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[unstable_feature_bound(allocator_api)]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[unstable_feature_bound(allocator_ext)]
 impl<A: Allocator + ?Sized> AllocatorNightly for A {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 impl AllocatorNightly for Global {}
