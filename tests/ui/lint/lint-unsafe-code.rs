@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 #![deny(unsafe_code)]
 #![feature(naked_functions_rustic_abi)]
+#![feature(ffi_pure)]
+#![feature(ffi_const)]
 
 use std::arch::naked_asm;
 
@@ -149,4 +151,14 @@ trait NakedTrait {
 impl NakedTrait for Naked {
     #[unsafe(naked)] fn naked4() { naked_asm!("halt") }
     //~^ ERROR usage of the unsafe `#[naked]` attribute
+}
+
+extern "C" {
+    #[unsafe(ffi_pure)]
+    //~^ ERROR usage of the unsafe `#[ffi_pure]` attribute
+    fn ffi_pure();
+
+    #[unsafe(ffi_const)]
+    //~^ ERROR usage of the unsafe `#[ffi_const]` attribute
+    fn ffi_const();
 }
