@@ -1367,7 +1367,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut fallback = false;
         let typo_sugg = typo_sugg
             .to_opt_suggestion()
-            .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
+            .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()))
+            // this filters out suggestions that require parameters when no parameter is present
+            .filter(|sugg| {
+                if !path.last().is_some_and(|s| s.has_generic_args) {
+                    return true;
+                }
+                let Some(def_id) = sugg.res.opt_def_id() else {
+                    return true;
+                };
+                self.r.item_generics_num_type_or_const_params(def_id) > 0
+            });
         if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
             fallback = true;
             match self.diag_metadata.current_let_binding {
