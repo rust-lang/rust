@@ -70,12 +70,6 @@
 </p></details>
 
 
-<details><summary>["CLFLUSHOPT"]</summary><p>
-
-  * [x] [`_mm_clflushopt`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clflushopt)
-</p></details>
-
-
 <details><summary>["CLWB"]</summary><p>
 
   * [ ] [`_mm_clwb`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clwb)

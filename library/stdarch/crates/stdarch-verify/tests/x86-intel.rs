@@ -661,14 +661,16 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 fn pointed_type(intrinsic: &Intrinsic) -> Result<Type, String> {
     Ok(
         if intrinsic.tech == "AMX"
-            || intrinsic
-                .cpuid
-                .iter()
-                .any(|cpuid| matches!(&**cpuid, "KEYLOCKER" | "KEYLOCKER_WIDE" | "XSAVE" | "FXSR"))
+            || intrinsic.cpuid.iter().any(|cpuid| {
+                matches!(
+                    &**cpuid,
+                    "KEYLOCKER" | "KEYLOCKER_WIDE" | "XSAVE" | "FXSR" | "CLFLUSHOPT"
+                )
+            })
         {
-            // AMX, KEYLOCKER and XSAVE intrinsics should take `*u8`
+            // AMX, KEYLOCKER, XSAVE and CLFLUSHOPT intrinsics should take `*u8`
             U8
-        } else if intrinsic.name == "_mm_clflush" || intrinsic.name == "_mm_clflushopt" {
+        } else if intrinsic.name == "_mm_clflush" {
             // Just a false match in the following logic
             U8
         } else if ["_mm_storeu_si", "_mm_loadu_si"]
