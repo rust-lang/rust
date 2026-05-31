@@ -2051,7 +2051,10 @@ impl<'tcx> CoerceMany<'tcx> {
                     err.span_label(cond_expr.span, "expected this to be `()`");
                 }
                 if expr.can_have_side_effects() {
-                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    // Don't suggest semicolon after if expressions as it does not fix the issue
+                    if !matches!(cond_expr.kind, hir::ExprKind::If(..)) {
+                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    }
                 }
             }
         }
