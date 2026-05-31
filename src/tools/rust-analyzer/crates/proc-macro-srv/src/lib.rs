@@ -7,8 +7,6 @@
 //!
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
-//! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
-//!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(feature = "sysroot-abi")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
