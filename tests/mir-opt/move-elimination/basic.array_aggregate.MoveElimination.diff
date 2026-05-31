@@ -30,11 +30,11 @@
 -         StorageLive(_3);
 -         _3 = [const 3_u8; 8];
 -         StorageLive(_4);
--         _4 = copy _1;
+-         _4 = move _1;
 -         StorageLive(_5);
--         _5 = copy _2;
+-         _5 = move _2;
 -         StorageLive(_6);
--         _6 = copy _3;
+-         _6 = move _3;
 -         _0 = [move _4, move _5, move _6];
 -         StorageDead(_6);
 -         StorageDead(_5);
