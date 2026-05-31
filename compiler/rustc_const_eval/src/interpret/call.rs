@@ -163,6 +163,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
+    fn ptr_metadata_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        // Even if `ty` is normalized, the search for the unsized tail will project
+        // to fields, which can yield non-normalized types. So we need to provide a
+        // normalization function.
+        let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
+        ty.ptr_metadata_ty(*self.tcx, normalize)
+    }
+
     /// Check if these two layouts look like they are fn-ABI-compatible.
     /// (We also compare the `PassMode`, so this doesn't have to check everything. But it turns out
     /// that only checking the `PassMode` is insufficient.)
@@ -215,14 +223,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
             // This is okay if they have the same metadata type.
-            let meta_ty = |ty: Ty<'tcx>| {
-                // Even if `ty` is normalized, the search for the unsized tail will project
-                // to fields, which can yield non-normalized types. So we need to provide a
-                // normalization function.
-                let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                ty.ptr_metadata_ty(*self.tcx, normalize)
-            };
-            return interp_ok(meta_ty(caller) == meta_ty(callee));
+            return interp_ok(self.ptr_metadata_ty(caller) == self.ptr_metadata_ty(callee));
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
@@ -314,9 +315,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if !already_live {
             let local = callee_arg.as_local().unwrap();
             let meta = caller_arg_copy.meta();
-            // `check_argument_compat` ensures that if metadata is needed, both have the same type,
-            // so we know they will use the metadata the same way.
-            assert!(!meta.has_meta() || caller_arg_copy.layout.ty == callee_ty);
+            // `check_argument_compat` ensures that if metadata is needed, both have the same
+            // metadata type, so we know they will use the metadata the same way.
+            assert!(
+                !meta.has_meta()
+                    || self.ptr_metadata_ty(caller_arg_copy.layout.ty)
+                        == self.ptr_metadata_ty(callee_ty)
+            );
 
             self.storage_live_dyn(local, meta)?;
         }
@@ -326,7 +331,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op_allow_transmute(&caller_arg_copy, &callee_arg)?;
+        let unsized_transmute = caller_arg_copy.layout.ty != callee_arg.layout.ty
+            && (!caller_arg_copy.layout.is_sized() || !callee_arg.layout.is_sized())
+            && self.ptr_metadata_ty(caller_arg_copy.layout.ty)
+                == self.ptr_metadata_ty(callee_arg.layout.ty);
+        if unsized_transmute {
+            self.copy_op_no_validate(
+                &caller_arg_copy,
+                &callee_arg,
+                /* allow_transmute */ true,
+            )?;
+            if M::enforce_validity(self, callee_arg.layout()) {
+                self.validate_operand(
+                    &callee_arg,
+                    M::enforce_validity_recursively(self, callee_arg.layout()),
+                    /* reset_provenance_and_padding */ true,
+                )?;
+            }
+        } else {
+            self.copy_op_allow_transmute(&caller_arg_copy, &callee_arg)?;
+        }
         // If this was an in-place pass, protect the place it comes from for the duration of the call.
         if let FnArg::InPlace(mplace) = caller_arg {
             M::protect_in_place_function_argument(self, mplace)?;
