@@ -154,7 +154,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowInternalUnstableParser>,
         Combine<CrateTypeParser>,
-        Combine<DebuggerViualizerParser>,
+        Combine<DebuggerVisualizerParser>,
         Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,

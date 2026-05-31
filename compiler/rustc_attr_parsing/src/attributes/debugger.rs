@@ -3,9 +3,9 @@ use rustc_hir::attrs::{DebugVisualizer, DebuggerVisualizerType};
 
 use super::prelude::*;
 
-pub(crate) struct DebuggerViualizerParser;
+pub(crate) struct DebuggerVisualizerParser;
 
-impl CombineAttributeParser for DebuggerViualizerParser {
+impl CombineAttributeParser for DebuggerVisualizerParser {
     const PATH: &[Symbol] = &[sym::debugger_visualizer];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
