@@ -278,3 +278,9 @@ mod issue_15079 {
         }
     }
 }
+
+pub const fn issue17119(s: &str) -> bool {
+    //~^ missing_const_for_fn
+    let [_] = s.as_bytes() else { return false };
+    true
+}
