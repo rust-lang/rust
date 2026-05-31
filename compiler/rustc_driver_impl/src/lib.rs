@@ -64,6 +64,8 @@ use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
 
+pub mod alloc;
+
 #[allow(unused_macros)]
 macro do_not_use_print($($t:tt)*) {
     std::compile_error!(
