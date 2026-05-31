@@ -389,7 +389,7 @@ where
                 impl_def_id,
                 impl_args,
                 impl_trait_ref,
-                target_container_def_id.into(),
+                target_container_def_id,
             )?;
 
             if !cx.check_args_compatible(target_item_def_id.into(), target_args) {

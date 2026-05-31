@@ -358,7 +358,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket file descriptor.
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedFd {
-        tcp_stream.into_inner().into_socket().into_inner().into_inner().into()
+        tcp_stream.into_inner().into_socket().into_inner().into_inner()
     }
 }
 
@@ -388,7 +388,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket file descriptor.
     #[inline]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedFd {
-        tcp_listener.into_inner().into_socket().into_inner().into_inner().into()
+        tcp_listener.into_inner().into_socket().into_inner().into_inner()
     }
 }
 
@@ -418,7 +418,7 @@ impl From<crate::net::UdpSocket> for OwnedFd {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s file descriptor.
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedFd {
-        udp_socket.into_inner().into_socket().into_inner().into_inner().into()
+        udp_socket.into_inner().into_socket().into_inner().into_inner()
     }
 }
 
