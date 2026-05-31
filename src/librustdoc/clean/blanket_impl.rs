@@ -2,7 +2,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
-use rustc_middle::ty::{self, TypingMode, Unnormalized, Upcast};
+use rustc_middle::ty::{self, Ty, TypingMode, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -21,11 +21,12 @@ pub(crate) fn synthesize_blanket_impls(
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let ty = tcx.type_of(item_def_id);
+    let item_ty = ty.instantiate_identity().skip_norm_wip();
 
     let mut blanket_impls = Vec::new();
     for trait_def_id in tcx.visible_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
-            || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
+            || cx.generated_synthetics.contains(&(item_ty, trait_def_id))
         {
             continue;
         }
@@ -59,14 +60,26 @@ pub(crate) fn synthesize_blanket_impls(
             // FIXME(eddyb) ignoring `obligations` might cause false positives.
             drop(obligations);
 
+            // Only the impl's where-predicates need to be checked here. The trait ref itself is
+            // the blanket impl candidate we're considering; proving it would select recursively.
             let predicates = tcx
                 .predicates_of(impl_def_id)
                 .instantiate(tcx, impl_args)
                 .predicates
                 .into_iter()
-                .map(Unnormalized::skip_norm_wip)
-                .chain(Some(impl_trait_ref.upcast(tcx)));
+                .map(Unnormalized::skip_norm_wip);
             for predicate in predicates {
+                let predicate = infcx.resolve_vars_if_possible(predicate);
+                if let Some(may_apply) =
+                    cached_auto_trait_predicate_result(cx, predicate, impl_ty, item_ty)
+                {
+                    if may_apply {
+                        continue;
+                    } else {
+                        continue 'blanket_impls;
+                    }
+                }
+
                 let obligation = traits::Obligation::new(
                     tcx,
                     traits::ObligationCause::dummy(),
@@ -81,7 +94,7 @@ pub(crate) fn synthesize_blanket_impls(
             }
             debug!("found applicable impl for trait ref {trait_ref:?}");
 
-            cx.generated_synthetics.insert((ty.skip_binder(), trait_def_id));
+            cx.generated_synthetics.insert((item_ty, trait_def_id));
 
             blanket_impls.push(clean::Item {
                 inner: Box::new(clean::ItemInner {
@@ -132,4 +145,32 @@ pub(crate) fn synthesize_blanket_impls(
     }
 
     blanket_impls
+}
+
+fn cached_auto_trait_predicate_result<'tcx>(
+    cx: &DocContext<'tcx>,
+    predicate: ty::Clause<'tcx>,
+    impl_ty: Ty<'tcx>,
+    item_ty: Ty<'tcx>,
+) -> Option<bool> {
+    let trait_pred = predicate.as_trait_clause()?;
+    if trait_pred.polarity() != ty::PredicatePolarity::Positive {
+        return None;
+    }
+
+    let trait_def_id = trait_pred.def_id();
+    if !cx.tcx.trait_is_auto(trait_def_id) {
+        return None;
+    }
+
+    let self_ty = trait_pred.self_ty().no_bound_vars()?;
+    if self_ty != impl_ty {
+        return None;
+    }
+
+    match cx.generated_auto_trait_impls.get(&(item_ty, trait_def_id)) {
+        Some(ty::ImplPolarity::Positive) => Some(true),
+        Some(ty::ImplPolarity::Negative) => Some(false),
+        _ => None,
+    }
 }

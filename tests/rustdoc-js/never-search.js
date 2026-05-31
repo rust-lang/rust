@@ -4,6 +4,7 @@ const EXPECTED = [
     {
         'query': '! ->',
         'others': [
+            { 'path': 'never_search::never', 'name': 'from' },
             { 'path': 'never_search', 'name': 'impossible' },
             { 'path': 'never_search', 'name': 'box_impossible' },
         ],
@@ -24,6 +25,7 @@ const EXPECTED = [
     {
         'query': '!',
         'in_args': [
+            { 'path': 'never_search::never', 'name': 'from' },
             { 'path': 'never_search', 'name': 'impossible' },
             { 'path': 'never_search', 'name': 'box_impossible' },
         ],
@@ -31,6 +33,7 @@ const EXPECTED = [
     {
         'query': 'never',
         'in_args': [
+            { 'path': 'never_search::never', 'name': 'from' },
             { 'path': 'never_search', 'name': 'impossible' },
             { 'path': 'never_search', 'name': 'uninteresting' },
             { 'path': 'never_search', 'name': 'box_impossible' },
