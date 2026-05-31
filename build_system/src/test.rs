@@ -30,6 +30,7 @@ fn get_runners() -> Runners {
     runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
     runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
+    runners.insert("--alloc-tests", ("Run alloc tests", test_alloc));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
     runners.insert("--std-tests", ("Run std tests", std_tests));
@@ -758,6 +759,16 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/coretests");
+    let _ = remove_dir_all(path.join("target"));
+    // FIXME(antoyo): run in release mode when we fix the failures.
+    run_cargo_command(&[&"test"], Some(&path), env, args)?;
+    Ok(())
+}
+
+fn test_alloc(env: &Env, args: &TestArg) -> Result<(), String> {
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] alloc");
+    let path = get_sysroot_dir().join("sysroot_src/library/alloctests");
     let _ = remove_dir_all(path.join("target"));
     // FIXME(antoyo): run in release mode when we fix the failures.
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
