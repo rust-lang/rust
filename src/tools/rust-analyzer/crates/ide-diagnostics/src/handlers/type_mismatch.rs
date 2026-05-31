@@ -121,9 +121,11 @@ fn add_or_fix_reference(
     }
 
     let expr = expr_ptr.to_node(ctx.db());
-    let assign = expr.syntax().parent().and_then(ast::BinExpr::cast).filter(|it| {
-        it.op_kind() == Some(ast::BinaryOp::Assignment { op: None }) && it.rhs() == Some(expr)
-    });
+    let assign = expr
+        .syntax()
+        .parent()
+        .and_then(ast::BinExpr::cast)
+        .filter(|it| it.op_kind() == Some(ast::BinaryOp::Assignment { op: None }));
     if let Some(assign) = assign
         && expected_mutability.is_mut()
         && let Some(range) = ctx.sema.original_range_opt(assign.syntax())
