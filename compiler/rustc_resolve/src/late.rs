@@ -5631,6 +5631,18 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
                     .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
                     .count();
                 self.r.item_generics_num_lifetimes.insert(def_id, count);
+                let type_or_const_count = generics
+                    .params
+                    .iter()
+                    .filter(|param| {
+                        matches!(
+                            param.kind,
+                            ast::GenericParamKind::Type { .. }
+                                | ast::GenericParamKind::Const { .. }
+                        )
+                    })
+                    .count();
+                self.r.item_generics_num_type_or_const_params.insert(def_id, type_or_const_count);
             }
 
             ItemKind::ForeignMod(ForeignMod { items, .. }) => {

@@ -1506,6 +1506,8 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize> = default::fx_hash_map(),
+    /// Amount of type or const parameters for each item in the crate.
+    item_generics_num_type_or_const_params: FxHashMap<LocalDefId, usize> = default::fx_hash_map(),
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
@@ -1710,6 +1712,17 @@ impl<'tcx> Resolver<'_, 'tcx> {
             self.item_generics_num_lifetimes[&def_id]
         } else {
             self.tcx.generics_of(def_id).own_counts().lifetimes
+        }
+    }
+    // Get count of expected parameters
+    fn item_generics_num_type_or_const_params(&self, def_id: DefId) -> usize {
+        if let Some(def_id) = def_id.as_local() {
+            self.item_generics_num_type_or_const_params.get(&def_id).copied().unwrap_or(0)
+        } else {
+            let generics = self.tcx.generics_of(def_id);
+            let counts = generics.own_counts();
+            // saturating_sub may not be strictly necessary, better safe than sorry
+            counts.types.saturating_sub(generics.has_own_self() as usize) + counts.consts
         }
     }
 
