@@ -549,7 +549,10 @@ pub(crate) struct ForceTargetFeatureParser;
 impl CombineAttributeParser for ForceTargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::force_target_feature];
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present",
+        unsafe_since: None,
+    };
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
         features: items,
         attr_span: span,

@@ -1,9 +1,11 @@
+//@ only-x86_64 (for the force_target_feature tests)
 #![allow(unused_unsafe)]
 #![allow(dead_code)]
 #![deny(unsafe_code)]
 #![feature(naked_functions_rustic_abi)]
 #![feature(ffi_pure)]
 #![feature(ffi_const)]
+#![feature(effective_target_features)]
 
 use std::arch::naked_asm;
 
@@ -161,4 +163,22 @@ extern "C" {
     #[unsafe(ffi_const)]
     //~^ ERROR usage of the unsafe `#[ffi_const]` attribute
     fn ffi_const();
+}
+
+#[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+//~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+
+struct ForceTargetFeature;
+impl ForceTargetFeature {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+}
+
+trait ForceTargetFeatureTrait {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
+}
+impl ForceTargetFeatureTrait for ForceTargetFeature {
+    #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
+    //~^ ERROR usage of the unsafe `#[force_target_feature]` attribute
 }
