@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `super::inner::doesnt_exist`
-  --> $DIR/diagnostics-same-crate.rs:32:9
+  --> $DIR/diagnostics-same-crate.rs:47:9
    |
 LL |     use super::inner::doesnt_exist;
    |         ^^^^^^^^^^^^^^------------
@@ -16,7 +16,7 @@ LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
 error[E0432]: unresolved import `super::inner::doesnt_exist`
-  --> $DIR/diagnostics-same-crate.rs:35:23
+  --> $DIR/diagnostics-same-crate.rs:50:23
    |
 LL |     use super::inner::doesnt_exist::hi;
    |                       ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
@@ -30,8 +30,44 @@ LL |     #[cfg(false)]
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
+error[E0432]: unresolved import `super::inner::selected_out`
+  --> $DIR/diagnostics-same-crate.rs:53:9
+   |
+LL |     use super::inner::selected_out;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `selected_out` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:23:21
+   |
+LL | /         false => {
+LL | |
+LL | |
+LL | |             pub mod selected_out {
+   | |                     ^^^^^^^^^^^^
+...  |
+LL | |         _ => {}
+   | |_________- the item is gated here
+
+error[E0432]: unresolved import `super::inner::selected_out`
+  --> $DIR/diagnostics-same-crate.rs:56:23
+   |
+LL |     use super::inner::selected_out::hi;
+   |                       ^^^^^^^^^^^^ could not find `selected_out` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:23:21
+   |
+LL | /         false => {
+LL | |
+LL | |
+LL | |             pub mod selected_out {
+   | |                     ^^^^^^^^^^^^
+...  |
+LL | |         _ => {}
+   | |_________- the item is gated here
+
 error[E0433]: cannot find `doesnt_exist` in `inner`
-  --> $DIR/diagnostics-same-crate.rs:53:12
+  --> $DIR/diagnostics-same-crate.rs:74:12
    |
 LL |     inner::doesnt_exist::hello();
    |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
@@ -45,8 +81,26 @@ LL |     #[cfg(false)]
 LL |     pub mod doesnt_exist {
    |             ^^^^^^^^^^^^
 
+error[E0433]: cannot find `selected_out` in `inner`
+  --> $DIR/diagnostics-same-crate.rs:78:12
+   |
+LL |     inner::selected_out::hello();
+   |            ^^^^^^^^^^^^ could not find `selected_out` in `inner`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:23:21
+   |
+LL | /         false => {
+LL | |
+LL | |
+LL | |             pub mod selected_out {
+   | |                     ^^^^^^^^^^^^
+...  |
+LL | |         _ => {}
+   | |_________- the item is gated here
+
 error[E0425]: cannot find function `uwu` in module `inner`
-  --> $DIR/diagnostics-same-crate.rs:49:12
+  --> $DIR/diagnostics-same-crate.rs:70:12
    |
 LL |     inner::uwu();
    |            ^^^ not found in `inner`
@@ -60,13 +114,13 @@ LL |     pub fn uwu() {}
    |            ^^^
 
 error[E0425]: cannot find function `meow` in module `inner::right`
-  --> $DIR/diagnostics-same-crate.rs:57:19
+  --> $DIR/diagnostics-same-crate.rs:82:19
    |
 LL |     inner::right::meow();
    |                   ^^^^ not found in `inner::right`
    |
 note: found an item that was configured out
-  --> $DIR/diagnostics-same-crate.rs:26:16
+  --> $DIR/diagnostics-same-crate.rs:41:16
    |
 LL |         #[cfg(feature = "what-a-cool-feature")]
    |               ------------------------------- the item is gated behind the `what-a-cool-feature` feature
@@ -74,26 +128,26 @@ LL |         pub fn meow() {}
    |                ^^^^
 
 error[E0425]: cannot find function `uwu` in this scope
-  --> $DIR/diagnostics-same-crate.rs:45:5
+  --> $DIR/diagnostics-same-crate.rs:66:5
    |
 LL |     uwu();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `vanished` in this scope
-  --> $DIR/diagnostics-same-crate.rs:62:5
+  --> $DIR/diagnostics-same-crate.rs:87:5
    |
 LL |     vanished();
    |     ^^^^^^^^ not found in this scope
    |
 note: found an item that was configured out
-  --> $DIR/diagnostics-same-crate.rs:41:8
+  --> $DIR/diagnostics-same-crate.rs:62:8
    |
 LL | #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
    |       -------------------------------------------- the item is gated here
 LL | pub fn vanished() {}
    |        ^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0425, E0432, E0433.
 For more information about an error, try `rustc --explain E0425`.
