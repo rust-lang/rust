@@ -71,7 +71,7 @@ fn synthesize_auto_trait_impl<'tcx>(
 ) -> Option<clean::Item> {
     let tcx = cx.tcx;
     let trait_ref = ty::Binder::dummy(ty::TraitRef::new(tcx, trait_def_id, [ty]));
-    if !cx.generated_synthetics.insert((ty, trait_def_id)) {
+    if !cx.synthetic_auto_trait_impls.insert((ty, trait_def_id)) {
         debug!("already generated, aborting");
         return None;
     }
