@@ -18,7 +18,7 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL | /         check_epoll_wait::<TAG>(
+LL | /         check_epoll_wait(
 LL | |             epfd,
 LL | |             &[Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }],
 LL | |             -1,
@@ -32,7 +32,7 @@ note: the current function got called indirectly due to this code
 LL |       let thread2 = thread::spawn(move || {
    |  ___________________^
 LL | |
-LL | |         check_epoll_wait::<TAG>(
+LL | |         check_epoll_wait(
 LL | |             epfd,
 ...  |
 LL | |         );
