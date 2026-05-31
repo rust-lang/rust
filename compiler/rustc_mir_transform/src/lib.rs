@@ -51,6 +51,9 @@ mod shim;
 mod ssa;
 mod trivial_const;
 
+/// Exposed for rustc drivers.
+pub use shim::build_drop_shim;
+
 /// We import passes via this macro so that we can have a static list of pass names
 /// (used to verify CLI arguments). It takes a list of modules, followed by the passes
 /// declared within them.
