@@ -139,7 +139,7 @@ fn main() {
     assert_eq!(res, Poll::Ready(()));
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncInt.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncInt.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncInt.StateTransform.diff
 struct AsyncInt(i32);
 
@@ -154,7 +154,7 @@ impl AsyncDrop for AsyncInt {
     }
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncInt.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncInt.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncInt.StateTransform.diff
 struct SyncInt(i32);
 
@@ -164,7 +164,7 @@ impl Drop for SyncInt {
     }
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncThenAsync.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncThenAsync.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.SyncThenAsync.StateTransform.diff
 struct SyncThenAsync {
     i: i32,
@@ -179,7 +179,7 @@ impl Drop for SyncThenAsync {
     }
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncReference_'__.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncReference_'__.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncReference_'__.StateTransform.diff
 struct AsyncReference<'a> {
     foo: &'a AsyncInt,
@@ -196,11 +196,11 @@ impl AsyncDrop for AsyncReference<'_> {
     }
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.Int.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.Int.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.Int.StateTransform.diff
 struct Int(i32);
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncStruct.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncStruct.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncStruct.StateTransform.diff
 struct AsyncStruct {
     i: i32,
@@ -219,7 +219,7 @@ impl AsyncDrop for AsyncStruct {
     }
 }
 
-// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncEnum.MentionedItems.after.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncEnum.make_shim.0.mir
 // EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.AsyncEnum.StateTransform.diff
 enum AsyncEnum {
     A(AsyncInt),
