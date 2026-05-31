@@ -3941,22 +3941,6 @@ The tracking issue for this feature is: [#151828]
         deny_since: None,
     },
     Lint {
-        label: "bool_to_result",
-        description: r##"# `bool_to_result`
-
-
-
-The tracking issue for this feature is: [#142748]
-
-[#142748]: https://github.com/rust-lang/rust/issues/142748
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "borrowed_buf_init",
         description: r##"# `borrowed_buf_init`
 
@@ -4837,6 +4821,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#148519]
 
 [#148519]: https://github.com/rust-lang/rust/issues/148519
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "clflushopt_target_feature",
+        description: r##"# `clflushopt_target_feature`
+
+The `clflushopt` target feature on x86.
+
+The tracking issue for this feature is: [#157096]
+
+[#157096]: https://github.com/rust-lang/rust/issues/157096
 
 ------------------------
 "##,
@@ -11272,6 +11272,22 @@ The tracking issue for this feature is: [#123076]
         deny_since: None,
     },
     Lint {
+        label: "mut_restriction",
+        description: r##"# `mut_restriction`
+
+Allows `mut(crate) field: Type` restrictions.
+
+The tracking issue for this feature is: [#105077]
+
+[#105077]: https://github.com/rust-lang/rust/issues/105077
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "mutex_data_ptr",
         description: r##"# `mutex_data_ptr`
 
@@ -12272,22 +12288,6 @@ The tracking issue for this feature is: [#123115]
 The tracking issue for this feature is: [#153328]
 
 [#153328]: https://github.com/rust-lang/rust/issues/153328
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "path_is_empty",
-        description: r##"# `path_is_empty`
-
-
-
-The tracking issue for this feature is: [#148494]
-
-[#148494]: https://github.com/rust-lang/rust/issues/148494
 
 ------------------------
 "##,
@@ -13972,6 +13972,22 @@ The tracking issue for this feature is: [#90747]
 The tracking issue for this feature is: [#56975]
 
 [#56975]: https://github.com/rust-lang/rust/issues/56975
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "share_trait",
+        description: r##"# `share_trait`
+
+
+
+The tracking issue for this feature is: [#156756]
+
+[#156756]: https://github.com/rust-lang/rust/issues/156756
 
 ------------------------
 "##,
