@@ -1,0 +1,1939 @@
+error[E0425]: cannot find type `LayOut` in this scope
+  --> $DIR/libstd.rs:3:20
+   |
+LL | fn test_layout(_x: LayOut){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::alloc::Layout;
+   |
+
+error[E0425]: cannot find type `system` in this scope
+  --> $DIR/libstd.rs:5:20
+   |
+LL | fn test_system(_x: system){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::alloc::System;
+   |
+
+error[E0425]: cannot find type `Typeid` in this scope
+  --> $DIR/libstd.rs:10:20
+   |
+LL | fn test_typeid(_x: Typeid){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::any::TypeId;
+   |
+
+error[E0425]: cannot find type `Escapedefault` in this scope
+  --> $DIR/libstd.rs:15:27
+   |
+LL | fn test_escapedefault(_x: Escapedefault){}
+   |                           ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::ascii::EscapeDefault;
+   |
+LL + use std::char::EscapeDefault;
+   |
+LL + use std::str::EscapeDefault;
+   |
+
+error[E0425]: cannot find type `cell` in this scope
+  --> $DIR/libstd.rs:20:18
+   |
+LL | fn test_cell(_x: cell<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::cell::Cell;
+   |
+
+error[E0425]: cannot find type `DecodeUTF16` in this scope
+  --> $DIR/libstd.rs:25:25
+   |
+LL | fn test_decodeutf16(_x: DecodeUTF16<()>){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::char::DecodeUtf16;
+   |
+
+error[E0425]: cannot find type `Escapeunicode` in this scope
+  --> $DIR/libstd.rs:28:27
+   |
+LL | fn test_escapeunicode(_x: Escapeunicode){}
+   |                           ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::char::EscapeUnicode;
+   |
+LL + use std::str::EscapeUnicode;
+   |
+
+error[E0425]: cannot find type `Tolowercase` in this scope
+  --> $DIR/libstd.rs:31:25
+   |
+LL | fn test_tolowercase(_x: Tolowercase){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::char::ToLowercase;
+   |
+
+error[E0425]: cannot find type `Touppercase` in this scope
+  --> $DIR/libstd.rs:34:25
+   |
+LL | fn test_touppercase(_x: Touppercase){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::char::ToUppercase;
+   |
+
+error[E0425]: cannot find type `reverse` in this scope
+  --> $DIR/libstd.rs:39:21
+   |
+LL | fn test_reverse(_x: reverse<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::cmp::Reverse;
+   |
+
+error[E0425]: cannot find type `BtreeMap` in this scope
+  --> $DIR/libstd.rs:44:22
+   |
+LL | fn test_btreemap(_x: BtreeMap<(), ()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::BTreeMap;
+   |
+
+error[E0425]: cannot find type `BtreeSet` in this scope
+  --> $DIR/libstd.rs:46:22
+   |
+LL | fn test_btreeset(_x: BtreeSet<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::BTreeSet;
+   |
+
+error[E0425]: cannot find type `Binaryheap` in this scope
+  --> $DIR/libstd.rs:48:24
+   |
+LL | fn test_binaryheap(_x: Binaryheap<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::BinaryHeap;
+   |
+
+error[E0425]: cannot find type `Hashmap` in this scope
+  --> $DIR/libstd.rs:50:21
+   |
+LL | fn test_hashmap(_x: Hashmap<String, ()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::HashMap;
+   |
+
+error[E0425]: cannot find type `Hashset` in this scope
+  --> $DIR/libstd.rs:52:21
+   |
+LL | fn test_hashset(_x: Hashset<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::HashSet;
+   |
+
+error[E0425]: cannot find type `Linkedlist` in this scope
+  --> $DIR/libstd.rs:54:24
+   |
+LL | fn test_linkedlist(_x: Linkedlist<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::LinkedList;
+   |
+
+error[E0425]: cannot find type `Vecdeque` in this scope
+  --> $DIR/libstd.rs:56:22
+   |
+LL | fn test_vecdeque(_x: Vecdeque<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::VecDeque;
+   |
+
+error[E0425]: cannot find type `args` in this scope
+  --> $DIR/libstd.rs:61:18
+   |
+LL | fn test_args(_x: args){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::env::Args;
+   |
+
+error[E0425]: cannot find type `Argsos` in this scope
+  --> $DIR/libstd.rs:63:20
+   |
+LL | fn test_argsos(_x: Argsos){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::env::ArgsOs;
+   |
+
+error[E0425]: cannot find type `Splitpaths` in this scope
+  --> $DIR/libstd.rs:65:24
+   |
+LL | fn test_splitpaths(_x: Splitpaths<'_>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::env::SplitPaths;
+   |
+
+error[E0425]: cannot find type `vars` in this scope
+  --> $DIR/libstd.rs:67:18
+   |
+LL | fn test_vars(_x: vars){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::env::Vars;
+   |
+
+error[E0425]: cannot find type `Varsos` in this scope
+  --> $DIR/libstd.rs:69:20
+   |
+LL | fn test_varsos(_x: Varsos){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::env::VarsOs;
+   |
+
+error[E0425]: cannot find type `cStr` in this scope
+  --> $DIR/libstd.rs:74:18
+   |
+LL | fn test_cstr(_x: cStr){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ffi::CStr;
+   |
+
+error[E0425]: cannot find type `Osstr` in this scope
+  --> $DIR/libstd.rs:76:19
+   |
+LL | fn test_osstr(_x: Osstr){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ffi::OsStr;
+   |
+
+error[E0425]: cannot find type `Osstring` in this scope
+  --> $DIR/libstd.rs:78:22
+   |
+LL | fn test_osstring(_x: Osstring){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ffi::OsString;
+   |
+
+error[E0425]: cannot find type `Debuglist` in this scope
+  --> $DIR/libstd.rs:83:23
+   |
+LL | fn test_debuglist(_x: Debuglist){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::DebugList;
+   |
+
+error[E0425]: cannot find type `Debugmap` in this scope
+  --> $DIR/libstd.rs:85:22
+   |
+LL | fn test_debugmap(_x: Debugmap){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::DebugMap;
+   |
+
+error[E0425]: cannot find type `Debugset` in this scope
+  --> $DIR/libstd.rs:87:22
+   |
+LL | fn test_debugset(_x: Debugset){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::DebugSet;
+   |
+
+error[E0425]: cannot find type `Debugstruct` in this scope
+  --> $DIR/libstd.rs:89:25
+   |
+LL | fn test_debugstruct(_x: Debugstruct){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::DebugStruct;
+   |
+
+error[E0425]: cannot find type `Debugtuple` in this scope
+  --> $DIR/libstd.rs:91:24
+   |
+LL | fn test_debugtuple(_x: Debugtuple){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::DebugTuple;
+   |
+
+error[E0425]: cannot find type `formatter` in this scope
+  --> $DIR/libstd.rs:93:23
+   |
+LL | fn test_fmter(mut _x: formatter){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fmt::Formatter;
+   |
+
+error[E0425]: cannot find type `Dirbuilder` in this scope
+  --> $DIR/libstd.rs:98:24
+   |
+LL | fn test_dirbuilder(_x: Dirbuilder){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::DirBuilder;
+   |
+
+error[E0425]: cannot find type `Direntry` in this scope
+  --> $DIR/libstd.rs:100:22
+   |
+LL | fn test_direntry(_x: Direntry){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::DirEntry;
+   |
+
+error[E0425]: cannot find type `Filetype` in this scope
+  --> $DIR/libstd.rs:102:22
+   |
+LL | fn test_filetype(_x: Filetype){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::FileType;
+   |
+
+error[E0425]: cannot find type `MetaData` in this scope
+  --> $DIR/libstd.rs:104:22
+   |
+LL | fn test_metadata(_x: MetaData){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::Metadata;
+   |
+
+error[E0425]: cannot find type `Openoptions` in this scope
+  --> $DIR/libstd.rs:106:25
+   |
+LL | fn test_openoptions(_x: Openoptions){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::OpenOptions;
+   |
+
+error[E0425]: cannot find type `permissions` in this scope
+  --> $DIR/libstd.rs:108:25
+   |
+LL | fn test_permissions(_x: permissions){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::Permissions;
+   |
+
+error[E0425]: cannot find type `Readdir` in this scope
+  --> $DIR/libstd.rs:110:21
+   |
+LL | fn test_readdir(_x: Readdir){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::fs::ReadDir;
+   |
+
+error[E0425]: cannot find type `BuildhasherDefault` in this scope
+  --> $DIR/libstd.rs:115:32
+   |
+LL | fn test_buildhasherdefault(_x: BuildhasherDefault){}
+   |                                ^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::hash::BuildHasherDefault;
+   |
+
+error[E0425]: cannot find type `Bufreader` in this scope
+  --> $DIR/libstd.rs:120:23
+   |
+LL | fn test_bufreader(_x: Bufreader<()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::BufReader;
+   |
+
+error[E0425]: cannot find type `Bufwriter` in this scope
+  --> $DIR/libstd.rs:122:23
+   |
+LL | fn test_bufwriter(_x: Bufwriter<()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::BufWriter;
+   |
+
+error[E0425]: cannot find type `bytes` in this scope
+  --> $DIR/libstd.rs:124:19
+   |
+LL | fn test_bytes(_x: bytes<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Bytes;
+   |
+LL + use std::str::Bytes;
+   |
+
+error[E0425]: cannot find type `chain` in this scope
+  --> $DIR/libstd.rs:126:19
+   |
+LL | fn test_chain(_x: chain<(), ()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Chain;
+   |
+LL + use std::iter::Chain;
+   |
+
+error[E0425]: cannot find type `cursor` in this scope
+  --> $DIR/libstd.rs:128:20
+   |
+LL | fn test_cursor(_x: cursor<()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::collections::btree_map::Cursor;
+   |
+LL + use std::collections::btree_set::Cursor;
+   |
+LL + use std::collections::linked_list::Cursor;
+   |
+LL + use std::io::Cursor;
+   |
+
+error[E0425]: cannot find type `empty` in this scope
+  --> $DIR/libstd.rs:130:19
+   |
+LL | fn test_empty(_x: empty){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Empty;
+   |
+LL + use std::iter::Empty;
+   |
+
+error[E0425]: cannot find type `Ioslice` in this scope
+  --> $DIR/libstd.rs:132:21
+   |
+LL | fn test_ioslice(_x: Ioslice){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::IoSlice;
+   |
+
+error[E0425]: cannot find type `IosliceMut` in this scope
+  --> $DIR/libstd.rs:134:24
+   |
+LL | fn test_ioslicemut(_x: IosliceMut){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::IoSliceMut;
+   |
+
+error[E0425]: cannot find type `Linewriter` in this scope
+  --> $DIR/libstd.rs:136:24
+   |
+LL | fn test_linewriter(_x: Linewriter<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::LineWriter;
+   |
+
+error[E0425]: cannot find type `lines` in this scope
+  --> $DIR/libstd.rs:138:19
+   |
+LL | fn test_lines(_x: lines<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Lines;
+   |
+LL + use std::str::Lines;
+   |
+
+error[E0425]: cannot find type `repeat` in this scope
+  --> $DIR/libstd.rs:140:20
+   |
+LL | fn test_repeat(_x: repeat){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Repeat;
+   |
+LL + use std::iter::Repeat;
+   |
+
+error[E0425]: cannot find type `sink` in this scope
+  --> $DIR/libstd.rs:142:18
+   |
+LL | fn test_sink(_x: sink){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::Sink;
+   |
+
+error[E0425]: cannot find type `split` in this scope
+  --> $DIR/libstd.rs:144:19
+   |
+LL | fn test_split(_x: split<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Split;
+   |
+LL + use std::slice::Split;
+   |
+LL + use std::str::Split;
+   |
+
+error[E0425]: cannot find type `StdErr` in this scope
+  --> $DIR/libstd.rs:146:20
+   |
+LL | fn test_stderr(_x: StdErr){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::Stderr;
+   |
+
+error[E0425]: cannot find type `StdErrLock` in this scope
+  --> $DIR/libstd.rs:148:24
+   |
+LL | fn test_stderrlock(_x: StdErrLock){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::StderrLock;
+   |
+
+error[E0425]: cannot find type `StdIn` in this scope
+  --> $DIR/libstd.rs:150:19
+   |
+LL | fn test_stdin(_x: StdIn){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::Stdin;
+   |
+
+error[E0425]: cannot find type `StdInLock` in this scope
+  --> $DIR/libstd.rs:152:23
+   |
+LL | fn test_stdinlock(_x: StdInLock){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::StdinLock;
+   |
+
+error[E0425]: cannot find type `StdOut` in this scope
+  --> $DIR/libstd.rs:154:20
+   |
+LL | fn test_stdout(_x: StdOut){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::Stdout;
+   |
+
+error[E0425]: cannot find type `StdOutLock` in this scope
+  --> $DIR/libstd.rs:156:24
+   |
+LL | fn test_stdoutlock(_x: StdOutLock){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::io::StdoutLock;
+   |
+
+error[E0425]: cannot find type `take` in this scope
+  --> $DIR/libstd.rs:158:18
+   |
+LL | fn test_take(_x: take){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::io::Take;
+   |
+LL + use std::iter::Take;
+   |
+
+error[E0425]: cannot find type `cloned` in this scope
+  --> $DIR/libstd.rs:163:20
+   |
+LL | fn test_cloned(_x: cloned<(), ()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Cloned;
+   |
+
+error[E0425]: cannot find type `copied` in this scope
+  --> $DIR/libstd.rs:165:20
+   |
+LL | fn test_copied(_x: copied<(), ()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Copied;
+   |
+
+error[E0425]: cannot find type `cycle` in this scope
+  --> $DIR/libstd.rs:167:19
+   |
+LL | fn test_cycle(_x: cycle<(), ()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Cycle;
+   |
+
+error[E0425]: cannot find type `enumerate` in this scope
+  --> $DIR/libstd.rs:169:23
+   |
+LL | fn test_enumerate(_x: enumerate<(), ()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Enumerate;
+   |
+
+error[E0425]: cannot find type `filter` in this scope
+  --> $DIR/libstd.rs:171:20
+   |
+LL | fn test_filter(_x: filter<(), ()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Filter;
+   |
+
+error[E0425]: cannot find type `Filtermap` in this scope
+  --> $DIR/libstd.rs:173:23
+   |
+LL | fn test_filtermap(_x: Filtermap<(), ()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::FilterMap;
+   |
+
+error[E0425]: cannot find type `flatten` in this scope
+  --> $DIR/libstd.rs:175:21
+   |
+LL | fn test_flatten(_x: flatten<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Flatten;
+   |
+
+error[E0425]: cannot find type `Fromfn` in this scope
+  --> $DIR/libstd.rs:177:20
+   |
+LL | fn test_fromfn(_x: Fromfn<()>){}
+   |                    ^^^^^^
+   |
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: similarly named trait `From` defined here
+help: a trait with a similar name exists
+   |
+LL - fn test_fromfn(_x: Fromfn<()>){}
+LL + fn test_fromfn(_x: From<()>){}
+   |
+
+error[E0425]: cannot find type `fuse` in this scope
+  --> $DIR/libstd.rs:179:18
+   |
+LL | fn test_fuse(_x: fuse<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Fuse;
+   |
+
+error[E0425]: cannot find type `inspect` in this scope
+  --> $DIR/libstd.rs:181:21
+   |
+LL | fn test_inspect(_x: inspect<(), ()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Inspect;
+   |
+
+error[E0425]: cannot find type `map` in this scope
+  --> $DIR/libstd.rs:183:17
+   |
+LL | fn test_map(_x: map<(), ()>){}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Map;
+   |
+
+error[E0425]: cannot find type `once` in this scope
+  --> $DIR/libstd.rs:185:18
+   |
+LL | fn test_once(_x: once<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::iter::Once;
+   |
+LL + use std::sync::Once;
+   |
+
+error[E0425]: cannot find type `Oncewith` in this scope
+  --> $DIR/libstd.rs:187:22
+   |
+LL | fn test_oncewith(_x: Oncewith<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::OnceWith;
+   |
+
+error[E0425]: cannot find type `peekable` in this scope
+  --> $DIR/libstd.rs:189:22
+   |
+LL | fn test_peekable(_x: peekable<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Peekable;
+   |
+
+error[E0425]: cannot find type `Repeatwith` in this scope
+  --> $DIR/libstd.rs:191:24
+   |
+LL | fn test_repeatwith(_x: Repeatwith<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::RepeatWith;
+   |
+
+error[E0425]: cannot find type `rev` in this scope
+  --> $DIR/libstd.rs:193:17
+   |
+LL | fn test_rev(_x: rev<()>){}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Rev;
+   |
+
+error[E0425]: cannot find type `scan` in this scope
+  --> $DIR/libstd.rs:195:18
+   |
+LL | fn test_scan(_x: scan<(), (), ()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Scan;
+   |
+
+error[E0425]: cannot find type `skip` in this scope
+  --> $DIR/libstd.rs:197:18
+   |
+LL | fn test_skip(_x: skip<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Skip;
+   |
+
+error[E0425]: cannot find type `Skipwhile` in this scope
+  --> $DIR/libstd.rs:199:23
+   |
+LL | fn test_skipwhile(_x: Skipwhile<(), ()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::SkipWhile;
+   |
+
+error[E0425]: cannot find type `Stepby` in this scope
+  --> $DIR/libstd.rs:201:20
+   |
+LL | fn test_stepby(_x: Stepby<()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::StepBy;
+   |
+
+error[E0425]: cannot find type `successors` in this scope
+  --> $DIR/libstd.rs:203:24
+   |
+LL | fn test_successors(_x: successors<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Successors;
+   |
+
+error[E0425]: cannot find type `Takewhile` in this scope
+  --> $DIR/libstd.rs:205:23
+   |
+LL | fn test_takewhile(_x: Takewhile<(), ()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::TakeWhile;
+   |
+
+error[E0425]: cannot find type `zip` in this scope
+  --> $DIR/libstd.rs:207:17
+   |
+LL | fn test_zip(_x: zip<(), ()>){}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::iter::Zip;
+   |
+
+error[E0425]: cannot find type `Phantomdata` in this scope
+  --> $DIR/libstd.rs:212:25
+   |
+LL | fn test_phantomdata(_x: Phantomdata){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::marker::PhantomData;
+   |
+
+error[E0425]: cannot find type `Phantompinned` in this scope
+  --> $DIR/libstd.rs:214:27
+   |
+LL | fn test_phantompinned(_x: Phantompinned){}
+   |                           ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::marker::PhantomPinned;
+   |
+
+error[E0425]: cannot find type `discriminant` in this scope
+  --> $DIR/libstd.rs:219:26
+   |
+LL | fn test_discriminant(_x: discriminant<()>){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::mem::Discriminant;
+   |
+
+error[E0425]: cannot find type `Manuallydrop` in this scope
+  --> $DIR/libstd.rs:221:26
+   |
+LL | fn test_manuallydrop(_x: Manuallydrop<()>){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::mem::ManuallyDrop;
+   |
+
+error[E0425]: cannot find type `incoming` in this scope
+  --> $DIR/libstd.rs:226:22
+   |
+LL | fn test_incoming(_x: incoming){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::net::Incoming;
+   |
+LL + use std::os::unix::net::Incoming;
+   |
+
+error[E0425]: cannot find type `IPv4Addr` in this scope
+  --> $DIR/libstd.rs:228:22
+   |
+LL | fn test_ipv4addr(_x: IPv4Addr){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::Ipv4Addr;
+   |
+
+error[E0425]: cannot find type `IPv6Addr` in this scope
+  --> $DIR/libstd.rs:230:22
+   |
+LL | fn test_ipv6addr(_x: IPv6Addr){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::Ipv6Addr;
+   |
+
+error[E0425]: cannot find type `SocketAddrv4` in this scope
+  --> $DIR/libstd.rs:232:26
+   |
+LL | fn test_socketaddrv4(_x: SocketAddrv4){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::SocketAddrV4;
+   |
+
+error[E0425]: cannot find type `SocketAddrv6` in this scope
+  --> $DIR/libstd.rs:234:26
+   |
+LL | fn test_socketaddrv6(_x: SocketAddrv6){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::SocketAddrV6;
+   |
+
+error[E0425]: cannot find type `TCPListener` in this scope
+  --> $DIR/libstd.rs:236:25
+   |
+LL | fn test_tcplistener(_x: TCPListener){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::TcpListener;
+   |
+
+error[E0425]: cannot find type `TCPStream` in this scope
+  --> $DIR/libstd.rs:238:23
+   |
+LL | fn test_tcpstream(_x: TCPStream){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::TcpStream;
+   |
+
+error[E0425]: cannot find type `UDPSocket` in this scope
+  --> $DIR/libstd.rs:240:23
+   |
+LL | fn test_udpsocket(_x: UDPSocket){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::net::UdpSocket;
+   |
+
+error[E0425]: cannot find type `NonZeroi8` in this scope
+  --> $DIR/libstd.rs:245:23
+   |
+LL | fn test_nonzeroi8(_x: NonZeroi8){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroI8;
+   |
+
+error[E0425]: cannot find type `NonZeroi16` in this scope
+  --> $DIR/libstd.rs:247:24
+   |
+LL | fn test_nonzeroi16(_x: NonZeroi16){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroI16;
+   |
+
+error[E0425]: cannot find type `NonZeroi32` in this scope
+  --> $DIR/libstd.rs:249:24
+   |
+LL | fn test_nonzeroi32(_x: NonZeroi32){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroI32;
+   |
+
+error[E0425]: cannot find type `NonZeroi64` in this scope
+  --> $DIR/libstd.rs:251:24
+   |
+LL | fn test_nonzeroi64(_x: NonZeroi64){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroI64;
+   |
+
+error[E0425]: cannot find type `NonZeroi128` in this scope
+  --> $DIR/libstd.rs:253:25
+   |
+LL | fn test_nonzeroi128(_x: NonZeroi128){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroI128;
+   |
+
+error[E0425]: cannot find type `NonZerou8` in this scope
+  --> $DIR/libstd.rs:255:23
+   |
+LL | fn test_nonzerou8(_x: NonZerou8){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroU8;
+   |
+
+error[E0425]: cannot find type `NonZerou16` in this scope
+  --> $DIR/libstd.rs:257:24
+   |
+LL | fn test_nonzerou16(_x: NonZerou16){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroU16;
+   |
+
+error[E0425]: cannot find type `NonZerou32` in this scope
+  --> $DIR/libstd.rs:259:24
+   |
+LL | fn test_nonzerou32(_x: NonZerou32){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroU32;
+   |
+
+error[E0425]: cannot find type `NonZerou64` in this scope
+  --> $DIR/libstd.rs:261:24
+   |
+LL | fn test_nonzerou64(_x: NonZerou64){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroU64;
+   |
+
+error[E0425]: cannot find type `NonZerou128` in this scope
+  --> $DIR/libstd.rs:263:25
+   |
+LL | fn test_nonzerou128(_x: NonZerou128){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroU128;
+   |
+
+error[E0425]: cannot find type `NonzeroUsize` in this scope
+  --> $DIR/libstd.rs:265:26
+   |
+LL | fn test_nonzerousize(_x: NonzeroUsize){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::num::NonZeroUsize;
+   |
+
+error[E0425]: cannot find type `wrapping` in this scope
+  --> $DIR/libstd.rs:267:22
+   |
+LL | fn test_wrapping(_x: wrapping){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::num::Wrapping;
+   |
+
+error[E0425]: cannot find type `range` in this scope
+  --> $DIR/libstd.rs:272:19
+   |
+LL | fn test_range(_x: range<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::collections::btree_map::Range;
+   |
+LL + use std::collections::btree_set::Range;
+   |
+LL + use std::ops::Range;
+   |
+LL + use std::range::Range;
+   |
+
+error[E0425]: cannot find type `Rangefrom` in this scope
+  --> $DIR/libstd.rs:274:23
+   |
+LL | fn test_rangefrom(_x: Rangefrom<()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::ops::RangeFrom;
+   |
+LL + use std::range::RangeFrom;
+   |
+
+error[E0425]: cannot find type `Rangefull` in this scope
+  --> $DIR/libstd.rs:276:23
+   |
+LL | fn test_rangefull(_x: Rangefull<()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ops::RangeFull;
+   |
+
+error[E0425]: cannot find type `Rangeinclusive` in this scope
+  --> $DIR/libstd.rs:278:28
+   |
+LL | fn test_rangeinclusive(_x: Rangeinclusive<()>){}
+   |                            ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::ops::RangeInclusive;
+   |
+LL + use std::range::RangeInclusive;
+   |
+
+error[E0425]: cannot find type `Rangeto` in this scope
+  --> $DIR/libstd.rs:280:21
+   |
+LL | fn test_rangeto(_x: Rangeto<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ops::RangeTo;
+   |
+
+error[E0425]: cannot find type `RangetoInclusive` in this scope
+  --> $DIR/libstd.rs:282:30
+   |
+LL | fn test_rangetoinclusive(_x: RangetoInclusive<()>){}
+   |                              ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::ops::RangeToInclusive;
+   |
+LL + use std::range::RangeToInclusive;
+   |
+
+error[E0425]: cannot find type `AssertUnwindsafe` in this scope
+  --> $DIR/libstd.rs:287:30
+   |
+LL | fn test_assertunwindsafe(_x: AssertUnwindsafe<()>){}
+   |                              ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::panic::AssertUnwindSafe;
+   |
+
+error[E0425]: cannot find type `location` in this scope
+  --> $DIR/libstd.rs:289:22
+   |
+LL | fn test_location(_x: location<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::panic::Location;
+   |
+
+error[E0425]: cannot find type `Panicinfo` in this scope
+  --> $DIR/libstd.rs:291:23
+   |
+LL | fn test_panicinfo(_x: Panicinfo<()>){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named type alias
+   |
+LL + use std::panic::PanicInfo;
+   |
+
+error[E0425]: cannot find type `ancestors` in this scope
+  --> $DIR/libstd.rs:296:23
+   |
+LL | fn test_ancestors(_x: ancestors){}
+   |                       ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::path::Ancestors;
+   |
+
+error[E0425]: cannot find type `components` in this scope
+  --> $DIR/libstd.rs:298:24
+   |
+LL | fn test_components(_x: components){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::path::Components;
+   |
+
+error[E0425]: cannot find type `Pathbuf` in this scope
+  --> $DIR/libstd.rs:300:21
+   |
+LL | fn test_pathbuf(_x: Pathbuf){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::path::PathBuf;
+   |
+
+error[E0425]: cannot find type `Prefixcomponent` in this scope
+  --> $DIR/libstd.rs:302:29
+   |
+LL | fn test_prefixcomponent(_x: Prefixcomponent){}
+   |                             ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::path::PrefixComponent;
+   |
+
+error[E0425]: cannot find type `pin` in this scope
+  --> $DIR/libstd.rs:307:17
+   |
+LL | fn test_pin(_x: pin<()>){}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::pin::Pin;
+   |
+
+error[E0425]: cannot find type `child` in this scope
+  --> $DIR/libstd.rs:312:19
+   |
+LL | fn test_child(_x: child){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::Child;
+   |
+
+error[E0425]: cannot find type `ChildStdErr` in this scope
+  --> $DIR/libstd.rs:314:25
+   |
+LL | fn test_childstderr(_x: ChildStdErr){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::ChildStderr;
+   |
+
+error[E0425]: cannot find type `ChildStdIn` in this scope
+  --> $DIR/libstd.rs:316:24
+   |
+LL | fn test_childstdin(_x: ChildStdIn){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::ChildStdin;
+   |
+
+error[E0425]: cannot find type `ChildStdOut` in this scope
+  --> $DIR/libstd.rs:318:25
+   |
+LL | fn test_childstdout(_x: ChildStdOut){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::ChildStdout;
+   |
+
+error[E0425]: cannot find type `command` in this scope
+  --> $DIR/libstd.rs:320:21
+   |
+LL | fn test_command(_x: command){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::Command;
+   |
+
+error[E0425]: cannot find type `Exitstatus` in this scope
+  --> $DIR/libstd.rs:322:24
+   |
+LL | fn test_exitstatus(_x: Exitstatus){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::ExitStatus;
+   |
+
+error[E0425]: cannot find type `output` in this scope
+  --> $DIR/libstd.rs:324:20
+   |
+LL | fn test_output(_x: output){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::Output;
+   |
+
+error[E0425]: cannot find type `StdIo` in this scope
+  --> $DIR/libstd.rs:326:19
+   |
+LL | fn test_stdio(_x: StdIo){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::process::Stdio;
+   |
+
+error[E0425]: cannot find type `Nonnull` in this scope
+  --> $DIR/libstd.rs:331:21
+   |
+LL | fn test_nonnull(_x: Nonnull<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::ptr::NonNull;
+   |
+
+error[E0425]: cannot find type `rc` in this scope
+  --> $DIR/libstd.rs:336:16
+   |
+LL | fn test_rc(_x: rc<()>){}
+   |                ^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::rc::Rc;
+   |
+
+error[E0425]: cannot find type `weak` in this scope
+  --> $DIR/libstd.rs:338:18
+   |
+LL | fn test_weak(_x: weak<()>){}
+   |                  ^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::rc::Weak;
+   |
+LL + use std::sync::Weak;
+   |
+
+error[E0425]: cannot find type `drain` in this scope
+  --> $DIR/libstd.rs:343:19
+   |
+LL | fn test_drain(_x: drain){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::collections::binary_heap::Drain;
+   |
+LL + use std::collections::hash_map::Drain;
+   |
+LL + use std::collections::hash_set::Drain;
+   |
+LL + use std::collections::vec_deque::Drain;
+   |
+   = and 2 other candidates
+
+error[E0425]: cannot find type `Charindices` in this scope
+  --> $DIR/libstd.rs:348:25
+   |
+LL | fn test_charindices(_x: Charindices){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::CharIndices;
+   |
+
+error[E0425]: cannot find type `chars` in this scope
+  --> $DIR/libstd.rs:350:19
+   |
+LL | fn test_chars(_x: chars){}
+   |                   ^^^^^
+   |
+help: a builtin type with a similar name exists
+   |
+LL - fn test_chars(_x: chars){}
+LL + fn test_chars(_x: char){}
+   |
+
+error[E0425]: cannot find type `EncodeUTF16` in this scope
+  --> $DIR/libstd.rs:352:25
+   |
+LL | fn test_encodeutf16(_x: EncodeUTF16){}
+   |                         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::EncodeUtf16;
+   |
+
+error[E0425]: cannot find type `Matchindices` in this scope
+  --> $DIR/libstd.rs:354:26
+   |
+LL | fn test_matchindices(_x: Matchindices){}
+   |                          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::MatchIndices;
+   |
+
+error[E0425]: cannot find type `RmatchIndices` in this scope
+  --> $DIR/libstd.rs:356:27
+   |
+LL | fn test_rmatchindices(_x: RmatchIndices){}
+   |                           ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::RMatchIndices;
+   |
+
+error[E0425]: cannot find type `Rmatches` in this scope
+  --> $DIR/libstd.rs:358:22
+   |
+LL | fn test_rmatches(_x: Rmatches){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::RMatches;
+   |
+
+error[E0425]: cannot find type `Rsplit` in this scope
+  --> $DIR/libstd.rs:360:20
+   |
+LL | fn test_rsplit(_x: Rsplit){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::slice::RSplit;
+   |
+LL + use std::str::RSplit;
+   |
+
+error[E0425]: cannot find type `RSplitn` in this scope
+  --> $DIR/libstd.rs:362:21
+   |
+LL | fn test_rsplitn(_x: RSplitn){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::slice::RSplitN;
+   |
+LL + use std::str::RSplitN;
+   |
+
+error[E0425]: cannot find type `RsplitTerminator` in this scope
+  --> $DIR/libstd.rs:364:30
+   |
+LL | fn test_rsplitterminator(_x: RsplitTerminator){}
+   |                              ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::RSplitTerminator;
+   |
+
+error[E0425]: cannot find type `SplitASCIIWhitespace` in this scope
+  --> $DIR/libstd.rs:366:34
+   |
+LL | fn test_splitasciiwhitespace(_x: SplitASCIIWhitespace){}
+   |                                  ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::SplitAsciiWhitespace;
+   |
+
+error[E0425]: cannot find type `Splitn` in this scope
+  --> $DIR/libstd.rs:368:20
+   |
+LL | fn test_splitn(_x: Splitn){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::slice::SplitN;
+   |
+LL + use std::str::SplitN;
+   |
+
+error[E0425]: cannot find type `Splitterminator` in this scope
+  --> $DIR/libstd.rs:370:29
+   |
+LL | fn test_splitterminator(_x: Splitterminator){}
+   |                             ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::SplitTerminator;
+   |
+
+error[E0425]: cannot find type `Splitwhitespace` in this scope
+  --> $DIR/libstd.rs:372:29
+   |
+LL | fn test_splitwhitespace(_x: Splitwhitespace){}
+   |                             ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::str::SplitWhitespace;
+   |
+
+error[E0425]: cannot find type `arc` in this scope
+  --> $DIR/libstd.rs:377:17
+   |
+LL | fn test_arc(_x: arc<()>){}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::sync::Arc;
+   |
+
+error[E0425]: cannot find type `barrier` in this scope
+  --> $DIR/libstd.rs:379:21
+   |
+LL | fn test_barrier(_x: barrier<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::sync::Barrier;
+   |
+
+error[E0425]: cannot find type `BarrierwaitResult` in this scope
+  --> $DIR/libstd.rs:381:31
+   |
+LL | fn test_barrierwaitresult(_x: BarrierwaitResult<()>){}
+   |                               ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::sync::BarrierWaitResult;
+   |
+
+error[E0425]: cannot find type `CondVar` in this scope
+  --> $DIR/libstd.rs:383:21
+   |
+LL | fn test_condvar(_x: CondVar<()>){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::Condvar;
+   |
+LL + use std::sync::nonpoison::Condvar;
+   |
+
+error[E0425]: cannot find type `mutex` in this scope
+  --> $DIR/libstd.rs:385:19
+   |
+LL | fn test_mutex(_x: mutex<()>){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::Mutex;
+   |
+LL + use std::sync::nonpoison::Mutex;
+   |
+
+error[E0425]: cannot find type `Mutexguard` in this scope
+  --> $DIR/libstd.rs:387:24
+   |
+LL | fn test_mutexguard(_x: Mutexguard<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::MutexGuard;
+   |
+LL + use std::sync::nonpoison::MutexGuard;
+   |
+
+error[E0425]: cannot find type `RWlock` in this scope
+  --> $DIR/libstd.rs:389:20
+   |
+LL | fn test_rwlock(_x: RWlock<()>){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::RwLock;
+   |
+LL + use std::sync::nonpoison::RwLock;
+   |
+
+error[E0425]: cannot find type `RWlockReadGuard` in this scope
+  --> $DIR/libstd.rs:391:29
+   |
+LL | fn test_rwlockreadguard(_x: RWlockReadGuard<()>){}
+   |                             ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::RwLockReadGuard;
+   |
+LL + use std::sync::nonpoison::RwLockReadGuard;
+   |
+
+error[E0425]: cannot find type `RWlockWriteGuard` in this scope
+  --> $DIR/libstd.rs:393:30
+   |
+LL | fn test_rwlockwriteguard(_x: RWlockWriteGuard<()>){}
+   |                              ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named structs
+   |
+LL + use std::sync::RwLockWriteGuard;
+   |
+LL + use std::sync::nonpoison::RwLockWriteGuard;
+   |
+
+error[E0425]: cannot find type `WaittimeoutResult` in this scope
+  --> $DIR/libstd.rs:395:31
+   |
+LL | fn test_waittimeoutresult(_x: WaittimeoutResult<()>){}
+   |                               ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::sync::WaitTimeoutResult;
+   |
+
+error[E0425]: cannot find type `context` in this scope
+  --> $DIR/libstd.rs:400:21
+   |
+LL | fn test_context(_x: context){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::task::Context;
+   |
+
+error[E0425]: cannot find type `Rawwaker` in this scope
+  --> $DIR/libstd.rs:402:22
+   |
+LL | fn test_rawwaker(_x: Rawwaker){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::task::RawWaker;
+   |
+
+error[E0425]: cannot find type `RawwakerVTable` in this scope
+  --> $DIR/libstd.rs:404:28
+   |
+LL | fn test_rawwakervtable(_x: RawwakerVTable){}
+   |                            ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::task::RawWakerVTable;
+   |
+
+error[E0425]: cannot find type `waker` in this scope
+  --> $DIR/libstd.rs:406:19
+   |
+LL | fn test_waker(_x: waker){}
+   |                   ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::task::Waker;
+   |
+
+error[E0425]: cannot find type `builder` in this scope
+  --> $DIR/libstd.rs:411:21
+   |
+LL | fn test_builder(_x: builder){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::thread::Builder;
+   |
+
+error[E0425]: cannot find type `Joinhandle` in this scope
+  --> $DIR/libstd.rs:413:24
+   |
+LL | fn test_joinhandle(_x: Joinhandle<()>){}
+   |                        ^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::thread::JoinHandle;
+   |
+
+error[E0425]: cannot find type `Localkey` in this scope
+  --> $DIR/libstd.rs:415:22
+   |
+LL | fn test_localkey(_x: Localkey<()>){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::thread::LocalKey;
+   |
+
+error[E0425]: cannot find type `thread` in this scope
+  --> $DIR/libstd.rs:417:20
+   |
+LL | fn test_thread(_x: thread){}
+   |                    ^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::thread::Thread;
+   |
+
+error[E0425]: cannot find type `ThreadID` in this scope
+  --> $DIR/libstd.rs:419:22
+   |
+LL | fn test_threadid(_x: ThreadID){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::thread::ThreadId;
+   |
+
+error[E0425]: cannot find type `duration` in this scope
+  --> $DIR/libstd.rs:424:22
+   |
+LL | fn test_duration(_x: duration){}
+   |                      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::time::Duration;
+   |
+
+error[E0425]: cannot find type `instant` in this scope
+  --> $DIR/libstd.rs:426:21
+   |
+LL | fn test_instant(_x: instant){}
+   |                     ^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::time::Instant;
+   |
+
+error[E0425]: cannot find type `Systemtime` in this scope
+  --> $DIR/libstd.rs:428:24
+   |
+LL | fn test_systemtime(_x: Systemtime){}
+   |                        ^^^^^^^^^^
+...
+LL | struct SystemTome{}
+   | ----------------- similarly named struct `SystemTome` defined here
+   |
+help: a struct with a similar name exists
+   |
+LL - fn test_systemtime(_x: Systemtime){}
+LL + fn test_systemtime(_x: SystemTome){}
+   |
+
+error[E0425]: cannot find type `SystemTime` in this scope
+  --> $DIR/libstd.rs:431:25
+   |
+LL | fn test_systemtime2(_x: SystemTime){}
+   |                         ^^^^^^^^^^
+...
+LL | struct SystemTome{}
+   | ----------------- similarly named struct `SystemTome` defined here
+   |
+help: a struct with a similar name exists
+   |
+LL - fn test_systemtime2(_x: SystemTime){}
+LL + fn test_systemtime2(_x: SystemTome){}
+   |
+help: consider importing this struct
+   |
+LL + use std::time::SystemTime;
+   |
+
+error: aborting due to 168 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
