@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/16562>.
+
 trait MatrixShape {}
 
 struct Col<D, C> {

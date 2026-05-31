@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17771>.
+//! Tests that borrowing mut dyn trait field in a method doesn't cause ICE.
+
 //@ run-pass
 #![allow(dead_code)]
 

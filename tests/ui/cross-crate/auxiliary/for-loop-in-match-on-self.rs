@@ -1,3 +1,5 @@
+//! Auxiliary crate for <https://github.com/rust-lang/rust/issues/16643>.
+
 #![crate_type = "lib"]
 
 pub struct TreeBuilder<H> { pub h: H }
