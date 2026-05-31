@@ -11,6 +11,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 
+use std::collections::HashSet;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -97,15 +98,26 @@ struct SourceLocation {
     column: usize,
 }
 
+#[derive(Eq, Hash, PartialEq)]
+struct Breakpoint {
+    path: PathBuf,
+    line: usize,
+}
+
 pub struct PrirodaContext<'tcx> {
     ecx: MiriInterpCx<'tcx>,
+    breakpoints: HashSet<Breakpoint>,
     current_location: Option<SourceLocation>,
     last_location: Option<SourceLocation>,
 }
 
+fn normalize_path(path: PathBuf) -> PathBuf {
+    path.canonicalize().unwrap_or(path)
+}
+
 impl<'tcx> PrirodaContext<'tcx> {
     fn new(ecx: MiriInterpCx<'tcx>) -> Self {
-        Self { ecx, current_location: None, last_location: None }
+        Self { ecx, breakpoints: HashSet::new(), current_location: None, last_location: None }
     }
 
     // TODO: return a StepResult enum once we distinguish breakpoint stops,
@@ -119,13 +131,33 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     pub fn continue_execution(&mut self) -> InterpResult<'tcx> {
-        // TODO: stop when execution reaches a breakpoint.
         loop {
             self.step()?;
+            if self.is_at_breakpoint() {
+                return interp_ok(());
+            }
         }
     }
 
+    fn set_breakpoint(&mut self, path: PathBuf, line: usize) {
+        self.breakpoints.insert(Breakpoint { path: normalize_path(path), line });
+    }
+
+    fn is_at_breakpoint(&self) -> bool {
+        // TODO: avoid repeated stops when one source line maps to multiple MIR statements.
+        let Some(location) = &self.current_location else {
+            return false;
+        };
+
+        let Some(path) = &location.local_path else {
+            return false;
+        };
+
+        self.breakpoints.contains(&Breakpoint { path: path.clone(), line: location.line })
+    }
+
     fn resolve_current_location(&self) -> Option<SourceLocation> {
+        // TODO: resolve macro-backed lines such as `println!` and `assert_eq!` for breakpoints.
         let span = self.ecx.machine.current_user_relevant_span();
         if span.is_dummy() {
             return None;
@@ -135,7 +167,8 @@ impl<'tcx> PrirodaContext<'tcx> {
         let loc = source_map.lookup_char_pos(span.lo());
 
         Some(SourceLocation {
-            local_path: loc.file.name.clone().into_local_path(),
+            // TODO: cache normalized source paths; this runs after every MIR step.
+            local_path: loc.file.name.clone().into_local_path().map(normalize_path),
             display: source_map.span_to_diagnostic_string(span),
             line: loc.line,
             column: loc.col_display + 1,
@@ -156,6 +189,11 @@ impl<'tcx> PrirodaContext<'tcx> {
             SessionCommand::Step => self.step(),
             SessionCommand::Quit => unreachable!("quit is handled by the CLI loop"),
             SessionCommand::Continue => self.continue_execution(),
+            SessionCommand::Breakpoint(path, line) => {
+                // TODO: print a breakpoint confirmation instead of treating this like an execution step.
+                self.set_breakpoint(path, line);
+                interp_ok(())
+            }
         }
     }
 }
@@ -164,13 +202,28 @@ enum SessionCommand {
     Step,
     Quit,
     Continue,
+    Breakpoint(PathBuf, usize),
+}
+
+fn parse_breakpoint(input: &str) -> Option<SessionCommand> {
+    // TODO: reject empty paths and line 0 with a useful `usage: break <path>:<line>` error.
+    let (path, line) = input.rsplit_once(':')?;
+    let line = line.parse().ok()?;
+
+    Some(SessionCommand::Breakpoint(PathBuf::from(path), line))
 }
 
 fn parse_command(input: &str) -> Option<SessionCommand> {
-    match input.trim() {
+    let input = input.trim();
+    let mut parts = input.splitn(2, char::is_whitespace);
+    let command = parts.next().unwrap_or("");
+    let args = parts.next().unwrap_or("").trim();
+
+    match command {
         "" | "s" | "step" => Some(SessionCommand::Step),
         "q" | "quit" => Some(SessionCommand::Quit),
         "c" | "continue" => Some(SessionCommand::Continue),
+        "b" | "break" => parse_breakpoint(args),
         _ => None,
     }
 }

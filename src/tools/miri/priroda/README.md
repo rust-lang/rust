@@ -1,13 +1,13 @@
 # Priroda
 
-Priroda is a step-through debugger for Rust programs running under
-Miri.
+Priroda is a step-through debugger for Rust programs running under Miri.
 
 Current focus:
 
 - simple CLI prototype
 - single-threaded stepping with Miri's interpreter
-- commands: empty Enter, `s`, or `step`
+- source-location output after stepping
+- source-location breakpoint prototype
 
 ## Setup
 
@@ -34,4 +34,20 @@ Priroda currently reads `MIRI_SYSROOT` directly. After setup:
 cargo run -p priroda -- tests/pass/empty_main.rs
 ```
 
-At the prompt, press Enter or type `s` / `step`.
+## Commands
+
+| Command | Description |
+|---|---|
+| Enter, `s`, `step` | Execute one Miri interpreter step. |
+| `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
+| `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
+| `q`, `quit` | Exit Priroda. |
+
+EOF also exits Priroda cleanly.
+
+Example:
+
+```text
+(priroda) break tests/pass/empty_main.rs:3
+(priroda) continue
+```
