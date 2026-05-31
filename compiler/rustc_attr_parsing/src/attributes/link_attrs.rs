@@ -489,7 +489,10 @@ fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReaso
 impl SingleAttributeParser for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them",
+        unsafe_since: Some(Edition2024),
+    };
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),

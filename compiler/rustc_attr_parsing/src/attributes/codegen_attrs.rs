@@ -108,7 +108,10 @@ pub(crate) struct ExportNameParser;
 impl SingleAttributeParser for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
+        unsafe_since: Some(Edition2024),
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -347,7 +350,10 @@ pub(crate) struct NoMangleParser;
 impl NoArgsAttributeParser for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
+        unsafe_since: Some(Edition2024),
+    };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Static),

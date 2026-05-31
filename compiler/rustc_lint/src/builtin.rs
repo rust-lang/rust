@@ -231,34 +231,6 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
             }
 
-            ast::ItemKind::Fn(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
-                }
-            }
-
-            ast::ItemKind::Static(..) => {
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
-                }
-
-                if let Some(attr) = attr::find_by_name(&it.attrs, sym::link_section) {
-                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
-                }
-            }
-
             ast::ItemKind::GlobalAsm(..) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
             }
@@ -282,17 +254,6 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             _ => {}
-        }
-    }
-
-    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if let ast::AssocItemKind::Fn(..) = it.kind {
-            if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
-            }
-            if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
-                self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
-            }
         }
     }
 

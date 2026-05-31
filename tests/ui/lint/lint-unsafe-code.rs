@@ -18,18 +18,18 @@ mod allowed_unsafe {
 
 macro_rules! unsafe_in_macro {
     () => {{
-        #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
-        #[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+        #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
+        #[no_mangle] static FOO: u32 = 5; //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
         #[export_name = "bar"] fn bar() {}
-        //~^ ERROR: declaration of a function with `export_name`
+        //~^ ERROR: usage of the unsafe `#[export_name]` attribute
         #[export_name = "BAR"] static BAR: u32 = 5;
-        //~^ ERROR: declaration of a static with `export_name`
+        //~^ ERROR: usage of the unsafe `#[export_name]` attribute
         unsafe {} //~ ERROR: usage of an `unsafe` block
     }}
 }
 
-#[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
-#[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+#[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
+#[no_mangle] static FOO: u32 = 5; //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 
 trait AssocFnTrait {
     fn foo();
@@ -38,27 +38,27 @@ trait AssocFnTrait {
 struct AssocFnFoo;
 
 impl AssocFnFoo {
-    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+    #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 }
 
 impl AssocFnTrait for AssocFnFoo {
-    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+    #[no_mangle] fn foo() {} //~ ERROR: usage of the unsafe `#[no_mangle]` attribute
 }
 
-#[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a function with `export_name`
-#[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: declaration of a static with `export_name`
+#[export_name = "bar"] fn bar() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
+#[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: usage of the unsafe `#[export_name]` attribute
 
-#[link_section = "__TEXT,__text"] fn uwu() {} //~ ERROR: declaration of a function with `link_section`
-#[link_section = "__TEXT,__text"] static UWU: u32 = 5; //~ ERROR: declaration of a static with `link_section`
+#[link_section = "__TEXT,__text"] fn uwu() {} //~ ERROR: usage of the unsafe `#[link_section]` attribute
+#[link_section = "__TEXT,__text"] static UWU: u32 = 5; //~ ERROR: usage of the unsafe `#[link_section]` attribute
 
 struct AssocFnBar;
 
 impl AssocFnBar {
-    #[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a method with `export_name`
+    #[export_name = "bar"] fn bar() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
 }
 
 impl AssocFnTrait for AssocFnBar {
-    #[export_name = "bar"] fn foo() {} //~ ERROR: declaration of a method with `export_name`
+    #[export_name = "bar"] fn foo() {} //~ ERROR: usage of the unsafe `#[export_name]` attribute
 }
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
