@@ -1,12 +1,11 @@
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
-use rustc_infer::traits;
-use rustc_middle::ty::{self, TypingMode, Unnormalized, Upcast};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use tracing::{debug, instrument, trace};
+use rustc_trait_selection::traits;
+use tracing::{debug, instrument};
 
 use crate::clean;
 use crate::clean::{
@@ -20,68 +19,54 @@ pub(crate) fn synthesize_blanket_impls(
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    let ty = tcx.type_of(item_def_id);
+    let item_ty = tcx.type_of(item_def_id);
+    let param_env = ty::ParamEnv::empty();
+    let typing_mode = ty::TypingMode::non_body_analysis();
+    let cause = traits::ObligationCause::dummy();
 
     let mut blanket_impls = Vec::new();
+
     for trait_def_id in tcx.visible_traits() {
         if !cx.cache.effective_visibilities.is_reachable(tcx, trait_def_id)
-            || cx.generated_synthetics.contains(&(ty.skip_binder(), trait_def_id))
+            || cx.generated_synthetics.contains(&(item_ty.skip_binder(), trait_def_id))
         {
             continue;
         }
-        // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
-        'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
-            trace!("considering impl `{impl_def_id:?}` for trait `{trait_def_id:?}`");
 
-            let trait_ref = tcx.impl_trait_ref(impl_def_id);
-            if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
+        for &impl_def_id in tcx.trait_impls_of(trait_def_id).blanket_impls() {
+            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+
+            let ty::Param(_) = impl_trait_ref.skip_binder().self_ty().kind() else { continue };
+
+            let infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(typing_mode);
+
+            let ocx = traits::ObligationCtxt::new(&infcx);
+
+            let fresh_item_args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
+            let fresh_item_ty = item_ty.instantiate(tcx, fresh_item_args).skip_normalization();
+
+            let fresh_impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+            let fresh_impl_trait_ref =
+                impl_trait_ref.instantiate(tcx, fresh_impl_args).skip_normalization();
+
+            // Constraint inference variables.
+            let result = ocx.eq(&cause, param_env, fresh_impl_trait_ref.self_ty(), fresh_item_ty);
+            debug_assert!(result.is_ok());
+
+            ocx.register_obligations(traits::predicates_for_generics(
+                |_, _| cause.clone(),
+                |pred| ocx.normalize(&cause, param_env, pred),
+                param_env,
+                tcx.predicates_of(impl_def_id).instantiate(tcx, fresh_impl_args),
+            ));
+
+            if !ocx.try_evaluate_obligations().is_empty() {
                 continue;
             }
-            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-            let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
-            let impl_ty = ty.instantiate(tcx, args).skip_norm_wip();
-            let param_env = ty::ParamEnv::empty();
 
-            let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = trait_ref.instantiate(tcx, impl_args).skip_norm_wip();
+            debug!("found applicable impl for trait ref {impl_trait_ref:?}");
 
-            // Require the type the impl is implemented on to match
-            // our type, and ignore the impl if there was a mismatch.
-            let Ok(eq_result) = infcx.at(&traits::ObligationCause::dummy(), param_env).eq(
-                DefineOpaqueTypes::Yes,
-                impl_trait_ref.self_ty(),
-                impl_ty,
-            ) else {
-                continue;
-            };
-            let InferOk { value: (), obligations } = eq_result;
-            // FIXME(eddyb) ignoring `obligations` might cause false positives.
-            drop(obligations);
-
-            let predicates = tcx
-                .predicates_of(impl_def_id)
-                .instantiate(tcx, impl_args)
-                .predicates
-                .into_iter()
-                .map(Unnormalized::skip_norm_wip)
-                .chain(Some(impl_trait_ref.upcast(tcx)));
-            for predicate in predicates {
-                let obligation = traits::Obligation::new(
-                    tcx,
-                    traits::ObligationCause::dummy(),
-                    param_env,
-                    predicate,
-                );
-                match infcx.evaluate_obligation(&obligation) {
-                    Ok(eval_result) if eval_result.may_apply() => {}
-                    Err(traits::OverflowError::Canonical) => {}
-                    _ => continue 'blanket_impls,
-                }
-            }
-            debug!("found applicable impl for trait ref {trait_ref:?}");
-
-            cx.generated_synthetics.insert((ty.skip_binder(), trait_def_id));
+            cx.generated_synthetics.insert((item_ty.skip_binder(), trait_def_id));
 
             blanket_impls.push(clean::Item {
                 inner: Box::new(clean::ItemInner {
@@ -96,11 +81,13 @@ pub(crate) fn synthesize_blanket_impls(
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_constraints(
                             cx,
-                            ty::Binder::dummy(trait_ref.instantiate_identity().skip_norm_wip()),
+                            ty::Binder::dummy(
+                                impl_trait_ref.instantiate_identity().skip_norm_wip(),
+                            ),
                             ThinVec::new(),
                         )),
                         for_: clean_middle_ty(
-                            ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()),
+                            ty::Binder::dummy(item_ty.instantiate_identity().skip_norm_wip()),
                             cx,
                             None,
                             None,
@@ -114,7 +101,7 @@ pub(crate) fn synthesize_blanket_impls(
                         polarity: ty::ImplPolarity::Positive,
                         kind: clean::ImplKind::Blanket(Box::new(clean_middle_ty(
                             ty::Binder::dummy(
-                                trait_ref.instantiate_identity().skip_norm_wip().self_ty(),
+                                impl_trait_ref.instantiate_identity().skip_norm_wip().self_ty(),
                             ),
                             cx,
                             None,
