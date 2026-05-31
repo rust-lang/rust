@@ -1600,10 +1600,6 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
-        // FIXME: Drops, produced by insert_clean_drop + elaborate_coroutine_drops,
-        // are currently sync only. To allow async for them, we need to move those calls
-        // before expand_async_drops, and fix the related problems.
-        //
         // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
         // the unresumed state.
         // This is expanded to a drop ladder in `elaborate_coroutine_drops`.

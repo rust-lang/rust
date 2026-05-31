@@ -80,6 +80,9 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         patch: MirPatch::new(body),
         tcx,
         typing_env,
+        // FIXME(async_drop): Drops, produced by insert_clean_drop + elaborate_coroutine_drops, are
+        // currently sync only. To allow async for them, flip this flag and fix the related
+        // problems.
         produce_async_drops: false,
     };
 
