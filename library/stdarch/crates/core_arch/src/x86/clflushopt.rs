@@ -4,7 +4,7 @@
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.clflushopt"]
     fn clflushopt(p: *const u8);
 }
@@ -26,6 +26,10 @@ unsafe extern "C" {
 /// Unlike the prefetch intrinsics, `CLFLUSHOPT` is subject to all the
 /// permission checking and faults associated with a byte load, so `p` must
 /// point to a byte that is valid for reads.
+///
+/// [`_mm_clflush`]: crate::arch::x86::_mm_clflush
+/// [`_mm_sfence`]: crate::arch::x86::_mm_sfence
+/// [`_mm_mfence`]: crate::arch::x86::_mm_mfence
 #[inline]
 #[target_feature(enable = "clflushopt")]
 #[cfg_attr(test, assert_instr(clflushopt))]
