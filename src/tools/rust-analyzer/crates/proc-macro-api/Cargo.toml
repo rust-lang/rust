@@ -39,7 +39,6 @@ span.workspace = true
 [features]
 sysroot-abi = ["proc-macro-srv", "proc-macro-srv/sysroot-abi"]
 default = []
-in-rust-tree = []
 
 [lints]
 workspace = true

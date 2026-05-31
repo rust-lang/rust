@@ -8,12 +8,11 @@
 #![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
 #![cfg_attr(
     feature = "sysroot-abi",
-    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
+    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)
 )]
 #![allow(internal_features, unused_features)]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
-#[cfg(feature = "in-rust-tree")]
+#[cfg(feature = "sysroot-abi")]
 extern crate rustc_driver as _;
 
 pub mod bidirectional_protocol;

@@ -7,27 +7,16 @@
 //!
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
-//! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
-//!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(feature = "sysroot-abi")]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
+#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
 #![expect(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
 #![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate proc_macro as rustc_proc_macro;
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_proc_macro;
-
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_lexer as rustc_lexer;
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
+extern crate rustc_proc_macro;
 
 mod bridge;
 mod dylib;

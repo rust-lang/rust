@@ -56,7 +56,7 @@ jobs:
       - name: Install Rust toolchain
         run: |
           RUSTC_VERSION=$(cat rust-version)
-          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt
+          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt -c rustc-dev -c llvm-tools
           rustup default ${RUSTC_VERSION}
 
       # Emulate a nightly toolchain, because the toolchain installed above does not have "nightly"

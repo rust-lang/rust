@@ -108,7 +108,6 @@ in-rust-tree = [
   "ide/in-rust-tree",
   "load-cargo/in-rust-tree",
   "parser/in-rust-tree",
-  "proc-macro-api/in-rust-tree",
   "syntax/in-rust-tree",
 ]
 dhat = ["dep:dhat"]

@@ -1887,7 +1887,6 @@ dependencies = [
  "object",
  "paths",
  "proc-macro-test",
- "ra-ap-rustc_lexer",
  "span",
  "temp-dir",
 ]
