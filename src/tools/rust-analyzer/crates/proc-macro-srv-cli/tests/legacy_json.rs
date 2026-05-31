@@ -4,9 +4,8 @@
 //! channels without needing to spawn the actual server and client processes.
 
 #![cfg(feature = "sysroot-abi")]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![feature(rustc_private)]
 
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
 mod common {

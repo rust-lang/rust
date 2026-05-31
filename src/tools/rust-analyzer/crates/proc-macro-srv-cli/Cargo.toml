@@ -33,7 +33,6 @@ proc-macro-test.path = "../proc-macro-srv/proc-macro-test"
 default = []
 # default = ["sysroot-abi"]
 sysroot-abi = ["proc-macro-srv/sysroot-abi", "proc-macro-api/sysroot-abi"]
-in-rust-tree = ["proc-macro-srv/in-rust-tree", "sysroot-abi"]
 
 
 [[bin]]
