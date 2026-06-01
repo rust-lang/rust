@@ -21,17 +21,15 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = copy _2;
--         StorageLive(_6);
-+         nop;
+          StorageLive(_6);
           _12 = no_retag copy ((*_1).0: &i32);
           _6 = copy (*_12);
 -         _4 = move _5(move _6) -> [return: bb1, unwind unreachable];
-+         _4 = copy _2(copy _6) -> [return: bb1, unwind unreachable];
++         _4 = copy _2(move _6) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
--         StorageDead(_6);
-+         nop;
+          StorageDead(_6);
           StorageDead(_5);
           StorageDead(_4);
           StorageLive(_7);
@@ -48,12 +46,10 @@
           StorageLive(_10);
           _10 = copy _2;
           StorageLive(_11);
--         _13 = no_retag copy ((*_1).0: &i32);
--         _11 = copy (*_13);
+          _13 = no_retag copy ((*_1).0: &i32);
+          _11 = copy (*_13);
 -         _9 = move _10(move _11) -> [return: bb3, unwind unreachable];
-+         _13 = no_retag copy _12;
-+         _11 = copy _6;
-+         _9 = copy _2(copy _6) -> [return: bb3, unwind unreachable];
++         _9 = copy _2(move _11) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {

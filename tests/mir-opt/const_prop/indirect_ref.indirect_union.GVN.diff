@@ -50,16 +50,14 @@
           StorageDead(_9);
           StorageDead(_8);
           StorageLive(_10);
--         _10 = copy (*_1);
-+         _10 = copy _4;
+          _10 = copy (*_1);
           StorageLive(_11);
           StorageLive(_12);
           _12 = copy _2;
           StorageLive(_13);
--         _13 = copy _10;
+          _13 = copy _10;
 -         _11 = move _12(move _13) -> [return: bb3, unwind unreachable];
-+         _13 = copy _4;
-+         _11 = copy _2(copy _4) -> [return: bb3, unwind unreachable];
++         _11 = copy _2(copy _10) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {

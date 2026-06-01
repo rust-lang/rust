@@ -46,11 +46,9 @@
           StorageLive(_10);
           _10 = copy _2;
           StorageLive(_11);
--         _13 = no_retag copy ((*_1).0: &i32);
--         _11 = &(*_13);
+          _13 = no_retag copy ((*_1).0: &i32);
+          _11 = &(*_13);
 -         _9 = move _10(move _11) -> [return: bb3, unwind unreachable];
-+         _13 = no_retag copy _12;
-+         _11 = &(*_12);
 +         _9 = copy _2(move _11) -> [return: bb3, unwind unreachable];
       }
   
