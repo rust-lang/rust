@@ -176,10 +176,10 @@ build flags that you always build your application with. The only requirement is
 that DWARF debug info including source line information is generated. This DWARF
 information is important for the profiler to be able to map instructions back to
 source line locations. The accuracy of this DWARF information can be improved
-with the `-Cdebuginfo-for-profiling` option. For example:
+with the `-Zdebuginfo-for-profiling` option. For example:
 
 ```bash
-rustc -Cdebuginfo=line-tables-only -Cdebuginfo-for-profiling -O main.rs
+rustc -Cdebuginfo=line-tables-only -Zdebuginfo-for-profiling -O main.rs
 ```
 
 Additionally emitted by `debuginfo-for-profiling` information helps the
@@ -259,7 +259,7 @@ that you build the code with the same debug info options and
 `-Cprofile-sample-use`.
 
 ```bash
-rustc -Cprofile-sample-use=main.prof -Cdebuginfo-for-profiling -O main.rs
+rustc -Cprofile-sample-use=main.prof -Zdebuginfo-for-profiling -O main.rs
 ```
 
 Note that Sample-based PGO in `rustc` is mostly tested on `x86-64` Linux

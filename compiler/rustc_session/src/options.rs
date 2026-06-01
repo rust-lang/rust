@@ -2057,8 +2057,6 @@ options! {
     debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
         "debug info emission level (0-2, none, line-directives-only, \
         line-tables-only, limited, or full; default: 0)"),
-    debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
-        "emit extra debug info to make sample profile more accurate"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
@@ -2260,6 +2258,8 @@ options! {
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
+    debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
+        "emit extra debug info to make sample profile more accurate"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
