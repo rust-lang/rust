@@ -2,7 +2,7 @@
 // libraries are linked. Test both foreign module linked from #[link] directive and command line
 // invocations.
 
-//@ only-aarch64-unknown-linux-pauthtest
+//@ only-pauthtest
 // ignore-tidy-linelength
 
 use run_make_support::{cc, env_var, regex, run, rustc};
