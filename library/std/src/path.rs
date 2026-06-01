@@ -2854,7 +2854,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_is_empty)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("");
@@ -2866,7 +2865,7 @@ impl Path {
     /// let path = Path::new(".");
     /// assert!(!path.is_empty());
     /// ```
-    #[unstable(feature = "path_is_empty", issue = "148494")]
+    #[stable(feature = "path_is_empty", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_empty(&self) -> bool {
         self.as_os_str().is_empty()
     }
@@ -3690,7 +3689,7 @@ unsafe impl CloneToUninit for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<OsStr> for Path {
+const impl AsRef<OsStr> for Path {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         &self.inner
@@ -3861,7 +3860,7 @@ impl Ord for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for Path {
+const impl AsRef<Path> for Path {
     #[inline]
     fn as_ref(&self) -> &Path {
         self
@@ -3870,7 +3869,7 @@ impl const AsRef<Path> for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for OsStr {
+const impl AsRef<Path> for OsStr {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)

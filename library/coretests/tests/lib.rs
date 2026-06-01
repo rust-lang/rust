@@ -67,6 +67,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_from_ascii)]
 #![feature(int_roundings)]
+#![feature(io_slice_as_bytes)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
 #![feature(iter_advance_by)]

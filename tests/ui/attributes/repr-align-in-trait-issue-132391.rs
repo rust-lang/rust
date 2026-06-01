@@ -1,5 +1,5 @@
 trait MyTrait {
-    #[repr(align)] //~ ERROR invalid `repr(align)` attribute: `align` needs an argument
+    #[repr(align)] //~ ERROR malformed `repr` attribute input
     fn myfun();
 }
 

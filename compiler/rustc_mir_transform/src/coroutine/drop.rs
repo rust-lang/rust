@@ -646,7 +646,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
 
     let source_info = SourceInfo::outermost(body.span);
 
-    let mut cases = create_cases(&mut body, transform, Operation::Drop);
+    let mut cases = create_cases(&mut body, transform, Operation::AsyncDrop);
 
     cases.insert(0, (CoroutineArgs::UNRESUMED, drop_clean));
 

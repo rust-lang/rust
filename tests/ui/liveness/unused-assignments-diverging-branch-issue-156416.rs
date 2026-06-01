@@ -1,4 +1,5 @@
 //@ run-pass
+//@ ignore-parallel-frontend unstable liveness diagnostics
 #![allow(dead_code)]
 #![warn(unused_assignments)]
 

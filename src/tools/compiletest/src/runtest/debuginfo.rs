@@ -260,6 +260,19 @@ impl TestCx<'_> {
                             "add-auto-load-safe-path {}\n",
                             self.output_base_dir().as_str().replace(r"\", r"\\")
                         ));
+
+                        // GDB visualizer scripts aren't properly embedded on `*-windows-gnu`
+                        // at the moment (see: issue #156687), so we need to load them in
+                        // manually.
+                        #[cfg(target_os = "windows")]
+                        {
+                            script_str.push_str(&format!(
+                                "source {}\n",
+                                self.config
+                                    .src_root
+                                    .join("src/etc/gdb_load_rust_pretty_printers.py")
+                            ));
+                        }
                     }
                 }
                 _ => {

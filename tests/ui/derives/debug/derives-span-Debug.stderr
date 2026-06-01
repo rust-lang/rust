@@ -7,7 +7,6 @@ LL | #[derive(Debug)]
 LL |         x: Error,
    |         ^^^^^^^^ the trait `Debug` is not implemented for `Error`
    |
-   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
 help: consider annotating `Error` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
@@ -23,7 +22,6 @@ LL | #[derive(Debug)]
 LL |         Error,
    |         ^^^^^ the trait `Debug` is not implemented for `Error`
    |
-   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
 help: consider annotating `Error` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
@@ -39,7 +37,6 @@ LL | struct Struct {
 LL |     x: Error,
    |     ^^^^^^^^ the trait `Debug` is not implemented for `Error`
    |
-   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
 help: consider annotating `Error` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
@@ -55,7 +52,6 @@ LL | struct TupleStruct(
 LL |     Error,
    |     ^^^^^ the trait `Debug` is not implemented for `Error`
    |
-   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
 help: consider annotating `Error` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

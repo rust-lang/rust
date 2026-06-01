@@ -2545,3 +2545,11 @@ fn test_dir_read_file() {
     let buf = check!(io::read_to_string(f));
     assert_eq!("bar", &buf);
 }
+
+#[test]
+fn test_dir_metadata() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    let metadata = check!(dir.metadata());
+    assert!(metadata.is_dir());
+}

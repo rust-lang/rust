@@ -109,6 +109,7 @@ impl<M> ModuleCodegen<M> {
             name: self.name,
             kind: self.kind,
             object,
+            global_asm_object: None,
             dwarf_object,
             bytecode,
             assembly,
@@ -123,6 +124,7 @@ pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
+    pub global_asm_object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm

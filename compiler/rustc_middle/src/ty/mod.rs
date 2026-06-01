@@ -31,18 +31,17 @@ use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{LangItem, attrs as attr, find_attr};
+use rustc_hir::{self as hir, LangItem, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -206,7 +205,15 @@ pub struct ResolverGlobalCtxt {
 
 #[derive(Debug)]
 pub struct PerOwnerResolverData {
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
+    /// Whether lifetime elision was successful.
+    pub lifetime_elision_allowed: bool = false,
+    /// Resolutions for labels.
+    /// Maps from NodeId of the break/continue expression to the NodeId of their corresponding blocks or loops.
+    pub label_res_map: NodeMap<ast::NodeId> = Default::default(),
+    /// Resolutions for lifetimes.
+    pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -215,7 +222,17 @@ pub struct PerOwnerResolverData {
 
 impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
-        PerOwnerResolverData { node_id_to_def_id: Default::default(), id, def_id }
+        PerOwnerResolverData { id, def_id, .. }
+    }
+
+    /// Obtains resolution for a label with the given `NodeId`.
+    pub fn get_label_res(&self, id: ast::NodeId) -> Option<ast::NodeId> {
+        self.label_res_map.get(&id).copied()
+    }
+
+    /// Obtains resolution for a lifetime with the given `NodeId`.
+    pub fn get_lifetime_res(&self, id: ast::NodeId) -> Option<LifetimeRes> {
+        self.lifetimes_res_map.get(&id).copied()
     }
 }
 
@@ -227,20 +244,14 @@ pub struct ResolverAstLowering<'tcx> {
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
-    /// Resolutions for lifetimes.
-    pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
     pub owners: NodeMap<PerOwnerResolverData>,
 
     pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
-    /// List functions and methods for which lifetime elision was successful.
-    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
@@ -253,9 +264,12 @@ pub struct ResolverAstLowering<'tcx> {
 
 #[derive(Debug)]
 pub struct DelegationInfo {
-    // NodeId (either delegation.id or item_id in case of a trait impl) for signature resolution,
+    // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
-    pub resolution_node: ast::NodeId,
+    /// Refers to the next element in a delegation resolution chain.
+    /// Usually points to the final resolution, as most "chains" are just
+    /// one step to a trait or an impl.
+    pub resolution_id: DefId,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]

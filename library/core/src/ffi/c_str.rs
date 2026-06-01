@@ -177,7 +177,7 @@ impl fmt::Debug for CStr {
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for &CStr {
+const impl Default for &CStr {
     #[inline]
     fn default() -> Self {
         c""
@@ -729,7 +729,7 @@ impl ops::Index<range::RangeFrom<usize>> for CStr {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<CStr> for CStr {
+const impl AsRef<CStr> for CStr {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self

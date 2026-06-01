@@ -285,11 +285,6 @@ impl<'sess> AttributeParser<'sess> {
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
-        // We store the attributes we intend to discard at the end of this function in order to
-        // check they are applied to the right target and error out if necessary. In practice, we
-        // end up dropping only derive attributes and derive helpers, both being fully processed
-        // at macro expansion.
-        let mut dropped_attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
@@ -342,11 +337,12 @@ impl<'sess> AttributeParser<'sess> {
 
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let inner_span = lower_span(n.item.span());
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             accept.safety,
                             &mut emit_lint,
@@ -401,7 +397,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                             },
                             attr_span,
-                            inner_span: lower_span(n.item.span()),
+                            inner_span,
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
@@ -412,9 +408,7 @@ impl<'sess> AttributeParser<'sess> {
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(accept.finalizer);
 
-                        if !matches!(cx.should_emit, ShouldEmit::Nothing) {
-                            Self::check_target(&accept.allowed_targets, target, &mut cx);
-                        }
+                        Self::check_target(&accept.allowed_targets, &mut cx);
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
@@ -427,7 +421,7 @@ impl<'sess> AttributeParser<'sess> {
 
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             AttributeSafety::Normal,
                             &mut emit_lint,
@@ -436,23 +430,11 @@ impl<'sess> AttributeParser<'sess> {
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
                             && target == Target::Crate
                         {
-                            self.check_invalid_crate_level_attr_item(&attr, n.item.span());
+                            self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
 
-                        let attr = Attribute::Unparsed(Box::new(attr));
-
-                        if self.tools.is_some_and(|tools| {
-                            tools.iter().any(|tool| tool.name == parts[0])
-                            // FIXME: this can be removed once #152369 has been merged.
-                            // https://github.com/rust-lang/rust/pull/152369
-                            || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
-                                .contains(&parts[0])
-                        }) {
-                            attributes.push(attr);
-                        } else {
-                            dropped_attributes.push(attr);
-                        }
-                    }
+                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                    };
                 }
             }
         }
@@ -468,7 +450,7 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
-            self.check_invalid_where_predicate_attrs(attributes.iter().chain(&dropped_attributes));
+            self.check_invalid_where_predicate_attrs(attributes.iter());
         }
 
         attributes
