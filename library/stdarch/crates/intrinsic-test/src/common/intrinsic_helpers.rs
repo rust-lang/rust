@@ -1,6 +1,6 @@
 use std::cmp;
 use std::fmt;
-use std::ops::Deref;
+use std::ops::DerefMut;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -90,9 +90,13 @@ impl TypeKind {
         }
     }
 
-    /// Returns the Rust prefix for this type kind i.e. `i`, `u`, or `f`.
+    /// Returns the Rust prefix for this type kind (i.e. `i` for `i16`, or `u` for `u16`). For type
+    /// kinds without any bit length at the end (e.g. `bool`), returns the whole type name.
     pub fn rust_prefix(&self) -> &str {
         match self {
+            Self::Bool => "bool",
+            Self::SvPattern => "svpattern",
+            Self::SvPrefetchOp => "svprfop",
             Self::BFloat => "bf",
             Self::Float => "f",
             Self::Int(Sign::Signed) => "i",
@@ -101,7 +105,7 @@ impl TypeKind {
             Self::Char(Sign::Unsigned) => "u",
             Self::Char(Sign::Signed) => "i",
             Self::Mask => "u",
-            _ => unreachable!("Unused type kind: {self:#?}"),
+            _ => unreachable!("type kind without Rust prefix: {self:#?}"),
         }
     }
 }
@@ -195,7 +199,7 @@ impl IntrinsicType {
     }
 }
 
-pub trait TypeDefinition: Clone + Deref<Target = IntrinsicType> {
+pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
     /// Determines the load function for this type.
     fn get_load_function(&self) -> String;
 
@@ -208,14 +212,9 @@ pub trait TypeDefinition: Clone + Deref<Target = IntrinsicType> {
     /// Gets a string containing the name of the scalar type corresponding to this type if it is a
     /// vector.
     fn rust_scalar_type(&self) -> String {
-        if self.is_simd() {
-            format!(
-                "{prefix}{bits}",
-                prefix = self.kind().rust_prefix(),
-                bits = self.inner_size()
-            )
-        } else {
-            self.rust_type()
-        }
+        let mut ty = self.clone();
+        ty.simd_len = None;
+        ty.vec_len = None;
+        ty.rust_type()
     }
 }
