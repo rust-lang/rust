@@ -2466,6 +2466,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // result in a non-infer in hir typeck but a region variable in borrowck.
             if tcx.features().generic_const_parameter_types()
                 && (ty.has_free_regions() || ty.has_erased_regions())
+                || ty.has_infer_regions()
             {
                 let e = self.dcx().span_err(
                     const_arg.span,
