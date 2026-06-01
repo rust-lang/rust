@@ -1,0 +1,28 @@
+error: expected identifier, found keyword `return`
+  --> $DIR/detect-missing-else-in-let-2.rs:6:19
+   |
+LL |     let bar = foo{return;};
+   |               --- ^^^^^^ expected identifier, found keyword
+   |               |
+   |               while parsing this struct
+   |
+help: escape `return` to use it as an identifier
+   |
+LL |     let bar = foo{r#return;};
+   |                   ++
+
+error[E0574]: expected struct, variant or union type, found local variable `foo`
+  --> $DIR/detect-missing-else-in-let-2.rs:6:15
+   |
+LL |     let bar = foo{return;};
+   |               ^^^ not a struct, variant or union type
+   |
+help: you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+      for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>
+   |
+LL |     let bar = foo else {return;};
+   |                   ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0574`.

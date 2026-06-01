@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `return`
-  --> $DIR/detect-missing-else-in-let.rs:4:23
+  --> $DIR/detect-missing-else-in-let-1.rs:4:23
    |
 LL |     let Some(a) = foo{return;};
    |                   --- ^^^^^^ expected identifier, found keyword
@@ -12,7 +12,7 @@ LL |     let Some(a) = foo{r#return;};
    |                       ++
 
 error: expected one of `,`, `:`, or `}`, found `!`
-  --> $DIR/detect-missing-else-in-let.rs:8:27
+  --> $DIR/detect-missing-else-in-let-1.rs:8:27
    |
 LL |     let Some(b) = foo{todo!()};
    |                   --- ----^ expected one of `,`, `:`, or `}`
@@ -21,23 +21,25 @@ LL |     let Some(b) = foo{todo!()};
    |                   while parsing this struct
 
 error[E0574]: expected struct, variant or union type, found local variable `foo`
-  --> $DIR/detect-missing-else-in-let.rs:4:19
+  --> $DIR/detect-missing-else-in-let-1.rs:4:19
    |
 LL |     let Some(a) = foo{return;};
    |                   ^^^ not a struct, variant or union type
    |
-help: try adding `else` here:
+help: you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+      for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>
    |
 LL |     let Some(a) = foo else {return;};
    |                       ++++
 
 error[E0574]: expected struct, variant or union type, found local variable `foo`
-  --> $DIR/detect-missing-else-in-let.rs:8:19
+  --> $DIR/detect-missing-else-in-let-1.rs:8:19
    |
 LL |     let Some(b) = foo{todo!()};
    |                   ^^^ not a struct, variant or union type
    |
-help: try adding `else` here:
+help: you might have meant to write a diverging block on a refutable `let` statement by using `let-else`
+      for more information, visit <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>
    |
 LL |     let Some(b) = foo else {todo!()};
    |                       ++++
