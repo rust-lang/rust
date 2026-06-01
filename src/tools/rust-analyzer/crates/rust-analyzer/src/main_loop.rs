@@ -1267,6 +1267,10 @@ impl GlobalState {
         let mut dispatcher = RequestDispatcher { req: Some(req), global_state: self };
         dispatcher.on_sync_mut::<lsp_types::request::Shutdown>(|s, ()| {
             s.shutdown_requested = true;
+            s.proc_macro_clients =
+                std::iter::repeat_with(|| None).take(s.proc_macro_clients.len()).collect();
+            s.flycheck.iter().for_each(|handle| handle.cancel());
+            s.discover_handles.clear();
             Ok(())
         });
 
