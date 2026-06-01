@@ -127,6 +127,10 @@ pub(crate) fn compile_codegen_unit(
                 let mut attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
                 // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
                 // also attached to the entry wrapper.
+                //
+                // FIXME(jchlanda) If it ever becomes necessary to ensure that all compiler
+                // generated functions receive the ptrauth-* attributes, `declare_fn` or
+                // `declare_raw_fn` could be used to provide those.
                 if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
                     for &ptrauth_attr in pauth_fn_attrs() {
                         attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
