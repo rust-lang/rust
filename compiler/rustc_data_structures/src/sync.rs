@@ -42,14 +42,13 @@ pub use self::parallel::{
     try_par_for_each_in,
 };
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
-pub use self::worker_local::{Registry, WorkerLocal};
+pub use rustc_thread_pool::{ComplementaryRegistry, WorkerLocal};
 pub use crate::marker::*;
 
 mod freeze;
 mod lock;
 mod parallel;
 mod vec;
-mod worker_local;
 
 /// Keep the conditional imports together in a submodule, so that import-sorting
 /// doesn't split them up.
