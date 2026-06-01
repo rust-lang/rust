@@ -3,6 +3,7 @@ use crate::hash::{Hash, Hasher};
 use crate::marker::{Destruct, StructuralPartialEq};
 use crate::mem::MaybeDangling;
 use crate::ops::{Deref, DerefMut, DerefPure};
+use crate::pin::Pin;
 use crate::ptr;
 
 /// A wrapper to inhibit the compiler from automatically calling `T`’s
@@ -205,6 +206,42 @@ impl<T> ManuallyDrop<T> {
         unsafe { (&raw const slot).cast::<T>().read() }
     }
 
+    /// Constructs a new pin by mapping and dereferencing the interior
+    /// `&ManuallyDrop<T>` container.
+    ///
+    /// For example, if you wanted to get a `Pin` of a field of something,
+    /// you could use this to get immutable access to that field in one line of code.
+    /// However, there are several gotchas with these "pinning projections";
+    /// see the [`pin` module] documentation for further details on that topic.
+    ///
+    /// [`pin` module]: crate::pin#projections-and-structural-pinning
+    #[unstable(feature = "manually_drop_pinned", issue = "157268")]
+    #[inline(always)]
+    pub fn pinned_deref(pinned: Pin<&ManuallyDrop<T>>) -> Pin<&T> {
+        // SAFETY: Since we are immutably borrowing `ManuallyDrop<T>`, the T
+        // should not be dropped, hence we can construct a new `Pin` that has
+        // an immutable borrow to T as well.
+        unsafe { pinned.map_unchecked(|manually_drop| manually_drop.deref()) }
+    }
+
+    /// Constructs a new pin by mapping and dereferencing the interior
+    /// `&mut ManuallyDrop<T>` container.
+    ///
+    /// For example, if you wanted to get a `Pin` of a field of something,
+    /// you could use this to get mutable access to that field in one line of code.
+    /// However, there are several gotchas with these "pinning projections";
+    /// see the [`pin` module] documentation for further details on that topic.
+    ///
+    /// [`pin` module]: crate::pin#projections-and-structural-pinning
+    #[unstable(feature = "manually_drop_pinned", issue = "157268")]
+    #[inline(always)]
+    pub fn pinned_deref_mut(pinned: Pin<&mut ManuallyDrop<T>>) -> Pin<&mut T> {
+        // SAFETY: Since we are mutably borrowing `ManuallyDrop<T>`, the T
+        // should not be dropped, hence we can construct a new `Pin` that has
+        // a mutable borrow to T as well.
+        unsafe { pinned.map_unchecked_mut(|manually_drop| manually_drop.deref_mut()) }
+    }
+
     /// Takes the value from the `ManuallyDrop<T>` container out.
     ///
     /// This method is primarily intended for moving out values in drop.
@@ -265,6 +302,44 @@ impl<T: ?Sized> ManuallyDrop<T> {
         // which is guaranteed to be valid for writes.
         // It is up to the caller to make sure that `slot` isn't dropped again.
         unsafe { ptr::drop_in_place(slot.value.as_mut()) }
+    }
+
+    /// Manually drops the pinned contained value.
+    ///
+    /// This is exactly equivalent to calling [`ptr::drop_in_place`] with a
+    /// pinned pointer to the contained value. As such, unless the contained value is a
+    /// packed struct, the destructor will be called in-place without moving the
+    /// value, and thus can be used to safely drop [pinned] data.
+    ///
+    /// If you have ownership of the pinned contained value, you can use [`Pin::into_inner`]
+    /// and then [`ManuallyDrop::into_inner`] instead.
+    ///
+    /// # Safety
+    ///
+    /// This function runs the destructor of the contained value. Other than changes made by
+    /// the destructor itself, the memory is left unchanged, and so as far as the compiler is
+    /// concerned still holds a bit-pattern which is valid for the type `T`.
+    ///
+    /// However, this "zombie" value should not be exposed to safe code, and this function
+    /// should not be called more than once, nor with drop being called on the internal
+    /// `&mut ManuallyDrop<T>` container beforehand. To use a value after it's been dropped,
+    /// or drop a value multiple times, can cause Undefined Behavior (depending on what `drop` does).
+    /// This is normally prevented by the type system, but users of `ManuallyDrop` must
+    /// uphold those guarantees without assistance from the compiler.
+    ///
+    /// [pinned]: crate::pin
+    #[unstable(feature = "manually_drop_pinned", issue = "157268")]
+    #[inline]
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn pinned_drop(pinned: Pin<&mut ManuallyDrop<T>>)
+    where
+        T: [const] Destruct,
+    {
+        // SAFETY: we are dropping the pinned value pointed to by a mutable reference
+        // which is guaranteed to be valid for writes.
+        // It is up to the caller to make sure that the `ManuallyDrop<T>` isn't dropped
+        // again.
+        unsafe { Self::drop(pinned.get_unchecked_mut()) }
     }
 }
 
