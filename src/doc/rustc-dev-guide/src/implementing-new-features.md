@@ -227,6 +227,7 @@ The below steps needs to be followed in order to implement a new unstable featur
 [here]: ./stabilization-guide.md
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
+[guidance for compiler flags]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html?highlight=unstable%20flag#compiler-flags
 
 ## Adding unstable compiler flags
 
@@ -234,6 +235,10 @@ For compiler-internal experiments, diagnostics, debugging aids, and temporary im
 controls, a `-Z` flag can be more appropriate than a language feature gate.
 Feature gates should still be preferred for user-facing language features,
 especially when crates need to opt in from source code.
+
+Before adding a new flag, check the compiler team's [guidance for compiler flags].
+Some flags, especially those intended for direct nightly user workflows or broader
+ecosystem use, may need additional sign-off beyond an r+ on the implementation PR.
 
 When adding a new `-Z` flag:
 
