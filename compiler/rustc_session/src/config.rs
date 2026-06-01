@@ -1576,6 +1576,9 @@ pub struct BranchProtection {
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq)]
 pub enum PointerAuthOption {
+    // See <compiler/rustc_session/src/options.rs> and Clang's command line reference:
+    // <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fptrauth-auth-traps>
+    // for the origin and meaning of the enum values.
     Aarch64JumpTableHardening,
     AuthTraps,
     Calls,
