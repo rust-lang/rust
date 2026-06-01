@@ -38,6 +38,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &closure.body,
                     closure.fn_decl_span,
                     closure.fn_arg_span,
+                    find_attr!(&e.attrs, Fused(_)),
                 ),
                 span: self.lower_span(e.span),
             },
@@ -261,11 +262,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(movability))
             }
-            Some(
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
-                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
-                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _),
-            ) => {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen
+                | hir::CoroutineDesugaring::Async { fused: _ }
+                | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => {
                 panic!("non-`async`/`gen` closure body turned `async`/`gen` during lowering");
             }
             None => {
@@ -308,13 +310,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
+        fused: bool,
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let coroutine_desugaring = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
-            CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused },
+            CoroutineKind::Gen { .. } => {
+                debug_assert!(!fused, "This should have been rejected by attribute parsing");
+                hir::CoroutineDesugaring::Gen
+            }
             CoroutineKind::AsyncGen { span, .. } => {
                 span_bug!(span, "only async closures and `iter!` closures are supported currently")
             }
@@ -335,6 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body.span,
                         coroutine_kind,
                         hir::CoroutineSource::Closure,
+                        fused,
                     )
                 });
 

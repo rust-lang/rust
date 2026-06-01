@@ -537,7 +537,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
         match self.0 {
             hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
+                hir::CoroutineDesugaring::Async { fused: _ },
                 hir::CoroutineSource::Block,
             )
             // FIXME(coroutines): eventually we want to gate const coroutine coroutines behind a

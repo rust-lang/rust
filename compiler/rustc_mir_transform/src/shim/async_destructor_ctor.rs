@@ -58,7 +58,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
 
     assert!(matches!(
         coroutine_kind,
-        CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)
+        CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, CoroutineSource::Fn)
     ));
 
     let needs_async_drop = drop_ty.needs_async_drop(tcx, typing_env);

@@ -198,6 +198,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ConstContinue(attr_span) => {
                 self.check_const_continue(hir_id, *attr_span, target)
             }
+            AttributeKind::Fused(attrs_span) => self.check_fused(hir_id, *attr_span, target),
             AttributeKind::AllowInternalUnsafe(attr_span)
             | AttributeKind::AllowInternalUnstable(.., attr_span) => {
                 self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -1749,6 +1750,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
             self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
         };
+    }
+
+    fn check_fused(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        let id = hir_id.expect_owner().to_def_id();
+        if self.tcx.coroutine_is_gen(id) {
+            // TODO
+            todo!("Report an error: `gen` is unsupported: {target} @ {attr_span:?}")
+        }
+        match self.tcx.asyncness(id) {
+            ty::Asyncness::No => {
+                // TODO
+                todo!("Report an error: must be `async`: {target} @ {attr_span:?}")
+            }
+            ty::Asyncness::Yes => {}
+        }
     }
 }
 

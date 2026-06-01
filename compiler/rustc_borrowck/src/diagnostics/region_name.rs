@@ -807,20 +807,20 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 };
                 let mir_description = match kind {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Block,
                     )) => " of async block",
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Closure,
                     ))
-                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => {
-                        " of async closure"
-                    }
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async {
+                        fused: _,
+                    }) => " of async closure",
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =

@@ -355,7 +355,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
-                        GenBlockKind::Async => hir::CoroutineDesugaring::Async,
+                        GenBlockKind::Async => {
+                            hir::CoroutineDesugaring::Async { fused: find_attr!(e.attrs, Fused(_)) }
+                        }
                         GenBlockKind::Gen => hir::CoroutineDesugaring::Gen,
                         GenBlockKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
                     };
@@ -826,7 +828,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // The `async` desugaring takes a resume argument and maintains a `task_context`,
         // whereas a generator does not.
         let (inputs, params, task_context): (&[_], &[_], _) = match desugaring_kind {
-            hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen => {
+            hir::CoroutineDesugaring::Async { fused: _ } | hir::CoroutineDesugaring::AsyncGen => {
                 // Resume argument type: `ResumeTy`
                 let unstable_span = self.mark_span_with_reason(
                     DesugaringKind::Async,
@@ -963,7 +965,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let full_span = expr.span.to(await_kw_span);
 
         let is_async_gen = match self.coroutine_kind {
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
             Some(hir::CoroutineKind::Coroutine(_))
             | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
@@ -1646,7 +1651,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 // Lower to a block `{ EXPR; <error> }` so that the awaited expr
                 // is not accidentally orphaned.
                 let stmt_id = self.next_id();
