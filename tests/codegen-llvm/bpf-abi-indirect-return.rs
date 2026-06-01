@@ -16,7 +16,7 @@ fn outer(a: u64) -> u64 {
     inner_big(v).a[0] as u64
 }
 
-// CHECK-LABEL: define {{.*}} @_ZN{{.*}}inner_res{{.*}}E(
+// CHECK-LABEL: define {{.*}} @_R{{.*}}inner_res(
 // CHECK-SAME:   ptr{{[^,]*}},
 // CHECK-SAME:   i64{{[^)]*}}
 #[inline(never)]
@@ -29,7 +29,7 @@ struct Big {
     b: u64,
 }
 
-// CHECK-LABEL: define {{.*}} @_ZN{{.*}}inner_big{{.*}}E(
+// CHECK-LABEL: define {{.*}} @_R{{.*}}inner_big(
 // CHECK-SAME:   ptr{{[^,]*}},
 // CHECK-SAME:   i64{{[^)]*}}
 #[inline(never)]
