@@ -138,6 +138,12 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
+unsafe impl core::alloc::AllocatorClone for System {}
+
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
+unsafe impl core::alloc::PinSafeAllocator for System {}
+
 impl System {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
@@ -207,7 +213,7 @@ impl System {
 
 // The Allocator impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
 // which is in `std::sys::*::alloc`.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl Allocator for System {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {

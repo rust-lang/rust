@@ -1,7 +1,7 @@
 //@ skip-filecheck
 //@ test-mir-pass: ElaborateDrops
 //@ needs-unwind
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 // Regression test for #131082.
 // Testing that the allocator of a Box is dropped in conditional drops

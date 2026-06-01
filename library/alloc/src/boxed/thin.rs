@@ -78,7 +78,6 @@ impl<T> ThinBox<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
     /// #![feature(thin_box)]
     /// use std::boxed::ThinBox;
     ///

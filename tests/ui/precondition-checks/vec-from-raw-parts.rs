@@ -3,7 +3,7 @@
 //@ error-pattern: unsafe precondition(s) violated: Vec::from_raw_parts_in requires that length <= capacity
 //@ revisions: vec_from_raw_parts vec_from_raw_parts_in string_from_raw_parts
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 fn main() {
     let ptr = std::ptr::null_mut::<u8>();

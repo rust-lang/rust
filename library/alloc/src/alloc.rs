@@ -51,11 +51,17 @@ unsafe extern "Rust" {
 ///
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](self#functions).
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Copy, Clone, Default, Debug)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
 #[lang = "global_alloc_ty"]
 pub struct Global;
+
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
+unsafe impl core::alloc::AllocatorClone for Global {}
+
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
+unsafe impl core::alloc::PinSafeAllocator for Global {}
 
 /// Allocates memory with the global allocator.
 ///
@@ -440,7 +446,7 @@ impl Global {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const unsafe impl Allocator for Global {
     #[inline]

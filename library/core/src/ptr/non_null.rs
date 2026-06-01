@@ -1611,7 +1611,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(allocator_api, ptr_as_uninit)]
+    /// #![feature(ptr_as_uninit)]
     ///
     /// use std::alloc::{Allocator, Layout, Global};
     /// use std::mem::MaybeUninit;

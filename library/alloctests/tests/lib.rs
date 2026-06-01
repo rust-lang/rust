@@ -1,4 +1,4 @@
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(binary_heap_pop_if)]
 #![feature(const_heap)]
 #![feature(deque_extend_front)]

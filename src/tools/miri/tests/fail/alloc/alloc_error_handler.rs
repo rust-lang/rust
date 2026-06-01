@@ -1,5 +1,5 @@
 //@error-in-other-file: aborted
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::*;
 

@@ -49,7 +49,7 @@ mod tests;
 #[rustc_insignificant_dtor]
 pub struct LinkedList<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
@@ -140,7 +140,7 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     list: LinkedList<T, A>,
 }
@@ -504,7 +504,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::alloc::System;
     /// use std::collections::LinkedList;
@@ -512,7 +512,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// let list: LinkedList<i32, System> = LinkedList::new_in(System);
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub const fn new_in(alloc: A) -> Self {
         LinkedList { head: None, tail: None, len: 0, alloc, marker: PhantomData }
     }
@@ -1335,7 +1335,7 @@ impl<T> Default for IterMut<'_, T> {
 pub struct Cursor<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     index: usize,
     current: Option<NonNull<Node<T>>>,
@@ -1371,7 +1371,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Cursor<'_, T, A> {
 pub struct CursorMut<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     index: usize,
     current: Option<NonNull<Node<T>>>,
@@ -1952,7 +1952,7 @@ pub struct ExtractIf<
     'a,
     T: 'a,
     F: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     list: &'a mut LinkedList<T, A>,
     it: Option<NonNull<Node<T>>>,

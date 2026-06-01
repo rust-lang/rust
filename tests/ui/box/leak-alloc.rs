@@ -1,4 +1,4 @@
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout, System};
 use std::ptr::NonNull;
@@ -21,7 +21,7 @@ fn use_value(_: u32) {}
 
 fn main() {
     let alloc = Alloc {};
-    let boxed = Box::new_in(10, alloc.by_ref());
+    let boxed = Box::new_in(10, &alloc);
     let theref = Box::leak(boxed);
     drop(alloc);
     //~^ ERROR cannot move out of `alloc` because it is borrowed

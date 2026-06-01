@@ -21,7 +21,7 @@ use crate::alloc::{Allocator, Global};
 pub struct Drain<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator + 'a = Global,
 > {
     /// Index of tail to preserve
     pub(super) tail_start: usize,
@@ -58,7 +58,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[must_use]
     #[inline]
     pub fn allocator(&self) -> &A {

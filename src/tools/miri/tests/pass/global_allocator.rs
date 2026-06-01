@@ -1,4 +1,4 @@
-#![feature(allocator_api, slice_ptr_get)]
+#![feature(allocator_ext, slice_ptr_get)]
 
 use std::alloc::{Allocator as _, Global, GlobalAlloc, Layout, System};
 

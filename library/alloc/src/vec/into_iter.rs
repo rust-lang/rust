@@ -44,7 +44,7 @@ macro non_null {
 #[rustc_insignificant_dtor]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
@@ -108,7 +108,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn allocator(&self) -> &A {
         &self.alloc
