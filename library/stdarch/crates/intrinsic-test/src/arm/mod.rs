@@ -29,12 +29,21 @@ impl SupportedArchitecture for Arm {
 #include <arm_acle.h>
 #include <arm_fp16.h>
 #include <arm_neon.h>
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
 "#;
     const RUST_PRELUDE: &str = RUST_PRELUDE;
 
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
         // GCC uses an extra `-` in the arch name
+        let big_endian = cli_options.target.starts_with("aarch64_be");
+        let a32 = cli_options.target.starts_with("armv7");
         match cli_options.cc_arg_style {
+            CcArgStyle::Clang if !a32 && !big_endian => vec![
+                "-march=armv8.6a+crypto+crc+dotprod+fp16+sve2-aes+sve2-sm4+sve2-sha3+sve2-bitperm+\
+                 f32mm+f64mm+sve2p1",
+            ],
             CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
             // SVE tests aren't run under GCC so there are no target features added for SVE
             CcArgStyle::Gcc => vec!["-march=armv8.6-a+crypto+crc+dotprod+fp16+sha3+sm4"],
@@ -140,6 +149,7 @@ const RUST_PRELUDE: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_feat_lut))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fp8))]
+#![cfg_attr(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"), feature(stdarch_aarch64_sve))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(faminmax))]
 #![feature(stdarch_neon_f16)]
 
