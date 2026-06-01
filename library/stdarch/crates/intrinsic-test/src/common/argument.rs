@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::common::SupportedArchitecture;
-use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
 use crate::common::values::test_values_array_name;
 
 use super::PASSES;
@@ -52,6 +52,11 @@ where
 
     pub fn has_constraint(&self) -> bool {
         self.constraint.is_some()
+    }
+
+    /// Is this argument of type `svbool_t` (or otherwise a scalable bool)?
+    pub fn is_scalable_bool(&self) -> bool {
+        self.ty.kind == TypeKind::Bool && self.ty.num_lanes() == SimdLen::Scalable
     }
 
     /// Should this argument be passed by reference in C wrapper function declarations?
@@ -176,6 +181,9 @@ where
     pub fn load_values_rust(&self) -> String {
         self.iter()
             .filter(|&arg| !arg.has_constraint())
+            // FIXME(davidtwco): Need test values for `svbool_t` when the argument is *not* a
+            // predicate.
+            .filter(|&arg| !arg.is_scalable_bool())
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
