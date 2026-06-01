@@ -7,7 +7,9 @@ use std::iter;
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::Mutability;
 use rustc_index::IndexSlice;
+use rustc_middle::ty::reborrow::{self, CoerceSharedFieldPairError};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Spanned;
@@ -206,39 +208,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             Ref(_, borrow_kind, place) => {
-                let src = self.eval_place(place)?;
-                let place = self.force_allocation(&src)?;
-                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                // A fresh reference was created, make sure it gets retagged with the right mode.
                 let mode = if borrow_kind.is_two_phase_borrow() {
                     RetagMode::TwoPhase
                 } else {
                     RetagMode::Default
                 };
-                M::with_retag_mode(self, mode, |ecx| {
-                    // If validation is disabled, we still want to do this retag. This is because
-                    // const-eval disables validation for performance reasons but wants to retag
-                    // shared references. So we add a bit of a hack here to do the retag manually
-                    // if the write would not incur validation.
-                    if !M::enforce_validity(ecx, val.layout) {
-                        if let Some(new_val) = M::retag_ptr_value(ecx, &val, val.layout.ty)? {
-                            val = new_val;
-                        }
-                    }
-                    // Now do the actual write.
-                    ecx.write_immediate(*val, &dest)
-                })?;
+                self.write_ref_to_place(place, &dest, mode)?;
             }
 
-            Reborrow(_, mutability, place) => {
-                let op = self.eval_place_to_op(place, None)?;
-                if mutability.is_not() {
-                    // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
-                    // distinct same-layout target ADT.
-                    self.copy_op_allow_transmute(&op, &dest)?;
-                } else {
-                    self.copy_op(&op, &dest)?;
-                }
+            Reborrow(target_ty, _, place) => {
+                self.eval_reborrow_into_place(target_ty, place, &dest)?;
             }
 
             RawPtr(kind, place) => {
@@ -289,6 +268,125 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         trace!("{:?}", self.dump_place(&dest));
 
+        interp_ok(())
+    }
+
+    fn write_ref_to_place(
+        &mut self,
+        source_place: mir::Place<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+        mode: RetagMode,
+    ) -> InterpResult<'tcx> {
+        let src = self.eval_place(source_place)?;
+        let place = self.force_allocation(&src)?;
+        let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+        // A fresh reference was created, make sure it gets retagged with the right mode.
+        M::with_retag_mode(self, mode, |ecx| {
+            // If validation is disabled, we still want to do this retag. This is because
+            // const-eval disables validation for performance reasons but wants to retag
+            // shared references. So we add a bit of a hack here to do the retag manually
+            // if the write would not incur validation.
+            if !M::enforce_validity(ecx, val.layout) {
+                if let Some(new_val) = M::retag_ptr_value(ecx, &val, val.layout.ty)? {
+                    val = new_val;
+                }
+            }
+            // Now do the actual write.
+            ecx.write_immediate(*val, dest)
+        })
+    }
+
+    fn eval_reborrow_into_place(
+        &mut self,
+        target_ty: Ty<'tcx>,
+        source_place: mir::Place<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        let tcx = *self.tcx;
+        let source_ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(
+            source_place.ty(self.body(), tcx).ty,
+        )?;
+        let target_ty =
+            self.instantiate_from_current_frame_and_normalize_erasing_regions(target_ty)?;
+        let (ty::Adt(source_def, source_args), ty::Adt(target_def, target_args)) =
+            (source_ty.kind(), target_ty.kind())
+        else {
+            let is_mut_to_shared_ref = if let (
+                ty::Ref(_, source_pointee, Mutability::Mut),
+                ty::Ref(_, target_pointee, Mutability::Not),
+            ) = (source_ty.kind(), target_ty.kind())
+            {
+                util::relate_types(
+                    tcx,
+                    self.typing_env,
+                    ty::Variance::Covariant,
+                    *source_pointee,
+                    *target_pointee,
+                )
+            } else {
+                false
+            };
+            if is_mut_to_shared_ref {
+                // Leaf `&mut T` to `&T` CoerceShared creates a fresh shared reborrow of the
+                // referent. It must not copy the `&mut T` value into an `&T` destination, because
+                // that would bypass reference retagging and validity checks.
+                let deref_source = source_place.project_deeper(&[mir::ProjectionElem::Deref], tcx);
+                self.write_ref_to_place(deref_source, dest, RetagMode::Default)?;
+                return interp_ok(());
+            }
+
+            let op = self.eval_place_to_op(source_place, Some(dest.layout))?;
+            self.copy_op(&op, dest)?;
+            return interp_ok(());
+        };
+
+        if source_def.did() == target_def.did() {
+            let op = self.eval_place_to_op(source_place, Some(dest.layout))?;
+            self.copy_op(&op, dest)?;
+            return interp_ok(());
+        }
+
+        let field_pairs = match reborrow::coerce_shared_field_pairs(
+            tcx,
+            *source_def,
+            *source_args,
+            *target_def,
+            *target_args,
+        ) {
+            Ok(field_pairs) => field_pairs,
+            Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+                bug!("generic shared reborrow has mismatched field styles");
+            }
+            Err(CoerceSharedFieldPairError::MissingSourceField { .. }) => {
+                bug!("generic shared reborrow is missing a source field");
+            }
+        };
+
+        for field_pair in field_pairs {
+            let source_field_ty = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(
+                    field_pair.source.ty,
+                )?;
+            let target_field_ty = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(
+                    field_pair.target.ty,
+                )?;
+            let source_field_place = source_place.project_deeper(
+                &[mir::ProjectionElem::Field(field_pair.source.index, source_field_ty)],
+                tcx,
+            );
+            let field_dest = self.project_field(dest, field_pair.target.index)?;
+            self.eval_reborrow_into_place(target_field_ty, source_field_place, &field_dest)?;
+        }
+
+        self.write_discriminant(FIRST_VARIANT, dest)?;
+        if M::enforce_validity(self, dest.layout()) {
+            self.validate_operand(
+                dest,
+                M::enforce_validity_recursively(self, dest.layout()),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
         interp_ok(())
     }
 

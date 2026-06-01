@@ -12,6 +12,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv as _};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::reborrow::{self, CoerceSharedFieldPairError};
 use rustc_session::config::OutputFilenames;
 use rustc_span::Symbol;
 
@@ -629,10 +630,8 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
                 }
-                Rvalue::Reborrow(_, _, place) => {
-                    let cplace = codegen_place(fx, place);
-                    let val = cplace.to_cvalue(fx);
-                    lval.write_cvalue(fx, val)
+                Rvalue::Reborrow(target_ty, _, place) => {
+                    codegen_reborrow_into(fx, target_ty, place, lval);
                 }
                 Rvalue::ThreadLocalRef(def_id) => {
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
@@ -952,6 +951,56 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
             }
         },
     }
+}
+
+fn codegen_reborrow_into<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    target_ty: Ty<'tcx>,
+    source_place: Place<'tcx>,
+    dest: CPlace<'tcx>,
+) {
+    let source_ty = fx.monomorphize(source_place.ty(fx.mir, fx.tcx).ty);
+    let target_ty = fx.monomorphize(target_ty);
+    let (ty::Adt(source_def, source_args), ty::Adt(target_def, target_args)) =
+        (source_ty.kind(), target_ty.kind())
+    else {
+        let source = codegen_place(fx, source_place).to_cvalue(fx);
+        dest.write_cvalue(fx, source);
+        return;
+    };
+
+    if source_def.did() == target_def.did() {
+        let source = codegen_place(fx, source_place).to_cvalue(fx);
+        dest.write_cvalue(fx, source);
+        return;
+    }
+
+    let field_pairs = match reborrow::coerce_shared_field_pairs(
+        fx.tcx,
+        *source_def,
+        *source_args,
+        *target_def,
+        *target_args,
+    ) {
+        Ok(field_pairs) => field_pairs,
+        Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+            bug!("generic shared reborrow has mismatched field styles");
+        }
+        Err(CoerceSharedFieldPairError::MissingSourceField { .. }) => {
+            bug!("generic shared reborrow is missing a source field");
+        }
+    };
+
+    for field_pair in field_pairs {
+        let source_field_ty = fx.monomorphize(field_pair.source.ty);
+        let target_field_ty = fx.monomorphize(field_pair.target.ty);
+        let source_field_place = source_place
+            .project_deeper(&[PlaceElem::Field(field_pair.source.index, source_field_ty)], fx.tcx);
+        let field_dest = dest.place_field(fx, field_pair.target.index);
+        codegen_reborrow_into(fx, target_field_ty, source_field_place, field_dest);
+    }
+
+    crate::discriminant::codegen_set_discriminant(fx, dest, FIRST_VARIANT);
 }
 
 fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {

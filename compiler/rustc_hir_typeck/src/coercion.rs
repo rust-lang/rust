@@ -54,7 +54,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized, reborrow};
 use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
@@ -963,7 +963,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(coerce)
     }
 
-    /// Applies generic exclusive reborrowing on type implementing `Reborrow`.
+    /// Applies generic shared reborrowing on types implementing `CoerceShared`.
     #[instrument(skip(self), level = "trace")]
     fn coerce_reborrow(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
@@ -1005,6 +1005,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let Some(coerce_shared_trait_did) = self.tcx.lang_items().coerce_shared() else {
             return Err(TypeError::Mismatch);
         };
+        // This is only a shape guard for producing well-formed MIR adjustments. The field-type
+        // relation remains owned by the `CoerceShared` obligation and builtin impl validation.
+        if !self.coerce_shared_reborrow_structurally_well_formed(a, b) {
+            return Err(TypeError::Mismatch);
+        }
         let coerce_shared_trait_ref = ty::TraitRef::new(self.tcx, coerce_shared_trait_did, [a, b]);
         let obligation = traits::Obligation::new(
             self.tcx,
@@ -1029,6 +1034,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         } else {
             Err(TypeError::Mismatch)
         }
+    }
+
+    fn coerce_shared_reborrow_structurally_well_formed(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        let (ty::Adt(a_def, a_args), ty::Adt(b_def, b_args)) = (a.kind(), b.kind()) else {
+            return false;
+        };
+        if !a_def.is_struct() || !b_def.is_struct() {
+            return false;
+        }
+        if reborrow::single_lifetime_arg(a_args).is_none()
+            || reborrow::single_lifetime_arg(b_args).is_none()
+        {
+            return false;
+        }
+
+        reborrow::coerce_shared_field_pairs(self.tcx, *a_def, *a_args, *b_def, *b_args).is_ok()
     }
 
     fn coerce_from_fn_pointer(

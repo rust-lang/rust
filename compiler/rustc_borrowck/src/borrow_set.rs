@@ -305,15 +305,29 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         } else if let &mir::Rvalue::Reborrow(target, mutability, borrowed_place) = rvalue {
             let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
             let &ty::Adt(reborrowed_adt, _reborrowed_args) = borrowed_place_ty.kind() else {
-                unreachable!()
+                self.tcx.dcx().span_delayed_bug(
+                    self.body.source_info(location).span,
+                    format!("generic reborrow source is not an ADT: {borrowed_place_ty:?}"),
+                );
+                return;
             };
-            let &ty::Adt(target_adt, assigned_args) = target.kind() else { unreachable!() };
+            let &ty::Adt(target_adt, assigned_args) = target.kind() else {
+                self.tcx.dcx().span_delayed_bug(
+                    self.body.source_info(location).span,
+                    format!("generic reborrow target is not an ADT: {target:?}"),
+                );
+                return;
+            };
             let Some(ty::GenericArgKind::Lifetime(region)) = assigned_args.get(0).map(|r| r.kind())
             else {
-                bug!(
-                    "hir-typeck passed but {} does not have a lifetime argument",
-                    if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
+                self.tcx.dcx().span_delayed_bug(
+                    self.body.source_info(location).span,
+                    format!(
+                        "hir-typeck passed but {} does not have a lifetime argument",
+                        if mutability == Mutability::Mut { "Reborrow" } else { "CoerceShared" }
+                    ),
                 );
+                return;
             };
             let region = region.as_var();
             let kind = if mutability == Mutability::Mut {

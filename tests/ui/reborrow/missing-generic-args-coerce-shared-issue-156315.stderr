@@ -1,0 +1,40 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-generic-args-coerce-shared-issue-156315.rs:13:29
+   |
+LL | struct CustomRef<'a, T>(&'a CustomMut);
+   |                             ^^^^^^^^^ expected named lifetime parameter
+   |
+help: consider using the `'a` lifetime
+   |
+LL | struct CustomRef<'a, T>(&'a CustomMut<'a>);
+   |                                      ++++
+
+error[E0107]: missing generics for struct `CustomMut`
+  --> $DIR/missing-generic-args-coerce-shared-issue-156315.rs:13:29
+   |
+LL | struct CustomRef<'a, T>(&'a CustomMut);
+   |                             ^^^^^^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/missing-generic-args-coerce-shared-issue-156315.rs:8:8
+   |
+LL | struct CustomMut<'a, T>(&'a mut T);
+   |        ^^^^^^^^^     -
+help: add missing generic argument
+   |
+LL | struct CustomRef<'a, T>(&'a CustomMut<T>);
+   |                                      +++
+
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/missing-generic-args-coerce-shared-issue-156315.rs:13:25
+   |
+LL | struct CustomMut<'a, T>(&'a mut T);
+   |                         --------- source field `0` has type `&'a mut T`
+...
+LL | struct CustomRef<'a, T>(&'a CustomMut);
+   |                         ^^^^^^^^^^^^^ target field `0` has type `&'a CustomMut<'_, {type error}>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0107.
+For more information about an error, try `rustc --explain E0106`.

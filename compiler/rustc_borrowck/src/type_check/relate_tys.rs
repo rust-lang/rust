@@ -40,8 +40,35 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        NllTypeRelating::new(self, locations, category, UniverseInfo::relate(a, b), v)
-            .relate(a, b)?;
+        NllTypeRelating::new(
+            self,
+            locations,
+            category,
+            UniverseInfo::relate(a, b),
+            v,
+            StructurallyRelateAliases::No,
+        )
+        .relate(a, b)?;
+        Ok(())
+    }
+
+    pub(super) fn relate_types_structurally_relating_aliases(
+        &mut self,
+        a: Ty<'tcx>,
+        v: ty::Variance,
+        b: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<(), NoSolution> {
+        NllTypeRelating::new(
+            self,
+            locations,
+            category,
+            UniverseInfo::relate(a, b),
+            v,
+            StructurallyRelateAliases::Yes,
+        )
+        .relate(a, b)?;
         Ok(())
     }
 
@@ -53,8 +80,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        NllTypeRelating::new(self, locations, category, UniverseInfo::other(), ty::Invariant)
-            .relate(a, b)?;
+        NllTypeRelating::new(
+            self,
+            locations,
+            category,
+            UniverseInfo::other(),
+            ty::Invariant,
+            StructurallyRelateAliases::No,
+        )
+        .relate(a, b)?;
         Ok(())
     }
 }
@@ -81,6 +115,8 @@ struct NllTypeRelating<'a, 'b, 'tcx> {
     ambient_variance: ty::Variance,
 
     ambient_variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+
+    structurally_relate_aliases: StructurallyRelateAliases,
 }
 
 impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
@@ -90,6 +126,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         category: ConstraintCategory<'tcx>,
         universe_info: UniverseInfo<'tcx>,
         ambient_variance: ty::Variance,
+        structurally_relate_aliases: StructurallyRelateAliases,
     ) -> Self {
         Self {
             type_checker,
@@ -98,6 +135,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             universe_info,
             ambient_variance,
             ambient_variance_info: ty::VarianceDiagInfo::default(),
+            structurally_relate_aliases,
         }
     }
 
@@ -553,7 +591,7 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
     }
 
     fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
+        self.structurally_relate_aliases
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

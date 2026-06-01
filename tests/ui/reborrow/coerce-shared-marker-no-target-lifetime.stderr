@@ -1,0 +1,23 @@
+error: implementing `CoerceShared` requires exactly one lifetime argument in the reborrowed type
+  --> $DIR/coerce-shared-marker-no-target-lifetime.rs:11:10
+   |
+LL | impl<'a> CoerceShared<CustomMarkerRef> for CustomMarker<'a> {}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-shared-marker-no-target-lifetime.rs:18:12
+   |
+LL |     method(a);
+   |     ------ ^ expected `CustomMarkerRef`, found `CustomMarker<'_>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/coerce-shared-marker-no-target-lifetime.rs:14:4
+   |
+LL | fn method(_a: CustomMarkerRef) {}
+   |    ^^^^^^ -------------------
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

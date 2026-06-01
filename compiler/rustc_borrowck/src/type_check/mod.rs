@@ -25,6 +25,7 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::reborrow::{self, CoerceSharedFieldPairError};
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
     GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
@@ -2489,9 +2490,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
 
-        let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { bug!() };
-        let [dest_arg, ..] = ***dest_args else { bug!() };
-        let ty::GenericArgKind::Lifetime(dest_region) = dest_arg.kind() else { bug!() };
+        let ty::Adt(_, dest_args) = dest_ty.kind() else {
+            span_mirbug!(
+                self,
+                borrowed_place,
+                "generic reborrow target is not an ADT: {dest_ty:?}"
+            );
+            return;
+        };
+        let Some(ty::GenericArgKind::Lifetime(dest_region)) = dest_args.get(0).map(|r| r.kind())
+        else {
+            span_mirbug!(
+                self,
+                borrowed_place,
+                "generic reborrow target does not have a lifetime argument: {dest_ty:?}"
+            );
+            return;
+        };
         constraints.liveness_constraints.add_location(dest_region.as_var(), location);
 
         // In Polonius mode, we also push a `loan_issued_at` fact
@@ -2509,65 +2524,157 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if mutability.is_not() {
-            // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
-            // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
-            // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
-            // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
-            // Field-by-field relate_types is expected to work based on the wf-checks that the
-            // CoerceShared trait performs.
-            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
-            for dest_field in dest_adt.all_fields() {
-                let Some(borrowed_field) =
-                    borrowed_fields.iter().find(|f| f.name == dest_field.name)
-                else {
-                    continue;
-                };
-                let dest_ty = dest_field.ty(tcx, dest_args).skip_norm_wip();
-                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args).skip_norm_wip();
-                if let (
-                    ty::Ref(borrow_region, _, Mutability::Mut),
-                    ty::Ref(ref_region, _, Mutability::Not),
-                ) = (borrowed_ty.kind(), dest_ty.kind())
-                {
-                    self.relate_types(
-                        borrowed_ty.peel_refs(),
-                        ty::Variance::Covariant,
-                        dest_ty.peel_refs(),
-                        location.to_locations(),
-                        category,
-                    )
-                    .unwrap();
-                    self.constraints.outlives_constraints.push(OutlivesConstraint {
-                        sup: ref_region.as_var(),
-                        sub: borrow_region.as_var(),
-                        locations: location.to_locations(),
-                        span: location.to_locations().span(self.body),
-                        category,
-                        variance_info: ty::VarianceDiagInfo::default(),
-                        from_closure: false,
-                    });
-                } else {
-                    self.relate_types(
-                        borrowed_ty,
-                        ty::Variance::Covariant,
-                        dest_ty,
-                        location.to_locations(),
-                        category,
-                    )
-                    .unwrap();
-                }
+            // CoerceShared relates distinct ADTs field-wise. Impl validation guarantees that
+            // every target field has the corresponding source field and that each field relation
+            // is Copy-compatible, recursively CoerceShared-compatible, or `&mut T` to `&T`.
+            // The loan itself is still issued for `borrowed_place` as a whole, so source-only
+            // fields remain protected for the inferred target lifetime. Under the current
+            // single-lifetime impl model, that is the source lifetime.
+            if self
+                .add_generic_shared_reborrow_constraints(
+                    location,
+                    borrowed_place,
+                    borrowed_ty,
+                    dest_ty,
+                    category,
+                )
+                .is_err()
+            {
+                return;
             }
         } else {
             // Exclusive reborrow
-            self.relate_types(
+            if let Err(terr) = self.relate_types(
                 borrowed_ty,
                 ty::Variance::Covariant,
                 dest_ty,
                 location.to_locations(),
                 category,
-            )
-            .unwrap();
+            ) {
+                span_mirbug!(
+                    self,
+                    borrowed_place,
+                    "bad generic exclusive reborrow relation ({:?}: {:?}): {:?}",
+                    borrowed_ty,
+                    dest_ty,
+                    terr
+                );
+            }
+        }
+    }
+
+    fn add_generic_shared_reborrow_constraints(
+        &mut self,
+        location: Location,
+        borrowed_place: &Place<'tcx>,
+        borrowed_ty: Ty<'tcx>,
+        dest_ty: Ty<'tcx>,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<(), ()> {
+        let tcx = self.tcx();
+        let borrowed_ty = self.normalize(ty::Unnormalized::new_wip(borrowed_ty), location);
+        let dest_ty = self.normalize(ty::Unnormalized::new_wip(dest_ty), location);
+
+        if let (
+            ty::Ref(borrow_region, _, Mutability::Mut),
+            ty::Ref(ref_region, _, Mutability::Not),
+        ) = (borrowed_ty.kind(), dest_ty.kind())
+        {
+            if let Err(terr) = self.relate_types_structurally_relating_aliases(
+                borrowed_ty.peel_refs(),
+                ty::Variance::Covariant,
+                dest_ty.peel_refs(),
+                location.to_locations(),
+                category,
+            ) {
+                span_mirbug!(
+                    self,
+                    borrowed_place,
+                    "bad generic shared reborrow field relation ({:?}: {:?}): {:?}",
+                    borrowed_ty,
+                    dest_ty,
+                    terr
+                );
+                return Err(());
+            }
+
+            self.constraints.outlives_constraints.push(OutlivesConstraint {
+                sup: ref_region.as_var(),
+                sub: borrow_region.as_var(),
+                locations: location.to_locations(),
+                span: location.to_locations().span(self.body),
+                category,
+                variance_info: ty::VarianceDiagInfo::default(),
+                from_closure: false,
+            });
+            return Ok(());
+        }
+
+        match (borrowed_ty.kind(), dest_ty.kind()) {
+            (ty::Adt(borrowed_adt, borrowed_args), ty::Adt(dest_adt, dest_args))
+                if borrowed_adt.did() != dest_adt.did() =>
+            {
+                let field_pairs = match reborrow::coerce_shared_field_pairs(
+                    tcx,
+                    *borrowed_adt,
+                    *borrowed_args,
+                    *dest_adt,
+                    *dest_args,
+                ) {
+                    Ok(field_pairs) => field_pairs,
+                    Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+                        span_mirbug!(
+                            self,
+                            borrowed_place,
+                            "generic shared reborrow has unsupported field structure: \
+                             {borrowed_ty:?} -> {dest_ty:?}"
+                        );
+                        return Err(());
+                    }
+                    Err(CoerceSharedFieldPairError::MissingSourceField { .. }) => {
+                        span_mirbug!(
+                            self,
+                            borrowed_place,
+                            "generic shared reborrow is missing a source field: \
+                             {borrowed_ty:?} -> {dest_ty:?}"
+                        );
+                        return Err(());
+                    }
+                };
+
+                for field_pair in field_pairs {
+                    self.add_generic_shared_reborrow_constraints(
+                        location,
+                        borrowed_place,
+                        field_pair.source.ty,
+                        field_pair.target.ty,
+                        category,
+                    )?;
+                }
+
+                Ok(())
+            }
+            _ => {
+                if let Err(terr) = self.relate_types_structurally_relating_aliases(
+                    borrowed_ty,
+                    ty::Variance::Covariant,
+                    dest_ty,
+                    location.to_locations(),
+                    category,
+                ) {
+                    span_mirbug!(
+                        self,
+                        borrowed_place,
+                        "bad generic shared reborrow field relation ({:?}: {:?}): {:?}",
+                        borrowed_ty,
+                        dest_ty,
+                        terr
+                    );
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 

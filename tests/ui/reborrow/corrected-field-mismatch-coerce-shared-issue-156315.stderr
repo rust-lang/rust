@@ -1,0 +1,10 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/corrected-field-mismatch-coerce-shared-issue-156315.rs:11:25
+   |
+LL | struct CustomMut<'a, T>(&'a mut T);
+   |                         --------- source field `0` has type `&'a mut T`
+...
+LL | struct CustomRef<'a, T>(&'a CustomMut<'a, T>);
+   |                         ^^^^^^^^^^^^^^^^^^^^ target field `0` has type `&'a CustomMut<'a, T>`
+
+error: aborting due to 1 previous error

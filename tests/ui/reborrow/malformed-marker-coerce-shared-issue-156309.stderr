@@ -1,0 +1,62 @@
+error: expected type, found lifetime
+  --> $DIR/malformed-marker-coerce-shared-issue-156309.rs:21:43
+   |
+LL | fn method<'a>(_a: CustomMarkerRef<'a>) -> 'a () {
+   |                                           ^^ expected type
+   |
+help: you might have meant to write a reference type here
+   |
+LL | fn method<'a>(_a: CustomMarkerRef<'a>) -> &'a () {
+   |                                           +
+
+error[E0573]: expected type, found derive macro `Debug`
+  --> $DIR/malformed-marker-coerce-shared-issue-156309.rs:12:41
+   |
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, Copy)>);
+   |                                         ^^^^^ not a type
+   |
+help: consider importing this trait instead
+   |
+LL + use std::fmt::Debug;
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/malformed-marker-coerce-shared-issue-156309.rs:12:48
+   |
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, Copy)>);
+   |                                                ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, dyn Clone, Copy)>);
+   |                                                +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/malformed-marker-coerce-shared-issue-156309.rs:12:55
+   |
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, Copy)>);
+   |                                                       ^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, dyn Copy)>);
+   |                                                       +++
+
+error[E0277]: the trait bound `CustomMarkerRef<'a>: Copy` is not satisfied
+  --> $DIR/malformed-marker-coerce-shared-issue-156309.rs:18:10
+   |
+LL | impl<'a> CoerceShared<CustomMarkerRef<'a>> for CustomMarker<'a> {}
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `CustomMarkerRef<'a>`
+   |
+note: required by a bound in `CoerceShared`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+help: consider annotating `CustomMarkerRef<'a>` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, Copy)>);
+   |
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0573, E0782.
+For more information about an error, try `rustc --explain E0277`.

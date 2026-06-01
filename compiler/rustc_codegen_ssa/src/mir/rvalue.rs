@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
+use rustc_middle::ty::reborrow::{self, CoerceSharedFieldPairError};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
@@ -195,11 +196,125 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 dest.codegen_set_discr(bx, variant_index);
             }
 
+            mir::Rvalue::Reborrow(target_ty, _, place) => {
+                self.codegen_reborrow_into(bx, target_ty, place, dest);
+            }
+
             _ => {
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
                 temp.store_with_annotation(bx, dest);
             }
         }
+    }
+
+    fn codegen_reborrow_into(
+        &mut self,
+        bx: &mut Bx,
+        target_ty: Ty<'tcx>,
+        source_place: mir::Place<'tcx>,
+        dest: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        let source_ty = source_place.ty(self.mir, bx.tcx()).ty;
+        let Some(fields) = self.reborrow_field_pairs(source_place, source_ty, target_ty) else {
+            let op = self.codegen_reborrow_operand(bx, target_ty, source_place);
+            op.store_with_annotation(bx, dest);
+            return;
+        };
+
+        let variant_dest = dest.project_downcast(bx, FIRST_VARIANT);
+        for (target_field, target_field_ty, source_field_place) in fields {
+            let target_field_dest = variant_dest.project_field(bx, target_field.as_usize());
+            self.codegen_reborrow_into(bx, target_field_ty, source_field_place, target_field_dest);
+        }
+        dest.codegen_set_discr(bx, FIRST_VARIANT);
+    }
+
+    fn codegen_reborrow_operand(
+        &mut self,
+        bx: &mut Bx,
+        target_ty: Ty<'tcx>,
+        source_place: mir::Place<'tcx>,
+    ) -> OperandRef<'tcx, Bx::Value> {
+        let target_ty = self.monomorphize(target_ty);
+        let target_layout = self.cx.layout_of(target_ty);
+        if target_layout.is_zst() {
+            return OperandRef {
+                val: OperandValue::ZeroSized,
+                layout: target_layout,
+                move_annotation: None,
+            };
+        }
+
+        let source_ty = source_place.ty(self.mir, bx.tcx()).ty;
+        let Some(fields) = self.reborrow_field_pairs(source_place, source_ty, target_ty) else {
+            let source = self.codegen_operand(bx, &mir::Operand::Copy(source_place));
+            return OperandRef { val: source.val, layout: target_layout, move_annotation: None };
+        };
+
+        if let BackendRepr::Memory { .. } = target_layout.backend_repr {
+            let scratch = PlaceRef::alloca(bx, target_layout);
+            self.codegen_reborrow_into(bx, target_ty, source_place, scratch);
+            return OperandRef {
+                val: OperandValue::Ref(scratch.val),
+                layout: target_layout,
+                move_annotation: None,
+            };
+        }
+
+        let mut builder = OperandRefBuilder::new(target_layout);
+        for (target_field, target_field_ty, source_field_place) in fields {
+            let op = self.codegen_reborrow_operand(bx, target_field_ty, source_field_place);
+            builder.insert_field(bx, FIRST_VARIANT, target_field, op);
+        }
+        builder.build(bx.cx())
+    }
+
+    fn reborrow_field_pairs(
+        &self,
+        source_place: mir::Place<'tcx>,
+        source_ty: Ty<'tcx>,
+        target_ty: Ty<'tcx>,
+    ) -> Option<Vec<(FieldIdx, Ty<'tcx>, mir::Place<'tcx>)>> {
+        let source_ty = self.monomorphize(source_ty);
+        let target_ty = self.monomorphize(target_ty);
+        let (ty::Adt(source_def, source_args), ty::Adt(target_def, target_args)) =
+            (source_ty.kind(), target_ty.kind())
+        else {
+            return None;
+        };
+        if source_def.did() == target_def.did() {
+            return None;
+        }
+
+        let tcx = self.cx.tcx();
+        let field_pairs = match reborrow::coerce_shared_field_pairs(
+            tcx,
+            *source_def,
+            *source_args,
+            *target_def,
+            *target_args,
+        ) {
+            Ok(field_pairs) => field_pairs,
+            Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+                bug!("generic shared reborrow has mismatched field styles");
+            }
+            Err(CoerceSharedFieldPairError::MissingSourceField { .. }) => {
+                bug!("generic shared reborrow is missing a source field");
+            }
+        };
+
+        let mut fields = Vec::new();
+        for field_pair in field_pairs {
+            let source_field_ty = self.monomorphize(field_pair.source.ty);
+            let target_field_ty = self.monomorphize(field_pair.target.ty);
+            let source_field_place = source_place.project_deeper(
+                &[mir::ProjectionElem::Field(field_pair.source.index, source_field_ty)],
+                tcx,
+            );
+            fields.push((field_pair.target.index, target_field_ty, source_field_place));
+        }
+
+        Some(fields)
     }
 
     /// Transmutes the `src` value to the destination type by writing it to `dst`.
@@ -525,12 +640,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            // Note: Exclusive reborrowing is always equal to a memcpy, as the types do not change.
-            // Generic shared reborrowing is not (necessarily) a simple memcpy, but currently the
-            // coherence check places such restrictions on the CoerceShared trait as to guarantee
-            // that it is.
-            mir::Rvalue::Reborrow(_, _, place) => {
-                self.codegen_operand(bx, &mir::Operand::Copy(place))
+            mir::Rvalue::Reborrow(target_ty, _, place) => {
+                self.codegen_reborrow_operand(bx, target_ty, place)
             }
 
             mir::Rvalue::RawPtr(kind, place) => {

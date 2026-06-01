@@ -7,7 +7,7 @@
 
 use std::marker::{CoerceShared, Reborrow};
 
-pub struct MyMut<'a>(&'a u8);
+pub struct MyMut<'a>(&'a mut u8);
 
 impl Reborrow for MyMut<'_> {}
 
@@ -17,11 +17,11 @@ pub struct MyRef<'a>(&'a u8);
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
 
 const fn consteval_reproducer() {
-    let value = 1;
-    foo(MyMut(&value));
+    let mut value = 1;
+    foo(MyMut(&mut value));
 }
 
-const fn foo(x: MyRef<'_>) {}
+const fn foo(_x: MyRef<'_>) {}
 
 fn main() {
     const { consteval_reproducer(); }
