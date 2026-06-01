@@ -38,6 +38,7 @@
 #[cold]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
+#[allow(rustc::missing_panic_entrypoint)]
 pub fn abort_immediate() -> ! {
     crate::intrinsics::abort()
 }
