@@ -7,7 +7,7 @@
 use std::iter::zip;
 
 use either::Either;
-use hir::{EditionedFileId, Semantics};
+use hir::{EditionedFileId, Semantics, name};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use stdx::to_lower_snake_case;
@@ -195,15 +195,16 @@ fn should_hide_param_name_hint(
     // - the argument is a qualified constructing or call expression where the qualifier is an ADT
     // - exact argument<->parameter match(ignoring leading and trailing underscore) or
     //   parameter is a prefix/suffix of argument with _ splitting it off
-    // - param starts with `ra_fixture` or `<ra@`
+    // - param starts with `ra_fixture`
     // - param is a well known name in a unary function
+    // - param is generated name
 
     let param_name = param_name.trim_matches('_');
     if param_name.is_empty() {
         return true;
     }
 
-    if param_name.starts_with("ra_fixture") || param_name.starts_with("<ra@") {
+    if param_name.starts_with("ra_fixture") || name::is_generated(param_name) {
         return true;
     }
 
