@@ -988,7 +988,7 @@ fn clean_ty_generics_inner<'tcx>(
         where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect();
 
     let mut generics = Generics { params, where_predicates };
-    simplify::sized_bounds(cx, &mut generics);
+    simplify::sizedness_bounds(cx, &mut generics);
     generics.where_predicates = simplify::where_clauses(cx.tcx, generics.where_predicates);
     generics
 }

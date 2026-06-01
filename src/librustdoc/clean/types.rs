@@ -1201,11 +1201,8 @@ impl GenericBound {
     }
 
     fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
-        if let GenericBound::TraitBound(
-            PolyTrait { ref trait_, .. },
-            rustc_hir::TraitBoundModifiers::NONE,
-        ) = *self
-            && tcx.is_lang_item(trait_.def_id(), lang_item)
+        if let GenericBound::TraitBound(poly_trait_ref, rustc_hir::TraitBoundModifiers::NONE) = self
+            && tcx.is_lang_item(poly_trait_ref.trait_.def_id(), lang_item)
         {
             return true;
         }
@@ -1213,8 +1210,8 @@ impl GenericBound {
     }
 
     pub(crate) fn get_trait_path(&self) -> Option<Path> {
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
-            Some(trait_.clone())
+        if let GenericBound::TraitBound(poly_trait_ref, _) = self {
+            Some(poly_trait_ref.trait_.clone())
         } else {
             None
         }
