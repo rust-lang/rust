@@ -203,6 +203,16 @@ pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
     /// Determines the load function for this type.
     fn get_load_function(&self) -> String;
 
+    /// Determines the comparison function for this type.
+    fn get_comparison_function(&self) -> String {
+        match self.simd_len {
+            Some(SimdLen::Scalable) => unimplemented!("architecture-specific"),
+            Some(SimdLen::Fixed(_)) | None => {
+                default_fixed_vector_comparison(self, self.num_lanes())
+            }
+        }
+    }
+
     /// Gets a string containing the typename for this type in C.
     fn c_type(&self) -> String;
 
@@ -217,4 +227,44 @@ pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
         ty.vec_len = None;
         ty.rust_type()
     }
+}
+
+/// Returns the default comparison between results of an intrinsic - casting the vectors to arrays
+/// and using `assert_eq` - using `NanEqF*` where required for floats.
+pub(crate) fn default_fixed_vector_comparison<Ty: TypeDefinition>(
+    ty: &Ty,
+    num_lanes: u32,
+) -> String {
+    let (cast_prefix, cast_suffix) = if ty.is_simd() {
+        (
+            format!(
+                "std::mem::transmute::<_, [{}; {}]>(",
+                ty.rust_scalar_type().replace("f", "NanEqF"),
+                num_lanes * ty.num_vectors()
+            ),
+            ")",
+        )
+    } else if ty.kind == TypeKind::Float {
+        (
+            match ty.inner_size() {
+                16 => format!("NanEqF16("),
+                32 => format!("NanEqF32("),
+                64 => format!("NanEqF64("),
+                _ => unimplemented!(),
+            },
+            ")",
+        )
+    } else {
+        ("".to_string(), "")
+    };
+
+    format!(
+        r#"
+assert_eq!(
+    {cast_prefix}__rust_return_value{cast_suffix},
+    {cast_prefix}__c_return_value{cast_suffix},
+    "{{id}}"
+);
+"#,
+    )
 }
