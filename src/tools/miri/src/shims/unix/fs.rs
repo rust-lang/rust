@@ -64,6 +64,10 @@ impl UnixFileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        if !self.readable {
+            return finish.call(ecx, Err(LibcError("EBADF")));
+        }
+
         let mut bytes = vec![0; len];
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
@@ -101,6 +105,10 @@ impl UnixFileDescription for FileHandle {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        if !self.writable {
+            return finish.call(ecx, Err(LibcError("EBADF")));
+        }
+
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
@@ -387,6 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("access mode flags on this target are unsupported");
         }
         let mut writable = true;
+        let mut readable = true;
 
         // Now we check the access mode
         let access_mode = flag & 0b11;
@@ -396,6 +405,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             writable = false;
             options.read(true);
         } else if access_mode == o_wronly {
+            readable = false;
             options.write(true);
         } else if access_mode == o_rdwr {
             options.read(true).write(true);
@@ -495,7 +505,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = options
             .open(path)
-            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable }));
+            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable, readable }));
 
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
@@ -945,12 +955,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // The docs don't talk about what happens for non-regular files...
             throw_unsup_format!("`fchmod` is only supported on regular files")
         };
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fchmod`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        if !file.writable && !file.readable {
+            // Apparently, `fchmod` on a read-only file is fine. But let's not allow it on a
+            // path-only file.
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
         let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
         if let Err(err) = file.file.set_permissions(permissions) {
@@ -1306,33 +1316,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn ftruncate64(&mut self, fd_num: i32, length: i128) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`ftruncate64`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        }
-
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
-
         let Some(file) = fd.downcast::<FileHandle>() else {
             // The docs say that EINVAL is returned when the FD "does not reference a regular file
             // or a POSIX shared memory object" (and we don't support shmem objects).
-            return interp_ok(this.eval_libc("EINVAL"));
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
+        if !file.writable {
+            // man page says "EBADF or EINVAL", Linux seems to use EINVAL.
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        }
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        if file.writable {
-            if let Ok(length) = length.try_into() {
-                let result = file.file.set_len(length);
-                let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
-                interp_ok(Scalar::from_i32(result))
-            } else {
-                this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
-            }
+        if let Ok(length) = length.try_into() {
+            let result = file.file.set_len(length);
+            let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
+            interp_ok(Scalar::from_i32(result))
         } else {
-            // The file is not writable
             this.set_errno_and_return_neg1_i32(LibcError("EINVAL"))
         }
     }
@@ -1405,13 +1407,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fsync`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        }
-
         self.ffullsync_fd(fd)
     }
 
@@ -1424,6 +1419,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_all);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1433,13 +1430,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fdatasync`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        }
-
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
@@ -1447,6 +1437,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1475,13 +1467,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`sync_file_range`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
-        }
-
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
@@ -1489,6 +1474,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let file = fd.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!("`sync_data_range` is only supported on file-backed file descriptors")
         })?;
+        assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
+
         let io_result = maybe_sync_file(&file.file, file.writable, File::sync_data);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
@@ -1714,7 +1701,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let file = fopts.open(bytes_to_os_str(template_bytes)?);
             match file {
                 Ok(f) => {
-                    let fd = this.machine.fds.insert_new(FileHandle { file: f, writable: true });
+                    let fd = this.machine.fds.insert_new(FileHandle {
+                        file: f,
+                        writable: true,
+                        readable: true,
+                    });
                     return interp_ok(Scalar::from_i32(fd));
                 }
                 Err(e) =>

@@ -1,4 +1,4 @@
-use std::fs::{Metadata, OpenOptions};
+use std::fs::{self, Dir};
 use std::io;
 use std::io::SeekFrom;
 use std::time::SystemTime;
@@ -7,38 +7,9 @@ use bitflags::bitflags;
 use rustc_abi::Size;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{FdId, FileDescription, FileHandle};
+use crate::shims::files::{DirHandle, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
-
-/// Windows supports handles without any read/write/delete permissions - these handles can get
-/// metadata, but little else. We represent that by storing the metadata from the time the handle
-/// was opened.
-#[derive(Debug)]
-pub struct MetadataHandle {
-    pub(crate) meta: Metadata,
-}
-
-impl FileDescription for MetadataHandle {
-    fn name(&self) -> &'static str {
-        "metadata-only"
-    }
-
-    fn metadata<'tcx>(
-        &self,
-    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
-        interp_ok(Either::Left(Ok(self.meta.clone())))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
-    }
-}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum CreationDisposition {
@@ -186,8 +157,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("CreateFileW: Template files are not supported");
         }
 
-        // We need to know if the file is a directory to correctly open directory handles.
-        // This is racy, but currently the stdlib doesn't appear to offer a better solution.
+        // We need to know if the file is a directory to correctly open directory handles. This is
+        // racy, but currently the stdlib doesn't appear to offer a better solution. We do later
+        // verify that our guess was correct so worst-case, Miri ICEs here.
+        // FIXME: retry in a loop if we get an error indicating we got the wrong file type?
         let is_dir = file_name.is_dir();
 
         // BACKUP_SEMANTICS is how Windows calls the act of opening a directory handle.
@@ -199,7 +172,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let desired_read = desired_access & generic_read != 0;
         let desired_write = desired_access & generic_write != 0;
 
-        let mut options = OpenOptions::new();
+        let mut options = fs::OpenOptions::new();
         if desired_read {
             desired_access &= !generic_read;
             options.read(true);
@@ -233,23 +206,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let handle = if is_dir {
-            // Open this as a directory. We don't support proper directory handles, but we only need
-            // this for the metadata, so we only store that. That still makes us immune to races,
-            // though it also means we fail to reflect changes to the dir's metadata.
-            // FIXME: use `std::fs::Dir`, once that supports getting metadata.
-            file_name.metadata().map(|meta| {
-                let fd_num = this.machine.fds.insert_new(MetadataHandle { meta });
-                Handle::File(fd_num)
-            })
-        } else if creation_disposition == OpenExisting && !(desired_read || desired_write) {
-            // Windows supports handles with no permissions. These allow things such as reading
-            // metadata, but not file content.
-            file_name.metadata().map(|meta| {
-                let fd_num = this.machine.fds.insert_new(MetadataHandle { meta });
+            // Open this as a directory.
+            // FIXME: shouldn't we check `creation_disposition` here?
+            Dir::open(&file_name).map(|dir| {
+                #[cfg(not(bootstrap))]
+                assert!(
+                    dir.metadata().unwrap().is_dir(),
+                    "we tried to open a directory and got a file"
+                );
+                let fd_num = this.machine.fds.insert_new(DirHandle { dir, path: file_name });
                 Handle::File(fd_num)
             })
         } else {
-            // Open this as a standard file.
+            // Open this as a standard file. We already set the `read`/`write` flags above,
+            // but we still need to represent the `creation_disposition`.
             match creation_disposition {
                 CreateAlways | OpenAlways => {
                     options.create(true);
@@ -266,15 +236,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         options.append(true);
                     }
                 }
-                OpenExisting => {} // Default options
+                OpenExisting => {
+                    if !desired_read && !desired_write {
+                        // Windows supports handles with no permissions. These allow things such as
+                        // reading metadata, but not file content. This is used by `Path::metadata`.
+                        // `std` does not support this. To ensure we behave correctly as often as
+                        // possible, we open the file for reading and live with the fact that this
+                        // might incorrectly return `PermissionDenied`.
+                        // FIXME: We could probably use `OpenOptionsExt`? On a Unix host,
+                        // `O_PATH` apparently can open files for metadata use only.
+                        options.read(true);
+                    }
+                }
                 TruncateExisting => {
                     options.truncate(true);
                 }
             }
 
             options.open(file_name).map(|file| {
-                let fd_num =
-                    this.machine.fds.insert_new(FileHandle { file, writable: desired_write });
+                assert!(
+                    !file.metadata().unwrap().is_dir(),
+                    "we tried to open a file and got a directory"
+                );
+                let fd_num = this.machine.fds.insert_new(FileHandle {
+                    file,
+                    writable: desired_write,
+                    readable: desired_read,
+                });
                 Handle::File(fd_num)
             })
         };
