@@ -22,7 +22,7 @@ extern crate minicore;
 use minicore::*;
 
 // A basic test function.
-// CHECK: @test(){{.*}} [[ATTR:#[0-9]+]] {
+// CHECK: @test(){{.*}} [[ATTR:#[0-9]+]]
 #[no_mangle]
 pub fn test() {}
 
