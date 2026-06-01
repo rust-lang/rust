@@ -7,7 +7,7 @@ use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::{test_values_array_name, test_values_array_static};
-use crate::common::{PASSES, SupportedArchitecture};
+use crate::common::{PASSES, PREDICATE_LOCAL, SupportedArchitecture};
 
 /// Rust definitions that are included verbatim in the generated source. In particular, defines
 /// a wrapper around float types that defines `NaN`s to be equal reflexively to enable
@@ -181,6 +181,7 @@ let specializations = [{specializations}];
 for (id, rust, c) in specializations {{
     for i in 0..{PASSES} {{
         unsafe {{
+            {predicate}
             {loaded_args}
             let __rust_return_value = rust({rust_args});
 
@@ -229,6 +230,14 @@ for (id, rust, c) in specializations {{
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
+        predicate = if intrinsic.has_scalable_argument_or_result() {
+            format!(
+                "let {PREDICATE_LOCAL} = {pred};",
+                pred = A::predicate_function(intrinsic.results.inner_size()),
+            )
+        } else {
+            "".to_string()
+        },
         comparison = intrinsic.results.comparison_function(),
     )
 }

@@ -138,6 +138,10 @@ impl SupportedArchitecture for Arm {
 
         Self(intrinsics)
     }
+
+    fn predicate_function(_: u32) -> String {
+        todo!("implemented in a later commit")
+    }
 }
 
 const RUST_PRELUDE: &str = r#"

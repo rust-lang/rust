@@ -1,5 +1,5 @@
 use super::argument::ArgumentList;
-use crate::common::SupportedArchitecture;
+use crate::common::{SupportedArchitecture, intrinsic_helpers::SimdLen};
 use itertools::Itertools;
 
 /// An intrinsic
@@ -35,5 +35,14 @@ impl<A: SupportedArchitecture> Intrinsic<A> {
             .filter_map(|arg| arg.constraint.as_ref())
             .map(|constraint| constraint.into_iter())
             .multi_cartesian_product()
+    }
+
+    /// Returns `true` if this intrinsic has any argument or result types that are scalable vectors
+    pub fn has_scalable_argument_or_result(&self) -> bool {
+        self.results.num_lanes() == SimdLen::Scalable
+            || self
+                .arguments
+                .iter()
+                .any(|a| a.ty.num_lanes() == SimdLen::Scalable)
     }
 }

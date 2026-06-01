@@ -23,6 +23,12 @@ mod gen_c;
 mod gen_rust;
 mod values;
 
+/// Many scalable intrinsics take a predicate argument and for the purposes of intrinsic testing,
+/// a predicate that enables all lanes is used for all of these intrinsic calls (i.e. loading inputs,
+/// result comparison, and the intrinsic under test). This constant defines the name of the local
+/// variable that contains that predicate.
+pub const PREDICATE_LOCAL: &'static str = "__pred";
+
 // The number of times each intrinsic will be called - influences the generation of the
 // test arrays to minimise repeated testing of the same test values.
 pub(crate) const PASSES: u32 = 20;
@@ -100,6 +106,9 @@ pub trait SupportedArchitecture: Sized {
             .collect::<Result<(), std::io::Error>>()
             .unwrap();
     }
+
+    /// Return a call to a intrinsic to generate a predicate, if reqd.
+    fn predicate_function(_: u32) -> String;
 }
 
 pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
