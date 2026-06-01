@@ -47,9 +47,9 @@ fn box_clone_from_ptr_stability() {
     for size in (0..8).map(|i| 2usize.pow(i)) {
         let control = vec![Dummy { _data: 42 }; size].into_boxed_slice();
         let mut copy = vec![Dummy { _data: 84 }; size].into_boxed_slice();
-        let copy_raw = copy.as_ptr() as usize;
+        let copy_raw = copy.as_ptr();
         copy.clone_from(&control);
-        assert_eq!(copy.as_ptr() as usize, copy_raw);
+        assert_eq!(copy.as_ptr(), copy_raw);
     }
 }
 
