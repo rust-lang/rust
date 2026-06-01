@@ -19,7 +19,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::offload_meta::OffloadMetadata;
+use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -186,6 +186,17 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
 
         codegen_offload_preload(self, tcx, instance, args);
+    }
+
+    fn codegen_offload_preload_mut_drop(
+        &mut self,
+        preload_ty: Ty<'tcx>,
+        place: PlaceRef<'tcx, &'ll llvm::Value>,
+    ) {
+        let tcx = self.tcx;
+        dbg!("Dropping PreloadMut; emit offload end mapper");
+
+        codegen_offload_preload_mut_drop(self, tcx, preload_ty, place);
     }
 
     fn codegen_intrinsic_call(
@@ -1908,6 +1919,83 @@ fn codegen_autodiff<'ll, 'tcx>(
         &diff_attrs,
         result,
         fnc_tree,
+    );
+}
+
+fn codegen_offload_preload_mut_drop<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    preload_ty: Ty<'tcx>,
+    place: PlaceRef<'tcx, &'ll llvm::Value>,
+) {
+    let cx = bx.cx;
+    dbg!("Starting the PreloadMut drop handling!");
+    // PreloadMut<'a, T> -> extract T.
+    let ty::Adt(_adt_def, generic_args) = preload_ty.kind() else {
+        bug!("expected PreloadMut ADT, got {preload_ty:?}");
+    };
+
+    // This should be the `T` parameter of PreloadMut<'a, T>.
+    // If this indexes the lifetime in your tree, use the correct type arg index
+    // or `generic_args.types().next().unwrap()`.
+    let pointee_ty: Ty<'tcx> =
+        generic_args.types().next().unwrap_or_else(|| bug!("PreloadMut without type parameter"));
+
+    // Load field 0: `cpu_ptr: *mut T`.
+    let cpu_ptr_place = place.project_field(bx, 0);
+    dbg!(&cpu_ptr_place);
+    let cpu_ptr_operand = bx.load_operand(cpu_ptr_place);
+    dbg!(&cpu_ptr_operand);
+
+    let args: Vec<&'ll Value> = match cpu_ptr_operand.val {
+        OperandValue::Immediate(ptr) => vec![ptr],
+        OperandValue::Pair(_data, _meta) => {
+            bug!("unsized PreloadMut drop not handled yet")
+        }
+        _ => bug!("unexpected PreloadMut cpu_ptr operand"),
+    };
+
+    let mut meta = OffloadMetadata::from_ty(tcx, pointee_ty);
+    // We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we
+    // must return it from the device to update the host version. If they never mutated it, they
+    // surely got a clippy or rustc warning, so it's up to them for wasting time.
+    meta.mode |= MappingFlags::FROM;
+    dbg!(&meta);
+    let metadata: &[OffloadMetadata; 1] = &[meta];
+
+    let types: &Type = cx.layout_of(pointee_ty).llvm_type(cx);
+
+    let offload_globals_ref = cx.offload_globals.borrow();
+    let offload_globals = match offload_globals_ref.as_ref() {
+        Some(globals) => globals,
+        None => {
+            dbg!("Have to initialize offload? This is a bug!");
+            return;
+        }
+    };
+
+    let target_symbol = cx.generate_local_symbol_name("");
+    dbg!("done for now");
+    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals);
+    let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
+    let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
+        bx,
+        &args,
+        &[types],
+        offload_data.offload_sizes,
+        metadata,
+        has_dynamic,
+    );
+    let geps = crate::builder::gpu_helper::get_geps(bx, ty, ty2, a1, a2, a4, has_dynamic);
+
+    crate::builder::gpu_helper::generate_mapper_call(
+        bx,
+        geps,
+        offload_data.memtransfer_end,
+        offload_globals.end_mapper,
+        offload_globals.mapper_fn_ty,
+        1,
+        offload_globals.ident_t_global,
     );
 }
 

@@ -31,3 +31,13 @@ pub fn preload<'a, T: ?Sized>(x: &'a T) -> Preload<'a, T> {
 pub fn preload_mut<'a, T: ?Sized>(x: &'a mut T) -> PreloadMut<'a, T> {
     PreloadMut { cpu_ptr: x as *mut T, _marker: PhantomData }
 }
+
+impl<T: ?Sized> Drop for PreloadMut<'_, T> {
+    fn drop(&mut self) {
+        // Intentionally empty.
+        //
+        // This exists so MIR creates Drop terminators for PreloadMut.
+        // rustc codegen intercepts those terminators and emits the
+        // offload return mapper.
+    }
+}

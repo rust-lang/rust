@@ -9,7 +9,7 @@ use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned};
@@ -26,6 +26,14 @@ use crate::errors::CompilerBuiltinsCannotCall;
 use crate::mir::IntrinsicResult;
 use crate::traits::*;
 use crate::{MemFlags, meth};
+
+fn is_preload_mut_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let ty::Adt(adt_def, _) = ty.kind() else {
+        return false;
+    };
+
+    Some(adt_def.did()) == tcx.lang_items().preload_mut_type()
+}
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -604,6 +612,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
+
+        if is_preload_mut_type(bx.tcx(), ty) {
+            let place = self.codegen_place(bx, location.as_ref());
+
+            bx.codegen_offload_preload_mut_drop(ty, place);
+        }
         let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 
         if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
