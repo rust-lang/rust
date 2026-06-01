@@ -40,57 +40,60 @@ fn tts_to_mac_result<'cx, 'sess>(
 }
 
 macro_rules! forward_to_parser_any_macro {
-    ($method_name:ident, $ret_ty:ty) => {
+    ($method_name:ident, $ret_ty:ty, $other:expr, $selected:expr) => {
         fn $method_name(self: Box<Self>) -> Option<$ret_ty> {
-            let CfgSelectResult { ecx, site_span, selected_tts, selected_span, .. } = *self;
-
-            for (_, tts, span) in self.other_branches.into_iter_tts() {
-                let _ = tts_to_mac_result(ecx, site_span, tts, span).$method_name();
-            }
-
-            tts_to_mac_result(ecx, site_span, selected_tts, selected_span).$method_name()
-        }
-    };
-
-    (make_items) => {
-        // The same logic as above, but we also register the items that were not selected in the
-        // resolver for error reporting, as well as annotate the selected item with `#[cfg_trace]`.
-        fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
             let CfgSelectResult { ecx, site_span, selected_tts, selected_span, cfg_entry, .. } =
                 *self;
 
             for (cfg_entry, tts, span) in self.other_branches.into_iter_tts() {
-                if let Some(items) = tts_to_mac_result(ecx, site_span, tts, span).make_items() {
-                    // Register item names that were not selected for error reporting. We do this
-                    // for `#[cfg]` too.
-                    for item in items {
-                        for name in item.declared_idents() {
-                            ecx.resolver.append_stripped_cfg_item(
-                                ecx.current_expansion.lint_node_id,
-                                name,
-                                cfg_entry.clone(),
-                                span,
-                            );
-                        }
-                    }
-                }
+                let result = tts_to_mac_result(ecx, site_span, tts, span).$method_name();
+                ($other)(&mut *ecx, cfg_entry, span, result);
             }
 
-            tts_to_mac_result(ecx, site_span, selected_tts, selected_span).make_items().map(
-                |items| {
-                    items
-                        .into_iter()
-                        .map(|mut item| {
-                            item.attrs.push(mk_attr(
-                                &ecx.sess.psess.attr_id_generator,
-                                cfg_entry.clone(),
-                            ));
-                            item
-                        })
-                        .collect()
-                },
-            )
+            tts_to_mac_result(ecx, site_span, selected_tts, selected_span)
+                .$method_name()
+                .map(|elements| ($selected)(&mut *ecx, cfg_entry, elements))
         }
+    };
+
+    ($method_name:ident, $ret_ty:ty) => {
+        forward_to_parser_any_macro!($method_name, $ret_ty, |_, _, _, _| {}, |_, _, elements| {
+            elements
+        });
+    };
+
+    (make_items) => {
+        forward_to_parser_any_macro!(
+            make_items,
+            SmallVec<[Box<ast::Item>; 1]>,
+            |ecx: &mut ExtCtxt<'_>,
+             cfg_entry: CfgEntry,
+             span: Span,
+             items: Option<SmallVec<[Box<ast::Item>; 1]>>| if let Some(items) = items {
+                // Register item names that were not selected for error reporting. We do this
+                // for `#[cfg]` too.
+                for item in items {
+                    for name in item.declared_idents() {
+                        ecx.resolver.append_stripped_cfg_item(
+                            ecx.current_expansion.lint_node_id,
+                            name,
+                            cfg_entry.clone(),
+                            span,
+                        );
+                    }
+                }
+            },
+            |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: SmallVec<[Box<ast::Item>; 1]>| {
+                items
+                    .into_iter()
+                    .map(|mut item| {
+                        item.attrs
+                            .push(mk_attr(&ecx.sess.psess.attr_id_generator, cfg_entry.clone()));
+                        item
+                    })
+                    .collect()
+            }
+        );
     };
 }
 
