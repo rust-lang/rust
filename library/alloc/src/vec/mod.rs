@@ -697,8 +697,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// let v = vec![1, 2, 3];
     ///
     /// // Deconstruct the vector into parts.
@@ -719,8 +717,6 @@ impl<T> Vec<T> {
     /// Using memory that was allocated elsewhere:
     ///
     /// ```rust
-    /// #![feature(box_vec_non_null)]
-    ///
     /// use std::alloc::{alloc, Layout};
     /// use std::ptr::NonNull;
     ///
@@ -742,8 +738,8 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
@@ -863,8 +859,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_vec_non_null)]
-    ///
     /// let v: Vec<i32> = vec![-1, 0, 1];
     ///
     /// let (ptr, len, cap) = v.into_parts();
@@ -879,8 +873,8 @@ impl<T> Vec<T> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_parts(self) -> (NonNull<T>, usize, usize) {
         let (ptr, len, capacity) = self.into_raw_parts();
         // SAFETY: A `Vec` always has a non-null pointer.
@@ -1305,7 +1299,6 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const unsafe fn from_parts_in(
         ptr: NonNull<T>,
         length: usize,
@@ -1410,7 +1403,6 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     pub const fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
         let (ptr, len, capacity, alloc) = self.into_raw_parts_with_alloc();
         // SAFETY: A `Vec` always has a non-null pointer.
