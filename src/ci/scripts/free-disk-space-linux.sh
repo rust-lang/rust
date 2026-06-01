@@ -277,6 +277,10 @@ cleanPackages() {
     fi
 
     WAIT_DPKG_LOCK="-o DPkg::Lock::Timeout=60"
+    # This update is intended to fix any broken state of the index and make
+    # sure it is fresh. Otherwise we've had problems with missing mirror
+    # entries.
+    sudo apt-get update -qq
     sudo apt-get ${WAIT_DPKG_LOCK} -qq remove -y --fix-missing "${packages[@]}"
 
     sudo apt-get ${WAIT_DPKG_LOCK} autoremove -y \
