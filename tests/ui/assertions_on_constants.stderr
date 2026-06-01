@@ -1,5 +1,5 @@
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:11:5
+  --> tests/ui/assertions_on_constants.rs:10:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     assert!(true);
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
 
 error: this assertion is always `false`
-  --> tests/ui/assertions_on_constants.rs:14:5
+  --> tests/ui/assertions_on_constants.rs:13:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     assert!(false);
    = help: replace this with `panic!()` or `unreachable!()`
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:17:5
+  --> tests/ui/assertions_on_constants.rs:16:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     assert!(true, "true message");
    = help: remove the assertion
 
 error: this assertion is always `false`
-  --> tests/ui/assertions_on_constants.rs:20:5
+  --> tests/ui/assertions_on_constants.rs:19:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     assert!(false, "false message");
    = help: replace this with `panic!()` or `unreachable!()`
 
 error: this assertion is always `false`
-  --> tests/ui/assertions_on_constants.rs:24:5
+  --> tests/ui/assertions_on_constants.rs:23:5
    |
 LL |     assert!(false, "{}", msg.to_uppercase());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     assert!(false, "{}", msg.to_uppercase());
    = help: replace this with `panic!()` or `unreachable!()`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:28:5
+  --> tests/ui/assertions_on_constants.rs:27:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     assert!(B);
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:32:5
+  --> tests/ui/assertions_on_constants.rs:31:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     assert!(C);
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:35:5
+  --> tests/ui/assertions_on_constants.rs:34:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     assert!(C, "C message");
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:38:5
+  --> tests/ui/assertions_on_constants.rs:37:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     debug_assert!(true);
    = help: remove the assertion
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:46:5
+  --> tests/ui/assertions_on_constants.rs:45:5
    |
 LL |     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:55:19
+  --> tests/ui/assertions_on_constants.rs:54:19
    |
 LL |     const _: () = assert!(true);
    |                   ^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     const _: () = assert!(true);
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:58:5
+  --> tests/ui/assertions_on_constants.rs:57:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |     assert!(8 == (7 + 1));
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:69:5
+  --> tests/ui/assertions_on_constants.rs:68:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL |     assert!(true);
    = help: remove the assertion
 
 error: this assertion is always `true`
-  --> tests/ui/assertions_on_constants.rs:72:5
+  --> tests/ui/assertions_on_constants.rs:71:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -113,7 +113,7 @@ LL |     assert!(8 == (7 + 1));
    = help: remove the assertion
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:80:5
+  --> tests/ui/assertions_on_constants.rs:79:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     assert!(C);
    = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:91:5
+  --> tests/ui/assertions_on_constants.rs:90:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -129,7 +129,7 @@ LL |     assert!(C);
    = help: consider moving this into a const block: `const { assert!(..) }`
 
 error: this assertion has a constant value
-  --> tests/ui/assertions_on_constants.rs:97:5
+  --> tests/ui/assertions_on_constants.rs:96:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
