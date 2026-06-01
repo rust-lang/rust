@@ -158,4 +158,47 @@ use core_arch::arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
 use core_arch::arch::arm::*;
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+const fn svpattern_from_i32(value: i32) -> svpattern {
+    match value {
+        0 => svpattern::SV_POW2,
+        1 => svpattern::SV_VL1,
+        2 => svpattern::SV_VL2,
+        3 => svpattern::SV_VL3,
+        4 => svpattern::SV_VL4,
+        5 => svpattern::SV_VL5,
+        6 => svpattern::SV_VL6,
+        7 => svpattern::SV_VL7,
+        8 => svpattern::SV_VL8,
+        9 => svpattern::SV_VL16,
+        10 => svpattern::SV_VL32,
+        11 => svpattern::SV_VL64,
+        12 => svpattern::SV_VL128,
+        13 => svpattern::SV_VL256,
+        29 => svpattern::SV_MUL4,
+        30 => svpattern::SV_MUL3,
+        31 => svpattern::SV_ALL,
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+const fn svprfop_from_i32(value: i32) -> svprfop {
+    match value {
+        0 => svprfop::SV_PLDL1KEEP,
+        1 => svprfop::SV_PLDL1STRM,
+        2 => svprfop::SV_PLDL2KEEP,
+        3 => svprfop::SV_PLDL2STRM,
+        4 => svprfop::SV_PLDL3KEEP,
+        5 => svprfop::SV_PLDL3STRM,
+        8 => svprfop::SV_PSTL1KEEP,
+        9 => svprfop::SV_PSTL1STRM,
+        10 => svprfop::SV_PSTL2KEEP,
+        11 => svprfop::SV_PSTL2STRM,
+        12 => svprfop::SV_PSTL3KEEP,
+        13 => svprfop::SV_PSTL3STRM,
+        _ => unreachable!(),
+    }
+}
 "#;

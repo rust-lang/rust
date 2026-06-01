@@ -5,6 +5,7 @@ use itertools::Itertools;
 use super::intrinsic_helpers::TypeDefinition;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
+use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::{test_values_array_name, test_values_array_static};
 use crate::common::{PASSES, SupportedArchitecture};
 
@@ -195,6 +196,7 @@ for (id, rust, c) in specializations {{
                         "(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)"
                     ))
                 } else {
+                    let constraint_args = intrinsic.arguments.iter().filter(|a| a.has_constraint());
                     fmt(&format_args!(
                         r#"
                         (
@@ -203,7 +205,18 @@ for (id, rust, c) in specializations {{
                             {intrinsic_name}_wrapper_{c_const_args} as unsafe extern "C" {c_coerce}
                         )
                         "#,
-                        const_args = imm_values.iter().join(","),
+                        const_args = imm_values
+                            .iter()
+                            .zip(constraint_args)
+                            .map(|(imm_val, arg)| {
+                                match arg.ty.kind() {
+                                    TypeKind::SvPattern | TypeKind::SvPrefetchOp => {
+                                        format!("{{ {}_from_i32({imm_val}) }}", arg.ty.kind())
+                                    }
+                                    _ => imm_val.to_string(),
+                                }
+                            })
+                            .join(","),
                         c_const_args = imm_values.iter().join("_"),
                     ))
                 }
