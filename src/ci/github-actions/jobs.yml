@@ -542,7 +542,24 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos
 
-  - name: aarch64-apple
+  - name: aarch64-apple-macos-15
+    env:
+      SCRIPT: >
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
+        ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware, so only need to test it there.
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+    # XXX: try macos-15 runners
+    <<: *job-macos
+
+  - name: aarch64-apple-macos-26
     env:
       SCRIPT: >
         ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
