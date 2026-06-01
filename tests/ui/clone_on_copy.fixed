@@ -1,12 +1,11 @@
 #![warn(clippy::clone_on_copy)]
 #![allow(
-    clippy::redundant_clone,
     clippy::deref_addrof,
+    clippy::needless_borrow,
     clippy::no_effect,
-    clippy::unnecessary_operation,
-    clippy::toplevel_ref_arg,
-    clippy::needless_borrow
+    clippy::unnecessary_operation
 )]
+#![expect(clippy::toplevel_ref_arg)]
 
 use std::cell::RefCell;
 
