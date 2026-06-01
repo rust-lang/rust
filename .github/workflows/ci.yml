@@ -224,6 +224,11 @@ jobs:
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
+      # XXX: check SIP status.
+      - name: check SIP status
+        if: runner.os == 'macOS'
+        run: csrutil status
+
       - name: run the build
         run: |
           set +e
