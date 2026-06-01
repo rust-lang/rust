@@ -1,5 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
+//@ min-llvm-version: 22
 //
 //@ revisions: XTENSA
 //@ [XTENSA] compile-flags: -Copt-level=3 --target xtensa-esp32-none-elf
@@ -42,27 +43,30 @@ pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // CHECK-LABEL: read_f64
     //
-    // XTENSA: l32i{{(\.n)?}} [[F64_NDX:a[0-9]+]], a2, 8
-    // XTENSA: addi{{(\.n)?}} [[F64_ALIGNED_TMP:a[0-9]+]], [[F64_NDX]], 7
-    // XTENSA: movi{{(\.n)?}} [[F64_ALIGN_MASK:a[0-9]+]], -8
-    // XTENSA: and [[F64_OFF:a[0-9]+]], [[F64_ALIGNED_TMP]], [[F64_ALIGN_MASK]]
-    // XTENSA: addi{{(\.n)?}} [[F64_NEXT:a[0-9]+]], [[F64_OFF]], 8
-    // XTENSA: maxu [[F64_STACK_OFF:a[0-9]+]], [[F64_OFF]], {{a[0-9]+}}
-    // XTENSA: bltu [[F64_NEXT]], {{a[0-9]+}}, [[F64_REGSAVE:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: addi{{(\.n)?}} [[F64_UPDATED_NDX:a[0-9]+]], [[F64_STACK_OFF]], 8
-    // XTENSA: [[F64_UPDATE:.LBB[0-9]+_[0-9]+]]:
-    // XTENSA-NEXT: s32i{{(\.n)?}} {{a[0-9]+}}, a2, 8
-    // XTENSA: bltu [[F64_NEXT]], {{a[0-9]+}}, [[F64_REGSAVE_LOAD:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: l32i{{(\.n)?}} [[F64_STACK:a[0-9]+]], a2, 0
-    // XTENSA: add{{(\.n)?}} [[F64_PTR:a[0-9]+]], [[F64_STACK]], [[F64_STACK_OFF]]
-    // XTENSA: l32i{{(\.n)?}} a2, [[F64_PTR]], 0
-    // XTENSA-NEXT: l32i{{(\.n)?}} a3, [[F64_PTR]], 4
+    // XTENSA: l32i a8, a2, 8
+    // XTENSA-NEXT: addi a8, a8, 7
+    // XTENSA-NEXT: movi a9, -8
+    // XTENSA-NEXT: and a8, a8, a9
+    // XTENSA-NEXT: addi a10, a8, 8
+    // XTENSA-NEXT: movi a9, 32
+    // XTENSA-NEXT: maxu a9, a8, a9
+    // XTENSA-NEXT: movi a11, 25
+    // XTENSA-NEXT: or a12, a10, a10
+    // XTENSA-NEXT: bltu a10, a11, .LBB0_2
+    // XTENSA-NEXT: addi a12, a9, 8
+    // XTENSA-NEXT: .LBB0_2:
+    // XTENSA-NEXT: s32i a12, a2, 8
+    // XTENSA-NEXT: bltu a10, a11, .LBB0_4
+    // XTENSA-NEXT: l32i a8, a2, 0
+    // XTENSA-NEXT: add a8, a8, a9
+    // XTENSA-NEXT: l32i a2, a8, 0
+    // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
-    // XTENSA: [[F64_REGSAVE_LOAD]]:
-    // XTENSA-NEXT: l32i{{(\.n)?}} [[F64_REGSAVE_AREA:a[0-9]+]], a2, 4
-    // XTENSA-NEXT: add{{(\.n)?}} [[F64_REGSAVE_PTR:a[0-9]+]], [[F64_REGSAVE_AREA]], [[F64_OFF]]
-    // XTENSA-NEXT: l32i{{(\.n)?}} a2, [[F64_REGSAVE_PTR]], 0
-    // XTENSA-NEXT: l32i{{(\.n)?}} a3, [[F64_REGSAVE_PTR]], 4
+    // XTENSA-NEXT: .LBB0_4:
+    // XTENSA-NEXT: l32i a9, a2, 4
+    // XTENSA-NEXT: add a8, a9, a8
+    // XTENSA-NEXT: l32i a2, a8, 0
+    // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
     va_arg(ap)
 }
@@ -71,25 +75,28 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
 unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // CHECK-LABEL: read_i32
     //
-    // XTENSA: l32i{{(\.n)?}} [[I32_NDX:a[0-9]+]], a2, 8
-    // XTENSA: addi{{(\.n)?}} [[I32_ALIGNED_TMP:a[0-9]+]], [[I32_NDX]], 3
-    // XTENSA: movi{{(\.n)?}} [[I32_ALIGN_MASK:a[0-9]+]], -4
-    // XTENSA: and [[I32_OFF:a[0-9]+]], [[I32_ALIGNED_TMP]], [[I32_ALIGN_MASK]]
-    // XTENSA: addi{{(\.n)?}} [[I32_NEXT:a[0-9]+]], [[I32_OFF]], 4
-    // XTENSA: maxu [[I32_STACK_OFF:a[0-9]+]], [[I32_OFF]], {{a[0-9]+}}
-    // XTENSA: bltu [[I32_NEXT]], {{a[0-9]+}}, [[I32_REGSAVE:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: addi{{(\.n)?}} [[I32_UPDATED_NDX:a[0-9]+]], [[I32_STACK_OFF]], 4
-    // XTENSA: [[I32_UPDATE:.LBB[0-9]+_[0-9]+]]:
-    // XTENSA-NEXT: s32i{{(\.n)?}} {{a[0-9]+}}, a2, 8
-    // XTENSA: bltu [[I32_NEXT]], {{a[0-9]+}}, [[I32_REGSAVE_LOAD:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: l32i{{(\.n)?}} [[I32_STACK:a[0-9]+]], a2, 0
-    // XTENSA: add{{(\.n)?}} [[I32_PTR:a[0-9]+]], [[I32_STACK]], [[I32_STACK_OFF]]
-    // XTENSA: l32i{{(\.n)?}} a2, [[I32_PTR]], 0
+    // XTENSA: l32i a8, a2, 8
+    // XTENSA-NEXT: addi a8, a8, 3
+    // XTENSA-NEXT: movi a9, -4
+    // XTENSA-NEXT: and a8, a8, a9
+    // XTENSA-NEXT: addi a10, a8, 4
+    // XTENSA-NEXT: movi a9, 32
+    // XTENSA-NEXT: maxu a9, a8, a9
+    // XTENSA-NEXT: movi a11, 25
+    // XTENSA-NEXT: or a12, a10, a10
+    // XTENSA-NEXT: bltu a10, a11, .LBB1_2
+    // XTENSA-NEXT: addi a12, a9, 4
+    // XTENSA-NEXT: .LBB1_2:
+    // XTENSA-NEXT: s32i a12, a2, 8
+    // XTENSA-NEXT: bltu a10, a11, .LBB1_4
+    // XTENSA-NEXT: l32i a8, a2, 0
+    // XTENSA-NEXT: add a8, a8, a9
+    // XTENSA-NEXT: l32i a2, a8, 0
     // XTENSA-NEXT: retw.n
-    // XTENSA: [[I32_REGSAVE_LOAD]]:
-    // XTENSA-NEXT: l32i{{(\.n)?}} [[I32_REGSAVE_AREA:a[0-9]+]], a2, 4
-    // XTENSA-NEXT: add{{(\.n)?}} [[I32_REGSAVE_PTR:a[0-9]+]], [[I32_REGSAVE_AREA]], [[I32_OFF]]
-    // XTENSA-NEXT: l32i{{(\.n)?}} a2, [[I32_REGSAVE_PTR]], 0
+    // XTENSA-NEXT: .LBB1_4:
+    // XTENSA-NEXT: l32i a9, a2, 4
+    // XTENSA-NEXT: add a8, a9, a8
+    // XTENSA-NEXT: l32i a2, a8, 0
     // XTENSA-NEXT: retw.n
     va_arg(ap)
 }
@@ -98,27 +105,30 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
 unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-LABEL: read_i64
     //
-    // XTENSA: l32i{{(\.n)?}} [[I64_NDX:a[0-9]+]], a2, 8
-    // XTENSA: addi{{(\.n)?}} [[I64_ALIGNED_TMP:a[0-9]+]], [[I64_NDX]], 7
-    // XTENSA: movi{{(\.n)?}} [[I64_ALIGN_MASK:a[0-9]+]], -8
-    // XTENSA: and [[I64_OFF:a[0-9]+]], [[I64_ALIGNED_TMP]], [[I64_ALIGN_MASK]]
-    // XTENSA: addi{{(\.n)?}} [[I64_NEXT:a[0-9]+]], [[I64_OFF]], 8
-    // XTENSA: maxu [[I64_STACK_OFF:a[0-9]+]], [[I64_OFF]], {{a[0-9]+}}
-    // XTENSA: bltu [[I64_NEXT]], {{a[0-9]+}}, [[I64_REGSAVE:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: addi{{(\.n)?}} [[I64_UPDATED_NDX:a[0-9]+]], [[I64_STACK_OFF]], 8
-    // XTENSA: [[I64_UPDATE:.LBB[0-9]+_[0-9]+]]:
-    // XTENSA-NEXT: s32i{{(\.n)?}} {{a[0-9]+}}, a2, 8
-    // XTENSA: bltu [[I64_NEXT]], {{a[0-9]+}}, [[I64_REGSAVE_LOAD:.LBB[0-9]+_[0-9]+]]
-    // XTENSA: l32i{{(\.n)?}} [[I64_STACK:a[0-9]+]], a2, 0
-    // XTENSA: add{{(\.n)?}} [[I64_PTR:a[0-9]+]], [[I64_STACK]], [[I64_STACK_OFF]]
-    // XTENSA: l32i{{(\.n)?}} a2, [[I64_PTR]], 0
-    // XTENSA-NEXT: l32i{{(\.n)?}} a3, [[I64_PTR]], 4
+    // XTENSA: l32i a8, a2, 8
+    // XTENSA-NEXT: addi a8, a8, 7
+    // XTENSA-NEXT: movi a9, -8
+    // XTENSA-NEXT: and a8, a8, a9
+    // XTENSA-NEXT: addi a10, a8, 8
+    // XTENSA-NEXT: movi a9, 32
+    // XTENSA-NEXT: maxu a9, a8, a9
+    // XTENSA-NEXT: movi a11, 25
+    // XTENSA-NEXT: or a12, a10, a10
+    // XTENSA-NEXT: bltu a10, a11, .LBB2_2
+    // XTENSA-NEXT: addi a12, a9, 8
+    // XTENSA-NEXT: .LBB2_2:
+    // XTENSA-NEXT: s32i a12, a2, 8
+    // XTENSA-NEXT: bltu a10, a11, .LBB2_4
+    // XTENSA-NEXT: l32i a8, a2, 0
+    // XTENSA-NEXT: add a8, a8, a9
+    // XTENSA-NEXT: l32i a2, a8, 0
+    // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
-    // XTENSA: [[I64_REGSAVE_LOAD]]:
-    // XTENSA-NEXT: l32i{{(\.n)?}} [[I64_REGSAVE_AREA:a[0-9]+]], a2, 4
-    // XTENSA-NEXT: add{{(\.n)?}} [[I64_REGSAVE_PTR:a[0-9]+]], [[I64_REGSAVE_AREA]], [[I64_OFF]]
-    // XTENSA-NEXT: l32i{{(\.n)?}} a2, [[I64_REGSAVE_PTR]], 0
-    // XTENSA-NEXT: l32i{{(\.n)?}} a3, [[I64_REGSAVE_PTR]], 4
+    // XTENSA-NEXT: .LBB2_4:
+    // XTENSA-NEXT: l32i a9, a2, 4
+    // XTENSA-NEXT: add a8, a9, a8
+    // XTENSA-NEXT: l32i a2, a8, 0
+    // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
     va_arg(ap)
 }
