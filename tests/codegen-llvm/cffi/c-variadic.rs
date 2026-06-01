@@ -3,7 +3,7 @@
 // Pauthtest generates pointer authentication metadata for call instructions
 // and wraps function pointers in ConstPtrAuth. Disable this test for this target
 // to avoid clutter from pointer authentication complexity.
-//@ ignore-aarch64-unknown-linux-pauthtest
+//@ ignore-pauthtest
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]

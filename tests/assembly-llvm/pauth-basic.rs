@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
-//@ only-aarch64-unknown-linux-pauthtest
+//@ only-pauthtest
 //@ revisions: aarch64_unknown_linux_pauthtest
 //@ [aarch64_unknown_linux_pauthtest] compile-flags: --target=aarch64-unknown-linux-pauthtest
 //@ [aarch64_unknown_linux_pauthtest] needs-llvm-components: aarch64
