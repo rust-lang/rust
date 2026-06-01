@@ -1675,13 +1675,13 @@ impl<T> *mut T {
     /// #![feature(ptr_cast_slice)]
     ///
     /// let x = &mut [5, 6, 7];
-    /// let slice = x.as_mut_ptr().cast_slice(3);
+    /// let raw_mut_slice = x.as_mut_ptr().cast_slice(3);
     ///
     /// unsafe {
-    ///     (*slice)[2] = 99; // assign a value at an index in the slice
+    ///     (*raw_mut_slice)[2] = 99; // assign a value at an index in the slice
     /// };
     ///
-    /// assert_eq!(unsafe { &*slice }[2], 99);
+    /// assert_eq!(unsafe { &*raw_mut_slice }[2], 99);
     /// ```
     ///
     /// You must ensure that the pointer is valid and not null before dereferencing
@@ -1701,6 +1701,7 @@ impl<T> *mut T {
         slice_from_raw_parts_mut(self, len)
     }
 }
+
 impl<T> *mut MaybeUninit<T> {
     /// Casts from a maybe-uninitialized type to its initialized version.
     ///

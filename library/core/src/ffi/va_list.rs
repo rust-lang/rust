@@ -250,7 +250,7 @@ impl VaList<'_> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Clone for VaList<'f> {
+const impl<'f> Clone for VaList<'f> {
     /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
     ///
     /// Corresponds to `va_copy` in C.
@@ -265,7 +265,7 @@ impl<'f> const Clone for VaList<'f> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Drop for VaList<'f> {
+const impl<'f> Drop for VaList<'f> {
     /// Drop the [`VaList`].
     ///
     /// Corresponds to `va_end` in C.

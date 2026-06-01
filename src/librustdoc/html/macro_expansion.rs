@@ -2,7 +2,7 @@ use rustc_ast::visit::{
     AssocCtxt, Visitor, walk_assoc_item, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt,
     walk_ty,
 };
-use rustc_ast::{AssocItem, Crate, Expr, Item, Pat, Stmt, Ty};
+use rustc_ast::{AssocItem, Crate, Expr, ForeignItem, Item, Pat, Stmt, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Span};
@@ -172,6 +172,16 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
             });
         } else {
             walk_assoc_item(self, item, ctxt);
+        }
+    }
+
+    fn visit_foreign_item(&mut self, item: &'ast ForeignItem) -> Self::Result {
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, || {
+                rustc_ast_pretty::pprust::foreign_item_to_string(item)
+            });
+        } else {
+            walk_item(self, item);
         }
     }
 }

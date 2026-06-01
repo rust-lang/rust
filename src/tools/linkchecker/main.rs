@@ -78,6 +78,20 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
                                     "#method.sort_by_cached_key"]),
+    ("core/io/struct.IoSlice.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/io/slice::sort_by_key",
+        "core\\io\\slice::sort_by_key",
+        "#method.sort_by_cached_key"
+    ]),
+    ("core/io/struct.IoSliceMut.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/io/slice::sort_by_key",
+        "core\\io\\slice::sort_by_key",
+        "#method.sort_by_cached_key"
+    ]),
 ];
 
 #[rustfmt::skip]

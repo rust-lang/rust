@@ -178,12 +178,12 @@ cfg_select! {
 
 cfg_select! {
     "str" => {}
-    //~^ ERROR malformed `cfg_select` macro input [E0539]
+    //~^ ERROR malformed `cfg_select` macro input [E0565]
 }
 
 cfg_select! {
     a::b => {}
-    //~^ ERROR malformed `cfg_select` macro input [E0539]
+    //~^ ERROR malformed `cfg_select` macro input [E0565]
 }
 
 cfg_select! {

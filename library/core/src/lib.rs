@@ -234,6 +234,10 @@ pub mod autodiff {
     pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
 
+#[unstable(feature = "gpu_offload", issue = "131513")]
+#[doc = include_str!("../../core/src/offload.md")]
+pub mod offload;
+
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

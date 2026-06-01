@@ -2,18 +2,8 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::sync::atomic::AtomicU32;
 
 use super::*;
-
-#[repr(C)]
-pub(super) struct HandleCounters {
-    pub(super) token_stream: AtomicU32,
-    pub(super) span: AtomicU32,
-}
-
-static COUNTERS: HandleCounters =
-    HandleCounters { token_stream: AtomicU32::new(1), span: AtomicU32::new(1) };
 
 pub(crate) struct TokenStream {
     handle: handle::Handle,
@@ -44,6 +34,18 @@ impl<S> Encode<S> for &TokenStream {
 impl<S> Decode<'_, '_, S> for TokenStream {
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         TokenStream { handle: handle::Handle::decode(r, s) }
+    }
+}
+
+impl Encode<()> for crate::TokenStream {
+    fn encode(self, w: &mut Buffer, s: &mut ()) {
+        self.0.encode(w, s)
+    }
+}
+
+impl Decode<'_, '_, ()> for crate::TokenStream {
+    fn decode(r: &mut &[u8], s: &mut ()) -> Self {
+        crate::TokenStream(Some(Decode::decode(r, s)))
     }
 }
 
@@ -209,8 +211,6 @@ pub(crate) fn is_available() -> bool {
 /// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
 #[repr(C)]
 pub struct Client<I, O> {
-    pub(super) handle_counters: &'static HandleCounters,
-
     pub(super) run: extern "C" fn(BridgeConfig<'_>) -> Buffer,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
@@ -243,14 +243,13 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
-// FIXME(eddyb) maybe replace `Bridge::enter` with this?
-fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
+fn run_client<A: for<'a, 's> Decode<'a, 's, ()>>(
     config: BridgeConfig<'_>,
-    f: impl FnOnce(A) -> R,
+    f: impl FnOnce(A) -> crate::TokenStream,
 ) -> Buffer {
     let BridgeConfig { input: mut buf, dispatch, force_show_panics, .. } = config;
 
-    panic::catch_unwind(panic::AssertUnwindSafe(|| {
+    let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
 
         // Make sure the symbol store is empty before decoding inputs.
@@ -267,23 +266,12 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
         // Take the `cached_buffer` back out, for the output value.
         buf = RefCell::into_inner(state).cached_buffer;
 
-        // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-        // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-        // having handles outside the `bridge.enter(|| ...)` scope, and
-        // to catch panics that could happen while encoding the success.
-        //
-        // Note that panics should be impossible beyond this point, but
-        // this is defensively trying to avoid any accidental panicking
-        // reaching the `extern "C"` (which should `abort` but might not
-        // at the moment, so this is also potentially preventing UB).
-        buf.clear();
-        Ok::<_, ()>(output).encode(&mut buf, &mut ());
-    }))
-    .map_err(PanicMessage::from)
-    .unwrap_or_else(|e| {
-        buf.clear();
-        Err::<(), _>(e).encode(&mut buf, &mut ());
-    });
+        output
+    }));
+
+    // Serialize response of type `Result<R, PanicMessage>`.
+    buf.clear();
+    res.map_err(PanicMessage::from).encode(&mut buf, &mut ());
 
     // Now that a response has been serialized, invalidate all symbols
     // registered with the interner.
@@ -294,9 +282,8 @@ fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
 impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
+                run_client(bridge, |input| f(input))
             }),
             _marker: PhantomData,
         }
@@ -308,11 +295,8 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         Client {
-            handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
-                })
+                run_client(bridge, |(input, input2)| f(input, input2))
             }),
             _marker: PhantomData,
         }

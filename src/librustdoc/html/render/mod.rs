@@ -1397,13 +1397,13 @@ fn render_all_impls(
     mut w: impl Write,
     cx: &Context<'_>,
     containing_item: &clean::Item,
-    concrete: &[&Impl],
-    synthetic: &[&Impl],
-    blanket_impl: &[&Impl],
+    concrete_impls: &[&Impl],
+    auto_trait_impls: &[&Impl],
+    blanket_impls: &[&Impl],
 ) -> fmt::Result {
     let impls = {
         let mut buf = String::new();
-        render_impls(cx, &mut buf, concrete, containing_item, true)?;
+        render_impls(cx, &mut buf, concrete_impls, containing_item, true)?;
         buf
     };
     if !impls.is_empty() {
@@ -1414,23 +1414,24 @@ fn render_all_impls(
         )?;
     }
 
-    if !synthetic.is_empty() {
+    if !auto_trait_impls.is_empty() {
+        // FIXME: Change the ID to `auto-trait-implementations-list`!
         write!(
             w,
             "{}<div id=\"synthetic-implementations-list\">",
             write_impl_section_heading("Auto Trait Implementations", "synthetic-implementations",)
         )?;
-        render_impls(cx, &mut w, synthetic, containing_item, false)?;
+        render_impls(cx, &mut w, auto_trait_impls, containing_item, false)?;
         w.write_str("</div>")?;
     }
 
-    if !blanket_impl.is_empty() {
+    if !blanket_impls.is_empty() {
         write!(
             w,
             "{}<div id=\"blanket-implementations-list\">",
             write_impl_section_heading("Blanket Implementations", "blanket-implementations")
         )?;
-        render_impls(cx, &mut w, blanket_impl, containing_item, false)?;
+        render_impls(cx, &mut w, blanket_impls, containing_item, false)?;
         w.write_str("</div>")?;
     }
     Ok(())
@@ -1459,10 +1460,10 @@ fn render_assoc_items_inner(
 ) -> fmt::Result {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return Ok(()) };
-    let (mut non_trait, traits): (Vec<_>, _) =
-        v.iter().partition(|i| i.inner_impl().trait_.is_none());
-    if !non_trait.is_empty() {
+    let Some(impls) = cache.impls.get(&it) else { return Ok(()) };
+    let (mut inherent_impls, trait_impls): (Vec<_>, _) =
+        impls.iter().partition(|i| i.inner_impl().trait_.is_none());
+    if !inherent_impls.is_empty() {
         let render_mode = what.render_mode();
         let class_html = what
             .class()
@@ -1485,7 +1486,7 @@ fn render_assoc_items_inner(
                 // we should not show methods from `[MaybeUninit<u8>]`.
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
-                non_trait.retain(|impl_| {
+                inherent_impls.retain(|impl_| {
                     type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
                 });
                 let derived_id = cx.derive_id(&id);
@@ -1512,8 +1513,8 @@ fn render_assoc_items_inner(
                 )
             }
         };
-        let impls_buf = fmt::from_fn(|f| {
-            non_trait
+        let inherent_impls_buf = fmt::from_fn(|f| {
+            inherent_impls
                 .iter()
                 .map(|i| {
                     render_impl(
@@ -1536,10 +1537,10 @@ fn render_assoc_items_inner(
         })
         .to_string();
 
-        if !impls_buf.is_empty() {
+        if !inherent_impls_buf.is_empty() {
             write!(
                 w,
-                "{section_heading}<div id=\"{id}\"{class_html}>{impls_buf}</div>{}",
+                "{section_heading}<div id=\"{id}\"{class_html}>{inherent_impls_buf}</div>{}",
                 matches!(what, AssocItemRender::DerefFor { .. })
                     .then_some("</details>")
                     .maybe_display(),
@@ -1547,13 +1548,14 @@ fn render_assoc_items_inner(
         }
     }
 
-    if !traits.is_empty() {
-        let deref_impl = traits.iter().find(|t| {
+    if !trait_impls.is_empty() {
+        let deref_impl = trait_impls.iter().find(|t| {
             t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
         });
         if let Some(impl_) = deref_impl {
-            let has_deref_mut =
-                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+            let has_deref_mut = trait_impls
+                .iter()
+                .any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
             render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
         }
 
@@ -1563,12 +1565,19 @@ fn render_assoc_items_inner(
             return Ok(());
         }
 
-        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-            traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (auto_trait_impls, trait_impls): (Vec<&Impl>, Vec<&Impl>) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        let (blanket_impls, concrete_impls): (Vec<&Impl>, _) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl)?;
+        render_all_impls(
+            w,
+            cx,
+            containing_item,
+            &concrete_impls,
+            &auto_trait_impls,
+            &blanket_impls,
+        )?;
     }
     Ok(())
 }

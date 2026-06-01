@@ -4,7 +4,6 @@ error[E0277]: `Dummy` doesn't implement `Debug`
 105 |     dbg!(lib::Dummy);
     |     ^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `Dummy`
     |
-    = note: add `#[derive(Debug)]` to `Dummy` or manually `impl Debug for Dummy`
 help: consider annotating `Dummy` with `#[derive(Debug)]`
    --> $DIR/auxiliary/dummy_lib.rs:2:1
     |

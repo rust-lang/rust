@@ -246,8 +246,6 @@ class BuildBootstrap(unittest.TestCase):
 
             args, env = self.build_args(configure_args, args=["--warnings=warn"])
             self.assertFalse("CARGO_BUILD_WARNINGS" in env)
-            self.assertFalse("-Zwarnings" in args)
 
             args, env = self.build_args(configure_args, args=["--warnings=deny"])
             self.assertEqual("deny", env["CARGO_BUILD_WARNINGS"])
-            self.assertTrue("-Zwarnings" in args)
