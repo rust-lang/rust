@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use crossbeam_utils::CachePadded;
 
-/// A pointer to the `ComplementaryRegistryData` which uniquely identifies a registry.
+/// A pointer to the `ComplementaryRegistryData` which uniquely identifies a complementary registry.
 /// This identifier can be reused if the registry gets freed.
 #[derive(Clone, Copy, PartialEq)]
 struct ComplementaryRegistryId(*const ComplementaryRegistryData);
@@ -42,7 +42,7 @@ struct ComplementaryRegistryData {
 pub struct ComplementaryRegistry(Arc<ComplementaryRegistryData>);
 
 thread_local! {
-    /// The registry associated with the thread.
+    /// The complementary registry associated with the thread.
     /// This allows the `WorkerLocal` type to clone the registry in its constructor.
     static REGISTRY: OnceCell<ComplementaryRegistry> = const { OnceCell::new() };
 }
@@ -104,9 +104,9 @@ impl ComplementaryRegistry {
     }
 }
 
-/// Holds worker local values for each possible thread in a registry. You can only access the
-/// worker local value through the `Deref` impl on the registry associated with the thread it was
-/// created on. It will panic otherwise.
+/// Holds worker local values for each possible thread in a complementary registry.
+/// You can only access the worker local value through the `Deref` impl on the registry associated
+/// with the thread it was created on. It will panic otherwise.
 pub struct WorkerLocal<T> {
     locals: Box<[CachePadded<T>]>,
     registry: ComplementaryRegistry,
@@ -114,8 +114,9 @@ pub struct WorkerLocal<T> {
 
 // This is safe because the `deref` call will return a reference to a `T` unique to each thread
 // or it will panic for threads without an associated local. So there isn't a need for `T` to do
-// it's own synchronization. The `verify` method on `RegistryId` has an issue where the id
-// can be reused, but `WorkerLocal` has a reference to `Registry` which will prevent any reuse.
+// it's own synchronization. The `verify` method on `ComplementaryRegistryId` has an issue where the
+// id can be reused, but `WorkerLocal` has a reference to `ComplementaryRegistry` which will prevent
+// any reuse.
 unsafe impl<T: Send> Sync for WorkerLocal<T> {}
 
 impl<T> WorkerLocal<T> {
