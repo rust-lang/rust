@@ -10,7 +10,7 @@ use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Arch, CfgAbi, FramePointer, SanitizerSet, StackProbeType, StackProtector,
+    Arch, FramePointer, LlvmAbi, SanitizerSet, StackProbeType, StackProtector,
 };
 use smallvec::SmallVec;
 
@@ -611,7 +611,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         }
     }
 
-    if sess.target.cfg_abi == CfgAbi::Pauthtest {
+    if sess.target.llvm_abiname == LlvmAbi::Pauthtest {
         for &ptrauth_attr in pauth_fn_attrs() {
             to_add.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
         }

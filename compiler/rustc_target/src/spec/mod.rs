@@ -2113,6 +2113,8 @@ crate::target_spec_enum! {
         // PowerPC
         ElfV1 = "elfv1",
         ElfV2 = "elfv2",
+        // Pointer authentication: Pauthtest
+        Pauthtest = "pauthtest",
 
         Unspecified = "",
     }
@@ -3393,9 +3395,10 @@ impl Target {
                 )
             }
             Arch::AArch64 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on aarch64"
+                check_matches!(
+                    self.llvm_abiname,
+                    LlvmAbi::Unspecified | LlvmAbi::Pauthtest,
+                    "invalid llvm ABI for aarch64"
                 );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
                 // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.

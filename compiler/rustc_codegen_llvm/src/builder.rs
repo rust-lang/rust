@@ -25,7 +25,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{Arch, CfgAbi, HasTargetSpec, SanitizerSet, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, LlvmAbi, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -1976,7 +1976,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Option<llvm::OperandBundleBox<'ll>> {
-        if self.sess().target.cfg_abi != CfgAbi::Pauthtest {
+        if self.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
             return None;
         }
         // Pointer authentication support is currently limited to extern "C" calls; filter out other

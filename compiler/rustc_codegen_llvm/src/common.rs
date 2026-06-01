@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::cstore::DllImport;
-use rustc_target::spec::CfgAbi;
+use rustc_target::spec::LlvmAbi;
 use tracing::debug;
 
 use crate::consts::{IsInitOrFini, IsStatic, const_alloc_to_llvm};
@@ -46,7 +46,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     llfn: &'ll llvm::Value,
     pac: PacMetadata,
 ) -> &'ll llvm::Value {
-    if cx.sess().target.cfg_abi != CfgAbi::Pauthtest {
+    if cx.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
         return llfn;
     }
 
