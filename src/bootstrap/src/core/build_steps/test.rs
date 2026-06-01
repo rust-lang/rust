@@ -1008,7 +1008,7 @@ impl Step for IntrinsicTest {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("library/stdarch/crates/intrinsic-test").path("library/stdarch/crates/core_arch")
+        run.path("library/stdarch/crates/intrinsic-test")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1085,7 +1085,7 @@ impl Step for IntrinsicTest {
         if let Some(runner) = sde_runner {
             cargo.env("CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER", runner);
         }
-        cargo.delay_failure().run(builder);
+        cargo.run(builder);
     }
 }
 
