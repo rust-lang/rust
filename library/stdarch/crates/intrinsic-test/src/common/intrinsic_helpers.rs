@@ -116,6 +116,15 @@ pub enum SimdLen {
     Fixed(u32),
 }
 
+impl SimdLen {
+    pub fn expect_fixed(&self) -> u32 {
+        match self {
+            SimdLen::Fixed(lanes) => *lanes,
+            SimdLen::Scalable => panic!("`expect_fixed` with scalable length"),
+        }
+    }
+}
+
 impl std::fmt::Display for SimdLen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -173,14 +182,8 @@ impl IntrinsicType {
     }
 
     /// Returns the number of lanes of the type
-    pub fn num_lanes(&self) -> u32 {
-        self.simd_len
-            .as_ref()
-            .map(|len| match len {
-                SimdLen::Scalable => unimplemented!(),
-                SimdLen::Fixed(len) => *len,
-            })
-            .unwrap_or(1)
+    pub fn num_lanes(&self) -> SimdLen {
+        self.simd_len.unwrap_or(SimdLen::Fixed(1))
     }
 
     /// Returns the number of vectors of the type
@@ -208,7 +211,7 @@ pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
         match self.simd_len {
             Some(SimdLen::Scalable) => unimplemented!("architecture-specific"),
             Some(SimdLen::Fixed(_)) | None => {
-                default_fixed_vector_comparison(self, self.num_lanes())
+                default_fixed_vector_comparison(self, self.num_lanes().expect_fixed())
             }
         }
     }

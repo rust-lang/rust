@@ -69,13 +69,13 @@ impl SupportedArchitecture for Arm {
                 let has_sve_arg = i
                     .arguments
                     .iter()
-                    .any(|a| a.ty.simd_len == Some(SimdLen::Scalable));
+                    .any(|a| a.ty.num_lanes() == SimdLen::Scalable);
                 !(has_f16_arg && has_sve_arg)
             })
             .filter(|i| {
                 let has_f16_ret =
                     i.results.kind() == TypeKind::Float && i.results.bit_len == Some(16);
-                let has_sve_ret = i.results.simd_len == Some(SimdLen::Scalable);
+                let has_sve_ret = i.results.num_lanes() == SimdLen::Scalable;
                 !(has_f16_ret && has_sve_ret)
             })
             // Skip `svqcvtn{u,}n*_x2` intrinsics - not yet implemented!

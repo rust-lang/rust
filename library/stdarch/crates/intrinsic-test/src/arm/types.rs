@@ -72,30 +72,41 @@ impl TypeDefinition for ArmType {
 
     /// Determines the load function for this type.
     fn load_function(&self) -> String {
-        if let IntrinsicType {
-            kind: k,
-            bit_len: Some(bl),
-            vec_len,
-            ..
-        } = **self
-        {
-            let quad = if self.num_lanes() * bl > 64 { "q" } else { "" };
-
-            format!(
-                "vld{len}{quad}_{type}{size}",
-                type = match k {
-                    TypeKind::Int(Sign::Unsigned) => "u",
-                    TypeKind::Int(Sign::Signed) => "s",
-                    TypeKind::Float => "f",
-                    TypeKind::Poly => "p",
-                    x => todo!("get_load_function TypeKind: {x:#?}"),
-                },
-                size = bl,
-                quad = quad,
-                len = vec_len.unwrap_or(1),
-            )
+        if let Some(bl) = self.bit_len {
+            match self.num_lanes() {
+                SimdLen::Scalable => {
+                    format!(
+                        "svld{len}_{type}{bl}",
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+                SimdLen::Fixed(num_lanes) => {
+                    format!(
+                        "vld{len}{quad}_{type}{bl}",
+                        quad = if num_lanes * bl > 64 { "q" } else { "" },
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+            }
         } else {
             todo!("load_function IntrinsicType: {self:#?}")
+        }
+    }
+}
+
+impl ArmType {
+    /// Returns the Rust prefix for the name of an intrinsic with this type kind (i.e. `s` for
+    /// `i16`, or `u` for `u16`). For type kinds without any bit length at the end (e.g. `bool`),
+    /// returns the whole type name.
+    pub fn rust_intrinsic_name_prefix(&self) -> &str {
+        match self.kind() {
+            TypeKind::Char(Sign::Signed) => "s",
+            TypeKind::Int(Sign::Signed) => "s",
+            TypeKind::Poly => "p",
+            TypeKind::Bool => "s",
+            _ => self.kind.rust_prefix(),
         }
     }
 }
