@@ -50,7 +50,15 @@ pub fn test_values_array_name<T: TypeDefinition>(ty: &T) -> String {
 /// which is then printed as a hex value in the generated code (and if identified as a negative
 /// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
 /// generated for floats.
+///
+/// An exception to the above is when `ty` is a boolean, where this function returns
+/// `[true, false]` - as there are only ever two values for a boolean. This only works because the
+/// generated accesses to the test value array is always modulo the length of the test value array.
 pub fn test_values_array(ty: &IntrinsicType) -> String {
+    if ty.kind() == TypeKind::Bool {
+        return "[true, false]".to_string();
+    }
+
     let (bit_len, kind) = match ty {
         IntrinsicType {
             kind: TypeKind::Float,
@@ -105,7 +113,15 @@ pub fn test_values_array(ty: &IntrinsicType) -> String {
 ///
 /// For scalable vectors (only SVE is currently supported), assume that the length of the vector is
 /// the maximum supported by the architecture.
+///
+/// An exception to the above is when `ty` is a boolean, where this function returns two - as
+/// there are only ever two values for a boolean. This only works because the generated accesses to
+/// the test value array is always modulo this length.
 pub fn test_values_array_length(ty: &IntrinsicType) -> u32 {
+    if ty.kind() == TypeKind::Bool {
+        return 2;
+    }
+
     let IntrinsicType {
         simd_len, vec_len, ..
     } = ty;
