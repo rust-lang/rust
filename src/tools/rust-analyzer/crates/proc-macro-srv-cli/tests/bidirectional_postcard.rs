@@ -1,7 +1,6 @@
 #![cfg(feature = "sysroot-abi")]
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![feature(rustc_private)]
 
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
 mod common {
@@ -15,7 +14,10 @@ use expect_test::expect;
 use proc_macro_api::{
     ProtocolFormat::BidirectionalPostcardPrototype,
     bidirectional_protocol::{
-        msg::{ExpandMacro, ExpandMacroData, ExpnGlobals, Request, Response},
+        msg::{
+            ApiVersionCheck, ExpandMacro, ExpandMacroData, ExpnGlobals, ListMacros, Request,
+            Response,
+        },
         reject_subrequests,
     },
     legacy_protocol::msg::{PanicMessage, ServerConfig, SpanDataIndexMap, SpanMode},
@@ -25,8 +27,12 @@ use proc_macro_api::{
 #[test]
 fn test_bidi_version_check_bidirectional() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
-        let response =
-            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
+        let response = request_bidirectional(
+            writer,
+            reader,
+            Request::ApiVersionCheck(ApiVersionCheck {}),
+            reject_subrequests,
+        );
 
         match response {
             Response::ApiVersionCheck(version) => {
@@ -44,7 +50,7 @@ fn test_bidi_list_macros() {
         let response = request_bidirectional(
             writer,
             reader,
-            Request::ListMacros { dylib_path },
+            Request::ListMacros(ListMacros { dylib_path }),
             &reject_subrequests,
         );
 
@@ -84,7 +90,7 @@ fn test_bidi_list_macros_invalid_path() {
         let response = request_bidirectional(
             writer,
             reader,
-            Request::ListMacros { dylib_path: "/nonexistent/path/to/dylib.so".into() },
+            Request::ListMacros(ListMacros { dylib_path: "/nonexistent/path/to/dylib.so".into() }),
             reject_subrequests,
         );
 
@@ -168,8 +174,12 @@ fn test_bidi_basic_call_flow() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
 
-        let response1 =
-            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
+        let response1 = request_bidirectional(
+            writer,
+            reader,
+            Request::ApiVersionCheck(ApiVersionCheck {}),
+            reject_subrequests,
+        );
         assert!(matches!(response1, Response::ApiVersionCheck(_)));
 
         let response2 = request_bidirectional(
@@ -183,7 +193,7 @@ fn test_bidi_basic_call_flow() {
         let response3 = request_bidirectional(
             writer,
             reader,
-            Request::ListMacros { dylib_path: dylib_path.clone() },
+            Request::ListMacros(ListMacros { dylib_path: dylib_path.clone() }),
             reject_subrequests,
         );
         assert!(matches!(response3, Response::ListMacros(Ok(_))));
@@ -195,8 +205,12 @@ fn test_bidi_expand_nonexistent_macro() {
     with_server(BidirectionalPostcardPrototype, |writer, reader| {
         let dylib_path = proc_macro_test_dylib_path();
 
-        let version_response =
-            request_bidirectional(writer, reader, Request::ApiVersionCheck {}, reject_subrequests);
+        let version_response = request_bidirectional(
+            writer,
+            reader,
+            Request::ApiVersionCheck(ApiVersionCheck {}),
+            reject_subrequests,
+        );
         let Response::ApiVersionCheck(version) = version_response else {
             panic!("expected version check response");
         };

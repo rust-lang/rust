@@ -104,9 +104,10 @@ use crate::{
 
 pub use autoderef::autoderef;
 pub use infer::{
-    Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, InferenceDiagnostic, InferenceResult,
-    InferenceTyDiagnosticSource, OverloadedDeref, PointerCast, cast::CastError, could_coerce,
-    could_unify, could_unify_deeply, infer_query_with_inspect,
+    Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, ExplicitDropMethodUseKind,
+    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
+    PointerCast, cast::CastError, could_coerce, could_unify, could_unify_deeply,
+    infer_query_with_inspect,
 };
 pub use lower::{
     GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits, LifetimeElisionKind,
@@ -384,7 +385,7 @@ pub fn associated_type_shorthand_candidates(
     let mut dedup_map = FxHashSet::default();
     let param_ty = Ty::new_param(interner, param, type_or_const_param_idx(db, param.into()));
     // We use the ParamEnv and not the predicates because the ParamEnv elaborates bounds.
-    let param_env = db.trait_environment(ExpressionStoreOwnerId::from(def));
+    let param_env = db.trait_environment(def);
     for clause in param_env.clauses {
         let ClauseKind::Trait(trait_clause) = clause.kind().skip_binder() else { continue };
         if trait_clause.self_ty() != param_ty {

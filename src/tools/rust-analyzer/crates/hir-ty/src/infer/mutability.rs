@@ -160,7 +160,7 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Range { rhs: Some(expr), lhs: None, range_type: _ }
             | Expr::Await { expr }
             | Expr::Box { expr }
-            | Expr::Loop { body: expr, label: _ }
+            | Expr::Loop { body: expr, label: _, source: _ }
             | Expr::Cast { expr, type_ref: _ } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }

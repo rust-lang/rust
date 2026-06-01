@@ -23,8 +23,6 @@ paths.workspace = true
 span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
-ra-ap-rustc_lexer.workspace = true
-
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
@@ -38,8 +36,11 @@ proc-macro-test.path = "./proc-macro-test"
 
 [features]
 default = []
+# default = ["sysroot-abi"]
 sysroot-abi = []
-in-rust-tree = ["sysroot-abi"]
 
 [lints]
 workspace = true
+
+[package.metadata.rust-analyzer]
+rustc_private=true

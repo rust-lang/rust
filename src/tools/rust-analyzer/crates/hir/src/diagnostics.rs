@@ -15,12 +15,12 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile, mod_path::ModPath, name::Name};
 use hir_ty::{
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, ParamEnvAndCrate,
+    CastError, ExplicitDropMethodUseKind, InferenceDiagnostic, InferenceTyDiagnosticSource,
     PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
     display::{DisplayTarget, HirDisplay},
-    next_solver::DbInterner,
+    next_solver::{DbInterner, EarlyBinder},
     solver_errors::SolverDiagnosticKind,
 };
 use stdx::{impl_from, never};
@@ -31,7 +31,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type, Variant};
+use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type, TypeOwnerId, Variant};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
@@ -100,11 +100,17 @@ macro_rules! diagnostics {
 }
 
 diagnostics![AnyDiagnostic<'db> ->
+    ArrayPatternWithoutFixedLength,
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
+    CannotBeDereferenced<'db>,
+    CannotImplicitlyDerefTraitObject<'db>,
+    CannotIndexInto<'db>,
     CastToUnsized<'db>,
     ExpectedArrayOrSlicePat<'db>,
     ExpectedFunction<'db>,
+    ExplicitDropMethodUse,
+    FruInDestructuringAssignment,
     FunctionalRecordUpdateOnNonStruct,
     GenericDefaultRefersToSelf,
     InactiveCode,
@@ -115,19 +121,23 @@ diagnostics![AnyDiagnostic<'db> ->
     InvalidCast<'db>,
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
+    InvalidRangePatType,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
     MalformedDerive,
+    MethodCallIllegalSizedBound,
     MismatchedArgCount,
     MismatchedTupleStructPatArgCount,
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
     MovedOutOfRef<'db>,
+    MutableRefBinding,
     NeedMut,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
+    NonExhaustiveRecordPat,
     NoSuchField,
     MismatchedArrayPatLen,
     DuplicateField,
@@ -298,15 +308,53 @@ pub struct MismatchedArrayPatLen {
 }
 
 #[derive(Debug)]
+pub struct ArrayPatternWithoutFixedLength {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
 pub struct ExpectedArrayOrSlicePat<'db> {
     pub pat: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
 }
 
 #[derive(Debug)]
+pub struct InvalidRangePatType {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
 pub struct ExpectedFunction<'db> {
     pub call: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotBeDereferenced<'db> {
+    pub expr: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotImplicitlyDerefTraitObject<'db> {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotIndexInto<'db> {
+    pub expr: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct ExplicitDropMethodUse {
+    pub expr_or_path: Either<InFile<AstPtr<ast::MethodCallExpr>>, InFile<AstPtr<ast::Path>>>,
+}
+
+#[derive(Debug)]
+pub struct FruInDestructuringAssignment {
+    pub node: InFile<AstPtr<ast::Expr>>,
 }
 
 #[derive(Debug)]
@@ -398,6 +446,12 @@ pub struct NonExhaustiveLet {
 #[derive(Debug)]
 pub struct NonExhaustiveRecordExpr {
     pub expr: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
+pub struct NonExhaustiveRecordPat {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub variant: Variant,
 }
 
 #[derive(Debug)]
@@ -583,6 +637,11 @@ pub struct InvalidLhsOfAssignment {
 }
 
 #[derive(Debug)]
+pub struct MethodCallIllegalSizedBound {
+    pub call_expr: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
 pub struct PatternArgInExternFn {
     pub node: InFile<AstPtr<ast::Pat>>,
 }
@@ -592,6 +651,11 @@ pub struct UnimplementedTrait<'db> {
     pub span: SpanSyntax,
     pub trait_predicate: crate::TraitPredicate<'db>,
     pub root_trait_predicate: Option<crate::TraitPredicate<'db>>,
+}
+
+#[derive(Debug)]
+pub struct MutableRefBinding {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 impl<'db> AnyDiagnostic<'db> {
@@ -733,7 +797,7 @@ impl<'db> AnyDiagnostic<'db> {
         d: &'db InferenceDiagnostic,
         source_map: &hir_def::expr_store::BodySourceMap,
         sig_map: &hir_def::expr_store::ExpressionStoreSourceMap,
-        env: ParamEnvAndCrate<'db>,
+        type_owner: TypeOwnerId,
     ) -> Option<AnyDiagnostic<'db>> {
         let expr_syntax = |expr| {
             source_map
@@ -757,6 +821,7 @@ impl<'db> AnyDiagnostic<'db> {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
         };
+        let new_ty = |ty| Type { owner: type_owner, ty: EarlyBinder::bind(ty) };
         let span_syntax = |span| match span {
             hir_ty::Span::ExprId(idx) => expr_syntax(idx).map(|it| it.upcast()),
             hir_ty::Span::PatId(idx) => pat_syntax(idx).map(|it| it.upcast()),
@@ -784,9 +849,21 @@ impl<'db> AnyDiagnostic<'db> {
                 let pat = pat_syntax(pat)?.map(Into::into);
                 MismatchedArrayPatLen { pat, expected, found, has_rest }.into()
             }
+            &InferenceDiagnostic::ArrayPatternWithoutFixedLength { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                ArrayPatternWithoutFixedLength { pat }.into()
+            }
             InferenceDiagnostic::ExpectedArrayOrSlicePat { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
-                ExpectedArrayOrSlicePat { pat, found: Type::new(db, def, found.as_ref()) }.into()
+                ExpectedArrayOrSlicePat {
+                    pat,
+                    found: Type { owner: type_owner, ty: EarlyBinder::bind(found.as_ref()) },
+                }
+                .into()
+            }
+            &InferenceDiagnostic::InvalidRangePatType { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                InvalidRangePatType { pat }.into()
             }
             &InferenceDiagnostic::DuplicateField { field: expr, variant } => {
                 let expr_or_pat = match expr {
@@ -812,8 +889,7 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
                 let call_expr = expr_syntax(*call_expr)?;
-                ExpectedFunction { call: call_expr, found: Type::new(db, def, found.as_ref()) }
-                    .into()
+                ExpectedFunction { call: call_expr, found: new_ty(found.as_ref()) }.into()
             }
             InferenceDiagnostic::UnresolvedField {
                 expr,
@@ -825,7 +901,7 @@ impl<'db> AnyDiagnostic<'db> {
                 UnresolvedField {
                     expr,
                     name: name.clone(),
-                    receiver: Type::new(db, def, receiver.as_ref()),
+                    receiver: new_ty(receiver.as_ref()),
                     method_with_same_name_exists: *method_with_same_name_exists,
                 }
                 .into()
@@ -841,10 +917,10 @@ impl<'db> AnyDiagnostic<'db> {
                 UnresolvedMethodCall {
                     expr,
                     name: name.clone(),
-                    receiver: Type::new(db, def, receiver.as_ref()),
+                    receiver: new_ty(receiver.as_ref()),
                     field_with_same_name: field_with_same_name
                         .as_ref()
-                        .map(|ty| Type::new(db, def, ty.as_ref())),
+                        .map(|ty| new_ty(ty.as_ref())),
                     assoc_func_with_same_name: assoc_func_with_same_name.map(Into::into),
                 }
                 .into()
@@ -872,12 +948,16 @@ impl<'db> AnyDiagnostic<'db> {
             &InferenceDiagnostic::NonExhaustiveRecordExpr { expr } => {
                 NonExhaustiveRecordExpr { expr: expr_syntax(expr)? }.into()
             }
+            &InferenceDiagnostic::NonExhaustiveRecordPat { pat, variant } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                NonExhaustiveRecordPat { pat, variant: variant.into() }.into()
+            }
             &InferenceDiagnostic::FunctionalRecordUpdateOnNonStruct { base_expr } => {
                 FunctionalRecordUpdateOnNonStruct { base_expr: expr_syntax(base_expr)? }.into()
             }
             InferenceDiagnostic::TypedHole { expr, expected } => {
                 let expr = expr_syntax(*expr)?;
-                TypedHole { expr, expected: Type::new(db, def, expected.as_ref()) }.into()
+                TypedHole { expr, expected: new_ty(expected.as_ref()) }.into()
             }
             &InferenceDiagnostic::MismatchedTupleStructPatArgCount { pat, expected, found } => {
                 let InFile { file_id, value } = pat_syntax(pat)?;
@@ -888,13 +968,25 @@ impl<'db> AnyDiagnostic<'db> {
             }
             InferenceDiagnostic::CastToUnsized { expr, cast_ty } => {
                 let expr = expr_syntax(*expr)?;
-                CastToUnsized { expr, cast_ty: Type::new(db, def, cast_ty.as_ref()) }.into()
+                CastToUnsized { expr, cast_ty: new_ty(cast_ty.as_ref()) }.into()
             }
             InferenceDiagnostic::InvalidCast { expr, error, expr_ty, cast_ty } => {
                 let expr = expr_syntax(*expr)?;
-                let expr_ty = Type::new(db, def, expr_ty.as_ref());
-                let cast_ty = Type::new(db, def, cast_ty.as_ref());
+                let expr_ty = new_ty(expr_ty.as_ref());
+                let cast_ty = new_ty(cast_ty.as_ref());
                 InvalidCast { expr, error: *error, expr_ty, cast_ty }.into()
+            }
+            InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
+                let expr = expr_syntax(*expr)?;
+                CannotBeDereferenced { expr, found: new_ty(found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::CannotImplicitlyDerefTraitObject { pat, found } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                CannotImplicitlyDerefTraitObject { pat, found: new_ty(found.as_ref()) }.into()
+            }
+            InferenceDiagnostic::CannotIndexInto { expr, found } => {
+                let expr = expr_syntax(*expr)?;
+                CannotIndexInto { expr, found: new_ty(found.as_ref()) }.into()
             }
             InferenceDiagnostic::TyDiagnostic { source, diag } => {
                 let source_map = match source {
@@ -963,13 +1055,13 @@ impl<'db> AnyDiagnostic<'db> {
                 let lhs = expr_syntax(lhs)?;
                 InvalidLhsOfAssignment { lhs }.into()
             }
+            &InferenceDiagnostic::MethodCallIllegalSizedBound { call_expr } => {
+                MethodCallIllegalSizedBound { call_expr: expr_syntax(call_expr)? }.into()
+            }
             &InferenceDiagnostic::TypeMustBeKnown { at_point, ref top_term } => {
                 let at_point = span_syntax(at_point)?;
                 let top_term = top_term.as_ref().map(|top_term| match top_term.as_ref().kind() {
-                    rustc_type_ir::GenericArgKind::Type(ty) => Either::Left(Type {
-                        ty,
-                        env: crate::body_param_env_from_has_crate(db, def),
-                    }),
+                    rustc_type_ir::GenericArgKind::Type(ty) => Either::Left(new_ty(ty)),
                     // FIXME: Printing the const to string is definitely not the correct thing to do here.
                     rustc_type_ir::GenericArgKind::Const(konst) => Either::Right(
                         konst.display(db, DisplayTarget::from_crate(db, def.krate(db))).to_string(),
@@ -988,14 +1080,37 @@ impl<'db> AnyDiagnostic<'db> {
                 let expr_or_pat = expr_or_pat_syntax(*node)?;
                 TypeMismatch {
                     expr_or_pat,
-                    expected: Type { env, ty: expected.as_ref() },
-                    actual: Type { env, ty: found.as_ref() },
+                    expected: Type { owner: type_owner, ty: EarlyBinder::bind(expected.as_ref()) },
+                    actual: Type { owner: type_owner, ty: EarlyBinder::bind(found.as_ref()) },
                 }
                 .into()
             }
             InferenceDiagnostic::SolverDiagnostic(d) => {
                 let span = span_syntax(d.span)?;
-                Self::solver_diagnostic(db, &d.kind, span, env)?
+                Self::solver_diagnostic(db, &d.kind, span, type_owner)?
+            }
+            InferenceDiagnostic::ExplicitDropMethodUse { kind } => {
+                let expr_or_path = match kind {
+                    ExplicitDropMethodUseKind::MethodCall(expr) => {
+                        let expr = expr_syntax(*expr)?;
+                        let expr = expr.with_value(expr.value.cast::<ast::MethodCallExpr>()?);
+                        Either::Left(expr)
+                    }
+                    ExplicitDropMethodUseKind::Path(path_expr_id) => {
+                        let syntax = expr_or_pat_syntax(*path_expr_id)?;
+                        let file_id = syntax.file_id;
+                        let syntax =
+                            syntax.with_value(syntax.value.cast::<ast::PathExpr>()?).to_node(db);
+                        let path = syntax.path()?;
+                        let path = InFile::new(file_id, AstPtr::new(&path));
+                        Either::Right(path)
+                    }
+                };
+                ExplicitDropMethodUse { expr_or_path }.into()
+            }
+            InferenceDiagnostic::MutableRefBinding { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MutableRefBinding { pat }.into()
             }
         })
     }
@@ -1004,16 +1119,21 @@ impl<'db> AnyDiagnostic<'db> {
         db: &'db dyn HirDatabase,
         d: &'db SolverDiagnosticKind,
         span: SpanSyntax,
-        env: ParamEnvAndCrate<'db>,
+        type_owner: TypeOwnerId,
     ) -> Option<AnyDiagnostic<'db>> {
         let interner = DbInterner::new_no_crate(db);
         Some(match d {
             SolverDiagnosticKind::TraitUnimplemented { trait_predicate, root_trait_predicate } => {
-                let trait_predicate =
-                    crate::TraitPredicate { inner: trait_predicate.get(interner), env };
+                let trait_predicate = crate::TraitPredicate {
+                    inner: trait_predicate.get(interner),
+                    owner: type_owner,
+                };
                 let root_trait_predicate =
                     root_trait_predicate.as_ref().map(|root_trait_predicate| {
-                        crate::TraitPredicate { inner: root_trait_predicate.get(interner), env }
+                        crate::TraitPredicate {
+                            inner: root_trait_predicate.get(interner),
+                            owner: type_owner,
+                        }
                     });
                 UnimplementedTrait { span, trait_predicate, root_trait_predicate }.into()
             }

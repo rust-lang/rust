@@ -475,6 +475,7 @@ define_symbols! {
     PartialOrd,
     CoercePointee,
     path,
+    pattern_type,
     Pending,
     phantom_data,
     pieces,
@@ -645,6 +646,7 @@ define_symbols! {
     eii_internals,
     field_representing_type_raw,
     intrinsics,
+    core_intrinsics,
     link_cfg,
     more_maybe_bounds,
     negative_bounds,
@@ -670,4 +672,7 @@ define_symbols! {
     deref_patterns,
     mut_ref,
     type_changing_struct_update,
+    RangeMin,
+    RangeMax,
+    RangeSub,
 }

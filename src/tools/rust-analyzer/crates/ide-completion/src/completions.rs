@@ -199,10 +199,10 @@ impl Completions {
         item.add_to(self, ctx.db);
     }
 
-    pub(crate) fn add_expr(
+    pub(crate) fn add_expr<'db>(
         &mut self,
-        ctx: &CompletionContext<'_, '_>,
-        expr: &hir::term_search::Expr<'_>,
+        ctx: &CompletionContext<'_, 'db>,
+        expr: &hir::term_search::Expr<'db>,
     ) {
         if let Some(item) = render_expr(ctx, expr) {
             item.add_to(self, ctx.db)

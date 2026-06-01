@@ -448,7 +448,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 )
             }
             Pat::Missing => self.types.types.error,
-            Pat::Wild | Pat::Rest => expected,
+            Pat::Wild | Pat::Rest | Pat::NotNull => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             // Pat::Never => expected,
             Pat::Path(_) => {
@@ -662,6 +662,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             Pat::Ref { .. }
             // No need to do anything on a missing pattern.
             | Pat::Missing
+            // No need to do anything on a `NotNull` pattern, they are only allowed in type contexts.
+            | Pat::NotNull
             // A `_`/`..` pattern works with any expected type, so there's no need to do anything.
             | Pat::Wild | Pat::Rest
             // Bindings also work with whatever the expected type is,
@@ -843,7 +845,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::InvalidRangePatType { pat });
             return self.types.types.error;
         }
 
@@ -891,14 +893,14 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         let user_bind_annot = BindingMode::from_annotation(binding_data.mode);
         let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(_) = def_br => {
-                // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
+                // Only mention the experimental `mut_ref` feature if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if self.edition.at_least_2024()
                     && (self.features.ref_pat_eat_one_layer_2024
                         || self.features.ref_pat_eat_one_layer_2024_structural)
                 {
                     if !self.features.mut_ref {
-                        // FIXME: Emit an error: binding cannot be both mutable and by-reference.
+                        self.push_diagnostic(InferenceDiagnostic::MutableRefBinding { pat });
                     }
 
                     BindingMode(def_br, Mutability::Mut)
@@ -957,22 +959,23 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         local_ty
     }
 
-    fn check_dereferenceable(&self, expected: Ty<'db>, inner: PatId) -> Result<(), ()> {
+    fn check_dereferenceable(
+        &mut self,
+        expected: Ty<'db>,
+        pat: PatId,
+        inner: PatId,
+    ) -> Result<(), ()> {
         if let Pat::Bind { .. } = self.store[inner]
             && let Some(pointee_ty) = self.shallow_resolve(expected).builtin_deref(true)
             && let TyKind::Dynamic(..) = pointee_ty.kind()
         {
             // This is "x = dyn SomeTrait" being reduced from
             // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.
-            // FIXME: Emit an error. rustc emits this message:
-            const _CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
-This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
-pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, \
-this type has no compile-time size. Therefore, all accesses to trait types must be through \
-pointers. If you encounter this error you should try to avoid dereferencing the pointer.
-
-You can read more about trait objects in the Trait Objects section of the Reference: \
-https://doc.rust-lang.org/reference/types.html#trait-objects";
+            self.push_diagnostic(InferenceDiagnostic::CannotImplicitlyDerefTraitObject {
+                pat,
+                found: expected.store(),
+            });
+            return Err(());
         }
         Ok(())
     }
@@ -1155,7 +1158,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
     fn check_record_pat_fields(
         &mut self,
         adt_ty: Ty<'db>,
-        _pat: PatId,
+        pat: PatId,
         variant: VariantId,
         fields: &[RecordFieldPat],
         has_rest_pat: bool,
@@ -1233,7 +1236,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
         // Require `..` if struct has non_exhaustive attribute.
         let non_exhaustive = self.has_applicable_non_exhaustive(variant.into());
         if non_exhaustive && !has_rest_pat {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::NonExhaustiveRecordPat { pat, variant });
         }
 
         // Report an error if an incorrect number of fields was specified.
@@ -1258,7 +1261,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
     ) -> Ty<'db> {
         let interner = self.interner();
         let (box_ty, inner_ty) = self
-            .check_dereferenceable(expected, inner)
+            .check_dereferenceable(expected, pat, inner)
             .map(|()| {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using `demand::eqtype`.
@@ -1471,7 +1474,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
             }
         }
 
-        let (ref_ty, inner_ty) = match self.check_dereferenceable(expected, inner) {
+        let (ref_ty, inner_ty) = match self.check_dereferenceable(expected, pat, inner) {
             Ok(()) => {
                 // `demand::subtype` would be good enough, but using `eqtype` turns
                 // out to be equally general. See (note_1) for details.
@@ -1699,7 +1702,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.
-            // FIXME: Emit an error: cannot pattern-match on an array without a fixed length.
+            self.push_diagnostic(InferenceDiagnostic::ArrayPatternWithoutFixedLength { pat });
         };
 
         // If we get here, we must have emitted an error.

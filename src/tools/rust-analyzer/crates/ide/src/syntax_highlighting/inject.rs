@@ -177,7 +177,7 @@ pub(super) fn doc_comment(
         match sema.first_crate(vfs_file_id) {
             Some(krate) => krate.base().data(sema.db).proc_macro_cwd.clone(),
             None => {
-                // Arbitrarily pick /, since from_single_file treats this file as as /main.rs anyway.
+                // Arbitrarily pick /, since from_single_file treats this file as /main.rs anyway.
                 Arc::new(ide_db::base_db::AbsPathBuf::try_from("/").unwrap())
             }
         }

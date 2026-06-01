@@ -35,7 +35,7 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    Span, all_super_traits,
+    InferenceDiagnostic, Span, all_super_traits,
     db::HirDatabase,
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
@@ -148,7 +148,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         debug!("result = {:?}", result);
 
         if result.illegal_sized_bound {
-            // FIXME: Report an error.
+            self.push_diagnostic(InferenceDiagnostic::MethodCallIllegalSizedBound { call_expr });
         }
 
         self.write_expr_adj(receiver, result.adjustments);
