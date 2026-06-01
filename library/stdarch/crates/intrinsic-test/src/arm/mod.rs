@@ -9,7 +9,7 @@ use crate::common::intrinsic_helpers::{SimdLen, TypeDefinition, TypeKind};
 use crate::common::values::test_values_array_name;
 use crate::common::{PASSES, PREDICATE_LOCAL, SupportedArchitecture};
 use intrinsic::ArmType;
-use json_parser::get_neon_intrinsics;
+use json_parser::get_intrinsics;
 
 #[derive(PartialEq)]
 pub struct Arm(Vec<Intrinsic<Arm>>);
@@ -56,7 +56,7 @@ impl SupportedArchitecture for Arm {
         let big_endian = cli_options.target.starts_with("aarch64_be");
         let a32 = cli_options.target.starts_with("armv7");
         let mut intrinsics =
-            get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
+            get_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
         intrinsics.dedup();

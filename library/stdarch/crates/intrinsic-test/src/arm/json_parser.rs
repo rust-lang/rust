@@ -58,22 +58,14 @@ struct JsonIntrinsic {
     _instructions: Option<Vec<Vec<String>>>,
 }
 
-pub fn get_neon_intrinsics(
-    filename: &Path,
-) -> Result<Vec<Intrinsic<Arm>>, Box<dyn std::error::Error>> {
+pub fn get_intrinsics(filename: &Path) -> Result<Vec<Intrinsic<Arm>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
 
     let parsed = json
         .into_iter()
-        .filter_map(|intr| {
-            if intr.simd_isa == "Neon" {
-                Some(json_to_intrinsic(intr).expect("Couldn't parse JSON"))
-            } else {
-                None
-            }
-        })
+        .map(|intr| json_to_intrinsic(intr).expect("Couldn't parse JSON"))
         .collect();
     Ok(parsed)
 }
