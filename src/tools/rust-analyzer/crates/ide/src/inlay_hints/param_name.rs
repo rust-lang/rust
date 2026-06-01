@@ -195,7 +195,7 @@ fn should_hide_param_name_hint(
     // - the argument is a qualified constructing or call expression where the qualifier is an ADT
     // - exact argument<->parameter match(ignoring leading and trailing underscore) or
     //   parameter is a prefix/suffix of argument with _ splitting it off
-    // - param starts with `ra_fixture`
+    // - param starts with `ra_fixture` or `<ra@`
     // - param is a well known name in a unary function
 
     let param_name = param_name.trim_matches('_');
@@ -203,7 +203,7 @@ fn should_hide_param_name_hint(
         return true;
     }
 
-    if param_name.starts_with("ra_fixture") {
+    if param_name.starts_with("ra_fixture") || param_name.starts_with("<ra@") {
         return true;
     }
 
@@ -608,6 +608,7 @@ impl Test {
 fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
     foo + bar
 }
+async fn test_async(foo: i32, _: i32) {}
 
 fn main() {
     let not_literal = 1;
@@ -631,6 +632,8 @@ fn main() {
         None,
       //^^^^ docs
     );
+    test_async(1, 2)
+             //^ foo
 }"#,
         );
     }
