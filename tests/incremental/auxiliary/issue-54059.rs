@@ -40,7 +40,7 @@ proc_macro_expr_impl! {
     }
 }
 
-#[link(name = "rust_test_helpers", kind = "static")]
+#[link(name="rust_test_helpers")]
 extern "C" {
     pub fn rust_dbg_extern_identity_u64(v: u64) -> u64;
 }
