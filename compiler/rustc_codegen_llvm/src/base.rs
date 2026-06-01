@@ -25,7 +25,7 @@ use rustc_middle::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
-use rustc_target::spec::{CfgAbi, SanitizerSet};
+use rustc_target::spec::{LlvmAbi, SanitizerSet};
 
 use super::ModuleLlvm;
 use crate::attributes;
@@ -131,7 +131,7 @@ pub(crate) fn compile_codegen_unit(
                 // FIXME(jchlanda) If it ever becomes necessary to ensure that all compiler
                 // generated functions receive the ptrauth-* attributes, `declare_fn` or
                 // `declare_raw_fn` could be used to provide those.
-                if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
+                if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest {
                     for &ptrauth_attr in pauth_fn_attrs() {
                         attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
                     }
@@ -152,7 +152,7 @@ pub(crate) fn compile_codegen_unit(
                 cx.add_objc_module_flags();
             }
 
-            if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
+            if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest {
                 // FIXME(jchlanda): In LLVM/Clang, there are also `aarch64-elf-pauthabi-platform`
                 // and `aarch64-elf-pauthabi-version` module flags. These are emitted into the
                 // PAuth core info section of the resulting ELF, which the linker uses to enforce

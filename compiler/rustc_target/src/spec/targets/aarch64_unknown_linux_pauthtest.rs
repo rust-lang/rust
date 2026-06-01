@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, CfgAbi, Env, FramePointer, LinkSelfContainedDefault, StackProbeType, Target,
+    Arch, CfgAbi, Env, FramePointer, LinkSelfContainedDefault, LlvmAbi, StackProbeType, Target,
     TargetMetadata, TargetOptions, base,
 };
 
@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             env: Env::Musl,
             cfg_abi: CfgAbi::Pauthtest,
+            llvm_abiname: LlvmAbi::Pauthtest,
             // `pauthtest` requires v8.3a, which includes lse, no need for outline-atomics
             features: "+v8.3a,+pauth".into(),
             max_atomic_width: Some(128),
