@@ -1071,12 +1071,12 @@ fn main() {
 "#,
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant dep::test_mod_b::Enum::Variant [type]
-                ev Variant Variant [type+requires_import]
                 ex dep::test_mod_b::Enum::Variant  [type]
-                ev Variant Variant [requires_import]
+                ev Variant Variant [type+requires_import]
                 md dep::  []
                 fn main() fn() []
                 fn test(…) fn(Enum) []
+                ev Variant Variant [requires_import]
             "#]],
         );
     }
@@ -3989,11 +3989,11 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                ev Foo::B Foo::B [type_could_unify]
-                ev Foo::A(…) Foo::A(T) [type_could_unify]
                 lc foo Foo<u32> [type+local]
                 ex Foo::B  [type]
                 ex foo  [type]
+                ev Foo::B Foo::B [type_could_unify]
+                ev Foo::A(…) Foo::A(T) [type_could_unify]
                 en Foo Foo<T> [type_could_unify]
                 fn baz() fn() -> Foo<T> [type_could_unify]
                 fn bar() fn() -> Foo<u8> []

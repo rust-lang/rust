@@ -4055,3 +4055,57 @@ fn test<H: Test1>(test: H) {
         expect![""],
     );
 }
+
+#[test]
+fn imported_enum_variant_has_lower_priority() {
+    check(
+        r#"
+pub struct String {}
+mod foo {
+    pub enum Foo { String }
+}
+fn main() {
+    Strin$0
+}
+    "#,
+        expect![[r#"
+            fn main()                          fn()
+            md foo::
+            st String                        String
+            ev String (use foo::Foo::String) String
+            bt u32                              u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
