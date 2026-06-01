@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17905>.
+
 //@ run-pass
 
 #[derive(Debug)]

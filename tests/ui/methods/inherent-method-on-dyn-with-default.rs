@@ -1,6 +1,9 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18446>.
+//! Tests that an inherent method on a trait object with existing default method
+//! doesn't emit a duplicate definition error.
+
 //@ check-pass
 #![allow(dead_code)]
-// Test that methods in trait impls should override default methods.
 
 trait T {
     fn foo(&self) -> i32 { 0 }
