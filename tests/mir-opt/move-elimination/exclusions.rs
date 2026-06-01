@@ -111,3 +111,20 @@ pub fn dse_guard() {
     b = a;
     observe(&raw const b);
 }
+
+// EMIT_MIR exclusions.rust_call_tuple_not_projected.MoveElimination.diff
+pub fn rust_call_tuple_not_projected<F: FnOnce([u8; 8], [u8; 8])>(f: F) {
+    // This checks that locals are not remapped into the tuple argument passed
+    // to a rust-call ABI function. If the tuple itself is never borrowed, alias
+    // analysis can trivially see that accesses to one argument don't affect the
+    // others. Merging the arguments into tuple fields from the start can hide
+    // that independence.
+    // CHECK-LABEL: fn rust_call_tuple_not_projected(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: [[tuple:_.*]] = (move [[a]], move [[b]]);
+    // CHECK: <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _1, move [[tuple]])
+    let a = [1; 8];
+    let b = [2; 8];
+    f(a, b);
+}

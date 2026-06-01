@@ -1,4 +1,4 @@
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{ExternAbi, FieldIdx, VariantIdx};
 use rustc_const_eval::util::most_packed_projection;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
@@ -33,11 +33,19 @@ impl<'tcx> crate::MirPass<'tcx> for MoveElimination {
 
         dump_liveness_matrix(tcx, body, "MoveElimination.pre-liveness", &points, &liveness_matrix);
 
-        let mut unprojectable_locals = UnprojectableLocals::find(body);
+        let unprojectable_locals = UnprojectableLocals::find(body);
         trace!(?unprojectable_locals);
 
-        let remapped_locals =
-            PlaceUnification::run(tcx, body, &mut liveness_matrix, &mut unprojectable_locals);
+        let rust_call_tuples = find_rust_call_tuples(tcx, body);
+        trace!(?rust_call_tuples);
+
+        let remapped_locals = PlaceUnification::run(
+            tcx,
+            body,
+            &mut liveness_matrix,
+            unprojectable_locals,
+            rust_call_tuples,
+        );
 
         apply_mappings(tcx, body, &remapped_locals);
 
@@ -121,7 +129,8 @@ struct PlaceUnification<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     liveness_matrix: &'a mut SparseIntervalMatrix<Local, SplitPointIndex>,
-    unprojectable_locals: &'a mut DenseBitSet<Local>,
+    unprojectable_locals: DenseBitSet<Local>,
+    rust_call_tuples: DenseBitSet<Local>,
     remapped_locals: IndexVec<Local, Option<Place<'tcx>>>,
 }
 
@@ -130,13 +139,15 @@ impl<'tcx> PlaceUnification<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         liveness_matrix: &mut SparseIntervalMatrix<Local, SplitPointIndex>,
-        unprojectable_locals: &mut DenseBitSet<Local>,
+        unprojectable_locals: DenseBitSet<Local>,
+        rust_call_tuples: DenseBitSet<Local>,
     ) -> IndexVec<Local, Option<Place<'tcx>>> {
         let mut visitor = PlaceUnification {
             tcx,
             body,
             liveness_matrix,
             unprojectable_locals,
+            rust_call_tuples,
             remapped_locals: IndexVec::from_elem_n(None, body.local_decls.len()),
         };
         visitor.visit_body(body);
@@ -171,6 +182,11 @@ impl<'tcx> PlaceUnification<'_, 'tcx> {
             if a.projection != b.projection {
                 trace!("cannot unify same local with different projections");
             }
+            return None;
+        }
+
+        if self.rust_call_tuples.contains(a.local) || self.rust_call_tuples.contains(b.local) {
+            trace!("cannot unify {a:?} and {b:?} involving a rust-call tuple argument");
             return None;
         }
 
@@ -275,6 +291,44 @@ impl<'tcx> PlaceUnification<'_, 'tcx> {
             self.remap_local(local, place);
         }
     }
+}
+
+/// Search for tuple locals passed to calls using the "rust-call" ABI.
+///
+/// For rust-call ABI calls, caller-side MIR passes the logical arguments as a
+/// tuple operand. We want to avoid remapping other locals into fields of that
+/// tuple, especially if one of those locals is borrowed.
+///
+/// Since the tuple itself is never borrowed, it is trivial for LLVM alias
+/// analysis to see that accesses to one argument do not affect the others, but
+/// merging the arguments into tuple fields from the start can hide that
+/// independence.
+fn find_rust_call_tuples<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> DenseBitSet<Local> {
+    let mut rust_call_tuples = DenseBitSet::new_empty(body.local_decls.len());
+
+    for block in body.basic_blocks.iter() {
+        let terminator = block.terminator();
+        let (func, args) = match &terminator.kind {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => (func, args),
+            _ => continue,
+        };
+
+        let sig = func.ty(&body.local_decls, tcx).fn_sig(tcx);
+        if sig.abi() != ExternAbi::RustCall {
+            continue;
+        }
+
+        let arg_tuple = args.last().expect("rust-call ABI requires a tuple argument");
+        let (Operand::Copy(place) | Operand::Move(place)) = arg_tuple.node else {
+            continue;
+        };
+        if let Some(local) = place.as_local() {
+            rust_call_tuples.insert(local);
+        }
+    }
+
+    rust_call_tuples
 }
 
 /// Since we are replacing all uses of a local with another place, we need to
