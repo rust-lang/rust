@@ -21,7 +21,7 @@ use rustc_target::spec::Arch;
 use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
-use super::rmeta_link::{self, RmetaLink};
+use super::rmeta_link;
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub use crate::errors::ExtractBundledLibsError;
@@ -309,12 +309,12 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
 }
 
 pub trait ArchiveBuilder {
-    fn add_file(&mut self, path: &Path);
+    fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
     fn add_archive(
         &mut self,
         archive: &Path,
-        skip: Option<Box<dyn FnMut(&str, Option<&RmetaLink>) -> bool + 'static>>,
+        skip: Option<Box<dyn FnMut(&str, ArchiveEntryKind) -> bool + 'static>>,
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
@@ -383,10 +383,25 @@ pub struct ArArchiveBuilder<'a> {
     entries: Vec<(Vec<u8>, ArchiveEntry)>,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ArchiveEntryKind {
+    /// Object file produced from Rust code.
+    RustObj,
+    /// Anything else, introduce new variants as needed.
+    Other,
+}
+
 #[derive(Debug)]
-enum ArchiveEntry {
-    FromArchive { archive_index: usize, file_range: (u64, u64) },
+enum ArchiveEntrySource {
+    Archive { archive_index: usize, file_range: (u64, u64) },
     File(PathBuf),
+}
+
+#[derive(Debug)]
+struct ArchiveEntry {
+    source: ArchiveEntrySource,
+    #[expect(dead_code)] // used in #155338
+    kind: ArchiveEntryKind,
 }
 
 impl<'a> ArArchiveBuilder<'a> {
@@ -446,7 +461,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
     fn add_archive(
         &mut self,
         archive_path: &Path,
-        mut skip: Option<Box<dyn FnMut(&str, Option<&RmetaLink>) -> bool + 'static>>,
+        mut skip: Option<Box<dyn FnMut(&str, ArchiveEntryKind) -> bool + 'static>>,
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx")
@@ -462,8 +477,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-        let metadata_link =
-            skip.as_ref().and_then(|_| rmeta_link::read(&archive, &archive_map, &archive_path));
+        let metadata_link = rmeta_link::read(&archive, &archive_map, &archive_path);
         let archive_index = self.src_archives.len();
 
         if let Some(expected_kind) =
@@ -483,17 +497,23 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             let file_name = String::from_utf8(entry.name().to_vec())
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-            let drop = skip.as_mut().is_some_and(|f| f(&file_name, metadata_link.as_ref()));
+            let kind = if metadata_link
+                .as_ref()
+                .is_some_and(|m| m.rust_object_files.iter().any(|f| f == &file_name))
+            {
+                ArchiveEntryKind::RustObj
+            } else {
+                ArchiveEntryKind::Other
+            };
+            let drop = skip.as_mut().is_some_and(|f| f(&file_name, kind));
             if !drop {
-                if entry.is_thin() {
+                let source = if entry.is_thin() {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
-                    self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
+                    ArchiveEntrySource::File(member_path)
                 } else {
-                    self.entries.push((
-                        file_name.into_bytes(),
-                        ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
-                    ));
-                }
+                    ArchiveEntrySource::Archive { archive_index, file_range: entry.file_range() }
+                };
+                self.entries.push((file_name.into_bytes(), ArchiveEntry { source, kind }));
             }
         }
 
@@ -502,10 +522,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
     }
 
     /// Adds an arbitrary file to this archive
-    fn add_file(&mut self, file: &Path) {
+    fn add_file(&mut self, file: &Path, kind: ArchiveEntryKind) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
-            ArchiveEntry::File(file.to_owned()),
+            ArchiveEntry { source: ArchiveEntrySource::File(file.to_owned()), kind },
         ));
     }
 
@@ -539,8 +559,8 @@ impl<'a> ArArchiveBuilder<'a> {
 
         for (entry_name, entry) in self.entries {
             let data =
-                match entry {
-                    ArchiveEntry::FromArchive { archive_index, file_range } => {
+                match entry.source {
+                    ArchiveEntrySource::Archive { archive_index, file_range } => {
                         let src_archive = &self.src_archives[archive_index];
                         let archive_data = &src_archive.1;
                         let start = file_range.0 as usize;
@@ -563,7 +583,7 @@ impl<'a> ArArchiveBuilder<'a> {
 
                         Box::new(data) as Box<dyn AsRef<[u8]>>
                     }
-                    ArchiveEntry::File(file) => unsafe {
+                    ArchiveEntrySource::File(file) => unsafe {
                         Box::new(
                             Mmap::map(File::open(file).map_err(|err| {
                                 io_error_context("failed to open object file", err)
