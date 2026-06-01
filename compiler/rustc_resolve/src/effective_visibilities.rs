@@ -334,11 +334,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 }
             }
             DefKind::Struct | DefKind::Union => {
-                self.r
-                    .macro_reachable_adts
-                    .entry(def_id)
-                    .or_insert_with(Default::default)
-                    .insert(module);
+                self.r.macro_reachable_adts.entry(def_id).or_default().insert(module);
             }
             _ => {}
         }
