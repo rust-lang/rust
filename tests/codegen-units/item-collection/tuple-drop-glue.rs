@@ -9,7 +9,6 @@ struct Dropped;
 
 impl Drop for Dropped {
     //~ MONO_ITEM fn <Dropped as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <Dropped as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 

@@ -39,7 +39,6 @@ struct NonGenericWithDrop(#[allow(dead_code)] i32);
 
 impl Drop for NonGenericWithDrop {
     //~ MONO_ITEM fn <NonGenericWithDrop as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <NonGenericWithDrop as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 

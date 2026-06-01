@@ -9,6 +9,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, traits};
+use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
@@ -966,26 +967,55 @@ where
     fn destructor_call_block_sync(&mut self, succ: BasicBlock, unwind: Unwind) -> BasicBlock {
         let tcx = self.tcx();
         let drop_trait = tcx.require_lang_item(LangItem::Drop, DUMMY_SP);
-        let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
+        let mut drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
 
         let ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
         let ref_place = self.new_temp(ref_ty);
         let unit_temp = Place::from(self.new_temp(tcx.types.unit));
 
+        let mut arg_place = ref_place;
+
+        let mut stmts = vec![self.assign(
+            Place::from(ref_place),
+            Rvalue::Ref(
+                tcx.lifetimes.re_erased,
+                BorrowKind::Mut { kind: MutBorrowKind::Default },
+                self.place,
+            ),
+        )];
+
+        // When the type implements `Drop::pin_drop`, we call it directly instead of `Drop::drop`.
+        if let Some(adt) = ty.ty_adt_def()
+            && let Some(dtor) = adt.destructor(tcx)
+            && tcx.item_name(dtor.did) == sym::pin_drop
+        {
+            debug!("call `pin_drop` for {adt:?}");
+            let pin_ref_ty = Ty::new_pinned_ref(tcx, tcx.lifetimes.re_erased, ty, Mutability::Mut);
+            let pin_ref_place = self.new_temp(pin_ref_ty);
+            stmts.push(self.assign(
+                Place::from(pin_ref_place),
+                Rvalue::Aggregate(
+                    Box::new(AggregateKind::Adt(
+                        tcx.require_lang_item(LangItem::Pin, DUMMY_SP),
+                        VariantIdx::ZERO,
+                        tcx.mk_args(&[ref_ty.into()]),
+                        None,
+                        None,
+                    )),
+                    [Operand::Move(Place::from(ref_place))].into(),
+                ),
+            ));
+            drop_fn = tcx.associated_item_def_ids(drop_trait)[1];
+            arg_place = pin_ref_place;
+        }
+
         self.new_block_with_statements(
             unwind,
-            vec![self.assign(
-                Place::from(ref_place),
-                Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { kind: MutBorrowKind::Default },
-                    self.place,
-                ),
-            )],
+            stmts,
             TerminatorKind::Call {
                 func: Operand::function_handle(tcx, drop_fn, [ty.into()], self.source_info.span),
-                args: [Spanned { node: Operand::Move(Place::from(ref_place)), span: DUMMY_SP }]
+                args: [Spanned { node: Operand::Move(Place::from(arg_place)), span: DUMMY_SP }]
                     .into(),
                 destination: unit_temp,
                 target: Some(succ),
