@@ -129,6 +129,7 @@
 // tidy-alphabetical-end
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(lossy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
