@@ -499,9 +499,12 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
-                        return local(OperandRef::from_immediate_or_packed_pair(
-                            bx, llarg, arg.layout,
-                        ));
+                        debug_assert!(bx.is_backend_immediate(arg.layout));
+                        return local(OperandRef {
+                            val: OperandValue::Immediate(llarg),
+                            layout: arg.layout,
+                            move_annotation: None,
+                        });
                     }
                     PassMode::Pair(..) => {
                         let (a, b) = (bx.get_param(llarg_idx), bx.get_param(llarg_idx + 1));
