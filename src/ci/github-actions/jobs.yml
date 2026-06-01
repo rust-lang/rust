@@ -533,6 +533,7 @@ auto:
         --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
+        --set build.ccache=false
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
