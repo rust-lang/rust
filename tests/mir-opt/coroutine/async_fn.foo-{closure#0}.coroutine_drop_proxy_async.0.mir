@@ -1,0 +1,34 @@
+// MIR for `foo::{closure#0}` 0 coroutine_drop_proxy_async
+
+fn foo::{closure#0}(_1: {async fn body of foo()}, _2: &mut Context<'_>) -> Poll<()> {
+    let mut _0: std::task::Poll<()>;
+    scope 1 {
+        scope 2 {
+            scope 3 {
+                scope 4 {
+                    scope 5 {
+                        scope 6 {
+                            scope 9 {
+                                scope 10 {
+                                }
+                            }
+                        }
+                        scope 7 {
+                            scope 8 {
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        drop(_1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+}

@@ -56,9 +56,9 @@ use std::ops;
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use drop::{
-    cleanup_async_drops, create_coroutine_drop_shim, create_coroutine_drop_shim_async,
-    create_coroutine_drop_shim_proxy_async, elaborate_coroutine_drops, expand_async_drops,
-    has_expandable_async_drops, insert_clean_drop,
+    create_coroutine_drop_shim, create_coroutine_drop_shim_async,
+    create_coroutine_drop_shim_proxy_async, elaborate_coroutine_drops, has_async_drops,
+    insert_clean_drop,
 };
 use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
@@ -70,7 +70,6 @@ use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
@@ -82,8 +81,8 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{
     Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
 };
+use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span, dummy_spanned};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -169,7 +168,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 }
 
 const SELF_ARG: Local = Local::arg(0);
-const CTX_ARG: Local = Local::arg(1);
+pub(crate) const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
@@ -585,7 +584,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
 #[tracing::instrument(level = "trace", skip(tcx, body), ret)]
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty<'tcx> {
+fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let context_mut_ref = Ty::new_task_context(tcx);
 
     // replace the type of the `resume` argument
@@ -615,7 +614,6 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty
             _ => {}
         }
     }
-    context_mut_ref
 }
 
 fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
@@ -1292,6 +1290,9 @@ fn create_coroutine_resume_function<'tcx>(
 
     pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
+    // Run derefer to fix Derefs that are not in the first place
+    deref_finder(tcx, body, false);
+
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
         dumper.dump_mir(body);
     }
@@ -1507,24 +1508,12 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // (finally in open_drop_for_tuple) before async drop expansion.
         // Async drops, produced by this drop elaboration, will be expanded,
         // and corresponding futures kept in layout.
-        let has_async_drops = matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) && has_expandable_async_drops(tcx, body, coroutine_ty);
+        let coroutine_is_async = coroutine_kind.is_async_desugaring();
+        let has_async_drops = has_async_drops(body);
 
         // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
-        if matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) {
-            let context_mut_ref = transform_async_context(tcx, body);
-            expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);
-
-            if let Some(dumper) = MirDumper::new(tcx, "coroutine_async_drop_expand", body) {
-                dumper.dump_mir(body);
-            }
-        } else {
-            cleanup_async_drops(body);
+        if coroutine_is_async {
+            transform_async_context(tcx, body);
         }
 
         let always_live_locals = always_storage_live_locals(body);
@@ -1611,10 +1600,6 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
-        // FIXME: Drops, produced by insert_clean_drop + elaborate_coroutine_drops,
-        // are currently sync only. To allow async for them, we need to move those calls
-        // before expand_async_drops, and fix the related problems.
-        //
         // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
         // the unresumed state.
         // This is expanded to a drop ladder in `elaborate_coroutine_drops`.
@@ -1638,30 +1623,22 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // Create a copy of our MIR and use it to create the drop shim for the coroutine
         if has_async_drops {
             // If coroutine has async drops, generating async drop shim
-            let mut drop_shim =
+            let drop_shim =
                 create_coroutine_drop_shim_async(tcx, &transform, body, drop_clean, can_unwind);
-            // Run derefer to fix Derefs that are not in the first place
-            deref_finder(tcx, &mut drop_shim, false);
             body.coroutine.as_mut().unwrap().coroutine_drop_async = Some(drop_shim);
         } else {
             // If coroutine has no async drops, generating sync drop shim
-            let mut drop_shim =
+            let drop_shim =
                 create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
-            // Run derefer to fix Derefs that are not in the first place
-            deref_finder(tcx, &mut drop_shim, false);
             body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 
             // For coroutine with sync drop, generating async proxy for `future_drop_poll` call
-            let mut proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body);
-            deref_finder(tcx, &mut proxy_shim, false);
+            let proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body);
             body.coroutine.as_mut().unwrap().coroutine_drop_proxy_async = Some(proxy_shim);
         }
 
         // Create the Coroutine::resume / Future::poll function
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
-
-        // Run derefer to fix Derefs that are not in the first place
-        deref_finder(tcx, body, false);
     }
 
     fn is_required(&self) -> bool {

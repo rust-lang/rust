@@ -30,40 +30,6 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> accesses
-struct FixProxyFutureDropVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    replace_to: Local,
-}
-
-impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn visit_place(
-        &mut self,
-        place: &mut Place<'tcx>,
-        _context: PlaceContext,
-        _location: Location,
-    ) {
-        if place.local == Local::from_u32(1) {
-            if place.projection.len() == 1 {
-                assert!(matches!(
-                    place.projection.first(),
-                    Some(ProjectionElem::Field(FieldIdx::ZERO, _))
-                ));
-                *place = Place::from(self.replace_to);
-            } else if place.projection.len() == 2 {
-                assert!(matches!(place.projection[0], ProjectionElem::Field(FieldIdx::ZERO, _)));
-                assert!(matches!(place.projection[1], ProjectionElem::Deref));
-                *place =
-                    Place::from(self.replace_to).project_deeper(&[ProjectionElem::Deref], self.tcx);
-            }
-        }
-    }
-}
-
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<'tcx> {
     debug!("make_shim({:?})", instance);
 
@@ -190,7 +156,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             // Main pass required here is StateTransform to convert sync drop ladder
             // into coroutine.
             // Others are minimal passes as for sync drop glue shim
-            pm::run_passes(
+            pm::run_passes_no_validate(
                 tcx,
                 &mut body,
                 &[
@@ -201,7 +167,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                     &crate::coroutine::StateTransform,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", instance, body);
@@ -471,9 +436,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         self.typing_env
     }
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        self.patch.terminator_loc(self.body, bb)
-    }
     fn allow_async_drops(&self) -> bool {
         self.produce_async_drops
     }
@@ -735,7 +697,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 },
                 /* is_cleanup */ true,
             );
@@ -1002,7 +963,6 @@ fn build_call_shim<'tcx>(
                 unwind: UnwindAction::Continue,
                 replace: false,
                 drop: None,
-                async_fut: None,
             },
             false,
         );
@@ -1021,7 +981,6 @@ fn build_call_shim<'tcx>(
                 unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
                 drop: None,
-                async_fut: None,
             },
             /* is_cleanup */ true,
         );

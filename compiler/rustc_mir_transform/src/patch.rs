@@ -166,11 +166,6 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub(crate) fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
-        let offset = self.block(body, bb).statements.len();
-        Location { block: bb, statement_index: offset }
-    }
-
     /// Queues the addition of a new temporary with additional local info.
     pub(crate) fn new_local_with_info(
         &mut self,

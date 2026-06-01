@@ -743,7 +743,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             // FIXME: Maybe we need also TerminatorEdges::Trio for async drop
             // (target + unwind + dropline)
             Assert { target, unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, place: _, replace: _, drop: _, async_fut: _ }
+            | Drop { target, unwind, place: _, replace: _, drop: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
                 UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
                 UnwindAction::Continue | UnwindAction::Terminate(_) | UnwindAction::Unreachable => {
