@@ -50,8 +50,8 @@ pub(in crate::num) const fn shl() -> ! {
     panic!("attempt to shift left with overflow")
 }
 
-#[cold]
 #[track_caller]
+#[rustc_panic_entrypoint]
 pub(in crate::num) const fn cast_integer() -> ! {
     panic!("attempt to cast integer with overflow")
 }
