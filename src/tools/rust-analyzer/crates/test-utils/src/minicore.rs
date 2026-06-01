@@ -655,6 +655,10 @@ pub mod ops {
     #[lang = "drop"]
     pub trait Drop {
         fn drop(&mut self);
+
+        // region:pin
+        fn pin_drop(self: crate::pin::Pin<&mut Self>) {}
+        // endregion:pin
     }
     // endregion:drop
 

@@ -14,7 +14,7 @@ use stdx::never;
 use syntax::ast::{HasName, RangeOp};
 
 use crate::{
-    AdtId, DefWithBodyId, FunctionId, GenericDefId, StructId, TypeParamId, VariantId,
+    AdtId, DefWithBodyId, FunctionId, GenericDefId, MacroId, StructId, TypeParamId, VariantId,
     attrs::AttrFlags,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
@@ -1136,6 +1136,9 @@ impl Printer<'_> {
                 LangItemTarget::TraitId(it) => write_name!(it),
                 LangItemTarget::EnumVariantId(it) => write_name!(it),
                 LangItemTarget::ConstId(it) => write_name!(it),
+                LangItemTarget::MacroId(MacroId::Macro2Id(it)) => write_name!(it),
+                LangItemTarget::MacroId(MacroId::MacroRulesId(it)) => write_name!(it),
+                LangItemTarget::MacroId(MacroId::ProcMacroId(it)) => write_name!(it),
             }
 
             if let Some(s) = s {
