@@ -579,6 +579,11 @@ impl Step for Rustfmt {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
 
+        // FIXME(#156525): `compile::Sysroot::run` intentionally do not copy `rustc-dev` artifacts
+        // until they're requested with `builder.ensure(Rustc)`, relevant for `download-rustc`
+        // flows.
+        builder.ensure(compile::Rustc::new(build_compiler, target));
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
@@ -940,6 +945,11 @@ impl Step for Clippy {
         // and it must also be used by clippy's test runner to build tests and their dependencies.
         let target_compiler = self.compilers.target_compiler();
         let build_compiler = self.compilers.build_compiler();
+
+        // FIXME(#156525): `compile::Sysroot::run` intentionally do not copy `rustc-dev` artifacts
+        // until they're requested with `builder.ensure(Rustc)`, relevant for `download-rustc`
+        // flows.
+        builder.ensure(compile::Rustc::new(build_compiler, target));
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
