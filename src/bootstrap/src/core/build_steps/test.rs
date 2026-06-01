@@ -909,6 +909,54 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
     }
 }
 
+/// Runs `library/stdarch/crates/stdarch-verify`'s tests which cross-check the
+/// `core::arch` intrinsics for x86, Arm, and MIPS against the corresponding
+/// vendor references (signatures, target features, and `assert_instr` mappings).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchVerify;
+
+impl Step for StdarchVerify {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch/crates/stdarch-verify")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdarchVerify);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.config.host_target;
+        let build_compiler = builder.compiler(0, host);
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::ToolBootstrap,
+            host,
+            Kind::Test,
+            "library/stdarch/crates/stdarch-verify",
+            SourceType::InTree,
+            &[],
+        );
+
+        run_cargo_test(
+            cargo,
+            &[],
+            &["stdarch-verify".to_string()],
+            Some("stdarch-verify"),
+            host,
+            builder,
+        );
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
