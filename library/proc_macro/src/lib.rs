@@ -36,7 +36,7 @@
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 pub mod bridge;
 
@@ -462,7 +462,7 @@ pub macro quote($($t:tt)*) {
     /* compiler built-in */
 }
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 mod quote;
 
@@ -622,14 +622,14 @@ impl Span {
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn save_span(&self) -> usize {
         BridgeMethods::span_save_span(self.0)
     }
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn recover_proc_macro_span(id: usize) -> Span {
         Span(BridgeMethods::span_recover_proc_macro_span(id))
     }
