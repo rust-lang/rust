@@ -35,6 +35,14 @@ fn is_preload_mut_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     Some(adt_def.did()) == tcx.lang_items().preload_mut_type()
 }
 
+fn is_preload_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let ty::Adt(adt_def, _) = ty.kind() else {
+        return false;
+    };
+
+    Some(adt_def.did()) == tcx.lang_items().preload_type()
+}
+
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
 // other predecessors.
@@ -616,7 +624,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if is_preload_mut_type(bx.tcx(), ty) {
             let place = self.codegen_place(bx, location.as_ref());
 
-            bx.codegen_offload_preload_mut_drop(ty, place);
+            bx.codegen_offload_preload_drop(ty, place, true);
+        }
+        if is_preload_type(bx.tcx(), ty) {
+            let place = self.codegen_place(bx, location.as_ref());
+
+            bx.codegen_offload_preload_drop(ty, place, false);
         }
         let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 

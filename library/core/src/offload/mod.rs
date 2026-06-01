@@ -41,3 +41,13 @@ impl<T: ?Sized> Drop for PreloadMut<'_, T> {
         // offload return mapper.
     }
 }
+
+impl<T: ?Sized> Drop for Preload<'_, T> {
+    fn drop(&mut self) {
+        // Intentionally empty.
+        //
+        // This exists so MIR creates Drop terminators for Preload.
+        // rustc codegen intercepts those terminators and emits the
+        // offload return mapper.
+    }
+}

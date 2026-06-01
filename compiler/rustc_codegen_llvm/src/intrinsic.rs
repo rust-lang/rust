@@ -188,15 +188,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         codegen_offload_preload(self, tcx, instance, args);
     }
 
-    fn codegen_offload_preload_mut_drop(
+    fn codegen_offload_preload_drop(
         &mut self,
         preload_ty: Ty<'tcx>,
         place: PlaceRef<'tcx, &'ll llvm::Value>,
+        is_mut: bool,
     ) {
         let tcx = self.tcx;
         dbg!("Dropping PreloadMut; emit offload end mapper");
 
-        codegen_offload_preload_mut_drop(self, tcx, preload_ty, place);
+        codegen_offload_preload_drop(self, tcx, preload_ty, place, is_mut);
     }
 
     fn codegen_intrinsic_call(
@@ -1922,11 +1923,12 @@ fn codegen_autodiff<'ll, 'tcx>(
     );
 }
 
-fn codegen_offload_preload_mut_drop<'ll, 'tcx>(
+fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
     preload_ty: Ty<'tcx>,
     place: PlaceRef<'tcx, &'ll llvm::Value>,
+    is_mut: bool,
 ) {
     let cx = bx.cx;
     dbg!("Starting the PreloadMut drop handling!");
@@ -1959,7 +1961,12 @@ fn codegen_offload_preload_mut_drop<'ll, 'tcx>(
     // We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we
     // must return it from the device to update the host version. If they never mutated it, they
     // surely got a clippy or rustc warning, so it's up to them for wasting time.
-    meta.mode |= MappingFlags::FROM;
+    if is_mut {
+        meta.mode |= MappingFlags::FROM;
+    } else {
+        // We still want the refcounter to go down, so the runtime nows when it can free the data.
+        meta.mode |= MappingFlags::NONE;
+    }
     dbg!(&meta);
     let metadata: &[OffloadMetadata; 1] = &[meta];
 
