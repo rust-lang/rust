@@ -740,13 +740,12 @@ pub(crate) struct DiagMetadata<'ast> {
     current_function: Option<(FnKind<'ast>, Span)>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
-    /// they are used (in a `break` or `continue` statement)
     unused_labels: FxIndexMap<NodeId, Span>,
 
     /// Used for better errors on `let <pat>: <expr, not type>;`.
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
 
-    /// Only used for better errors on `let <pat> = val{}` when the user forget `else`.
+    /// Only used for better errors on `let <pat> = val {}` when the user forget `else`.
     struct_field_parse_failed: bool,
 
     current_pat: Option<&'ast Pat>,
@@ -4604,7 +4603,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     (
                         Some((
                             span,
-                            "try adding `else` here:",
+                            "you might have meant to write a diverging block on a refutable `let` \
+                             statement by using `let-else`\n\
+                             for more information, visit \
+                             <https://doc.rust-lang.org/beta/rust-by-example/flow_control/let_else.html>",
                             " else ".to_string(),
                             Applicability::MaybeIncorrect,
                         )),
@@ -5209,13 +5211,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ExprKind::Struct(ref se) => {
+                let struct_field_parse_failed = self.diag_metadata.struct_field_parse_failed;
                 if let StructRest::NoneWithError(_) = &se.rest
                     && se.fields.is_empty()
                 {
                     self.diag_metadata.struct_field_parse_failed = true;
                 }
                 self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct(parent));
-                self.diag_metadata.struct_field_parse_failed = false;
+                self.diag_metadata.struct_field_parse_failed = struct_field_parse_failed;
                 // This is the same as `visit::walk_expr(self, expr);`, but we want to pass the
                 // parent in for accurate suggestions when encountering `Foo { bar }` that should
                 // have been `Foo { bar: self.bar }`.
