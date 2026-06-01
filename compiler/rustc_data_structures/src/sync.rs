@@ -29,6 +29,7 @@ pub use parking_lot::{
     MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
     RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
 };
+pub use rustc_thread_pool::{ComplementaryRegistry, WorkerLocal};
 
 pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
@@ -42,7 +43,6 @@ pub use self::parallel::{
     try_par_for_each_in,
 };
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
-pub use rustc_thread_pool::{ComplementaryRegistry, WorkerLocal};
 pub use crate::marker::*;
 
 mod freeze;
