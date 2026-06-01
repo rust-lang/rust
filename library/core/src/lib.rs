@@ -134,6 +134,7 @@
 #![feature(diagnostic_on_unmatch_args)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
+#![feature(extern_item_impls)]
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
@@ -172,7 +173,6 @@
 #![feature(uint_carryless_mul)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
-#![feature(extern_item_impls)]
 #![feature(with_negative_coherence)]
 // tidy-alphabetical-end
 //
