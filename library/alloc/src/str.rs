@@ -396,7 +396,7 @@ impl str {
         result
     }
 
-    /// Replaces first N matches of a pattern with another string.
+    /// Replaces the first N matches of a pattern with another string.
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
@@ -436,7 +436,7 @@ impl str {
         result
     }
 
-    /// Replaces first N matches of a pattern with another string.
+    /// Replaces the first N matches of a pattern with another string.
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
