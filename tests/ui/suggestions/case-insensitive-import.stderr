@@ -1,0 +1,87 @@
+error[E0433]: cannot find module or crate `net` in this scope
+  --> $DIR/case-insensitive-import.rs:21:9
+   |
+LL |         net::shutdown::Both
+   |         ^^^ use of unresolved module or unlinked crate `net`
+   |
+   = help: you might be missing a crate named `net`
+
+error[E0433]: cannot find `shutdown` in `net`
+  --> $DIR/case-insensitive-import.rs:24:19
+   |
+LL |         std::net::shutdown::Both
+   |                   ^^^^^^^^ could not find `shutdown` in `net`
+   |
+help: an enum with a similar name exists (notice the capitalization)
+   |
+LL -         std::net::shutdown::Both
+LL +         std::net::Shutdown::Both
+   |
+
+error[E0433]: cannot find `shutdown` in `net`
+  --> $DIR/case-insensitive-import.rs:27:19
+   |
+LL |         std::net::shutdown::both
+   |                   ^^^^^^^^ could not find `shutdown` in `net`
+   |
+help: an enum with a similar name exists (notice the capitalization)
+   |
+LL -         std::net::shutdown::both
+LL +         std::net::Shutdown::both
+   |
+
+error[E0425]: cannot find type `enumab` in this scope
+  --> $DIR/case-insensitive-import.rs:8:31
+   |
+LL |     fn enumab_not_in_scope()->enumab{
+   |                               ^^^^^^ not found in this scope
+   |
+note: similarly named enum `a::EnumAB` exists but is inaccessible
+  --> $DIR/case-insensitive-import.rs:2:5
+   |
+LL |     enum EnumAB{
+   |     ^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find type `Shutdown` in this scope
+  --> $DIR/case-insensitive-import.rs:11:33
+   |
+LL |     fn shutdown_not_in_scope()->Shutdown{
+   |                                 ^^^^^^^^ not found in this scope
+   |
+help: consider importing this enum
+   |
+LL +     use std::net::Shutdown;
+   |
+
+error[E0425]: cannot find type `both` in this scope
+  --> $DIR/case-insensitive-import.rs:14:48
+   |
+LL |     fn both_not_in_scope_and_capitalization()->both{
+   |                                                ^^^^ not found in this scope
+
+error[E0425]: cannot find type `shutdown` in this scope
+  --> $DIR/case-insensitive-import.rs:17:57
+   |
+LL |     fn shutdown_both_not_in_scope_and_capitalization()->shutdown{
+   |                                                         ^^^^^^^^ not found in this scope
+   |
+help: consider importing this similarly named enum
+   |
+LL +     use std::net::Shutdown;
+   |
+
+error[E0425]: cannot find value `both` in this scope
+  --> $DIR/case-insensitive-import.rs:18:9
+   |
+LL |         both
+   |         ^^^^ not found in this scope
+   |
+help: consider importing this similarly named unit variant
+   |
+LL +     use std::net::Shutdown::Both;
+   |
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.
