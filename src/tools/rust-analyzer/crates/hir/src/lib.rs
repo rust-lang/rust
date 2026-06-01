@@ -2283,6 +2283,14 @@ impl fmt::Debug for Function {
 }
 
 impl Function {
+    pub fn lang(db: &dyn HirDatabase, krate: Crate, lang_item: LangItem) -> Option<Function> {
+        let lang_items = hir_def::lang_item::lang_items(db, krate.id);
+        match lang_item.from_lang_items(lang_items)? {
+            LangItemTarget::FunctionId(it) => Some(it.into()),
+            _ => None,
+        }
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self.id {
             AnyFunctionId::FunctionId(id) => id.module(db).into(),
