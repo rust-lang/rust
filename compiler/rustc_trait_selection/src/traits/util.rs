@@ -217,7 +217,7 @@ pub fn with_replaced_escaping_bound_vars<
     }
 }
 
-pub fn sizedness_fast_path<'tcx>(
+pub fn implicit_fast_path<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: ty::Predicate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -232,6 +232,13 @@ pub fn sizedness_fast_path<'tcx>(
         let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
             Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
+            Some(LangItem::Move) => {
+                if !tcx.features().move_trait() {
+                    return true;
+                } else {
+                    return trait_pred.self_ty().has_trivial_move(tcx);
+                }
+            }
             _ => return false,
         };
 

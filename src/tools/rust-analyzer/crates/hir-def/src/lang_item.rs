@@ -427,6 +427,7 @@ language_item_table! { LangItems =>
     MetaSized,               sym::meta_sized,          TraitId;
     PointeeSized,            sym::pointee_sized,       TraitId;
     Unsize,                  sym::unsize,              TraitId;
+    Move,                    sym::move_trait,          TraitId;
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      TraitId;
     /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).

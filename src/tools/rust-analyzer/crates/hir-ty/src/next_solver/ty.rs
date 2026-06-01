@@ -301,6 +301,50 @@ impl<'db> Ty<'db> {
         }
     }
 
+    #[tracing::instrument(skip(tcx), level = "debug")]
+    pub fn has_trivial_move(self, tcx: DbInterner<'db>) -> bool {
+        match self.kind() {
+            TyKind::Infer(InferTy::IntVar(_) | InferTy::FloatVar(_))
+            | TyKind::Uint(_)
+            | TyKind::Int(_)
+            | TyKind::Bool
+            | TyKind::Float(_)
+            | TyKind::FnDef(..)
+            | TyKind::FnPtr(..)
+            | TyKind::UnsafeBinder(_)
+            | TyKind::RawPtr(..)
+            | TyKind::Char
+            | TyKind::Ref(..)
+            | TyKind::Pat(..)
+            | TyKind::Never
+            | TyKind::Error(_)
+            | TyKind::Str => true,
+
+            TyKind::Array(tys, _) | TyKind::Slice(tys) => tys.has_trivial_move(tcx),
+
+            TyKind::Tuple(tys) => tys.iter().all(|ty| ty.has_trivial_move(tcx)),
+
+            TyKind::Adt(..)
+            | TyKind::Alias(..)
+            | TyKind::Param(_)
+            | TyKind::Placeholder(..)
+            | TyKind::Bound(..)
+            | TyKind::Infer(InferTy::TyVar(_))
+            | TyKind::Foreign(..)
+            | TyKind::Dynamic(..)
+            | TyKind::Closure(..)
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineClosure(..)
+            | TyKind::CoroutineWitness(..) => false,
+
+            TyKind::Infer(
+                InferTy::FreshTy(_) | InferTy::FreshIntTy(_) | InferTy::FreshFloatTy(_),
+            ) => {
+                panic!("`has_trivial_sizedness` applied to unexpected type: {self:?}")
+            }
+        }
+    }
+
     /// Fast path helper for primitives which are always `Copy` and which
     /// have a side-effect-free `Clone` impl.
     ///

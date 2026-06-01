@@ -21,7 +21,7 @@ use crate::{
         AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, ErrorGuaranteed,
         GenericArgs, ImplOrTraitAssocTermId, OpaqueTyIdWrapper, ParamEnv, Predicate, PredicateKind,
         RegionConstraint, SubtypePredicate, TermId, TraitAssocTermId, Ty, TyKind, TypingMode,
-        UnevaluatedConst, fold::fold_tys, util::sizedness_fast_path,
+        UnevaluatedConst, fold::fold_tys, util::implicit_fast_path,
     },
 };
 
@@ -300,7 +300,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
                 match self.0.interner.as_trait_lang_item(trait_pred.def_id()) {
                     Some(SolverTraitLangItem::Sized) | Some(SolverTraitLangItem::MetaSized) => {
                         let predicate = self.resolve_vars_if_possible(goal.predicate);
-                        if sizedness_fast_path(self.interner, predicate, goal.param_env) {
+                        if implicit_fast_path(self.interner, predicate, goal.param_env) {
                             return Some(Certainty::Yes);
                         }
                     }

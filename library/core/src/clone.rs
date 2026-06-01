@@ -731,7 +731,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const impl<T: ?Move + PointeeSized> const Clone for *const T {
+    const impl<T: ?Move + PointeeSized> Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self

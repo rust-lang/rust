@@ -545,6 +545,7 @@ define_symbols! {
     simd,
     sized,
     meta_sized,
+    move_trait,
     pointee_sized,
     skip,
     slice_len_fn,

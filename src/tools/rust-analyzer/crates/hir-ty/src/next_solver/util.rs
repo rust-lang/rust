@@ -643,7 +643,7 @@ impl<'db> TypeFolder<DbInterner<'db>> for PlaceholderReplacer<'_, 'db> {
     }
 }
 
-pub fn sizedness_fast_path<'db>(
+pub fn implicit_fast_path<'db>(
     tcx: DbInterner<'db>,
     predicate: Predicate<'db>,
     param_env: ParamEnv<'db>,
@@ -657,6 +657,8 @@ pub fn sizedness_fast_path<'db>(
         let sizedness = match tcx.as_trait_lang_item(trait_pred.def_id()) {
             Some(SolverTraitLangItem::Sized) => SizedTraitKind::Sized,
             Some(SolverTraitLangItem::MetaSized) => SizedTraitKind::MetaSized,
+            // TODO(nia-e): do more comprehensive fast-pathing when the feature is on
+            Some(SolverTraitLangItem::Move) => return trait_pred.self_ty().has_trivial_move(tcx),
             _ => return false,
         };
 
