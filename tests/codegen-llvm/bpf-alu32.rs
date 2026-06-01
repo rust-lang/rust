@@ -1,7 +1,13 @@
-//@ only-bpf
+//@ add-minicore
+//@ compile-flags: --target=bpfel-unknown-none
+//@ needs-llvm-components: bpf
 #![crate_type = "lib"]
-#![feature(bpf_target_feature)]
+#![feature(bpf_target_feature, no_core)]
+#![no_core]
 #![no_std]
+
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 #[target_feature(enable = "alu32")]
