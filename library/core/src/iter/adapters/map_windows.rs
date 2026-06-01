@@ -1,5 +1,5 @@
 use crate::iter::FusedIterator;
-use crate::mem::{MaybeUninit, SizedTypeProperties};
+use crate::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use crate::{fmt, ptr};
 
 /// An iterator over the mapped windows of another iterator.
@@ -30,14 +30,17 @@ struct MapWindowsInner<I: Iterator, const N: usize> {
     buffer: Option<Buffer<I::Item, N>>,
 }
 
-// `Buffer` uses two times of space to reduce moves among the iterations.
-// `Buffer<T, N>` is semantically `[MaybeUninit<T>; 2 * N]`. However, due
-// to limitations of const generics, we use this different type. Note that
-// it has the same underlying memory layout.
+/// `Buffer<T, N>` is semantically `[MaybeUninit<T>; 2 * N]`. This helps
+/// reduce moves while iterating. However, due
+/// to limitations of const generics, we use this different type. Note that
+/// it has the same underlying memory layout.
+///
+/// # Safety invariant
+///
+/// `self.buffer[self.start..self.start + N]` must be initialized,
+/// with all other elements being uninitialized. This also
+/// implies that `self.start <= N`.
 struct Buffer<T, const N: usize> {
-    // Invariant: `self.buffer[self.start..self.start + N]` is initialized,
-    // with all other elements being uninitialized. This also
-    // implies that `self.start <= N`.
     buffer: [[MaybeUninit<T>; N]; 2],
     start: usize,
 }
@@ -194,12 +197,18 @@ impl<T, const N: usize> Buffer<T, N> {
 
 impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
-        let mut buffer = Buffer {
+        // Use `ManuallyDrop` until buffer is fully written to avoid dropping uninitialized elements on panic.
+        // (See `Buffer` rustdoc for safety invariant)
+        let mut buffer = ManuallyDrop::new(Buffer {
             buffer: [[const { MaybeUninit::uninit() }; N], [const { MaybeUninit::uninit() }; N]],
             start: self.start,
-        };
+        });
+
+        // `clone()` could panic; `ManuallyDrop` guards against that.
         buffer.as_uninit_array_mut().write(self.as_array_ref().clone());
-        buffer
+
+        // We initialized the buffer above, so we are good now
+        ManuallyDrop::into_inner(buffer)
     }
 }
 
