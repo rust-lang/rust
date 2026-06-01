@@ -1,4 +1,6 @@
 use std::convert::identity;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
@@ -228,6 +230,8 @@ impl<'sess> AttributeParser<'sess> {
                 target_span,
                 target,
                 emit_lint: &mut emit_lint,
+                #[cfg(debug_assertions)]
+                has_lint_been_emitted: AtomicBool::new(false),
             },
             attr_span,
             inner_span,
@@ -395,6 +399,8 @@ impl<'sess> AttributeParser<'sess> {
                                 target_span,
                                 target,
                                 emit_lint: &mut emit_lint,
+                                #[cfg(debug_assertions)]
+                                has_lint_been_emitted: AtomicBool::new(false),
                             },
                             attr_span,
                             inner_span,
@@ -409,6 +415,10 @@ impl<'sess> AttributeParser<'sess> {
                         finalizers.push(accept.finalizer);
 
                         Self::check_target(&accept.allowed_targets, &mut cx);
+                        #[cfg(debug_assertions)]
+                        if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
+                            cx.shared.cx.check_args_used(&attr, &args)
+                        }
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
@@ -442,7 +452,14 @@ impl<'sess> AttributeParser<'sess> {
         early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
         for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
-                shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
+                shared: SharedContext {
+                    cx: self,
+                    target_span,
+                    target,
+                    emit_lint: &mut emit_lint,
+                    #[cfg(debug_assertions)]
+                    has_lint_been_emitted: AtomicBool::new(false),
+                },
                 all_attrs: &attr_paths,
             }) {
                 attributes.push(Attribute::Parsed(attr));
@@ -454,6 +471,26 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         attributes
+    }
+
+    #[cfg(debug_assertions)]
+    /// Checks whether all `ArgParser`s were observed by an attribute parser at least once
+    /// This check exists because otherwise it is too easy to accidentally ignore the arguments of an attribute
+    fn check_args_used(&self, attr: &ast::Attribute, args: &ArgParser) {
+        if let ArgParser::List(items) = args {
+            for item in items.mixed() {
+                if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
+                    if !item.are_args_checked() {
+                        self.dcx().span_delayed_bug(
+                            item.span(),
+                            "attribute args were not properly checked",
+                        );
+                        return;
+                    }
+                    self.check_args_used(attr, item.args());
+                }
+            }
+        }
     }
 
     /// Returns whether there is a parser for an attribute with this name
