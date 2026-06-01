@@ -23,7 +23,7 @@ use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
-use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
+use crate::util::{ArgFileCommand, Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{json, stamp_file_path};
 
 // Helper modules that implement test running logic for each test suite.
@@ -383,7 +383,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    /// Runs a [`Command`] and waits for it to finish, then converts its exit
+    /// Runs a [`ArgFileCommand`] and waits for it to finish, then converts its exit
     /// status and output streams into a [`ProcRes`].
     ///
     /// The command might have succeeded or failed; it is the caller's
@@ -393,7 +393,8 @@ impl<'test> TestCx<'test> {
     /// Panics if the command couldn't be executed at all
     /// (e.g. because the executable could not be found).
     #[must_use = "caller should check whether the command succeeded"]
-    fn run_command_to_procres(&self, cmd: &mut Command) -> ProcRes {
+    fn run_command_to_procres(&self, cmd: ArgFileCommand) -> ProcRes {
+        let (mut cmd, _arg_file) = cmd.build().unwrap();
         let output = cmd
             .output()
             .unwrap_or_else(|e| self.fatal(&format!("failed to exec `{cmd:?}` because: {e}")));
