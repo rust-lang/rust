@@ -541,7 +541,7 @@ rustc_lint::early_lint_methods!(
         FieldScopedVisibilityModifiers: field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers = field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers,
         CfgNotTest: cfg_not_test::CfgNotTest = cfg_not_test::CfgNotTest,
         EmptyLineAfter: empty_line_after::EmptyLineAfter = empty_line_after::EmptyLineAfter::new(),
-        InlineTraitBounds: inline_trait_bounds::InlineTraitBounds = inline_trait_bounds::InlineTraitBounds,
+        InlineTraitBounds: inline_trait_bounds::InlineTraitBounds = inline_trait_bounds::InlineTraitBounds::default(),
         // add early passes here, used by `cargo dev new_lint`
     ]]
 );
