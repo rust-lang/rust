@@ -1,6 +1,6 @@
 //@ add-minicore
 // ignore-tidy-linelength
-//@ only-aarch64-unknown-linux-pauthtest
+//@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH
 
 //@ [O0_PAUTH] needs-llvm-components: aarch64

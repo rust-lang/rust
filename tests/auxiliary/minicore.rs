@@ -8,7 +8,10 @@
 //!   items. For identical error output, any `diagnostic` attributes (e.g. `on_unimplemented`)
 //!   should also be replicated here.
 //! - Be careful of adding new features and things that are only available for a subset of targets.
+//! - `Sync` is only provided such that the minimal set of impls required by tests is met (not
+//!   exhaustive covering of all possible function pointer signatures).
 //!
+
 //! # References
 //!
 //! This is partially adapted from `rustc_codegen_cranelift`:

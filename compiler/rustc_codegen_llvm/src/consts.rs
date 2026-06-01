@@ -170,6 +170,8 @@ fn codegen_static_initializer<'ll, 'tcx>(
 ) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
+    // FIXME(jchlanda) Decide if this could be better served by `ctor` crate. See the discussion
+    // here: <https://github.com/rust-lang/rust/pull/155722#discussion_r3320477047>
     let is_in_init_fini: IsInitOrFini = attrs
         .link_section
         .map(|link_section| {
