@@ -55,6 +55,7 @@ extern crate declare_clippy_lint;
 
 mod utils;
 
+mod combined_early_pass;
 mod combined_late_pass;
 
 pub mod declared_lints;
@@ -412,10 +413,9 @@ mod zombie_processes;
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync;
-use rustc_lint::{EarlyLintPass, Lint};
+use rustc_lint::Lint;
 use rustc_middle::ty::TyCtxt;
-use utils::attr_collector::{AttrCollector, AttrStorage};
+use utils::attr_collector::AttrStorage;
 
 pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
@@ -458,72 +458,13 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
 
-    let early_lints: [Box<dyn Fn() -> Box<dyn EarlyLintPass + 'static> + sync::DynSend + sync::DynSync>; _] = [
-        {
-            let format_args = format_args_storage.clone();
-            Box::new(move || {
-                Box::new(utils::format_args_collector::FormatArgsCollector::new(
-                    format_args.clone(),
-                ))
-            })
-        },
-        {
-            let attrs = attr_storage.clone();
-            Box::new(move || Box::new(AttrCollector::new(attrs.clone())))
-        },
-        Box::new(move || Box::new(attrs::PostExpansionEarlyAttributes::new(conf))),
-        Box::new(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports)),
-        Box::new(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(conf))),
-        Box::new(move || Box::new(redundant_field_names::RedundantFieldNames::new(conf))),
-        Box::new(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(conf))),
-        Box::new(|| Box::new(functions::EarlyFunctions)),
-        Box::new(move || Box::new(doc::Documentation::new(conf))),
-        Box::new(|| Box::new(suspicious_operation_groupings::SuspiciousOperationGroupings)),
-        Box::new(|| Box::new(double_parens::DoubleParens)),
-        Box::new(|| Box::new(unsafe_removed_from_name::UnsafeNameRemoval)),
-        Box::new(|| Box::new(else_if_without_else::ElseIfWithoutElse)),
-        Box::new(|| Box::new(int_plus_one::IntPlusOne)),
-        Box::new(|| Box::new(formatting::Formatting)),
-        Box::new(|| Box::new(misc_early::MiscEarlyLints)),
-        Box::new(|| Box::new(unused_unit::UnusedUnit)),
-        Box::new(|| Box::new(precedence::Precedence)),
-        Box::new(|| Box::new(redundant_else::RedundantElse)),
-        Box::new(|| Box::new(needless_arbitrary_self_type::NeedlessArbitrarySelfType)),
-        Box::new(move || Box::new(literal_representation::LiteralDigitGrouping::new(conf))),
-        Box::new(move || Box::new(literal_representation::DecimalLiteralRepresentation::new(conf))),
-        Box::new(|| Box::new(tabs_in_doc_comments::TabsInDocComments)),
-        Box::new(|| Box::<single_component_path_imports::SingleComponentPathImports>::default()),
-        Box::new(|| Box::new(option_env_unwrap::OptionEnvUnwrap)),
-        Box::new(move || Box::new(non_expressive_names::NonExpressiveNames::new(conf))),
-        Box::new(move || Box::new(nonstandard_macro_braces::MacroBraces::new(conf))),
-        Box::new(|| Box::new(asm_syntax::InlineAsmX86AttSyntax)),
-        Box::new(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax)),
-        Box::new(move || Box::new(module_style::ModStyle::default())),
-        Box::new(move || Box::new(disallowed_script_idents::DisallowedScriptIdents::new(conf))),
-        Box::new(|| Box::new(octal_escapes::OctalEscapes)),
-        Box::new(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames)),
-        Box::new(|| Box::new(crate_in_macro_def::CrateInMacroDef)),
-        Box::new(|| Box::new(pub_use::PubUse)),
-        Box::new(move || Box::new(large_include_file::LargeIncludeFile::new(conf))),
-        Box::new(|| Box::<duplicate_mod::DuplicateMod>::default()),
-        Box::new(|| Box::new(unused_rounding::UnusedRounding)),
-        Box::new(move || Box::new(almost_complete_range::AlmostCompleteRange::new(conf))),
-        Box::new(|| Box::new(multi_assignments::MultiAssignments)),
-        Box::new(|| Box::new(partial_pub_fields::PartialPubFields)),
-        Box::new(|| Box::new(let_with_type_underscore::UnderscoreTyped)),
-        Box::new(move || Box::new(excessive_nesting::ExcessiveNesting::new(conf))),
-        Box::new(|| Box::new(ref_patterns::RefPatterns)),
-        Box::new(|| Box::new(needless_else::NeedlessElse)),
-        Box::new(move || Box::new(raw_strings::RawStrings::new(conf))),
-        Box::new(|| Box::new(visibility::Visibility)),
-        Box::new(|| Box::new(multiple_bound_locations::MultipleBoundLocations)),
-        Box::new(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers)),
-        Box::new(|| Box::new(cfg_not_test::CfgNotTest)),
-        Box::new(|| Box::new(empty_line_after::EmptyLineAfter::new())),
-        Box::new(|| Box::new(inline_trait_bounds::InlineTraitBounds)),
-        // add early passes here, used by `cargo dev new_lint`
-    ];
-    store.early_passes.extend(early_lints);
+    {
+        let format_args = format_args_storage.clone();
+        let attrs = attr_storage.clone();
+        store.early_passes.push(Box::new(move || {
+            Box::new(CombinedEarlyLintPass::new(conf, format_args.clone(), attrs.clone()))
+        }));
+    }
 
     store.late_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
         let dont_need = tcx.lints_that_dont_need_to_run(());
@@ -542,6 +483,68 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         ))
     }));
 }
+
+// Fold every early pass into one statically-combined struct (see
+// `combined_early_pass`); the method list comes from `early_lint_methods!`.
+#[rustfmt::skip]
+rustc_lint::early_lint_methods!(
+    crate::combined_early_lint_pass,
+    [CombinedEarlyLintPass, (conf: &'static Conf, format_args: FormatArgsStorage, attrs: AttrStorage), [
+        FormatArgsCollector: utils::format_args_collector::FormatArgsCollector = utils::format_args_collector::FormatArgsCollector::new(format_args.clone()),
+        AttrCollector: utils::attr_collector::AttrCollector = utils::attr_collector::AttrCollector::new(attrs.clone()),
+        PostExpansionEarlyAttributes: attrs::PostExpansionEarlyAttributes = attrs::PostExpansionEarlyAttributes::new(conf),
+        UnnecessarySelfImports: unnecessary_self_imports::UnnecessarySelfImports = unnecessary_self_imports::UnnecessarySelfImports,
+        RedundantStaticLifetimes: redundant_static_lifetimes::RedundantStaticLifetimes = redundant_static_lifetimes::RedundantStaticLifetimes::new(conf),
+        RedundantFieldNames: redundant_field_names::RedundantFieldNames = redundant_field_names::RedundantFieldNames::new(conf),
+        UnnestedOrPatterns: unnested_or_patterns::UnnestedOrPatterns = unnested_or_patterns::UnnestedOrPatterns::new(conf),
+        EarlyFunctions: functions::EarlyFunctions = functions::EarlyFunctions,
+        Documentation: doc::Documentation = doc::Documentation::new(conf),
+        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = suspicious_operation_groupings::SuspiciousOperationGroupings,
+        DoubleParens: double_parens::DoubleParens = double_parens::DoubleParens,
+        UnsafeNameRemoval: unsafe_removed_from_name::UnsafeNameRemoval = unsafe_removed_from_name::UnsafeNameRemoval,
+        ElseIfWithoutElse: else_if_without_else::ElseIfWithoutElse = else_if_without_else::ElseIfWithoutElse,
+        IntPlusOne: int_plus_one::IntPlusOne = int_plus_one::IntPlusOne,
+        Formatting: formatting::Formatting = formatting::Formatting,
+        MiscEarlyLints: misc_early::MiscEarlyLints = misc_early::MiscEarlyLints,
+        UnusedUnit: unused_unit::UnusedUnit = unused_unit::UnusedUnit,
+        Precedence: precedence::Precedence = precedence::Precedence,
+        RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
+        NeedlessArbitrarySelfType: needless_arbitrary_self_type::NeedlessArbitrarySelfType = needless_arbitrary_self_type::NeedlessArbitrarySelfType,
+        LiteralDigitGrouping: literal_representation::LiteralDigitGrouping = literal_representation::LiteralDigitGrouping::new(conf),
+        DecimalLiteralRepresentation: literal_representation::DecimalLiteralRepresentation = literal_representation::DecimalLiteralRepresentation::new(conf),
+        TabsInDocComments: tabs_in_doc_comments::TabsInDocComments = tabs_in_doc_comments::TabsInDocComments,
+        SingleComponentPathImports: single_component_path_imports::SingleComponentPathImports = single_component_path_imports::SingleComponentPathImports::default(),
+        OptionEnvUnwrap: option_env_unwrap::OptionEnvUnwrap = option_env_unwrap::OptionEnvUnwrap,
+        NonExpressiveNames: non_expressive_names::NonExpressiveNames = non_expressive_names::NonExpressiveNames::new(conf),
+        MacroBraces: nonstandard_macro_braces::MacroBraces = nonstandard_macro_braces::MacroBraces::new(conf),
+        InlineAsmX86AttSyntax: asm_syntax::InlineAsmX86AttSyntax = asm_syntax::InlineAsmX86AttSyntax,
+        InlineAsmX86IntelSyntax: asm_syntax::InlineAsmX86IntelSyntax = asm_syntax::InlineAsmX86IntelSyntax,
+        ModStyle: module_style::ModStyle = module_style::ModStyle::default(),
+        DisallowedScriptIdents: disallowed_script_idents::DisallowedScriptIdents = disallowed_script_idents::DisallowedScriptIdents::new(conf),
+        OctalEscapes: octal_escapes::OctalEscapes = octal_escapes::OctalEscapes,
+        SingleCharLifetimeNames: single_char_lifetime_names::SingleCharLifetimeNames = single_char_lifetime_names::SingleCharLifetimeNames,
+        CrateInMacroDef: crate_in_macro_def::CrateInMacroDef = crate_in_macro_def::CrateInMacroDef,
+        PubUse: pub_use::PubUse = pub_use::PubUse,
+        LargeIncludeFile: large_include_file::LargeIncludeFile = large_include_file::LargeIncludeFile::new(conf),
+        DuplicateMod: duplicate_mod::DuplicateMod = duplicate_mod::DuplicateMod::default(),
+        UnusedRounding: unused_rounding::UnusedRounding = unused_rounding::UnusedRounding,
+        AlmostCompleteRange: almost_complete_range::AlmostCompleteRange = almost_complete_range::AlmostCompleteRange::new(conf),
+        MultiAssignments: multi_assignments::MultiAssignments = multi_assignments::MultiAssignments,
+        PartialPubFields: partial_pub_fields::PartialPubFields = partial_pub_fields::PartialPubFields,
+        UnderscoreTyped: let_with_type_underscore::UnderscoreTyped = let_with_type_underscore::UnderscoreTyped,
+        ExcessiveNesting: excessive_nesting::ExcessiveNesting = excessive_nesting::ExcessiveNesting::new(conf),
+        RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
+        NeedlessElse: needless_else::NeedlessElse = needless_else::NeedlessElse,
+        RawStrings: raw_strings::RawStrings = raw_strings::RawStrings::new(conf),
+        Visibility: visibility::Visibility = visibility::Visibility,
+        MultipleBoundLocations: multiple_bound_locations::MultipleBoundLocations = multiple_bound_locations::MultipleBoundLocations,
+        FieldScopedVisibilityModifiers: field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers = field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers,
+        CfgNotTest: cfg_not_test::CfgNotTest = cfg_not_test::CfgNotTest,
+        EmptyLineAfter: empty_line_after::EmptyLineAfter = empty_line_after::EmptyLineAfter::new(),
+        InlineTraitBounds: inline_trait_bounds::InlineTraitBounds = inline_trait_bounds::InlineTraitBounds,
+        // add early passes here, used by `cargo dev new_lint`
+    ]]
+);
 
 // Fold every late pass into one statically-combined struct (see
 // `combined_late_pass`); the method list comes from `late_lint_methods!`.

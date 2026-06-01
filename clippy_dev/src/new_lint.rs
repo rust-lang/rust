@@ -170,10 +170,12 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
         };
         ("// add late passes here", new_lint)
     } else {
+        // Early passes are folded into the statically-combined struct, so a new
+        // entry is just `Field: Type = constructor` (see `combined_early_pass`).
         let new_lint = if enable_msrv {
-            format!("Box::new(move || Box::new({module_name}::{camel_name}::new(conf))),\n        ")
+            format!("{camel_name}: {module_name}::{camel_name} = {module_name}::{camel_name}::new(conf),\n        ")
         } else {
-            format!("Box::new(|| Box::new({module_name}::{camel_name})),\n        ")
+            format!("{camel_name}: {module_name}::{camel_name} = {module_name}::{camel_name},\n        ")
         };
         ("// add early passes here", new_lint)
     };
