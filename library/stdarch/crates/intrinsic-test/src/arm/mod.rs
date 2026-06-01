@@ -6,7 +6,7 @@ mod types;
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
 use intrinsic::ArmIntrinsicType;
 use json_parser::get_neon_intrinsics;
 
@@ -54,6 +54,42 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             // Skip bfloat intrinsics - not currently supported
             .filter(|i| i.results.kind() != TypeKind::BFloat)
             .filter(|i| !i.arguments.iter().any(|a| a.ty.kind() == TypeKind::BFloat))
+            // Skip SVE intrinsics that have `f16` - not yet implemented!
+            .filter(|i| {
+                let has_f16_arg = i
+                    .arguments
+                    .iter()
+                    .any(|a| a.ty.kind() == TypeKind::Float && a.ty.bit_len == Some(16));
+                let has_sve_arg = i
+                    .arguments
+                    .iter()
+                    .any(|a| a.ty.simd_len == Some(SimdLen::Scalable));
+                !(has_f16_arg && has_sve_arg)
+            })
+            .filter(|i| {
+                let has_f16_ret =
+                    i.results.kind() == TypeKind::Float && i.results.bit_len == Some(16);
+                let has_sve_ret = i.results.simd_len == Some(SimdLen::Scalable);
+                !(has_f16_ret && has_sve_ret)
+            })
+            // Skip `svqcvtn{u,}n*_x2` intrinsics - not yet implemented!
+            .filter(|i| !(i.name.starts_with("svqcvtn") && i.name.ends_with("_x2")))
+            // Skip `svqrshr{u,}n*_x2` intrinsics - not yet implemented!
+            .filter(|i| !(i.name.starts_with("svqrshrn") && i.name.ends_with("_x2")))
+            .filter(|i| !(i.name.starts_with("svqrshrun") && i.name.ends_with("_x2")))
+            // Skip `svclamp*` intrinsics - not yet implemented!
+            .filter(|i| !i.name.starts_with("svclamp"))
+            // Skip `svdot{_lane,}_{s,u}32_{s,u}16` intrinsics - not yet implemented!
+            .filter(|i| {
+                i.name != "svdot_lane_u32_u16"
+                    && i.name != "svdot_lane_s32_s16"
+                    && i.name != "svdot_u32_u16"
+                    && i.name != "svdot_s32_s16"
+            })
+            // Skip `svrevd*` intrinsics - not yet implemented!
+            .filter(|i| !i.name.starts_with("svrevd"))
+            // Skip `svpsel_lane_b*` intrinsics - not yet implemented!
+            .filter(|i| !i.name.starts_with("svpsel_lane_b"))
             // Skip pointers for now, we would probably need to look at the return
             // type to work out how many elements we need to point to.
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
