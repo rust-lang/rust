@@ -788,8 +788,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
             }
 
             DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
-                // FIXME: `EmbargoVisitor` can't check assoc items(see `check_def_id`).
-                // Let's traverse the whole impl/trait.
+                // Traverse the whole impl/trait.
                 self.ev.queue.insert(self.ev.tcx.local_parent(def_id));
             }
 
@@ -843,6 +842,10 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
             // All effective visibilities except `reachable_through_impl_trait` are limited to
             // nominal visibility. If any type or trait is leaked farther than that, it will
             // produce type privacy errors on any use, so we don't consider it leaked.
+            //
+            // FIXME: If self.level == Level::Reachable and self.ev == (priv, priv, priv, pub),
+            // then the effective visibility of def_id wouldn't be updated at level
+            // `ReachableThroughImplTrait` due to max_vis. Could this lead to a privacy violation?
             let max_vis = (self.level != Level::ReachableThroughImplTrait)
                 .then(|| self.ev.tcx.local_visibility(def_id));
             if self.ev.update_eff_vis(def_id, self.effective_vis, max_vis, self.level) {

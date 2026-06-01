@@ -1737,7 +1737,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
-                _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
+                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
+                PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, on_stack, .. } => {
