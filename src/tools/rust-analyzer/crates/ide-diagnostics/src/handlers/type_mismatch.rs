@@ -120,6 +120,22 @@ fn add_or_fix_reference(
         return None;
     }
 
+    let expr = expr_ptr.to_node(ctx.db());
+    let assign = expr
+        .syntax()
+        .parent()
+        .and_then(ast::BinExpr::cast)
+        .filter(|it| it.op_kind() == Some(ast::BinaryOp::Assignment { op: None }));
+    if let Some(assign) = assign
+        && expected_mutability.is_mut()
+        && let Some(range) = ctx.sema.original_range_opt(assign.syntax())
+    {
+        let edit = TextEdit::insert(range.range.start(), "*".to_owned());
+        let source_change = SourceChange::from_text_edit(range.file_id.file_id(ctx.db()), edit);
+        acc.push(fix("add_deref_here", "Add deref here", source_change, range.range));
+        return Some(());
+    }
+
     let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
 
     let edit = TextEdit::insert(range.range.start(), ampersands);
@@ -503,6 +519,22 @@ fn main() {
     test((&mut 123));
 }
 fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_deref_in_assign() {
+        check_fix(
+            r#"
+fn test(arg: &mut i32) {
+    arg = $02;
+}
+            "#,
+            r#"
+fn test(arg: &mut i32) {
+    *arg = 2;
+}
             "#,
         );
     }
