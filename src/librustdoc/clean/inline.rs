@@ -75,7 +75,28 @@ pub(crate) fn try_inline(
     debug!("attrs={attrs:?}");
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
-        (attrs.iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
+        (
+            attrs
+                .iter()
+                .filter(|a| {
+                    a.doc_str().is_none()
+                        // Don't propagate `#[deprecated]` from the import to inlined impl
+                        // blocks. The deprecation is on the re-export name, not on the
+                        // underlying type's implementations. Propagating it would cause
+                        // rustdoc to attempt to resolve any intra-doc links in the
+                        // deprecation note within the external crate's module context,
+                        // leading to an ICE.
+                        && !matches!(
+                            a,
+                            hir::Attribute::Parsed(
+                                hir::attrs::AttributeKind::Deprecated { .. }
+                            )
+                        )
+                })
+                .cloned()
+                .collect::<Vec<_>>(),
+            def_id,
+        )
     });
     let attrs_without_docs =
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));

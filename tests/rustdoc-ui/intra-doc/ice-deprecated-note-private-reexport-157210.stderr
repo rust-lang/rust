@@ -1,0 +1,19 @@
+error: unresolved link to `TypeAlias::x`
+  --> $DIR/ice-deprecated-note-private-reexport-157210.rs:15:16
+   |
+LL | #[deprecated = "[A](TypeAlias::x)"]
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           [A](TypeAlias::x)
+               ^^^^^^^^^^^^
+   = note: no item named `TypeAlias` in scope
+note: the lint level is defined here
+  --> $DIR/ice-deprecated-note-private-reexport-157210.rs:5:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
