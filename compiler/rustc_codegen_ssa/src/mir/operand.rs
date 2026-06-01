@@ -306,6 +306,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
+    ///
+    /// Note: The use of this is discouraged outside cg_llvm, as some other backends
+    /// don't natively support packing multiple things into one like this.
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
@@ -324,6 +327,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     }
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
+    ///
+    /// Note: The use of this is discouraged outside cg_llvm, as some other backends
+    /// don't natively support packing multiple things into one like this.
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         llval: V,
