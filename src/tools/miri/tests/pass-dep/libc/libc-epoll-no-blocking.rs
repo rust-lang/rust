@@ -512,7 +512,7 @@ fn test_epoll_lost_events() {
     epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // Two notification should be received. But we only provide buffer for one event.
-    check_epoll_wait_explicit(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], 1, 0);
+    check_epoll_wait_partial(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], 1, 0);
 
     if cfg!(edge_triggered) {
         // Previous event should be returned for the second epoll_wait but because we're

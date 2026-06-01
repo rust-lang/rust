@@ -48,7 +48,7 @@ fn main() {
     thread::yield_now();
 
     // With room for one event: check result from epoll_wait.
-    check_epoll_wait_explicit(epfd, &[Ev { events: EPOLLIN, data: fds_a[1] }], 1, -1);
+    check_epoll_wait_partial(epfd, &[Ev { events: EPOLLIN, data: fds_a[1] }], 1, -1);
 
     // Since we only received one event, we have synchronized with
     // the write to VAL_ONE but not with the one to VAL_TWO.

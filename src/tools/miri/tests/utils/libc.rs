@@ -168,7 +168,7 @@ pub mod epoll {
     /// It fetches at most `max_events` events from `epfd` and
     /// ensures that the returned events match the `expected` events.
     #[track_caller]
-    pub fn check_epoll_wait_explicit(epfd: i32, expected: &[Ev], max_events: usize, timeout: i32) {
+    pub fn check_epoll_wait_partial(epfd: i32, expected: &[Ev], max_events: usize, timeout: i32) {
         let mut events = vec![libc::epoll_event { events: 0, u64: 0 }; max_events];
         let num = errno_result(unsafe {
             libc::epoll_wait(epfd, events.as_mut_ptr(), i32::try_from(max_events).unwrap(), timeout)
@@ -183,16 +183,12 @@ pub mod epoll {
     }
 
     /// Call `epoll_wait` on `epfd` with the provided `timeout` and ensure
-    /// that the returned events match the `expected` events.
-    /// This function checks whether `expected` is equal to **all** ready events
-    /// of `epfd`. If you only want to ensure that `expected` matches a subset
-    /// of the ready events [`check_epoll_wait_explicit`] should be used instead.
+    /// that the set of *all* ready events matches `expected`.
     #[track_caller]
     pub fn check_epoll_wait(epfd: i32, expected: &[Ev], timeout: i32) {
-        // We set `max_events` to `expected.len() + 1` to ensure that
-        // there are no additional ready events besides those which are
-        // contained in `expected`.
-        check_epoll_wait_explicit(epfd, &expected, expected.len() + 1, timeout);
+        // We set `max_events` to `expected.len() + 1` to ensure that there are no additional ready
+        // events besides those which are contained in `expected`.
+        check_epoll_wait_partial(epfd, &expected, expected.len() + 1, timeout);
     }
 
     /// This does the same as [`check_epoll_wait`] just without blocking (zero `timeout`).

@@ -8,9 +8,6 @@ use std::thread;
 mod libc_utils;
 use libc_utils::epoll::*;
 
-// Using `as` cast since `EPOLLET` wraps around
-const EPOLL_IN_OUT_ET: u32 = (EPOLLIN | EPOLLOUT | EPOLLET) as _;
-
 // Test if only one thread is unblocked if multiple threads blocked on same epfd.
 // Expected execution:
 // 1. Thread 1 blocks.
@@ -29,8 +26,8 @@ fn main() {
     let fd2 = unsafe { libc::dup(fd1) };
 
     // Register both with epoll.
-    epoll_ctl_add(epfd, fd1, EPOLL_IN_OUT_ET as i32).unwrap();
-    epoll_ctl_add(epfd, fd2, EPOLL_IN_OUT_ET as i32).unwrap();
+    epoll_ctl_add(epfd, fd1, EPOLLIN | EPOLLOUT | EPOLLET).unwrap();
+    epoll_ctl_add(epfd, fd2, EPOLLIN | EPOLLOUT | EPOLLET).unwrap();
 
     // Consume the initial events.
     check_epoll_wait(
