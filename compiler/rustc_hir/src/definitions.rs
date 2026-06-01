@@ -252,7 +252,9 @@ impl Definitions {
         self.def_id_to_key[id]
     }
 
-    #[instrument(level = "trace", skip(self), ret)]
+    // Log debug version of `local_def_index` (just a number), as tracing of this function
+    // is called too early and cause errors if `LocalDefId` is logged (#157238).
+    #[instrument(level = "trace", skip(self, id), fields(def_index=?id.local_def_index), ret)]
     #[inline(always)]
     pub fn def_path_hash(&self, id: LocalDefId) -> DefPathHash {
         DefPathHash::new(self.stable_crate_id, self.def_path_hashes[id])
