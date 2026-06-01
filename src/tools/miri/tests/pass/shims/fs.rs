@@ -224,9 +224,10 @@ fn test_file_set_len() {
     let file = OpenOptions::new().read(true).open(&path).unwrap();
     // Due to https://github.com/rust-lang/miri/issues/4457, we have to assume the failure could
     // be either of the Windows or Unix kind, no matter which platform we're on.
+    let err = file.set_len(14).unwrap_err();
     assert!(
-        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput]
-            .contains(&file.set_len(14).unwrap_err().kind())
+        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput].contains(&err.kind()),
+        "unexpected error: {err}"
     );
 
     remove_file(&path).unwrap();
