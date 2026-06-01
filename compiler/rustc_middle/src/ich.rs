@@ -104,8 +104,9 @@ impl<'a> StableHashState<'a> {
             // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
             // cheaply without the expensive `span_data_to_lines_and_cols` query.
             Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            (span.lo - parent.lo).to_u32().stable_hash(self, hasher);
-            (span.hi - parent.lo).to_u32().stable_hash(self, hasher);
+            let lo = span.lo - parent.lo;
+            let hi = span.hi - parent.lo;
+            (((hi.to_u32() as u64) << 32) | lo.to_u32() as u64).stable_hash(self, hasher);
             return;
         }
 
@@ -124,8 +125,9 @@ impl<'a> StableHashState<'a> {
             // This span is relative to another span in the same file,
             // only hash the relative position.
             Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
-            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
+            let lo = span.lo.0.wrapping_sub(parent.lo.0);
+            let hi = span.hi.0.wrapping_sub(parent.lo.0);
+            Hash::hash(&(((hi as u64) << 32) | lo as u64), hasher);
             return;
         }
 
