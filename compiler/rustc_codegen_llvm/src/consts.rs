@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
+use rustc_ast::Mutability;
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::LangItem;
@@ -225,12 +226,26 @@ impl<'ll> CodegenCx<'ll, '_> {
     ///
     /// The returned global variable is a pointer in the default address space for globals.
     /// Fails if a symbol with the given name already exists.
-    pub(crate) fn static_addr_of_mut(
+    pub(crate) fn static_addr_of(
         &self,
         cv: &'ll Value,
         align: Align,
         kind: Option<&str>,
+        mutability: Mutability,
     ) -> &'ll Value {
+        if let Mutability::Not = mutability
+            && let Some(&gv) = self.const_globals.borrow().get(&cv)
+        {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
         let gv = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
@@ -247,33 +262,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::set_unnamed_address(gv, llvm::UnnamedAddr::Global);
-        gv
-    }
+        if let Mutability::Not = mutability {
+            llvm::set_global_constant(gv, true);
 
-    /// Create a global constant.
-    ///
-    /// The returned global variable is a pointer in the default address space for globals.
-    pub(crate) fn static_addr_of_const(
-        &self,
-        cv: &'ll Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
+            self.const_globals.borrow_mut().insert(cv, gv);
         }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        llvm::set_global_constant(gv, true);
-
-        self.const_globals.borrow_mut().insert(cv, gv);
         gv
     }
 
@@ -760,20 +753,6 @@ impl<'ll> CodegenCx<'ll, '_> {
 }
 
 impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
-    /// Get a pointer to a global variable.
-    ///
-    /// The pointer will always be in the default address space. If global variables default to a
-    /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
-        // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
-        // same `ConstAllocation`?
-        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-        let gv = self.static_addr_of_const(cv, alloc.inner().align, kind);
-        // static_addr_of_const returns the bare global variable, which might not be in the default
-        // address space. Cast to the default address space if necessary.
-        self.const_pointercast(gv, self.type_ptr())
-    }
-
     fn codegen_static(&mut self, def_id: DefId) {
         self.codegen_static_item(def_id)
     }

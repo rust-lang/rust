@@ -1,9 +1,7 @@
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_abi as abi;
 use rustc_abi::HasDataLayout;
-use rustc_codegen_ssa::traits::{
-    BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods as _,
-};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::ty::layout::LayoutOf;
 
@@ -246,13 +244,48 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_cast(None, val, ty)
     }
 
-    fn static_addr_of_const(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
-        self.static_addr_of(alloc, kind)
-    }
-
-    fn static_addr_of_mut(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> RValue<'gcc> {
         let cv = const_alloc_to_gcc(self, alloc);
-        self.static_addr_of_mut(cv, alloc.inner().align, kind)
+        let align = alloc.inner().align;
+
+        if alloc.inner().mutability.is_not()
+            && let Some(variable) = self.const_globals.borrow().get(&cv)
+        {
+            if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
+                let alignment = align.bits() as i32;
+                if alignment > global_variable.get_alignment() {
+                    global_variable.set_alignment(alignment);
+                }
+            }
+            return *variable;
+        }
+        let global_value = match kind {
+            Some(kind) if !self.tcx.sess.fewer_names() => {
+                let name = self.generate_local_symbol_name(kind);
+                // FIXME(antoyo): check if it's okay that no link_section is set.
+
+                let typ = self.val_ty(cv).get_aligned(align.bytes());
+                self.declare_private_global(&name[..], typ)
+            }
+            _ => {
+                let typ = self.val_ty(cv).get_aligned(align.bytes());
+                self.declare_unnamed_global(typ)
+            }
+        };
+        global_value.global_set_initializer_rvalue(cv);
+        // FIXME(antoyo): set unnamed address.
+        let rvalue = global_value.get_address(None);
+        self.global_lvalues.borrow_mut().insert(rvalue, global_value);
+        if alloc.inner().mutability.is_not() {
+            #[cfg(feature = "master")]
+            self.global_lvalues
+                .borrow()
+                .get(&rvalue)
+                .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
+                .global_set_readonly();
+            self.const_globals.borrow_mut().insert(cv, rvalue);
+        }
+        rvalue
     }
 }
 

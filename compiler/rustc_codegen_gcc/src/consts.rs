@@ -56,30 +56,6 @@ fn set_global_alignment<'gcc, 'tcx>(
 }
 
 impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> RValue<'gcc> {
-        let cv = const_alloc_to_gcc(self, alloc);
-        let align = alloc.inner().align;
-
-        if let Some(variable) = self.const_globals.borrow().get(&cv) {
-            if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
-                let alignment = align.bits() as i32;
-                if alignment > global_variable.get_alignment() {
-                    global_variable.set_alignment(alignment);
-                }
-            }
-            return *variable;
-        }
-        let global_value = self.static_addr_of_mut(cv, align, kind);
-        #[cfg(feature = "master")]
-        self.global_lvalues
-            .borrow()
-            .get(&global_value)
-            .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
-            .global_set_readonly();
-        self.const_globals.borrow_mut().insert(cv, global_value);
-        global_value
-    }
-
     fn codegen_static(&mut self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
@@ -194,32 +170,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]
         function.add_attribute(FnAttribute::Used);
-    }
-
-    pub fn static_addr_of_mut(
-        &self,
-        cv: RValue<'gcc>,
-        align: Align,
-        kind: Option<&str>,
-    ) -> RValue<'gcc> {
-        let global = match kind {
-            Some(kind) if !self.tcx.sess.fewer_names() => {
-                let name = self.generate_local_symbol_name(kind);
-                // FIXME(antoyo): check if it's okay that no link_section is set.
-
-                let typ = self.val_ty(cv).get_aligned(align.bytes());
-                self.declare_private_global(&name[..], typ)
-            }
-            _ => {
-                let typ = self.val_ty(cv).get_aligned(align.bytes());
-                self.declare_unnamed_global(typ)
-            }
-        };
-        global.global_set_initializer_rvalue(cv);
-        // FIXME(antoyo): set unnamed address.
-        let rvalue = global.get_address(None);
-        self.global_lvalues.borrow_mut().insert(rvalue, global);
-        rvalue
     }
 
     pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {

@@ -289,14 +289,9 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstPtrToInt(val, ty) }
     }
 
-    fn static_addr_of_const(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
         let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-        self.static_addr_of_const(cv, alloc.inner().align, kind)
-    }
-
-    fn static_addr_of_mut(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
-        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
-        self.static_addr_of_mut(cv, alloc.inner().align, kind)
+        self.static_addr_of(cv, alloc.inner().align, kind, alloc.inner().mutability)
     }
 }
 
