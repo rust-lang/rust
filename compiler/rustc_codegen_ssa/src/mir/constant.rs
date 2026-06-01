@@ -29,8 +29,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     /// This is a convenience helper for `immediate_const_vector`. It has the precondition
-    /// that the given `constant` is an `Const::Unevaluated` and must be convertible to
-    /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
+    /// that the given `constant` is a `Const::Unevaluated`, or a `Const::Ty` containing a
+    /// `ty::ConstKind::Value` or `ty::ConstKind::Unevaluated`, and must be convertible to a
+    /// `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
     /// Note that this function is cursed, since usually MIR consts should not be evaluated to
     /// valtrees!
@@ -44,6 +45,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // A constant that came from a const generic but was then used as an argument to
                 // old-style simd_shuffle (passing as argument instead of as a generic param).
                 ty::ConstKind::Value(cv) => return Ok(Ok(cv.valtree)),
+                ty::ConstKind::Unevaluated(uv) => uv,
                 other => span_bug!(constant.span, "{other:#?}"),
             },
             // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
