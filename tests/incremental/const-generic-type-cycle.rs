@@ -12,6 +12,6 @@ trait Bar<const N: usize> {}
 
 #[cfg(bfail)]
 trait Bar<const N: dyn BB> {}
-//[bfail]~^ ERROR cycle detected when computing type of `Bar::N`
+//[bfail]~^ ERROR cycle detected when computing type and type-dependent definitions of `Bar::N`
 
 trait BB = Bar<{ 2 + 1 }>;

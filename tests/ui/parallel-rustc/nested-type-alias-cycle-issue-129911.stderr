@@ -13,15 +13,17 @@ LL |                 type Frc = Frc<{}>::Arc;;
    |                      ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:11:17
+   |
+LL |                 type Frc = Frc<{}>::Arc;;
+   |                 ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:11:28
    |
 LL |                 type Frc = Frc<{}>::Arc;;
    |                            ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:11:17
    |
@@ -48,6 +50,12 @@ LL |             type Frc = Frc<
    |                  ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:15:13
+   |
+LL |             type Frc = Frc<
+   |             ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:15:24
    |
 LL |               type Frc = Frc<
@@ -56,11 +64,7 @@ LL |               type Frc = Frc<
 LL | |                 },
 LL | |             >::Arc;;
    | |_____________^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:15:13
    |
@@ -83,15 +87,17 @@ LL |                         type Frc = Frc<{}>::Arc;;
    |                              ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:23:25
+   |
+LL |                         type Frc = Frc<{}>::Arc;;
+   |                         ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:23:36
    |
 LL |                         type Frc = Frc<{}>::Arc;;
    |                                    ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:23:25
    |
@@ -118,6 +124,12 @@ LL |                     type Frc = Frc<
    |                          ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:27:21
+   |
+LL |                     type Frc = Frc<
+   |                     ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:27:32
    |
 LL |                       type Frc = Frc<
@@ -126,11 +138,7 @@ LL |                       type Frc = Frc<
 LL | |                         },
 LL | |                     >::Arc;;
    | |_____________________^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:27:21
    |
@@ -153,15 +161,17 @@ LL | ...                   type Frc = Frc<{}>::Arc;;
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:35:33
+   |
+LL | ...                   type Frc = Frc<{}>::Arc;;
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:35:44
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:35:33
    |
@@ -188,6 +198,12 @@ LL | ...                   type Frc = Frc<
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:39:29
+   |
+LL | ...                   type Frc = Frc<
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:39:40
    |
 LL |   ...                   type Frc = Frc<
@@ -196,11 +212,7 @@ LL |   ...                   type Frc = Frc<
 LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:39:29
    |
@@ -223,15 +235,17 @@ LL | ...                   type Frc = Frc<{}>::Arc;;
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:47:41
+   |
+LL | ...                   type Frc = Frc<{}>::Arc;;
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:47:52
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:47:41
    |
@@ -258,6 +272,12 @@ LL | ...                   type Frc = Frc<
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:51:37
+   |
+LL | ...                   type Frc = Frc<
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:51:48
    |
 LL |   ...                   type Frc = Frc<
@@ -266,11 +286,7 @@ LL |   ...                   type Frc = Frc<
 LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:51:37
    |
@@ -293,15 +309,17 @@ LL | ...                   type Frc = Frc<{}>::Arc;;
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:60:53
+   |
+LL | ...                   type Frc = Frc<{}>::Arc;;
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:60:64
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:60:53
    |
@@ -328,6 +346,12 @@ LL | ...                   type Frc = Frc<
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:65:45
+   |
+LL | ...                   type Frc = Frc<
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:65:56
    |
 LL |   ...                   type Frc = Frc<
@@ -336,11 +360,7 @@ LL |   ...                   type Frc = Frc<
 LL | | ...                       },
 LL | | ...                   >::Arc;;
    | |_______________________^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:65:45
    |
@@ -363,15 +383,17 @@ LL | ...                   type Frc = Frc<{}>::Arc;;
    |                            ^^^
 
 error[E0391]: cycle detected when expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`
+  --> $DIR/nested-type-alias-cycle-issue-129911.rs:74:53
+   |
+LL | ...                   type Frc = Frc<{}>::Arc;;
+   |                       ^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`...
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:74:64
    |
 LL | ...                   type Frc = Frc<{}>::Arc;;
    |                                  ^^^^^^^
-   |
-   = note: ...which immediately requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` again
-   = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
-   = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
+   = note: ...which again requires expanding type alias `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc`, completing the cycle
 note: cycle used when checking that `main::KooArc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc::{constant#0}::Frc` is well-formed
   --> $DIR/nested-type-alias-cycle-issue-129911.rs:74:53
    |

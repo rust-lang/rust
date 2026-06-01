@@ -26,12 +26,17 @@ LL |         bar
    |         ^^^ not found in this scope
 
 error[E0391]: cycle detected when computing type of `Trait::N`
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:13
+   |
+LL | trait Trait<const N: dyn Trait = bar> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `Trait::N`...
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:26
    |
 LL | trait Trait<const N: dyn Trait = bar> {
    |                          ^^^^^
-   |
-   = note: ...which immediately requires computing type of `Trait::N` again
+   = note: ...which again requires computing type of `Trait::N`, completing the cycle
 note: cycle used when checking that `Trait` is well-formed
   --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:1:1
    |

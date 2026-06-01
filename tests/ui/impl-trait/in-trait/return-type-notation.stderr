@@ -9,6 +9,11 @@ note: ...which requires computing function signature of `IntFactory::stream`...
    |
 LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing function signature and type-dependent definitions of `IntFactory::stream`...
+  --> $DIR/return-type-notation.rs:5:5
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires looking up late bound vars inside `IntFactory::stream`...
   --> $DIR/return-type-notation.rs:5:5
    |

@@ -1,10 +1,20 @@
 error[E0391]: cycle detected when computing type of `Foo::T`
+  --> $DIR/issue-34373.rs:7:16
+   |
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `Foo::T`...
   --> $DIR/issue-34373.rs:7:34
    |
 LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
    |                                  ^^^^^^^^^^
-   |
 note: ...which requires expanding type alias `DefaultFoo`...
+  --> $DIR/issue-34373.rs:9:1
+   |
+LL | type DefaultFoo = Foo;
+   | ^^^^^^^^^^^^^^^
+note: ...which requires computing type and type-dependent definitions of `DefaultFoo`...
   --> $DIR/issue-34373.rs:9:19
    |
 LL | type DefaultFoo = Foo;

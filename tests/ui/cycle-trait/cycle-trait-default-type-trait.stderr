@@ -1,10 +1,15 @@
 error[E0391]: cycle detected when computing type of `Foo::X`
+  --> $DIR/cycle-trait-default-type-trait.rs:4:11
+   |
+LL | trait Foo<X = Box<dyn Foo>> {
+   |           ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing type and type-dependent definitions of `Foo::X`...
   --> $DIR/cycle-trait-default-type-trait.rs:4:23
    |
 LL | trait Foo<X = Box<dyn Foo>> {
    |                       ^^^
-   |
-   = note: ...which immediately requires computing type of `Foo::X` again
+   = note: ...which again requires computing type of `Foo::X`, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/cycle-trait-default-type-trait.rs:4:1
    |
