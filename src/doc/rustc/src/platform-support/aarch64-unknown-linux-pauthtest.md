@@ -88,8 +88,8 @@ clang \
   "$@"
 ```
 
-The Rust compiler validates the name of the configured C compiler, so when using
-a wrapper its name must contain `clang`. A recommended name is
+Bootstrap validates the name of the configured C compiler, so when using a
+wrapper its name must contain `clang`. A recommended name is
 `aarch64-unknown-linux-pauthtest-clang`. Update the script to set `--sysroot`,
 `-resource-dir`, `--dynamic-linker` and `--rpath` correctly by replacing
 `<toolchain_root>` with the directory produced by the build scripts and the
@@ -381,7 +381,7 @@ Cross-compilation has been successfully performed on both
 This target can be tested as normal with `x.py`.
 The following categories are supported (all present in tree):
 * Assembly tests
-  * targets-aarch64_unknown_linux_pauthtest.rs
+  * pauth-basic.rs
 * LLVM IR/codegen tests
   * pauth-extern-c.rs
   * pauth-extern-c-direct-indirect-call.rs
@@ -406,7 +406,7 @@ named for convenience):
 x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   codegen-llvm codegen-units coverage crashes incremental library mir-opt \
   run-make ui ui-fulldeps \
-  tests/assembly-llvm/targets/targets-aarch64_unknown_linux_pauthtest.rs \
+  tests/assembly-llvm/pauth-basic.rs \
   tests/codegen-llvm/pauth/pauth-attr-special-funcs.rs \
   tests/codegen-llvm/pauth/pauth-extern-c.rs \
   tests/codegen-llvm/pauth/pauth-extern-c-direct-indirect-call.rs \

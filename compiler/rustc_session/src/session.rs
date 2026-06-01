@@ -1220,7 +1220,9 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
-    // Using static linking is prohibited on pauthtest target
+    // FIXME(jchlanda) Pauthtest does not support static linking. It must be dynamically linked,
+    // with a dynamic linker acting as the ELF interpreter that can resolve pauth relocations and
+    // enforce pointer authentication constraints.
     if sess.crt_static(None) && sess.target.cfg_abi == CfgAbi::Pauthtest {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
