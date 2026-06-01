@@ -4,9 +4,9 @@ use crate::common::SupportedArchitecture;
 use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
 use crate::common::values::test_values_array_name;
 
-use super::PASSES;
 use super::constraint::Constraint;
 use super::intrinsic_helpers::TypeDefinition;
+use super::{PASSES, PREDICATE_LOCAL};
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
@@ -38,8 +38,15 @@ where
         self.ty.c_type()
     }
 
+    /// Generates local variable name for the value passed to this argument
     pub fn generate_name(&self) -> String {
-        format!("{}_val", self.name)
+        // The same predicate is used for scalable intrinsic invocations
+        // FIXME(davidtwco): Only for predicate arguments, not all boolean arguments
+        if self.is_scalable_bool() {
+            format!("{PREDICATE_LOCAL}")
+        } else {
+            format!("{}_val", self.name)
+        }
     }
 
     pub fn is_simd(&self) -> bool {
@@ -187,8 +194,14 @@ where
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
+                    // If this load is of a scalable vector, then prepend an additional argument
+                    // containing the predicate for the load.
+                    let pred_arg = match arg.ty.num_lanes() {
+                        SimdLen::Scalable => format!("{PREDICATE_LOCAL},"),
+                        SimdLen::Fixed(..) => "".to_string(),
+                    };
                     format!(
-                        "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);",
+                        "let {name} = {load}({pred_arg}{vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
                         name = arg.generate_name(),
                         vals_name = test_values_array_name(&arg.ty),
                         load = arg.ty.load_function(),

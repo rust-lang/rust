@@ -139,8 +139,8 @@ impl SupportedArchitecture for Arm {
         Self(intrinsics)
     }
 
-    fn predicate_function(_: u32) -> String {
-        todo!("implemented in a later commit")
+    fn predicate_function(size: u32) -> String {
+        format!("svptrue_b{size}()")
     }
 }
 
