@@ -446,6 +446,7 @@ pub(crate) fn gen_define_handling<'ll>(
     let valid_begin_mappings = MappingFlags::TO | MappingFlags::LITERAL | MappingFlags::IMPLICIT;
     let transfer_to: Vec<u64> =
         transfer.iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
+    dbg!(&transfer);
     let transfer_from: Vec<u64> =
         transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
     let valid_kernel_mappings = MappingFlags::LITERAL | MappingFlags::IMPLICIT;
@@ -469,6 +470,7 @@ pub(crate) fn gen_define_handling<'ll>(
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
     let memtransfer_kernel =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.kernel"), &transfer_kernel);
+    dbg!(&transfer_from);
     let memtransfer_end =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
 

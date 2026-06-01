@@ -5,7 +5,7 @@ use super::BackendTypes;
 use crate::RetagInfo;
 use crate::mir::IntrinsicResult;
 use crate::mir::operand::OperandRef;
-use crate::mir::place::PlaceValue;
+use crate::mir::place::{PlaceRef, PlaceValue};
 
 pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     /// Higher-level interface to emitting calls to intrinsics
@@ -36,6 +36,12 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
         is_mut: bool,
+    );
+
+    fn codegen_offload_preload_mut_drop(
+        &mut self,
+        preload_ty: ty::Ty<'tcx>,
+        place: PlaceRef<'tcx, Self::Value>,
     );
 
     fn codegen_llvm_intrinsic_call(
