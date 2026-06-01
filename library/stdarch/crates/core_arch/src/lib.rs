@@ -40,6 +40,7 @@
     const_eval_select,
     maybe_uninit_as_bytes,
     movrs_target_feature,
+    clflushopt_target_feature,
     min_adt_const_params
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
