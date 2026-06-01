@@ -4,7 +4,7 @@
 // function; while c - provides the implementation of quicksort algorithm and is the user of  the
 // data and comparator.
 
-//@ only-aarch64-unknown-linux-pauthtest
+//@ only-pauthtest
 
 use run_make_support::{cc, env_var, rfs, run, run_fail, rustc};
 

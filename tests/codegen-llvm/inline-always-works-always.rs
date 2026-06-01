@@ -3,7 +3,7 @@
 //@[SIZE-OPT] compile-flags: -Copt-level=s
 //@[SPEED-OPT] compile-flags: -Copt-level=3
 // Pointer authenticated calls are not guaranteed to be inlined.
-//@ ignore-aarch64-unknown-linux-pauthtest
+//@ ignore-pauthtest
 
 #![crate_type = "rlib"]
 
