@@ -910,6 +910,7 @@ impl<'a> Builder<'a> {
                 test::CargoMiri,
                 test::Clippy,
                 test::CompiletestTest,
+                test::StdarchGenCheck,
                 test::CrateRunMakeSupport,
                 test::CrateBuildHelper,
                 test::RustdocJSStd,

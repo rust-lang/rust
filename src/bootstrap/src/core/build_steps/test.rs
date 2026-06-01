@@ -910,6 +910,157 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchGenCheck {
+    host: TargetSelection,
+}
+
+impl Step for StdarchGenCheck {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("stdarch-gen-check")
+            .path("library/stdarch/crates/stdarch-gen-arm")
+            .path("library/stdarch/crates/stdarch-gen-loongarch")
+            .path("library/stdarch/crates/stdarch-gen-hexagon")
+            .path("library/stdarch/crates/stdarch-gen-hexagon-scalar")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdarchGenCheck { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let stdarch_root = builder.src.join("library/stdarch");
+        let bless = builder.config.cmd.bless();
+
+        // The generators shell out to rustfmt to format their output so we need
+        // it discoverable on PATH. Bootstrap downloads one and exposes it here.
+        let rustfmt_path = builder.config.initial_rustfmt.clone().unwrap_or_else(|| {
+            eprintln!(
+                "stdarch-gen-check: a rustfmt binary is required but none was found.\n\
+                 Set `rustfmt = true` in `bootstrap.toml` so bootstrap downloads one."
+            );
+            crate::exit!(1);
+        });
+
+        let mut path_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(cargo_dir) = builder.initial_cargo.parent() {
+            path_dirs.push(cargo_dir.to_path_buf());
+        }
+        if let Some(rustfmt_dir) = rustfmt_path.parent() {
+            path_dirs.push(rustfmt_dir.to_path_buf());
+        }
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
+            .expect("could not build PATH for stdarch-gen-check");
+
+        let work_dir = builder.out.join("stdarch-gen-check");
+        let cargo_target_dir = work_dir.join("target");
+
+        // Writable copy of `crates/core_arch` that the generators write into.
+        let src_core_arch = stdarch_root.join("crates/core_arch");
+        let out_core_arch = work_dir.join("core_arch");
+        if out_core_arch.exists() {
+            t!(fs::remove_dir_all(&out_core_arch));
+        }
+        cp_writable_r(&src_core_arch, &out_core_arch);
+        let out_core_arch_src = out_core_arch.join("src");
+
+        // Mirrors the check-stdarch-gen CI job with its output redirected
+        // into `out_core_arch` args follow `--` and `out_dir` when set becomes OUT_DIR.
+        let run_gen = |selector: &str, pkg: &str, args: &[&OsStr], out_dir: Option<&Path>| {
+            let mut cmd = command(&builder.initial_cargo);
+            cmd.current_dir(&stdarch_root);
+            cmd.arg("run").arg(selector).arg(pkg).arg("--release").arg("--").args(args);
+            // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("PATH", &new_path);
+            cmd.env("CARGO_TARGET_DIR", &cargo_target_dir);
+            if let Some(out_dir) = out_dir {
+                cmd.env("OUT_DIR", out_dir);
+            }
+            cmd.run(builder);
+        };
+
+        let hexagon_out = out_core_arch_src.join("hexagon");
+        run_gen(
+            "--bin",
+            "stdarch-gen-arm",
+            &[OsStr::new("crates/stdarch-gen-arm/spec"), out_core_arch_src.as_os_str()],
+            None,
+        );
+        run_gen(
+            "--bin",
+            "stdarch-gen-loongarch",
+            &[OsStr::new("crates/stdarch-gen-loongarch/lsx.spec")],
+            Some(&out_core_arch),
+        );
+        run_gen(
+            "--bin",
+            "stdarch-gen-loongarch",
+            &[OsStr::new("crates/stdarch-gen-loongarch/lasx.spec")],
+            Some(&out_core_arch),
+        );
+        run_gen("-p", "stdarch-gen-hexagon", &[hexagon_out.as_os_str()], None);
+        run_gen("-p", "stdarch-gen-hexagon-scalar", &[hexagon_out.as_os_str()], None);
+
+        let mut git = helpers::git(Some(&stdarch_root));
+        git.arg("diff")
+            .arg("--no-index")
+            .arg("--exit-code")
+            .arg(&src_core_arch)
+            .arg(&out_core_arch);
+        let clean = git.allow_failure().run(builder);
+
+        if !clean {
+            if bless {
+                builder.info(
+                    "stdarch-gen-check: updating generated files in the source tree. \
+                     Review the diff and commit.",
+                );
+                cp_writable_r(&out_core_arch, &src_core_arch);
+            } else {
+                eprintln!(
+                    "stdarch-gen-check: generated files are out of date.\n\
+                     Run `./x test stdarch-gen-check --bless` to update them, then commit."
+                );
+                crate::exit!(1);
+            }
+        }
+    }
+}
+
+/// Recursively copy src to dst clearing the read-only bit so the destination can be
+/// regenerated even when src lives on a read-only filesystem.
+fn cp_writable_r(src: &Path, dst: &Path) {
+    let metadata = t!(fs::symlink_metadata(src));
+    if metadata.file_type().is_symlink() {
+        return;
+    }
+    if metadata.is_dir() {
+        t!(fs::create_dir_all(dst));
+        for entry in t!(fs::read_dir(src)) {
+            let entry = t!(entry);
+            cp_writable_r(&entry.path(), &dst.join(entry.file_name()));
+        }
+    } else {
+        if let Some(parent) = dst.parent() {
+            t!(fs::create_dir_all(parent));
+        }
+        t!(fs::copy(src, dst));
+        let mut perms = t!(fs::metadata(dst)).permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        t!(fs::set_permissions(dst, perms));
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
 }
