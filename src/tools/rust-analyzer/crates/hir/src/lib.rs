@@ -164,7 +164,7 @@ pub use {
         },
         inert_attr_macro::AttributeTemplate,
         mod_path::{ModPath, PathKind, tool_path},
-        name::Name,
+        name::{self, Name},
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
         tt,
