@@ -12,9 +12,9 @@ extern crate core;
 
 use core::panic::PanicInfo;
 
-#[lang = "panic_impl"]
-fn panic_impl(info: &PanicInfo) -> ! {
-    //~^ ERROR: found duplicate lang item `panic_impl`
+#[lang = "eh_personality"]
+fn personality() {
+    //~^ ERROR: found duplicate lang item `eh_personality`
     //~| NOTE first defined in crate `std`
     loop {}
 }
