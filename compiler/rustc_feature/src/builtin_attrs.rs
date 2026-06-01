@@ -274,6 +274,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::force_target_feature,
     sym::sanitize,
     sym::coverage,
+    sym::optimize,
 
     sym::doc,
 
@@ -297,8 +298,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::marker,
     sym::thread_local,
     sym::no_core,
-    // RFC 2412
-    sym::optimize,
 
     sym::ffi_pure,
     sym::ffi_const,

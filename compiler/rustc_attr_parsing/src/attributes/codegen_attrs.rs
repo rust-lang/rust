@@ -24,7 +24,7 @@ impl SingleAttributeParser for OptimizeParser {
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
-    const STABILITY: AttributeStability = unstable!(optimize_attribute);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
