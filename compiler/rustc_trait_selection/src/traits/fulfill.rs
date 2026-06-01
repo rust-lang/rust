@@ -560,7 +560,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ty::ConstKind::Value(cv) => cv.ty,
                         ty::ConstKind::Unevaluated(uv) => infcx
                             .tcx
-                            .type_of(uv.def)
+                            .type_of(uv.kind.def_id())
                             .instantiate(infcx.tcx, uv.args)
                             .skip_norm_wip(),
                         // FIXME(generic_const_exprs): we should construct an alias like
@@ -719,13 +719,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         let c2 = tcx.expand_abstract_consts(c2);
                         debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
 
-                        use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def
+                                if a.kind == b.kind
                                     && matches!(
-                                        tcx.def_kind(a.def),
-                                        DefKind::AssocConst { .. }
+                                        a.kind,
+                                        ty::UnevaluatedConstKind::Projection { .. }
+                                            | ty::UnevaluatedConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
@@ -734,8 +734,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
-                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(

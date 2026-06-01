@@ -692,8 +692,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // We may still encounter unevaluated consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
-                return self.print_def_path(def, args);
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { kind, args, .. }) => {
+                return self.print_def_path(kind.def_id(), args);
             }
 
             ty::ConstKind::Expr(_)

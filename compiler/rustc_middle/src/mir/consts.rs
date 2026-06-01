@@ -467,9 +467,13 @@ pub struct UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
+    pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::UnevaluatedConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::UnevaluatedConst { def: self.def, args: self.args }
+        ty::UnevaluatedConst::new(
+            tcx,
+            ty::UnevaluatedConstKind::new_from_def_id(tcx, self.def),
+            self.args,
+        )
     }
 }
 
