@@ -98,3 +98,59 @@ pub(crate) struct BranchRegion {
     pub(crate) true_counter: Counter,
     pub(crate) false_counter: Counter,
 }
+
+pub(crate) mod mcdc {
+    use rustc_middle::mir::coverage::mcdc;
+
+    use crate::coverageinfo::ffi::{Counter, CoverageSpan};
+
+    /// Must match the layout of `LLVMRustCoverageMCDCDecisionRegion`.
+    #[repr(C)]
+    #[derive(Debug, Clone)]
+    pub(crate) struct DecisionRegion {
+        pub(crate) cov_span: CoverageSpan,
+        pub(crate) params: DecisionParameters,
+    }
+
+    /// Must match the layout of `LLVMRustCoverageMCDCConditionRegion`.
+    #[repr(C)]
+    #[derive(Debug, Clone)]
+    pub(crate) struct ConditionRegion {
+        pub(crate) cov_span: CoverageSpan,
+        pub(crate) true_counter: Counter,
+        pub(crate) false_counter: Counter,
+        pub(crate) params: ConditionParameters,
+    }
+
+    /// Must match the layout of `LLVMRustCoverageMCDCDecisionParameters`.
+    #[repr(C)]
+    #[derive(Debug, Default, Clone, Copy)]
+    pub(crate) struct DecisionParameters {
+        pub(crate) bitmap_idx: u32,
+        pub(crate) num_conditions: u16,
+    }
+
+    type LLVMConditionID = i16;
+
+    /// Must match the layout of `LLVMRustCoverageMCDCConditionParameters`.
+    #[repr(C)]
+    #[derive(Debug, Default, Clone, Copy)]
+    pub(crate) struct ConditionParameters {
+        condition_id: LLVMConditionID,
+        condition_ids: [LLVMConditionID; 2],
+    }
+
+    impl From<mcdc::ConditionInfo> for ConditionParameters {
+        fn from(value: mcdc::ConditionInfo) -> Self {
+            let to_llvm_id = |id: Option<mcdc::ConditionId>| {
+                id.map(mcdc::ConditionId::as_usize)
+                    .and_then(|id| LLVMConditionID::try_from(id).ok())
+                    .unwrap_or(-1)
+            };
+            Self {
+                condition_id: to_llvm_id(Some(value.condition_id)),
+                condition_ids: [to_llvm_id(value.false_next_id), to_llvm_id(value.true_next_id)],
+            }
+        }
+    }
+}

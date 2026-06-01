@@ -69,14 +69,26 @@ pub(crate) struct Regions {
     pub(crate) code_regions: Vec<ffi::CodeRegion>,
     pub(crate) expansion_regions: Vec<ffi::ExpansionRegion>,
     pub(crate) branch_regions: Vec<ffi::BranchRegion>,
+    pub(crate) mcdc_condition_regions: Vec<ffi::mcdc::ConditionRegion>,
+    pub(crate) mcdc_decision_regions: Vec<ffi::mcdc::DecisionRegion>,
 }
 
 impl Regions {
     /// Returns true if none of this structure's tables contain any regions.
     pub(crate) fn has_no_regions(&self) -> bool {
-        let Self { code_regions, expansion_regions, branch_regions } = self;
+        let Self {
+            code_regions,
+            expansion_regions,
+            branch_regions,
+            mcdc_condition_regions,
+            mcdc_decision_regions,
+        } = self;
 
-        code_regions.is_empty() && expansion_regions.is_empty() && branch_regions.is_empty()
+        code_regions.is_empty()
+            && expansion_regions.is_empty()
+            && branch_regions.is_empty()
+            && mcdc_condition_regions.is_empty()
+            && mcdc_decision_regions.is_empty()
     }
 }
 
@@ -85,7 +97,13 @@ pub(crate) fn write_function_mappings_to_buffer(
     expressions: &[ffi::CounterExpression],
     regions: &Regions,
 ) -> Vec<u8> {
-    let Regions { code_regions, expansion_regions, branch_regions } = regions;
+    let Regions {
+        code_regions,
+        expansion_regions,
+        branch_regions,
+        mcdc_condition_regions,
+        mcdc_decision_regions,
+    } = regions;
 
     // SAFETY:
     // - All types are FFI-compatible and have matching representations in Rust/C++.
@@ -103,6 +121,10 @@ pub(crate) fn write_function_mappings_to_buffer(
             expansion_regions.len(),
             branch_regions.as_ptr(),
             branch_regions.len(),
+            mcdc_condition_regions.as_ptr(),
+            mcdc_condition_regions.len(),
+            mcdc_decision_regions.as_ptr(),
+            mcdc_decision_regions.len(),
             buffer,
         )
     })

@@ -151,6 +151,8 @@ fn fill_region_tables<'tcx>(
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,
+        mcdc_condition_regions: _, // FIXME(RenjiSann): Fill MCDC region
+        mcdc_decision_regions: _,
     } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
