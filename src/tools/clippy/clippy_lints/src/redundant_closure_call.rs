@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir};
-use clippy_utils::get_parent_expr;
+use clippy_utils::{get_async_closure, get_async_closure_expr, get_parent_expr};
 use clippy_utils::sugg::Sugg;
 use hir::Param;
 use rustc_errors::Applicability;
@@ -102,7 +102,7 @@ fn find_innermost_closure<'tcx>(
         let mut asyncness = ty::Asyncness::No;
         let mut capture_clause = closure.capture_clause;
 
-        if let ExprKind::Closure(inner_closure) = body.value.kind {
+        if let Some(inner_closure) = get_async_closure(body.value) {
             if matches!(inner_closure.kind, DESUGARED_ASYNC_CLOSURE_KIND) {
                 asyncness = ty::Asyncness::Yes;
                 unwrapped_body_value = cx.tcx.hir_body(inner_closure.body).value;
@@ -202,10 +202,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             Sugg::hir_with_context(cx, body, full_expr.span.ctxt(), "..", &mut applicability);
 
                         if coroutine_kind.is_async() {
-                            if let ExprKind::Closure(closure) = body.kind {
+                            if let Some(inner_body) = get_async_closure_expr(cx.tcx, body) {
                                 // Like `async fn`, async closures are wrapped in an additional block
                                 // to move all of the closure's arguments into the future.
-                                body = cx.tcx.hir_body(closure.body).value;
+                                body = inner_body;
                             }
 
                             // `async x` is a syntax error, so it becomes `async { x }`
