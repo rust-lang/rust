@@ -4,7 +4,7 @@
 //!
 //! The state transform creates a `poll` method such that calling the coroutine `f()` is equivalent
 //! to:
-//! ```rust (ignore)
+//! ```ignore (example)
 //! fn initial_mir(state: CoroutineState, mut resume_arg: ResumeTy) {
 //!     // Repeatedly poll the state machine.
 //!     loop {
