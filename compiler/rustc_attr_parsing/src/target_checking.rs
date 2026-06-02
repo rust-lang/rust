@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::AttrStyle;
-use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan, StashKey};
+use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
@@ -121,15 +121,26 @@ impl<'sess> AttributeParser<'sess> {
                 .emit();
         }
 
-        match allowed_targets.is_allowed(cx.target) {
-            AllowedResult::Allowed => {}
-            AllowedResult::Warn => {
-                let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) =
-                    allowed_targets_applied(allowed_targets, cx.target, cx.features);
-                let name = cx.attr_path.clone();
+        let result = allowed_targets.is_allowed(cx.target);
+        if matches!(result, AllowedResult::Allowed) {
+            return;
+        }
 
-                let lint = if name.segments[0] == sym::deprecated
+        let allowed_targets = allowed_targets.allowed_targets();
+        let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
+        let diag = InvalidTarget {
+            span: cx.attr_span.clone(),
+            name: cx.attr_path.clone(),
+            target: cx.target.plural_name(),
+            only: if only { "only " } else { "" },
+            applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
+            previously_accepted: matches!(result, AllowedResult::Warn),
+        };
+
+        match result {
+            AllowedResult::Allowed => unreachable!("Should have early returned above"),
+            AllowedResult::Warn => {
+                let lint = if cx.attr_path.segments[0] == sym::deprecated
                     && ![
                         Target::Closure,
                         Target::Expression,
@@ -144,41 +155,11 @@ impl<'sess> AttributeParser<'sess> {
                     rustc_session::lint::builtin::UNUSED_ATTRIBUTES
                 };
 
-                let attr_span = cx.attr_span;
-                let target = cx.target;
-                cx.emit_lint_with_sess(
-                    lint,
-                    move |dcx, level, _| {
-                        InvalidTarget {
-                            name,
-                            target: target.plural_name(),
-                            only: if only { "only " } else { "" },
-                            applied: DiagArgValue::StrListSepByAnd(
-                                applied.iter().map(|i| Cow::Owned(i.to_string())).collect(),
-                            ),
-                            span: attr_span,
-                            previously_accepted: true,
-                        }
-                        .into_diag(dcx, level)
-                    },
-                    attr_span,
-                );
+                let attr_span = cx.attr_span.clone();
+                cx.emit_lint(lint, diag, attr_span);
             }
             AllowedResult::Error => {
-                let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) =
-                    allowed_targets_applied(allowed_targets, cx.target, cx.features);
-                let name = cx.attr_path.clone();
-                cx.dcx().emit_err(InvalidTarget {
-                    span: cx.attr_span.clone(),
-                    name,
-                    target: cx.target.plural_name(),
-                    only: if only { "only " } else { "" },
-                    applied: DiagArgValue::StrListSepByAnd(
-                        applied.into_iter().map(Cow::Owned).collect(),
-                    ),
-                    previously_accepted: false,
-                });
+                cx.dcx().emit_err(diag);
             }
         }
     }
