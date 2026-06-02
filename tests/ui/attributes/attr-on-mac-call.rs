@@ -69,6 +69,9 @@ fn main() {
     #[should_panic]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    #[link_name = "x"]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
     unreachable!();
 
     #[repr()]
