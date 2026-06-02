@@ -126,7 +126,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    owner: &'a PerOwnerResolverData,
+    owner: &'a PerOwnerResolverData<'hir>,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
@@ -810,8 +810,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.get(&ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, &traits[..]);
+        if let Some(traits) = self.owner.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, *traits);
         }
 
         // Check whether the same `NodeId` is lowered more than once.

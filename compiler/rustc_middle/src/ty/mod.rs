@@ -204,7 +204,7 @@ pub struct ResolverGlobalCtxt {
 }
 
 #[derive(Debug)]
-pub struct PerOwnerResolverData {
+pub struct PerOwnerResolverData<'tcx> {
     pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
     /// Whether lifetime elision was successful.
     pub lifetime_elision_allowed: bool = false,
@@ -214,14 +214,16 @@ pub struct PerOwnerResolverData {
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
 
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
     pub def_id: LocalDefId,
 }
 
-impl PerOwnerResolverData {
-    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
+impl<'tcx> PerOwnerResolverData<'tcx> {
+    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData<'tcx> {
         PerOwnerResolverData { id, def_id, .. }
     }
 
@@ -249,9 +251,7 @@ pub struct ResolverAstLowering<'tcx> {
 
     pub next_node_id: ast::NodeId,
 
-    pub owners: NodeMap<PerOwnerResolverData>,
-
-    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
+    pub owners: NodeMap<PerOwnerResolverData<'tcx>>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
