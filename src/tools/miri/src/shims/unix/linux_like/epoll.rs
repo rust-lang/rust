@@ -1,7 +1,6 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::io;
-use std::ops::Bound;
 use std::time::Duration;
 
 use rustc_abi::FieldIdx;
@@ -23,7 +22,9 @@ pub struct Epoll {
     interest_list: RefCell<BTreeMap<EpollEventKey, EpollEventInterest>>,
     /// The subset of interests that is currently considered "ready". Stored separately so we
     /// can access it more efficiently.
-    ready_set: RefCell<BTreeSet<EpollEventKey>>,
+    /// This is implemented as a queue so that for level-triggered epoll, all events eventually
+    /// get returned from `epoll_wait`. The queue does not contain any duplicates.
+    ready_events: RefCell<VecDeque<EpollEventKey>>,
     /// The queue of threads blocked on this epoll instance.
     queue: RefCell<VecDeque<ThreadId>>,
 }
@@ -46,6 +47,9 @@ pub struct EpollEventInterest {
     relevant_events: u32,
     /// The currently active events for this file descriptor.
     active_events: u32,
+    /// Boolean whether this is an edge-triggered interest.
+    /// When [`false`] it's a level-triggered interest instead.
+    is_edge_triggered: bool,
     /// The vector clock for wakeups.
     clock: VClock,
     /// User-defined data associated with this interest.
@@ -203,12 +207,8 @@ impl EpollInterestTable {
                     .extract_if(range_for_id(id), |_, _| true)
                     // Consume the iterator.
                     .for_each(drop);
-                epoll
-                    .ready_set
-                    .borrow_mut()
-                    .extract_if(range_for_id(id), |_| true)
-                    // Consume the iterator.
-                    .for_each(drop);
+                // Remove the ready events for this file description.
+                epoll.ready_events.borrow_mut().retain(|(fd_id, _)| fd_id != &id);
             }
         }
     }
@@ -303,6 +303,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read_scalar(&this.project_field(&event, FieldIdx::ZERO)?)?.to_u32()?;
             let data = this.read_scalar(&this.project_field(&event, FieldIdx::ONE)?)?.to_u64()?;
 
+            let is_edge_triggered = if events & epollet == epollet {
+                events &= !epollet;
+                true
+            } else {
+                false
+            };
+
             // Unset the flag we support to discover if any unsupported flags are used.
             let mut flags = events;
             // epoll_wait(2) will always wait for epollhup and epollerr; it is not
@@ -311,12 +318,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             events |= epollhup;
             events |= epollerr;
 
-            if events & epollet != epollet {
-                // We only support edge-triggered notification for now.
-                throw_unsup_format!("epoll_ctl: epollet flag must be included.");
-            } else {
-                flags &= !epollet;
-            }
             if flags & epollin == epollin {
                 flags &= !epollin;
             }
@@ -350,6 +351,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 let new_interest = EpollEventInterest {
                     relevant_events: events,
+                    is_edge_triggered,
                     data,
                     active_events: 0,
                     clock: VClock::default(),
@@ -364,6 +366,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
                 };
                 interest.relevant_events = events;
+                interest.is_edge_triggered = is_edge_triggered;
                 interest.data = data;
             }
 
@@ -391,7 +394,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We did not have interest in this.
                 return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
             };
-            epfd.ready_set.borrow_mut().remove(&epoll_key);
+            // Remove the ready event for this key, should one exist.
+            let mut ready_events = epfd.ready_events.borrow_mut();
+            if let Some(idx) = ready_events.iter().position(|k| k == &epoll_key) {
+                ready_events.remove(idx);
+            }
             // If this was the last interest in this FD, remove us from the global list
             // of who is interested in this FD.
             if interest_list.range(range_for_id(id)).next().is_none() {
@@ -469,7 +476,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        if timeout == 0 || !epfd.ready_set.borrow().is_empty() {
+        if timeout == 0 || !epfd.ready_events.borrow().is_empty() {
             // If the timeout is 0 or there is a ready event, we can return immediately.
             return_ready_list(&epfd, dest, &event, this)?;
         } else {
@@ -590,18 +597,29 @@ fn update_readiness<'tcx>(
         &mut dyn FnMut(EpollEventKey, &mut EpollEventInterest) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
-    let mut ready_set = epoll.ready_set.borrow_mut();
+    let mut ready_events = epoll.ready_events.borrow_mut();
     for_each_interest(&mut |key, interest| {
         // Update the ready events tracked in this interest.
         let new_readiness = interest.relevant_events & active_events;
         let prev_readiness = std::mem::replace(&mut interest.active_events, new_readiness);
         if new_readiness == 0 {
             // Un-trigger this, there's nothing left to report here.
-            ready_set.remove(&key);
+            if let Some(idx) = ready_events.iter().position(|k| k == &key) {
+                ready_events.remove(idx);
+            }
         } else if force_edge || new_readiness != prev_readiness & new_readiness {
-            // Either we force an "edge" to be detected, or there's a bit set in `new`
-            // that was not set in `prev`. In both cases, this is ready now.
-            ready_set.insert(key);
+            // Either we force an "edge" to be detected or there's a bit set in `new_readiness`
+            // that was not set in `prev_readiness`. In both cases, this is ready now.
+
+            // We need to ensure that this event is not already part of the
+            // `ready_events` queue before enqueueing:
+            // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1292-L1296>
+            if !ready_events.contains(&key) {
+                ready_events.push_back(key);
+            }
+
+            // No matter whether this is newly ready or just re-triggered,
+            // the `epoll_wait` fetching this event should sync with the current thread.
             ecx.release_clock(|clock| {
                 interest.clock.join(clock);
             })?;
@@ -609,12 +627,12 @@ fn update_readiness<'tcx>(
         interp_ok(())
     })?;
     // While there are events ready to be delivered, wake up a thread to receive them.
-    while !ready_set.is_empty()
+    while !ready_events.is_empty()
         && let Some(thread_id) = epoll.queue.borrow_mut().pop_front()
     {
-        drop(ready_set); // release the "lock" so the unblocked thread can have it
+        drop(ready_events); // release the "lock" so the unblocked thread can have it
         ecx.unblock_thread(thread_id, BlockReason::Epoll { epfd: epoll.clone() })?;
-        ready_set = epoll.ready_set.borrow_mut();
+        ready_events = epoll.ready_events.borrow_mut();
     }
 
     interp_ok(())
@@ -629,7 +647,7 @@ fn return_ready_list<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx, i32> {
     let mut interest_list = epfd.interest_list.borrow_mut();
-    let mut ready_set = epfd.ready_set.borrow_mut();
+    let mut ready_events = epfd.ready_events.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
 
@@ -644,27 +662,29 @@ fn return_ready_list<'tcx>(
         }
     }
 
-    // While there is a slot to store another event, and an event to store, deliver that event.
-    // We can't use an iterator over `ready_set` as we want to remove elements as we go,
-    // so we track the most recently delivered event to find the next one. We track it as a lower
-    // bound that we can pass to `BTreeSet::range`.
-    let mut event_lower_bound = Bound::Unbounded;
-    while let Some(slot) = array_iter.next(ecx)?
-        && let Some(&key) = ready_set.range((event_lower_bound, Bound::Unbounded)).next()
+    // We will fill at most the first `ready_events_len` slots of the array.
+    // Bounding the iterator this way ensures that we can re-add events
+    // to the end of the queue during the loop without having them show up in the array.
+    let ready_events_len = u64::try_from(ready_events.len()).unwrap();
+    while let Some((idx, slot)) = array_iter.next(ecx)?
+        && idx < ready_events_len
+        && let Some(key) = ready_events.pop_front()
     {
         let interest = interest_list.get_mut(&key).expect("non-existent event in ready set");
         // Deliver event to caller.
         ecx.write_int_fields_named(
             &[("events", interest.active_events.into()), ("u64", interest.data.into())],
-            &slot.1,
+            &slot,
         )?;
         num_of_events = num_of_events.strict_add(1);
         // Synchronize receiving thread with the event of interest.
         ecx.acquire_clock(&interest.clock)?;
-        // This was an edge-triggered event, so remove it from the ready set.
-        ready_set.remove(&key);
-        // Go find the next event.
-        event_lower_bound = Bound::Excluded(key);
+        if !interest.is_edge_triggered {
+            // This is a level-triggered interest, so we need to re-add the event
+            // at the end of the ready queue:
+            // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1835-L1847>
+            ready_events.push_back(key);
+        }
     }
     ecx.write_int(num_of_events, dest)?;
     interp_ok(num_of_events)

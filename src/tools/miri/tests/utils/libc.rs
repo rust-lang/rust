@@ -164,24 +164,37 @@ pub mod epoll {
         epoll_ctl(epfd, EPOLL_CTL_ADD, fd, Ev { events, data: fd })
     }
 
+    /// Call `epoll_wait` on `epfd` with the provided `timeout`.
+    /// It fetches at most `max_events` events from `epfd` and
+    /// ensures that the returned events match the `expected` events.
     #[track_caller]
-    pub fn check_epoll_wait<const N: usize>(epfd: i32, expected: &[Ev], timeout: i32) {
-        let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
+    pub fn check_epoll_wait_partial(epfd: i32, expected: &[Ev], max_events: usize, timeout: i32) {
+        let mut events = vec![libc::epoll_event { events: 0, u64: 0 }; max_events];
         let num = errno_result(unsafe {
-            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), timeout)
+            libc::epoll_wait(epfd, events.as_mut_ptr(), i32::try_from(max_events).unwrap(), timeout)
         })
         .expect("epoll_wait returned an error");
-        let got = &mut array[..num.try_into().unwrap()];
-        let got = got
+        let got = events
             .iter()
+            .take(num as usize)
             .map(|e| Ev { events: e.events.cast_signed(), data: e.u64.try_into().unwrap() })
             .collect::<Vec<_>>();
-        assert_eq!(got, expected, "got wrong notifications");
+        assert_eq!(got, expected, "got wrong ready events");
     }
 
+    /// Call `epoll_wait` on `epfd` with the provided `timeout` and ensure
+    /// that the set of *all* ready events matches `expected`.
     #[track_caller]
-    pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
-        check_epoll_wait::<N>(epfd, expected, 0);
+    pub fn check_epoll_wait(epfd: i32, expected: &[Ev], timeout: i32) {
+        // We set `max_events` to `expected.len() + 1` to ensure that there are no additional ready
+        // events besides those which are contained in `expected`.
+        check_epoll_wait_partial(epfd, &expected, expected.len() + 1, timeout);
+    }
+
+    /// This does the same as [`check_epoll_wait`] just without blocking (zero `timeout`).
+    #[track_caller]
+    pub fn check_epoll_wait_noblock(epfd: i32, expected: &[Ev]) {
+        check_epoll_wait(epfd, expected, 0);
     }
 
     /// Query the current epoll readiness of a file descriptor.

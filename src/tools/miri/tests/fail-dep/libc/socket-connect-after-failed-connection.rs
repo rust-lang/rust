@@ -41,7 +41,7 @@ fn main() {
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | libc::EPOLLERR).unwrap();
 
     // Wait until the socket has an error.
-    check_epoll_wait::<8>(
+    check_epoll_wait(
         epfd,
         &[Ev { events: libc::EPOLLERR | EPOLLOUT | EPOLLHUP, data: client_sockfd }],
         -1,
