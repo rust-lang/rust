@@ -249,6 +249,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         debug!("Constructing Output");
         let output_crate = types::Crate {
+            format_disclaimer: types::FORMAT_DISCLAIMER.to_owned(),
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
@@ -345,7 +346,7 @@ mod size_asserts {
     use super::types::*;
     // tidy-alphabetical-start
     static_assert_size!(AssocItemConstraint, 112);
-    static_assert_size!(Crate, 184);
+    static_assert_size!(Crate, 208);
     static_assert_size!(FunctionPointer, 168);
     static_assert_size!(GenericArg, 80);
     static_assert_size!(GenericArgs, 104);

@@ -114,8 +114,11 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add `ExternCrate::path`.
-pub const FORMAT_VERSION: u32 = 57;
+// Latest feature: Add `Crate::format_disclaimer` serialized as `$comment`.
+pub const FORMAT_VERSION: u32 = 58;
+
+pub const FORMAT_DISCLAIMER: &str = "The format of this file is unstable and subject to change \
+without notice. Please always follow `format_version`.";
 
 /// The root of the emitted JSON blob.
 ///
@@ -126,6 +129,9 @@ pub const FORMAT_VERSION: u32 = 57;
 #[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
 pub struct Crate {
+    /// A warning that the JSON format is unstable.
+    #[serde(rename = "$comment")]
+    pub format_disclaimer: String,
     /// The id of the root [`Module`] item of the local crate.
     pub root: Id,
     /// The version string given to `--crate-version`, if any.

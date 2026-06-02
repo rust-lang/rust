@@ -1,5 +1,7 @@
 use rustc_hash::FxHashMap;
-use rustdoc_json_types::{Abi, FORMAT_VERSION, FunctionHeader, Item, ItemKind, Visibility};
+use rustdoc_json_types::{
+    Abi, FORMAT_DISCLAIMER, FORMAT_VERSION, FunctionHeader, Item, ItemKind, Visibility,
+};
 
 use super::*;
 use crate::json_find::SelectorPart;
@@ -18,6 +20,7 @@ fn check(krate: &Crate, errs: &[Error]) {
 #[test]
 fn errors_on_missing_links() {
     let k = Crate {
+        format_disclaimer: FORMAT_DISCLAIMER.to_owned(),
         root: Id(0),
         crate_version: None,
         includes_private: false,
@@ -65,6 +68,7 @@ fn errors_on_missing_links() {
 #[test]
 fn errors_on_local_in_paths_and_not_index() {
     let krate = Crate {
+        format_disclaimer: FORMAT_DISCLAIMER.to_owned(),
         root: Id(0),
         crate_version: None,
         includes_private: false,
@@ -137,6 +141,7 @@ fn errors_on_missing_path() {
     let generics = Generics { params: vec![], where_predicates: vec![] };
 
     let krate = Crate {
+        format_disclaimer: FORMAT_DISCLAIMER.to_owned(),
         root: Id(0),
         crate_version: None,
         includes_private: false,
@@ -238,6 +243,7 @@ fn errors_on_missing_path() {
 #[should_panic = "LOCAL_CRATE_ID is wrong"]
 fn checks_local_crate_id_is_correct() {
     let krate = Crate {
+        format_disclaimer: FORMAT_DISCLAIMER.to_owned(),
         root: Id(0),
         crate_version: None,
         includes_private: false,
