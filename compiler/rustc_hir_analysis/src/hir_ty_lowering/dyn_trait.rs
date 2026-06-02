@@ -84,7 +84,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
                 .collect::<Vec<_>>(),
             &[],
-            ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+            ImpliedBoundsContext::TraitObject,
             span,
         );
 

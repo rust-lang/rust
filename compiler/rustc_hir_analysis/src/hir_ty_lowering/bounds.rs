@@ -181,8 +181,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     return;
                 }
             }
-            ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
-            }
+            ImpliedBoundsContext::TyParam(..)
+            | ImpliedBoundsContext::AssociatedType(..)
+            | ImpliedBoundsContext::TraitObject
+            | ImpliedBoundsContext::TraitAscription
+            | ImpliedBoundsContext::ImplTrait => {}
         }
         let collected = collect_sizedness_bounds(tcx, hir_bounds, where_bounds, context, span);
         if let Some(span) = collected.sized.maybe.or(collected.sized.negative)
@@ -195,7 +198,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
         } else if !collected.any() {
             let span = match context {
-                ImpliedBoundsContext::TyParam(def) => {
+                ImpliedBoundsContext::TraitDef(def)
+                | ImpliedBoundsContext::TyParam(def)
+                | ImpliedBoundsContext::AssociatedType(def) => {
                     self.tcx().with_stable_hashing_context(|hcx| {
                         span.mark_with_reason(
                             None,
@@ -214,7 +219,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
                 }
                 ImpliedBoundsContext::TyParam(..)
-                | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
+                | ImpliedBoundsContext::AssociatedType(..)
+                | ImpliedBoundsContext::TraitObject
+                | ImpliedBoundsContext::TraitAscription
+                | ImpliedBoundsContext::ImplTrait => {
                     // If there are no explicit sizedness bounds on a parameter then add a default
                     // `Sized` bound.
                     let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);

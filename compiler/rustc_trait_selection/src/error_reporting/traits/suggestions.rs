@@ -3571,7 +3571,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 let mut a = "a";
-                let mut this = "this bound";
+                let mut this = "this bound".to_owned();
                 let mut note = None;
                 let mut help = None;
                 if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder() {
@@ -3598,12 +3598,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 tcx.visible_parent_map(()).get(&def_id).is_some()
                             };
                             if tcx.is_lang_item(def_id, LangItem::Sized) {
-                                if let Some(DesugaringKind::DefaultBound { .. }) =
+                                if let Some(DesugaringKind::DefaultBound { def }) =
                                     span.desugaring_kind()
                                 {
                                     a = "an implicit `Sized`";
-                                    this =
-                                        "the implicit `Sized` requirement on this type parameter";
+                                    this = format!(
+                                        "the implicit `Sized` requirement on this {}",
+                                        tcx.def_kind(def).descr(def)
+                                    );
                                 }
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     generics,

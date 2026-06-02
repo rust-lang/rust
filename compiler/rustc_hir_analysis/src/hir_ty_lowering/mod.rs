@@ -65,8 +65,11 @@ pub(crate) enum ImpliedBoundsContext {
     TraitDef(LocalDefId),
     /// An implied bound is added to a type parameter
     TyParam(LocalDefId),
-    /// An implied bound being added in any other context
-    AssociatedTypeOrImplTrait,
+    /// Associated type bounds
+    AssociatedType(LocalDefId),
+    ImplTrait,
+    TraitObject,
+    TraitAscription,
 }
 
 /// A path segment that is semantically allowed to have generic arguments.
@@ -3094,7 +3097,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self_ty,
                     hir_bounds,
                     &[],
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+                    ImpliedBoundsContext::TraitAscription,
                     hir_ty.span,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
