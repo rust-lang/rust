@@ -49,6 +49,14 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(0)]
    |               ^
 
+error: `#[repr]` attribute cannot be used on functions
+  --> $DIR/malformed-fn-align.rs:26:1
+   |
+LL | #[repr(align(16))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to data types
+
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/malformed-fn-align.rs:29:15
    |
@@ -118,18 +126,6 @@ LL | #[rustc_align(32)]
    | ^^^^^^^^^^^^^^^^^^
    |
    = help: `#[rustc_align]` can only be applied to functions
-
-error: `#[repr(align(...))]` is not supported on functions
-  --> $DIR/malformed-fn-align.rs:26:8
-   |
-LL | #[repr(align(16))]
-   |        ^^^^^^^^^
-   |
-help: use `#[rustc_align(...)]` instead
-  --> $DIR/malformed-fn-align.rs:26:8
-   |
-LL | #[repr(align(16))]
-   |        ^^^^^^^^^
 
 error: aborting due to 15 previous errors
 

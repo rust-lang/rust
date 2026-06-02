@@ -2,7 +2,7 @@
 #![deny(unused_attributes)]
 
 #[repr()] //~ ERROR unused attribute
-#[repr(packed)] //~ ERROR attribute should be applied to a struct or union
+#[repr(packed)] //~ ERROR attribute cannot be used on enums
 pub enum Foo {
     Bar,
     Baz(i32),

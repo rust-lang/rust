@@ -94,22 +94,23 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::feature` to refer to this attribute macro unambiguously
 
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/ambiguous-builtin-attrs.rs:21:39
-   |
-LL | fn non_macro_expanded_location<#[repr(C)] T>() {
-   |                                       ^   - not a struct, enum, or union
-
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/ambiguous-builtin-attrs.rs:25:16
+error: `#[repr]` attribute cannot be used on match arms
+  --> $DIR/ambiguous-builtin-attrs.rs:25:9
    |
 LL |         #[repr(C)]
-   |                ^
-...
-LL |         _ => {}
-   |         ------- not a struct, enum, or union
+   |         ^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to data types
+
+error: `#[repr]` attribute cannot be used on type parameters
+  --> $DIR/ambiguous-builtin-attrs.rs:21:32
+   |
+LL | fn non_macro_expanded_location<#[repr(C)] T>() {
+   |                                ^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to data types
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0425, E0517, E0659.
+Some errors have detailed explanations: E0425, E0659.
 For more information about an error, try `rustc --explain E0425`.

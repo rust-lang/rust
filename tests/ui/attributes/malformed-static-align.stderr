@@ -24,6 +24,14 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align_static(0)]
    |                      ^
 
+error: `#[repr]` attribute cannot be used on statics
+  --> $DIR/malformed-static-align.rs:13:1
+   |
+LL | #[repr(align(16))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to data types
+
 error: `#[rustc_align_static]` attribute cannot be used on structs
   --> $DIR/malformed-static-align.rs:16:1
    |
@@ -31,18 +39,6 @@ LL | #[rustc_align_static(16)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[rustc_align_static]` can be applied to foreign statics and statics
-
-error: `#[repr(align(...))]` is not supported on statics
-  --> $DIR/malformed-static-align.rs:13:8
-   |
-LL | #[repr(align(16))]
-   |        ^^^^^^^^^
-   |
-help: use `#[rustc_align_static(...)]` instead
-  --> $DIR/malformed-static-align.rs:13:8
-   |
-LL | #[repr(align(16))]
-   |        ^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

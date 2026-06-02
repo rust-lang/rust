@@ -102,25 +102,6 @@ impl<'sess> AttributeParser<'sess> {
             return;
         }
 
-        if matches!(cx.attr_path.segments.as_ref(), [sym::repr]) && cx.target == Target::Crate {
-            // The allowed targets of `repr` depend on its arguments. They can't be checked using
-            // the `AttributeParser` code.
-            let span = cx.attr_span;
-            let item =
-                cx.cx.first_line_of_next_item(span).map(|span| ItemFollowingInnerAttr { span });
-
-            let pound_to_opening_bracket = cx.attr_span.until(cx.inner_span);
-
-            cx.dcx()
-                .create_err(InvalidAttrAtCrateLevel {
-                    span,
-                    pound_to_opening_bracket,
-                    name: sym::repr,
-                    item,
-                })
-                .emit();
-        }
-
         let result = allowed_targets.is_allowed(cx.target);
         if matches!(result, AllowedResult::Allowed) {
             return;
@@ -397,6 +378,12 @@ fn filter_targets(
     }
     allowed_targets.retain(|t| !target_group.contains(t));
     added_fake_targets.push(target_group_name);
+}
+
+impl<'f, 'sess> AcceptContext<'f, 'sess> {
+    pub(crate) fn check_target(&mut self, allowed_targets: &AllowedTargets) {
+        AttributeParser::check_target(allowed_targets, self);
+    }
 }
 
 /// This is the list of all targets to which a attribute can be applied

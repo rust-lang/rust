@@ -37,6 +37,13 @@ impl CombineAttributeParser for ReprParser {
         };
 
         if list.is_empty() {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Enum),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
+
             let attr_span = cx.attr_span;
             cx.adcx().warn_empty_attribute(attr_span);
             return vec![];
@@ -62,8 +69,12 @@ impl CombineAttributeParser for ReprParser {
 fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<ReprAttr> {
     use ReprAttr::*;
 
-    macro_rules! no_args {
+    macro_rules! repr_int {
         ($constructor: expr) => {{
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Enum),
+                Warn(Target::MacroCall),
+            ]));
             cx.expect_no_args(param.args())?;
             Some($constructor)
         }};
@@ -71,33 +82,82 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
 
     match param.path().word_sym() {
         Some(sym::align) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Enum),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
             let l = cx.expect_list(param.args(), param.span())?;
             parse_repr_align(cx, l, AlignKind::Align)
         }
-        Some(sym::packed) => match param.args() {
-            ArgParser::NoArgs => Some(ReprPacked(Align::ONE)),
-            ArgParser::List(l) => parse_repr_align(cx, l, AlignKind::Packed),
-            ArgParser::NameValue(_) => {
-                cx.adcx().expected_list_or_no_args(param.span());
-                None
+        Some(sym::packed) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
+            match param.args() {
+                ArgParser::NoArgs => Some(ReprPacked(Align::ONE)),
+                ArgParser::List(l) => parse_repr_align(cx, l, AlignKind::Packed),
+                ArgParser::NameValue(_) => {
+                    cx.adcx().expected_list_or_no_args(param.span());
+                    None
+                }
             }
-        },
-        Some(sym::Rust) => no_args!(ReprRust),
-        Some(sym::C) => no_args!(ReprC),
-        Some(sym::simd) => no_args!(ReprSimd),
-        Some(sym::transparent) => no_args!(ReprTransparent),
-        Some(sym::i8) => no_args!(ReprInt(SignedInt(IntTy::I8))),
-        Some(sym::u8) => no_args!(ReprInt(UnsignedInt(UintTy::U8))),
-        Some(sym::i16) => no_args!(ReprInt(SignedInt(IntTy::I16))),
-        Some(sym::u16) => no_args!(ReprInt(UnsignedInt(UintTy::U16))),
-        Some(sym::i32) => no_args!(ReprInt(SignedInt(IntTy::I32))),
-        Some(sym::u32) => no_args!(ReprInt(UnsignedInt(UintTy::U32))),
-        Some(sym::i64) => no_args!(ReprInt(SignedInt(IntTy::I64))),
-        Some(sym::u64) => no_args!(ReprInt(UnsignedInt(UintTy::U64))),
-        Some(sym::i128) => no_args!(ReprInt(SignedInt(IntTy::I128))),
-        Some(sym::u128) => no_args!(ReprInt(UnsignedInt(UintTy::U128))),
-        Some(sym::isize) => no_args!(ReprInt(SignedInt(IntTy::Isize))),
-        Some(sym::usize) => no_args!(ReprInt(UnsignedInt(UintTy::Usize))),
+        }
+
+        Some(sym::Rust) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Enum),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
+            cx.expect_no_args(param.args())?;
+            Some(ReprRust)
+        }
+        Some(sym::C) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Enum),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
+            cx.expect_no_args(param.args())?;
+            Some(ReprC)
+        }
+        Some(sym::simd) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct), // Feature gated in `rustc_ast_passes`
+                Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
+            ]));
+            cx.expect_no_args(param.args())?;
+            Some(ReprSimd)
+        }
+        Some(sym::transparent) => {
+            cx.check_target(&AllowedTargets::AllowList(&[
+                Allow(Target::Struct),
+                Allow(Target::Enum),
+                Allow(Target::Union),
+                Warn(Target::MacroCall),
+            ]));
+            cx.expect_no_args(param.args())?;
+            Some(ReprTransparent)
+        }
+
+        Some(sym::i8) => repr_int!(ReprInt(SignedInt(IntTy::I8))),
+        Some(sym::u8) => repr_int!(ReprInt(UnsignedInt(UintTy::U8))),
+        Some(sym::i16) => repr_int!(ReprInt(SignedInt(IntTy::I16))),
+        Some(sym::u16) => repr_int!(ReprInt(UnsignedInt(UintTy::U16))),
+        Some(sym::i32) => repr_int!(ReprInt(SignedInt(IntTy::I32))),
+        Some(sym::u32) => repr_int!(ReprInt(UnsignedInt(UintTy::U32))),
+        Some(sym::i64) => repr_int!(ReprInt(SignedInt(IntTy::I64))),
+        Some(sym::u64) => repr_int!(ReprInt(UnsignedInt(UintTy::U64))),
+        Some(sym::i128) => repr_int!(ReprInt(SignedInt(IntTy::I128))),
+        Some(sym::u128) => repr_int!(ReprInt(UnsignedInt(UintTy::U128))),
+        Some(sym::isize) => repr_int!(ReprInt(SignedInt(IntTy::Isize))),
+        Some(sym::usize) => repr_int!(ReprInt(UnsignedInt(UintTy::Usize))),
         _ => {
             cx.adcx().expected_specific_argument(
                 param.span(),

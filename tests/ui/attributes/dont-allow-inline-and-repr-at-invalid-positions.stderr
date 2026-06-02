@@ -6,12 +6,13 @@ LL |     #[inline] struct Foo;
    |
    = help: `#[inline]` can only be applied to functions
 
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/dont-allow-inline-and-repr-at-invalid-positions.rs:4:12
+error: `#[repr]` attribute cannot be used on functions
+  --> $DIR/dont-allow-inline-and-repr-at-invalid-positions.rs:4:5
    |
 LL |     #[repr(C)] fn foo() {}
-   |            ^   ----------- not a struct, enum, or union
+   |     ^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to data types
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0517`.

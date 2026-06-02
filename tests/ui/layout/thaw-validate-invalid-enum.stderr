@@ -1,15 +1,10 @@
-error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/thaw-validate-invalid-enum.rs:3:8
+error: `#[repr]` attribute cannot be used on enums
+  --> $DIR/thaw-validate-invalid-enum.rs:3:1
    |
-LL |   #[repr(packed)]
-   |          ^^^^^^
-LL |   #[repr(u32)]
-LL | / enum E {
-LL | |     A,
-LL | |     B,
-LL | |     C,
-LL | | }
-   | |_- not a struct or union
+LL | #[repr(packed)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr]` can be applied to structs and unions
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/thaw-validate-invalid-enum.rs:14:9
@@ -25,5 +20,4 @@ LL |         e: std::mem::ManuallyDrop<E>,
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0517, E0740.
-For more information about an error, try `rustc --explain E0517`.
+For more information about this error, try `rustc --explain E0740`.

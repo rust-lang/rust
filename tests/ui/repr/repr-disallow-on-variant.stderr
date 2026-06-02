@@ -1,12 +1,10 @@
-error[E0517]: attribute should be applied to an enum
-  --> $DIR/repr-disallow-on-variant.rs:4:12
+error: `#[repr]` attribute cannot be used on enum variants
+  --> $DIR/repr-disallow-on-variant.rs:4:5
    |
 LL |     #[repr(u8)]
-   |            ^^
-LL |
-LL |     Variant,
-   |     ------- not an enum
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[repr]` can only be applied to enums
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0517`.

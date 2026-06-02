@@ -4,16 +4,13 @@ error: unions cannot have zero fields
 LL | union Foo2 {}
    | ^^^^^^^^^^^^^
 
-error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/eval-error.rs:24:12
+error: `#[repr]` attribute cannot be used on enums
+  --> $DIR/eval-error.rs:24:1
    |
-LL |   #[repr(u8, packed)]
-   |              ^^^^^^
-LL |
-LL | / enum Foo3 {
-LL | |     A
-LL | | }
-   | |_- not a struct or union
+LL | #[repr(u8, packed)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr]` can be applied to structs and unions
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/eval-error.rs:2:5
@@ -53,5 +50,5 @@ LL |         let _: Option<Foo> = None;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0080, E0277, E0517, E0740.
+Some errors have detailed explanations: E0080, E0277, E0740.
 For more information about an error, try `rustc --explain E0080`.

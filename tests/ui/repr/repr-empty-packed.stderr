@@ -1,13 +1,10 @@
-error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/repr-empty-packed.rs:5:8
+error: `#[repr]` attribute cannot be used on enums
+  --> $DIR/repr-empty-packed.rs:5:1
    |
-LL |   #[repr(packed)]
-   |          ^^^^^^
-LL | / pub enum Foo {
-LL | |     Bar,
-LL | |     Baz(i32),
-LL | | }
-   | |_- not a struct or union
+LL | #[repr(packed)]
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr]` can be applied to structs and unions
 
 error: unused attribute
   --> $DIR/repr-empty-packed.rs:4:1
@@ -24,4 +21,3 @@ LL | #![deny(unused_attributes)]
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0517`.

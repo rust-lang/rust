@@ -1,6 +1,6 @@
 #![feature(repr_simd)]
 
-#[repr(C)] //~ ERROR: attribute should be applied to a struct, enum, or union
+#[repr(C)] //~ ERROR: attribute cannot be used on
 fn f() {}
 
 #[repr(C)]
@@ -12,7 +12,7 @@ struct SPacked(f64, f64);
 #[repr(simd)]
 struct SSimd([f64; 2]);
 
-#[repr(i8)] //~ ERROR: attribute should be applied to an enum
+#[repr(i8)] //~ ERROR: `#[repr]` attribute cannot be used on
 struct SInt(f64, f64);
 
 #[repr(C)]
@@ -27,13 +27,13 @@ enum EAlign {
     B,
 }
 
-#[repr(packed)] //~ ERROR: attribute should be applied to a struct
+#[repr(packed)] //~ ERROR: attribute cannot be used on
 enum EPacked {
     A,
     B,
 }
 
-#[repr(simd)] //~ ERROR: attribute should be applied to a struct
+#[repr(simd)] //~ ERROR: attribute cannot be used on
 enum ESimd {
     A,
     B,
@@ -45,7 +45,7 @@ enum EInt {
     B,
 }
 
-#[repr()] //~ ERROR attribute should be applied to a struct, enum, or union [E0517]
+#[repr()] //~ ERROR attribute cannot be used on
 //~^ WARN unused attribute
 type SirThisIsAType = i32;
 
