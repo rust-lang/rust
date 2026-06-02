@@ -1,9 +1,7 @@
 // MIR for `hello_world::{closure#0}` 0 coroutine_drop_proxy_async
 
-fn hello_world::{closure#0}(_1: {async fn body of hello_world()}, _2: &mut Context<'_>) -> Poll<()> {
-    let mut _0: std::task::Poll<()>;
-    let mut _3: std::future::ResumeTy;
-    let mut _4: std::ptr::NonNull<std::task::Context<'_>>;
+fn hello_world::{closure#0}(_1: {static coroutine body of hello_world()}, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
+    let mut _0: std::ops::CoroutineState<(), ()>;
     scope 1 {
         scope 2 {
             scope 3 {
@@ -16,13 +14,11 @@ fn hello_world::{closure#0}(_1: {async fn body of hello_world()}, _2: &mut Conte
     }
 
     bb0: {
-        _4 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-        _3 = std::future::ResumeTy(move _4);
         drop(_1) -> [return: bb1, unwind continue];
     }
 
     bb1: {
-        _0 = Poll::<()>::Ready(const ());
+        _0 = CoroutineState::<(), ()>::Complete(const ());
         return;
     }
 }

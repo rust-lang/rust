@@ -1,16 +1,10 @@
 - // MIR for `build_aggregate::{closure#0}` before StateTransform
 + // MIR for `build_aggregate::{closure#0}` after StateTransform
   
-- fn build_aggregate::{closure#0}(_1: {async fn body of build_aggregate()}, _2: std::future::ResumeTy) -> u32
+- fn build_aggregate::{closure#0}(_1: {static coroutine body of build_aggregate()}, _2: std::future::ResumeTy) -> u32
 - yields ()
 -  {
--     debug _task_context => _2;
--     debug a => (_1.0: u32);
--     debug b => (_1.1: u32);
--     debug c => (_1.2: u32);
--     debug d => (_1.3: u32);
--     let mut _0: u32;
-+ fn build_aggregate::{closure#0}(_1: Pin<&mut {async fn body of build_aggregate()}>, _2: &mut Context<'_>) -> Poll<u32> {
++ fn build_aggregate::{closure#0}(_1: Pin<&mut {static coroutine body of build_aggregate()}>, _2: std::future::ResumeTy) -> CoroutineState<(), u32> {
 +     coroutine layout {
 +         field _s0: u32;
 +         field _s1: u32;
@@ -26,12 +20,17 @@
 +         }
 +         storage_conflicts = BitMatrix(5x5) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s0, _s3), (_s0, _s4), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s1, _s3), (_s1, _s4), (_s2, _s0), (_s2, _s1), (_s2, _s2), (_s2, _s3), (_s2, _s4), (_s3, _s0), (_s3, _s1), (_s3, _s2), (_s3, _s3), (_s4, _s0), (_s4, _s1), (_s4, _s2), (_s4, _s4)}
 +     }
-+     debug _task_context => _52;
+      debug _task_context => _2;
+-     debug a => (_1.0: u32);
+-     debug b => (_1.1: u32);
+-     debug c => (_1.2: u32);
+-     debug d => (_1.3: u32);
+-     let mut _0: u32;
 +     debug a => ((*_51).0: u32);
 +     debug b => ((*_51).1: u32);
 +     debug c => ((*_51).2: u32);
 +     debug d => ((*_51).3: u32);
-+     let mut _0: std::task::Poll<u32>;
++     let mut _0: std::ops::CoroutineState<(), u32>;
       let _3: u32;
       let mut _8: u32;
       let mut _9: {async fn body of add()};
@@ -72,9 +71,7 @@
       let mut _48: u32;
 +     let mut _49: u32;
 +     let mut _50: u32;
-+     let mut _51: &mut {async fn body of build_aggregate()};
-+     let mut _52: std::future::ResumeTy;
-+     let mut _53: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _51: &mut {static coroutine body of build_aggregate()};
       scope 1 {
           debug a => _3;
           let _4: u32;
@@ -137,9 +134,7 @@
 -         StorageLive(_12);
 -         _12 = copy _4;
 -         _10 = add(move _11, move _12) -> [return: bb1, unwind: bb49];
-+         _53 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _52 = std::future::ResumeTy(move _53);
-+         _51 = copy (_1.0: &mut {async fn body of build_aggregate()});
++         _51 = copy (_1.0: &mut {static coroutine body of build_aggregate()});
 +         _50 = discriminant((*_51));
 +         switchInt(move _50) -> [0: bb49, 1: bb48, 2: bb47, 3: bb45, 4: bb46, otherwise: bb7];
       }
@@ -179,9 +174,8 @@
           StorageLive(_20);
           StorageLive(_21);
           StorageLive(_22);
--         _22 = copy _2;
+          _22 = copy _2;
 -         _21 = std::future::get_context::<'_, '_>(move _22) -> [return: bb5, unwind: bb42];
-+         _22 = copy _52;
 +         _21 = copy (_22.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
@@ -215,7 +209,7 @@
           StorageLive(_27);
           _27 = ();
 -         _26 = yield(move _27) -> [resume: bb10, drop: bb28];
-+         _0 = Poll::<u32>::Pending;
++         _0 = CoroutineState::<(), u32>::Yielded(move _27);
 +         StorageDead(_3);
 +         StorageDead(_4);
 +         StorageDead(_7);
@@ -240,8 +234,7 @@
   
       bb10: {
           StorageDead(_27);
--         _2 = move _26;
-+         _52 = move _26;
+          _2 = move _26;
           StorageDead(_26);
           _14 = const ();
           goto -> bb3;
@@ -298,9 +291,8 @@
           StorageLive(_39);
           StorageLive(_40);
           StorageLive(_41);
--         _41 = copy _2;
+          _41 = copy _2;
 -         _40 = std::future::get_context::<'_, '_>(move _41) -> [return: bb16, unwind: bb33];
-+         _41 = copy _52;
 +         _40 = copy (_41.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb16;
       }
@@ -330,7 +322,7 @@
           StorageLive(_46);
           _46 = ();
 -         _45 = yield(move _46) -> [resume: bb20, drop: bb25];
-+         _0 = Poll::<u32>::Pending;
++         _0 = CoroutineState::<(), u32>::Yielded(move _46);
 +         StorageDead(_3);
 +         StorageDead(_4);
 +         StorageDead(_7);
@@ -356,8 +348,7 @@
   
       bb20: {
           StorageDead(_46);
--         _2 = move _45;
-+         _52 = move _45;
+          _2 = move _45;
           StorageDead(_45);
           _14 = const ();
           goto -> bb14;
@@ -401,7 +392,7 @@
       }
   
       bb24: {
-+         _0 = Poll::<u32>::Ready(move _49);
++         _0 = CoroutineState::<(), u32>::Complete(move _49);
 +         discriminant((*_51)) = 1;
           return;
       }
@@ -635,7 +626,7 @@
 +         StorageLive(_9);
 +         StorageLive(_26);
 +         StorageLive(_27);
-+         _26 = move _52;
++         _26 = move _2;
 +         goto -> bb10;
       }
   
@@ -651,7 +642,7 @@
 +         StorageLive(_29);
 +         StorageLive(_45);
 +         StorageLive(_46);
-+         _45 = move _52;
++         _45 = move _2;
 +         goto -> bb20;
       }
   

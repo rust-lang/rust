@@ -1,12 +1,10 @@
 - // MIR for `b::{closure#0}` before StateTransform
 + // MIR for `b::{closure#0}` after StateTransform
   
-- fn b::{closure#0}(_1: {async fn body of b()}, _2: std::future::ResumeTy) -> ()
+- fn b::{closure#0}(_1: {static coroutine body of b()}, _2: std::future::ResumeTy) -> ()
 - yields ()
 -  {
--     debug _task_context => _2;
--     let mut _0: ();
-+ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
++ fn b::{closure#0}(_1: Pin<&mut {static coroutine body of b()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
 +     coroutine layout {
 +         field _s0: {async fn body of a()};
 +         field _s1: {async fn body of a()};
@@ -19,10 +17,11 @@
 +         }
 +         storage_conflicts = BitMatrix(2x2) {(_s0, _s0), (_s1, _s1)}
 +     }
-+     debug _task_context => _40;
+      debug _task_context => _2;
+-     let mut _0: ();
 +     coroutine debug __awaitee => _s0;
 +     coroutine debug __awaitee => _s1;
-+     let mut _0: std::task::Poll<()>;
++     let mut _0: std::ops::CoroutineState<(), ()>;
       let _3: ();
       let mut _4: {async fn body of a()};
       let mut _5: {async fn body of a()};
@@ -57,9 +56,7 @@
       let mut _36: ();
 +     let mut _37: ();
 +     let mut _38: u32;
-+     let mut _39: &mut {async fn body of b()};
-+     let mut _40: std::future::ResumeTy;
-+     let mut _41: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _39: &mut {static coroutine body of b()};
       scope 1 {
 -         debug __awaitee => _6;
 +         debug __awaitee => (((*_39) as variant#3).0: {async fn body of a()});
@@ -82,9 +79,7 @@
 -         StorageLive(_4);
 -         StorageLive(_5);
 -         _5 = a() -> [return: bb1, unwind: bb47];
-+         _41 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _40 = std::future::ResumeTy(move _41);
-+         _39 = copy (_1.0: &mut {async fn body of b()});
++         _39 = copy (_1.0: &mut {static coroutine body of b()});
 +         _38 = discriminant((*_39));
 +         switchInt(move _38) -> [0: bb47, 1: bb46, 2: bb45, 3: bb43, 4: bb44, otherwise: bb7];
       }
@@ -122,9 +117,8 @@
           StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
--         _15 = copy _2;
+          _15 = copy _2;
 -         _14 = std::future::get_context::<'_, '_>(move _15) -> [return: bb5, unwind: bb41];
-+         _15 = copy _40;
 +         _14 = copy (_15.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb5;
       }
@@ -158,7 +152,7 @@
           StorageLive(_20);
           _20 = ();
 -         _19 = yield(move _20) -> [resume: bb10, drop: bb28];
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(move _20);
 +         StorageDead(_3);
 +         StorageDead(_4);
 +         StorageDead(_19);
@@ -182,8 +176,7 @@
   
       bb10: {
           StorageDead(_20);
--         _2 = move _19;
-+         _40 = move _19;
+          _2 = move _19;
           StorageDead(_19);
           _7 = const ();
           goto -> bb3;
@@ -237,9 +230,8 @@
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
--         _31 = copy _2;
+          _31 = copy _2;
 -         _30 = std::future::get_context::<'_, '_>(move _31) -> [return: bb17, unwind: bb33];
-+         _31 = copy _40;
 +         _30 = copy (_31.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb17;
       }
@@ -269,7 +261,7 @@
           StorageLive(_36);
           _36 = ();
 -         _35 = yield(move _36) -> [resume: bb21, drop: bb25];
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(move _36);
 +         StorageDead(_21);
 +         StorageDead(_35);
 +         StorageDead(_36);
@@ -293,8 +285,7 @@
   
       bb21: {
           StorageDead(_36);
--         _2 = move _35;
-+         _40 = move _35;
+          _2 = move _35;
           StorageDead(_35);
           _7 = const ();
           goto -> bb15;
@@ -313,7 +304,7 @@
       }
   
       bb24: {
-+         _0 = Poll::<()>::Ready(move _37);
++         _0 = CoroutineState::<(), ()>::Complete(move _37);
 +         discriminant((*_39)) = 1;
           return;
       }
@@ -506,7 +497,7 @@
 +         StorageLive(_4);
 +         StorageLive(_19);
 +         StorageLive(_20);
-+         _19 = move _40;
++         _19 = move _2;
 +         goto -> bb10;
       }
   
@@ -517,7 +508,7 @@
 +         StorageLive(_21);
 +         StorageLive(_35);
 +         StorageLive(_36);
-+         _35 = move _40;
++         _35 = move _2;
 +         goto -> bb21;
       }
   

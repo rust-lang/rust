@@ -1,7 +1,7 @@
 - // MIR for `double::{closure#0}` before ElaborateDrops
 + // MIR for `double::{closure#0}` after ElaborateDrops
   
-  fn double::{closure#0}(_1: {async fn body of double()}, _2: std::future::ResumeTy) -> ()
+  fn double::{closure#0}(_1: {static coroutine body of double()}, _2: std::future::ResumeTy) -> ()
   yields ()
    {
       debug _task_context => _2;
