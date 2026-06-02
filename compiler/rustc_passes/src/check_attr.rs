@@ -230,7 +230,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             &AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span } => {
                 self.check_sanitize(attr_span, on_set | off_set, span, target);
             }
-            AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, span, target),
+            AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
             }
@@ -1126,21 +1126,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
-        if target == Target::ForeignMod
-            && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
+    fn check_link(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        if target != Target::ForeignMod {
+            return; // Checked by attribute parser
+        }
+
+        if let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
             && !matches!(abi, ExternAbi::Rust)
         {
             return;
         }
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
-        );
+        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, errors::Link);
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
