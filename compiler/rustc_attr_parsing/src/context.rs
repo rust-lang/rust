@@ -366,6 +366,10 @@ pub struct AcceptContext<'f, 'sess> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    /// Used for `AllowedTargets::ManuallyChecked`, to assert that the manual target check has been done
+    #[cfg(debug_assertions)]
+    pub(crate) has_target_been_checked: bool,
 }
 
 impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {

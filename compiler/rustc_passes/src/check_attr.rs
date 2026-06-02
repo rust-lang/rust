@@ -1205,7 +1205,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let (reprs, first_attr_span) =
+        let (reprs, _first_attr_span) =
             find_attr!(attrs, Repr { reprs, first_span } => (reprs.as_slice(), Some(*first_span)))
                 .unwrap_or((&[], None));
 
@@ -1215,121 +1215,26 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_simd = false;
         let mut is_transparent = false;
 
-        for (repr, repr_span) in reprs {
+        for (repr, _repr_span) in reprs {
             match repr {
                 ReprAttr::ReprRust => {
                     is_explicit_rust = true;
-                    match target {
-                        Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => {
-                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                                hint_span: *repr_span,
-                                span,
-                            });
-                        }
-                    }
                 }
                 ReprAttr::ReprC => {
                     is_c = true;
-                    match target {
-                        Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => {
-                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                                hint_span: *repr_span,
-                                span,
-                            });
-                        }
-                    }
                 }
-                ReprAttr::ReprAlign(..) => match target {
-                    Target::Struct | Target::Union | Target::Enum => {}
-                    Target::Fn | Target::Method(_) if self.tcx.features().fn_align() => {
-                        self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
-                            span: *repr_span,
-                            item: target.plural_name(),
-                        });
-                    }
-                    Target::Static if self.tcx.features().static_align() => {
-                        self.dcx().emit_err(errors::ReprAlignShouldBeAlignStatic {
-                            span: *repr_span,
-                            item: target.plural_name(),
-                        });
-                    }
-                    _ => {
-                        self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                            hint_span: *repr_span,
-                            span,
-                        });
-                    }
-                },
-                ReprAttr::ReprPacked(_) => {
-                    if target != Target::Struct && target != Target::Union {
-                        self.dcx().emit_err(errors::AttrApplication::StructUnion {
-                            hint_span: *repr_span,
-                            span,
-                        });
-                    } else {
-                        continue;
-                    }
-                }
+                ReprAttr::ReprAlign(..) => {}
+                ReprAttr::ReprPacked(_) => {}
                 ReprAttr::ReprSimd => {
                     is_simd = true;
-                    if target != Target::Struct {
-                        self.dcx().emit_err(errors::AttrApplication::Struct {
-                            hint_span: *repr_span,
-                            span,
-                        });
-                    } else {
-                        continue;
-                    }
                 }
                 ReprAttr::ReprTransparent => {
                     is_transparent = true;
-                    match target {
-                        Target::Struct | Target::Union | Target::Enum => continue,
-                        _ => {
-                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                                hint_span: *repr_span,
-                                span,
-                            });
-                        }
-                    }
                 }
                 ReprAttr::ReprInt(_) => {
                     int_reprs += 1;
-                    if target != Target::Enum {
-                        self.dcx().emit_err(errors::AttrApplication::Enum {
-                            hint_span: *repr_span,
-                            span,
-                        });
-                    } else {
-                        continue;
-                    }
                 }
             };
-        }
-
-        // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
-        if let Some(first_attr_span) = first_attr_span
-            && reprs.is_empty()
-            && item.is_some()
-        {
-            match target {
-                Target::Struct | Target::Union | Target::Enum => {}
-                Target::Fn | Target::Method(_) => {
-                    self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
-                        span: first_attr_span,
-                        item: target.plural_name(),
-                    });
-                }
-                _ => {
-                    self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
-                        hint_span: first_attr_span,
-                        span,
-                    });
-                }
-            }
-            return;
         }
 
         // Just point at all repr hints if there are any incompatibilities.

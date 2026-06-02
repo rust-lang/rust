@@ -6,6 +6,14 @@ LL | pub struct Foo<#[inline] const N: usize>;
    |
    = help: `#[inline]` can only be applied to functions
 
+error: `#[repr(C)]` attribute cannot be used on const parameters
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:11:16
+   |
+LL | pub struct Baz<#[repr(C)] const N: usize>;
+   |                ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
 error: `#[inline]` attribute cannot be used on lifetime parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:14:17
    |
@@ -13,6 +21,14 @@ LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
    |                 ^^^^^^^^^
    |
    = help: `#[inline]` can only be applied to functions
+
+error: `#[repr(C)]` attribute cannot be used on lifetime parameters
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:19:17
+   |
+LL | pub struct Baz2<#[repr(C)] 'a>(PhantomData<&'a ()>);
+   |                 ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
 
 error: `#[inline]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:22:17
@@ -22,23 +38,13 @@ LL | pub struct Foo3<#[inline] T>(PhantomData<T>);
    |
    = help: `#[inline]` can only be applied to functions
 
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/invalid-attributes-on-const-params-78957.rs:11:23
-   |
-LL | pub struct Baz<#[repr(C)] const N: usize>;
-   |                       ^   -------------- not a struct, enum, or union
-
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/invalid-attributes-on-const-params-78957.rs:19:24
-   |
-LL | pub struct Baz2<#[repr(C)] 'a>(PhantomData<&'a ()>);
-   |                        ^   -- not a struct, enum, or union
-
-error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/invalid-attributes-on-const-params-78957.rs:27:24
+error: `#[repr(C)]` attribute cannot be used on type parameters
+  --> $DIR/invalid-attributes-on-const-params-78957.rs:27:17
    |
 LL | pub struct Baz3<#[repr(C)] T>(PhantomData<T>);
-   |                        ^   - not a struct, enum, or union
+   |                 ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
 
 error: `#[cold]` attribute cannot be used on const parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:8:16
@@ -74,4 +80,3 @@ LL | pub struct Bar3<#[cold] T>(PhantomData<T>);
 
 error: aborting due to 9 previous errors
 
-For more information about this error, try `rustc --explain E0517`.

@@ -11,7 +11,7 @@ use crate::context::AcceptContext;
 use crate::errors::{
     InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
 };
-use crate::session_diagnostics::InvalidTarget;
+use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
 use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
@@ -19,6 +19,10 @@ use crate::{AttributeParser, ShouldEmit};
 pub(crate) enum AllowedTargets {
     AllowList(&'static [Policy]),
     AllowListWarnRest(&'static [Policy]),
+    /// This is useful for argument-dependent target checking.
+    /// If debug assertions are enabled,
+    /// this emits a delayed bug if the `cx.check_target(...)` method is not called during attribute parsing.
+    ManuallyChecked,
 }
 
 pub(crate) enum AllowedResult {
@@ -52,6 +56,7 @@ impl AllowedTargets {
                     AllowedResult::Warn
                 }
             }
+            AllowedTargets::ManuallyChecked => unreachable!(),
         }
     }
 
@@ -59,6 +64,7 @@ impl AllowedTargets {
         match self {
             AllowedTargets::AllowList(list) => list,
             AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::ManuallyChecked => unreachable!(),
         }
         .iter()
         .filter_map(|target| match target {
@@ -89,9 +95,19 @@ pub(crate) enum Policy {
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
         allowed_targets: &AllowedTargets,
+        attribute_args: &'static str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
+            return;
+        }
+
+        if let AllowedTargets::ManuallyChecked = allowed_targets {
+            #[cfg(debug_assertions)]
+            if !cx.has_target_been_checked {
+                cx.dcx().delayed_bug("Attribute target has not been checked");
+            }
+
             return;
         }
 
@@ -100,25 +116,6 @@ impl<'sess> AttributeParser<'sess> {
         if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
             Self::check_crate_level(cx);
             return;
-        }
-
-        if matches!(cx.attr_path.segments.as_ref(), [sym::repr]) && cx.target == Target::Crate {
-            // The allowed targets of `repr` depend on its arguments. They can't be checked using
-            // the `AttributeParser` code.
-            let span = cx.attr_span;
-            let item =
-                cx.cx.first_line_of_next_item(span).map(|span| ItemFollowingInnerAttr { span });
-
-            let pound_to_opening_bracket = cx.attr_span.until(cx.inner_span);
-
-            cx.dcx()
-                .create_err(InvalidAttrAtCrateLevel {
-                    span,
-                    pound_to_opening_bracket,
-                    name: sym::repr,
-                    item,
-                })
-                .emit();
         }
 
         let result = allowed_targets.is_allowed(cx.target);
@@ -134,6 +131,8 @@ impl<'sess> AttributeParser<'sess> {
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
+            attribute_args,
+            help: Self::target_checking_help(attribute_args, cx),
             previously_accepted: matches!(result, AllowedResult::Warn),
         };
 
@@ -161,6 +160,24 @@ impl<'sess> AttributeParser<'sess> {
             AllowedResult::Error => {
                 cx.dcx().emit_err(diag);
             }
+        }
+    }
+
+    fn target_checking_help(
+        attribute_args: &'static str,
+        cx: &AcceptContext<'_, '_>,
+    ) -> Option<InvalidTargetHelp> {
+        match &*cx.attr_path.segments {
+            [sym::repr] if attribute_args == "(align(...))" => match cx.target {
+                Target::Fn | Target::Method(..) if cx.features().fn_align() => {
+                    Some(InvalidTargetHelp::UseRustcAlign)
+                }
+                Target::Static if cx.features().static_align() => {
+                    Some(InvalidTargetHelp::UseRustcAlignStatic)
+                }
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -397,6 +414,20 @@ fn filter_targets(
     }
     allowed_targets.retain(|t| !target_group.contains(t));
     added_fake_targets.push(target_group_name);
+}
+
+impl<'f, 'sess> AcceptContext<'f, 'sess> {
+    pub(crate) fn check_target(
+        &mut self,
+        attribute_args: &'static str,
+        allowed_targets: &AllowedTargets,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            self.has_target_been_checked = true;
+        }
+        AttributeParser::check_target(allowed_targets, attribute_args, self);
+    }
 }
 
 /// This is the list of all targets to which a attribute can be applied
