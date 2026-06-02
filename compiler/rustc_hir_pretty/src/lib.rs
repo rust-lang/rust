@@ -824,6 +824,7 @@ impl<'a> State<'a> {
             hir::BoundPolarity::Positive => {}
             hir::BoundPolarity::Negative(_) => self.word("!"),
             hir::BoundPolarity::Maybe(_) => self.word("?"),
+            hir::BoundPolarity::Only(_) => self.word_space("only"),
         }
         self.print_formal_generic_params(t.bound_generic_params);
         self.print_trait_ref(&t.trait_ref);

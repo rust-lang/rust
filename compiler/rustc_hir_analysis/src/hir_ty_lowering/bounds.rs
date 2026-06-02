@@ -30,6 +30,8 @@ struct CollectedBound {
     maybe: bool,
     /// `!Trait`
     negative: bool,
+    /// `only Trait`
+    only_modifier: bool,
 }
 
 impl CollectedBound {
@@ -98,6 +100,7 @@ fn collect_bounds<'a, 'tcx>(
         match ptr.modifiers.polarity {
             hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
             hir::BoundPolarity::Negative(_) => collect_into.negative = true,
+            hir::BoundPolarity::Only(_) => collect_into.only_modifier = true,
             hir::BoundPolarity::Positive => collect_into.positive = true,
         }
     });

@@ -3197,6 +3197,8 @@ pub enum BoundPolarity {
     Negative(Span),
     /// `Type: ?Trait`
     Maybe(Span),
+    /// `Type: only Trait`,
+    Only(Span),
 }
 
 impl BoundPolarity {
@@ -3205,6 +3207,7 @@ impl BoundPolarity {
             Self::Positive => "",
             Self::Negative(_) => "!",
             Self::Maybe(_) => "?",
+            Self::Only(_) => "only",
         }
     }
 }

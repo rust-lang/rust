@@ -2813,6 +2813,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             BoundPolarity::Positive => BoundPolarity::Positive,
             BoundPolarity::Negative(span) => BoundPolarity::Negative(self.lower_span(span)),
             BoundPolarity::Maybe(span) => BoundPolarity::Maybe(self.lower_span(span)),
+            BoundPolarity::Only(span) => BoundPolarity::Only(self.lower_span(span)),
         };
         hir::TraitBoundModifiers { constness, polarity }
     }
