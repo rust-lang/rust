@@ -4638,7 +4638,7 @@ pub(crate) struct ReservedMultihashLint {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    "if you meant to write a path, use a double colon:",
+    "if you meant to write a path, use a double colon",
     code = "::",
     applicability = "maybe-incorrect"
 )]
@@ -4649,13 +4649,13 @@ pub(crate) struct UseDoubleColonSuggestion {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "if you meant to create a regular struct, use curly braces:",
+    "if you meant to create a regular struct, use curly braces",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct UseRegularStructSuggestion {
-    #[suggestion_part(code = "{{")]
+    #[suggestion_part(code = " {{ ")]
     pub open: Span,
-    #[suggestion_part(code = "}}")]
+    #[suggestion_part(code = " }}")]
     pub close: Span,
     #[suggestion_part(code = "")]
     pub semicolon: Option<Span>,
