@@ -42,8 +42,8 @@ fn result_err_ty<'tcx>(
             ty = future_output_ty;
         }
 
-        if ty.is_diag_item(cx, sym::Result)
-            && let ty::Adt(_, args) = ty.kind()
+        if let ty::Adt(adt_def, args) = ty.kind()
+            && cx.tcx.is_diagnostic_item(sym::Result, adt_def.did())
         {
             let err_ty = args.type_at(1);
             return Some((hir_ty, err_ty));
