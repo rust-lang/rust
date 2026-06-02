@@ -232,7 +232,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{DebugInfo, EntryFnType};
-use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{
@@ -408,12 +408,13 @@ fn collect_items_rec<'tcx>(
     // source. If the cause is in another crate, the goal here is to quickly locate which mono
     // item in the current crate is ultimately responsible for causing the error.
     //
-    // To give at least _some_ context to the user: while collecting mono items, we check the
-    // error count. If it has changed, a PME occurred, and we trigger some diagnostics about the
-    // current step of mono items collection.
-    //
-    // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
-    let error_count = tcx.dcx().err_count();
+    // To give at least _some_ context to the user: while collecting mono items, we track whether a
+    // post-monomorphization error was encountered while processing this item. Rather than reading
+    // the global error count (which is racy under the parallel front-end, since errors emitted on
+    // other threads would be miscounted), we bubble up an `ErrorGuaranteed` from the places that
+    // actually emit such errors (const-eval, the ABI checks, and a `deny`-level `large_assignments`
+    // lint) through `items_of_instance`.
+    let mut encountered_error: Option<ErrorGuaranteed> = None;
 
     // In `mentioned_items` we collect items that were mentioned in this MIR but possibly do not
     // need to be monomorphized. This is done to ensure that optimizing away function calls does not
@@ -472,7 +473,8 @@ fn collect_items_rec<'tcx>(
             ));
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                let Ok((used, mentioned, used_error)) = tcx.items_of_instance((instance, mode))
+                else {
                     // Normalization errors here are usually due to trait solving overflow.
                     // FIXME: I assume that there are few type errors at post-analysis stage, but not
                     // entirely sure.
@@ -488,6 +490,7 @@ fn collect_items_rec<'tcx>(
                         def_path_str,
                     });
                 };
+                encountered_error = encountered_error.or(used_error);
                 used_items.extend(used.into_iter().copied());
                 mentioned_items.extend(mentioned.into_iter().copied());
             });
@@ -538,7 +541,7 @@ fn collect_items_rec<'tcx>(
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
-    if tcx.dcx().err_count() > error_count
+    if encountered_error.is_some()
         && starting_item.node.is_generic_fn()
         && starting_item.node.is_user_defined()
     {
@@ -686,6 +689,10 @@ struct MirUsedCollector<'a, 'tcx> {
     /// Note that this contains *not-monomorphized* items!
     used_mentioned_items: &'a mut UnordSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
+    /// Set if collection encountered an already-reported post-monomorphization error (e.g. a
+    /// const-eval failure). Bubbled up so callers can emit the "while instantiating" note without
+    /// consulting the global error count.
+    encountered_error: Option<ErrorGuaranteed>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -715,8 +722,9 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
                 "collection encountered polymorphic constant: {:?}",
                 const_
             ),
-            Err(err @ ErrorHandled::Reported(..)) => {
+            Err(err @ ErrorHandled::Reported(info, _span)) => {
                 err.emit_note(self.tcx);
+                self.encountered_error = self.encountered_error.or(Some(info.into()));
                 return None;
             }
         }
@@ -1303,14 +1311,14 @@ fn collect_items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     mode: CollectionMode,
-) -> Result<(MonoItems<'tcx>, MonoItems<'tcx>), NormalizationErrorInMono> {
+) -> Result<(MonoItems<'tcx>, MonoItems<'tcx>, Option<ErrorGuaranteed>), NormalizationErrorInMono> {
     // This item is getting monomorphized, do mono-time checks.
     let body = tcx.instance_mir(instance.def);
     // Plenty of code paths later assume that everything can be normalized. So we have to check
     // normalization first.
     // We choose to emit the error outside to provide helpful diagnostics.
     check_normalization_error(tcx, instance, body)?;
-    tcx.ensure_ok().check_mono_item(instance);
+    let mono_check_error = tcx.check_mono_item(instance).err();
 
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
@@ -1331,6 +1339,7 @@ fn collect_items_of_instance<'tcx>(
         used_items: &mut used_items,
         used_mentioned_items: &mut used_mentioned_items,
         instance,
+        encountered_error: mono_check_error,
     };
 
     if mode == CollectionMode::UsedItems {
@@ -1361,22 +1370,24 @@ fn collect_items_of_instance<'tcx>(
         }
     }
 
-    Ok((used_items, mentioned_items))
+    let encountered_error = collector.encountered_error;
+    Ok((used_items, mentioned_items, encountered_error))
 }
 
 fn items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     (instance, mode): (Instance<'tcx>, CollectionMode),
 ) -> Result<
-    (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]),
+    (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>], Option<ErrorGuaranteed>),
     NormalizationErrorInMono,
 > {
-    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode)?;
+    let (used_items, mentioned_items, encountered_error) =
+        collect_items_of_instance(tcx, instance, mode)?;
 
     let used_items = tcx.arena.alloc_from_iter(used_items);
     let mentioned_items = tcx.arena.alloc_from_iter(mentioned_items);
 
-    Ok((used_items, mentioned_items))
+    Ok((used_items, mentioned_items, encountered_error))
 }
 
 /// `item` must be already monomorphized.

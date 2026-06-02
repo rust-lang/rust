@@ -6,7 +6,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use rustc_span::{Span, Spanned, sym};
+use rustc_span::{ErrorGuaranteed, Span, Spanned, sym};
 use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;
@@ -17,17 +17,23 @@ struct MoveCheckVisitor<'tcx> {
     body: &'tcx mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
+    /// Set if the `large_assignments` lint was emitted at error level (`deny`/`forbid`). Bubbled up
+    /// so the post-monomorphization "while instantiating" note can be attached without consulting
+    /// the global error count.
+    encountered_error: Option<ErrorGuaranteed>,
 }
 
 pub(crate) fn check_moves<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     body: &'tcx mir::Body<'tcx>,
-) {
-    let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
+) -> Option<ErrorGuaranteed> {
+    let mut visitor =
+        MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![], encountered_error: None };
     for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
         visitor.visit_basic_block_data(bb, data)
     }
+    visitor.encountered_error
 }
 
 impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
@@ -183,6 +189,14 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
                 limit: limit as u64,
             },
         );
+
+        // When `large_assignments` is set to `deny`/`forbid` the lint above was emitted as a hard
+        // error. The lint emission API does not hand back an `ErrorGuaranteed`, so recover the proof
+        // token from the `DiagCtxt`. We gate on the effective level so we only attribute an error to
+        // this instantiation when our own lint is the one that escalated to an error.
+        if self.tcx.lint_level_spec_at_node(LARGE_ASSIGNMENTS, lint_root).level().is_error() {
+            self.encountered_error = self.encountered_error.or_else(|| self.tcx.dcx().has_errors());
+        }
 
         self.move_size_spans.push(reported_span);
     }

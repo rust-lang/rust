@@ -193,7 +193,7 @@ impl_erasable_for_types_with_no_type_params! {
     Result<&'_ traits::ImplSource<'_, ()>, traits::CodegenObligationError>,
     Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,
     Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
-    Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
+    Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>], Option<ErrorGuaranteed>), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
     Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
     Result<Option<ty::Instance<'_>>, ErrorGuaranteed>,

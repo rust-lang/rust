@@ -5,7 +5,7 @@ use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::{FnAbi, PassMode};
 
 use crate::errors;
@@ -57,7 +57,8 @@ fn do_check_simd_vector_abi<'tcx>(
     def_id: DefId,
     is_call: bool,
     loc: impl Fn() -> (Span, HirId),
-) {
+) -> Option<ErrorGuaranteed> {
+    let mut res = None;
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
         let target_feats = tcx.sess.unstable_target_features.contains(&feat);
@@ -74,23 +75,25 @@ fn do_check_simd_vector_abi<'tcx>(
                     Some((_, feature)) => feature,
                     None => {
                         let (span, _hir_id) = loc();
-                        tcx.dcx().emit_err(errors::AbiErrorUnsupportedVectorType {
-                            span,
-                            ty: arg_abi.layout.ty,
-                            is_call,
-                        });
+                        res = res.or(Some(tcx.dcx().emit_err(
+                            errors::AbiErrorUnsupportedVectorType {
+                                span,
+                                ty: arg_abi.layout.ty,
+                                is_call,
+                            },
+                        )));
                         continue;
                     }
                 };
                 if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
                     let (span, _hir_id) = loc();
-                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
+                    res = res.or(Some(tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
-                    });
+                    })));
                 }
             }
             UsesVectorRegisters::ScalableVector => {
@@ -101,13 +104,13 @@ fn do_check_simd_vector_abi<'tcx>(
                 };
                 if !required_feature.is_empty() && !have_feature(Symbol::intern(required_feature)) {
                     let (span, _) = loc();
-                    tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
+                    res = res.or(Some(tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: true,
-                    });
+                    })));
                 }
             }
             UsesVectorRegisters::No => {
@@ -118,13 +121,14 @@ fn do_check_simd_vector_abi<'tcx>(
     // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
     if abi.conv == CanonAbi::X86(X86Call::Vectorcall) && !have_feature(sym::sse2) {
         let (span, _hir_id) = loc();
-        tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
+        res = res.or(Some(tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
             span,
             required_feature: "sse2",
             abi: "vectorcall",
             is_call,
-        });
+        })));
     }
+    res
 }
 
 /// Emit an error when a non-rustic ABI has unsized parameters.
@@ -136,42 +140,47 @@ fn do_check_unsized_params<'tcx>(
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     is_call: bool,
     loc: impl Fn() -> (Span, HirId),
-) {
+) -> Option<ErrorGuaranteed> {
     // Unsized parameters are allowed with the (unstable) "Rust" (and similar) ABIs.
     if fn_abi.conv.is_rustic_abi() {
-        return;
+        return None;
     }
 
+    let mut res = None;
     for arg_abi in fn_abi.args.iter() {
         if !arg_abi.layout.layout.is_sized() {
             let (span, _hir_id) = loc();
-            tcx.dcx().emit_err(errors::AbiErrorUnsupportedUnsizedParameter {
+            res = res.or(Some(tcx.dcx().emit_err(errors::AbiErrorUnsupportedUnsizedParameter {
                 span,
                 ty: arg_abi.layout.ty,
                 is_call,
-            });
+            })));
         }
     }
+    res
 }
 
 /// Checks the ABI of an Instance, emitting an error when:
 ///
 /// - a non-rustic ABI uses unsized parameters
 /// - the signature requires target features that are not enabled
-fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
+fn check_instance_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> Option<ErrorGuaranteed> {
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let ty = instance.ty(tcx, typing_env);
     if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::Unadjusted {
         // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
         // intrinsics
-        return;
+        return None;
     }
     let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
     else {
         // An error will be reported during codegen if we cannot determine the ABI of this
         // function.
         tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
-        return;
+        return None;
     };
     // Unlike the call-site check, we do also check "Rust" ABI functions here.
     // This should never trigger, *except* if we start making use of vector registers
@@ -186,8 +195,11 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
             def_id.as_local().map(|did| tcx.local_def_id_to_hir_id(did)).unwrap_or(CRATE_HIR_ID),
         )
     };
-    do_check_unsized_params(tcx, abi, /*is_call*/ false, loc);
-    do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, loc);
+    // Call both checks unconditionally for their diagnostic side effects before combining.
+    let unsized_res = do_check_unsized_params(tcx, abi, /*is_call*/ false, loc);
+    let simd_res =
+        do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, loc);
+    unsized_res.or(simd_res)
 }
 
 /// Check the ABI at a call site, emitting an error when:
@@ -199,14 +211,14 @@ fn check_call_site_abi<'tcx>(
     callee: Ty<'tcx>,
     caller: InstanceKind<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
-) {
+) -> Option<ErrorGuaranteed> {
     let extern_abi = callee.fn_sig(tcx).abi();
     if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::Unadjusted {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
         // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
         // intrinsics
-        return;
+        return None;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let callee_abi = match *callee.kind() {
@@ -216,7 +228,7 @@ fn check_call_site_abi<'tcx>(
         ty::FnDef(def_id, args) => {
             // Intrinsics are handled separately by the compiler.
             if tcx.intrinsic(def_id).is_some() {
-                return;
+                return None;
             }
             let instance = ty::Instance::expect_resolve(tcx, typing_env, def_id, args, DUMMY_SP);
             tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
@@ -228,13 +240,21 @@ fn check_call_site_abi<'tcx>(
 
     let Ok(callee_abi) = callee_abi else {
         // ABI failed to compute; this will not get through codegen.
-        return;
+        return None;
     };
-    do_check_unsized_params(tcx, callee_abi, /*is_call*/ true, loc);
-    do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
+    // Call both checks unconditionally for their diagnostic side effects before combining.
+    let unsized_res = do_check_unsized_params(tcx, callee_abi, /*is_call*/ true, loc);
+    let simd_res =
+        do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
+    unsized_res.or(simd_res)
 }
 
-fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
+fn check_callees_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &mir::Body<'tcx>,
+) -> Option<ErrorGuaranteed> {
+    let mut res = None;
     // Check all function call terminators.
     for (bb, _data) in traversal::mono_reachable(body, tcx, instance) {
         let terminator = body.basic_blocks[bb].terminator();
@@ -247,7 +267,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                     ty::TypingEnv::fully_monomorphized(),
                     ty::EarlyBinder::bind(callee_ty),
                 );
-                check_call_site_abi(tcx, callee_ty, body.source.instance, || {
+                res = res.or(check_call_site_abi(tcx, callee_ty, body.source.instance, || {
                     let loc = Location {
                         block: bb,
                         statement_index: body.basic_blocks[bb].statements.len(),
@@ -259,18 +279,21 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                             .lint_root(&body.source_scopes)
                             .unwrap_or(CRATE_HIR_ID),
                     )
-                });
+                }));
             }
             _ => {}
         }
     }
+    res
 }
 
 pub(crate) fn check_feature_dependent_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     body: &'tcx mir::Body<'tcx>,
-) {
-    check_instance_abi(tcx, instance);
-    check_callees_abi(tcx, instance, body);
+) -> Option<ErrorGuaranteed> {
+    // Call both checks unconditionally for their diagnostic side effects before combining.
+    let instance_res = check_instance_abi(tcx, instance);
+    let callees_res = check_callees_abi(tcx, instance, body);
+    instance_res.or(callees_res)
 }

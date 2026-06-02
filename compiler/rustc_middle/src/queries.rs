@@ -2680,11 +2680,11 @@ rustc_queries! {
     /// Perform monomorphization-time checking on this item.
     /// This is used for lints/errors that can only be checked once the instance is fully
     /// monomorphized.
-    query check_mono_item(key: ty::Instance<'tcx>) {
+    query check_mono_item(key: ty::Instance<'tcx>) -> Result<(), ErrorGuaranteed> {
         desc { "monomorphization-time checking" }
     }
 
-    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>], Option<ErrorGuaranteed>), NormalizationErrorInMono> {
         desc { "collecting items used by `{}`", key.0 }
         cache_on_disk
     }
