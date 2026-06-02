@@ -1648,7 +1648,7 @@ impl Literal {
     #[unstable(feature = "proc_macro_value", issue = "136652")]
     pub fn byte_character_value(&self) -> Result<u8, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
-            bridge::LitKind::Char => unescape_byte(symbol)
+            bridge::LitKind::Byte => unescape_byte(symbol)
                 .map_err(|err| ConversionErrorKind::FailedToUnescape(err.into())),
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })

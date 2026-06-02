@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 
-use proc_macro::Literal;
+use proc_macro::{EscapeError, Literal, ConversionErrorKind};
 
 pub fn test() {
     test_display_literal();
@@ -111,4 +111,17 @@ fn test_literal_value() {
     {
         assert_eq!(Literal::f32_unsuffixed(15.).f16_value().map(|f| f.to_string()), Ok("15".to_string()));
     }
+
+    assert_eq!(
+        Literal::character('A').byte_character_value(),
+        Err(ConversionErrorKind::InvalidLiteralKind),
+    );
+    assert_eq!(
+        Literal::character('é').byte_character_value(),
+        Err(ConversionErrorKind::InvalidLiteralKind),
+    );
+    assert_eq!(
+        Literal::byte_character(b'B').byte_character_value(),
+        Ok(b'B')
+    );
 }
