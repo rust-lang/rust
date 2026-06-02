@@ -430,6 +430,16 @@ fn infer_placeholder_type<'tcx>(
         tcx.typeck(def_id).node_type(hir_id)
     };
 
+    // HACK(#69396): A macro can expand to several typeless items that share one
+    // (empty) span, so the parser delays more than one `ItemNoType` diagnostic on
+    // it. Stash slots are keyed by span, so only one survives and a single
+    // `type_of` query steals it. Which query wins is nondeterministic under the
+    // parallel front-end, so neither arm below can emit a span-specific suggestion
+    // without the output depending on the race. The suggestion can't be applied
+    // inside a macro anyway, so both arms drop it. Ideally we'd also suppress the
+    // duplicated error, but that's really hard.
+    let from_macro_expansion = ty_span.is_empty() && ty_span.from_expansion();
+
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
@@ -438,14 +448,20 @@ fn infer_placeholder_type<'tcx>(
         .dcx()
         .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
-                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
-                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
-
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
                 if let Suggestions::Enabled(suggestions) = &mut err.suggestions {
                     suggestions.clear();
                 }
+
+                // See the `from_macro_expansion` comment above: drop the
+                // suggestion, as the steal-failure arm below also does.
+                if from_macro_expansion {
+                    return;
+                }
+
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
+                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
@@ -474,13 +490,10 @@ fn infer_placeholder_type<'tcx>(
             }
             let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
-            // HACK(#69396): Stashing and stealing diagnostics does not interact
-            // well with macros which may delay more than one diagnostic on the
-            // same span. If this happens, we will fall through to this arm, so
-            // we need to suppress the suggestion since it's invalid. Ideally we
-            // would suppress the duplicated error too, but that's really hard.
-            if ty_span.is_empty() && ty_span.from_expansion() {
-                // An approximately better primary message + no suggestion...
+            // See the `from_macro_expansion` comment above. We reach this arm when
+            // another `type_of` query already stole the stashed diagnostic; emit a
+            // better primary message and no suggestion.
+            if from_macro_expansion {
                 diag.primary_message("missing type for item");
             } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
