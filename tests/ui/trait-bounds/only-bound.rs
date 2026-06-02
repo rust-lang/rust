@@ -28,4 +28,26 @@ trait OnlyPointeeSized: only PointeeSized {
     }
 }
 
+trait NonSizedOnly1: only Debug {}
+//~^ ERROR `only` may only be applied to sizedness traits
+
+trait Trait {}
+
+trait NonSizedOnly2: only Trait {}
+//~^ ERROR `only` may only be applied to sizedness traits
+
+trait OnlyOnly: only OnlyPointeeSized {}
+//~^ ERROR `only` may only be applied to sizedness traits
+
+trait DoubleOnly: only PointeeSized + only MetaSized {}
+// Redundant, but not illegal.
+
+trait InheritedOnly: OnlyPointeeSized {
+    fn foo(&self) {
+        size_of_val(self);
+        // This works fine, `only` is not transitive, this trait still has the
+        // `MetaSized` default supertrait.
+    }
+}
+
 fn main() {}

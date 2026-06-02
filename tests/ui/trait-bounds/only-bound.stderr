@@ -1,3 +1,21 @@
+error: `only` may only be applied to sizedness traits
+  --> $DIR/only-bound.rs:31:22
+   |
+LL | trait NonSizedOnly1: only Debug {}
+   |                      ^^^^^^^^^^
+
+error: `only` may only be applied to sizedness traits
+  --> $DIR/only-bound.rs:36:22
+   |
+LL | trait NonSizedOnly2: only Trait {}
+   |                      ^^^^^^^^^^
+
+error: `only` may only be applied to sizedness traits
+  --> $DIR/only-bound.rs:39:17
+   |
+LL | trait OnlyOnly: only OnlyPointeeSized {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/only-bound.rs:11:30
    |
@@ -59,6 +77,6 @@ LL |         size_of_val(&self);
 LL |         size_of_val(&mut self);
    |                     ++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
