@@ -59,7 +59,8 @@ impl CollectedSizednessBounds {
 
 fn search_bounds_for<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    context: ImpliedBoundsContext<'tcx>,
+    where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+    context: ImpliedBoundsContext,
     mut f: impl FnMut(&'tcx PolyTraitRef<'tcx>),
 ) {
     let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
@@ -73,8 +74,8 @@ fn search_bounds_for<'tcx>(
     };
 
     search_bounds(hir_bounds);
-    if let ImpliedBoundsContext::TyParam(self_ty, where_clause) = context {
-        for clause in where_clause {
+    if let ImpliedBoundsContext::TyParam(self_ty) = context {
+        for clause in where_bounds {
             if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
                 && pred.is_param_bound(self_ty.to_def_id())
             {
@@ -86,11 +87,12 @@ fn search_bounds_for<'tcx>(
 
 fn collect_bounds<'a, 'tcx>(
     hir_bounds: &'a [hir::GenericBound<'tcx>],
-    context: ImpliedBoundsContext<'tcx>,
+    where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+    context: ImpliedBoundsContext,
     target_did: DefId,
 ) -> CollectedBound {
     let mut collect_into = CollectedBound::default();
-    search_bounds_for(hir_bounds, context, |ptr| {
+    search_bounds_for(hir_bounds, where_bounds, context, |ptr| {
         if !matches!(ptr.trait_ref.path.res, Res::Def(DefKind::Trait, did) if did == target_did) {
             return;
         }
@@ -107,17 +109,18 @@ fn collect_bounds<'a, 'tcx>(
 fn collect_sizedness_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    context: ImpliedBoundsContext<'tcx>,
+    where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+    context: ImpliedBoundsContext,
     span: Span,
 ) -> CollectedSizednessBounds {
     let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
-    let sized = collect_bounds(hir_bounds, context, sized_did);
+    let sized = collect_bounds(hir_bounds, where_bounds, context, sized_did);
 
     let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
-    let meta_sized = collect_bounds(hir_bounds, context, meta_sized_did);
+    let meta_sized = collect_bounds(hir_bounds, where_bounds, context, meta_sized_did);
 
     let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
-    let pointee_sized = collect_bounds(hir_bounds, context, pointee_sized_did);
+    let pointee_sized = collect_bounds(hir_bounds, where_bounds, context, pointee_sized_did);
 
     CollectedSizednessBounds { sized, meta_sized, pointee_sized }
 }
@@ -150,7 +153,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-        context: ImpliedBoundsContext<'tcx>,
+        where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+        context: ImpliedBoundsContext,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -181,7 +185,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let collected = collect_sizedness_bounds(tcx, hir_bounds, context, span);
+        let collected = collect_sizedness_bounds(tcx, hir_bounds, where_bounds, context, span);
         if (collected.sized.maybe || collected.sized.negative)
             && !collected.sized.positive
             && !collected.meta_sized.any()
@@ -213,11 +217,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &[hir::GenericBound<'tcx>],
-        context: ImpliedBoundsContext<'tcx>,
+        where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+        context: ImpliedBoundsContext,
         span: Span,
     ) {
         self.tcx().default_traits().iter().for_each(|default_trait| {
-            self.add_default_trait(*default_trait, bounds, self_ty, hir_bounds, context, span);
+            self.add_default_trait(
+                *default_trait,
+                bounds,
+                self_ty,
+                hir_bounds,
+                where_bounds,
+                context,
+                span,
+            );
         });
     }
 
@@ -230,7 +243,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &[hir::GenericBound<'tcx>],
-        context: ImpliedBoundsContext<'tcx>,
+        where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+        context: ImpliedBoundsContext,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -244,7 +258,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let Some(trait_did) = tcx.lang_items().get(trait_)
-            && self.should_add_default_traits(trait_did, hir_bounds, context)
+            && self.should_add_default_traits(trait_did, hir_bounds, where_bounds, context)
         {
             add_trait_bound(tcx, bounds, self_ty, trait_did, span);
         }
@@ -255,9 +269,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_def_id: DefId,
         hir_bounds: &'a [hir::GenericBound<'tcx>],
-        context: ImpliedBoundsContext<'tcx>,
+        where_bounds: &'tcx [hir::WherePredicate<'tcx>],
+        context: ImpliedBoundsContext,
     ) -> bool {
-        let collected = collect_bounds(hir_bounds, context, trait_def_id);
+        let collected = collect_bounds(hir_bounds, where_bounds, context, trait_def_id);
         !find_attr!(self.tcx(), crate, RustcNoImplicitBounds) && !collected.any()
     }
 
