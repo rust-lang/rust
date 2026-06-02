@@ -1,5 +1,8 @@
 use crate::pin::Pin;
 
+#[unstable(feature = "gen_future", issue = "none")]
+pub mod adapters;
+
 /// The result of a coroutine resumption.
 ///
 /// This enum is returned from the `Coroutine::resume` method and indicates the
