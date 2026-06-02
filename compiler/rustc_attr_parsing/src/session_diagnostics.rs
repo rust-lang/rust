@@ -331,7 +331,7 @@ pub(crate) struct EmptyConfusables {
 }
 
 #[derive(Diagnostic)]
-#[help("`#[{$name}{$attribute_args}]` can {$only}be applied to {$applied}")]
+#[help("`#[{$name}{$attribute_args}]` can {$only_prefix}be applied to {$applied}")]
 #[diag("`#[{$name}{$attribute_args}]` attribute cannot be used on {$target}")]
 pub(crate) struct InvalidTarget {
     #[primary_span]
@@ -345,7 +345,7 @@ pub(crate) struct InvalidTarget {
     pub name: AttrPath,
     pub target: &'static str,
     pub applied: DiagArgValue,
-    pub only: &'static str,
+    pub only_prefix: &'static str,
     pub attribute_args: &'static str,
     #[subdiagnostic]
     pub help: Option<InvalidTargetHelp>,

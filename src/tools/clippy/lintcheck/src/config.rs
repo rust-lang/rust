@@ -1,6 +1,7 @@
-use clap::{Parser, Subcommand, ValueEnum};
 use std::num::NonZero;
 use std::path::PathBuf;
+
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[expect(clippy::struct_excessive_bools)]
 #[derive(Parser, Clone, Debug)]
@@ -33,7 +34,7 @@ pub(crate) struct LintcheckConfig {
     pub lintcheck_results_path: PathBuf, // Overridden in new()
     /// Only process a single crate on the list
     #[clap(long, value_name = "CRATE")]
-    pub only: Option<String>,
+    pub only_crate: Option<String>,
     /// Runs cargo clippy --fix and checks if all suggestions apply
     #[clap(long, conflicts_with("max_jobs"))]
     pub fix: bool,
@@ -124,10 +125,7 @@ impl LintcheckConfig {
         for lint_name in &mut config.lint_filter {
             *lint_name = format!(
                 "clippy::{}",
-                lint_name
-                    .strip_prefix("clippy::")
-                    .unwrap_or(lint_name)
-                    .replace('_', "-")
+                lint_name.strip_prefix("clippy::").unwrap_or(lint_name).replace('_', "-")
             );
         }
 

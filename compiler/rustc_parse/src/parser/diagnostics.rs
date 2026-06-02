@@ -828,7 +828,7 @@ impl<'a> Parser<'a> {
         });
         let attr_span = match &expr.attrs[..] {
             [] => unreachable!(),
-            [only] => only.span,
+            [single] => single.span,
             [first, rest @ ..] => {
                 for attr in rest {
                     err.span_label(attr.span, "");

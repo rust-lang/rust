@@ -256,7 +256,7 @@ pub struct AnalysisStats {
     pub output: Option<OutputFormat>,
     pub randomize: bool,
     pub parallel: bool,
-    pub only: Option<String>,
+    pub solely: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
     pub no_test: bool,

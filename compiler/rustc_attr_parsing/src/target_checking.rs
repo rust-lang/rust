@@ -124,12 +124,13 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         let allowed_targets = allowed_targets.allowed_targets();
-        let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
+        let (applied, only_prefix) =
+            allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let diag = InvalidTarget {
             span: cx.attr_span.clone(),
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
-            only: if only { "only " } else { "" },
+            only_prefix: if only_prefix { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args,
             help: Self::target_checking_help(attribute_args, cx),

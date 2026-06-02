@@ -1373,21 +1373,21 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
             ));
         }
-        [only] => {
-            let only = &thir[*only];
+        [single] => {
+            let single = &thir[*single];
             let (pre_indentation, is_multiline) = if let Some(snippet) =
-                sm.indentation_before(only.span)
+                sm.indentation_before(single.span)
                 && let Ok(with_trailing) =
-                    sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+                    sm.span_extend_while(single.span, |c| c.is_whitespace() || c == ',')
                 && sm.is_multiline(with_trailing)
             {
                 (format!("\n{snippet}"), true)
             } else {
                 (" ".to_string(), false)
             };
-            let only_body = &thir[only.body];
+            let only_body = &thir[single.body];
             let comma = if matches!(only_body.kind, ExprKind::Block { .. })
-                && only.span.eq_ctxt(only_body.span)
+                && single.span.eq_ctxt(only_body.span)
                 && is_multiline
             {
                 ""
@@ -1395,7 +1395,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 ","
             };
             suggestion = Some((
-                only.span.shrink_to_hi(),
+                single.span.shrink_to_hi(),
                 format!("{comma}{pre_indentation}{suggested_arm}"),
             ));
         }

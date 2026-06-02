@@ -1430,7 +1430,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 span.push_span_label(expr.span, "you could clone this value");
                 let types: Vec<_> = types.into_iter().collect();
                 let msg = match &types[..] {
-                    [only] => format!("`{only}`"),
+                    [single] => format!("`{single}`"),
                     [head @ .., last] => format!(
                         "{} and `{last}`",
                         head.iter().map(|t| format!("`{t}`")).collect::<Vec<_>>().join(", ")

@@ -1152,7 +1152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             has_ref_dupes && missing_trait_names.len() > 1 && matches!(rcvr_ty.kind(), ty::Adt(..));
         let missing_trait_list = if should_condense {
             Some(match missing_trait_names.as_slice() {
-                [only] => only.clone(),
+                [single] => single.clone(),
                 [first, second] => format!("{first} or {second}"),
                 [rest @ .., last] => format!("{} or {last}", rest.join(", ")),
                 [] => String::new(),
@@ -1493,13 +1493,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 inherent_impls_candidate.dedup();
                 let msg = match &inherent_impls_candidate[..] {
                     [] => return,
-                    [only] => {
+                    [single] => {
                         vec![
                             StringPart::normal(format!("the {item_kind} was found for `")),
                             StringPart::highlighted(
                                 self.tcx
                                     .at(span)
-                                    .type_of(*only)
+                                    .type_of(*single)
                                     .instantiate_identity()
                                     .skip_norm_wip()
                                     .to_string(),

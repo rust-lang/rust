@@ -41,7 +41,7 @@ macro_rules! pluralize {
 // FIXME(estebank): this needs to be changed to go through the translation machinery.
 pub fn listify<T>(list: &[T], fmt: impl Fn(&T) -> String) -> Option<String> {
     Some(match list {
-        [only] => fmt(&only),
+        [single] => fmt(&single),
         [others @ .., last] => format!(
             "{} and {}",
             others.iter().map(|i| fmt(i)).collect::<Vec<_>>().join(", "),
