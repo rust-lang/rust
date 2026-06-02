@@ -7,6 +7,8 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
+#[cfg(not(no_global_oom_handling))]
+use core::ascii;
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
@@ -431,9 +433,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
-        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
-        // prefix remains valid UTF-8.
-        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
+        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_lowercase);
 
         let prefix_len = s.len();
 
@@ -638,12 +638,110 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
-        // SAFETY: `to_ascii_uppercase` preserves ASCII bytes, so the converted
-        // prefix remains valid UTF-8.
-        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_uppercase) };
+        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_uppercase);
 
         for c in rest.chars() {
             match conversions::to_upper(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
+        s
+    }
+
+    /// Returns the case-folded equivalent of this string slice, as a new [`String`].
+    ///
+    /// Case folding is a transformation, mostly matching lowercase, that is meant to be used
+    /// for case-insensitive string comparisons. Case-folded strings should not usually
+    /// be exposed directly to users.
+    ///
+    /// For the precise specification of case folding, see
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63737)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when case folding,
+    /// this function returns a [`String`] instead of modifying the parameter in-place.
+    ///
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still casefold differently. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
+    ///
+    /// Like [`char::to_casefold_unnormalized()`], this method does not handle language-specific
+    /// casings like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "HELLO";
+    /// let s1 = "Hello";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "hello")
+    /// ```
+    ///
+    /// Scripts without case are not changed:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.to_casefold_unnormalized());
+    /// ```
+    ///
+    /// One character can become multiple:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "TSCHÜẞ";
+    /// let s1 = "TSCHÜSS";
+    /// let s2 = "tschüß";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), s2.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "tschüss");
+    /// ```
+    ///
+    /// No NFC [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Å";
+    /// let decomp = "Å";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert_eq!(comp.to_casefold_unnormalized(), "\u{E5}");
+    /// assert_eq!(decomp.to_casefold_unnormalized(), "a\u{030A}");
+    /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the case-folded string as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "154742")]
+    pub fn to_casefold_unnormalized(&self) -> String {
+        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_lowercase);
+
+        for c in rest.chars() {
+            match conversions::to_casefold(c) {
                 [a, '\0', _] => s.push(a),
                 [a, b, '\0'] => {
                     s.push(a);
@@ -803,15 +901,11 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 ///
 /// This function is only public so that it can be verified in a codegen test,
 /// see `issue-123712-str-to-lower-autovectorization.rs`.
-///
-/// # Safety
-///
-/// `convert` must return an ASCII byte for every ASCII input byte.
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 #[inline]
 #[cfg(not(no_global_oom_handling))]
-pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
+pub fn convert_while_ascii(s: &str, convert: fn(ascii::Char) -> ascii::Char) -> (String, &str) {
     // Process the input in chunks of 16 bytes to enable auto-vectorization.
     // Previously the chunk size depended on the size of `usize`,
     // but on 32-bit platforms with sse or neon is also the better choice.
@@ -819,7 +913,7 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
     const N: usize = 16;
 
     let mut slice = s.as_bytes();
-    let mut out = Vec::with_capacity(slice.len());
+    let mut out: Vec<u8> = Vec::with_capacity(slice.len());
     let mut out_slice = out.spare_capacity_mut();
 
     let mut ascii_prefix_len = 0_usize;
@@ -844,7 +938,10 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
         }
 
         for j in 0..N {
-            out_chunk[j] = MaybeUninit::new(convert(&chunk[j]));
+            out_chunk[j] = MaybeUninit::new(
+                // SAFETY: we checked that this byte is valid ASCII above
+                convert(unsafe { ascii::Char::from_u8_unchecked(chunk[j]) }).to_u8(),
+            );
         }
 
         ascii_prefix_len += N;
@@ -858,10 +955,17 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
         if byte > 127 {
             break;
         }
+
+        let converted_byte = MaybeUninit::new(
+            // SAFETY: we checked that this byte is valid ASCII above
+            convert(unsafe { ascii::Char::from_u8_unchecked(byte) }).to_u8(),
+        );
+
         // SAFETY: out_slice has at least same length as input slice
         unsafe {
-            *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
+            *out_slice.get_unchecked_mut(0) = converted_byte;
         }
+
         ascii_prefix_len += 1;
         slice = unsafe { slice.get_unchecked(1..) };
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };

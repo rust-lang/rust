@@ -124,3 +124,22 @@ fn to_titlecase() {
         unicode_data::conversions::to_upper,
     );
 }
+
+/// This test verifies some assumptions we currently make about Unicode casings
+/// which might be falsified by future versions of the standard.
+/// It's important that it gets run with debug assertions enabled,
+/// so that the debug assertions in `core/src/unicode/unicode_data.rs`
+/// `conversions::to_casefold` get run with every possible Unicode character as input.
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn to_casefold() {
+    test_case_mapping(test_data::TO_CASEFOLD, unicode_data::conversions::to_casefold, |c| {
+        let upper = unicode_data::conversions::to_upper(c);
+        let lower = upper.map(unicode_data::conversions::to_lower);
+        let mut result = ['\0'; 3];
+        for (i, c) in lower.into_iter().flatten().filter(|&c| c != '\0').enumerate() {
+            result[i] = c;
+        }
+        result
+    });
+}
