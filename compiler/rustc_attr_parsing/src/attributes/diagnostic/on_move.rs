@@ -1,4 +1,4 @@
-use rustc_feature::template;
+use rustc_feature::{AttributeStability, template};
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
@@ -43,6 +43,7 @@ impl AttributeParser for OnMoveParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_move],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        AttributeStability::Stable, // Unstable, stability checked manually in the parser
         |this, cx, args| {
             this.parse(cx, args, Mode::DiagnosticOnMove);
         },
