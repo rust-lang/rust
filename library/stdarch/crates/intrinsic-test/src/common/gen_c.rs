@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::common::intrinsic::Intrinsic;
+use crate::common::{SupportedArchitecture, intrinsic::Intrinsic};
 
 use super::intrinsic_helpers::TypeDefinition;
 
@@ -14,11 +14,11 @@ use super::intrinsic_helpers::TypeDefinition;
 ///    *__dst = __crc32cd(a, b);
 /// }
 /// ```
-pub fn write_wrapper_c<T: TypeDefinition>(
+pub fn write_wrapper_c<A: SupportedArchitecture>(
     w: &mut impl std::io::Write,
     notice: &str,
     platform_headers: &[&str],
-    intrinsics: &[Intrinsic<T>],
+    intrinsics: &[Intrinsic<A>],
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
 

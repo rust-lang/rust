@@ -10,12 +10,13 @@ use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
 use intrinsic::ArmType;
 use json_parser::get_neon_intrinsics;
 
-pub struct Arm(Vec<Intrinsic<ArmType>>);
+#[derive(PartialEq)]
+pub struct Arm(Vec<Intrinsic<Arm>>);
 
 impl SupportedArchitecture for Arm {
     type Type = ArmType;
 
-    fn intrinsics(&self) -> &[Intrinsic<ArmType>] {
+    fn intrinsics(&self) -> &[Intrinsic<Self>] {
         &self.0
     }
 

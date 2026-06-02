@@ -1,4 +1,5 @@
 use super::intrinsic::ArmType;
+use crate::arm::Arm;
 use crate::arm::types::parse_intrinsic_type;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
@@ -59,7 +60,7 @@ struct JsonIntrinsic {
 
 pub fn get_neon_intrinsics(
     filename: &Path,
-) -> Result<Vec<Intrinsic<ArmType>>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Intrinsic<Arm>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
@@ -79,7 +80,7 @@ pub fn get_neon_intrinsics(
 
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
-) -> Result<Intrinsic<ArmType>, Box<dyn std::error::Error>> {
+) -> Result<Intrinsic<Arm>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
     let result_ty = ArmType(parse_intrinsic_type(&intr.return_type.value)?);

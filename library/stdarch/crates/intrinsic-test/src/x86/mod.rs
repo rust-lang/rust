@@ -12,13 +12,13 @@ use intrinsic::X86IntrinsicType;
 use xml_parser::get_xml_intrinsics;
 
 pub struct X86 {
-    intrinsics: Vec<Intrinsic<X86IntrinsicType>>,
+    intrinsics: Vec<Intrinsic<X86>>,
 }
 
 impl SupportedArchitecture for X86 {
     type Type = X86IntrinsicType;
 
-    fn intrinsics(&self) -> &[Intrinsic<X86IntrinsicType>] {
+    fn intrinsics(&self) -> &[Intrinsic<Self>] {
         &self.intrinsics
     }
 

@@ -29,10 +29,10 @@ pub(crate) const PASSES: u32 = 20;
 
 /// Architectures must support this trait
 /// to be successfully tested.
-pub trait SupportedArchitecture {
+pub trait SupportedArchitecture: Sized {
     type Type: TypeDefinition + Sync;
 
-    fn intrinsics(&self) -> &[Intrinsic<Self::Type>];
+    fn intrinsics(&self) -> &[Intrinsic<Self>];
 
     fn create(cli_options: &ProcessedCli) -> Self;
 
@@ -81,14 +81,7 @@ pub trait SupportedArchitecture {
                 trace!("generating `{rust_filename}`");
                 let mut file = File::create(&rust_filename)?;
 
-                write_lib_rs(
-                    &mut file,
-                    Self::NOTICE,
-                    Self::PLATFORM_RUST_CFGS,
-                    Self::PLATFORM_RUST_DEFINITIONS,
-                    i,
-                    chunk,
-                )?;
+                write_lib_rs(&mut file, i, chunk)?;
                 run_rustfmt(&rust_filename);
 
                 let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");

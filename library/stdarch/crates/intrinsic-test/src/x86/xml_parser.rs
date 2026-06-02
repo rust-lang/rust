@@ -1,6 +1,7 @@
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
+use crate::x86::X86;
 use crate::x86::constraint::map_constraints;
 
 use regex::Regex;
@@ -56,13 +57,13 @@ pub struct Parameter {
 
 pub fn get_xml_intrinsics(
     filename: &Path,
-) -> Result<Vec<Intrinsic<X86IntrinsicType>>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Intrinsic<X86>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let data: Data =
         quick_xml::de::from_reader(reader).expect("failed to deserialize the source XML file");
 
-    let parsed_intrinsics: Vec<Intrinsic<X86IntrinsicType>> = data
+    let parsed_intrinsics: Vec<Intrinsic<X86>> = data
         .intrinsics
         .into_iter()
         .filter(|intrinsic| {
@@ -84,9 +85,7 @@ pub fn get_xml_intrinsics(
     Ok(parsed_intrinsics)
 }
 
-fn xml_to_intrinsic(
-    intr: XMLIntrinsic,
-) -> Result<Intrinsic<X86IntrinsicType>, Box<dyn std::error::Error>> {
+fn xml_to_intrinsic(intr: XMLIntrinsic) -> Result<Intrinsic<X86>, Box<dyn std::error::Error>> {
     let name = intr.name;
     let result = X86IntrinsicType::from_param(&intr.return_data);
     let args_check = intr.parameters.into_iter().enumerate().map(|(i, param)| {
