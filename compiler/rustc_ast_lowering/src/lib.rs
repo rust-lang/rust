@@ -318,9 +318,8 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 /// Relaxed bounds should only be allowed in places where we later
 /// (namely during HIR ty lowering) perform *sized elaboration*.
 #[derive(Clone, Copy, Debug)]
-enum RelaxedBoundPolicy<'a> {
+enum RelaxedBoundPolicy {
     Allowed,
-    AllowedIfOnTyParam(NodeId, &'a [ast::GenericParam]),
     Forbidden(RelaxedBoundForbiddenReason),
 }
 
@@ -1955,7 +1954,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         match tpb {
@@ -2193,7 +2192,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_poly_trait_ref(
         &mut self,
         PolyTraitRef { bound_generic_params, modifiers, trait_ref, span, parens: _ }: &PolyTraitRef,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
@@ -2217,7 +2216,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         trait_ref: hir::TraitRef<'_>,
         span: Span,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
     ) {
         // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
         // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
@@ -2230,14 +2229,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
-            RelaxedBoundPolicy::AllowedIfOnTyParam(id, params) => {
-                if let Some(res) = self.get_partial_res(id).and_then(|r| r.full_res())
-                    && let Res::Def(DefKind::TyParam, def_id) = res
-                    && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
-                {
-                    return;
-                }
-            }
             RelaxedBoundPolicy::Forbidden(reason) => {
                 let gate = |context, subject| {
                     let extended = self.tcx.features().more_maybe_bounds();
@@ -2299,7 +2290,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::GenericBounds<'hir> {
         self.arena.alloc_from_iter(self.lower_param_bounds_mut(bounds, rbp, itctx))
@@ -2308,7 +2299,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds_mut(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> impl Iterator<Item = hir::GenericBound<'hir>> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, rbp, itctx))

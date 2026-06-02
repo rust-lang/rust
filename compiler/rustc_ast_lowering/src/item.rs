@@ -1986,7 +1986,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bounds: &[GenericBound],
         colon_span: Option<Span>,
         parent_span: Span,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -2061,8 +2061,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
-                let rbp = if bound_generic_params.is_empty() {
-                    RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params)
+                let rbp = if bound_generic_params.is_empty()
+                    && let Some(res) =
+                        self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
+                    && let Res::Def(DefKind::TyParam, def_id) = res
+                    && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
+                {
+                    RelaxedBoundPolicy::Allowed
                 } else {
                     RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
                 };
