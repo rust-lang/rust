@@ -153,10 +153,10 @@ fn all_from_macro() -> impl Future<Output = u32> {
         () => {
             // Lint
             async { 42 }
-            //~^ redundant_async_block
         };
     }
     mac!()
+    //~^ redundant_async_block
 }
 
 fn parts_from_macro() -> impl Future<Output = u32> {
@@ -174,10 +174,10 @@ fn safe_parts_from_macro() -> impl Future<Output = u32> {
         ($e: expr) => {
             // Lint
             async { $e }
-            //~^ redundant_async_block
         };
     }
     mac!(42)
+    //~^ redundant_async_block
 }
 
 fn parts_from_macro_deep() -> impl Future<Output = u32> {
