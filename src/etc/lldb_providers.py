@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sys
 from typing import Generator, List, TYPE_CHECKING, Optional
+from enum import Flag, auto
 
 from lldb import (
     SBData,
@@ -53,6 +54,24 @@ if TYPE_CHECKING:
 PY3 = sys.version_info[0] == 3
 
 
+class LLDBFeature(Flag):
+    """Used to track which features we rely on and whether or not we can access them. The global
+    `lldb_providers.FEATURE_FLAGS` is initialized in `lldb_lookup.__lldb_init_module` and is
+    expected not to change after that point.
+
+    This is used rather than `debugger.GetVersionString` because Apple's fork of LLDB (used for
+    xcode) uses a non-standard versioning scheme that has no relation to LLVM's.
+    """
+
+    StaticFields = auto()
+    """Added in LLDB 18. Adds functions to `SBType` the inspection of a struct's static fields."""
+    TypeRecognizers = auto()
+    """Added in LLDB 19. Callback-based type matching for synthetic/summary providers."""
+
+
+FEATURE_FLAGS: LLDBFeature = LLDBFeature(0)
+
+
 class LLDBOpaque:
     """
     An marker type for use in type hints to denote LLDB bookkeeping variables. Values marked with
@@ -70,14 +89,18 @@ class ValueBuilder:
     def from_int(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeLong)
         data = SBData.CreateDataFromSInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
     def from_uint(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeUnsignedLong)
         data = SBData.CreateDataFromUInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
@@ -118,37 +141,6 @@ class DefaultSyntheticProvider:
 
     def has_children(self) -> bool:
         return self.valobj.MightHaveChildren()
-
-    def get_value(self):
-        return self.valobj.value
-
-
-class IndirectionSyntheticProvider:
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
-        self.valobj = valobj
-
-    def num_children(self) -> int:
-        return 1
-
-    def get_child_index(self, name: str) -> int:
-        if name == "$$dereference$$":
-            return 0
-        return -1
-
-    def get_child_at_index(self, index: int) -> Optional[SBValue]:
-        if index == 0:
-            value = self.valobj.Dereference()
-            if (synth := value.GetSyntheticValue()).IsValid():
-                return synth
-            else:
-                return value
-        return None
-
-    def update(self):
-        pass
-
-    def has_children(self) -> bool:
-        return True
 
     def get_value(self):
         return self.valobj.value
@@ -638,6 +630,8 @@ class ClangEncodedEnumProvider:
 
 
 def ClangEncodedEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    if valobj.TypeIsPointerType():
+        valobj = valobj.Dereference()
     enum_synth = ClangEncodedEnumProvider(valobj.GetNonSyntheticValue(), _dict)
     variant = enum_synth.variant
     name = _getVariantName(variant)
@@ -670,6 +664,10 @@ class MSVCEnumSyntheticProvider:
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        # This allows the summary provider to still print something
+        # even if we can't find the variant for whatever reason
+        self.variant = valobj
+        self.value = valobj
         self.update()
 
     def update(self):

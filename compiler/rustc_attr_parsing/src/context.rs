@@ -4,6 +4,8 @@ use std::collections::btree_map::Entry;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -405,6 +407,8 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         kind: EmitAttribute,
         span: impl Into<MultiSpan>,
     ) {
+        #[cfg(debug_assertions)]
+        self.has_lint_been_emitted.store(true, Ordering::Relaxed);
         if !matches!(
             self.should_emit,
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
@@ -744,6 +748,11 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) target: rustc_hir::Target,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
+
+    /// This atomic bool keeps track of whether any lint has been emitted.
+    /// This is used for the arguments-used check.
+    #[cfg(debug_assertions)]
+    pub(crate) has_lint_been_emitted: AtomicBool,
 }
 
 /// Context given to every attribute parser during finalization.

@@ -251,7 +251,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 | ty::AliasTermKind::FreeTy { .. }
                 | ty::AliasTermKind::InherentTy { .. }
                 | ty::AliasTermKind::InherentConst { .. }
-                | ty::AliasTermKind::UnevaluatedConst { .. }
+                | ty::AliasTermKind::AnonConst { .. }
                 | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
@@ -591,11 +591,11 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
-        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.kind == bu.kind => {
             // FIXME(mgca): remove this
             if cfg!(debug_assertions) {
-                let a_ty = cx.type_of(au.def.into()).instantiate(cx, au.args).skip_norm_wip();
-                let b_ty = cx.type_of(bu.def.into()).instantiate(cx, bu.args).skip_norm_wip();
+                let a_ty = cx.type_of(au.kind.def_id()).instantiate(cx, au.args).skip_norm_wip();
+                let b_ty = cx.type_of(bu.kind.def_id()).instantiate(cx, bu.args).skip_norm_wip();
                 assert_eq!(a_ty, b_ty);
             }
 
@@ -605,7 +605,7 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
                 au.args,
                 bu.args,
             )?;
-            return Ok(Const::new_unevaluated(cx, ty::UnevaluatedConst { def: au.def, args }));
+            return Ok(Const::new_unevaluated(cx, ty::UnevaluatedConst::new(cx, au.kind, args)));
         }
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let expr = relation.relate(ae, be)?;

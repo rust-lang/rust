@@ -541,7 +541,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
             ty::ConstKind::Unevaluated(uv) => crate::ty::TyConstKind::Unevaluated(
-                tables.const_def(uv.def),
+                tables.const_def(uv.kind.def_id()),
                 uv.args.stable(tables, cx),
             ),
             ty::ConstKind::Error(_) => unreachable!(),

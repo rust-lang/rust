@@ -400,16 +400,14 @@ pub trait Term<I: Interner<Term = Self>>:
         }
     }
 
-    fn to_alias_term(self, interner: I) -> Option<ty::AliasTerm<I>> {
+    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => {
-                    Some(ty::AliasTerm::from_unevaluated_const(interner, uv))
-                }
+                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
                 _ => None,
             },
         }

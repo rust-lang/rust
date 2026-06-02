@@ -224,6 +224,12 @@ pub fn prepare_tool_cargo(
     // avoid rebuilding when running tests.
     cargo.env("SYSROOT", builder.sysroot(compiler));
 
+    // Make sure we explicitly add rustc_private libs to path centrally here so that
+    // RustcPrivate tools can pick them up.
+    if mode == Mode::ToolRustcPrivate {
+        cargo.add_rustc_lib_path(builder);
+    }
+
     // if tools are using lzma we want to force the build script to build its
     // own copy
     cargo.env("LZMA_API_STATIC", "1");

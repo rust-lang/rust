@@ -133,6 +133,12 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &[],
     },
     WorkspaceInfo {
+        path: "library/stdarch",
+        exceptions: EXCEPTIONS_STDARCH,
+        crates_and_deps: None,
+        submodules: &[],
+    },
+    WorkspaceInfo {
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
         crates_and_deps: Some((
@@ -253,6 +259,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
+
+const EXCEPTIONS_STDARCH: ExceptionList = &[];
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 

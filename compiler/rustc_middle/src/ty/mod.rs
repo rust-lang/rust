@@ -78,8 +78,8 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr, ExprKind,
-    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKindExt, Value,
-    const_lit_matches_ty,
+    LitToConstInput, ScalarInt, SimdAlign, UnevaluatedConst, UnevaluatedConstKind, ValTree,
+    ValTreeKindExt, Value, const_lit_matches_ty,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -683,14 +683,14 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    pub fn to_alias_term(self, tcx: TyCtxt<'tcx>) -> Option<AliasTerm<'tcx>> {
+    pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(AliasTerm::from_unevaluated_const(tcx, uv)),
+                ConstKind::Unevaluated(uv) => Some(uv.into()),
                 _ => None,
             },
         }

@@ -43,7 +43,7 @@
 //@ lldb-command:v *t0
 //@ lldb-check:[...] 5
 //@ lldb-command:v *t1
-//@ lldb-check:[...] { a = 6 b = 7.5 }
+//@ lldb-check:[...] {a:6, b:7.5}
 //@ lldb-command:continue
 
 #[derive(Clone)]
