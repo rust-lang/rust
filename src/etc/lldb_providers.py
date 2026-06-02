@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sys
-from typing import Generator, List, TYPE_CHECKING, Optional
+from typing import Generator, Dict, List, TYPE_CHECKING, Optional
 from enum import Flag, auto
 
 from lldb import (
@@ -9,6 +9,15 @@ from lldb import (
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedChar,
+    eBasicTypeUnsignedShort,
+    eBasicTypeUnsignedLongLong,
+    eBasicTypeSignedChar,
+    eBasicTypeShort,
+    eBasicTypeLongLong,
+    eBasicTypeFloat,
+    eBasicTypeDouble,
+    eBasicTypeHalf,
+    eBasicTypeChar32,
     eFormatChar,
     eTypeIsInteger,
 )
@@ -67,6 +76,9 @@ class LLDBFeature(Flag):
     """Added in LLDB 18. Adds functions to `SBType` the inspection of a struct's static fields."""
     TypeRecognizers = auto()
     """Added in LLDB 19. Callback-based type matching for synthetic/summary providers."""
+    Float128 = auto()
+    """Added in LLDB 22.1. Adds builtin support for Float 128's, including an `eBasicTypeFloat128`,
+    a formatter, and handlers in `TypeSystemClang`"""
 
 
 FEATURE_FLAGS: LLDBFeature = LLDBFeature(0)
@@ -198,6 +210,21 @@ def get_template_args(type_name: str) -> Generator[str, None, None]:
 
 MSVC_PTR_PREFIX: List[str] = ["ref$<", "ref_mut$<", "ptr_const$<", "ptr_mut$<"]
 
+PRIMITIVE_TYPES: Dict[str, int] = {
+    "u8": eBasicTypeUnsignedChar,
+    "u16": eBasicTypeUnsignedShort,
+    "u32": eBasicTypeUnsignedLong,
+    "u64": eBasicTypeUnsignedLongLong,
+    "i8": eBasicTypeSignedChar,
+    "i16": eBasicTypeShort,
+    "i32": eBasicTypeLong,
+    "i64": eBasicTypeLongLong,
+    "f16": eBasicTypeHalf,
+    "f32": eBasicTypeFloat,
+    "f64": eBasicTypeDouble,
+    "char": eBasicTypeChar32,
+}
+
 
 def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
     """
@@ -214,6 +241,22 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
     current version of LLDB, so instead the types are generated via `base_type.GetPointerType()` and
     `base_type.GetArrayType()`, which bypass the PDB file and ask clang directly for the type node.
     """
+
+    # As of LLDB 22, finding primitives based on `FindFirstType` with their rust name no longer
+    # works. Instead, we can look them up by their `eBasicType` equivalent. For usize and isize,
+    # we convert them to their bit-sized counterpart before the lookup
+    if arg_name == "isize" or arg_name == "usize":
+        equivalent = f"{arg_name[0]}{target.GetAddressByteSize() * 8}"
+        return target.GetBasicType(PRIMITIVE_TYPES[equivalent])
+
+    if (basic_type := PRIMITIVE_TYPES.get(arg_name)) is not None:
+        return target.GetBasicType(basic_type)
+
+    if arg_name == "f128" and LLDBFeature.Float128 in FEATURE_FLAGS:
+        from lldb import eBasicTypeFloat128
+
+        return target.GetBasicType(eBasicTypeFloat128)
+
     result = target.FindFirstType(arg_name)
 
     if result.IsValid():
