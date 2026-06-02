@@ -277,8 +277,8 @@ warning: `#[macro_use]` attribute cannot be used on functions
 LL |     #[macro_use] fn f() { }
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:195:5
@@ -286,8 +286,8 @@ warning: `#[macro_use]` attribute cannot be used on structs
 LL |     #[macro_use] struct S;
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:201:5
@@ -295,8 +295,8 @@ warning: `#[macro_use]` attribute cannot be used on type aliases
 LL |     #[macro_use] type T = S;
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:207:5
@@ -304,8 +304,8 @@ warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
 LL |     #[macro_use] impl S { }
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:214:1
@@ -313,8 +313,8 @@ warning: `#[macro_export]` attribute cannot be used on modules
 LL | #[macro_export]
    | ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:220:17
@@ -322,8 +322,8 @@ warning: `#[macro_export]` attribute cannot be used on modules
 LL |     mod inner { #![macro_export] }
    |                 ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:226:5
@@ -331,8 +331,8 @@ warning: `#[macro_export]` attribute cannot be used on functions
 LL |     #[macro_export] fn f() { }
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:232:5
@@ -340,8 +340,8 @@ warning: `#[macro_export]` attribute cannot be used on structs
 LL |     #[macro_export] struct S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:238:5
@@ -349,8 +349,8 @@ warning: `#[macro_export]` attribute cannot be used on type aliases
 LL |     #[macro_export] type T = S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_export]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:244:5
@@ -358,8 +358,8 @@ warning: `#[macro_export]` attribute cannot be used on inherent impl blocks
 LL |     #[macro_export] impl S { }
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_export]` can only be applied to macro defs
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[path]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:255:5
@@ -367,8 +367,8 @@ warning: `#[path]` attribute cannot be used on functions
 LL |     #[path = "3800"] fn f() { }
    |     ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[path]` can only be applied to modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[path]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:261:5
@@ -376,8 +376,8 @@ warning: `#[path]` attribute cannot be used on structs
 LL |     #[path = "3800"]  struct S;
    |     ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[path]` can only be applied to modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[path]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:267:5
@@ -385,8 +385,8 @@ warning: `#[path]` attribute cannot be used on type aliases
 LL |     #[path = "3800"] type T = S;
    |     ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[path]` can only be applied to modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[path]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:273:5
@@ -394,8 +394,8 @@ warning: `#[path]` attribute cannot be used on inherent impl blocks
 LL |     #[path = "3800"] impl S { }
    |     ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[path]` can only be applied to modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:280:1
@@ -403,8 +403,8 @@ warning: `#[automatically_derived]` attribute cannot be used on modules
 LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:286:17
@@ -412,8 +412,8 @@ warning: `#[automatically_derived]` attribute cannot be used on modules
 LL |     mod inner { #![automatically_derived] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:292:5
@@ -421,8 +421,8 @@ warning: `#[automatically_derived]` attribute cannot be used on functions
 LL |     #[automatically_derived] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:298:5
@@ -430,8 +430,8 @@ warning: `#[automatically_derived]` attribute cannot be used on structs
 LL |     #[automatically_derived] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:304:5
@@ -439,8 +439,8 @@ warning: `#[automatically_derived]` attribute cannot be used on type aliases
 LL |     #[automatically_derived] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on traits
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:310:5
@@ -448,8 +448,8 @@ warning: `#[automatically_derived]` attribute cannot be used on traits
 LL |     #[automatically_derived] trait W { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:316:5
@@ -457,8 +457,8 @@ warning: `#[automatically_derived]` attribute cannot be used on inherent impl bl
 LL |     #[automatically_derived] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:325:1
@@ -466,8 +466,8 @@ warning: `#[no_mangle]` attribute cannot be used on modules
 LL | #[no_mangle]
    | ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:331:17
@@ -475,8 +475,8 @@ warning: `#[no_mangle]` attribute cannot be used on modules
 LL |     mod inner { #![no_mangle] }
    |                 ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:339:5
@@ -484,8 +484,8 @@ warning: `#[no_mangle]` attribute cannot be used on structs
 LL |     #[no_mangle] struct S;
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:345:5
@@ -493,8 +493,8 @@ warning: `#[no_mangle]` attribute cannot be used on type aliases
 LL |     #[no_mangle] type T = S;
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:351:5
@@ -502,8 +502,8 @@ warning: `#[no_mangle]` attribute cannot be used on inherent impl blocks
 LL |     #[no_mangle] impl S { }
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on required trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:358:9
@@ -511,8 +511,8 @@ warning: `#[no_mangle]` attribute cannot be used on required trait methods
 LL |         #[no_mangle] fn foo();
    |         ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions, inherent methods, statics, and trait methods in impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on provided trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:364:9
@@ -520,8 +520,8 @@ warning: `#[no_mangle]` attribute cannot be used on provided trait methods
 LL |         #[no_mangle] fn bar() {}
    |         ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions, inherent methods, statics, and trait methods in impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:372:1
@@ -529,8 +529,8 @@ warning: `#[should_panic]` attribute cannot be used on modules
 LL | #[should_panic]
    | ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:378:17
@@ -538,8 +538,8 @@ warning: `#[should_panic]` attribute cannot be used on modules
 LL |     mod inner { #![should_panic] }
    |                 ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:386:5
@@ -547,8 +547,8 @@ warning: `#[should_panic]` attribute cannot be used on structs
 LL |     #[should_panic] struct S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:392:5
@@ -556,8 +556,8 @@ warning: `#[should_panic]` attribute cannot be used on type aliases
 LL |     #[should_panic] type T = S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:398:5
@@ -565,8 +565,8 @@ warning: `#[should_panic]` attribute cannot be used on inherent impl blocks
 LL |     #[should_panic] impl S { }
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:405:1
@@ -574,8 +574,8 @@ warning: `#[ignore]` attribute cannot be used on modules
 LL | #[ignore]
    | ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:411:17
@@ -583,8 +583,8 @@ warning: `#[ignore]` attribute cannot be used on modules
 LL |     mod inner { #![ignore] }
    |                 ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:419:5
@@ -592,8 +592,8 @@ warning: `#[ignore]` attribute cannot be used on structs
 LL |     #[ignore] struct S;
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:425:5
@@ -601,8 +601,8 @@ warning: `#[ignore]` attribute cannot be used on type aliases
 LL |     #[ignore] type T = S;
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:431:5
@@ -610,8 +610,8 @@ warning: `#[ignore]` attribute cannot be used on inherent impl blocks
 LL |     #[ignore] impl S { }
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:442:5
@@ -619,8 +619,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on functions
 LL |     #[no_implicit_prelude] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:448:5
@@ -628,8 +628,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on structs
 LL |     #[no_implicit_prelude] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:454:5
@@ -637,8 +637,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on type aliases
 LL |     #[no_implicit_prelude] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:460:5
@@ -646,8 +646,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on inherent impl bloc
 LL |     #[no_implicit_prelude] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_escape]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:475:5
@@ -655,8 +655,8 @@ warning: `#[macro_escape]` attribute cannot be used on functions
 LL |     #[macro_escape] fn f() { }
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_escape]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:481:5
@@ -664,8 +664,8 @@ warning: `#[macro_escape]` attribute cannot be used on structs
 LL |     #[macro_escape] struct S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_escape]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:487:5
@@ -673,8 +673,8 @@ warning: `#[macro_escape]` attribute cannot be used on type aliases
 LL |     #[macro_escape] type T = S;
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_escape]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:493:5
@@ -682,8 +682,8 @@ warning: `#[macro_escape]` attribute cannot be used on inherent impl blocks
 LL |     #[macro_escape] impl S { }
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_escape]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:500:1
@@ -761,8 +761,8 @@ warning: `#[cold]` attribute cannot be used on modules
 LL | #[cold]
    | ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:548:17
@@ -770,8 +770,8 @@ warning: `#[cold]` attribute cannot be used on modules
 LL |     mod inner { #![cold] }
    |                 ^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:556:5
@@ -779,8 +779,8 @@ warning: `#[cold]` attribute cannot be used on structs
 LL |     #[cold] struct S;
    |     ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:562:5
@@ -788,8 +788,8 @@ warning: `#[cold]` attribute cannot be used on type aliases
 LL |     #[cold] type T = S;
    |     ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:568:5
@@ -797,8 +797,8 @@ warning: `#[cold]` attribute cannot be used on inherent impl blocks
 LL |     #[cold] impl S { }
    |     ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:575:1
@@ -806,8 +806,8 @@ warning: `#[link_name]` attribute cannot be used on modules
 LL | #[link_name = "1900"]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:581:5
@@ -815,8 +815,8 @@ warning: `#[link_name]` attribute cannot be used on foreign modules
 LL |     #[link_name = "1900"]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:588:17
@@ -824,8 +824,8 @@ warning: `#[link_name]` attribute cannot be used on modules
 LL |     mod inner { #![link_name="1900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:594:5
@@ -833,8 +833,8 @@ warning: `#[link_name]` attribute cannot be used on functions
 LL |     #[link_name = "1900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:600:5
@@ -842,8 +842,8 @@ warning: `#[link_name]` attribute cannot be used on structs
 LL |     #[link_name = "1900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:606:5
@@ -851,8 +851,8 @@ warning: `#[link_name]` attribute cannot be used on type aliases
 LL |     #[link_name = "1900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:612:5
@@ -860,8 +860,8 @@ warning: `#[link_name]` attribute cannot be used on inherent impl blocks
 LL |     #[link_name = "1900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:619:1
@@ -869,8 +869,8 @@ warning: `#[link_section]` attribute cannot be used on modules
 LL | #[link_section = ",1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:625:17
@@ -878,8 +878,8 @@ warning: `#[link_section]` attribute cannot be used on modules
 LL |     mod inner { #![link_section=",1800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:633:5
@@ -887,8 +887,8 @@ warning: `#[link_section]` attribute cannot be used on structs
 LL |     #[link_section = ",1800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:639:5
@@ -896,8 +896,8 @@ warning: `#[link_section]` attribute cannot be used on type aliases
 LL |     #[link_section = ",1800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:645:5
@@ -905,8 +905,8 @@ warning: `#[link_section]` attribute cannot be used on inherent impl blocks
 LL |     #[link_section = ",1800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on traits
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:651:5
@@ -914,8 +914,8 @@ warning: `#[link_section]` attribute cannot be used on traits
 LL |     #[link_section = ",1800"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on required trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:657:9
@@ -923,8 +923,8 @@ warning: `#[link_section]` attribute cannot be used on required trait methods
 LL |         #[link_section = ",1800"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:736:1
@@ -932,8 +932,8 @@ warning: `#[must_use]` attribute cannot be used on modules
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:741:17
@@ -941,8 +941,8 @@ warning: `#[must_use]` attribute cannot be used on modules
 LL |     mod inner { #![must_use] }
    |                 ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:750:5
@@ -950,8 +950,8 @@ warning: `#[must_use]` attribute cannot be used on type aliases
 LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:755:5
@@ -959,8 +959,8 @@ warning: `#[must_use]` attribute cannot be used on inherent impl blocks
 LL |     #[must_use] impl S { }
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:761:1
@@ -1528,8 +1528,8 @@ warning: `#[should_panic]` attribute cannot be used on crates
 LL | #![should_panic]
    | ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:53:1
@@ -1537,8 +1537,8 @@ warning: `#[ignore]` attribute cannot be used on crates
 LL | #![ignore]
    | ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[proc_macro_derive]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:61:1
@@ -1546,8 +1546,8 @@ warning: `#[proc_macro_derive]` attribute cannot be used on crates
 LL | #![proc_macro_derive(Test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[proc_macro_derive]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:66:1
@@ -1555,8 +1555,8 @@ warning: `#[cold]` attribute cannot be used on crates
 LL | #![cold]
    | ^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:72:1
@@ -1564,8 +1564,8 @@ warning: `#[link_name]` attribute cannot be used on crates
 LL | #![link_name = "1900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:77:1
@@ -1573,8 +1573,8 @@ warning: `#[link_section]` attribute cannot be used on crates
 LL | #![link_section = ",1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:82:1
@@ -1582,8 +1582,8 @@ warning: `#[must_use]` attribute cannot be used on crates
 LL | #![must_use]
    | ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: 169 warnings emitted
 

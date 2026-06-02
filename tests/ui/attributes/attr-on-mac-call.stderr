@@ -4,8 +4,8 @@ warning: `#[export_name]` attribute cannot be used on macro calls
 LL |     #[export_name = "x"]
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[export_name]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/attr-on-mac-call.rs:3:9
    |
@@ -18,8 +18,8 @@ warning: `#[naked]` attribute cannot be used on macro calls
 LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[naked]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[track_caller]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:12:5
@@ -27,8 +27,8 @@ warning: `#[track_caller]` attribute cannot be used on macro calls
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[track_caller]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[used]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:15:5
@@ -36,8 +36,8 @@ warning: `#[used]` attribute cannot be used on macro calls
 LL |     #[used]
    |     ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[used]` can only be applied to statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[target_feature]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:18:5
@@ -45,8 +45,8 @@ warning: `#[target_feature]` attribute cannot be used on macro calls
 LL |     #[target_feature(enable = "x")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[target_feature]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[deprecated]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:21:5
@@ -54,8 +54,8 @@ warning: `#[deprecated]` attribute cannot be used on macro calls
 LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[inline]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:24:5
@@ -63,8 +63,8 @@ warning: `#[inline]` attribute cannot be used on macro calls
 LL |     #[inline]
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:27:5
@@ -72,8 +72,8 @@ warning: `#[link_name]` attribute cannot be used on macro calls
 LL |     #[link_name = "x"]
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_section]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:30:5
@@ -81,8 +81,8 @@ warning: `#[link_section]` attribute cannot be used on macro calls
 LL |     #[link_section = "__TEXT,__text"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_section]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_ordinal]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:33:5
@@ -90,8 +90,8 @@ warning: `#[link_ordinal]` attribute cannot be used on macro calls
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_ordinal]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[non_exhaustive]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:36:5
@@ -99,8 +99,8 @@ warning: `#[non_exhaustive]` attribute cannot be used on macro calls
 LL |     #[non_exhaustive]
    |     ^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[non_exhaustive]` can be applied to data types and enum variants
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[proc_macro]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:39:5
@@ -108,8 +108,8 @@ warning: `#[proc_macro]` attribute cannot be used on macro calls
 LL |     #[proc_macro]
    |     ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[proc_macro]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[cold]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:42:5
@@ -117,8 +117,8 @@ warning: `#[cold]` attribute cannot be used on macro calls
 LL |     #[cold]
    |     ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:45:5
@@ -126,8 +126,8 @@ warning: `#[no_mangle]` attribute cannot be used on macro calls
 LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[deprecated]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:48:5
@@ -135,8 +135,8 @@ warning: `#[deprecated]` attribute cannot be used on macro calls
 LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[automatically_derived]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:51:5
@@ -144,8 +144,8 @@ warning: `#[automatically_derived]` attribute cannot be used on macro calls
 LL |     #[automatically_derived]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:54:5
@@ -153,8 +153,8 @@ warning: `#[macro_use]` attribute cannot be used on macro calls
 LL |     #[macro_use]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:57:5
@@ -162,8 +162,8 @@ warning: `#[must_use]` attribute cannot be used on macro calls
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:60:5
@@ -171,8 +171,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on macro calls
 LL |     #[no_implicit_prelude]
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[path]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:63:5
@@ -180,8 +180,8 @@ warning: `#[path]` attribute cannot be used on macro calls
 LL |     #[path = ""]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[path]` can only be applied to modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[ignore]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:66:5
@@ -189,8 +189,8 @@ warning: `#[ignore]` attribute cannot be used on macro calls
 LL |     #[ignore]
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[ignore]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[should_panic]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:69:5
@@ -198,8 +198,8 @@ warning: `#[should_panic]` attribute cannot be used on macro calls
 LL |     #[should_panic]
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[should_panic]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: 22 warnings emitted
 
