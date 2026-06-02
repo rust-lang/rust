@@ -22,9 +22,9 @@
 /// Use this for variants that have a textual identity for display
 /// purposes but should not be constructible from untrusted user input
 /// (e.g. variants that require out-of-band context to build correctly).
-/// Such variants still appear in `STR_VARIANTS`/`ALL_STR_VARIANTS` —
-/// callers needing a parseable-only view should filter through
-/// `FromStr` themselves.
+/// Such variants still appear in `STR_VARIANTS`/`ALL_STR_VARIANTS`;
+/// callers that want only the strings the user is allowed to supply
+/// should use `FROM_STR_VARIANTS` instead.
 ///
 /// Generates:
 /// * `VARIANTS` — every variant, in declaration order.
@@ -33,6 +33,10 @@
 /// * `ALL_STR_VARIANTS` — every accepted string (canonical + aliases) in
 ///   declaration order. Use this when help text should list all accepted
 ///   forms.
+/// * `FROM_STR_VARIANTS` — canonical string of each variant whose canonical
+///   string is accepted by `FromStr` (i.e. `STR_VARIANTS` minus any variant
+///   marked `@no_from_str`). Use this in diagnostics that list the inputs
+///   the user is actually allowed to supply.
 /// * `to_str()`, `Display`, `FromStr`. `FromStr::Err` is `()` because
 ///   diagnostic emission is handled by the caller.
 #[macro_export]
@@ -69,6 +73,12 @@ macro_rules! string_enum {
             $vis const ALL_STR_VARIANTS: &'static [&'static str] = &[
                 $( $( $repr, $( $alias, )* )? )*
             ];
+            #[allow(dead_code)]
+            $vis const FROM_STR_VARIANTS: &'static [&'static str] =
+                $crate::__string_enum_from_str_arr!(
+                    @collect []
+                    $( $( $repr $( @ $no_from_str )? , )? )*
+                );
 
             #[allow(unreachable_patterns)]
             $vis const fn to_str(&self) -> &'static str {
@@ -112,4 +122,24 @@ macro_rules! string_enum {
 #[macro_export]
 macro_rules! __string_enum_check_no_from_str {
     (no_from_str) => {};
+}
+
+/// Builds a `&[&str]` literal containing only the canonical strings of
+/// variants accepted by `FromStr`. Token-tree munches a comma-terminated
+/// stream of `$repr` (or `$repr @ no_from_str`) entries into an accumulator,
+/// then emits the full slice literal in one go — needed because in
+/// expression position a macro must expand to a single expression. Used
+/// internally by [`string_enum!`]; not part of the public surface.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __string_enum_from_str_arr {
+    (@collect [$($acc:literal,)*]) => {
+        &[ $($acc,)* ]
+    };
+    (@collect [$($acc:literal,)*] $repr:literal @ no_from_str , $($rest:tt)*) => {
+        $crate::__string_enum_from_str_arr!(@collect [$($acc,)*] $($rest)*)
+    };
+    (@collect [$($acc:literal,)*] $repr:literal , $($rest:tt)*) => {
+        $crate::__string_enum_from_str_arr!(@collect [$($acc,)* $repr,] $($rest)*)
+    };
 }
