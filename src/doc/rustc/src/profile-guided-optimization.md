@@ -176,7 +176,7 @@ build flags that you always build your application with. The only requirement is
 that DWARF debug info including source line information is generated. This DWARF
 information is important for the profiler to be able to map instructions back to
 source line locations. The accuracy of this DWARF information can be improved
-with the `-Zdebuginfo-for-profiling` option. For example:
+with the (unstable) `-Zdebuginfo-for-profiling` option. For example:
 
 ```bash
 rustc -Cdebuginfo=line-tables-only -Zdebuginfo-for-profiling -O main.rs
