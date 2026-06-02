@@ -18,8 +18,8 @@ warning: `#[inline]` attribute cannot be used on struct fields
 LL |     #[inline]
    |     ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
 warning: `#[inline]` attribute cannot be used on macro defs
@@ -28,8 +28,8 @@ warning: `#[inline]` attribute cannot be used on macro defs
 LL | #[inline]
    | ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[inline]` attribute cannot be used on macro defs
   --> $DIR/attr-usage-inline.rs:25:1
@@ -37,8 +37,8 @@ warning: `#[inline]` attribute cannot be used on macro defs
 LL | #[inline]
    | ^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[inline]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 2 previous errors; 3 warnings emitted
 

@@ -346,6 +346,10 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub previously_accepted: bool,
 }
 
 #[derive(Diagnostic)]
