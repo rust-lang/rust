@@ -231,6 +231,12 @@ impl_vv!("lsx", lsx_vfrsqrt_s, ls::simd_frsqrt_s, m128, f32x4);
 impl_vv!("lsx", lsx_vfrsqrt_d, ls::simd_frsqrt_d, m128d, f64x2);
 impl_vv!("lsx", lsx_vfrecip_s, ls::simd_frecip_s, m128, f32x4);
 impl_vv!("lsx", lsx_vfrecip_d, ls::simd_frecip_d, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrp_s, is::simd_ceil, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrp_d, is::simd_ceil, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrm_s, is::simd_floor, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrm_d, is::simd_floor, m128d, f64x2);
+impl_vv!("lsx", lsx_vfrintrz_s, is::simd_trunc, m128, f32x4);
+impl_vv!("lsx", lsx_vfrintrz_d, is::simd_trunc, m128d, f64x2);
 
 impl_gv!("lsx", lsx_vreplgr2vr_b, ls::simd_splat, m128i, i8x16, i32);
 impl_gv!("lsx", lsx_vreplgr2vr_h, ls::simd_splat, m128i, i16x8, i32);
