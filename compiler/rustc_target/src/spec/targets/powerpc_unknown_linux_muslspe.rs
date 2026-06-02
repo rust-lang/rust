@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::Spe,
             endian: Endian::Big,
-            features: "+msync".into(),
+            features: "+msync,+spe".into(),
             mcount: "_mcount".into(),
             ..base
         },
