@@ -1,8 +1,6 @@
 //@ build-fail
 //@ compile-flags: -Zwrite-long-types-to-disk=yes
 
-//~? ERROR reached the recursion limit while instantiating
-
 #![recursion_limit = "32"]
 
 fn quicksort<It: Clone + Iterator<Item = T>, I: IntoIterator<IntoIter = It>, T: Ord>(
@@ -16,6 +14,7 @@ fn quicksort<It: Clone + Iterator<Item = T>, I: IntoIterator<IntoIter = It>, T: 
             let greater = i.filter(|y| &x <= y);
 
             let mut v = quicksort(less);
+            //~^ ERROR reached the recursion limit while instantiating
             let u = quicksort(greater);
             v.push(x);
             v.extend(u);
