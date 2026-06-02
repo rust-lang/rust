@@ -1,11 +1,11 @@
 - // MIR for `std::future::async_drop_in_place::{closure#0}` before StateTransform
 + // MIR for `std::future::async_drop_in_place::{closure#0}` after StateTransform
   
-- fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<AsyncReference<'_>>()}, _2: std::future::ResumeTy) -> ()
+- fn async_drop_in_place::{closure#0}(_1: {static coroutine body of async_drop_in_place<AsyncReference<'_>>()}, _2: std::future::ResumeTy) -> ()
 - yields ()
 -  {
 -     let mut _0: ();
-+ fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<AsyncReference<'_>>()}>, _2: &mut Context<'_>) -> Poll<()> {
++ fn async_drop_in_place::{closure#0}(_1: Pin<&mut {static coroutine body of async_drop_in_place<AsyncReference<'_>>()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
 +     coroutine layout {
 +         field _s0: impl Future<Output = ()>;
 +         variant_fields = {
@@ -17,7 +17,7 @@
 +         }
 +         storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
 +     }
-+     let mut _0: std::task::Poll<()>;
++     let mut _0: std::ops::CoroutineState<(), ()>;
       let mut _3: &mut AsyncReference<'_>;
       let mut _4: impl std::future::Future<Output = ()>;
       let mut _5: std::future::ResumeTy;
@@ -38,23 +38,19 @@
       let mut _20: &mut AsyncReference<'_>;
 +     let mut _21: ();
 +     let mut _22: u32;
-+     let mut _23: &mut {async fn body of std::future::async_drop_in_place<AsyncReference<'_>>()};
-+     let _24: std::future::ResumeTy;
-+     let mut _25: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _23: &mut {static coroutine body of std::future::async_drop_in_place<AsyncReference<'_>>()};
   
       bb0: {
 -         _3 = move (_1.0: &mut AsyncReference<'_>);
 -         _20 = &mut (*_3);
 -         _19 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _20) -> [return: bb22, unwind: bb2];
-+         _25 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _24 = std::future::ResumeTy(move _25);
-+         _23 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncReference<'_>>()});
++         _23 = copy (_1.0: &mut {static coroutine body of std::future::async_drop_in_place<AsyncReference<'_>>()});
 +         _22 = discriminant((*_23));
 +         switchInt(move _22) -> [0: bb20, 1: bb19, 2: bb18, 3: bb16, 4: bb17, otherwise: bb7];
       }
   
       bb1: {
-+         _0 = Poll::<()>::Ready(move _21);
++         _0 = CoroutineState::<(), ()>::Complete(move _21);
 +         discriminant((*_23)) = 1;
           return;
       }
@@ -87,7 +83,7 @@
   
       bb6: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb6, unwind: bb5];
-+         _24 = move _5;
++         _2 = move _5;
 +         StorageDead(_5);
 +         goto -> bb5;
       }
@@ -103,7 +99,7 @@
 -         _2 = move _5;
 -         StorageDead(_5);
 -         goto -> bb14;
-+         _24 = move _12;
++         _2 = move _12;
 +         StorageDead(_12);
 +         goto -> bb13;
       }
@@ -112,7 +108,7 @@
 -         StorageLive(_5);
 -         _5 = yield(const ()) -> [resume: bb7, drop: bb8];
 +         StorageLive(_12);
-+         _0 = Poll::<()>::Pending;
++         _0 = CoroutineState::<(), ()>::Yielded(const ());
 +         StorageDead(_12);
 +         discriminant((*_23)) = 4;
 +         return;
@@ -132,7 +128,7 @@
   
       bb12: {
 -         _6 = <impl Future<Output = ()> as Future>::poll(move _8, move _9) -> [return: bb11, unwind: bb5];
-+         _17 = move _24;
++         _17 = move _2;
 +         _16 = copy (_17.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb11;
       }
@@ -165,14 +161,14 @@
 -         StorageDead(_12);
 -         goto -> bb14;
 +         StorageLive(_5);
-+         _5 = move _24;
++         _5 = move _2;
 +         goto -> bb6;
       }
   
       bb17: {
           StorageLive(_12);
 -         _12 = yield(const ()) -> [resume: bb15, drop: bb16];
-+         _12 = move _24;
++         _12 = move _2;
 +         goto -> bb8;
       }
   
@@ -184,7 +180,7 @@
   
       bb19: {
 -         _13 = <impl Future<Output = ()> as Future>::poll(move _15, move _16) -> [return: bb18, unwind: bb5];
-+         _0 = Poll::<()>::Ready(const ());
++         _0 = CoroutineState::<(), ()>::Complete(const ());
 +         return;
       }
   
