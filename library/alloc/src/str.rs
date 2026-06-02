@@ -7,8 +7,6 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-#[cfg(not(no_global_oom_handling))]
-use core::ascii;
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
@@ -433,7 +431,9 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_lowercase);
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
 
         let prefix_len = s.len();
 
@@ -638,7 +638,9 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_uppercase);
+        // SAFETY: `to_ascii_uppercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_uppercase) };
 
         for c in rest.chars() {
             match conversions::to_upper(c) {
@@ -675,8 +677,8 @@ impl str {
     /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
     /// even though Unicode considers them canonically equivalent.
     ///
-    /// Like [`char::to_casefold_unnormalized()`], this method does not handle language-specific
-    /// casings like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// Like [`char::to_casefold_unnormalized()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
     /// for more information.
     ///
     /// # Examples
@@ -738,7 +740,9 @@ impl str {
                   without modifying the original"]
     #[unstable(feature = "casefold", issue = "154742")]
     pub fn to_casefold_unnormalized(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, ascii::Char::to_lowercase);
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
 
         for c in rest.chars() {
             match conversions::to_casefold(c) {
@@ -901,11 +905,15 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 ///
 /// This function is only public so that it can be verified in a codegen test,
 /// see `issue-123712-str-to-lower-autovectorization.rs`.
+///
+/// # Safety
+///
+/// `convert` must return an ASCII byte for every ASCII input byte.
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 #[inline]
 #[cfg(not(no_global_oom_handling))]
-pub fn convert_while_ascii(s: &str, convert: fn(ascii::Char) -> ascii::Char) -> (String, &str) {
+pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
     // Process the input in chunks of 16 bytes to enable auto-vectorization.
     // Previously the chunk size depended on the size of `usize`,
     // but on 32-bit platforms with sse or neon is also the better choice.
@@ -913,7 +921,7 @@ pub fn convert_while_ascii(s: &str, convert: fn(ascii::Char) -> ascii::Char) -> 
     const N: usize = 16;
 
     let mut slice = s.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(slice.len());
+    let mut out = Vec::with_capacity(slice.len());
     let mut out_slice = out.spare_capacity_mut();
 
     let mut ascii_prefix_len = 0_usize;
@@ -938,10 +946,7 @@ pub fn convert_while_ascii(s: &str, convert: fn(ascii::Char) -> ascii::Char) -> 
         }
 
         for j in 0..N {
-            out_chunk[j] = MaybeUninit::new(
-                // SAFETY: we checked that this byte is valid ASCII above
-                convert(unsafe { ascii::Char::from_u8_unchecked(chunk[j]) }).to_u8(),
-            );
+            out_chunk[j] = MaybeUninit::new(convert(&chunk[j]));
         }
 
         ascii_prefix_len += N;
@@ -955,17 +960,10 @@ pub fn convert_while_ascii(s: &str, convert: fn(ascii::Char) -> ascii::Char) -> 
         if byte > 127 {
             break;
         }
-
-        let converted_byte = MaybeUninit::new(
-            // SAFETY: we checked that this byte is valid ASCII above
-            convert(unsafe { ascii::Char::from_u8_unchecked(byte) }).to_u8(),
-        );
-
         // SAFETY: out_slice has at least same length as input slice
         unsafe {
-            *out_slice.get_unchecked_mut(0) = converted_byte;
+            *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
         }
-
         ascii_prefix_len += 1;
         slice = unsafe { slice.get_unchecked(1..) };
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
