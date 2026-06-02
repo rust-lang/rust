@@ -308,14 +308,15 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
     tool_name
 }
 
+pub enum AddArchiveKind<'a> {
+    Rlib(/*skip*/ &'a dyn Fn(&str, ArchiveEntryKind) -> bool),
+    Other,
+}
+
 pub trait ArchiveBuilder {
     fn add_file(&mut self, path: &Path, kind: ArchiveEntryKind);
 
-    fn add_archive(
-        &mut self,
-        archive: &Path,
-        skip: Option<Box<dyn FnMut(&str, ArchiveEntryKind) -> bool + 'static>>,
-    ) -> io::Result<()>;
+    fn add_archive(&mut self, archive: &Path, kind: AddArchiveKind<'_>) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
 }
@@ -458,11 +459,7 @@ pub fn try_extract_macho_fat_archive(
 }
 
 impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
-    fn add_archive(
-        &mut self,
-        archive_path: &Path,
-        mut skip: Option<Box<dyn FnMut(&str, ArchiveEntryKind) -> bool + 'static>>,
-    ) -> io::Result<()> {
+    fn add_archive(&mut self, archive_path: &Path, ar_kind: AddArchiveKind<'_>) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx")
             && let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
@@ -477,7 +474,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-        let metadata_link = rmeta_link::read(&archive, &archive_map, &archive_path);
+        let metadata_link = match ar_kind {
+            AddArchiveKind::Rlib(..) => rmeta_link::read(&archive, &archive_map, &archive_path),
+            AddArchiveKind::Other => None,
+        };
         let archive_index = self.src_archives.len();
 
         if let Some(expected_kind) =
@@ -505,7 +505,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             } else {
                 ArchiveEntryKind::Other
             };
-            let drop = skip.as_mut().is_some_and(|f| f(&file_name, kind));
+            let drop = match ar_kind {
+                AddArchiveKind::Rlib(skip) => skip(&file_name, kind),
+                AddArchiveKind::Other => false,
+            };
             if !drop {
                 let source = if entry.is_thin() {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));

@@ -53,7 +53,7 @@ use rustc_target::spec::{
 };
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind};
+use super::archive::{AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
@@ -419,7 +419,7 @@ fn link_rlib<'a>(
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
-            ab.add_archive(&path, None).unwrap_or_else(|error| {
+            ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
         }
@@ -436,7 +436,7 @@ fn link_rlib<'a>(
             tmpdir.as_ref(),
             true,
         ) {
-            ab.add_archive(&output_path, None).unwrap_or_else(|error| {
+            ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx()
                     .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
             });
@@ -529,7 +529,7 @@ fn link_staticlib(
         let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
         ab.add_archive(
             path,
-            Some(Box::new(move |fname: &str, entry_kind| {
+            AddArchiveKind::Rlib(&|fname: &str, entry_kind| {
                 // Ignore metadata and rmeta-link files.
                 if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
@@ -546,7 +546,7 @@ fn link_staticlib(
                 }
 
                 false
-            })),
+            }),
         )
         .unwrap();
 
@@ -557,7 +557,7 @@ fn link_staticlib(
         for filename in relevant_libs.iter() {
             let joined = tempdir.as_ref().join(filename.as_str());
             let path = joined.as_path();
-            ab.add_archive(path, None).unwrap();
+            ab.add_archive(path, AddArchiveKind::Other).unwrap();
         }
 
         all_native_libs.extend(crate_info.native_libraries[&cnum].iter().cloned());
@@ -3240,7 +3240,7 @@ fn add_static_crate(
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
             cratepath,
-            Some(Box::new(move |f, entry_kind| {
+            AddArchiveKind::Rlib(&|f, entry_kind| {
                 if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
@@ -3266,7 +3266,7 @@ fn add_static_crate(
                 }
 
                 false
-            })),
+            }),
         ) {
             sess.dcx()
                 .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
