@@ -738,7 +738,7 @@ impl EncoderState {
             // Prevent more indices from being allocated on this thread.
             local.remaining_node_index = 0;
 
-            let data = mem::replace(&mut local.encoder.data, Vec::new());
+            let data = mem::take(&mut local.encoder.data);
             self.file.lock().as_mut().unwrap().emit_raw_bytes(&data);
 
             LocalEncoderResult {
