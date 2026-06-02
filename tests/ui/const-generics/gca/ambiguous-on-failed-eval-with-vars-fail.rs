@@ -29,12 +29,14 @@ fn test_free() {
     let (mut arr, mut arr_with_weird_len) = free();
     //[next]~^ ERROR type annotations needed
     arr_with_weird_len = [(); 10];
+    //[old]~^ ERROR mismatched types
 }
 
 fn test_free_mismatch() {
     let (mut arr, mut arr_with_weird_len) = free();
     //[next]~^ ERROR type mismatch resolving `10 == 2`
     arr_with_weird_len = [(); 2];
+    //[old]~^ ERROR mismatched types
     arr = [(); 10];
 }
 
@@ -46,12 +48,14 @@ fn test_proj() {
     let (mut arr, mut arr_with_weird_len) = proj();
     //[next]~^ ERROR type annotations needed
     arr_with_weird_len = [(); 10];
+    //[old]~^ ERROR mismatched types
 }
 
 fn test_proj_mismatch() {
     let (mut arr, mut arr_with_weird_len) = proj();
     //[next]~^ ERROR type mismatch resolving `10 == 2`
     arr_with_weird_len = [(); 2];
+    //[old]~^ ERROR mismatched types
     arr = [(); 10];
 }
 
