@@ -476,10 +476,9 @@ pub(crate) struct SlicingSuggestion {
 
 #[derive(Diagnostic)]
 #[diag("expected function, found {$found}", code = E0618)]
-pub(crate) struct InvalidCallee<'tcx> {
+pub(crate) struct InvalidCallee {
     #[primary_span]
     pub span: Span,
-    pub ty: Ty<'tcx>,
     pub found: String,
 }
 

@@ -311,18 +311,18 @@ impl NonSnakeCase {
                                 suggestion: sc_ident,
                             }
                         } else {
-                            NonSnakeCaseDiagSub::SuggestionAndNote { span }
+                            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span }
                         }
                     } else {
-                        NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc.clone() }
+                        NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc }
                     }
                 } else {
-                    NonSnakeCaseDiagSub::Help
+                    NonSnakeCaseDiagSub::Help { sc }
                 }
             } else {
                 NonSnakeCaseDiagSub::Label { span }
             };
-            cx.emit_span_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sc, sub });
+            cx.emit_span_lint(NON_SNAKE_CASE, span, NonSnakeCaseDiag { sort, name, sub });
         }
     }
 }

@@ -1562,17 +1562,16 @@ pub(crate) enum NonCamelCaseTypeSub {
 pub(crate) struct NonSnakeCaseDiag<'a> {
     pub sort: &'a str,
     pub name: &'a str,
-    pub sc: String,
     #[subdiagnostic]
     pub sub: NonSnakeCaseDiagSub,
 }
 
 pub(crate) enum NonSnakeCaseDiagSub {
     Label { span: Span },
-    Help,
+    Help { sc: String },
     RenameOrConvertSuggestion { span: Span, suggestion: Ident },
     ConvertSuggestion { span: Span, suggestion: String },
-    SuggestionAndNote { span: Span },
+    SuggestionAndNote { sc: String, span: Span },
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
@@ -1581,7 +1580,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, msg!("should have a snake_case name"));
             }
-            NonSnakeCaseDiagSub::Help => {
+            NonSnakeCaseDiagSub::Help { sc } => {
+                diag.arg("sc", sc);
                 diag.help(msg!("convert the identifier to snake case: `{$sc}`"));
             }
             NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
@@ -1600,7 +1600,8 @@ impl Subdiagnostic for NonSnakeCaseDiagSub {
                     Applicability::MaybeIncorrect,
                 );
             }
-            NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
+            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span } => {
+                diag.arg("sc", sc);
                 diag.note(msg!("`{$sc}` cannot be used as a raw identifier"));
                 diag.span_suggestion(
                     span,
