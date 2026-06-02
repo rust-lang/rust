@@ -1209,12 +1209,13 @@ pub(crate) struct EiiWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` required, but not found")]
+#[diag("`#[{$name}]` {$kind} required, but not found")]
 pub(crate) struct EiiWithoutImpl {
     #[primary_span]
     #[label("expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`")]
     pub span: Span,
     pub name: Symbol,
+    pub kind: &'static str,
 
     pub current_crate_name: Symbol,
     pub decl_crate_name: Symbol,
