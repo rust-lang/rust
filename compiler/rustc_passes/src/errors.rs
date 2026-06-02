@@ -699,38 +699,6 @@ pub(crate) struct UselessAssignment<'a> {
 pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
-pub(crate) enum AttrApplication {
-    #[diag("attribute should be applied to an enum", code = E0517)]
-    Enum {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not an enum")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct", code = E0517)]
-    Struct {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct or union", code = E0517)]
-    StructUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct or union")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct, enum, or union", code = E0517)]
-    StructEnumUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct, enum, or union")]
-        span: Span,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag("transparent {$target} cannot have other repr hints", code = E0692)]
 pub(crate) struct TransparentIncompatible {
     #[primary_span]
@@ -1152,24 +1120,6 @@ pub(crate) enum UnexportableItem<'a> {
         vis_note: Span,
         field_name: &'a str,
     },
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[repr(align(...))]` is not supported on {$item}")]
-pub(crate) struct ReprAlignShouldBeAlign {
-    #[primary_span]
-    #[help("use `#[rustc_align(...)]` instead")]
-    pub span: Span,
-    pub item: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[repr(align(...))]` is not supported on {$item}")]
-pub(crate) struct ReprAlignShouldBeAlignStatic {
-    #[primary_span]
-    #[help("use `#[rustc_align_static(...)]` instead")]
-    pub span: Span,
-    pub item: &'static str,
 }
 
 #[derive(Diagnostic)]

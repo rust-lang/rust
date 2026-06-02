@@ -45,7 +45,6 @@
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-//~| ERROR is not supported on functions
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
