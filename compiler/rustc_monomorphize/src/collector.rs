@@ -356,6 +356,7 @@ fn collect_items_root<'tcx>(
     starting_item: Spanned<MonoItem<'tcx>>,
     state: &SharedState<'tcx>,
     recursion_limit: Limit,
+    type_length_limit: Limit,
 ) {
     if !state.visited.lock().insert(starting_item.node) {
         // We've been here already, no need to search again.
@@ -369,6 +370,7 @@ fn collect_items_root<'tcx>(
         &mut recursion_depths,
         recursion_limit,
         CollectionMode::UsedItems,
+        type_length_limit,
     );
 }
 
@@ -377,7 +379,10 @@ fn collect_items_root<'tcx>(
 ///
 /// `mode` determined whether we are scanning for [used items][CollectionMode::UsedItems]
 /// or [mentioned items][CollectionMode::MentionedItems].
-#[instrument(skip(tcx, state, recursion_depths, recursion_limit), level = "debug")]
+#[instrument(
+    skip(tcx, state, recursion_depths, recursion_limit, type_length_limit),
+    level = "debug"
+)]
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
@@ -385,6 +390,7 @@ fn collect_items_rec<'tcx>(
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     mode: CollectionMode,
+    type_length_limit: Limit,
 ) {
     let mut used_items = MonoItems::new();
     let mut mentioned_items = MonoItems::new();
@@ -462,13 +468,14 @@ fn collect_items_rec<'tcx>(
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(tcx.should_codegen_locally(instance));
 
-            // Keep track of the monomorphization recursion depth
+            // Check for recursive monomorphization before collecting uses
             recursion_depth_reset = Some(check_recursion_limit(
                 tcx,
                 instance,
                 starting_item.span,
                 recursion_depths,
                 recursion_limit,
+                type_length_limit,
             ));
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
@@ -594,6 +601,7 @@ fn collect_items_rec<'tcx>(
                 recursion_depths,
                 recursion_limit,
                 CollectionMode::UsedItems,
+                type_length_limit,
             );
         }
     }
@@ -608,6 +616,7 @@ fn collect_items_rec<'tcx>(
             recursion_depths,
             recursion_limit,
             CollectionMode::MentionedItems,
+            type_length_limit,
         );
     }
 
@@ -651,6 +660,7 @@ fn check_recursion_limit<'tcx>(
     span: Span,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
+    type_length_limit: Limit,
 ) -> (DefId, usize) {
     let def_id = instance.def_id();
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
@@ -664,17 +674,17 @@ fn check_recursion_limit<'tcx>(
         recursion_depth
     };
 
-    // Rust code can create exponentially-long types using only a
-    // polynomial recursion depth. Start checking the type length before
-    // the depth limit is reached, to avoid hanging on enormous instance
-    // arguments.
-    let type_length_check_depth = (recursion_limit / 8).0.max(4);
+    // Recursive monomorphization can grow instance args exponentially with polynomial
+    // recursion depth. Start checking type lengths around `ilog2(type_length_limit.0)`
+    // to avoid hanging on enormous instance arguments.
+    let type_length_check_depth = type_length_limit.0.checked_ilog2().unwrap_or(0).max(4) as usize;
     let recursive_type_growth_limit_reached = recursion_depth >= type_length_check_depth
-        && !tcx.type_length_limit().value_within_limit(type_length(instance.args));
+        && !type_length_limit.value_within_limit(type_length(instance.args));
 
-    // Code that needs to instantiate the same function recursively
-    // more than the recursion limit, or with type arguments that exceed the
-    // type length limit, is assumed to be causing an infinite expansion.
+    // Code that needs to instantiate the same function recursively more
+    // than the recursion limit is assumed to be causing an infinite
+    // expansion. Bail out earlier if recursive instantiations have already
+    // produced instance args exceeding the type length limit.
     if !recursion_limit.value_within_limit(adjusted_recursion_depth)
         || recursive_type_growth_limit_reached
     {
@@ -1837,9 +1847,17 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     };
     let recursion_limit = tcx.recursion_limit();
 
+    let type_length_limit = tcx.type_length_limit();
+
     tcx.sess.time("monomorphization_collector_graph_walk", || {
         par_for_each_in(roots, |root| {
-            collect_items_root(tcx, dummy_spanned(*root), &state, recursion_limit);
+            collect_items_root(
+                tcx,
+                dummy_spanned(*root),
+                &state,
+                recursion_limit,
+                type_length_limit,
+            );
         });
     });
 

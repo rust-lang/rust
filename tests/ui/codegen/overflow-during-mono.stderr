@@ -1,8 +1,16 @@
-error: reached the recursion limit while instantiating `<Filter<Filter<..., ...>, ...> as Iterator>::try_fold::<(), ..., ...>`
-  --> $SRC_DIR/core/src/iter/adapters/filter.rs:LL:COL
+error: reached the recursion limit while instantiating `quicksort::<Filter<Filter<Filter<..., ...>, ...>, ...>, ..., i32>`
+  --> $DIR/overflow-during-mono.rs:16:25
    |
-note: `<Filter<I, P> as Iterator>::try_fold` defined here
-  --> $SRC_DIR/core/src/iter/adapters/filter.rs:LL:COL
+LL |             let mut v = quicksort(less);
+   |                         ^^^^^^^^^^^^^^^
+   |
+note: `quicksort` defined here
+  --> $DIR/overflow-during-mono.rs:6:1
+   |
+LL | / fn quicksort<It: Clone + Iterator<Item = T>, I: IntoIterator<IntoIter = It>, T: Ord>(
+LL | |     i: I,
+LL | | ) -> Vec<T> {
+   | |___________^
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/overflow-during-mono.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 

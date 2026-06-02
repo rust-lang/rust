@@ -37,7 +37,6 @@ impl C {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &C(ref base) = self;
         base.matches(&|| C(base.clone()).matches(f))
-        //~^ ERROR reached the recursion limit while instantiating
     }
 }
 
@@ -48,6 +47,7 @@ impl D {
     pub fn matches<F: Fn()>(&self, f: &F) {
         let &D(ref a) = self;
         a.matches(f)
+        //~^ ERROR reached the recursion limit while instantiating
     }
 }
 
