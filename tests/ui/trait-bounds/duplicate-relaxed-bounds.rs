@@ -9,7 +9,6 @@ trait Trait {
     // even on *associated types* like here. Test that we no longer do that.
     type Type: ?Sized + ?Sized;
     //~^ ERROR duplicate relaxed `Sized` bounds
-    //~| ERROR duplicate relaxed `Sized` bounds
 
     // Make sure, should we ever allow such where bounds,
     // we still detect duplicate relaxed bounds.

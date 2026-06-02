@@ -11,6 +11,7 @@ use rustc_hir::{
 };
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
+use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1098,7 +1099,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
-                                RelaxedBoundPolicy::Allowed,
+                                RelaxedBoundPolicy::Allowed(&mut Default::default()),
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
@@ -1886,6 +1887,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assert!(self.impl_trait_bounds.is_empty());
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
+        // We need to make sure that generic params don't have multiple relaxed bounds for the same trait
+        // across generic param bounds and where bounds.
+        let mut dedup_map: IndexMap<LocalDefId, _> = Default::default();
         predicates.extend(generics.params.iter().filter_map(|param| {
             self.lower_generic_bound_predicate(
                 param.ident,
@@ -1894,18 +1898,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.bounds,
                 param.colon_span,
                 generics.span,
-                RelaxedBoundPolicy::Allowed,
+                RelaxedBoundPolicy::Allowed(
+                    dedup_map.entry(self.local_def_id(param.id)).or_default(),
+                ),
                 itctx,
                 PredicateOrigin::GenericParam,
             )
         }));
-        predicates.extend(
-            generics
-                .where_clause
-                .predicates
-                .iter()
-                .map(|predicate| self.lower_where_predicate(predicate, &generics.params)),
-        );
+        predicates.extend(generics.where_clause.predicates.iter().map(|predicate| {
+            self.lower_where_predicate(predicate, &generics.params, &mut dedup_map)
+        }));
 
         let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> = self
             .lower_generic_params_mut(&generics.params, hir::GenericParamSource::Generics)
@@ -1981,7 +1983,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bounds: &[GenericBound],
         colon_span: Option<Span>,
         parent_span: Span,
-        rbp: RelaxedBoundPolicy,
+        rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -2046,6 +2048,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         pred: &WherePredicate,
         params: &[ast::GenericParam],
+        dedup_map: &mut IndexMap<LocalDefId, IndexMap<DefId, Span>>,
     ) -> hir::WherePredicate<'hir> {
         let hir_id = self.lower_node_id(pred.id);
         let span = self.lower_span(pred.span);
@@ -2062,7 +2065,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {
-                    RelaxedBoundPolicy::Allowed
+                    RelaxedBoundPolicy::Allowed(dedup_map.entry(def_id.expect_local()).or_default())
                 } else {
                     RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
                 };
@@ -2092,7 +2095,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                     bounds: self.lower_param_bounds(
                         bounds,
-                        RelaxedBoundPolicy::Allowed,
+                        RelaxedBoundPolicy::Allowed(&mut Default::default()),
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,
