@@ -1496,6 +1496,7 @@ libs = [
     "@thomcc",
     "@joboet",
     "@nia-e",
+    "@LawnGnome",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
