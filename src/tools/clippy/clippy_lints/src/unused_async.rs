@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
-use clippy_utils::is_def_id_trait_method;
+use clippy_utils::{get_async_closure_expr, is_def_id_trait_method};
 use clippy_utils::source::{HasSession, snippet_with_applicability, walk_span_to_context};
 use clippy_utils::usage::is_todo_unimplemented_stub;
 use rustc_errors::Applicability;
@@ -258,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
 
             if !visitor.found_await
                 && let Some(builtin_crate) = clippy_utils::std_or_core(cx)
-                && let Some(inner) = unpack_async_fn_body(cx, body)
+                && let Some(inner) = get_async_closure_expr(cx.tcx, body.value)
                 // Find the tail expression contained in the async fn (if any),
                 // which will be wrapped in std::future::ready.
                 && let ExprKind::Block(block, _) = inner.kind
@@ -319,47 +319,6 @@ fn is_default_trait_impl(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     )
 }
 
-/// Get the inner expression of the body of an async function.
-///
-/// If it is not an async function, returns `None`.
-///
-/// An async function like
-/// ```rs
-/// async fn get_random_number() -> i64 {
-///    do_something();
-///    4
-/// }
-/// ```
-/// (roughly) desugars to
-/// ```rs
-/// fn get_random_number() -> impl Future<Output = i64> {
-///     async move {
-///         do_something();
-///         4
-///     }
-/// }
-/// ```
-///
-/// We first get to the `async move {}` block,
-/// which is the one and only expression in the body of the function.
-/// This block is a coroutine wrapped in a closure.
-/// The expression in this block is contained in a terminating scope.
-///
-/// This function returns that expression in `Some(...)` if this body indeed is an async function.
-fn unpack_async_fn_body<'hir>(cx: &LateContext<'hir>, body: &Body<'hir>) -> Option<&'hir Expr<'hir>> {
-    if let ExprKind::Closure(closure) = body.value.kind
-        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) = closure.kind
-        && let body = cx.tcx.hir_body(closure.body)
-        && let ExprKind::Block(block, _) = body.value.kind
-        && let Some(expr) = block.expr
-        && let ExprKind::DropTemps(inner) = expr.kind
-    {
-        Some(inner)
-    } else {
-        None
-    }
-}
-
 fn async_fn_contains_todo_unimplemented_macro<'hir>(cx: &LateContext<'hir>, body: &Body<'hir>) -> bool {
-    unpack_async_fn_body(cx, body).is_some_and(|inner| is_todo_unimplemented_stub(cx, inner))
+    get_async_closure_expr(cx.tcx, body.value).is_some_and(|inner| is_todo_unimplemented_stub(cx, inner))
 }

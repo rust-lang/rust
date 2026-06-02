@@ -62,7 +62,6 @@ pub async fn macro_expn() {
     macro_rules! macro_ {
         () => {
             Box::pin(async {
-                //~^ large_futures
                 let x = [0i32; 1024 * 16];
                 async {}.await;
                 println!("macro: {:?}", x);
@@ -70,6 +69,7 @@ pub async fn macro_expn() {
         };
     }
     macro_!().await
+    //~^ large_futures
 }
 
 fn main() {}

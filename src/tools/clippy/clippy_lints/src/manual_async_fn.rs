@@ -1,11 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::desugared_async_block;
 use clippy_utils::source::{SpanRangeExt, position_before_rarrow, snippet_block};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{
-    Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
-    FnRetTy, GenericBound, Node, OpaqueTy, TraitRef, Ty, TyKind,
-};
+use rustc_hir::{Body, ExprKind, FnDecl, FnRetTy, GenericBound, Node, OpaqueTy, TraitRef, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty;
@@ -59,7 +57,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             // Check that the body of the function consists of one async block
             && let ExprKind::Block(block, _) = body.value.kind
             && block.stmts.is_empty()
-            && let Some(closure_body) = desugared_async_block(cx, block)
+            && let Some(body_expr) = block.expr
+            && let Some((_, closure_body)) = desugared_async_block(cx, body_expr)
             && let Some(vis_span_opt) = match cx.tcx.hir_node_by_def_id(fn_def_id) {
                 Node::Item(item) => Some(Some(item.vis_span)),
                 Node::ImplItem(impl_item) => Some(impl_item.vis_span()),
@@ -163,20 +162,6 @@ fn captures_all_lifetimes(cx: &LateContext<'_>, fn_def_id: LocalDefId, opaque_de
         })
         .count();
     num_captured_lifetimes == num_early_lifetimes + num_late_lifetimes
-}
-
-fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
-    if let Some(&Expr {
-        kind: ExprKind::Closure(&Closure { kind, body, .. }),
-        ..
-    }) = block.expr
-        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
-            kind
-    {
-        return Some(cx.tcx.hir_body(body));
-    }
-
-    None
 }
 
 fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str, String)> {
