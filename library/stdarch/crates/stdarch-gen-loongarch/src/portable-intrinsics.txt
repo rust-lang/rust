@@ -277,6 +277,8 @@ lsx_vrotri_w
 lsx_vrotri_d
 lsx_vfrecip_s
 lsx_vfrecip_d
+lsx_vfrsqrt_s
+lsx_vfrsqrt_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -555,3 +557,5 @@ lasx_xvrotri_w
 lasx_xvrotri_d
 lasx_xvfrecip_s
 lasx_xvfrecip_d
+lasx_xvfrsqrt_s
+lasx_xvfrsqrt_d

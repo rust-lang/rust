@@ -217,10 +217,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vfrint_s(a: __v4f32) -> __v4f32;
     #[link_name = "llvm.loongarch.lsx.vfrint.d"]
     fn __lsx_vfrint_d(a: __v2f64) -> __v2f64;
-    #[link_name = "llvm.loongarch.lsx.vfrsqrt.s"]
-    fn __lsx_vfrsqrt_s(a: __v4f32) -> __v4f32;
-    #[link_name = "llvm.loongarch.lsx.vfrsqrt.d"]
-    fn __lsx_vfrsqrt_d(a: __v2f64) -> __v2f64;
     #[link_name = "llvm.loongarch.lsx.vflogb.s"]
     fn __lsx_vflogb_s(a: __v4f32) -> __v4f32;
     #[link_name = "llvm.loongarch.lsx.vflogb.d"]
@@ -1690,20 +1686,6 @@ pub fn lsx_vfrint_s(a: m128) -> m128 {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vfrint_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrint_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrsqrt_s(a: m128) -> m128 {
-    unsafe { transmute(__lsx_vfrsqrt_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrsqrt_d(a: m128d) -> m128d {
-    unsafe { transmute(__lsx_vfrsqrt_d(transmute(a))) }
 }
 
 #[inline]

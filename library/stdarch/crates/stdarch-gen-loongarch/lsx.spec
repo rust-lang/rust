@@ -2001,11 +2001,13 @@ asm-fmts = vd, vj
 data-types = V2DF, V2DF
 
 /// lsx_vfrsqrt_s
+impl = portable
 name = lsx_vfrsqrt_s
 asm-fmts = vd, vj
 data-types = V4SF, V4SF
 
 /// lsx_vfrsqrt_d
+impl = portable
 name = lsx_vfrsqrt_d
 asm-fmts = vd, vj
 data-types = V2DF, V2DF

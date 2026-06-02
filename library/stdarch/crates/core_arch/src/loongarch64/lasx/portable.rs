@@ -328,6 +328,8 @@ impl_vv!("lasx", lasx_xvneg_w, is::simd_neg, m256i, i32x8);
 impl_vv!("lasx", lasx_xvneg_d, is::simd_neg, m256i, i64x4);
 impl_vv!("lasx", lasx_xvfsqrt_s, is::simd_fsqrt, m256, f32x8);
 impl_vv!("lasx", lasx_xvfsqrt_d, is::simd_fsqrt, m256d, f64x4);
+impl_vv!("lasx", lasx_xvfrsqrt_s, ls::simd_frsqrt_s, m256, f32x8);
+impl_vv!("lasx", lasx_xvfrsqrt_d, ls::simd_frsqrt_d, m256d, f64x4);
 impl_vv!("lasx", lasx_xvfrecip_s, ls::simd_frecip_s, m256, f32x8);
 impl_vv!("lasx", lasx_xvfrecip_d, ls::simd_frecip_d, m256d, f64x4);
 impl_vv!("lasx", lasx_xvreplve0_b, simd_replve0_b, m256i, i8x32);
