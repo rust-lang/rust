@@ -110,6 +110,18 @@ pub(super) const unsafe fn simd_fnmsub<T: Copy>(a: T, b: T, c: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_frecip_s<T: Copy>(a: T) -> T {
+    is::simd_div(is::simd_splat(1.0f32), a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_frecip_d<T: Copy>(a: T) -> T {
+    is::simd_div(is::simd_splat(1.0f64), a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_ld<const I: i32, T: Copy>(a: *const i8) -> T {
     let a = a.offset(I as isize) as *const T;
     core::ptr::read_unaligned(a)

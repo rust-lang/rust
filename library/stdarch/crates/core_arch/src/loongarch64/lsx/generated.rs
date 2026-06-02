@@ -205,10 +205,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vfclass_s(a: __v4f32) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vfclass.d"]
     fn __lsx_vfclass_d(a: __v2f64) -> __v2i64;
-    #[link_name = "llvm.loongarch.lsx.vfrecip.s"]
-    fn __lsx_vfrecip_s(a: __v4f32) -> __v4f32;
-    #[link_name = "llvm.loongarch.lsx.vfrecip.d"]
-    fn __lsx_vfrecip_d(a: __v2f64) -> __v2f64;
     #[link_name = "llvm.loongarch.lsx.vfrecipe.s"]
     fn __lsx_vfrecipe_s(a: __v4f32) -> __v4f32;
     #[link_name = "llvm.loongarch.lsx.vfrecipe.d"]
@@ -1652,20 +1648,6 @@ pub fn lsx_vfclass_s(a: m128) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vfclass_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vfclass_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrecip_s(a: m128) -> m128 {
-    unsafe { transmute(__lsx_vfrecip_s(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vfrecip_d(a: m128d) -> m128d {
-    unsafe { transmute(__lsx_vfrecip_d(transmute(a))) }
 }
 
 #[inline]
