@@ -123,16 +123,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                    mode: Cast {
                        pad_i32: false,
                        cast: CastTarget {
-                           prefix: [
-                               None,
-                               None,
-                               None,
-                               None,
-                               None,
-                               None,
-                               None,
-                               None,
-                           ],
+                           prefix: [],
                            rest_offset: None,
                            rest: Uniform {
                                unit: Reg {
