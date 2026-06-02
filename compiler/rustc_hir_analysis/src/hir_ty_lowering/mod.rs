@@ -59,12 +59,12 @@ use crate::{NoVariantNamed, check_c_variadic_abi};
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
 #[derive(Clone, Copy)]
-pub(crate) enum ImpliedBoundsContext<'tcx> {
+pub(crate) enum ImpliedBoundsContext {
     /// An implied bound is added to a trait definition (i.e. a new supertrait), used when adding
     /// a default `MetaSized` supertrait
     TraitDef(LocalDefId),
     /// An implied bound is added to a type parameter
-    TyParam(LocalDefId, &'tcx [hir::WherePredicate<'tcx>]),
+    TyParam(LocalDefId),
     /// An implied bound being added in any other context
     AssociatedTypeOrImplTrait,
 }
@@ -3063,6 +3063,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     self_ty,
                     hir_bounds,
+                    &[],
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
                 );
