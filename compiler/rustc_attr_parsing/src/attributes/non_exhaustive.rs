@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
@@ -20,5 +21,6 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
         Warn(Target::MacroDef),
         Warn(Target::MacroCall),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 }

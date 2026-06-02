@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_span::hygiene::Transparency;
 
 use super::prelude::*;
@@ -9,6 +10,7 @@ impl SingleAttributeParser for RustcMacroTransparencyParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Custom(|cx, used, unused| {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: ["transparent", "semiopaque", "opaque"]);
