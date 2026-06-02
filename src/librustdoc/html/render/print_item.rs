@@ -628,7 +628,11 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         let count_types = required_types.len() + provided_types.len();
         let count_consts = required_consts.len() + provided_consts.len();
         let count_methods = required_methods.len() + provided_methods.len();
-        let must_implement_one_of_functions = &tcx.trait_def(t.def_id).must_implement_one_of;
+        let &rustc_middle::ty::TraitDef {
+            must_implement_one_of: ref must_implement_one_of_functions,
+            impl_restriction,
+            ..
+        } = tcx.trait_def(t.def_id);
 
         // Output the trait definition
         wrap_item(w, |mut w| {
@@ -781,6 +785,25 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
 
         // Trait documentation
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
+
+        if let rustc_middle::ty::trait_def::ImplRestrictionKind::Restricted(def_id, _) =
+            impl_restriction
+        {
+            let v1;
+            let v2;
+            write!(
+                w,
+                "<div class=\"stab impl_restriction\">This trait cannot be implemented outside <code>{}</code>.</div>",
+                if cx.cache().document_private {
+                    v1 =
+                        rustc_middle::ty::print::with_resolve_crate_name!(tcx.def_path_str(def_id));
+                    v1.as_str()
+                } else {
+                    v2 = tcx.crate_name(def_id.krate);
+                    v2.as_str()
+                },
+            )?;
+        }
 
         fn trait_item(cx: &Context<'_>, m: &clean::Item, t: &clean::Item) -> impl fmt::Display {
             fmt::from_fn(|w| {
