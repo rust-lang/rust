@@ -576,6 +576,7 @@ fn poly_trait_ref_search_pat(poly_trait_ref: &PolyTraitRef<'_>) -> (Pat, Pat) {
     .or_else(|| match polarity {
         BoundPolarity::Negative(_) => Some(Pat::Str("!")),
         BoundPolarity::Maybe(_) => Some(Pat::Str("?")),
+        BoundPolarity::Only(_) => Some(Pat::Str("only")),
         BoundPolarity::Positive => None,
     })
     .unwrap_or(trait_ref_search_pat.0);

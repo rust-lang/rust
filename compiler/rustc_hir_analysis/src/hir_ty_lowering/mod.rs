@@ -986,13 +986,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.require_bound_to_relax_default_trait(trait_ref, span);
                 true
             }
+            hir::BoundPolarity::Only(_) => true,
         };
         let bounds = if transient { &mut Vec::new() } else { bounds };
 
         let polarity = match polarity {
-            hir::BoundPolarity::Positive | hir::BoundPolarity::Maybe(_) => {
-                ty::PredicatePolarity::Positive
-            }
+            hir::BoundPolarity::Positive
+            | hir::BoundPolarity::Maybe(_)
+            | hir::BoundPolarity::Only(_) => ty::PredicatePolarity::Positive,
             hir::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
         };
 
