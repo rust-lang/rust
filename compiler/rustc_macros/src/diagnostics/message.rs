@@ -17,6 +17,9 @@ pub(crate) struct Message {
 }
 
 impl Message {
+    // About `allow(rustc::potential_query_instability)`: The order of key/values of `fields` and
+    // `field_map` doesn't matters.
+    #[allow(rustc::potential_query_instability)]
     pub(crate) fn new(
         attr_span: Span,
         message_span: Span,
