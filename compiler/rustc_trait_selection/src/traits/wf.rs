@@ -974,7 +974,22 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     // go through an anon const still have their types checked.
                     //
                     // See also: https://rustc-dev-guide.rust-lang.org/const-generics.html
-                    let args = principal.skip_binder().with_self_ty(self.tcx(), t).args;
+                    //
+                    // We only use this trait ref to read off its `ConstArgHasType` clauses,
+                    // which constrain the trait's own const arguments and never mention the
+                    // `Self` type. The `with_self_ty` assertion forbids an escaping self type
+                    // (those vars would be captured by the trait-ref binder), and `t` can carry
+                    // escaping bound vars here because WF-checking walks through higher-ranked
+                    // binders without instantiating them (e.g. a `dyn Trait` nested in a
+                    // `for<'a>` bound). Since the self type is irrelevant to the clauses we
+                    // keep, fall back to the dummy self type in that case rather than skipping
+                    // the check entirely.
+                    let self_ty = if t.has_escaping_bound_vars() {
+                        tcx.types.trait_object_dummy_self
+                    } else {
+                        t
+                    };
+                    let args = principal.skip_binder().with_self_ty(tcx, self_ty).args;
                     let obligations =
                         self.nominal_obligations(principal_def_id, args).into_iter().filter(|o| {
                             let kind = o.predicate.kind().skip_binder();
