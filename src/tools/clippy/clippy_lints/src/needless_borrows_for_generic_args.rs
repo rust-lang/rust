@@ -433,7 +433,7 @@ fn replace_types<'tcx>(
                     let projection = projection_predicate
                         .projection_term
                         .with_replaced_self_ty(cx.tcx, new_ty)
-                        .expect_ty(cx.tcx)
+                        .expect_ty()
                         .to_ty(cx.tcx);
 
                     if let Ok(projected_ty) = cx

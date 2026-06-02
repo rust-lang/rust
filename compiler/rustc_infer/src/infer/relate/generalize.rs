@@ -187,7 +187,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 let Some(source_alias) = source_term.to_alias_term() else {
                     bug!("generalized `{source_term:?} to infer, not an alias");
                 };
-                match source_alias.kind(self.tcx) {
+                match source_alias.kind {
                     ty::AliasTermKind::ProjectionTy { .. }
                     | ty::AliasTermKind::ProjectionConst { .. } => {
                         // FIXME: This does not handle subtyping correctly, we could
@@ -426,7 +426,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create a new type variable in the universe of the target when
     /// generalizing an alias.
     fn next_var_for_alias_of_kind(&self, alias: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
-        if alias.kind(self.cx()).is_type() {
+        if alias.kind.is_type() {
             self.infcx.next_ty_var_in_universe(self.span, self.for_universe).into()
         } else {
             self.infcx.next_const_var_in_universe(self.span, self.for_universe).into()

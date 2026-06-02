@@ -287,7 +287,7 @@ where
             );
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
-                let error_term = match goal.predicate.alias.kind(cx) {
+                let error_term = match goal.predicate.alias.kind {
                     ty::AliasTermKind::ProjectionTy { .. } => Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst { .. } => Const::new_error(cx, guar).into(),
                     kind => panic!("expected projection, found {kind:?}"),
@@ -400,7 +400,7 @@ where
             }
 
             // Finally we construct the actual value of the associated type.
-            let term = match goal.predicate.alias.kind(cx) {
+            let term = match goal.predicate.alias.kind {
                 ty::AliasTermKind::ProjectionTy { .. } => cx
                     .type_of(target_item_def_id.into())
                     .instantiate(cx, target_args)
