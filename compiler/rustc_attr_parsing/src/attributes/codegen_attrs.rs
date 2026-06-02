@@ -8,6 +8,7 @@ use crate::attributes::AttributeSafety;
 use crate::session_diagnostics::{
     EmptyExportName, NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass,
     NullOnObjcSelector, ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
+    SanitizeInvalidStatic,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -566,8 +567,18 @@ pub(crate) struct SanitizeParser;
 
 impl SingleAttributeParser for SanitizeParser {
     const PATH: &[Symbol] = &[sym::sanitize];
-    // FIXME: still checked in check_attrs.rs
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Mod),
+        Allow(Target::Crate),
+        Allow(Target::Static),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(List: &[
         r#"address = "on|off""#,
         r#"kernel_address = "on|off""#,
@@ -666,6 +677,18 @@ impl SingleAttributeParser for SanitizeParser {
                     continue;
                 }
             }
+        }
+
+        // The sanitizer attribute is only allowed on statics, if only address bits are set
+        let all_set_except_address =
+            (on_set | off_set) & !(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS);
+        if cx.target == Target::Static
+            && let Some(set) = all_set_except_address.iter().next()
+        {
+            cx.emit_err(SanitizeInvalidStatic {
+                span: cx.attr_span,
+                field: set.as_str().expect("Since this `SanitizerSet` is returned from an iterator, exactly one field is set")
+            });
         }
 
         Some(AttributeKind::Sanitize { on_set, off_set, rtsan, span: cx.attr_span })
