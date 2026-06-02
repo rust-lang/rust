@@ -13,6 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "invocation-specific".
 
+use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -22,8 +23,9 @@ use std::marker::PhantomData;
 use std::path::{Component, Path, PathBuf};
 use std::rc::{Rc, Weak};
 use std::str::FromStr;
-use std::{fmt, fs};
+use std::{fmt, fs, mem};
 
+use bumpalo::Bump;
 use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
@@ -35,6 +37,7 @@ use rustc_span::def_id::DefId;
 use serde::de::DeserializeOwned;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize, Serializer};
+use serde_alloc::DeserializeWithAlloc;
 
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
@@ -54,8 +57,8 @@ use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
 use crate::{try_err, try_none};
 
-pub(crate) fn write_shared(
-    cx: &mut Context<'_>,
+pub(crate) fn write_shared<A: Allocator + Copy>(
+    cx: &mut Context<'_, A>,
     krate: &Crate,
     opt: &RenderOptions,
     tcx: TyCtxt<'_>,
@@ -66,6 +69,7 @@ pub(crate) fn write_shared(
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
+    let alloc = *cx.shared.cache.search_index.allocator();
     let search_index = build_index(
         krate,
         &mut cx.shared.cache,
@@ -73,6 +77,7 @@ pub(crate) fn write_shared(
         &cx.dst,
         &cx.shared.resource_suffix,
         &opt.should_merge,
+        alloc,
     )?;
 
     let crate_name = krate.name(cx.tcx());
@@ -99,7 +104,7 @@ pub(crate) fn write_shared(
         );
     }
 
-    let mut crates = CrateInfo::read_many(&opt.include_parts_dir)?;
+    let mut crates = CrateInfo::read_many(&opt.include_parts_dir, alloc)?;
     crates.push(info);
 
     if opt.should_merge.write_rendered_cci {
@@ -111,6 +116,7 @@ pub(crate) fn write_shared(
             cx.shared.layout.css_file_extension.as_deref(),
             &cx.shared.resource_suffix,
             cx.info.include_sources,
+            alloc,
         )?;
         match &opt.index_page {
             Some(index_page) if opt.enable_index_page => {
@@ -124,7 +130,7 @@ pub(crate) fn write_shared(
                 );
             }
             None if opt.enable_index_page => {
-                write_rendered_cci::<CratesIndexPart, _>(
+                write_rendered_cci::<CratesIndexPart, _, A>(
                     || CratesIndexPart::blank(cx),
                     &cx.dst,
                     &crates,
@@ -142,41 +148,43 @@ pub(crate) fn write_shared(
 /// Writes files that are written directly to the `--out-dir`, without the prefix from the current
 /// crate. These are the rendered cross-crate files that encode info from multiple crates (e.g.
 /// search index), and the static files.
-pub(crate) fn write_not_crate_specific(
-    crates: &[CrateInfo],
+pub(crate) fn write_not_crate_specific<A: Allocator + Copy>(
+    crates: &[CrateInfo<A>],
     dst: &Path,
     opt: &RenderOptions,
     style_files: &[StylePath],
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
     include_sources: bool,
+    alloc: A,
 ) -> Result<(), Error> {
-    write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
+    write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix, alloc)?;
     write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
     Ok(())
 }
 
-fn write_rendered_cross_crate_info(
-    crates: &[CrateInfo],
+fn write_rendered_cross_crate_info<A: Allocator + Copy>(
+    crates: &[CrateInfo<A>],
     dst: &Path,
     opt: &RenderOptions,
     include_sources: bool,
     resource_suffix: &str,
+    alloc: A,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
     if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
         if include_sources {
-            write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
+            write_rendered_cci::<SourcesPart, _, A>(SourcesPart::blank, dst, crates, m)?;
         }
         crates
             .iter()
-            .fold(SerializedSearchIndex::default(), |a, b| a.union(&b.search_index))
-            .sort()
+            .fold(SerializedSearchIndex::empty(alloc), |a, b| a.union(&b.search_index))
+            .sort(alloc)
             .write_to(dst, resource_suffix)?;
-        write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, crates, m)?;
+        write_rendered_cci::<AllCratesPart, _, A>(AllCratesPart::blank, dst, crates, m)?;
     }
-    write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, crates, m)?;
-    write_rendered_cci::<TypeAliasPart, _>(TypeAliasPart::blank, dst, crates, m)?;
+    write_rendered_cci::<TraitAliasPart, _, A>(TraitAliasPart::blank, dst, crates, m)?;
+    write_rendered_cci::<TypeAliasPart, _, A>(TypeAliasPart::blank, dst, crates, m)?;
     Ok(())
 }
 
@@ -233,20 +241,59 @@ fn write_resources(
 }
 
 /// Contains pre-rendered contents to insert into the CCI template
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct CrateInfo {
-    version: CrateInfoVersion,
-    src_files_js: PartsAndLocations<SourcesPart>,
-    search_index: SerializedSearchIndex,
-    all_crates: PartsAndLocations<AllCratesPart>,
-    crates_index: PartsAndLocations<CratesIndexPart>,
-    trait_impl: PartsAndLocations<TraitAliasPart>,
-    type_impl: PartsAndLocations<TypeAliasPart>,
+#[derive(Serialize, DeserializeWithAlloc, Clone, Debug)]
+#[serde(bound = "")]
+pub(crate) struct CrateInfo<A: Allocator + Copy> {
+    #[deserialize_with_alloc(native)]
+    pub(crate) version: CrateInfoVersion,
+    #[deserialize_with_alloc(native)]
+    pub(crate) src_files_js: PartsAndLocations<SourcesPart>,
+    pub(crate) search_index: SerializedSearchIndex<A>,
+    #[deserialize_with_alloc(native)]
+    pub(crate) all_crates: PartsAndLocations<AllCratesPart>,
+    #[deserialize_with_alloc(native)]
+    pub(crate) crates_index: PartsAndLocations<CratesIndexPart>,
+    #[deserialize_with_alloc(native)]
+    pub(crate) trait_impl: PartsAndLocations<TraitAliasPart>,
+    #[deserialize_with_alloc(native)]
+    pub(crate) type_impl: PartsAndLocations<TypeAliasPart>,
 }
 
-impl CrateInfo {
+pub(crate) trait AllocatorExt: Allocator + Copy {
+    fn can_leak_memory() -> bool;
+}
+
+impl<T> AllocatorExt for T
+where
+    T: Allocator + Copy,
+{
+    default fn can_leak_memory() -> bool {
+        false
+    }
+}
+
+impl<'a> AllocatorExt for &'a Bump {
+    fn can_leak_memory() -> bool {
+        true
+    }
+}
+
+impl<A: AllocatorExt> Drop for CrateInfo<A> {
+    fn drop(&mut self) {
+        let alloc = self.search_index.allocator();
+        let can_leak = A::can_leak_memory();
+        let search_index =
+            mem::replace(&mut self.search_index, SerializedSearchIndex::empty(alloc));
+
+        if can_leak {
+            mem::forget(search_index);
+        }
+    }
+}
+
+impl<A: Allocator + Copy> CrateInfo<A> {
     /// Read all of the crate info from its location on the filesystem
-    pub(crate) fn read_many(parts_paths: &[PathToParts]) -> Result<Vec<Self>, Error> {
+    pub(crate) fn read_many(parts_paths: &[PathToParts], alloc: A) -> Result<Vec<Self>, Error> {
         parts_paths
             .iter()
             .fold(Ok(Vec::new()), |acc, parts_path| {
@@ -254,18 +301,20 @@ impl CrateInfo {
                 let dir = &parts_path.0;
                 acc.append(&mut try_err!(std::fs::read_dir(dir), dir.as_path())
                     .filter_map(|file| {
-                        let to_crate_info = |file: Result<std::fs::DirEntry, std::io::Error>| -> Result<Option<CrateInfo>, Error> {
+                        let to_crate_info = |file: Result<std::fs::DirEntry, std::io::Error>| -> Result<Option<CrateInfo<A>>, Error> {
                             let file = try_err!(file, dir.as_path());
                             if file.path().extension() != Some(OsStr::new("json")) {
                                 return Ok(None);
                             }
                             let parts = try_err!(fs::read(file.path()), file.path());
-                            let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), file.path());
+                            let mut de = serde_json::Deserializer::from_slice(&parts);
+
+                            let parts = try_err!(CrateInfo::deserialize_with_alloc(&mut de, alloc), file.path());
                             Ok(Some(parts))
                         };
                         to_crate_info(file).transpose()
                     })
-                    .collect::<Result<Vec<CrateInfo>, Error>>()?);
+                    .collect::<Result<Vec<_>, Error>>()?);
                 Ok(acc)
             })
     }
@@ -279,14 +328,14 @@ impl CrateInfo {
 /// Must be incremented (V2, V3, etc.) upon any changes to the search index or CrateInfo,
 /// to provide better diagnostics about including an invalid file.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-enum CrateInfoVersion {
+pub(crate) enum CrateInfoVersion {
     V2,
 }
 
 /// Paths (relative to the doc root) and their pre-merge contents
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]
-struct PartsAndLocations<P> {
+pub(crate) struct PartsAndLocations<P> {
     parts: Vec<(PathBuf, P)>,
 }
 
@@ -314,7 +363,7 @@ impl<T, U> PartsAndLocations<Part<T, U>> {
 /// Merged at a user specified time and written to the `doc/` directory
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]
-struct Part<T, U> {
+pub(crate) struct Part<T, U> {
     #[serde(skip)]
     _artifact: PhantomData<T>,
     item: U,
@@ -331,15 +380,15 @@ impl<T, U: fmt::Display> fmt::Display for Part<T, U> {
 trait CciPart: Sized + fmt::Display + DeserializeOwned + 'static {
     /// Identifies the file format of the cross-crate information
     type FileFormat: sorted_template::FileFormat;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self>;
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct AllCrates;
-type AllCratesPart = Part<AllCrates, OrderedJson>;
+pub(crate) struct AllCrates;
+pub(crate) type AllCratesPart = Part<AllCrates, OrderedJson>;
 impl CciPart for AllCratesPart {
     type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self> {
         &crate_info.all_crates
     }
 }
@@ -389,17 +438,19 @@ fn hack_get_external_crate_names(
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct CratesIndex;
-type CratesIndexPart = Part<CratesIndex, String>;
+pub(crate) struct CratesIndex;
+pub(crate) type CratesIndexPart = Part<CratesIndex, String>;
 impl CciPart for CratesIndexPart {
     type FileFormat = sorted_template::Html;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self> {
         &crate_info.crates_index
     }
 }
 
 impl CratesIndexPart {
-    fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
+    fn blank<A: Allocator + Copy>(
+        cx: &Context<'_, A>,
+    ) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
             short_title: "Crates",
@@ -441,11 +492,11 @@ impl CratesIndexPart {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct Sources;
-type SourcesPart = Part<Sources, EscapedJson>;
+pub(crate) struct Sources;
+pub(crate) type SourcesPart = Part<Sources, EscapedJson>;
 impl CciPart for SourcesPart {
     type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self> {
         &crate_info.src_files_js
     }
 }
@@ -458,7 +509,10 @@ impl SourcesPart {
         SortedTemplate::from_before_after(r"createSrcSidebar('[", r"]');")
     }
 
-    fn get(cx: &Context<'_>, crate_name: &OrderedJson) -> Result<PartsAndLocations<Self>, Error> {
+    fn get<A: Allocator + Copy>(
+        cx: &Context<'_, A>,
+        crate_name: &OrderedJson,
+    ) -> Result<PartsAndLocations<Self>, Error> {
         let hierarchy = Rc::new(Hierarchy::default());
         cx.shared
             .local_sources
@@ -543,11 +597,11 @@ impl Hierarchy {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct TypeAlias;
-type TypeAliasPart = Part<TypeAlias, OrderedJson>;
+pub(crate) struct TypeAlias;
+pub(crate) type TypeAliasPart = Part<TypeAlias, OrderedJson>;
 impl CciPart for TypeAliasPart {
     type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self> {
         &crate_info.type_impl
     }
 }
@@ -567,8 +621,8 @@ impl TypeAliasPart {
         )
     }
 
-    fn get(
-        cx: &mut Context<'_>,
+    fn get<A: Allocator + Copy>(
+        cx: &mut Context<'_, A>,
         krate: &Crate,
         crate_name_json: &OrderedJson,
     ) -> Result<PartsAndLocations<Self>, Error> {
@@ -662,11 +716,11 @@ impl TypeAliasPart {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct TraitAlias;
-type TraitAliasPart = Part<TraitAlias, OrderedJson>;
+pub(crate) struct TraitAlias;
+pub(crate) type TraitAliasPart = Part<TraitAlias, OrderedJson>;
 impl CciPart for TraitAliasPart {
     type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
+    fn from_crate_info<A: Allocator + Copy>(crate_info: &CrateInfo<A>) -> &PartsAndLocations<Self> {
         &crate_info.trait_impl
     }
 }
@@ -686,8 +740,8 @@ impl TraitAliasPart {
         )
     }
 
-    fn get(
-        cx: &Context<'_>,
+    fn get<A: Allocator + Copy>(
+        cx: &Context<'_, A>,
         crate_name_json: &OrderedJson,
     ) -> Result<PartsAndLocations<Self>, Error> {
         let cache = &cx.shared.cache;
@@ -806,11 +860,11 @@ impl Serialize for Implementor {
 /// this visitor works to reverse that: `aliased_types` is a map
 /// from target to the aliases that reference it, and each one
 /// will generate one file.
-struct TypeImplCollector<'cx, 'cache, 'item> {
+struct TypeImplCollector<'cx, 'cache, 'item, A: Allocator + Copy> {
     /// Map from DefId-of-aliased-type to its data.
     aliased_types: IndexMap<DefId, AliasedType<'cache, 'item>>,
     visited_aliases: FxHashSet<DefId>,
-    cx: &'cache Context<'cx>,
+    cx: &'cache Context<'cx, A>,
 }
 
 /// Data for an aliased type.
@@ -846,7 +900,7 @@ struct AliasedTypeImpl<'cache, 'item> {
     type_aliases: Vec<(&'cache [Symbol], &'item Item)>,
 }
 
-impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
+impl<'item, A: Allocator + Copy> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item, A> {
     fn visit_item(&mut self, it: &'item Item) {
         self.visit_item_recur(it);
         let cache = &self.cx.shared.cache;
@@ -933,9 +987,9 @@ impl Serialize for AliasSerializableImpl {
     }
 }
 
-fn get_path_parts<T: CciPart>(
+fn get_path_parts<T: CciPart, A: Allocator + Copy>(
     dst: &Path,
-    crates_info: &[CrateInfo],
+    crates_info: &[CrateInfo<A>],
 ) -> FxIndexMap<PathBuf, Vec<String>> {
     let mut templates: FxIndexMap<PathBuf, Vec<String>> = FxIndexMap::default();
     crates_info.iter().flat_map(|crate_info| T::from_crate_info(crate_info).parts.iter()).for_each(
@@ -975,17 +1029,17 @@ where
 }
 
 /// info from this crate and the --include-info-json'd crates
-fn write_rendered_cci<T: CciPart, F>(
+fn write_rendered_cci<T: CciPart, F, A: Allocator + Copy>(
     mut make_blank: F,
     dst: &Path,
-    crates_info: &[CrateInfo],
+    crates_info: &[CrateInfo<A>],
     should_merge: &ShouldMerge,
 ) -> Result<(), Error>
 where
     F: FnMut() -> SortedTemplate<T::FileFormat>,
 {
     // write the merged cci to disk
-    for (path, parts) in get_path_parts::<T>(dst, crates_info) {
+    for (path, parts) in get_path_parts::<T, A>(dst, crates_info) {
         create_parents(&path)?;
         // read previous rendered cci from storage, append to them
         let mut template =

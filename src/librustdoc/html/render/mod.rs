@@ -39,6 +39,7 @@ mod sorted_template;
 mod type_layout;
 mod write_shared;
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display as _, Write};
@@ -125,26 +126,28 @@ enum RenderMode {
 // information
 
 #[derive(Debug, Clone)]
-pub(crate) struct IndexItemInfo {
+pub(crate) struct IndexItemInfo<A: Allocator + Copy> {
     pub(crate) ty: ItemType,
     pub(crate) desc: String,
-    pub(crate) search_type: Option<IndexItemFunctionType>,
+    pub(crate) search_type: Option<IndexItemFunctionType<A>>,
     pub(crate) aliases: Box<[Symbol]>,
     pub(crate) deprecation: Option<Deprecation>,
     pub(crate) is_unstable: bool,
 }
 
-impl IndexItemInfo {
+impl<A: Allocator + Copy> IndexItemInfo<A> {
     pub(crate) fn new(
         tcx: TyCtxt<'_>,
-        cache: &Cache,
+        cache: &Cache<A>,
         item: &Item,
         parent_did: Option<DefId>,
         impl_generics: Option<&(clean::Type, clean::Generics)>,
         ty: ItemType,
+        alloc: A,
     ) -> Self {
         let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-        let search_type = get_function_type_for_search(item, tcx, impl_generics, parent_did, cache);
+        let search_type =
+            get_function_type_for_search(item, tcx, impl_generics, parent_did, cache, alloc);
         let aliases = item.attrs.get_doc_aliases();
         let deprecation = item.deprecation(tcx);
         let is_unstable = item.is_unstable();
@@ -155,28 +158,28 @@ impl IndexItemInfo {
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug, Clone)]
-pub(crate) struct IndexItem {
+pub(crate) struct IndexItem<A: Allocator + Copy> {
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
-    pub(crate) module_path: Vec<Symbol>,
+    pub(crate) module_path: Vec<Symbol, A>,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<usize>,
     pub(crate) trait_parent: Option<DefId>,
     pub(crate) trait_parent_idx: Option<usize>,
-    pub(crate) exact_module_path: Option<Vec<Symbol>>,
+    pub(crate) exact_module_path: Option<Vec<Symbol, A>>,
     pub(crate) impl_id: Option<DefId>,
-    pub(crate) info: IndexItemInfo,
+    pub(crate) info: IndexItemInfo<A>,
 }
 
 /// A type used for the search index.
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct RenderType {
+#[derive(Clone, Debug)]
+pub(crate) struct RenderType<A: Allocator + Copy> {
     id: Option<RenderTypeId>,
-    generics: Option<Vec<RenderType>>,
-    bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
+    generics: Option<Vec<RenderType<A>, A>>,
+    bindings: Option<Vec<(RenderTypeId, Vec<RenderType<A>, A>), A>>,
 }
 
-impl RenderType {
+impl<A: Allocator + Copy> RenderType<A> {
     fn size(&self) -> usize {
         let mut size = 1;
         if let Some(generics) = &self.generics {
@@ -231,7 +234,7 @@ impl RenderType {
             write_optional_id(self.id, string);
         }
     }
-    fn read_from_bytes(string: &[u8]) -> (RenderType, usize) {
+    fn read_from_bytes(string: &[u8], alloc: A) -> (Self, usize) {
         let mut i = 0;
         if string[i] == b'{' {
             i += 1;
@@ -239,9 +242,9 @@ impl RenderType {
             i += offset;
             let generics = if string[i] == b'{' {
                 i += 1;
-                let mut generics = Vec::new();
+                let mut generics = Vec::new_in(alloc);
                 while string[i] != b'}' {
-                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..], alloc);
                     i += offset;
                     generics.push(ty);
                 }
@@ -253,16 +256,17 @@ impl RenderType {
             };
             let bindings = if string[i] == b'{' {
                 i += 1;
-                let mut bindings = Vec::new();
+                let mut bindings = Vec::new_in(alloc);
                 while string[i] == b'{' {
                     i += 1;
                     let (binding, boffset) = RenderTypeId::read_from_bytes(&string[i..]);
                     i += boffset;
-                    let mut bconstraints = Vec::new();
+                    let mut bconstraints = Vec::new_in(alloc);
                     assert!(string[i] == b'{');
                     i += 1;
                     while string[i] != b'}' {
-                        let (constraint, coffset) = RenderType::read_from_bytes(&string[i..]);
+                        let (constraint, coffset) =
+                            RenderType::read_from_bytes(&string[i..], alloc);
                         i += coffset;
                         bconstraints.push(constraint);
                     }
@@ -280,11 +284,11 @@ impl RenderType {
             };
             assert!(string[i] == b'}');
             i += 1;
-            (RenderType { id, generics, bindings }, i)
+            (Self { id, generics, bindings }, i)
         } else {
             let (id, offset) = RenderTypeId::read_from_bytes(string);
             i += offset;
-            (RenderType { id, generics: None, bindings: None }, i)
+            (Self { id, generics: None, bindings: None }, i)
         }
     }
 }
@@ -326,47 +330,44 @@ impl RenderTypeId {
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct IndexItemFunctionType {
-    inputs: Vec<RenderType>,
-    output: Vec<RenderType>,
-    where_clause: Vec<Vec<RenderType>>,
-    param_names: Vec<Option<Symbol>>,
+#[derive(Clone, Debug)]
+pub(crate) struct IndexItemFunctionType<A: Allocator + Copy> {
+    pub(crate) inputs: Vec<RenderType<A>, A>,
+    pub(crate) output: Vec<RenderType<A>, A>,
+    pub(crate) where_clause: Vec<Vec<RenderType<A>, A>, A>,
+    pub(crate) param_names: Vec<Option<Symbol>, A>,
 }
 
-impl IndexItemFunctionType {
-    fn size(&self) -> usize {
-        self.inputs.iter().map(RenderType::size).sum::<usize>()
-            + self.output.iter().map(RenderType::size).sum::<usize>()
-            + self
-                .where_clause
-                .iter()
-                .map(|constraints| constraints.iter().map(RenderType::size).sum::<usize>())
-                .sum::<usize>()
-    }
-    fn read_from_string_without_param_names(string: &[u8]) -> (IndexItemFunctionType, usize) {
+impl<A: Allocator + Copy> IndexItemFunctionType<A> {
+    pub(crate) fn read_from_string_without_param_names(
+        string: &[u8],
+        alloc: A,
+    ) -> (IndexItemFunctionType<A>, usize) {
         let mut i = 0;
         if string[i] == b'`' {
             return (
                 IndexItemFunctionType {
-                    inputs: Vec::new(),
-                    output: Vec::new(),
-                    where_clause: Vec::new(),
-                    param_names: Vec::new(),
+                    inputs: Vec::new_in(alloc),
+                    output: Vec::new_in(alloc),
+                    where_clause: Vec::new_in(alloc),
+                    param_names: Vec::new_in(alloc),
                 },
                 1,
             );
         }
         assert_eq!(b'{', string[i]);
         i += 1;
-        fn read_args_from_string(string: &[u8]) -> (Vec<RenderType>, usize) {
+        fn read_args_from_string<A: Allocator + Copy>(
+            string: &[u8],
+            alloc: A,
+        ) -> (Vec<RenderType<A>, A>, usize) {
             let mut i = 0;
-            let mut params = Vec::new();
+            let mut params = Vec::new_in(alloc);
             if string[i] == b'{' {
                 // multiple params
                 i += 1;
                 while string[i] != b'}' {
-                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..], alloc);
                     i += offset;
                     params.push(ty);
                 }
@@ -378,19 +379,31 @@ impl IndexItemFunctionType {
             }
             (params, i)
         }
-        let (inputs, offset) = read_args_from_string(&string[i..]);
+        let (inputs, offset) = read_args_from_string(&string[i..], alloc);
         i += offset;
-        let (output, offset) = read_args_from_string(&string[i..]);
+        let (output, offset) = read_args_from_string(&string[i..], alloc);
         i += offset;
-        let mut where_clause = Vec::new();
+        let mut where_clause = Vec::new_in(alloc);
         while string[i] != b'}' {
-            let (constraint, offset) = read_args_from_string(&string[i..]);
+            let (constraint, offset) = read_args_from_string(&string[i..], alloc);
             i += offset;
             where_clause.push(constraint);
         }
         assert_eq!(b'}', string[i], "{} {}", String::from_utf8_lossy(&string), i);
         i += 1;
-        (IndexItemFunctionType { inputs, output, where_clause, param_names: Vec::new() }, i)
+        (IndexItemFunctionType { inputs, output, where_clause, param_names: Vec::new_in(alloc) }, i)
+    }
+}
+
+impl<A: Allocator + Copy> IndexItemFunctionType<A> {
+    pub(crate) fn size(&self) -> usize {
+        self.inputs.iter().map(RenderType::size).sum::<usize>()
+            + self.output.iter().map(RenderType::size).sum::<usize>()
+            + self
+                .where_clause
+                .iter()
+                .map(|constraints| constraints.iter().map(RenderType::size).sum::<usize>())
+                .sum::<usize>()
     }
     fn write_to_string_without_param_names<'a>(&'a self, string: &mut String) {
         // If we couldn't figure out a type, just write 0,
@@ -662,7 +675,7 @@ impl AllTypes {
     }
 }
 
-fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
+fn scrape_examples_help<A: Allocator + Copy>(shared: &SharedContext<'_, A>) -> String {
     let mut content = SCRAPE_EXAMPLES_HELP_MD.to_owned();
     content.push_str(&format!(
         "## More information\n\n\
@@ -688,8 +701,8 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     )
 }
 
-fn document(
-    cx: &Context<'_>,
+fn document<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     item: &clean::Item,
     parent: Option<&clean::Item>,
     heading_offset: HeadingOffset,
@@ -709,8 +722,8 @@ fn document(
 }
 
 /// Render md_text as markdown.
-fn render_markdown(
-    cx: &Context<'_>,
+fn render_markdown<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     md_text: &str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
@@ -733,9 +746,9 @@ fn render_markdown(
 
 /// Writes a documentation block containing only the first paragraph of the documentation. If the
 /// docs are longer, a "Read more" link is appended to the end.
-fn document_short(
+fn document_short<A: Allocator + Copy>(
     item: &clean::Item,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     link: AssocItemLink<'_>,
     parent: &clean::Item,
     show_def_docs: bool,
@@ -776,25 +789,25 @@ fn document_short(
     })
 }
 
-fn document_full_collapsible(
+fn document_full_collapsible<A: Allocator + Copy>(
     item: &clean::Item,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     document_full_inner(item, cx, true, heading_offset)
 }
 
-fn document_full(
+fn document_full<A: Allocator + Copy>(
     item: &clean::Item,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     document_full_inner(item, cx, false, heading_offset)
 }
 
-fn document_full_inner(
+fn document_full_inner<A: Allocator + Copy>(
     item: &clean::Item,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     is_collapsible: bool,
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
@@ -837,8 +850,8 @@ struct ItemInfo {
 /// * Stability
 /// * Deprecated
 /// * Required features (through the `doc_cfg` feature)
-fn document_item_info(
-    cx: &Context<'_>,
+fn document_item_info<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     item: &clean::Item,
     parent: Option<&clean::Item>,
 ) -> ItemInfo {
@@ -882,9 +895,9 @@ enum ShortItemInfo {
 
 /// Render the stability, deprecation and portability information that is displayed at the top of
 /// the item's documentation.
-fn short_item_info(
+fn short_item_info<A: Allocator + Copy>(
     item: &clean::Item,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     parent: Option<&clean::Item>,
 ) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
@@ -954,8 +967,8 @@ fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
-    cx: &Context<'_>,
+fn render_impls<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     mut w: impl Write,
     impls: &[&Impl],
     containing_item: &clean::Item,
@@ -997,10 +1010,10 @@ fn render_impls(
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
-fn assoc_href_attr(
+fn assoc_href_attr<A: Allocator + Copy>(
     it: &clean::Item,
     link: AssocItemLink<'_>,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> Option<impl fmt::Display> {
     let name = it.name.unwrap();
     let item_type = it.type_();
@@ -1077,14 +1090,14 @@ enum AssocConstValue<'a> {
     None,
 }
 
-fn assoc_const(
+fn assoc_const<A: Allocator + Copy>(
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
     value: AssocConstValue<'_>,
     link: AssocItemLink<'_>,
     indent: usize,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
     fmt::from_fn(move |w| {
@@ -1115,14 +1128,14 @@ fn assoc_const(
     })
 }
 
-fn assoc_type(
+fn assoc_type<A: Allocator + Copy>(
     it: &clean::Item,
     generics: &clean::Generics,
     bounds: &[clean::GenericBound],
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
     indent: usize,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         render_attributes_in_code(w, it, &" ".repeat(indent), cx)?;
@@ -1146,13 +1159,13 @@ fn assoc_type(
     })
 }
 
-fn assoc_method(
+fn assoc_method<A: Allocator + Copy>(
     meth: &clean::Item,
     g: &clean::Generics,
     d: &clean::FnDecl,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     render_mode: RenderMode,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
@@ -1305,11 +1318,11 @@ fn render_stability_since_raw(
     render_stability_since_raw_with_extra(ver, const_stability, "")
 }
 
-fn render_assoc_item(
+fn render_assoc_item<A: Allocator + Copy>(
     item: &clean::Item,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     render_mode: RenderMode,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
@@ -1411,9 +1424,9 @@ fn write_impl_section_heading(title: impl fmt::Display, id: &str) -> impl fmt::D
     write_section_heading(title, id, None, "")
 }
 
-fn render_all_impls(
+fn render_all_impls<A: Allocator + Copy>(
     mut w: impl Write,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     containing_item: &clean::Item,
     concrete_impls: &[&Impl],
     auto_trait_impls: &[&Impl],
@@ -1455,8 +1468,8 @@ fn render_all_impls(
     Ok(())
 }
 
-fn render_assoc_items(
-    cx: &Context<'_>,
+fn render_assoc_items<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
@@ -1468,9 +1481,9 @@ fn render_assoc_items(
     })
 }
 
-fn render_assoc_items_inner(
+fn render_assoc_items_inner<A: Allocator + Copy>(
     mut w: &mut dyn fmt::Write,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
@@ -1601,9 +1614,9 @@ fn render_assoc_items_inner(
 }
 
 /// `derefs` is the set of all deref targets that have already been handled.
-fn render_deref_methods(
+fn render_deref_methods<A: Allocator + Copy>(
     mut w: impl Write,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
@@ -1671,7 +1684,10 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt::Display> {
+fn notable_traits_button<A: Allocator + Copy>(
+    ty: &clean::Type,
+    cx: &Context<'_, A>,
+) -> Option<impl fmt::Display> {
     if ty.is_unit() {
         // Very common fast path.
         return None;
@@ -1715,7 +1731,10 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
     })
 }
 
-fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
+fn notable_traits_decl<A: Allocator + Copy>(
+    ty: &clean::Type,
+    cx: &Context<'_, A>,
+) -> (String, String) {
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
     let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
@@ -1791,7 +1810,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", print_type(ty, cx)), out)
 }
 
-fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
+fn notable_traits_json<'a, A: Allocator + Copy>(
+    tys: impl Iterator<Item = &'a clean::Type>,
+    cx: &Context<'_, A>,
+) -> String {
     let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
     mp.sort_unstable_keys();
     serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
@@ -1806,8 +1828,8 @@ struct ImplRenderingParameters {
     toggle_open_by_default: bool,
 }
 
-fn render_impl(
-    cx: &Context<'_>,
+fn render_impl<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     i: &Impl,
     parent: &clean::Item,
     link: AssocItemLink<'_>,
@@ -1827,10 +1849,10 @@ fn render_impl(
         // used to allow hiding the boring methods.
         // `containing_item` is used for rendering stability info. If the parent is a trait impl,
         // `containing_item` will the grandparent, since trait impls can't have stability attached.
-        fn doc_impl_item(
+        fn doc_impl_item<A: Allocator + Copy>(
             boring: impl fmt::Write,
             interesting: impl fmt::Write,
-            cx: &Context<'_>,
+            cx: &Context<'_, A>,
             item: &clean::Item,
             parent: &clean::Item,
             link: AssocItemLink<'_>,
@@ -2154,10 +2176,10 @@ fn render_impl(
             }
         }
 
-        fn render_default_items(
+        fn render_default_items<A: Allocator + Copy>(
             mut boring: impl fmt::Write,
             mut interesting: impl fmt::Write,
-            cx: &Context<'_>,
+            cx: &Context<'_, A>,
             t: &clean::Trait,
             i: &clean::Impl,
             parent: &clean::Item,
@@ -2295,8 +2317,8 @@ fn render_impl(
 
 // Render the items that appear on the right side of methods, impls, and
 // associated types. For example "1.0.0 (const: 1.39.0) · source".
-fn render_rightside(
-    cx: &Context<'_>,
+fn render_rightside<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     item: &clean::Item,
     render_mode: RenderMode,
 ) -> impl fmt::Display {
@@ -2334,8 +2356,8 @@ fn render_rightside(
     })
 }
 
-fn render_impl_summary(
-    cx: &Context<'_>,
+fn render_impl_summary<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     i: &Impl,
     parent: &clean::Item,
     show_def_docs: bool,
@@ -2499,7 +2521,10 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
     }))
 }
 
-fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
+fn extract_for_impl_name<A: Allocator + Copy>(
+    item: &clean::Item,
+    cx: &Context<'_, A>,
+) -> Option<(String, String)> {
     match item.kind {
         clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
@@ -2516,8 +2541,8 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
 /// Returns the list of implementations for the primitive reference type, filtering out any
 /// implementations that are on concrete or partially generic types, only keeping implementations
 /// of the form `impl<T> Trait for &T`.
-pub(crate) fn get_filtered_impls_for_reference<'a>(
-    shared: &'a SharedContext<'_>,
+pub(crate) fn get_filtered_impls_for_reference<'a, A: Allocator + Copy>(
+    shared: &'a SharedContext<'_, A>,
     it: &clean::Item,
 ) -> (Vec<&'a Impl>, Vec<&'a Impl>, Vec<&'a Impl>) {
     let def_id = it.item_id.expect_def_id();
@@ -2705,7 +2730,10 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 /// types are re-exported, we don't use the corresponding
 /// entry from the js file, as inlining will have already
 /// picked up the impl
-fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> {
+fn collect_paths_for_type<A: Allocator + Copy>(
+    first_ty: &clean::Type,
+    cache: &Cache<A>,
+) -> Vec<String> {
     let mut out = Vec::new();
     let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
@@ -2759,9 +2787,9 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations<W: fmt::Write>(
+fn render_call_locations<W: fmt::Write, A: Allocator + Copy>(
     mut w: W,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     item: &clean::Item,
 ) -> fmt::Result {
     let tcx = cx.tcx();
@@ -2959,20 +2987,20 @@ fn render_call_locations<W: fmt::Write>(
     w.write_str("</div>")
 }
 
-fn render_attributes_in_code(
+fn render_attributes_in_code<A: Allocator + Copy>(
     w: &mut impl fmt::Write,
     item: &clean::Item,
     prefix: &str,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> fmt::Result {
     render_attributes_in_code_with_options(w, item, prefix, cx, true, "")
 }
 
-pub(super) fn render_attributes_in_code_with_options(
+pub(super) fn render_attributes_in_code_with_options<A: Allocator + Copy>(
     w: &mut impl fmt::Write,
     item: &clean::Item,
     prefix: &str,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     render_doc_hidden: bool,
     open_tag: &str,
 ) -> fmt::Result {
@@ -3004,9 +3032,9 @@ pub(super) fn render_attributes_in_code_with_options(
     Ok(())
 }
 
-fn render_repr_attribute_in_code(
+fn render_repr_attribute_in_code<A: Allocator + Copy>(
     w: &mut impl fmt::Write,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
     def_id: DefId,
 ) -> fmt::Result {
     if let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id) {
@@ -3023,9 +3051,9 @@ fn render_code_attribute(prefix: &str, attr: &str, w: &mut impl fmt::Write) -> f
 ///
 /// Read more about it here:
 /// <https://doc.rust-lang.org/nightly/rustdoc/advanced-features.html#repr-documenting-the-representation-of-a-type>.
-fn repr_attribute<'tcx>(
+fn repr_attribute<'tcx, A: Allocator + Copy>(
     tcx: TyCtxt<'tcx>,
-    cache: &Cache,
+    cache: &Cache<A>,
     def_id: DefId,
 ) -> Option<Cow<'static, str>> {
     let adt = match tcx.def_kind(def_id) {

@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write as _};
 use std::iter;
@@ -61,7 +62,10 @@ struct ItemVars<'a> {
     src_href: Option<&'a str>,
 }
 
-pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Display {
+pub(super) fn print_item<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    item: &clean::Item,
+) -> impl fmt::Display {
     debug_assert!(!item.is_stripped());
 
     fmt::from_fn(|buf| {
@@ -218,7 +222,11 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> impl fmt::Display {
+fn item_module<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    item: &clean::Item,
+    items: &[clean::Item],
+) -> impl fmt::Display {
     fn deprecation_class_attr(is_deprecated: bool) -> &'static str {
         if is_deprecated { " class=\"deprecated\"" } else { "" }
     }
@@ -535,7 +543,11 @@ fn print_extra_info_tags(
     })
 }
 
-fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> impl fmt::Display {
+fn item_function<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    f: &clean::Function,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
         let header = it.fn_header(tcx).expect("printing a function which isn't a function");
@@ -612,7 +624,11 @@ impl NegativeMarker {
     }
 }
 
-fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt::Display {
+fn item_trait<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    t: &clean::Trait,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
         let bounds = print_bounds(&t.bounds, false, cx);
@@ -782,7 +798,11 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         // Trait documentation
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
 
-        fn trait_item(cx: &Context<'_>, m: &clean::Item, t: &clean::Item) -> impl fmt::Display {
+        fn trait_item<A: Allocator + Copy>(
+            cx: &Context<'_, A>,
+            m: &clean::Item,
+            t: &clean::Item,
+        ) -> impl fmt::Display {
             fmt::from_fn(|w| {
                 let name = m.name.unwrap();
                 info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
@@ -1210,8 +1230,8 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
     })
 }
 
-fn item_trait_alias(
-    cx: &Context<'_>,
+fn item_trait_alias<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     t: &clean::TraitAlias,
 ) -> impl fmt::Display {
@@ -1242,7 +1262,11 @@ fn item_trait_alias(
     })
 }
 
-fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
+fn item_type_alias<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    t: &clean::TypeAlias,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
@@ -1428,8 +1452,8 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
 
 #[derive(Template)]
 #[template(path = "item_union.html")]
-struct ItemUnion<'a, 'cx> {
-    cx: &'a Context<'cx>,
+struct ItemUnion<'a, 'cx, A: Allocator + Copy> {
+    cx: &'a Context<'cx, A>,
     it: &'a clean::Item,
     fields: &'a [clean::Item],
     generics: &'a clean::Generics,
@@ -1437,7 +1461,7 @@ struct ItemUnion<'a, 'cx> {
     def_id: DefId,
 }
 
-impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
+impl<'a, 'cx: 'a, A: Allocator + Copy> ItemUnion<'a, 'cx, A> {
     fn document(&self) -> impl fmt::Display {
         document(self.cx, self.it, None, HeadingOffset::H2)
     }
@@ -1496,7 +1520,11 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     }
 }
 
-fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt::Display {
+fn item_union<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    s: &clean::Union,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         ItemUnion {
             cx,
@@ -1511,7 +1539,10 @@ fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt:
     })
 }
 
-fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Display {
+fn print_tuple_struct_fields<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    s: &[clean::Item],
+) -> impl Display {
     fmt::from_fn(|f| {
         if !s.is_empty()
             && s.iter()
@@ -1540,9 +1571,9 @@ struct DisplayEnum<'clean> {
 }
 
 impl<'clean> DisplayEnum<'clean> {
-    fn render_into<W: fmt::Write>(
+    fn render_into<W: fmt::Write, A: Allocator + Copy>(
         self,
-        cx: &Context<'_>,
+        cx: &Context<'_, A>,
         it: &clean::Item,
         is_type_alias: bool,
         w: &mut W,
@@ -1598,7 +1629,11 @@ impl<'clean> DisplayEnum<'clean> {
     }
 }
 
-fn item_enum(cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) -> impl fmt::Display {
+fn item_enum<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    e: &clean::Enum,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         DisplayEnum {
             variants: &e.variants,
@@ -1613,8 +1648,8 @@ fn item_enum(cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) -> impl fmt::D
 /// It'll return false if any variant is not a C-like variant. Otherwise it'll return true if at
 /// least one of them has an explicit discriminant or if the enum has `#[repr(C)]` or an integer
 /// `repr`.
-fn should_show_enum_discriminant(
-    cx: &Context<'_>,
+fn should_show_enum_discriminant<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     enum_def_id: DefId,
     variants: &IndexVec<VariantIdx, clean::Item>,
 ) -> bool {
@@ -1635,8 +1670,8 @@ fn should_show_enum_discriminant(
     repr.c() || repr.int.is_some()
 }
 
-fn display_c_like_variant(
-    cx: &Context<'_>,
+fn display_c_like_variant<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     item: &clean::Item,
     variant: &clean::Variant,
     index: VariantIdx,
@@ -1660,8 +1695,8 @@ fn display_c_like_variant(
     })
 }
 
-fn render_enum_fields(
-    cx: &Context<'_>,
+fn render_enum_fields<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     g: Option<&clean::Generics>,
     variants: &IndexVec<VariantIdx, clean::Item>,
     count_variants: usize,
@@ -1740,8 +1775,8 @@ fn render_enum_fields(
     })
 }
 
-fn item_variants(
-    cx: &Context<'_>,
+fn item_variants<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     variants: &IndexVec<VariantIdx, clean::Item>,
     enum_def_id: DefId,
@@ -1877,8 +1912,8 @@ fn item_variants(
     })
 }
 
-fn item_macro(
-    cx: &Context<'_>,
+fn item_macro<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     t: &clean::Macro,
     kinds: MacroKinds,
@@ -1903,7 +1938,11 @@ fn item_macro(
     })
 }
 
-fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> impl fmt::Display {
+fn item_proc_macro<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    m: &clean::ProcMacro,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             let name = it.name.expect("proc-macros always have names");
@@ -1934,7 +1973,7 @@ fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> 
     })
 }
 
-fn item_primitive(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+fn item_primitive<A: Allocator + Copy>(cx: &Context<'_, A>, it: &clean::Item) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let def_id = it.item_id.expect_def_id();
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
@@ -1951,8 +1990,8 @@ fn item_primitive(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     })
 }
 
-fn item_constant(
-    cx: &Context<'_>,
+fn item_constant<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
@@ -2017,9 +2056,9 @@ struct DisplayStruct<'a> {
 }
 
 impl<'a> DisplayStruct<'a> {
-    fn render_into<W: fmt::Write>(
+    fn render_into<W: fmt::Write, A: Allocator + Copy>(
         self,
-        cx: &Context<'_>,
+        cx: &Context<'_, A>,
         it: &clean::Item,
         is_type_alias: bool,
         w: &mut W,
@@ -2053,7 +2092,11 @@ impl<'a> DisplayStruct<'a> {
     }
 }
 
-fn item_struct(cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) -> impl fmt::Display {
+fn item_struct<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+    s: &clean::Struct,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         DisplayStruct {
             ctor_kind: s.ctor_kind,
@@ -2065,8 +2108,8 @@ fn item_struct(cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) -> impl fm
     })
 }
 
-fn item_fields(
-    cx: &Context<'_>,
+fn item_fields<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
@@ -2123,8 +2166,8 @@ fn item_fields(
     })
 }
 
-fn item_static(
-    cx: &Context<'_>,
+fn item_static<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     s: &clean::Static,
     safety: Option<hir::Safety>,
@@ -2147,7 +2190,10 @@ fn item_static(
     })
 }
 
-fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+fn item_foreign_type<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             w.write_str("extern {\n")?;
@@ -2164,7 +2210,10 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     })
 }
 
-fn item_keyword_or_attribute(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+fn item_keyword_or_attribute<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
+    it: &clean::Item,
+) -> impl fmt::Display {
     document(cx, it, None, HeadingOffset::H2)
 }
 
@@ -2267,7 +2316,7 @@ pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
     }
 }
 
-pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
+pub(super) fn full_path<A: Allocator + Copy>(cx: &Context<'_, A>, item: &clean::Item) -> String {
     let mut s = join_path_syms(&cx.current);
     s.push_str("::");
     s.push_str(item.name.unwrap().as_str());
@@ -2290,10 +2339,10 @@ pub(super) fn print_ty_path(ty: ItemType, name: &str) -> impl Display {
     })
 }
 
-fn print_bounds(
+fn print_bounds<A: Allocator + Copy>(
     bounds: &[clean::GenericBound],
     trait_alias: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     (!bounds.is_empty())
         .then_some(fmt::from_fn(move |f| {
@@ -2330,7 +2379,7 @@ struct ImplString {
 }
 
 impl ImplString {
-    fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
+    fn new<A: Allocator + Copy>(i: &Impl, cx: &Context<'_, A>) -> ImplString {
         let impl_ = i.inner_impl();
         ImplString { cmp_text: format!("{:#}", print_impl(impl_, false, cx)) }
     }
@@ -2350,8 +2399,8 @@ impl Ord for ImplString {
     }
 }
 
-fn render_implementor(
-    cx: &Context<'_>,
+fn render_implementor<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     implementor: &Impl,
     trait_: &clean::Item,
     implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
@@ -2385,13 +2434,13 @@ fn render_implementor(
     )
 }
 
-fn render_union(
+fn render_union<A: Allocator + Copy>(
     it: &clean::Item,
     g: Option<&clean::Generics>,
     fields: &[clean::Item],
     def_id: DefId,
     is_type_alias: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl Display {
     fmt::from_fn(move |mut f| {
         if is_type_alias {
@@ -2451,14 +2500,14 @@ fn render_union(
     })
 }
 
-fn render_struct(
+fn render_struct<A: Allocator + Copy>(
     it: &clean::Item,
     g: Option<&clean::Generics>,
     ty: Option<CtorKind>,
     fields: &[clean::Item],
     tab: &str,
     structhead: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         write!(
@@ -2487,14 +2536,14 @@ fn render_struct(
     })
 }
 
-fn render_struct_fields(
+fn render_struct_fields<A: Allocator + Copy>(
     g: Option<&clean::Generics>,
     ty: Option<CtorKind>,
     fields: &[clean::Item],
     tab: &str,
     structhead: bool,
     has_stripped_entries: bool,
-    cx: &Context<'_>,
+    cx: &Context<'_, A>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         match ty {

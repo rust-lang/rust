@@ -105,7 +105,9 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
                 && !lines.lines.is_empty()
             {
                 let mut out = String::new();
-                super::highlight::write_code(&mut out, &code, None, None, None);
+                super::highlight::write_code::<std::alloc::Global>(
+                    &mut out, &code, None, None, None,
+                );
                 let first = lines.lines.first().unwrap();
                 let end = lines.lines.last().unwrap();
                 expanded.entry(lines.file.start_pos).or_default().push(ExpandedCode {

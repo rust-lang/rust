@@ -1,7 +1,10 @@
-pub use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
+use std::alloc::Global;
+
+pub use rustc_hash::{FxBuildHasher, FxHashSet, FxHasher};
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
 
+pub type FxHashMap<K, V, A = Global> = std::collections::HashMap<K, V, FxBuildHasher, A>;
 pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
 pub type FxIndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;
 pub type IndexEntry<'a, K, V> = indexmap::map::Entry<'a, K, V>;

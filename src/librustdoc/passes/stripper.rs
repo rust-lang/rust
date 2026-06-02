@@ -1,5 +1,6 @@
 //! A collection of utility functions for the `strip_*` passes.
 
+use std::alloc::Allocator;
 use std::mem;
 
 use rustc_hir::def_id::DefId;
@@ -37,8 +38,8 @@ fn is_item_reachable(
     }
 }
 
-impl DocFolder for Stripper<'_, '_> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for Stripper<'_, '_> {
+    fn fold_item(&mut self, i: Item, alloc: A) -> Option<Item> {
         match i.kind {
             clean::StrippedItem(..) => {
                 // We need to recurse into stripped modules to strip things
@@ -46,7 +47,7 @@ impl DocFolder for Stripper<'_, '_> {
                 // items to the `retained` set.
                 debug!("Stripper: recursing into stripped {:?} {:?}", i.type_(), i.name);
                 let old = mem::replace(&mut self.update_retained, false);
-                let ret = self.fold_item_recur(i);
+                let ret = self.fold_item_recur(i, alloc);
                 self.update_retained = old;
                 return Some(ret);
             }
@@ -109,7 +110,7 @@ impl DocFolder for Stripper<'_, '_> {
                 {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = strip_item(self.fold_item_recur(i));
+                    let ret = strip_item(self.fold_item_recur(i, alloc));
                     self.update_retained = old;
                     return Some(ret);
                 }
@@ -162,7 +163,7 @@ impl DocFolder for Stripper<'_, '_> {
             }
             return Some(i);
         } else {
-            self.fold_item_recur(i)
+            self.fold_item_recur(i, alloc)
         };
 
         if self.update_retained {
@@ -173,16 +174,16 @@ impl DocFolder for Stripper<'_, '_> {
 }
 
 /// This stripper discards all impls which reference stripped items
-pub(crate) struct ImplStripper<'a, 'tcx> {
+pub(crate) struct ImplStripper<'a, 'tcx, A: Allocator + Copy> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) retained: &'a ItemIdSet,
-    pub(crate) cache: &'a Cache,
+    pub(crate) cache: &'a Cache<A>,
     pub(crate) is_json_output: bool,
     pub(crate) document_private: bool,
     pub(crate) document_hidden: bool,
 }
 
-impl ImplStripper<'_, '_> {
+impl<A: Allocator + Copy> ImplStripper<'_, '_, A> {
     #[inline]
     fn should_keep_impl(&self, item: &Item, for_def_id: DefId) -> bool {
         if !for_def_id.is_local() || self.retained.contains(&for_def_id.into()) {
@@ -204,8 +205,8 @@ impl ImplStripper<'_, '_> {
     }
 }
 
-impl DocFolder for ImplStripper<'_, '_> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for ImplStripper<'_, '_, A> {
+    fn fold_item(&mut self, i: Item, alloc: A) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
             // documentation.
@@ -259,7 +260,7 @@ impl DocFolder for ImplStripper<'_, '_> {
                 }
             }
         }
-        Some(self.fold_item_recur(i))
+        Some(self.fold_item_recur(i, alloc))
     }
 }
 
@@ -281,8 +282,8 @@ impl ImportStripper<'_> {
     }
 }
 
-impl DocFolder for ImportStripper<'_> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for ImportStripper<'_> {
+    fn fold_item(&mut self, i: Item, alloc: A) -> Option<Item> {
         match &i.kind {
             clean::ImportItem(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
@@ -295,7 +296,7 @@ impl DocFolder for ImportStripper<'_> {
             {
                 None
             }
-            _ => Some(self.fold_item_recur(i)),
+            _ => Some(self.fold_item_recur(i, alloc)),
         }
     }
 }

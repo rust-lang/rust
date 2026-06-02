@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -16,8 +18,8 @@ use crate::clean::{
 use crate::core::DocContext;
 
 #[instrument(level = "debug", skip(cx))]
-pub(crate) fn synthesize_auto_trait_impls<'tcx>(
-    cx: &mut DocContext<'tcx>,
+pub(crate) fn synthesize_auto_trait_impls<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
@@ -60,8 +62,8 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
 }
 
 #[instrument(level = "debug", skip(cx, finder))]
-fn synthesize_auto_trait_impl<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn synthesize_auto_trait_impl<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     ty: Ty<'tcx>,
     trait_def_id: DefId,
     typing_env: ty::TypingEnv<'tcx>,
@@ -142,8 +144,8 @@ enum DiscardPositiveImpls {
 }
 
 #[instrument(level = "debug", skip(cx, region_data, vid_to_region))]
-fn clean_param_env<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_param_env<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     item_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     region_data: RegionConstraintData<'tcx>,

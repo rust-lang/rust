@@ -1,5 +1,6 @@
 //! Support for inlining external documentation into the current AST.
 
+use std::alloc::Allocator;
 use std::iter::once;
 use std::sync::Arc;
 
@@ -38,15 +39,15 @@ use crate::formats::item_type::ItemType;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
-pub(crate) fn try_inline(
-    cx: &mut DocContext<'_>,
+pub(crate) fn try_inline<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     res: Res,
     name: Symbol,
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
-    fn try_inline_inner(
-        cx: &mut DocContext<'_>,
+    fn try_inline_inner<A: Allocator + Copy>(
+        cx: &mut DocContext<'_, A>,
         kind: clean::ItemKind,
         did: DefId,
         name: Symbol,
@@ -178,8 +179,8 @@ pub(crate) fn try_inline(
     Some(ret)
 }
 
-pub(crate) fn try_inline_glob(
-    cx: &mut DocContext<'_>,
+pub(crate) fn try_inline_glob<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     res: Res,
     current_mod: LocalModDefId,
     visited: &mut DefIdSet,
@@ -234,18 +235,34 @@ pub(crate) fn load_attrs<'hir>(tcx: TyCtxt<'hir>, did: DefId) -> &'hir [hir::Att
     tcx.get_all_attrs(did)
 }
 
-pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> {
-    tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
+pub(crate) fn item_relative_path<A: Allocator + Copy>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    alloc: A,
+) -> Vec<Symbol, A> {
+    let mut vec = Vec::new_in(alloc);
+    tcx.def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| elem.data.get_opt_name())
+        .collect_into(&mut vec);
+    vec
 }
 
 /// Get the public Rust path to an item. This is used to generate the URL to the item's page.
 ///
 /// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
 /// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.
-pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> Vec<Symbol> {
+pub(crate) fn get_item_path<A: Allocator + Copy>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    kind: ItemType,
+    alloc: A,
+) -> Vec<Symbol, A> {
     let crate_name = tcx.crate_name(def_id.krate);
-    let relative = item_relative_path(tcx, def_id);
+    let relative = item_relative_path(tcx, def_id, alloc);
 
+    let mut vec = Vec::new_in(alloc);
     if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
@@ -253,20 +270,28 @@ pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> V
             CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id),
             LoadedMacro::MacroDef { def, .. } if !def.macro_rules
         ) {
-            once(crate_name).chain(relative).collect()
+            once(crate_name).chain(relative).collect_into(&mut vec);
         } else {
-            vec![crate_name, *relative.last().expect("relative was empty")]
+            [crate_name, *relative.last().expect("relative was empty")]
+                .into_iter()
+                .collect_into(&mut vec);
         }
     } else {
-        once(crate_name).chain(relative).collect()
+        once(crate_name).chain(relative).collect_into(&mut vec);
     }
+
+    vec
 }
 
 /// Record an external fully qualified name in the external_paths cache.
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
-pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
+pub(crate) fn record_extern_fqn<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    did: DefId,
+    kind: ItemType,
+) {
     if did.is_local() {
         if cx.cache.exact_paths.contains_key(&did) {
             return;
@@ -275,7 +300,9 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
         return;
     }
 
-    let item_path = get_item_path(cx.tcx, did, kind);
+    let alloc = *cx.cache.search_index.allocator();
+
+    let item_path = get_item_path(cx.tcx, did, kind, alloc);
 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, item_path);
@@ -284,7 +311,10 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
     }
 }
 
-pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
+pub(crate) fn build_trait<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    did: DefId,
+) -> clean::Trait {
     let trait_items = cx
         .tcx
         .associated_items(did)
@@ -305,7 +335,10 @@ pub(crate) fn build_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 
-fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
+fn build_trait_alias<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    did: DefId,
+) -> clean::TraitAlias {
     let generics = clean_ty_generics(cx, did);
     let (generics, mut bounds) = separate_self_bounds(generics);
 
@@ -318,7 +351,10 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     clean::TraitAlias { generics, bounds }
 }
 
-pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
+pub(super) fn build_function<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    def_id: DefId,
+) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
     // The generics need to be cleaned before the signature.
     let mut generics = clean_ty_generics(cx, def_id);
@@ -349,14 +385,14 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
     Box::new(clean::Function { decl, generics })
 }
 
-fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
+fn build_enum<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, did: DefId) -> clean::Enum {
     clean::Enum {
         generics: clean_ty_generics(cx, did),
         variants: cx.tcx.adt_def(did).variants().iter().map(|v| clean_variant_def(v, cx)).collect(),
     }
 }
 
-fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
+fn build_struct<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, did: DefId) -> clean::Struct {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
@@ -366,7 +402,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     }
 }
 
-fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
+fn build_union<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, did: DefId) -> clean::Union {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     let generics = clean_ty_generics(cx, did);
@@ -374,8 +410,8 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     clean::Union { generics, fields }
 }
 
-fn build_type_alias(
-    cx: &mut DocContext<'_>,
+fn build_type_alias<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     did: DefId,
     ret: &mut Vec<Item>,
 ) -> Box<clean::TypeAlias> {
@@ -392,8 +428,8 @@ fn build_type_alias(
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
-pub(crate) fn build_impls(
-    cx: &mut DocContext<'_>,
+pub(crate) fn build_impls<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     did: DefId,
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
@@ -452,8 +488,8 @@ pub(crate) fn merge_attrs(
 }
 
 /// Inline an `impl`, inherent or of a trait. The `did` must be for an `impl`.
-pub(crate) fn build_impl(
-    cx: &mut DocContext<'_>,
+pub(crate) fn build_impl<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     did: DefId,
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     ret: &mut Vec<clean::Item>,
@@ -473,7 +509,7 @@ pub(crate) fn build_impl(
             .is_some_and(|stab| stab.is_unstable() && stab.feature == sym::rustc_private)
     };
     let document_compiler_internal = is_compiler_internal(LOCAL_CRATE.as_def_id());
-    let is_directly_public = |cx: &mut DocContext<'_>, did| {
+    let is_directly_public = |cx: &mut DocContext<'_, A>, did| {
         cx.cache.effective_visibilities.is_directly_public(tcx, did)
             && (document_compiler_internal || !is_compiler_internal(did))
     };
@@ -665,15 +701,19 @@ pub(crate) fn build_impl(
     ));
 }
 
-fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
+fn build_module<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    did: DefId,
+    visited: &mut DefIdSet,
+) -> clean::Module {
     let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None, None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
 }
 
-fn build_module_items(
-    cx: &mut DocContext<'_>,
+fn build_module_items<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     did: DefId,
     visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
@@ -755,7 +795,10 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     }
 }
 
-fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
+fn build_const_item<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    def_id: DefId,
+) -> clean::Constant {
     let mut generics = clean_ty_generics(cx, def_id);
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
     let ty = clean_middle_ty(
@@ -767,7 +810,11 @@ fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant { generics, type_: ty, kind: clean::ConstantKind::Extern { def_id } }
 }
 
-fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
+fn build_static<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    did: DefId,
+    mutable: bool,
+) -> clean::Static {
     clean::Static {
         type_: Box::new(clean_middle_ty(
             ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity().skip_norm_wip()),
@@ -829,7 +876,7 @@ fn separate_self_bounds(mut g: clean::Generics) -> (clean::Generics, Vec<clean::
     (g, ty_bounds)
 }
 
-pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
+pub(crate) fn record_extern_trait<A: Allocator + Copy>(cx: &mut DocContext<'_, A>, did: DefId) {
     if did.is_local()
         || cx.external_traits.contains_key(&did)
         || cx.active_extern_traits.contains(&did)

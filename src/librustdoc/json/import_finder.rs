@@ -1,3 +1,5 @@
+use std::alloc::Global;
+
 use rustc_hir::def_id::DefIdSet;
 
 use crate::clean::{self, Import, ImportSource, Item};
@@ -13,7 +15,7 @@ use crate::fold::DocFolder;
 /// this information is needed.
 pub(crate) fn get_imports(krate: clean::Crate) -> (clean::Crate, DefIdSet) {
     let mut finder = ImportFinder::default();
-    let krate = finder.fold_crate(krate);
+    let krate = finder.fold_crate(krate, Global);
     (krate, finder.imported)
 }
 
@@ -22,15 +24,15 @@ struct ImportFinder {
     imported: DefIdSet,
 }
 
-impl DocFolder for ImportFinder {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl DocFolder<Global> for ImportFinder {
+    fn fold_item(&mut self, i: Item, alloc: Global) -> Option<Item> {
         match i.kind {
             clean::ImportItem(Import { source: ImportSource { did: Some(did), .. }, .. }) => {
                 self.imported.insert(did);
                 Some(i)
             }
 
-            _ => Some(self.fold_item_recur(i)),
+            _ => Some(self.fold_item_recur(i, alloc)),
         }
     }
 }

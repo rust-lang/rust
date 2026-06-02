@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_middle::ty::TyCtxt;
 
@@ -101,11 +103,12 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
 pub(crate) fn run_format<
     'tcx,
     T: FormatRenderer<'tcx>,
-    F: FnOnce(clean::Crate, RenderOptions, Cache, TyCtxt<'tcx>) -> Result<(T, clean::Crate), Error>,
+    F: FnOnce(clean::Crate, RenderOptions, Cache<A>, TyCtxt<'tcx>) -> Result<(T, clean::Crate), Error>,
+    A: Allocator + Copy,
 >(
     krate: clean::Crate,
     options: RenderOptions,
-    cache: Cache,
+    cache: Cache<A>,
     tcx: TyCtxt<'tcx>,
     init: F,
 ) -> Result<(), Error> {

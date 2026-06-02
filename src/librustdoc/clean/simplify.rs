@@ -11,6 +11,8 @@
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!
 
+use std::alloc::Allocator;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordSet;
@@ -121,7 +123,10 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
         .any(|did| trait_is_same_or_supertrait(tcx, did, trait_))
 }
 
-pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
+pub(crate) fn sized_bounds<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
+    generics: &mut clean::Generics,
+) {
     let mut sized_params = UnordSet::new();
 
     // In the surface language, all type parameters except `Self` have an

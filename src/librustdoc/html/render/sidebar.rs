@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -139,8 +140,8 @@ pub(crate) mod filters {
     }
 }
 
-pub(super) fn print_sidebar(
-    cx: &Context<'_>,
+pub(super) fn print_sidebar<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     it: &clean::Item,
     mut buffer: impl fmt::Write,
 ) -> fmt::Result {
@@ -219,8 +220,8 @@ fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
     fields
 }
 
-fn docblock_toc<'a>(
-    cx: &'a Context<'_>,
+fn docblock_toc<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     ids: &mut IdMap,
 ) -> Option<LinkBlock<'a>> {
@@ -269,8 +270,8 @@ fn docblock_toc<'a>(
     }
 }
 
-fn sidebar_struct<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_struct<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     s: &'a clean::Struct,
     items: &mut Vec<LinkBlock<'a>>,
@@ -288,8 +289,8 @@ fn sidebar_struct<'a>(
     sidebar_assoc_items(cx, it, items, deref_id_map);
 }
 
-fn sidebar_trait<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_trait<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     t: &'a clean::Trait,
     blocks: &mut Vec<LinkBlock<'a>>,
@@ -362,8 +363,8 @@ fn sidebar_trait<'a>(
     }
 }
 
-fn sidebar_primitive<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_primitive<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     items: &mut Vec<LinkBlock<'a>>,
     deref_id_map: &'a DefIdMap<String>,
@@ -378,8 +379,8 @@ fn sidebar_primitive<'a>(
     }
 }
 
-fn sidebar_type_alias<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_type_alias<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     t: &'a clean::TypeAlias,
     items: &mut Vec<LinkBlock<'a>>,
@@ -409,8 +410,8 @@ fn sidebar_type_alias<'a>(
     sidebar_assoc_items(cx, it, items, deref_id_map);
 }
 
-fn sidebar_union<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_union<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     u: &'a clean::Union,
     items: &mut Vec<LinkBlock<'a>>,
@@ -422,8 +423,8 @@ fn sidebar_union<'a>(
 }
 
 /// Adds trait implementations into the blocks of links
-fn sidebar_assoc_items<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_assoc_items<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     links: &mut Vec<LinkBlock<'a>>,
     deref_id_map: &'a DefIdMap<String>,
@@ -512,8 +513,8 @@ fn sidebar_assoc_items<'a>(
     }
 }
 
-fn sidebar_deref_methods<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_deref_methods<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     out: &mut Vec<LinkBlock<'a>>,
     impl_: &Impl,
     v: &[Impl],
@@ -614,8 +615,8 @@ fn sidebar_deref_methods<'a>(
     }
 }
 
-fn sidebar_enum<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_enum<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     e: &'a clean::Enum,
     items: &mut Vec<LinkBlock<'a>>,
@@ -684,8 +685,8 @@ fn sidebar_module(
     sidebar_module_like(item_sections_in_use, ids, module_like)
 }
 
-fn sidebar_foreign_type<'a>(
-    cx: &'a Context<'_>,
+fn sidebar_foreign_type<'a, A: Allocator + Copy>(
+    cx: &'a Context<'_, A>,
     it: &'a clean::Item,
     items: &mut Vec<LinkBlock<'a>>,
     deref_id_map: &'a DefIdMap<String>,
@@ -694,8 +695,8 @@ fn sidebar_foreign_type<'a>(
 }
 
 /// Renders the trait implementations for this type
-fn sidebar_render_assoc_items(
-    cx: &Context<'_>,
+fn sidebar_render_assoc_items<A: Allocator + Copy>(
+    cx: &Context<'_, A>,
     id_map: &mut IdMap,
     concrete: Vec<&Impl>,
     synthetic: Vec<&Impl>,

@@ -1,5 +1,6 @@
 //! Detects invalid HTML (like an unclosed `<span>`) in doc comments.
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::iter::Peekable;
 use std::ops::Range;
@@ -14,7 +15,12 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
+pub(crate) fn visit_item<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    item: &Item,
+    hir_id: HirId,
+    dox: &str,
+) {
     let tcx = cx.tcx;
     let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
         let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings) {

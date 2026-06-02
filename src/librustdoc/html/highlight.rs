@@ -5,6 +5,7 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
@@ -27,8 +28,8 @@ use crate::html::render::Context;
 use crate::html::span_map::{DUMMY_SP, LinkFromSrc, Span};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
-pub(crate) struct HrefContext<'a, 'tcx> {
-    pub(crate) context: &'a Context<'tcx>,
+pub(crate) struct HrefContext<'a, 'tcx, A: Allocator + Copy> {
+    pub(crate) context: &'a Context<'tcx, A>,
     /// This span contains the current file we're going through.
     pub(crate) file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
@@ -61,7 +62,7 @@ pub(crate) fn render_example_with_highlighting(
 ) -> impl Display {
     fmt::from_fn(move |f| {
         write_header("rust-example-rendered", tooltip, extra_classes).fmt(f)?;
-        write_code(f, src, None, None, None);
+        write_code::<std::alloc::Global>(f, src, None, None, None);
         write_footer(playground_button).fmt(f)
     })
 }
@@ -181,10 +182,10 @@ impl ClassStack {
         Self { open_classes: Vec::new() }
     }
 
-    fn enter_elem<W: Write>(
+    fn enter_elem<W: Write, A: Allocator + Copy>(
         &mut self,
         out: &mut W,
-        href_context: &Option<HrefContext<'_, '_>>,
+        href_context: &Option<HrefContext<'_, '_, A>>,
         new_class: Class,
         closing_tag: Option<&'static str>,
     ) {
@@ -255,10 +256,10 @@ impl ClassStack {
         }
     }
 
-    fn push<W: Write>(
+    fn push<W: Write, A: Allocator + Copy>(
         &mut self,
         out: &mut W,
-        href_context: &Option<HrefContext<'_, '_>>,
+        href_context: &Option<HrefContext<'_, '_, A>>,
         class: Option<Class>,
         text: Cow<'_, str>,
         needs_escape: bool,
@@ -338,25 +339,25 @@ impl ClassStack {
 
 /// This type is used as a conveniency to prevent having to pass all its fields as arguments into
 /// the various functions (which became its methods).
-struct TokenHandler<'a, 'tcx, F: Write> {
+struct TokenHandler<'a, 'tcx, F: Write, A: Allocator + Copy> {
     out: &'a mut F,
     class_stack: ClassStack,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
-    href_context: Option<HrefContext<'a, 'tcx>>,
+    href_context: Option<HrefContext<'a, 'tcx, A>>,
     line_number_kind: LineNumberKind,
     line: u32,
     max_lines: u32,
 }
 
-impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
+impl<F: Write, A: Allocator + Copy> std::fmt::Debug for TokenHandler<'_, '_, F, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TokenHandler").field("class_stack", &self.class_stack).finish()
     }
 }
 
-impl<'a, F: Write> TokenHandler<'a, '_, F> {
-    fn handle_backline(&mut self) -> Option<impl Display + use<F>> {
+impl<'a, F: Write, A: Allocator + Copy> TokenHandler<'a, '_, F, A> {
+    fn handle_backline(&mut self) -> Option<impl Display + use<F, A>> {
         self.line += 1;
         if self.line < self.max_lines {
             return Some(self.line_number_kind.render(self.line));
@@ -451,7 +452,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
     }
 }
 
-impl<F: Write> Drop for TokenHandler<'_, '_, F> {
+impl<F: Write, A: Allocator + Copy> Drop for TokenHandler<'_, '_, F, A> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
         self.class_stack.empty_stack(self.out);
@@ -491,8 +492,8 @@ fn get_next_expansion(
     expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() > span.lo())
 }
 
-fn get_expansion<'a, W: Write>(
-    token_handler: &mut TokenHandler<'_, '_, W>,
+fn get_expansion<'a, W: Write, A: Allocator + Copy>(
+    token_handler: &mut TokenHandler<'_, '_, W, A>,
     expanded_codes: &'a [ExpandedCode],
     span: Span,
 ) -> Option<&'a ExpandedCode> {
@@ -501,8 +502,8 @@ fn get_expansion<'a, W: Write>(
     Some(expanded_code)
 }
 
-fn end_expansion<'a, W: Write>(
-    token_handler: &mut TokenHandler<'_, '_, W>,
+fn end_expansion<'a, W: Write, A: Allocator + Copy>(
+    token_handler: &mut TokenHandler<'_, '_, W, A>,
     expanded_codes: &'a [ExpandedCode],
     span: Span,
 ) -> Option<&'a ExpandedCode> {
@@ -548,10 +549,10 @@ impl LineInfo {
 /// item definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
-pub(super) fn write_code(
+pub(super) fn write_code<A: Allocator + Copy>(
     out: &mut impl Write,
     src: &str,
-    href_context: Option<HrefContext<'_, '_>>,
+    href_context: Option<HrefContext<'_, '_, A>>,
     decoration_info: Option<&DecorationInfo>,
     line_info: Option<LineInfo>,
 ) {
@@ -1375,11 +1376,11 @@ fn is_keyword(symbol: Symbol) -> bool {
     symbol.is_reserved(|| Edition::Edition2024)
 }
 
-fn generate_link_to_def(
+fn generate_link_to_def<A: Allocator + Copy>(
     out: &mut impl Write,
     text_s: &str,
     klass: Class,
-    href_context: &Option<HrefContext<'_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, A>>,
     def_span: Span,
     open_tag: bool,
 ) -> bool {
@@ -1442,11 +1443,11 @@ fn generate_link_to_def(
 ///   element) by retrieving the link information from the `span_correspondence_map` that was filled
 ///   in `span_map.rs::collect_spans_and_sources`. If it cannot retrieve the information, then it's
 ///   the same as the second point (`klass` is `Some` but doesn't have a [`rustc_span::Span`]).
-fn string_without_closing_tag<T: Display>(
+fn string_without_closing_tag<T: Display, A: Allocator + Copy>(
     out: &mut impl Write,
     text: T,
     klass: Option<Class>,
-    href_context: &Option<HrefContext<'_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, A>>,
     open_tag: bool,
 ) -> Option<&'static str> {
     let Some(klass) = klass else {

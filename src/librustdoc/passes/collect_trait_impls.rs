@@ -2,6 +2,8 @@
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
 
+use std::alloc::Allocator;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
@@ -15,13 +17,18 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
-    name: "collect-trait-impls",
-    run: Some(collect_trait_impls),
-    description: "retrieves trait impls for items in the crate",
-};
+pub(crate) fn collect_trait_impls_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "collect-trait-impls",
+        run: Some(collect_trait_impls),
+        description: "retrieves trait impls for items in the crate",
+    }
+}
 
-pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn collect_trait_impls<A: Allocator + Copy>(
+    mut krate: Crate,
+    cx: &mut DocContext<'_, A>,
+) -> Crate {
     let tcx = cx.tcx;
     // We need to check if there are errors before running this pass because it would crash when
     // we try to get auto and blanket implementations.
@@ -130,10 +137,10 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     let mut type_did_to_deref_target: DefIdMap<&Type> = DefIdMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
-    fn add_deref_target(
-        cx: &DocContext<'_>,
+    fn add_deref_target<A: Allocator + Copy>(
+        cx: &DocContext<'_, A>,
         map: &DefIdMap<&Type>,
-        cleaner: &mut BadImplStripper<'_>,
+        cleaner: &mut BadImplStripper<'_, A>,
         targets: &mut DefIdSet,
         type_did: DefId,
     ) {
@@ -219,12 +226,12 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     krate
 }
 
-struct SyntheticImplCollector<'a, 'tcx> {
-    cx: &'a mut DocContext<'tcx>,
+struct SyntheticImplCollector<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut DocContext<'tcx, A>,
     impls: Vec<Item>,
 }
 
-impl DocVisitor<'_> for SyntheticImplCollector<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for SyntheticImplCollector<'_, '_, A> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
@@ -240,18 +247,18 @@ impl DocVisitor<'_> for SyntheticImplCollector<'_, '_> {
     }
 }
 
-struct ItemAndAliasCollector<'cache> {
+struct ItemAndAliasCollector<'cache, A: Allocator + Copy> {
     items: FxHashSet<ItemId>,
-    cache: &'cache Cache,
+    cache: &'cache Cache<A>,
 }
 
-impl<'cache> ItemAndAliasCollector<'cache> {
-    fn new(cache: &'cache Cache) -> Self {
+impl<'cache, A: Allocator + Copy> ItemAndAliasCollector<'cache, A> {
+    fn new(cache: &'cache Cache<A>) -> Self {
         ItemAndAliasCollector { items: FxHashSet::default(), cache }
     }
 }
 
-impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for ItemAndAliasCollector<'_, A> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 
@@ -265,13 +272,13 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
     }
 }
 
-struct BadImplStripper<'a> {
+struct BadImplStripper<'a, A: Allocator + Copy> {
     prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
-    cache: &'a Cache,
+    cache: &'a Cache<A>,
 }
 
-impl BadImplStripper<'_> {
+impl<A: Allocator + Copy> BadImplStripper<'_, A> {
     fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics

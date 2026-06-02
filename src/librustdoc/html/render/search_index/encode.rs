@@ -1,3 +1,7 @@
+use std::alloc::Allocator;
+
+use crate::alloc::CollectIn as _;
+
 pub(crate) fn write_signed_vlqhex_to_string(n: i32, string: &mut String) {
     let (sign, magnitude): (bool, u32) =
         if n >= 0 { (false, n.try_into().unwrap()) } else { (true, (-n).try_into().unwrap()) };
@@ -51,7 +55,10 @@ pub fn read_signed_vlqhex_from_string(string: &[u8]) -> Option<(i32, usize)> {
     None
 }
 
-pub fn write_postings_to_string(postings: &[Vec<u32>], buf: &mut Vec<u8>) {
+pub fn write_postings_to_string<A: Allocator + Copy>(
+    postings: &[Vec<u32, A>],
+    buf: &mut Vec<u8 /* FIXME(yotamofek): , A*/>,
+) {
     // there's gonna be at least 1 byte pushed for every posting
     buf.reserve(postings.len());
 
@@ -71,18 +78,23 @@ pub fn write_postings_to_string(postings: &[Vec<u32>], buf: &mut Vec<u8>) {
     }
 }
 
-pub fn read_postings_from_string(postings: &mut Vec<Vec<u32>>, mut buf: &[u8]) {
+pub fn read_postings_from_string<A: Allocator + Copy>(
+    postings: &mut Vec<Vec<u32, A>, A>,
+    mut buf: &[u8],
+) {
     use stringdex::internals::decode::RoaringBitmap;
     while let Some(&c) = buf.first() {
         if c < 0x3a {
             buf = &buf[1..];
             let buf = buf.split_off(..usize::from(c) * size_of::<u32>()).unwrap();
             let (chunks, _) = buf.as_chunks();
-            let slot = chunks.iter().copied().map(u32::from_le_bytes).collect();
+            let slot =
+                chunks.iter().copied().map(u32::from_le_bytes).collect_in(*postings.allocator());
             postings.push(slot);
         } else {
             let (bitmap, consumed_bytes_len) = RoaringBitmap::from_bytes(buf).unwrap();
-            postings.push(bitmap.to_vec());
+            // FIXME(yotamofek): this goes through the global allocator
+            postings.push(bitmap.to_vec().to_vec_in(*postings.allocator()));
             buf = &buf[consumed_bytes_len..];
         }
     }

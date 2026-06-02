@@ -6,6 +6,8 @@
 //! [`core::error`] module is marked as stable since 1.81.0, so we want to show
 //! [`core::error::Error`] as stable since 1.81.0 as well.
 
+use std::alloc::Allocator;
+
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::{Stability, StabilityLevel};
 
@@ -14,24 +16,30 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
 
-pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
-    name: "propagate-stability",
-    run: Some(propagate_stability),
-    description: "propagates stability to child items",
-};
+pub(crate) fn propagate_stability_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "propagate-stability",
+        run: Some(propagate_stability),
+        description: "propagates stability to child items",
+    }
+}
 
-pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn propagate_stability<A: Allocator + Copy>(
+    cr: Crate,
+    cx: &mut DocContext<'_, A>,
+) -> Crate {
+    let alloc = *cx.cache.search_index.allocator();
     let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID);
-    StabilityPropagator { parent_stability: crate_stability, cx }.fold_crate(cr)
+    StabilityPropagator { parent_stability: crate_stability, cx }.fold_crate(cr, alloc)
 }
 
-struct StabilityPropagator<'a, 'tcx> {
+struct StabilityPropagator<'a, 'tcx, A: Allocator + Copy> {
     parent_stability: Option<Stability>,
-    cx: &'a mut DocContext<'tcx>,
+    cx: &'a mut DocContext<'tcx, A>,
 }
 
-impl DocFolder for StabilityPropagator<'_, '_> {
-    fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for StabilityPropagator<'_, '_, A> {
+    fn fold_item(&mut self, mut item: Item, alloc: A) -> Option<Item> {
         let parent_stability = self.parent_stability;
 
         let stability = match item.item_id {
@@ -124,7 +132,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
 
         item.inner.stability = stability;
         self.parent_stability = stability;
-        let item = self.fold_item_recur(item);
+        let item = self.fold_item_recur(item, alloc);
         self.parent_stability = parent_stability;
 
         Some(item)

@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
@@ -47,7 +48,7 @@ use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-pub(crate) struct Context<'tcx> {
+pub(crate) struct Context<'tcx, A: Allocator + Copy> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub(crate) current: Vec<Symbol>,
@@ -64,7 +65,7 @@ pub(crate) struct Context<'tcx> {
     /// Issue for improving the situation: [#82381][]
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    pub(crate) shared: SharedContext<'tcx>,
+    pub(crate) shared: SharedContext<'tcx, A>,
     /// Collection of all types with notable traits referenced in the current module.
     pub(crate) types_with_notable_traits: RefCell<FxIndexSet<clean::Type>>,
     /// Contains information that needs to be saved and reset after rendering an item which is
@@ -99,7 +100,7 @@ impl ContextInfo {
 }
 
 /// Shared mutable state used in [`Context`] and elsewhere.
-pub(crate) struct SharedContext<'tcx> {
+pub(crate) struct SharedContext<'tcx, A: Allocator + Copy> {
     pub(crate) tcx: TyCtxt<'tcx>,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
@@ -146,14 +147,14 @@ pub(crate) struct SharedContext<'tcx> {
     pub(crate) span_correspondence_map: FxHashMap<Span, LinkFromSrc>,
     pub(crate) expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     /// The [`Cache`] used during rendering.
-    pub(crate) cache: Cache,
+    pub(crate) cache: Cache<A>,
     pub(crate) call_locations: AllCallLocations,
     /// Controls whether we read / write to cci files in the doc root. Defaults read=true,
     /// write=true
     should_merge: ShouldMerge,
 }
 
-impl SharedContext<'_> {
+impl<A: Allocator + Copy> SharedContext<'_, A> {
     pub(crate) fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
@@ -193,12 +194,12 @@ impl serde::Serialize for SidebarItem {
     }
 }
 
-impl<'tcx> Context<'tcx> {
+impl<'tcx, A: Allocator + Copy> Context<'tcx, A> {
     pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
     }
 
-    pub(crate) fn cache(&self) -> &Cache {
+    pub(crate) fn cache(&self) -> &Cache<A> {
         &self.shared.cache
     }
 
@@ -498,11 +499,11 @@ impl<'tcx> Context<'tcx> {
     }
 }
 
-impl<'tcx> Context<'tcx> {
+impl<'tcx, A: Allocator + Copy> Context<'tcx, A> {
     pub(crate) fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        cache: Cache,
+        cache: Cache<A>,
         tcx: TyCtxt<'tcx>,
         expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     ) -> Result<(Self, clean::Crate), Error> {
@@ -645,7 +646,7 @@ impl<'tcx> Context<'tcx> {
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
-impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
+impl<'tcx, A: Allocator + Copy> FormatRenderer<'tcx> for Context<'tcx, A> {
     const DESCR: &'static str = "html";
     const RUN_ON_MODULE: bool = true;
     const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::HtmlNonStaticFiles;

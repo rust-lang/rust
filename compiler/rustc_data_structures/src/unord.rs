@@ -2,7 +2,9 @@
 //! ordering. This is a useful property for deterministic computations, such
 //! as required by the query system.
 
+use std::alloc::{Allocator, Global};
 use std::borrow::{Borrow, BorrowMut};
+use std::collections::HashMap;
 use std::collections::hash_map::{Entry, OccupiedError};
 use std::hash::Hash;
 use std::iter::{Product, Sum};
@@ -450,11 +452,11 @@ impl<V: Hash + Eq + StableHash> StableHash for UnordSet<V> {
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
 #[derive(Debug, Eq, PartialEq, Clone, Encodable_NoContext, Decodable_NoContext)]
-pub struct UnordMap<K: Eq + Hash, V> {
-    inner: FxHashMap<K, V>,
+pub struct UnordMap<K: Eq + Hash, V, A: Allocator = Global> {
+    inner: HashMap<K, V, FxBuildHasher, A>,
 }
 
-impl<K: Eq + Hash, V> UnordCollection for UnordMap<K, V> {}
+impl<K: Eq + Hash, V, A: Allocator> UnordCollection for UnordMap<K, V, A> {}
 
 const impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
     #[inline]
@@ -463,7 +465,7 @@ const impl<K: Eq + Hash, V> Default for UnordMap<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V> Extend<(K, V)> for UnordMap<K, V> {
+impl<K: Hash + Eq, V, A: Allocator> Extend<(K, V)> for UnordMap<K, V, A> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.inner.extend(iter)
@@ -487,7 +489,19 @@ impl<K: Hash + Eq, V, I: Iterator<Item = (K, V)>> From<UnordItems<(K, V), I>> fo
 impl<K: Eq + Hash, V> UnordMap<K, V> {
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self { inner: FxHashMap::with_capacity_and_hasher(capacity, Default::default()) }
+        Self::with_capacity_in(capacity, Global)
+    }
+}
+
+impl<K: Eq + Hash, V, A: Allocator> UnordMap<K, V, A> {
+    #[inline]
+    pub fn new_in(alloc: A) -> Self {
+        Self::with_capacity_in(0, alloc)
+    }
+
+    #[inline]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+        Self { inner: HashMap::with_capacity_and_hasher_in(capacity, Default::default(), alloc) }
     }
 
     #[inline]
@@ -501,7 +515,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn try_insert(&mut self, k: K, v: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+    pub fn try_insert(&mut self, k: K, v: V) -> Result<&mut V, OccupiedError<'_, K, V, A>> {
         self.inner.try_insert(k, v)
     }
 
@@ -520,7 +534,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V, A> {
         self.inner.entry(key)
     }
 

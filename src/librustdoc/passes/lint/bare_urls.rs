@@ -2,6 +2,7 @@
 //! Suggests wrapping the link with angle brackets: `Go to <https://example.com/>.` to linkify it.
 
 use core::ops::Range;
+use std::alloc::Allocator;
 use std::mem;
 use std::sync::LazyLock;
 
@@ -16,8 +17,13 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 
-pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
-    let report_diag = |cx: &DocContext<'_>,
+pub(super) fn visit_item<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
+    item: &Item,
+    hir_id: HirId,
+    dox: &str,
+) {
+    let report_diag = |cx: &DocContext<'_, A>,
                        msg: &'static str,
                        range: Range<usize>,
                        without_brackets: Option<&str>| {
@@ -88,12 +94,12 @@ static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     .expect("failed to build regex")
 });
 
-fn find_raw_urls(
-    cx: &DocContext<'_>,
+fn find_raw_urls<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     dox: &str,
     text: &str,
     range: Range<usize>,
-    f: &impl Fn(&DocContext<'_>, &'static str, Range<usize>, Option<&str>),
+    f: &impl Fn(&DocContext<'_, A>, &'static str, Range<usize>, Option<&str>),
 ) {
     trace!("looking for raw urls in {text}");
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").

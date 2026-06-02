@@ -1,3 +1,4 @@
+use std::alloc::Global;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::io::Read;
@@ -445,18 +446,18 @@ impl Options {
 
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
-            for pass in passes::PASSES {
+            for pass in passes::passes::<Global>() {
                 println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
-            for p in passes::DEFAULT_PASSES {
+            for p in passes::default_passes::<Global>() {
                 print!("{:>20}", p.pass.name);
                 println_condition(p.condition);
             }
 
             if nightly_options::match_is_nightly_build(matches) {
                 println!("\nPasses run with `--show-coverage`:");
-                for p in passes::COVERAGE_PASSES {
+                for p in passes::coverage_passes::<Global>() {
                     print!("{:>20}", p.pass.name);
                     println_condition(p.condition);
                 }

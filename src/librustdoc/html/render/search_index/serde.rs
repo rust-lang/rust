@@ -1,13 +1,15 @@
-use std::fmt::{self, Formatter};
+use std::alloc::Allocator;
+use std::fmt;
 
 use rustc_span::Symbol;
-use serde::de::{self, SeqAccess};
+use serde::de::{self, Error};
 use serde::ser::SerializeSeq as _;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserializer, Serialize, Serializer};
+use serde_alloc::{DeserializeWithAlloc, WithAllocSeed};
 
 use crate::html::render::IndexItemFunctionType;
 
-impl Serialize for IndexItemFunctionType {
+impl<A: Allocator + Copy> Serialize for IndexItemFunctionType<A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -20,9 +22,7 @@ impl Serialize for IndexItemFunctionType {
                 S: Serializer,
             {
                 serializer.collect_seq(
-                    self.0
-                        .iter()
-                        .map(|symbol| symbol.as_ref().map(Symbol::as_str).unwrap_or_default()),
+                    self.0.iter().map(|sym| sym.as_ref().map(Symbol::as_str).unwrap_or_default()),
                 )
             }
         }
@@ -39,64 +39,117 @@ impl Serialize for IndexItemFunctionType {
     }
 }
 
-impl<'de> Deserialize<'de> for IndexItemFunctionType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+impl<'de, A: Allocator + Copy> DeserializeWithAlloc<'de, A> for IndexItemFunctionType<A> {
+    fn deserialize_with_alloc<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        #[derive(Deserialize)]
-        struct Deserialized {
-            #[serde(deserialize_with = "function_signature")]
-            function_signature: IndexItemFunctionType,
-            #[serde(deserialize_with = "param_names")]
-            param_names: Vec<Option<Symbol>>,
-        }
+        struct Blah<A: Allocator + Copy>(IndexItemFunctionType<A>);
 
-        fn function_signature<'de, D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> Result<IndexItemFunctionType, D::Error> {
-            String::deserialize(deserializer).map(|sig| {
-                IndexItemFunctionType::read_from_string_without_param_names(sig.as_bytes()).0
-            })
-        }
-
-        fn param_names<'de, D: Deserializer<'de>>(
-            deserializer: D,
-        ) -> Result<Vec<Option<Symbol>>, D::Error> {
-            struct Visitor;
-
-            impl<'de> de::Visitor<'de> for Visitor {
-                type Value = Vec<Option<Symbol>>;
-
-                fn expecting(&self, f: &mut Formatter<'_>) -> fmt::Result {
-                    f.write_str("seq of param names")
+        impl<'de, A: Allocator + Copy> DeserializeWithAlloc<'de, A> for Blah<A> {
+            fn deserialize_with_alloc<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct Visitor<A: Allocator + Copy> {
+                    alloc: A,
                 }
 
-                fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-                where
-                    A: SeqAccess<'de>,
-                {
-                    let mut param_names = Vec::with_capacity(seq.size_hint().unwrap_or_default());
+                impl<'de, A: Allocator + Copy> de::Visitor<'de> for Visitor<A> {
+                    type Value = IndexItemFunctionType<A>;
 
-                    while let Some(symbol) = seq.next_element::<String>()? {
-                        param_names.push(if symbol.is_empty() {
-                            None
-                        } else {
-                            Some(Symbol::intern(&symbol))
-                        });
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        formatter.write_str("IndexItemFunctionType")
                     }
 
-                    Ok(param_names)
-                }
-            }
+                    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                    where
+                        E: de::Error,
+                    {
+                        let (ty, _) = IndexItemFunctionType::read_from_string_without_param_names(
+                            v, self.alloc,
+                        );
 
-            deserializer.deserialize_seq(Visitor)
+                        Ok(ty)
+                    }
+
+                    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                    where
+                        E: de::Error,
+                    {
+                        self.visit_bytes(v.as_bytes())
+                    }
+                }
+
+                deserializer.deserialize_any(Visitor { alloc }).map(Self)
+            }
         }
 
-        let Deserialized { mut function_signature, param_names } =
-            Deserialized::deserialize(deserializer)?;
-        function_signature.param_names = param_names;
+        struct ParamNames<A: Allocator + Copy>(Vec<Option<Symbol>, A>);
 
-        Ok(function_signature)
+        impl<'de, A: Allocator + Copy> DeserializeWithAlloc<'de, A> for ParamNames<A> {
+            fn deserialize_with_alloc<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct Visitor<A: Allocator + Copy> {
+                    alloc: A,
+                }
+
+                impl<'de, A: Allocator + Copy> de::Visitor<'de> for Visitor<A> {
+                    type Value = Vec<Option<Symbol>, A>;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        formatter.write_str("sequence of symbols")
+                    }
+
+                    fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+                    where
+                        S: de::SeqAccess<'de>,
+                    {
+                        let mut vec =
+                            Vec::with_capacity_in(seq.size_hint().unwrap_or_default(), self.alloc);
+
+                        // FIXME(yotamofek): should be able to work on &str
+                        while let Some(sym) = seq.next_element::<Option<String>>()? {
+                            vec.push(sym.map(|sym| Symbol::intern(&sym)));
+                        }
+
+                        Ok(vec)
+                    }
+                }
+
+                deserializer.deserialize_seq(Visitor { alloc }).map(Self)
+            }
+        }
+
+        struct Visitor<A: Allocator + Copy> {
+            alloc: A,
+        }
+
+        impl<'de, A: Allocator + Copy> de::Visitor<'de> for Visitor<A> {
+            type Value = IndexItemFunctionType<A>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("sequence of index item function type and param names")
+            }
+
+            fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+            where
+                S: de::SeqAccess<'de>,
+            {
+                let Blah(mut ty) = seq
+                    .next_element_seed(WithAllocSeed::new(self.alloc))?
+                    .ok_or_else(|| S::Error::missing_field("index item function type"))?;
+
+                ParamNames(ty.param_names) = seq
+                    .next_element_seed(WithAllocSeed::new(self.alloc))?
+                    .ok_or_else(|| S::Error::missing_field("param names"))?;
+
+                Ok(ty)
+            }
+        }
+
+        deserializer.deserialize_any(Visitor { alloc })
     }
 }

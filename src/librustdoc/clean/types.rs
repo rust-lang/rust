@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::fmt::Write;
 use std::hash::Hash;
 use std::path::PathBuf;
@@ -595,7 +596,7 @@ impl Item {
             .unwrap_or(self.item_id)
     }
 
-    pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
+    pub(crate) fn links<A: Allocator + Copy>(&self, cx: &Context<'_, A>) -> Vec<RenderedLink> {
         use crate::html::format::{href, link_tooltip};
 
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
@@ -636,7 +637,7 @@ impl Item {
     /// This is used for generating summary text, which does not include
     /// the link text, but does need to know which `[]`-bracketed names
     /// are actually links.
-    pub(crate) fn link_names(&self, cache: &Cache) -> Vec<RenderedLink> {
+    pub(crate) fn link_names<A: Allocator + Copy>(&self, cache: &Cache<A>) -> Vec<RenderedLink> {
         let Some(links) = cache.intra_doc_links.get(&self.item_id) else {
             return vec![];
         };
@@ -1166,11 +1167,11 @@ pub(crate) enum GenericBound {
 }
 
 impl GenericBound {
-    pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
+    pub(crate) fn sized<A: Allocator + Copy>(cx: &mut DocContext<'_, A>) -> GenericBound {
         Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
     }
 
-    pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
+    pub(crate) fn maybe_sized<A: Allocator + Copy>(cx: &mut DocContext<'_, A>) -> GenericBound {
         Self::sized_with(
             cx,
             hir::TraitBoundModifiers {
@@ -1180,7 +1181,10 @@ impl GenericBound {
         )
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
+    fn sized_with<A: Allocator + Copy>(
+        cx: &mut DocContext<'_, A>,
+        modifiers: hir::TraitBoundModifiers,
+    ) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
@@ -1487,7 +1491,11 @@ impl Type {
     ///
     /// An owned type is also the same as its borrowed variants (this is commutative),
     /// but `&T` is not the same as `&mut T`.
-    pub(crate) fn is_doc_subtype_of(&self, other: &Self, cache: &Cache) -> bool {
+    pub(crate) fn is_doc_subtype_of<A: Allocator + Copy>(
+        &self,
+        other: &Self,
+        cache: &Cache<A>,
+    ) -> bool {
         // Strip the references so that it can compare the actual types, unless both are references.
         // If both are references, leave them alone and compare the mutabilities later.
         let (self_cleared, other_cleared) = if !self.is_borrowed_ref() || !other.is_borrowed_ref() {
@@ -1623,7 +1631,7 @@ impl Type {
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// [clean]: crate::clean
-    pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
+    pub(crate) fn def_id<A: Allocator + Copy>(&self, cache: &Cache<A>) -> Option<DefId> {
         let t: PrimitiveType = match self {
             Type::Path { path } => return Some(path.def_id()),
             DynTrait(bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),

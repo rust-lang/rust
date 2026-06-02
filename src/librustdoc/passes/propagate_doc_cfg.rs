@@ -1,5 +1,7 @@
 //! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
 
+use std::alloc::Allocator;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
@@ -10,23 +12,29 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
 
-pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
-    name: "propagate-doc-cfg",
-    run: Some(propagate_doc_cfg),
-    description: "propagates `#[doc(cfg(...))]` to child items",
-};
+pub(crate) fn propagate_doc_cfg_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "propagate-doc-cfg",
+        run: Some(propagate_doc_cfg),
+        description: "propagates `#[doc(cfg(...))]` to child items",
+    }
+}
 
-pub(crate) fn propagate_doc_cfg(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn propagate_doc_cfg<A: Allocator + Copy>(
+    cr: Crate,
+    cx: &mut DocContext<'_, A>,
+) -> Crate {
     if cx.tcx.features().doc_cfg() {
+        let alloc = *cx.cache.search_index.allocator();
         CfgPropagator { cx, cfg_info: CfgInfo::default(), impl_cfg_info: FxHashMap::default() }
-            .fold_crate(cr)
+            .fold_crate(cr, alloc)
     } else {
         cr
     }
 }
 
-struct CfgPropagator<'a, 'tcx> {
-    cx: &'a mut DocContext<'tcx>,
+struct CfgPropagator<'a, 'tcx, A: Allocator + Copy> {
+    cx: &'a mut DocContext<'tcx, A>,
     cfg_info: CfgInfo,
 
     /// To ensure the `doc_cfg` feature works with how `rustdoc` handles impls, we need to store
@@ -70,7 +78,7 @@ fn add_cfg_state_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute])
     }
 }
 
-impl CfgPropagator<'_, '_> {
+impl<A: Allocator + Copy> CfgPropagator<'_, '_, A> {
     // Some items need to merge their attributes with their parents' otherwise a few of them
     // (mostly `cfg` ones) will be missing.
     fn merge_with_parent_attributes(&mut self, item: &mut Item) {
@@ -122,8 +130,8 @@ impl CfgPropagator<'_, '_> {
     }
 }
 
-impl DocFolder for CfgPropagator<'_, '_> {
-    fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for CfgPropagator<'_, '_, A> {
+    fn fold_item(&mut self, mut item: Item, alloc: A) -> Option<Item> {
         let old_cfg_info = self.cfg_info.clone();
 
         // If we have an impl, we check if it has an associated `cfg` "context", and if so we will
@@ -143,7 +151,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
             self.merge_with_parent_attributes(&mut item);
         }
 
-        let result = self.fold_item_recur(item);
+        let result = self.fold_item_recur(item, alloc);
         self.cfg_info = old_cfg_info;
 
         Some(result)

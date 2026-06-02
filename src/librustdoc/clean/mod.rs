@@ -30,6 +30,7 @@ mod simplify;
 pub(crate) mod types;
 pub(crate) mod utils;
 
+use std::alloc::Allocator;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::mem;
@@ -64,9 +65,9 @@ use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 use crate::visit_ast;
 
-pub(crate) fn clean_doc_module<'tcx>(
+pub(crate) fn clean_doc_module<'tcx, A: Allocator + Copy>(
     doc: &visit_ast::Module<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
@@ -216,8 +217,8 @@ pub(crate) fn macro_reexport_is_inline(
     false
 }
 
-fn generate_item_with_correct_attrs(
-    cx: &mut DocContext<'_>,
+fn generate_item_with_correct_attrs<A: Allocator + Copy>(
+    cx: &mut DocContext<'_, A>,
     kind: ItemKind,
     def_id: DefId,
     name: Symbol,
@@ -262,9 +263,9 @@ fn generate_item_with_correct_attrs(
     item
 }
 
-fn clean_generic_bound<'tcx>(
+fn clean_generic_bound<'tcx, A: Allocator + Copy>(
     bound: &hir::GenericBound<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Option<GenericBound> {
     Some(match bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
@@ -284,8 +285,8 @@ fn clean_generic_bound<'tcx>(
     })
 }
 
-pub(crate) fn clean_trait_ref_with_constraints<'tcx>(
-    cx: &mut DocContext<'tcx>,
+pub(crate) fn clean_trait_ref_with_constraints<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     trait_ref: ty::PolyTraitRef<'tcx>,
     constraints: ThinVec<AssocItemConstraint>,
 ) -> Path {
@@ -307,8 +308,8 @@ pub(crate) fn clean_trait_ref_with_constraints<'tcx>(
     path
 }
 
-fn clean_poly_trait_ref_with_constraints<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_poly_trait_ref_with_constraints<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
     constraints: ThinVec<AssocItemConstraint>,
 ) -> GenericBound {
@@ -321,7 +322,10 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
     )
 }
 
-fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
+fn clean_lifetime<A: Allocator + Copy>(
+    lifetime: &hir::Lifetime,
+    cx: &DocContext<'_, A>,
+) -> Lifetime {
     if let Some(
         rbv::ResolvedArg::EarlyBound(did)
         | rbv::ResolvedArg::LateBound(_, _, did)
@@ -334,9 +338,9 @@ fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
     Lifetime(lifetime.ident.name)
 }
 
-pub(crate) fn clean_precise_capturing_arg(
+pub(crate) fn clean_precise_capturing_arg<A: Allocator + Copy>(
     arg: &hir::PreciseCapturingArg<'_>,
-    cx: &DocContext<'_>,
+    cx: &DocContext<'_, A>,
 ) -> PreciseCapturingArg {
     match arg {
         hir::PreciseCapturingArg::Lifetime(lt) => {
@@ -397,9 +401,9 @@ pub(crate) fn clean_middle_region<'tcx>(
     region.get_name(tcx).map(Lifetime)
 }
 
-fn clean_where_predicate<'tcx>(
+fn clean_where_predicate<'tcx, A: Allocator + Copy>(
     predicate: &hir::WherePredicate<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Option<WherePredicate> {
     if !predicate.kind.in_where_clause() {
         return None;
@@ -429,9 +433,9 @@ fn clean_where_predicate<'tcx>(
     })
 }
 
-pub(crate) fn clean_predicate<'tcx>(
+pub(crate) fn clean_predicate<'tcx, A: Allocator + Copy>(
     predicate: ty::Clause<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Option<WherePredicate> {
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
@@ -453,9 +457,9 @@ pub(crate) fn clean_predicate<'tcx>(
     }
 }
 
-fn clean_poly_trait_predicate<'tcx>(
+fn clean_poly_trait_predicate<'tcx, A: Allocator + Copy>(
     pred: ty::PolyTraitPredicate<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Option<WherePredicate> {
     // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
     // FIXME(const_trait_impl) check constness
@@ -485,9 +489,9 @@ fn clean_region_outlives_predicate<'tcx>(
     }
 }
 
-fn clean_type_outlives_predicate<'tcx>(
+fn clean_type_outlives_predicate<'tcx, A: Allocator + Copy>(
     pred: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> WherePredicate {
     let ty::OutlivesPredicate(ty, lt) = pred.skip_binder();
 
@@ -500,9 +504,9 @@ fn clean_type_outlives_predicate<'tcx>(
     }
 }
 
-fn clean_middle_term<'tcx>(
+fn clean_middle_term<'tcx, A: Allocator + Copy>(
     term: ty::Binder<'tcx, ty::Term<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Term {
     match term.skip_binder().kind() {
         ty::TermKind::Ty(ty) => Term::Type(clean_middle_ty(term.rebind(ty), cx, None, None)),
@@ -510,10 +514,10 @@ fn clean_middle_term<'tcx>(
     }
 }
 
-fn clean_hir_term<'tcx>(
+fn clean_hir_term<'tcx, A: Allocator + Copy>(
     assoc_item: Option<DefId>,
     term: &hir::Term<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Term {
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
@@ -526,9 +530,9 @@ fn clean_hir_term<'tcx>(
     }
 }
 
-fn clean_projection_predicate<'tcx>(
+fn clean_projection_predicate<'tcx, A: Allocator + Copy>(
     pred: ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> WherePredicate {
     WherePredicate::EqPredicate {
         lhs: clean_projection(pred.map_bound(|p| p.projection_term), cx, None),
@@ -536,9 +540,9 @@ fn clean_projection_predicate<'tcx>(
     }
 }
 
-fn clean_projection<'tcx>(
+fn clean_projection<'tcx, A: Allocator + Copy>(
     proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     parent_def_id: Option<DefId>,
 ) -> QPathData {
     let trait_ = clean_trait_ref_with_constraints(
@@ -568,9 +572,9 @@ fn should_fully_qualify_path(self_def_id: Option<DefId>, trait_: &Path, self_typ
             .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_)
 }
 
-fn projection_to_path_segment<'tcx>(
+fn projection_to_path_segment<'tcx, A: Allocator + Copy>(
     proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> PathSegment {
     let def_id = proj.skip_binder().def_id();
     let generics = cx.tcx.generics_of(def_id);
@@ -588,10 +592,10 @@ fn projection_to_path_segment<'tcx>(
     }
 }
 
-fn clean_generic_param_def(
+fn clean_generic_param_def<A: Allocator + Copy>(
     def: &ty::GenericParamDef,
     defaults: ParamDefaults,
-    cx: &mut DocContext<'_>,
+    cx: &mut DocContext<'_, A>,
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
         ty::GenericParamDefKind::Lifetime => {
@@ -658,8 +662,8 @@ enum ParamDefaults {
     No,
 }
 
-fn clean_generic_param<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_generic_param<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     generics: Option<&hir::Generics<'tcx>>,
     param: &hir::GenericParam<'tcx>,
 ) -> GenericParamDef {
@@ -736,9 +740,9 @@ fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
     )
 }
 
-pub(crate) fn clean_generics<'tcx>(
+pub(crate) fn clean_generics<'tcx, A: Allocator + Copy>(
     gens: &hir::Generics<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Generics {
     let impl_trait_params = gens
         .params
@@ -858,12 +862,15 @@ pub(crate) fn clean_generics<'tcx>(
     }
 }
 
-fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
+fn clean_ty_generics<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
+    def_id: DefId,
+) -> Generics {
     clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
 }
 
-fn clean_ty_generics_inner<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_ty_generics_inner<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     gens: &ty::Generics,
     preds: ty::GenericPredicates<'tcx>,
 ) -> Generics {
@@ -993,9 +1000,9 @@ fn clean_ty_generics_inner<'tcx>(
     generics
 }
 
-fn clean_ty_alias_inner_type<'tcx>(
+fn clean_ty_alias_inner_type<'tcx, A: Allocator + Copy>(
     ty: Ty<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     ret: &mut Vec<Item>,
 ) -> Option<TypeAliasInnerType> {
     let ty::Adt(adt_def, args) = ty.kind() else {
@@ -1067,13 +1074,13 @@ fn clean_proc_macro<'tcx>(
     ProcMacroItem(ProcMacro { kind, helpers })
 }
 
-fn clean_fn_or_proc_macro<'tcx>(
+fn clean_fn_or_proc_macro<'tcx, A: Allocator + Copy>(
     item: &hir::Item<'tcx>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     body_id: hir::BodyId,
     name: &mut Symbol,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
     let macro_kind = if find_attr!(attrs, ProcMacro) {
@@ -1128,8 +1135,8 @@ enum ParamsSrc<'tcx> {
     Idents(&'tcx [Option<Ident>]),
 }
 
-fn clean_function<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_function<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     params: ParamsSrc<'tcx>,
@@ -1162,8 +1169,8 @@ fn clean_function<'tcx>(
     Box::new(Function { decl, generics })
 }
 
-fn clean_params<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_params<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     types: &[hir::Ty<'tcx>],
     idents: &[Option<Ident>],
     postprocess: impl Fn(Option<Ident>) -> Option<Symbol>,
@@ -1179,8 +1186,8 @@ fn clean_params<'tcx>(
         .collect()
 }
 
-fn clean_params_via_body<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_params_via_body<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     types: &[hir::Ty<'tcx>],
     body_id: hir::BodyId,
 ) -> Vec<Parameter> {
@@ -1195,8 +1202,8 @@ fn clean_params_via_body<'tcx>(
         .collect()
 }
 
-fn clean_fn_decl_with_params<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_fn_decl_with_params<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     decl: &hir::FnDecl<'tcx>,
     header: Option<&hir::FnHeader>,
     params: Vec<Parameter>,
@@ -1213,8 +1220,8 @@ fn clean_fn_decl_with_params<'tcx>(
     FnDecl { inputs: params, output, c_variadic: decl.c_variadic() }
 }
 
-fn clean_poly_fn_sig<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_poly_fn_sig<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     did: Option<DefId>,
     sig: ty::PolyFnSig<'tcx>,
 ) -> FnDecl {
@@ -1251,15 +1258,18 @@ fn clean_poly_fn_sig<'tcx>(
     FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic() }
 }
 
-fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
+fn clean_trait_ref<'tcx, A: Allocator + Copy>(
+    trait_ref: &hir::TraitRef<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Path {
     let path = clean_path(trait_ref.path, cx);
     register_res(cx, path.res);
     path
 }
 
-fn clean_poly_trait_ref<'tcx>(
+fn clean_poly_trait_ref<'tcx, A: Allocator + Copy>(
     poly_trait_ref: &hir::PolyTraitRef<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> PolyTrait {
     PolyTrait {
         trait_: clean_trait_ref(&poly_trait_ref.trait_ref, cx),
@@ -1272,7 +1282,10 @@ fn clean_poly_trait_ref<'tcx>(
     }
 }
 
-fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+fn clean_trait_item<'tcx, A: Allocator + Copy>(
+    trait_item: &hir::TraitItem<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Item {
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
@@ -1327,9 +1340,9 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     })
 }
 
-pub(crate) fn clean_impl_item<'tcx>(
+pub(crate) fn clean_impl_item<'tcx, A: Allocator + Copy>(
     impl_: &hir::ImplItem<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Item {
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
@@ -1368,7 +1381,10 @@ pub(crate) fn clean_impl_item<'tcx>(
     })
 }
 
-pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocContext<'_>) -> Item {
+pub(crate) fn clean_middle_assoc_item<A: Allocator + Copy>(
+    assoc_item: &ty::AssocItem,
+    cx: &mut DocContext<'_, A>,
+) -> Item {
     let tcx = cx.tcx;
     let kind = match assoc_item.kind {
         ty::AssocKind::Const { .. } => {
@@ -1606,8 +1622,8 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
     Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name()), kind, tcx)
 }
 
-fn first_non_private_clean_path<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn first_non_private_clean_path<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     path: &hir::Path<'tcx>,
     new_path_segments: &'tcx [hir::PathSegment<'tcx>],
     new_path_span: rustc_span::Span,
@@ -1634,8 +1650,8 @@ fn first_non_private_clean_path<'tcx>(
 /// or `doc(hidden)`). If it's not possible, it'll return the "end type".
 ///
 /// If the path is not a re-export or is public, it'll return `None`.
-fn first_non_private<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn first_non_private<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     hir_id: hir::HirId,
     path: &hir::Path<'tcx>,
 ) -> Option<Path> {
@@ -1725,7 +1741,10 @@ fn first_non_private<'tcx>(
     None
 }
 
-fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
+fn clean_qpath<'tcx, A: Allocator + Copy>(
+    hir_ty: &hir::Ty<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Type {
     let hir::Ty { hir_id, span, ref kind } = *hir_ty;
     let hir::TyKind::Path(qpath) = kind else { unreachable!() };
 
@@ -1811,8 +1830,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
     }
 }
 
-fn maybe_expand_private_type_alias<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn maybe_expand_private_type_alias<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     path: &hir::Path<'tcx>,
 ) -> Option<Type> {
     let Res::Def(DefKind::TyAlias, def_id) = path.res else { return None };
@@ -1883,7 +1902,10 @@ fn maybe_expand_private_type_alias<'tcx>(
     }))
 }
 
-pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
+pub(crate) fn clean_ty<'tcx, A: Allocator + Copy>(
+    ty: &hir::Ty<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Type {
     use rustc_hir::*;
 
     match ty.kind {
@@ -1967,8 +1989,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize<'tcx>(
-    cx: &DocContext<'tcx>,
+fn normalize<'tcx, A: Allocator + Copy>(
+    cx: &DocContext<'tcx, A>,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<ty::Binder<'tcx, Ty<'tcx>>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
@@ -2133,9 +2155,9 @@ pub(crate) enum ObjectLifetimeDefault<'tcx> {
 }
 
 #[instrument(level = "trace", skip(cx), ret)]
-pub(crate) fn clean_middle_ty<'tcx>(
+pub(crate) fn clean_middle_ty<'tcx, A: Allocator + Copy>(
     bound_ty: ty::Binder<'tcx, Ty<'tcx>>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     parent_def_id: Option<DefId>,
     container: Option<ContainerTy<'_, 'tcx>>,
 ) -> Type {
@@ -2376,8 +2398,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
     }
 }
 
-fn clean_middle_opaque_bounds<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_middle_opaque_bounds<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     impl_trait_def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
 ) -> Type {
@@ -2471,7 +2493,10 @@ fn clean_middle_opaque_bounds<'tcx>(
     ImplTrait(bounds)
 }
 
-pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+pub(crate) fn clean_field<'tcx, A: Allocator + Copy>(
+    field: &hir::FieldDef<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Item {
     clean_field_with_def_id(
         field.def_id.to_def_id(),
         field.ident.name,
@@ -2480,7 +2505,10 @@ pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext
     )
 }
 
-pub(crate) fn clean_middle_field(field: &ty::FieldDef, cx: &mut DocContext<'_>) -> Item {
+pub(crate) fn clean_middle_field<A: Allocator + Copy>(
+    field: &ty::FieldDef,
+    cx: &mut DocContext<'_, A>,
+) -> Item {
     clean_field_with_def_id(
         field.did,
         field.name,
@@ -2503,7 +2531,10 @@ pub(crate) fn clean_field_with_def_id(
     Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), tcx)
 }
 
-pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_>) -> Item {
+pub(crate) fn clean_variant_def<A: Allocator + Copy>(
+    variant: &ty::VariantDef,
+    cx: &mut DocContext<'_, A>,
+) -> Item {
     let discriminant = match variant.discr {
         ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
         ty::VariantDiscr::Relative(_) => None,
@@ -2527,10 +2558,10 @@ pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_
     )
 }
 
-pub(crate) fn clean_variant_def_with_args<'tcx>(
+pub(crate) fn clean_variant_def_with_args<'tcx, A: Allocator + Copy>(
     variant: &ty::VariantDef,
     args: &GenericArgsRef<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Item {
     let discriminant = match variant.discr {
         ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
@@ -2604,10 +2635,10 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
     )
 }
 
-fn clean_variant_data<'tcx>(
+fn clean_variant_data<'tcx, A: Allocator + Copy>(
     variant: &hir::VariantData<'tcx>,
     disr_expr: &Option<&hir::AnonConst>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Variant {
     let discriminant = disr_expr
         .map(|disr| Discriminant { expr: Some(disr.body), value: disr.def_id.to_def_id() });
@@ -2625,17 +2656,20 @@ fn clean_variant_data<'tcx>(
     Variant { discriminant, kind }
 }
 
-fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
+fn clean_path<'tcx, A: Allocator + Copy>(
+    path: &hir::Path<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Path {
     Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
     }
 }
 
-fn clean_generic_args<'tcx>(
+fn clean_generic_args<'tcx, A: Allocator + Copy>(
     trait_did: Option<DefId>,
     generic_args: &hir::GenericArgs<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> GenericArgs {
     match generic_args.parenthesized {
         hir::GenericArgsParentheses::No => {
@@ -2682,9 +2716,9 @@ fn clean_generic_args<'tcx>(
     }
 }
 
-fn clean_path_segment<'tcx>(
+fn clean_path_segment<'tcx, A: Allocator + Copy>(
     path: &hir::PathSegment<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> PathSegment {
     let trait_did = match path.res {
         hir::def::Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
@@ -2693,9 +2727,9 @@ fn clean_path_segment<'tcx>(
     PathSegment { name: path.ident.name, args: clean_generic_args(trait_did, path.args(), cx) }
 }
 
-fn clean_bare_fn_ty<'tcx>(
+fn clean_bare_fn_ty<'tcx, A: Allocator + Copy>(
     bare_fn: &hir::FnPtrTy<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> BareFunctionDecl {
     let (generic_params, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: Generics must be cleaned before params.
@@ -2722,9 +2756,9 @@ fn clean_bare_fn_ty<'tcx>(
     BareFunctionDecl { safety: bare_fn.safety, abi: bare_fn.abi, decl, generic_params }
 }
 
-fn clean_unsafe_binder_ty<'tcx>(
+fn clean_unsafe_binder_ty<'tcx, A: Allocator + Copy>(
     unsafe_binder_ty: &hir::UnsafeBinderTy<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> UnsafeBinderTy {
     let generic_params = unsafe_binder_ty
         .generic_params
@@ -2752,8 +2786,8 @@ pub(crate) fn reexport_chain(
 }
 
 /// Collect attributes from the whole import chain.
-fn get_all_import_attributes<'hir>(
-    cx: &mut DocContext<'hir>,
+fn get_all_import_attributes<'hir, A: Allocator + Copy>(
+    cx: &mut DocContext<'hir, A>,
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
@@ -2858,8 +2892,8 @@ fn add_without_unwanted_attributes<'hir>(
     }
 }
 
-fn clean_maybe_renamed_item<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_maybe_renamed_item<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     item: &hir::Item<'tcx>,
     renamed: Option<Symbol>,
     import_ids: &[LocalDefId],
@@ -3002,15 +3036,18 @@ fn clean_maybe_renamed_item<'tcx>(
     })
 }
 
-fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+fn clean_variant<'tcx, A: Allocator + Copy>(
+    variant: &hir::Variant<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
+) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
     Item::from_def_id_and_parts(variant.def_id.to_def_id(), Some(variant.ident.name), kind, cx.tcx)
 }
 
-fn clean_impl<'tcx>(
+fn clean_impl<'tcx, A: Allocator + Copy>(
     impl_: &hir::Impl<'tcx>,
     def_id: LocalDefId,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     // If true, this is an inlined impl and it will be handled later on in the code.
     // In here, we will generate a placeholder for it in order to be able to compute its
     // `doc_cfg` info.
@@ -3091,11 +3128,11 @@ fn clean_impl<'tcx>(
     ret
 }
 
-fn clean_extern_crate<'tcx>(
+fn clean_extern_crate<'tcx, A: Allocator + Copy>(
     krate: &hir::Item<'tcx>,
     name: Symbol,
     orig_name: Option<Symbol>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap_or(LOCAL_CRATE);
@@ -3134,12 +3171,12 @@ fn clean_extern_crate<'tcx>(
     )]
 }
 
-fn clean_use_statement<'tcx>(
+fn clean_use_statement<'tcx, A: Allocator + Copy>(
     import: &hir::Item<'tcx>,
     name: Option<Symbol>,
     path: &hir::UsePath<'tcx>,
     kind: hir::UseKind,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     let mut items = Vec::new();
@@ -3151,12 +3188,12 @@ fn clean_use_statement<'tcx>(
     items
 }
 
-fn clean_use_statement_inner<'tcx>(
+fn clean_use_statement_inner<'tcx, A: Allocator + Copy>(
     import: &hir::Item<'tcx>,
     name: Option<Symbol>,
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     if should_ignore_res(path.res) {
@@ -3269,8 +3306,8 @@ fn clean_use_statement_inner<'tcx>(
     vec![Item::from_def_id_and_parts(import_def_id.to_def_id(), None, ImportItem(inner), cx.tcx)]
 }
 
-fn clean_maybe_renamed_foreign_item<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn clean_maybe_renamed_foreign_item<'tcx, A: Allocator + Copy>(
+    cx: &mut DocContext<'tcx, A>,
     item: &hir::ForeignItem<'tcx>,
     renamed: Option<Symbol>,
     import_id: Option<LocalDefId>,
@@ -3308,10 +3345,10 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     })
 }
 
-fn clean_assoc_item_constraint<'tcx>(
+fn clean_assoc_item_constraint<'tcx, A: Allocator + Copy>(
     trait_did: DefId,
     constraint: &hir::AssocItemConstraint<'tcx>,
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'tcx, A>,
 ) -> AssocItemConstraint {
     AssocItemConstraint {
         assoc: PathSegment {

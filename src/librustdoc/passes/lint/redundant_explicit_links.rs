@@ -1,3 +1,4 @@
+use std::alloc::Allocator;
 use std::ops::Range;
 
 use rustc_ast::NodeId;
@@ -24,7 +25,7 @@ struct LinkData {
     display_link: String,
 }
 
-pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
+pub(crate) fn visit_item<A: Allocator + Copy>(cx: &DocContext<'_, A>, item: &Item, hir_id: HirId) {
     let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
     for (item_id, doc) in hunks {
         if let Some(item_id) = item_id.or(item.def_id())
@@ -35,8 +36,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
     }
 }
 
-fn check_redundant_explicit_link_for_did(
-    cx: &DocContext<'_>,
+fn check_redundant_explicit_link_for_did<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &Item,
     did: DefId,
     hir_id: HirId,
@@ -74,8 +75,8 @@ fn check_redundant_explicit_link_for_did(
     check_redundant_explicit_link(cx, item, hir_id, doc, resolutions);
 }
 
-fn check_redundant_explicit_link<'md>(
-    cx: &DocContext<'_>,
+fn check_redundant_explicit_link<'md, A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &Item,
     hir_id: HirId,
     doc: &'md str,
@@ -151,8 +152,8 @@ fn check_redundant_explicit_link<'md>(
 }
 
 /// FIXME(ChAoSUnItY): Too many arguments.
-fn check_inline_or_reference_unknown_redundancy(
-    cx: &DocContext<'_>,
+fn check_inline_or_reference_unknown_redundancy<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &Item,
     hir_id: HirId,
     doc: &str,
@@ -251,8 +252,8 @@ fn check_inline_or_reference_unknown_redundancy(
 }
 
 /// FIXME(ChAoSUnItY): Too many arguments.
-fn check_reference_redundancy(
-    cx: &DocContext<'_>,
+fn check_reference_redundancy<A: Allocator + Copy>(
+    cx: &DocContext<'_, A>,
     item: &Item,
     hir_id: HirId,
     doc: &str,

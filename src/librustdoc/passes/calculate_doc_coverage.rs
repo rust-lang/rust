@@ -1,5 +1,6 @@
 //! Calculates information used for the --show-coverage flag.
 
+use std::alloc::Allocator;
 use std::collections::BTreeMap;
 use std::ops;
 
@@ -17,13 +18,18 @@ use crate::passes::Pass;
 use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
 use crate::visit::DocVisitor;
 
-pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
-    name: "calculate-doc-coverage",
-    run: Some(calculate_doc_coverage),
-    description: "counts the number of items with and without documentation",
-};
+pub(crate) fn calculate_doc_coverage_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "calculate-doc-coverage",
+        run: Some(calculate_doc_coverage),
+        description: "counts the number of items with and without documentation",
+    }
+}
 
-fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
+fn calculate_doc_coverage<A: Allocator + Copy>(
+    krate: clean::Crate,
+    ctx: &mut DocContext<'_, A>,
+) -> clean::Crate {
     let mut calc = CoverageCalculator { items: Default::default(), ctx };
     calc.visit_crate(&krate);
 
@@ -102,9 +108,9 @@ impl ops::AddAssign for ItemCount {
     }
 }
 
-struct CoverageCalculator<'a, 'b> {
+struct CoverageCalculator<'a, 'b, A: Allocator + Copy> {
     items: BTreeMap<FileName, ItemCount>,
-    ctx: &'a mut DocContext<'b>,
+    ctx: &'a mut DocContext<'b, A>,
 }
 
 fn limit_filename_len(filename: String) -> String {
@@ -117,7 +123,7 @@ fn limit_filename_len(filename: String) -> String {
     }
 }
 
-impl CoverageCalculator<'_, '_> {
+impl<A: Allocator + Copy> CoverageCalculator<'_, '_, A> {
     fn to_json(&self) -> String {
         serde_json::to_string(
             &self
@@ -189,7 +195,7 @@ impl CoverageCalculator<'_, '_> {
     }
 }
 
-impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
+impl<A: Allocator + Copy> DocVisitor<'_> for CoverageCalculator<'_, '_, A> {
     fn visit_item(&mut self, i: &clean::Item) {
         if !i.item_id.is_local() {
             // non-local items are skipped because they can be out of the users control,
@@ -220,7 +226,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, None);
 
                 let has_doc_example = tests.found_tests != 0;
-                let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
+                let hir_id = DocContext::<A>::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
                 let level_spec = self.ctx.tcx.lint_level_spec_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:

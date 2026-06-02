@@ -1,5 +1,6 @@
 //! Strip all doc(hidden) items from the output.
 
+use std::alloc::Allocator;
 use std::mem;
 
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
@@ -12,14 +13,19 @@ use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
 
-pub(crate) const STRIP_HIDDEN: Pass = Pass {
-    name: "strip-hidden",
-    run: Some(strip_hidden),
-    description: "strips all `#[doc(hidden)]` items from the output",
-};
+pub(crate) fn strip_hidden_pass<A: Allocator + Copy>() -> Pass<A> {
+    Pass {
+        name: "strip-hidden",
+        run: Some(strip_hidden),
+        description: "strips all `#[doc(hidden)]` items from the output",
+    }
+}
 
 /// Strip items marked `#[doc(hidden)]`
-pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+pub(crate) fn strip_hidden<A: Allocator + Copy>(
+    krate: clean::Crate,
+    cx: &mut DocContext<'_, A>,
+) -> clean::Crate {
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
@@ -32,7 +38,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             is_in_hidden_item: false,
             last_reexport: None,
         };
-        stripper.fold_crate(krate)
+        stripper.fold_crate(krate, cx.cache.search_index.allocator())
     };
 
     // strip all impls referencing stripped items
@@ -44,7 +50,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
         document_private: cx.document_private(),
         document_hidden: cx.document_hidden(),
     };
-    stripper.fold_crate(krate)
+    stripper.fold_crate(krate, *cx.cache.search_index.allocator())
 }
 
 struct Stripper<'a, 'tcx> {
@@ -56,36 +62,45 @@ struct Stripper<'a, 'tcx> {
 }
 
 impl Stripper<'_, '_> {
-    fn set_last_reexport_then_fold_item(&mut self, i: Item) -> Item {
+    fn set_last_reexport_then_fold_item<A: Allocator + Copy>(&mut self, i: Item, alloc: A) -> Item {
         let prev_from_reexport = self.last_reexport;
         if i.inline_stmt_id.is_some() {
             self.last_reexport = i.item_id.as_def_id().and_then(|def_id| def_id.as_local());
         }
-        let ret = self.fold_item_recur(i);
+        let ret = self.fold_item_recur(i, alloc);
         self.last_reexport = prev_from_reexport;
         ret
     }
 
-    fn set_is_in_hidden_item_and_fold(&mut self, is_in_hidden_item: bool, i: Item) -> Item {
+    fn set_is_in_hidden_item_and_fold<A: Allocator + Copy>(
+        &mut self,
+        is_in_hidden_item: bool,
+        i: Item,
+        alloc: A,
+    ) -> Item {
         let prev = self.is_in_hidden_item;
         self.is_in_hidden_item |= is_in_hidden_item;
-        let ret = self.set_last_reexport_then_fold_item(i);
+        let ret = self.set_last_reexport_then_fold_item(i, alloc);
         self.is_in_hidden_item = prev;
         ret
     }
 
     /// In case `i` is a non-hidden impl block, then we special-case it by changing the value
     /// of `is_in_hidden_item` to `true` because the impl children inherit its visibility.
-    fn recurse_in_impl_or_exported_macro(&mut self, i: Item) -> Item {
+    fn recurse_in_impl_or_exported_macro<A: Allocator + Copy>(
+        &mut self,
+        i: Item,
+        alloc: A,
+    ) -> Item {
         let prev = mem::replace(&mut self.is_in_hidden_item, false);
-        let ret = self.set_last_reexport_then_fold_item(i);
+        let ret = self.set_last_reexport_then_fold_item(i, alloc);
         self.is_in_hidden_item = prev;
         ret
     }
 }
 
-impl DocFolder for Stripper<'_, '_> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
+impl<A: Allocator + Copy> DocFolder<A> for Stripper<'_, '_> {
+    fn fold_item(&mut self, i: Item, alloc: A) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
 
         if let clean::ImportItem(clean::Import { source, .. }) = &i.kind
@@ -141,9 +156,9 @@ impl DocFolder for Stripper<'_, '_> {
                 self.retained.insert(i.item_id);
             }
             return Some(if is_impl_or_exported_macro {
-                self.recurse_in_impl_or_exported_macro(i)
+                self.recurse_in_impl_or_exported_macro(i, alloc)
             } else {
-                self.set_is_in_hidden_item_and_fold(false, i)
+                self.set_is_in_hidden_item_and_fold(false, i, alloc)
             });
         }
         debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
@@ -161,7 +176,7 @@ impl DocFolder for Stripper<'_, '_> {
                 // strip things like impl methods but when doing so
                 // we must not add any items to the `retained` set.
                 let old = mem::replace(&mut self.update_retained, false);
-                let ret = self.set_is_in_hidden_item_and_fold(true, i);
+                let ret = self.set_is_in_hidden_item_and_fold(true, i, alloc);
                 self.update_retained = old;
                 if ret.item_id == clean::ItemId::DefId(CRATE_DEF_ID.into()) {
                     // We don't strip the current crate, even if it has `#[doc(hidden)]`.
@@ -172,7 +187,7 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
             _ => {
-                let ret = self.set_is_in_hidden_item_and_fold(true, i);
+                let ret = self.set_is_in_hidden_item_and_fold(true, i, alloc);
                 if has_doc_hidden {
                     // If the item itself has `#[doc(hidden)]`, then we simply remove it.
                     None
