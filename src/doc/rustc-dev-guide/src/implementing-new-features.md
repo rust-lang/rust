@@ -228,6 +228,7 @@ The below steps needs to be followed in order to implement a new unstable featur
 [tracking issue]: #tracking-issues
 [add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
 [guidance for compiler flags]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html?highlight=unstable%20flag#compiler-flags
+[`UnstableOptions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/options/struct.UnstableOptions.html
 
 ## Adding unstable compiler flags
 
@@ -242,7 +243,7 @@ ecosystem use, may need additional sign-off beyond an r+ on the implementation P
 
 When adding a new `-Z` flag:
 
-1. Add the option to `UnstableOptions` in
+1. Add the option to [`UnstableOptions`] in
    `compiler/rustc_session/src/options.rs`.
    The option name is written as snake_case in the struct and is exposed as
    kebab-case on the command line.
