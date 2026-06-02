@@ -32,9 +32,8 @@ where
     }
 }
 
-#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
-#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
+#[rustc_panic_entrypoint]
 const fn slice_index_fail(start: usize, end: usize, len: usize) -> ! {
     if start > len {
         const_panic!(

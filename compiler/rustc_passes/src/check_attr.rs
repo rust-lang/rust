@@ -382,6 +382,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcObjcClass { .. } => (),
             AttributeKind::RustcObjcSelector { .. } => (),
             AttributeKind::RustcOffloadKernel => (),
+            AttributeKind::RustcPanicEntrypoint => (),
             AttributeKind::RustcParenSugar => (),
             AttributeKind::RustcPassByValue => (),
             AttributeKind::RustcPassIndirectlyInNonRusticAbis(..) => (),
