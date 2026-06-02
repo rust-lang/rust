@@ -1038,15 +1038,15 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             let content = self.str_from(start);
             if Self::has_comment_marker_in_backticks(content) {
                 err.note(
-                    "`/*` or `*/` inside a backtick code span \
-                     does not nest comments; \
+                    "`/*` or `*/` inside a Markdown code span \
+                     is still interpreted as a block comment delimiter; \
                      the lexer does not parse Markdown",
                 );
                 err.help(concat!(
                     "consider removing the `/*` from the code ",
                     "span, closing it with a matching `*/`, or ",
                     "using a raw string doc attribute: ",
-                    r#"`#[doc = r"..."]`"#,
+                    r#"`#![doc = r"..."]`"#,
                 ));
             }
         }

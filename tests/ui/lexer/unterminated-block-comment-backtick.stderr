@@ -11,8 +11,8 @@ LL |   /** This doc comment has `/*` inside backticks */
 LL | | fn main() {}
    | |_____________^
    |
-   = note: `/*` or `*/` inside a backtick code span does not nest comments; the lexer does not parse Markdown
-   = help: consider removing the `/*` from the code span, closing it with a matching `*/`, or using a raw string doc attribute: `#[doc = r"..."]`
+   = note: `/*` or `*/` inside a Markdown code span is still interpreted as a block comment delimiter; the lexer does not parse Markdown
+   = help: consider removing the `/*` from the code span, closing it with a matching `*/`, or using a raw string doc attribute: `#![doc = r"..."]`
 
 error: aborting due to 1 previous error
 
