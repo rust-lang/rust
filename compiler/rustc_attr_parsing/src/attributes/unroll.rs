@@ -35,7 +35,7 @@ impl SingleAttributeParser for UnrollParser {
                     }
                 }
 
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                     Some(sym::full) => Some(AttributeKind::Unroll(UnrollAttr::Full)),
                     Some(sym::never) => Some(AttributeKind::Unroll(UnrollAttr::Never)),
                     _ => {
