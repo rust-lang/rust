@@ -349,6 +349,7 @@ impl AsyncResultLenWithoutIsEmpty {
         true
     }
 
+    #[expect(clippy::result_unit_err)]
     pub async fn len(&self) -> Result<usize, ()> {
         //~^ len_without_is_empty
 
@@ -363,6 +364,7 @@ impl AsyncOptionLen {
         true
     }
 
+    #[expect(clippy::result_unit_err)]
     pub async fn len(&self) -> Result<usize, ()> {
         Err(())
     }

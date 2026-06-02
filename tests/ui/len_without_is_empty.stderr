@@ -138,13 +138,13 @@ LL |     pub async fn len(&self) -> Option<usize> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct `AsyncResultLenWithoutIsEmpty` has a public `len` method, but no `is_empty` method
-  --> tests/ui/len_without_is_empty.rs:352:5
+  --> tests/ui/len_without_is_empty.rs:353:5
    |
 LL |     pub async fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `Alias2` has a public `len` method, but no `is_empty` method
-  --> tests/ui/len_without_is_empty.rs:469:5
+  --> tests/ui/len_without_is_empty.rs:471:5
    |
 LL |     pub fn len(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
