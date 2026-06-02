@@ -154,6 +154,15 @@ pub(super) const unsafe fn simd_orn<T: Copy + const SimdExt>(a: T, b: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(super) const unsafe fn simd_rotr<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    let m = (size_of::<T::Elem>() * 8 - 1) as i64;
+    let r = is::simd_and(b, ls::simd_splat(m));
+    let l = is::simd_and(is::simd_sub(ls::simd_splat(m + 1), r), ls::simd_splat(m));
+    is::simd_or(is::simd_shr(a, r), is::simd_shl(a, l))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_shl<T: Copy + const SimdExt>(a: T, b: T) -> T {
     let m = (size_of::<T::Elem>() * 8 - 1) as i64;
     is::simd_shl(a, is::simd_and(b, ls::simd_splat(m)))
