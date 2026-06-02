@@ -926,6 +926,7 @@ impl SyntaxContext {
                 | DesugaringKind::WhileLoop
                 | DesugaringKind::OpaqueTy
                 | DesugaringKind::Async
+                | DesugaringKind::ImpliedBound { .. }
                 | DesugaringKind::Await,
             ) => false,
             ExpnKind::AstPass(_)
@@ -1235,6 +1236,13 @@ pub enum DesugaringKind {
         source: bool,
     },
     RangeExpr,
+    /// Implicit `Sized` or `MetaSized` bounds. The actual source location points to just the
+    /// param or item for which the implicit bound was generated.
+    ImpliedBound {
+        /// The definition this implied bound was added to.
+        /// So far only supports params, but may be used for super trait bounds and assoc ty bounds in the future
+        def: DefId,
+    },
 }
 
 impl DesugaringKind {
@@ -1257,6 +1265,7 @@ impl DesugaringKind {
                 "expression that expanded into a format string literal"
             }
             DesugaringKind::RangeExpr => "range expression",
+            DesugaringKind::ImpliedBound { .. } => "implied bound",
         }
     }
 
@@ -1277,6 +1286,7 @@ impl DesugaringKind {
             DesugaringKind::PatTyRange => value == "PatTyRange",
             DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
             DesugaringKind::RangeExpr => value == "RangeExpr",
+            DesugaringKind::ImpliedBound { .. } => value == "ImpliedBound",
         }
     }
 }

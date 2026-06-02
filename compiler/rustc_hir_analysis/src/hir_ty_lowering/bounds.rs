@@ -12,7 +12,7 @@ use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -25,17 +25,17 @@ use crate::hir_ty_lowering::{
 #[derive(Debug, Default)]
 struct CollectedBound {
     /// `Trait`
-    positive: bool,
+    positive: Option<Span>,
     /// `?Trait`
-    maybe: bool,
+    maybe: Option<Span>,
     /// `!Trait`
-    negative: bool,
+    negative: Option<Span>,
 }
 
 impl CollectedBound {
     /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
     fn any(&self) -> bool {
-        self.positive || self.maybe || self.negative
+        self.positive.is_some() || self.maybe.is_some() || self.negative.is_some()
     }
 }
 
@@ -98,9 +98,9 @@ fn collect_bounds<'a, 'tcx>(
         }
 
         match ptr.modifiers.polarity {
-            hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
-            hir::BoundPolarity::Negative(_) => collect_into.negative = true,
-            hir::BoundPolarity::Positive => collect_into.positive = true,
+            hir::BoundPolarity::Maybe(_) => collect_into.maybe = Some(ptr.span),
+            hir::BoundPolarity::Negative(_) => collect_into.negative = Some(ptr.span),
+            hir::BoundPolarity::Positive => collect_into.positive = Some(ptr.span),
         }
     });
     collect_into
@@ -184,10 +184,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
             }
         }
-
         let collected = collect_sizedness_bounds(tcx, hir_bounds, where_bounds, context, span);
-        if (collected.sized.maybe || collected.sized.negative)
-            && !collected.sized.positive
+        if let Some(span) = collected.sized.maybe.or(collected.sized.negative)
+            && collected.sized.positive.is_none()
             && !collected.meta_sized.any()
             && !collected.pointee_sized.any()
         {
@@ -195,6 +194,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // other explicit ones) - this can happen for trait aliases as well as bounds.
             add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
         } else if !collected.any() {
+            let span = match context {
+                ImpliedBoundsContext::TyParam(def) => {
+                    self.tcx().with_stable_hashing_context(|hcx| {
+                        span.mark_with_reason(
+                            None,
+                            DesugaringKind::ImpliedBound { def: def.into() },
+                            span.edition(),
+                            hcx,
+                        )
+                    })
+                }
+                _ => span,
+            };
             match context {
                 ImpliedBoundsContext::TraitDef(..) => {
                     // If there are no explicit sizedness bounds on a trait then add a default
