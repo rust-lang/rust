@@ -928,7 +928,17 @@ impl SyntaxContext {
                 | DesugaringKind::Async
                 | DesugaringKind::Await,
             ) => false,
-            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
+            ExpnKind::AstPass(_)
+            | ExpnKind::Desugaring(
+                DesugaringKind::BoundModifier
+                | DesugaringKind::QuestionMark
+                | DesugaringKind::TryBlock
+                | DesugaringKind::Contract
+                | DesugaringKind::RangeExpr
+                | DesugaringKind::PatTyRange
+                | DesugaringKind::FormatLiteral { .. }
+                | DesugaringKind::YeetExpr,
+            ) => true, // well, it's "external"
             ExpnKind::Macro(MacroKind::Bang, _) => {
                 // Dummy span for the `def_site` means it's an external macro.
                 expn_data.def_site.is_dummy() || sm.is_imported(expn_data.def_site)
