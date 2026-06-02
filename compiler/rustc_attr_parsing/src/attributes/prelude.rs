@@ -25,3 +25,5 @@ pub(super) use crate::parser::*;
 pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
 #[doc(hidden)]
 pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+#[doc(hidden)]
+pub(super) use crate::unstable;
