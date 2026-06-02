@@ -1,5 +1,6 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
 
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -90,18 +91,31 @@ pub(crate) fn rustfix_diagnostics_only(output: &str) -> String {
         .collect()
 }
 
-pub(crate) fn extract_rendered(output: &str) -> String {
-    output
-        .lines()
-        .filter_map(|line| {
-            if line.starts_with('{') {
-                if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
-                    diagnostic.rendered
-                } else if let Ok(report) = serde_json::from_str::<FutureIncompatReport>(line) {
-                    if report.future_incompat_report.is_empty() {
-                        None
-                    } else {
-                        Some(format!(
+/// Extracts the rendered diagnostics from compiler json output.
+///
+/// When `sort` is set the diagnostics are reordered by their primary source
+/// location. This is used under the parallel front-end, where diagnostics are
+/// emitted in a nondeterministic order: the alloc-id normalization in `runtest`
+/// assigns `ALLOC<n>` indices by first appearance in this text, so an unstable
+/// order would otherwise produce unstable numbering. Sorting by source location
+/// makes the numbering deterministic without changing single-threaded output.
+pub(crate) fn extract_rendered(output: &str, sort: bool) -> String {
+    let items = output.lines().filter_map(|line| {
+        if line.starts_with('{') {
+            if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
+                let primary = diagnostic
+                    .spans
+                    .iter()
+                    .find(|span| span.is_primary)
+                    .map(|span| (span.file_name.clone(), span.line_start, span.column_start));
+                diagnostic.rendered.map(|text| (primary, text))
+            } else if let Ok(report) = serde_json::from_str::<FutureIncompatReport>(line) {
+                if report.future_incompat_report.is_empty() {
+                    None
+                } else {
+                    Some((
+                        None,
+                        format!(
                             "Future incompatibility report: {}",
                             report
                                 .future_incompat_report
@@ -115,26 +129,55 @@ pub(crate) fn extract_rendered(output: &str) -> String {
                                     )
                                 })
                                 .collect::<String>()
-                        ))
-                    }
-                } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
-                    // Ignore the notification.
-                    None
-                } else if serde_json::from_str::<UnusedExternNotification>(line).is_ok() {
-                    // Ignore the notification.
-                    None
-                } else {
-                    // This function is called for both compiler and non-compiler output,
-                    // so if the line isn't recognized as JSON from the compiler then
-                    // just print it as-is.
-                    Some(format!("{line}\n"))
+                        ),
+                    ))
                 }
+            } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
+                // Ignore the notification.
+                None
+            } else if serde_json::from_str::<UnusedExternNotification>(line).is_ok() {
+                // Ignore the notification.
+                None
             } else {
-                // preserve non-JSON lines, such as ICEs
-                Some(format!("{}\n", line))
+                // This function is called for both compiler and non-compiler output,
+                // so if the line isn't recognized as JSON from the compiler then
+                // just print it as-is.
+                Some((None, format!("{line}\n")))
             }
-        })
-        .collect()
+        } else {
+            // preserve non-JSON lines, such as ICEs
+            Some((None, format!("{}\n", line)))
+        }
+    });
+
+    if !sort {
+        return items.map(|(_, text)| text).collect();
+    }
+
+    // Order located diagnostics by source position; ties broken by their shape
+    // (with concrete alloc ids blinded, since those are racy under `-Zthreads`).
+    // Items without a primary span keep their original relative order and follow
+    // the located diagnostics, so the trailing "aborting due to N errors" summary
+    // stays last.
+    let mut items: Vec<_> = items.collect();
+    items.sort_by(|(a_key, a_text), (b_key, b_text)| match (a_key, b_key) {
+        (Some(a_key), Some(b_key)) => {
+            a_key.cmp(b_key).then_with(|| alloc_blind(a_text).cmp(&alloc_blind(b_text)))
+        }
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
+    });
+    items.into_iter().map(|(_, text)| text).collect()
+}
+
+/// Replaces concrete allocation ids with a placeholder so that two diagnostics
+/// at the same source location sort deterministically by their shape rather than
+/// by the raw allocation number, which is racy under the parallel front-end.
+fn alloc_blind(rendered: &str) -> String {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r"\ba(?:lloc)?\d+\b").unwrap());
+    re.replace_all(rendered, "alloc").into_owned()
 }
 
 pub(crate) fn parse_output(file_name: &str, output: &str) -> Vec<Error> {

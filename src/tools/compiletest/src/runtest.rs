@@ -2364,7 +2364,7 @@ impl<'test> TestCx<'test> {
             stderr = if explicit_format {
                 proc_res.stderr.clone()
             } else {
-                json::extract_rendered(&proc_res.stderr)
+                json::extract_rendered(&proc_res.stderr, self.config.parallel_frontend_enabled())
             };
             normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
         }
@@ -2960,7 +2960,7 @@ impl ProcRes {
     #[must_use]
     pub(crate) fn format_info(&self) -> String {
         fn render(name: &str, contents: &str) -> String {
-            let contents = json::extract_rendered(contents);
+            let contents = json::extract_rendered(contents, false);
             let contents = contents.trim_end();
             if contents.is_empty() {
                 format!("{name}: none")
