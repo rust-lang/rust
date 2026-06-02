@@ -63,6 +63,7 @@ impl TypingModeErasedStatus for MayBeErased {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
+#[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
 pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us

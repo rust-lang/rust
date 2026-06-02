@@ -10,10 +10,10 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors::{
-    EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
-    EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
-    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault,
-    EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
+    EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
+    EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
+    EiiStaticDefault, EiiStaticMultipleImplementations, EiiStaticMutable,
 };
 
 /// ```rust
@@ -128,6 +128,8 @@ fn eii_(
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
+    let (macro_attrs, foreign_item_attrs, default_func_attrs) =
+        split_attrs(ecx, item_span, attrs_from_decl);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, &meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
@@ -148,6 +150,7 @@ fn eii_(
             eii_attr_span,
             item_span,
             foreign_item_name,
+            default_func_attrs,
         ))
     }
 
@@ -157,7 +160,7 @@ fn eii_(
         item_span,
         kind,
         vis,
-        &attrs_from_decl,
+        foreign_item_attrs,
     ));
     module_items.push(generate_attribute_macro_to_implement(
         ecx,
@@ -165,12 +168,55 @@ fn eii_(
         macro_name,
         foreign_item_name,
         impl_unsafe,
-        &attrs_from_decl,
+        macro_attrs,
     ));
 
     // we don't need to wrap in Annotatable::Stmt conditionally since
     // EII can't be used on items in statement position
     module_items.into_iter().map(Annotatable::Item).collect()
+}
+
+fn split_attrs(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    attrs: ThinVec<Attribute>,
+) -> (ThinVec<Attribute>, ThinVec<Attribute>, ThinVec<Attribute>) {
+    let mut macro_attributes = ThinVec::new();
+    let mut foreign_item_attributes = ThinVec::new();
+    let mut default_attributes = ThinVec::new();
+
+    for attr in attrs {
+        match attr.name() {
+            // Inline only matters for the default function being inlined into callsites
+            Some(sym::inline) => default_attributes.push(attr),
+            // If an eii is marked a lang item, that's because we want to call its declaration, so
+            // mark the foreign item as the lang item
+            Some(sym::lang) => foreign_item_attributes.push(attr),
+            // Deprecating an eii means deprecating the macro and the foreign item
+            Some(sym::deprecated) => {
+                foreign_item_attributes.push(attr.clone());
+                macro_attributes.push(attr);
+            }
+            // The stability of an EII affects the usage of the macro and calling the foreign item
+            Some(sym::stable) | Some(sym::unstable) => {
+                foreign_item_attributes.push(attr.clone());
+                macro_attributes.push(attr);
+            }
+            // Doc attributes should be forwarded to the macro and the foreign item, since those are
+            // the two items you interact with as a user.
+            // FIXME: idk yet how EIIs show up in docs, might want to customize
+            _ if attr.is_doc_comment() => {
+                foreign_item_attributes.push(attr.clone());
+                macro_attributes.push(attr);
+            }
+            Some(sym::eii) => unreachable!("should already be filtered out"),
+            _ => {
+                ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+            }
+        }
+    }
+
+    (macro_attributes, foreign_item_attributes, default_attributes)
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -228,10 +274,8 @@ fn generate_default_func_impl(
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
+    attrs: ThinVec<Attribute>,
 ) -> Box<ast::Item> {
-    // FIXME: re-add some original attrs
-    let attrs = ThinVec::new();
-
     let mut default_func = func.clone();
     default_func.eii_impls.push(EiiImpl {
         node_id: DUMMY_NODE_ID,
@@ -289,10 +333,9 @@ fn generate_foreign_item(
     item_span: Span,
     item_kind: &ItemKind,
     vis: Visibility,
-    attrs_from_decl: &[Attribute],
+    attrs_from_decl: ThinVec<Attribute>,
 ) -> Box<ast::Item> {
-    let mut foreign_item_attrs = ThinVec::new();
-    foreign_item_attrs.extend_from_slice(attrs_from_decl);
+    let mut foreign_item_attrs = attrs_from_decl;
 
     // Add the rustc_eii_foreign_item on the foreign item. Usually, foreign items are mangled.
     // This attribute makes sure that we later know that this foreign item's symbol should not be.
@@ -381,13 +424,9 @@ fn generate_attribute_macro_to_implement(
     macro_name: Ident,
     foreign_item_name: Ident,
     impl_unsafe: bool,
-    attrs_from_decl: &[Attribute],
+    attrs_from_decl: ThinVec<Attribute>,
 ) -> Box<ast::Item> {
-    let mut macro_attrs = ThinVec::new();
-
-    // To avoid e.g. `error: attribute macro has missing stability attribute`
-    // errors for eii's in std.
-    macro_attrs.extend_from_slice(attrs_from_decl);
+    let mut macro_attrs = attrs_from_decl;
 
     // Avoid "missing stability attribute" errors for eiis in std. See #146993.
     macro_attrs.push(ecx.attr_name_value_str(sym::rustc_macro_transparency, sym::semiopaque, span));
