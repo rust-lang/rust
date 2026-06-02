@@ -54,6 +54,10 @@
 //~^ ERROR malformed
 #[optimize]
 //~^ ERROR malformed
+#[optimize(none, none)]
+//~^ ERROR malformed
+#[optimize(none, speed)]
+//~^ ERROR malformed
 #[cold = 1]
 //~^ ERROR malformed
 #[must_use()]

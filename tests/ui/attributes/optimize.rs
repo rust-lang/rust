@@ -40,3 +40,25 @@ fn async_block() -> impl Future<Output = ()> {
 async fn async_fn() {
     ()
 }
+
+trait Foo {
+    #[optimize(speed)] //~ ERROR attribute cannot be used on
+    fn invalid();
+    #[optimize(speed)]
+    fn valid() {}
+}
+
+impl Foo for () {
+    #[optimize(speed)]
+    fn invalid() {}
+    #[optimize(size)]
+    fn valid() {}
+}
+
+#[optimize(speed)]
+#[optimize(speed)] //~ ERROR multiple `optimize` attributes
+fn duplicate_same() {}
+
+#[optimize(speed)]
+#[optimize(size)] //~ ERROR multiple `optimize` attributes
+fn duplicate_different() {}
