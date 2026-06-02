@@ -9,8 +9,7 @@ use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym}
 
 use crate::context::AcceptContext;
 use crate::errors::{
-    InvalidAttrAtCrateLevel, InvalidTargetLint, ItemFollowingInnerAttr,
-    UnsupportedAttributesInWhere,
+    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
 };
 use crate::session_diagnostics::InvalidTarget;
 use crate::target_checking::Policy::Allow;
@@ -150,14 +149,15 @@ impl<'sess> AttributeParser<'sess> {
                 cx.emit_lint_with_sess(
                     lint,
                     move |dcx, level, _| {
-                        InvalidTargetLint {
-                            name: name.to_string(),
+                        InvalidTarget {
+                            name,
                             target: target.plural_name(),
                             only: if only { "only " } else { "" },
                             applied: DiagArgValue::StrListSepByAnd(
                                 applied.iter().map(|i| Cow::Owned(i.to_string())).collect(),
                             ),
-                            attr_span,
+                            span: attr_span,
+                            previously_accepted: true,
                         }
                         .into_diag(dcx, level)
                     },
@@ -177,6 +177,7 @@ impl<'sess> AttributeParser<'sess> {
                     applied: DiagArgValue::StrListSepByAnd(
                         applied.into_iter().map(Cow::Owned).collect(),
                     ),
+                    previously_accepted: false,
                 });
             }
         }
