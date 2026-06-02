@@ -18,7 +18,7 @@
    LL|       |    }
    LL|       |}
    LL|       |
-   LL|      0|async fn foo2(never: Never) {
+   LL|       |async fn foo2(never: Never) {
    LL|       |    match never {}
    LL|       |}
    LL|       |
