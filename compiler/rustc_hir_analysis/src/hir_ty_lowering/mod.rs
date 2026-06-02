@@ -1398,7 +1398,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
                 self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+                let ct = Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(
+                        tcx,
+                        ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                        args,
+                    ),
+                );
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1840,6 +1847,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: Option<&hir::PathSegment<'tcx>>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Result<Const<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
         let (item_def_id, item_args) = self.lower_resolved_assoc_item_path(
             span,
             opt_self_ty,
@@ -1849,8 +1857,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         )?;
         self.require_type_const_attribute(item_def_id, span)?;
-        let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
-        Ok(Const::new_unevaluated(self.tcx(), uv))
+        let uv = ty::UnevaluatedConst::new(
+            tcx,
+            ty::UnevaluatedConstKind::new_from_def_id(tcx, item_def_id),
+            item_args,
+        );
+        Ok(Const::new_unevaluated(tcx, uv))
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] (type-level) associated item path.
@@ -2692,7 +2704,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let _ = self
                     .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
                 let args = self.lower_generic_args_of_path_segment(span, did, segment);
-                ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
+                ty::Const::new_unevaluated(
+                    tcx,
+                    ty::UnevaluatedConst::new(
+                        tcx,
+                        ty::UnevaluatedConstKind::new_from_def_id(tcx, did),
+                        args,
+                    ),
+                )
             }
             Res::Def(DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
                 assert_eq!(opt_self_ty, None);
@@ -2816,10 +2835,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
-                ty::UnevaluatedConst {
-                    def: anon.def_id.to_def_id(),
-                    args: ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
-                },
+                ty::UnevaluatedConst::new(
+                    tcx,
+                    ty::UnevaluatedConstKind::Anon { def_id: anon.def_id.to_def_id() },
+                    ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
+                ),
             ),
         }
     }

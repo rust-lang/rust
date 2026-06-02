@@ -413,14 +413,8 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
             let term = blk.terminator();
             let caller_attrs = tcx.codegen_fn_attrs(self.caller_def_id());
-            if let TerminatorKind::Drop {
-                ref place,
-                target,
-                unwind,
-                replace: _,
-                drop: _,
-                async_fut: _,
-            } = term.kind
+            if let TerminatorKind::Drop { ref place, target, unwind, replace: _, drop: _ } =
+                term.kind
             {
                 work_list.push(target);
 

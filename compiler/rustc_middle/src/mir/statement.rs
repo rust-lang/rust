@@ -624,11 +624,7 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);
-        Operand::Constant(Box::new(ConstOperand {
-            span,
-            user_ty: None,
-            const_: Const::Val(ConstValue::ZeroSized, ty),
-        }))
+        Operand::zero_sized_constant(ty, span)
     }
 
     /// Convenience helper to make a constant that refers to the given `DefId` and args. Since this
@@ -640,6 +636,12 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args).skip_norm_wip();
+        Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
+    }
+
+    /// Convenience helper to make a constant that refers to a zero-sized type.
+    pub fn zero_sized_constant(ty: Ty<'tcx>, span: Span) -> Self {
+        let const_ = Const::Val(ConstValue::ZeroSized, ty);
         Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
     }
 

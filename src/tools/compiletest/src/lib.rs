@@ -705,7 +705,7 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/gdb_load_rust_pretty_printers.py",
         "src/etc/gdb_lookup.py",
         "src/etc/gdb_providers.py",
-        "src/etc/lldb_batchmode.py",
+        "src/etc/lldb_batchmode",
         "src/etc/lldb_lookup.py",
         "src/etc/lldb_providers.py",
     ];

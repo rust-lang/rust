@@ -49,7 +49,7 @@ where
             ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
                 self.normalize_free_alias(goal).map_err(Into::into)
             }
-            ty::AliasTermKind::UnevaluatedConst { def_id } => {
+            ty::AliasTermKind::AnonConst { def_id } => {
                 self.normalize_anon_const(goal, def_id).map_err(Into::into)
             }
         }
@@ -416,7 +416,8 @@ where
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
                     let uv = ty::UnevaluatedConst::new(
-                        target_item_def_id.into().try_into().unwrap(),
+                        cx,
+                        ty::UnevaluatedConstKind::new_from_def_id(cx, target_item_def_id.into()),
                         target_args,
                     );
                     return ecx.evaluate_const_and_instantiate_normalizes_to_term(goal, uv);

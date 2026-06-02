@@ -596,9 +596,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;

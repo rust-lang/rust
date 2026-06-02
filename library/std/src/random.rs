@@ -16,6 +16,8 @@ use crate::sys::random as sys;
 /// security is not a concern,  consider using an alternative random number
 /// generator (potentially seeded from this one).
 ///
+/// If you need to fill a buffer with random bytes, use `DefaultRandomSource.fill_bytes(&mut buf)`.
+///
 /// # Underlying sources
 ///
 /// Platform               | Source
@@ -54,6 +56,7 @@ use crate::sys::random as sys;
 ///
 /// [`getrandom`]: https://www.man7.org/linux/man-pages/man2/getrandom.2.html
 /// [`/dev/urandom`]: https://www.man7.org/linux/man-pages/man4/random.4.html
+#[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
 #[derive(Default, Debug, Clone, Copy)]
 #[unstable(feature = "random", issue = "130703")]
 pub struct DefaultRandomSource;

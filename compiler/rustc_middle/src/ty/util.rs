@@ -931,7 +931,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::InherentConst { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::UnevaluatedConst { .. }
+            | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => None,
         }
     }
