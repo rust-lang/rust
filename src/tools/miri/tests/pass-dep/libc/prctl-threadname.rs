@@ -1,4 +1,4 @@
-//@only-target: android  # Miri supports prctl for Android only
+//@only-target: linux android  # Linux-specific API
 use std::ffi::{CStr, CString};
 use std::thread;
 

@@ -1,4 +1,4 @@
-error: `#[eii1]` required, but not found
+error: `#[eii1]` function required, but not found
   --> $DIR/dylib_needs_impl.rs:6:7
    |
 LL | #[eii(eii1)]

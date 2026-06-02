@@ -1,5 +1,6 @@
 use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
 use rustc_hir::attrs::ReprAttr;
 
@@ -55,6 +56,7 @@ impl CombineAttributeParser for ReprParser {
     //FIXME Still checked fully in `check_attr.rs`
     //This one is slightly more complicated because the allowed targets depend on the arguments
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 }
 
 fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<ReprAttr> {
@@ -223,7 +225,8 @@ impl RustcAlignParser {
 }
 
 impl AttributeParser for RustcAlignParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ATTRIBUTES: AcceptMapping<Self> =
+        &[(Self::PATH, Self::TEMPLATE, unstable!(fn_align), Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -252,7 +255,8 @@ impl RustcAlignStaticParser {
 }
 
 impl AttributeParser for RustcAlignStaticParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ATTRIBUTES: AcceptMapping<Self> =
+        &[(Self::PATH, Self::TEMPLATE, unstable!(static_align), Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 

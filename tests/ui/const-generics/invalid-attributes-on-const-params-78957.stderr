@@ -46,8 +46,8 @@ error: `#[cold]` attribute cannot be used on const parameters
 LL | pub struct Bar<#[cold] const N: usize>;
    |                ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/invalid-attributes-on-const-params-78957.rs:2:9
    |
@@ -60,8 +60,8 @@ error: `#[cold]` attribute cannot be used on lifetime parameters
 LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
    |                 ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[cold]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:24:17
@@ -69,8 +69,8 @@ error: `#[cold]` attribute cannot be used on type parameters
 LL | pub struct Bar3<#[cold] T>(PhantomData<T>);
    |                 ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[cold]` can only be applied to functions
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 9 previous errors
 

@@ -324,13 +324,6 @@ pub(crate) struct ObjcSelectorExpectedStringLiteral {
 }
 
 #[derive(Diagnostic)]
-#[diag("stability attributes may not be used outside of the standard library", code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected at least one confusable name")]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
@@ -353,6 +346,10 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub previously_accepted: bool,
 }
 
 #[derive(Diagnostic)]

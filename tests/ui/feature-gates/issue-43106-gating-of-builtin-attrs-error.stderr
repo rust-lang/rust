@@ -1,3 +1,11 @@
+error: `#[macro_export]` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:9:1
+   |
+LL | #![macro_export]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[macro_export]` can only be applied to macro defs
+
 error[E0658]: use of an internal attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:1
    |
@@ -7,14 +15,6 @@ LL | #![rustc_main]
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
-
-error: `#[macro_export]` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:9:1
-   |
-LL | #![macro_export]
-   | ^^^^^^^^^^^^^^^^
-   |
-   = help: `#[macro_export]` can only be applied to macro defs
 
 error: `#[rustc_main]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:1
@@ -322,8 +322,8 @@ warning: `#[no_link]` attribute cannot be used on match arms
 LL |             #[no_link]
    |             ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_link]` can only be applied to extern crates
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_link]` attribute cannot be used on struct fields
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:80:9
@@ -331,8 +331,8 @@ warning: `#[no_link]` attribute cannot be used on struct fields
 LL |         #[no_link]
    |         ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_link]` can only be applied to extern crates
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_link]` attribute cannot be used on macro defs
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:92:5
@@ -340,8 +340,8 @@ warning: `#[no_link]` attribute cannot be used on macro defs
 LL |     #[no_link]
    |     ^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_link]` can only be applied to extern crates
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
@@ -357,8 +357,8 @@ warning: `#[no_mangle]` attribute cannot be used on crates
 LL | #![no_mangle]
    | ^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 37 previous errors; 6 warnings emitted
 

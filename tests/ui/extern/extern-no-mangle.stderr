@@ -4,8 +4,8 @@ warning: `#[no_mangle]` attribute cannot be used on foreign statics
 LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/extern-no-mangle.rs:1:9
    |
@@ -18,8 +18,8 @@ warning: `#[no_mangle]` attribute cannot be used on foreign functions
 LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions, methods, and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on statements
   --> $DIR/extern-no-mangle.rs:24:5
@@ -27,8 +27,8 @@ warning: `#[no_mangle]` attribute cannot be used on statements
 LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_mangle]` can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: 3 warnings emitted
 

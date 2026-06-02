@@ -126,15 +126,6 @@ error: the `#[proc_macro_derive]` attribute is only usable with crates of the `p
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/malformed-attrs.rs:215:1
-   |
-LL | #[allow_internal_unsafe = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0539]: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:26:1
    |
@@ -788,6 +779,15 @@ LL - #[macro_export = 18]
 LL + #[macro_export]
    |
 
+error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
+  --> $DIR/malformed-attrs.rs:215:1
+   |
+LL | #[allow_internal_unsafe = 1]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0565]: malformed `allow_internal_unsafe` attribute input
   --> $DIR/malformed-attrs.rs:215:1
    |
@@ -890,8 +890,8 @@ warning: `#[link_name]` attribute cannot be used on functions
 LL | #[link_name]
    | ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
   --> $DIR/malformed-attrs.rs:96:1
@@ -908,8 +908,8 @@ warning: `#[no_implicit_prelude]` attribute cannot be used on functions
 LL | #[no_implicit_prelude = 23]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: missing options for `diagnostic::on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:138:1
@@ -940,8 +940,8 @@ warning: `#[automatically_derived]` attribute cannot be used on modules
 LL | #[automatically_derived = 18]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
   --> $DIR/malformed-attrs.rs:222:1
