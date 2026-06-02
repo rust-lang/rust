@@ -243,7 +243,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &[],
                     hir_generics.predicates,
                     ImpliedBoundsContext::TyParam(param.def_id),
-                    param.span,
+                    param.implicit_bounds_span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
@@ -251,7 +251,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &[],
                     hir_generics.predicates,
                     ImpliedBoundsContext::TyParam(param.def_id),
-                    param.span,
+                    param.implicit_bounds_span,
                 );
                 trace!(?bounds);
                 predicates.extend(bounds);
@@ -1001,7 +1001,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             hir_generics.predicates,
                             ImpliedBoundsContext::TyParam(param.def_id),
-                            param.span,
+                            param.implicit_bounds_span,
                         );
                         self.lowerer().add_default_traits(
                             &mut bounds,
@@ -1009,7 +1009,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             hir_generics.predicates,
                             ImpliedBoundsContext::TyParam(param.def_id),
-                            param.span,
+                            param.implicit_bounds_span,
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

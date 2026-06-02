@@ -1068,15 +1068,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let hir_id = self.lower_node_id(node_id);
         let def_id = self.local_def_id(node_id);
+        let span = self.lower_span(ident.span);
         hir::GenericParam {
             hir_id,
             def_id,
             name: hir::ParamName::Fresh,
-            span: self.lower_span(ident.span),
+            span,
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided(kind) },
             colon_span: None,
             source,
+            implicit_bounds_span: span,
         }
     }
 
@@ -2206,15 +2208,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(param.id);
         let param_attrs = &param.attrs;
         let param_span = param.span();
+        let def_id = self.local_def_id(param.id);
+        let span = self.lower_span(param.span());
         let param = hir::GenericParam {
             hir_id,
-            def_id: self.local_def_id(param.id),
+            def_id,
             name,
-            span: self.lower_span(param.span()),
+            span,
             pure_wrt_drop: attr::contains_name(&param.attrs, sym::may_dangle),
             kind,
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
+            implicit_bounds_span: match kind {
+                hir::GenericParamKind::Lifetime { .. } => span,
+                hir::GenericParamKind::Type { .. } => self.mark_span_with_reason(
+                    DesugaringKind::DefaultBound { def_id: def_id.into() },
+                    span,
+                    None,
+                ),
+                hir::GenericParamKind::Const { .. } => span,
+            },
         };
         self.lower_attrs(hir_id, param_attrs, param_span, Target::from_generic_param(&param));
         param
@@ -2482,6 +2495,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
             colon_span: None,
             source: hir::GenericParamSource::Generics,
+            implicit_bounds_span: span,
         };
 
         let preds = self.lower_generic_bound_predicate(
