@@ -1,12 +1,10 @@
 - // MIR for `a::{closure#0}` before StateTransform
 + // MIR for `a::{closure#0}` after StateTransform
   
-- fn a::{closure#0}(_1: {async fn body of a()}, _2: std::future::ResumeTy) -> ()
+- fn a::{closure#0}(_1: {static coroutine body of a()}, _2: std::future::ResumeTy) -> ()
 - yields ()
 -  {
--     debug _task_context => _2;
--     let mut _0: ();
-+ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
++ fn a::{closure#0}(_1: Pin<&mut {static coroutine body of a()}>, _2: std::future::ResumeTy) -> CoroutineState<(), ()> {
 +     coroutine layout {
 +         variant_fields = {
 +             Unresumed(0): [],
@@ -15,26 +13,23 @@
 +         }
 +         storage_conflicts = BitMatrix(0x0) {}
 +     }
-+     debug _task_context => _6;
-+     let mut _0: std::task::Poll<()>;
+      debug _task_context => _2;
+-     let mut _0: ();
++     let mut _0: std::ops::CoroutineState<(), ()>;
 +     let mut _3: ();
 +     let mut _4: u32;
-+     let mut _5: &mut {async fn body of a()};
-+     let mut _6: std::future::ResumeTy;
-+     let mut _7: std::ptr::NonNull<std::task::Context<'_>>;
++     let mut _5: &mut {static coroutine body of a()};
   
       bb0: {
 -         _0 = const ();
 -         drop(_1) -> [return: bb1, unwind: bb2];
-+         _7 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _6 = std::future::ResumeTy(move _7);
-+         _5 = copy (_1.0: &mut {async fn body of a()});
++         _5 = copy (_1.0: &mut {static coroutine body of a()});
 +         _4 = discriminant((*_5));
 +         switchInt(move _4) -> [0: bb5, 1: bb3, otherwise: bb4];
       }
   
       bb1: {
-+         _0 = Poll::<()>::Ready(move _3);
++         _0 = CoroutineState::<(), ()>::Complete(move _3);
 +         discriminant((*_5)) = 1;
           return;
       }
