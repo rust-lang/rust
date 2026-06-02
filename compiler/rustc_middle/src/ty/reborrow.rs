@@ -1,12 +1,13 @@
 use rustc_abi::FieldIdx;
 use rustc_hir::def::CtorKind;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::ty::{self, Ty, TyCtxt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ReborrowField<'tcx> {
     pub index: FieldIdx,
+    pub ident: Ident,
     pub name: Symbol,
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -43,6 +44,7 @@ pub fn reborrow_data_fields<'tcx>(
             let ty = field.ty(tcx, args).skip_norm_wip();
             (!ty.is_phantom_data()).then_some(ReborrowField {
                 index,
+                ident: field.ident(tcx),
                 name: field.name,
                 ty,
                 span: tcx.def_span(field.did),
@@ -53,9 +55,9 @@ pub fn reborrow_data_fields<'tcx>(
 
 /// Canonical CoerceShared source-to-target field correspondence.
 ///
-/// Named structs match non-`PhantomData` data fields by name. Tuple structs match
-/// non-`PhantomData` data fields by their filtered ordinal position. `PhantomData` fields are
-/// ignored on both sides for matching, but the returned fields preserve their original field
+/// Named structs match non-`PhantomData` data fields by hygienic field identity. Tuple structs
+/// match non-`PhantomData` data fields by their filtered ordinal position. `PhantomData` fields
+/// are ignored on both sides for matching, but the returned fields preserve their original field
 /// indices for projection. The field types are instantiated but intentionally not normalized here:
 /// validation, borrowck, interpretation, and codegen each need to normalize or relate aliases with
 /// their phase-specific inference or monomorphization context before deciding whether to copy or
@@ -94,7 +96,9 @@ pub fn coerce_shared_field_pairs<'tcx>(
                 let source = source_fields
                     .iter()
                     .copied()
-                    .find(|source| source.name == target.name)
+                    .find(|source| {
+                        tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id)
+                    })
                     .ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
 
                 Ok(CoerceSharedFieldPair { source, target })
