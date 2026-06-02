@@ -1,42 +1,42 @@
-error: `#[repr]` attribute cannot be used on functions
+error: `#[repr(C)]` attribute cannot be used on functions
   --> $DIR/attr-usage-repr.rs:3:1
    |
 LL | #[repr(C)]
    | ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on structs
+error: `#[repr(i8)]` attribute cannot be used on structs
   --> $DIR/attr-usage-repr.rs:15:1
    |
 LL | #[repr(i8)]
    | ^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to enums
+   = help: `#[repr(i8)]` can only be applied to enums
 
-error: `#[repr]` attribute cannot be used on enums
+error: `#[repr(packed)]` attribute cannot be used on enums
   --> $DIR/attr-usage-repr.rs:30:1
    |
 LL | #[repr(packed)]
    | ^^^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can be applied to structs and unions
+   = help: `#[repr(packed)]` can be applied to structs and unions
 
-error: `#[repr]` attribute cannot be used on enums
+error: `#[repr(simd)]` attribute cannot be used on enums
   --> $DIR/attr-usage-repr.rs:36:1
    |
 LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to structs
+   = help: `#[repr(simd)]` can only be applied to structs
 
-error: `#[repr]` attribute cannot be used on type aliases
+error: `#[repr()]` attribute cannot be used on type aliases
   --> $DIR/attr-usage-repr.rs:48:1
    |
 LL | #[repr()]
    | ^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr()]` can only be applied to data types
 
 warning: unused attribute
   --> $DIR/attr-usage-repr.rs:48:1

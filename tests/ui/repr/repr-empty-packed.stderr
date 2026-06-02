@@ -1,10 +1,10 @@
-error: `#[repr]` attribute cannot be used on enums
+error: `#[repr(packed)]` attribute cannot be used on enums
   --> $DIR/repr-empty-packed.rs:5:1
    |
 LL | #[repr(packed)]
    | ^^^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can be applied to structs and unions
+   = help: `#[repr(packed)]` can be applied to structs and unions
 
 error: unused attribute
   --> $DIR/repr-empty-packed.rs:4:1

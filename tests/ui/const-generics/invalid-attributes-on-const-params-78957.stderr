@@ -6,13 +6,13 @@ LL | pub struct Foo<#[inline] const N: usize>;
    |
    = help: `#[inline]` can only be applied to functions
 
-error: `#[repr]` attribute cannot be used on const parameters
+error: `#[repr(C)]` attribute cannot be used on const parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:11:16
    |
 LL | pub struct Baz<#[repr(C)] const N: usize>;
    |                ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
 error: `#[inline]` attribute cannot be used on lifetime parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:14:17
@@ -22,13 +22,13 @@ LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
    |
    = help: `#[inline]` can only be applied to functions
 
-error: `#[repr]` attribute cannot be used on lifetime parameters
+error: `#[repr(C)]` attribute cannot be used on lifetime parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:19:17
    |
 LL | pub struct Baz2<#[repr(C)] 'a>(PhantomData<&'a ()>);
    |                 ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
 error: `#[inline]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:22:17
@@ -38,13 +38,13 @@ LL | pub struct Foo3<#[inline] T>(PhantomData<T>);
    |
    = help: `#[inline]` can only be applied to functions
 
-error: `#[repr]` attribute cannot be used on type parameters
+error: `#[repr(C)]` attribute cannot be used on type parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:27:17
    |
 LL | pub struct Baz3<#[repr(C)] T>(PhantomData<T>);
    |                 ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
 error: `#[cold]` attribute cannot be used on const parameters
   --> $DIR/invalid-attributes-on-const-params-78957.rs:8:16

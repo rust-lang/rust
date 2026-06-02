@@ -89,6 +89,7 @@ pub(crate) enum Policy {
 impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
         allowed_targets: &AllowedTargets,
+        attribute_args: &'static str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
@@ -115,6 +116,7 @@ impl<'sess> AttributeParser<'sess> {
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
+            attribute_args,
             previously_accepted: matches!(result, AllowedResult::Warn),
         };
 
@@ -381,8 +383,8 @@ fn filter_targets(
 }
 
 impl<'f, 'sess> AcceptContext<'f, 'sess> {
-    pub(crate) fn check_target(&mut self, allowed_targets: &AllowedTargets) {
-        AttributeParser::check_target(allowed_targets, self);
+    pub(crate) fn check_target(&mut self, attribute_args: &'static str, allowed_targets: &AllowedTargets) {
+        AttributeParser::check_target(allowed_targets, attribute_args, self);
     }
 }
 

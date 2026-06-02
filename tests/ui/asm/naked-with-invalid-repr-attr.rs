@@ -33,14 +33,13 @@ extern "C" fn example3() {
 #[repr(C, packed)]
 //~^ ERROR attribute cannot be used on
 //~| ERROR attribute cannot be used on
-//~| NOTE duplicate diagnostic emitted due to
 #[unsafe(naked)]
 extern "C" fn example4() {
     naked_asm!("")
 }
 
 #[repr(u8)]
-//~^ ERROR `#[repr]` attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 #[unsafe(naked)]
 extern "C" fn example5() {
     naked_asm!("")

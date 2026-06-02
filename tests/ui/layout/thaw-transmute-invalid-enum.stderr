@@ -9,13 +9,13 @@ help: you might be missing a type parameter
 LL | fn test<Subset>() {
    |        ++++++++
 
-error: `#[repr]` attribute cannot be used on enums
+error: `#[repr(packed)]` attribute cannot be used on enums
   --> $DIR/thaw-transmute-invalid-enum.rs:22:1
    |
 LL | #[repr(C, packed(2))]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can be applied to structs and unions
+   = help: `#[repr(packed)]` can be applied to structs and unions
 
 error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/thaw-transmute-invalid-enum.rs:4:20

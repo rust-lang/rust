@@ -12,7 +12,7 @@ struct SPacked(f64, f64);
 #[repr(simd)]
 struct SSimd([f64; 2]);
 
-#[repr(i8)] //~ ERROR: `#[repr]` attribute cannot be used on
+#[repr(i8)] //~ ERROR: attribute cannot be used on
 struct SInt(f64, f64);
 
 #[repr(C)]

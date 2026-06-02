@@ -415,7 +415,7 @@ impl<'sess> AttributeParser<'sess> {
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(accept.finalizer);
 
-                        Self::check_target(&accept.allowed_targets, &mut cx);
+                        Self::check_target(&accept.allowed_targets, "", &mut cx);
                         #[cfg(debug_assertions)]
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(&attr, &args)

@@ -16,13 +16,13 @@ LL | #[repr(simd)]
    = help: add `#![feature(repr_simd)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `#[repr]` attribute cannot be used on enums
+error: `#[repr(simd)]` attribute cannot be used on enums
   --> $DIR/issue-83505-repr-simd.rs:5:1
    |
 LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to structs
+   = help: `#[repr(simd)]` can only be applied to structs
 
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/issue-83505-repr-simd.rs:5:8

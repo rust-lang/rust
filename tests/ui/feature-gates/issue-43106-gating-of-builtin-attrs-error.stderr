@@ -24,13 +24,13 @@ LL | #![rustc_main]
    |
    = help: `#[rustc_main]` can only be applied to functions
 
-error: `#[repr]` attribute cannot be used on crates
+error: `#[repr()]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
    |
 LL | #![repr()]
    | ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr()]` can only be applied to data types
 
 error: `#[path]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:20:1
@@ -208,85 +208,85 @@ LL |         #[export_name = "2200"] fn foo();
    |
    = help: `#[export_name]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
-error: `#[repr]` attribute cannot be used on modules
+error: `#[repr(C)]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:121:1
    |
 LL | #[repr(C)]
    | ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on modules
+error: `#[repr(C)]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:124:17
    |
 LL |     mod inner { #![repr(C)] }
    |                 ^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on functions
+error: `#[repr(C)]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:127:5
    |
 LL |     #[repr(C)] fn f() { }
    |     ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on type aliases
+error: `#[repr(C)]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:132:5
    |
 LL |     #[repr(C)] type T = S;
    |     ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on inherent impl blocks
+error: `#[repr(C)]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:135:5
    |
 LL |     #[repr(C)] impl S { }
    |     ^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(C)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on modules
+error: `#[repr(Rust)]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:140:1
    |
 LL | #[repr(Rust)]
    | ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(Rust)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on modules
+error: `#[repr(Rust)]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:143:17
    |
 LL |     mod inner { #![repr(Rust)] }
    |                 ^^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(Rust)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on functions
+error: `#[repr(Rust)]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:146:5
    |
 LL |     #[repr(Rust)] fn f() { }
    |     ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(Rust)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on type aliases
+error: `#[repr(Rust)]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:151:5
    |
 LL |     #[repr(Rust)] type T = S;
    |     ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(Rust)]` can only be applied to data types
 
-error: `#[repr]` attribute cannot be used on inherent impl blocks
+error: `#[repr(Rust)]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:154:5
    |
 LL |     #[repr(Rust)] impl S { }
    |     ^^^^^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr(Rust)]` can only be applied to data types
 
 warning: `#[no_mangle]` attribute may not be used in combination with `#[export_name]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:24:1

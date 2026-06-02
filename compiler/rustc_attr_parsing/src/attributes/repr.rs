@@ -37,7 +37,7 @@ impl CombineAttributeParser for ReprParser {
         };
 
         if list.is_empty() {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("()", &AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Enum),
                 Allow(Target::Union),
@@ -70,8 +70,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
     use ReprAttr::*;
 
     macro_rules! repr_int {
-        ($constructor: expr) => {{
-            cx.check_target(&AllowedTargets::AllowList(&[
+        ($arg: ident, $constructor: expr) => {{
+            cx.check_target(concat!("(", stringify!($arg), ")"), &AllowedTargets::AllowList(&[
                 Allow(Target::Enum),
                 Warn(Target::MacroCall),
             ]));
@@ -82,7 +82,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
 
     match param.path().word_sym() {
         Some(sym::align) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("(align(...))", &AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Enum),
                 Allow(Target::Union),
@@ -92,7 +92,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             parse_repr_align(cx, l, AlignKind::Align)
         }
         Some(sym::packed) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("(packed)", &AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Union),
                 Warn(Target::MacroCall),
@@ -108,7 +108,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
         }
 
         Some(sym::Rust) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("(Rust)",&AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Enum),
                 Allow(Target::Union),
@@ -118,7 +118,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             Some(ReprRust)
         }
         Some(sym::C) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("(C)", &AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Enum),
                 Allow(Target::Union),
@@ -128,36 +128,36 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             Some(ReprC)
         }
         Some(sym::simd) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
-                Allow(Target::Struct), // Feature gated in `rustc_ast_passes`
+            cx.check_target("(simd)", &AllowedTargets::AllowList(&[
+                Allow(Target::Struct),   // Feature gated in `rustc_ast_passes`
                 Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
             ]));
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
         Some(sym::transparent) => {
-            cx.check_target(&AllowedTargets::AllowList(&[
+            cx.check_target("(transparent)", &AllowedTargets::AllowList(&[
                 Allow(Target::Struct),
                 Allow(Target::Enum),
-                Allow(Target::Union),
+                Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
                 Warn(Target::MacroCall),
             ]));
             cx.expect_no_args(param.args())?;
             Some(ReprTransparent)
         }
 
-        Some(sym::i8) => repr_int!(ReprInt(SignedInt(IntTy::I8))),
-        Some(sym::u8) => repr_int!(ReprInt(UnsignedInt(UintTy::U8))),
-        Some(sym::i16) => repr_int!(ReprInt(SignedInt(IntTy::I16))),
-        Some(sym::u16) => repr_int!(ReprInt(UnsignedInt(UintTy::U16))),
-        Some(sym::i32) => repr_int!(ReprInt(SignedInt(IntTy::I32))),
-        Some(sym::u32) => repr_int!(ReprInt(UnsignedInt(UintTy::U32))),
-        Some(sym::i64) => repr_int!(ReprInt(SignedInt(IntTy::I64))),
-        Some(sym::u64) => repr_int!(ReprInt(UnsignedInt(UintTy::U64))),
-        Some(sym::i128) => repr_int!(ReprInt(SignedInt(IntTy::I128))),
-        Some(sym::u128) => repr_int!(ReprInt(UnsignedInt(UintTy::U128))),
-        Some(sym::isize) => repr_int!(ReprInt(SignedInt(IntTy::Isize))),
-        Some(sym::usize) => repr_int!(ReprInt(UnsignedInt(UintTy::Usize))),
+        Some(sym::i8) => repr_int!(i8, ReprInt(SignedInt(IntTy::I8))),
+        Some(sym::u8) => repr_int!(u8, ReprInt(UnsignedInt(UintTy::U8))),
+        Some(sym::i16) => repr_int!(i16, ReprInt(SignedInt(IntTy::I16))),
+        Some(sym::u16) => repr_int!(u16, ReprInt(UnsignedInt(UintTy::U16))),
+        Some(sym::i32) => repr_int!(i32, ReprInt(SignedInt(IntTy::I32))),
+        Some(sym::u32) => repr_int!(u32, ReprInt(UnsignedInt(UintTy::U32))),
+        Some(sym::i64) => repr_int!(i64, ReprInt(SignedInt(IntTy::I64))),
+        Some(sym::u64) => repr_int!(u64, ReprInt(UnsignedInt(UintTy::U64))),
+        Some(sym::i128) => repr_int!(i128, ReprInt(SignedInt(IntTy::I128))),
+        Some(sym::u128) => repr_int!(u128, ReprInt(UnsignedInt(UintTy::U128))),
+        Some(sym::isize) => repr_int!(isize, ReprInt(SignedInt(IntTy::Isize))),
+        Some(sym::usize) => repr_int!(usize, ReprInt(UnsignedInt(UintTy::Usize))),
         _ => {
             cx.adcx().expected_specific_argument(
                 param.span(),

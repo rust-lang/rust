@@ -1,10 +1,10 @@
-error: `#[repr]` attribute cannot be used on where predicates
+error: `#[repr()]` attribute cannot be used on where predicates
   --> $DIR/empty-repr.rs:10:1
    |
 LL | #[repr()]
    | ^^^^^^^^^
    |
-   = help: `#[repr]` can only be applied to data types
+   = help: `#[repr()]` can only be applied to data types
 
 error: unused attribute
   --> $DIR/empty-repr.rs:10:1
