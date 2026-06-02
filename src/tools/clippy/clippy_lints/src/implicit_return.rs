@@ -229,7 +229,6 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         _: LocalDefId,
     ) {
         if (!matches!(kind, FnKind::Closure) && matches!(decl.output, FnRetTy::DefaultReturn(_)))
-            || !span.eq_ctxt(body.value.span)
             || span.in_external_macro(cx.sess().source_map())
         {
             return;
@@ -251,7 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
             body.value
         };
 
-        if is_from_proc_macro(cx, expr) {
+        if !span.eq_ctxt(expr.span) || is_from_proc_macro(cx, expr) {
             return;
         }
         lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
