@@ -156,33 +156,83 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     end_block.unit()
                 }
             }
-            ExprKind::LogicalOp { op, lhs, rhs } => {
+            ExprKind::LogicalOp { op, lhs: _, rhs: _ } => {
                 let condition_scope = this.local_scope();
                 let source_info = this.source_info(expr.span);
 
-                // We first evaluate the left-hand side of the predicate ...
-                let (then_block, else_block) =
-                    this.in_if_then_scope(condition_scope, expr.span, |this| {
-                        this.then_else_break(
-                            block,
-                            lhs,
-                            Some(condition_scope), // Temp scope
-                            source_info,
-                            // This flag controls how inner `let` expressions are lowered,
-                            // but either way there shouldn't be any of those in here.
-                            DeclareLetBindings::LetNotPermitted,
-                        )
-                    });
-                let (short_circuit, continuation, constant) = match op {
-                    LogicalOp::And => (else_block, then_block, false),
-                    LogicalOp::Or => (then_block, else_block, true),
+                // Flatten the chain of logical operators of the same kind.
+                let mut inputs = Vec::new();
+                let mut queue = vec![expr_id];
+                while let Some(curr) = queue.pop() {
+                    if let ExprKind::LogicalOp { op: curr_op, lhs: curr_lhs, rhs: curr_rhs } =
+                        this.thir[curr].kind
+                    {
+                        if matches!(
+                            (curr_op, op),
+                            (LogicalOp::And, LogicalOp::And) | (LogicalOp::Or, LogicalOp::Or)
+                        ) {
+                            queue.push(curr_rhs);
+                            queue.push(curr_lhs);
+                            continue;
+                        }
+                    }
+                    inputs.push(curr);
+                }
+
+                let (lhs_exprs, rhs_expr) = inputs.split_at(inputs.len() - 1);
+                let rhs_expr = rhs_expr[0];
+
+                let (then_block, else_block, constant) = match op {
+                    LogicalOp::And => {
+                        let (then_block, else_block) =
+                            this.in_if_then_scope(condition_scope, expr.span, |this| {
+                                let mut current_block = block;
+                                for &expr_id in lhs_exprs {
+                                    current_block = this
+                                        .then_else_break(
+                                            current_block,
+                                            expr_id,
+                                            Some(condition_scope),
+                                            source_info,
+                                            DeclareLetBindings::LetNotPermitted,
+                                        )
+                                        .into_block();
+                                }
+                                current_block.unit()
+                            });
+                        (then_block, else_block, false)
+                    }
+                    LogicalOp::Or => {
+                        let mut current_block = block;
+                        let mut success_blocks = Vec::new();
+                        for &expr_id in lhs_exprs {
+                            let (success_block, failure_block) =
+                                this.in_if_then_scope(condition_scope, expr.span, |this| {
+                                    this.then_else_break(
+                                        current_block,
+                                        expr_id,
+                                        Some(condition_scope),
+                                        source_info,
+                                        DeclareLetBindings::LetNotPermitted,
+                                    )
+                                });
+                            success_blocks.push(success_block);
+                            current_block = failure_block;
+                        }
+
+                        let then_block = this.cfg.start_new_block();
+                        for success_block in success_blocks {
+                            this.cfg.goto(success_block, source_info, then_block);
+                        }
+                        (then_block, current_block, true)
+                    }
                 };
-                // At this point, the control flow splits into a short-circuiting path
-                // and a continuation path.
-                // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
-                //   failing it leads to the short-circuting path which assigns `false` to the place.
-                // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
-                //   passing it leads to the short-circuting path which assigns `true` to the place.
+
+                let (short_circuit, continuation) = match op {
+                    LogicalOp::And => (else_block, then_block),
+                    LogicalOp::Or => (then_block, else_block),
+                };
+
                 this.cfg.push_assign_constant(
                     short_circuit,
                     source_info,
@@ -193,11 +243,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         const_: Const::from_bool(this.tcx, constant),
                     },
                 );
+
                 let mut rhs_block =
-                    this.expr_into_dest(destination, continuation, rhs).into_block();
+                    this.expr_into_dest(destination, continuation, rhs_expr).into_block();
+
                 // Instrument the lowered RHS's value for condition coverage.
                 // (Does nothing if condition coverage is not enabled.)
-                this.visit_coverage_standalone_condition(rhs, destination, &mut rhs_block);
+                this.visit_coverage_standalone_condition(rhs_expr, destination, &mut rhs_block);
 
                 let target = this.cfg.start_new_block();
                 this.cfg.goto(rhs_block, source_info, target);
