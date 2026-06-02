@@ -134,12 +134,10 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         match item.kind {
             ast::UseTreeKind::Simple(Some(ident)) => {
                 if ident.name == kw::Underscore
-                    && !self.r.import_res_map.get(&id).is_some_and(|per_ns| {
-                        matches!(
-                            per_ns.type_ns,
-                            Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
-                        )
-                    })
+                    && !matches!(
+                        self.r.owners[&id].import_res.type_ns,
+                        Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+                    )
                 {
                     self.unused_import(self.base_id).add(id);
                 }

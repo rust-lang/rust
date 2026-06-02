@@ -288,11 +288,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
-    /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
-        self.import_res_map.get(&id).copied().unwrap_or_default()
-    }
-
     /// Obtain the list of lifetimes parameters to add to an item.
     ///
     /// Extra lifetime parameters should only be added in places that can appear
@@ -856,8 +851,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        let per_ns = self.resolver.get_import_res(id);
-        let per_ns = per_ns.map(|res| res.map(|res| self.lower_res(res)));
+        debug_assert_eq!(id, self.owner.id);
+        let per_ns = self.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");

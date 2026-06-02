@@ -27,9 +27,9 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
-use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -216,6 +216,9 @@ pub struct PerOwnerResolverData<'tcx> {
 
     pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]> = Default::default(),
 
+    /// Resolution for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -244,8 +247,6 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
