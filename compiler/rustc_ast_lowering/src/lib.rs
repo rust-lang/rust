@@ -329,7 +329,9 @@ enum RelaxedBoundForbiddenReason {
     SuperTrait,
     TraitAlias,
     AssocTyBounds,
-    LateBoundVarsInScope,
+    /// We do not allow where bounds doing relaxed bounds,
+    /// except if it's for generic parameters of the current item.
+    WhereBound,
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -2268,7 +2270,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         return;
                     }
                     RelaxedBoundForbiddenReason::AssocTyBounds
-                    | RelaxedBoundForbiddenReason::LateBoundVarsInScope => {}
+                    | RelaxedBoundForbiddenReason::WhereBound => {}
                 };
             }
         }

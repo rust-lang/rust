@@ -2069,7 +2069,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 {
                     RelaxedBoundPolicy::Allowed
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(
