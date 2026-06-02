@@ -1,6 +1,6 @@
 // MIR for `hello_world::{closure#0}` 0 coroutine_drop
 
-fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
+fn hello_world::{closure#0}(_1: &mut {static coroutine body of hello_world()}) -> () {
     debug _task_context => _2;
     let mut _0: ();
     let mut _2: std::future::ResumeTy;

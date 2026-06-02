@@ -1,6 +1,6 @@
 // MIR for `build_aggregate::{closure#0}` 0 coroutine_drop
 
-fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -> () {
+fn build_aggregate::{closure#0}(_1: &mut {static coroutine body of build_aggregate()}) -> () {
     debug _task_context => _2;
     debug a => ((*_1).0: u32);
     debug b => ((*_1).1: u32);
