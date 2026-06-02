@@ -2163,8 +2163,10 @@ impl<'a> Parser<'a> {
         })
         .map(|(r, _)| r)
         .map_err(|mut error| {
-            if encountered_colon {
+            if self.token == token::Colon {
                 error.subdiagnostic(UseDoubleColonSuggestion { colon: self.token.span });
+            }
+            if encountered_colon {
                 self.eat_to_tokens(&[exp!(CloseParen)]);
                 self.bump();
                 error.subdiagnostic(UseRegularStructSuggestion {
