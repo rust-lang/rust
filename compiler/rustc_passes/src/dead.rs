@@ -720,7 +720,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) -> Self::Result {
         // When inline const blocks are used in pattern position, paths
         // referenced by it should be considered as used.
-        let in_pat = mem::replace(&mut self.in_pat, false);
+        let in_pat = mem::take(&mut self.in_pat);
 
         self.live_symbols.insert(c.def_id);
         let result = intravisit::walk_anon_const(self, c);
@@ -733,7 +733,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) -> Self::Result {
         // When inline const blocks are used in pattern position, paths
         // referenced by it should be considered as used.
-        let in_pat = mem::replace(&mut self.in_pat, false);
+        let in_pat = mem::take(&mut self.in_pat);
 
         self.live_symbols.insert(c.def_id);
         let result = intravisit::walk_inline_const(self, c);

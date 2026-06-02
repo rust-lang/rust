@@ -84,7 +84,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
         if find_attr!(self.tcx, def_id, ExportStable) {
             self.in_exportable_mod = true;
         }
-        let old_seen_exportable_in_mod = std::mem::replace(&mut self.seen_exportable_in_mod, false);
+        let old_seen_exportable_in_mod = std::mem::take(&mut self.seen_exportable_in_mod);
 
         intravisit::walk_item(self, item);
 

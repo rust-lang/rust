@@ -217,7 +217,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         let Some(attr) = found_attr else {
             self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
-            let prev_in_root = mem::replace(&mut self.in_root, false);
+            let prev_in_root = mem::take(&mut self.in_root);
             visit::walk_item(self, item);
             self.in_root = prev_in_root;
             return;
@@ -255,7 +255,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             self.collect_bang_proc_macro(item, fn_ident);
         };
 
-        let prev_in_root = mem::replace(&mut self.in_root, false);
+        let prev_in_root = mem::take(&mut self.in_root);
         visit::walk_item(self, item);
         self.in_root = prev_in_root;
     }

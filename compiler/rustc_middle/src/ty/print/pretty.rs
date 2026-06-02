@@ -2516,7 +2516,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self.write_str("{")?;
         f(self)?;
         self.write_str(conversion)?;
-        let was_in_value = std::mem::replace(&mut self.in_value, false);
+        let was_in_value = std::mem::take(&mut self.in_value);
         t(self)?;
         self.in_value = was_in_value;
         self.write_str("}")?;
@@ -2529,7 +2529,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     ) -> Result<(), PrintError> {
         write!(self, "<")?;
 
-        let was_in_value = std::mem::replace(&mut self.in_value, false);
+        let was_in_value = std::mem::take(&mut self.in_value);
         f(self)?;
         self.in_value = was_in_value;
 
