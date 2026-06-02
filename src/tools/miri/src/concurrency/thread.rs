@@ -856,6 +856,23 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 // Public interface to thread management.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Public because this is used by Priroda.
+    fn miri_step(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        if !this.step()? {
+            // See if this thread can do something else.
+            match this.run_on_stack_empty()? {
+                Poll::Pending => {} //keep going
+                Poll::Ready(()) => {
+                    this.terminate_active_thread(TlsAllocAction::Deallocate)?;
+                }
+            }
+        }
+
+        interp_ok(())
+    }
+
     #[inline]
     fn thread_id_try_from(&self, id: impl TryInto<u32>) -> Result<ThreadId, ThreadLookupError> {
         self.eval_context_ref().machine.threads.thread_id_try_from(id)
@@ -1289,14 +1306,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             match this.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    if !this.step()? {
-                        // See if this thread can do something else.
-                        match this.run_on_stack_empty()? {
-                            Poll::Pending => {} // keep going
-                            Poll::Ready(()) =>
-                                this.terminate_active_thread(TlsAllocAction::Deallocate)?,
-                        }
-                    }
+                    this.miri_step()?;
                 }
                 SchedulingAction::SleepAndWaitForIo(duration) => {
                     if this.machine.communicate() {

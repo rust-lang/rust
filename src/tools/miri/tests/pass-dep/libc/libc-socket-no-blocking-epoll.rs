@@ -61,7 +61,7 @@ fn test_connect_nonblock() {
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | EPOLLERR).unwrap();
 
     // Wait until we are done connecting.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
 
     // There should be no error during async connection.
     let errno =
@@ -95,7 +95,7 @@ fn test_accept_nonblock() {
         epoll_ctl_add(epfd, server_sockfd, EPOLLIN | EPOLLET | EPOLLERR).unwrap();
 
         // Wait until we get a readable event on the server socket.
-        check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN, data: server_sockfd }], -1);
+        check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: server_sockfd }], -1);
 
         // Accepting should now be possible.
         net::accept_ipv4(server_sockfd).unwrap();
@@ -149,7 +149,7 @@ fn test_connect_nonblock_err() {
     epoll_ctl_add(epfd, client_sockfd, EPOLLOUT | EPOLLET | libc::EPOLLERR).unwrap();
 
     // Wait until the socket has an error.
-    check_epoll_wait::<8>(
+    check_epoll_wait(
         epfd,
         &[Ev { events: libc::EPOLLERR | EPOLLOUT | EPOLLHUP, data: client_sockfd }],
         -1,
@@ -229,7 +229,7 @@ fn test_recv_nonblock() {
             Ok(received) => bytes_received += received as usize,
             Err(err) if err.kind() == ErrorKind::WouldBlock => {
                 // Use epoll to block until there's data available again.
-                check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
+                check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
             }
             Err(err) => panic!("unexpected error whilst receiving: {err}"),
         }
@@ -339,7 +339,7 @@ fn test_send_nonblock() {
     });
 
     // Wait until the socket is again writable.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
 
     let fill_buf = [1u8; 100];
     // We should be able to write again without blocking because we just received
@@ -371,7 +371,7 @@ fn test_shutdown_read_write() {
     unsafe { libc::shutdown(client_sockfd, libc::SHUT_RDWR) };
 
     // Ensure that the "read end closed", "write end closed", and "readable" readiness are set.
-    check_epoll_wait::<8>(
+    check_epoll_wait(
         epfd,
         &[Ev { events: EPOLLRDHUP | EPOLLHUP | EPOLLIN, data: client_sockfd }],
         -1,
@@ -399,7 +399,7 @@ fn test_shutdown_read() {
     unsafe { libc::shutdown(client_sockfd, libc::SHUT_RD) };
 
     // Ensure that the "read end closed" readiness is set.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLRDHUP, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLRDHUP, data: client_sockfd }], -1);
 
     server_thread.join().unwrap();
 }
@@ -425,7 +425,7 @@ fn test_shutdown_write() {
 
     // Ensure that the "read end closed" readiness is set when
     // the write end of the peer is closed.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLRDHUP, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLRDHUP, data: client_sockfd }], -1);
 
     server_thread.join().unwrap();
 }
@@ -460,7 +460,7 @@ fn test_readiness_after_short_read() {
     epoll_ctl_add(epfd, client_sockfd, EPOLLET | EPOLLIN).unwrap();
 
     // Wait until the socket becomes readable.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
 
     let mut buffer = [0u8; 1024];
 
@@ -499,7 +499,7 @@ fn test_readiness_after_short_read() {
 
     // Wait until the client socket becomes readable again.
     // If this blocks indefinitely, Miri lost track of the proper status of this socket.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: client_sockfd }], -1);
 
     // Now we can read the 2nd chunk of data.
     unsafe {
@@ -583,7 +583,7 @@ fn test_readiness_after_short_write() {
     epoll_ctl_add(epfd, client_sockfd, EPOLLET | EPOLLOUT).unwrap();
 
     // Wait until the socket becomes writable.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
 
     // We now want to fill the write buffer of the socket by repeatedly writing
     // `buffer` into it. The last write should then be a short write.
@@ -630,7 +630,7 @@ fn test_readiness_after_short_write() {
 
     // Wait until the socket becomes writable again.
     // If this blocks indefinitely, Miri lost track of the proper status of this socket.
-    check_epoll_wait::<8>(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: client_sockfd }], -1);
 
     // We should again be able to write into the socket.
     libc_utils::write_all(client_sockfd, &buffer).unwrap();
