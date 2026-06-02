@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_middle::mir;
-use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
+use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan, mcdc};
 use rustc_span::{ExpnKind, Span, SyntaxContext};
 
 use crate::coverage::from_mir;
@@ -62,6 +62,9 @@ pub(crate) struct ExpnNode {
     /// Branch spans (recorded during MIR building) belonging to this expansion.
     pub(crate) branch_spans: Vec<BranchSpan>,
 
+    /// MC/DC spans (recorded during MIR building) belonging to this expansion.
+    pub(crate) mcdc_spans: Vec<(mcdc::DecisionSpan, Vec<mcdc::ConditionSpan>)>,
+
     /// Hole spans belonging to this expansion, to be carved out from the
     /// code spans during span refinement.
     pub(crate) hole_spans: Vec<Span>,
@@ -90,6 +93,7 @@ impl ExpnNode {
             minmax_bcbs: None,
 
             branch_spans: vec![],
+            mcdc_spans: vec![],
 
             hole_spans: vec![],
         }
@@ -171,12 +175,20 @@ pub(crate) fn build_expn_tree(
         node.hole_spans.push(hole_span);
     }
 
-    // Associate each branch span (recorded during MIR building) with its
-    // corresponding expansion tree node.
     if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
+        // Associate each branch span (recorded during MIR building) with its
+        // corresponding expansion tree node.
         for branch_span in &coverage_info_hi.branch_spans {
             if let Some(node) = nodes.get_mut(&branch_span.span.ctxt()) {
                 node.branch_spans.push(BranchSpan::clone(branch_span));
+            }
+        }
+
+        // Associate spans of MCDC decisions to the expansion node of the
+        // decision span.
+        for (decision_span, condition_spans) in &coverage_info_hi.mcdc_spans {
+            if let Some(node) = nodes.get_mut(&decision_span.span.ctxt()) {
+                node.mcdc_spans.push((decision_span.clone(), condition_spans.clone()))
             }
         }
     }
