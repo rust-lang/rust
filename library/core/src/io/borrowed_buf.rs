@@ -312,10 +312,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     ///
     /// Panics if `self.capacity()` is less than `buf.len()`.
     #[inline]
-    pub fn append(&mut self, buf: &[T])
-    where
-        T: Copy,
-    {
+    pub fn append(&mut self, buf: &[T]) {
         assert!(self.capacity() >= buf.len());
 
         // SAFETY: we do not de-initialize any of the elements of the slice
