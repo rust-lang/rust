@@ -493,6 +493,8 @@ impl SingleAttributeParser for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignFn),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",

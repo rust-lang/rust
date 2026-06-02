@@ -30,10 +30,10 @@ use tracing::debug;
 
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::di_builder::DIBuilderExt;
-pub(crate) use self::metadata::build_global_var_di_node;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
+pub(crate) use self::metadata::{build_extern_static_di_node, build_global_var_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
@@ -759,6 +759,91 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     align.bits() as u32,
                 )
             },
+        }
+    }
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    /// Creates a `DISubprogram` for a foreign function declaration (without `SPFlagDefinition`).
+    pub(crate) fn dbg_scope_foreign_fn(
+        &self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Option<&'ll Value>,
+    ) {
+        if self.dbg_cx.is_none() {
+            return;
+        }
+
+        if self.sess().opts.debuginfo != DebugInfo::Full {
+            return;
+        }
+
+        let tcx = self.tcx;
+        let def_id = instance.def_id();
+
+        let scope = namespace::item_namespace(
+            self,
+            DefId {
+                krate: def_id.krate,
+                index: tcx.def_key(def_id).parent.expect("dbg_scope_foreign_fn: missing parent?"),
+            },
+        );
+
+        let span = tcx.def_span(def_id);
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
+
+        // Foreign function declarations do not need the platform-specific
+        // adjustments used for regular function definitions.
+        let signature: Vec<_> = iter::once(if fn_abi.ret.is_ignore() {
+            None
+        } else {
+            Some(type_di_node(self, fn_abi.ret.layout.ty))
+        })
+        .chain(fn_abi.args.iter().map(|arg| Some(type_di_node(self, arg.layout.ty))))
+        .collect();
+
+        let function_type_metadata = create_subroutine_type(self, &signature);
+
+        let mut name = String::with_capacity(64);
+        type_names::push_item_name(tcx, def_id, false, &mut name);
+
+        let linkage_name = &mangled_name_of_instance(self, instance).name;
+        let linkage_name = if &name == linkage_name { "" } else { linkage_name };
+
+        let scope_line = loc.line;
+
+        let mut flags = DIFlags::FlagPrototyped;
+        if fn_abi.ret.layout.is_uninhabited() {
+            flags |= DIFlags::FlagNoReturn;
+        }
+
+        let mut spflags = DISPFlags::SPFlagZero;
+        if self.sess().opts.optimize != config::OptLevel::No {
+            spflags |= DISPFlags::SPFlagOptimized;
+        }
+
+        let template_parameters = create_DIArray(DIB(self), &[]);
+
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateFunction(
+                DIB(self),
+                scope,
+                name.as_c_char_ptr(),
+                name.len(),
+                linkage_name.as_c_char_ptr(),
+                linkage_name.len(),
+                file_metadata,
+                loc.line,
+                function_type_metadata,
+                scope_line,
+                flags,
+                spflags,
+                llfn, // Attach to LLVM function if provided
+                template_parameters,
+                None, // No decl
+            );
         }
     }
 }

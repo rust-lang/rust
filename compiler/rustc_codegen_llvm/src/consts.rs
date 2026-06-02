@@ -403,6 +403,13 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_dllimport_storage_class(g);
         }
 
+        if self.tcx.is_foreign_item(def_id) {
+            base::set_link_section(g, fn_attrs);
+            if self.tcx.sess.target.arch == Arch::Bpf {
+                debuginfo::build_extern_static_di_node(self, def_id, g);
+            }
+        }
+
         self.instances.borrow_mut().insert(instance, g);
         g
     }
