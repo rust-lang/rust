@@ -1,0 +1,20 @@
+// Check that trait impls in the sidebar and the main section have the same
+// ordering.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+
+// .sidebar .trait-implementation li:nth-child(3) a
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(1) a", "!Sync")
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(2) a", "AsRef<str>")
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(3) a", "From<u8>")
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(4) a", "From<u16>")
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(5) a", "From<u32>")
+assert-text: (".sidebar-elems .trait-implementation li:nth-child(6) a", "Send")
+
+// FIXME: this order doesn't match the sidebar order
+assert-text: ("#trait-implementations-list details:nth-child(1) .code-header", "impl AsRef<str> for Foo")
+assert-text: ("#trait-implementations-list details:nth-child(2) .code-header", "impl From<u16> for Foo")
+assert-text: ("#trait-implementations-list details:nth-child(3) .code-header", "impl From<u32> for Foo")
+assert-text: ("#trait-implementations-list details:nth-child(4) .code-header", "impl From<u8> for Foo")
+assert-text: ("#trait-implementations-list section:nth-child(5) .code-header", "impl Send for Foo")
+assert-text: ("#trait-implementations-list section:nth-child(6) .code-header", "impl !Sync for Foo")
