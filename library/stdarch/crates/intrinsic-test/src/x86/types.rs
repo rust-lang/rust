@@ -3,12 +3,10 @@ use std::str::FromStr;
 use itertools::Itertools;
 
 use super::intrinsic::X86IntrinsicType;
-use crate::common::intrinsic_helpers::{
-    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
-};
+use crate::common::intrinsic_helpers::{IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind};
 use crate::x86::xml_parser::Parameter;
 
-impl IntrinsicTypeDefinition for X86IntrinsicType {
+impl TypeDefinition for X86IntrinsicType {
     /// Gets a string containing the type in C format.
     /// This function assumes that this value is present in the metadata hashmap.
     fn c_type(&self) -> String {

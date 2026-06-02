@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::common::intrinsic::Intrinsic;
 
-use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::intrinsic_helpers::TypeDefinition;
 
 /// Generates a C source file containing wrapper functions around each specialisation of each
 /// intrinsic (that is, intrinsics with specific values for the the immediate arguments). Each
@@ -14,7 +14,7 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 ///    *__dst = __crc32cd(a, b);
 /// }
 /// ```
-pub fn write_wrapper_c<T: IntrinsicTypeDefinition>(
+pub fn write_wrapper_c<T: TypeDefinition>(
     w: &mut impl std::io::Write,
     notice: &str,
     platform_headers: &[&str],

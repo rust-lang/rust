@@ -5,11 +5,11 @@ use crate::common::values::test_values_array_name;
 
 use super::PASSES;
 use super::constraint::Constraint;
-use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::intrinsic_helpers::TypeDefinition;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Argument<T: IntrinsicTypeDefinition> {
+pub struct Argument<T: TypeDefinition> {
     /// The argument's index in the intrinsic function call.
     pub pos: usize,
     /// The argument name.
@@ -22,7 +22,7 @@ pub struct Argument<T: IntrinsicTypeDefinition> {
 
 impl<T> Argument<T>
 where
-    T: IntrinsicTypeDefinition,
+    T: TypeDefinition,
 {
     pub fn new(pos: usize, name: String, ty: T, constraint: Option<Constraint>) -> Self {
         Argument {
@@ -63,13 +63,13 @@ where
 
 /// Arguments of an intrinsic - including parameters that end up being const generics.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ArgumentList<T: IntrinsicTypeDefinition> {
+pub struct ArgumentList<T: TypeDefinition> {
     pub args: Vec<Argument<T>>,
 }
 
 impl<T> ArgumentList<T>
 where
-    T: IntrinsicTypeDefinition,
+    T: TypeDefinition,
 {
     /// Returns a string with the arguments in `self` as a parameter list for a wrapper fn
     /// definition in C (e.g. `$ty1 $arg1, $ty2 $arg2`).

@@ -1,11 +1,11 @@
 use crate::common::constraint::Constraint;
 
 use super::argument::ArgumentList;
-use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::intrinsic_helpers::TypeDefinition;
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
-pub struct Intrinsic<T: IntrinsicTypeDefinition> {
+pub struct Intrinsic<T: TypeDefinition> {
     /// The function name of this intrinsic.
     pub name: String,
 
@@ -43,7 +43,7 @@ fn recurse_specializations<'a, E>(
     }
 }
 
-impl<T: IntrinsicTypeDefinition> Intrinsic<T> {
+impl<T: TypeDefinition> Intrinsic<T> {
     /// Invokes `f` for "specialisation" of the intrinsic - a specific instantiation of the
     /// constant generics of the intrinsic. `f` takes a slice where the `i`th element corresponds
     /// to the value of the `i`th const generic argument of the intrinsic.

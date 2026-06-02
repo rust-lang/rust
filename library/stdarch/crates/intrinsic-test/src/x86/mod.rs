@@ -4,19 +4,19 @@ mod intrinsic;
 mod types;
 mod xml_parser;
 
-use crate::common::SupportedArchitectureTest;
+use crate::common::SupportedArchitecture;
 use crate::common::cli::ProcessedCli;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::X86IntrinsicType;
 use xml_parser::get_xml_intrinsics;
 
-pub struct X86ArchitectureTest {
+pub struct X86 {
     intrinsics: Vec<Intrinsic<X86IntrinsicType>>,
 }
 
-impl SupportedArchitectureTest for X86ArchitectureTest {
-    type IntrinsicImpl = X86IntrinsicType;
+impl SupportedArchitecture for X86 {
+    type Type = X86IntrinsicType;
 
     fn intrinsics(&self) -> &[Intrinsic<X86IntrinsicType>] {
         &self.intrinsics

@@ -10,7 +10,7 @@ use crate::common::{
         run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
     },
     intrinsic::Intrinsic,
-    intrinsic_helpers::IntrinsicTypeDefinition,
+    intrinsic_helpers::TypeDefinition,
 };
 
 pub mod argument;
@@ -29,10 +29,10 @@ pub(crate) const PASSES: u32 = 20;
 
 /// Architectures must support this trait
 /// to be successfully tested.
-pub trait SupportedArchitectureTest {
-    type IntrinsicImpl: IntrinsicTypeDefinition + Sync;
+pub trait SupportedArchitecture {
+    type Type: TypeDefinition + Sync;
 
-    fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
+    fn intrinsics(&self) -> &[Intrinsic<Self::Type>];
 
     fn create(cli_options: &ProcessedCli) -> Self;
 
