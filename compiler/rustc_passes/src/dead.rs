@@ -184,15 +184,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(
-                DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
-                | DefKind::AssocTy
-                | DefKind::TyAlias,
-                def_id,
-            ) => {
-                self.check_def_id(def_id);
-            }
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 // Using a variant in patterns should not make the variant live,
