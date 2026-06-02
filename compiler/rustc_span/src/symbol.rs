@@ -61,6 +61,7 @@ symbols! {
         Mod:                "mod",
         Move:               "move",
         Mut:                "mut",
+        Only:               "only",
         Pub:                "pub",
         Ref:                "ref",
         Return:             "return",

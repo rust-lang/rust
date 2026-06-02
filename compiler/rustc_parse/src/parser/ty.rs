@@ -1120,6 +1120,7 @@ impl<'a> Parser<'a> {
             || self.check(exp!(OpenParen))
             || self.can_begin_maybe_const_bound()
             || self.check_keyword(exp!(Const))
+            || self.check_keyword(exp!(Only))
             || self.check_keyword(exp!(Async))
             || self.check_keyword(exp!(Use))
     }
@@ -1201,7 +1202,9 @@ impl<'a> Parser<'a> {
 
         match polarity {
             BoundPolarity::Positive => {}
-            BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => {
+            BoundPolarity::Negative(span)
+            | BoundPolarity::Maybe(span)
+            | BoundPolarity::Only(span) => {
                 return self
                     .dcx()
                     .emit_err(errors::ModifierLifetime { span, modifier: polarity.as_str() });
@@ -1265,6 +1268,8 @@ impl<'a> Parser<'a> {
         } else if self.eat(exp!(Bang)) {
             self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
+        } else if self.eat_keyword(exp!(Only)) {
+            BoundPolarity::Only(self.prev_token.span)
         } else {
             BoundPolarity::Positive
         };
@@ -1274,7 +1279,9 @@ impl<'a> Parser<'a> {
             BoundPolarity::Positive => {
                 // All trait bound modifiers allowed to combine with positive polarity
             }
-            BoundPolarity::Maybe(polarity_span) | BoundPolarity::Negative(polarity_span) => {
+            BoundPolarity::Maybe(polarity_span)
+            | BoundPolarity::Negative(polarity_span)
+            | BoundPolarity::Only(polarity_span) => {
                 match (asyncness, constness) {
                     (BoundAsyncness::Normal, BoundConstness::Never) => {
                         // Ok, no modifiers.
@@ -1346,7 +1353,9 @@ impl<'a> Parser<'a> {
 
         if let Some(binder_span) = binder_span {
             match modifiers.polarity {
-                BoundPolarity::Negative(polarity_span) | BoundPolarity::Maybe(polarity_span) => {
+                BoundPolarity::Negative(polarity_span)
+                | BoundPolarity::Maybe(polarity_span)
+                | BoundPolarity::Only(polarity_span) => {
                     self.dcx().emit_err(errors::BinderAndPolarity {
                         binder_span,
                         polarity_span,
