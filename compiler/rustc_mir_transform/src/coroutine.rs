@@ -978,40 +978,39 @@ fn compute_layout<'tcx>(
         storage_liveness,
     } = liveness;
 
-    // Gather live local types and their indices.
-    let mut locals = IndexVec::<CoroutineSavedLocal, _>::with_capacity(saved_locals.domain_size());
-    let mut tys = IndexVec::<CoroutineSavedLocal, _>::with_capacity(saved_locals.domain_size());
-    for (saved_local, local) in saved_locals.iter_enumerated() {
-        debug!("coroutine saved local {:?} => {:?}", saved_local, local);
+    // Gather live local types.
+    let mut tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'_>> = saved_locals
+        .iter_enumerated()
+        .map(|(saved_local, local)| {
+            debug!("coroutine saved local {:?} => {:?}", saved_local, local);
 
-        locals.push(local);
-        let decl = &body.local_decls[local];
-        debug!(?decl);
+            let decl = &body.local_decls[local];
 
-        // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
-        // the information. This is alright, since `ignore_for_traits` is only relevant when
-        // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
-        // default.
-        let ignore_for_traits = match decl.local_info {
-            // Do not include raw pointers created from accessing `static` items, as those could
-            // well be re-created by another access to the same static.
-            ClearCrossCrate::Set(LocalInfo::StaticRef { is_thread_local, .. }) => !is_thread_local,
-            // Fake borrows are only read by fake reads, so do not have any reality in
-            // post-analysis MIR.
-            ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
-            _ => false,
-        };
-        let decl = CoroutineSavedTy {
-            ty: decl.ty,
-            source_info: decl.source_info,
-            ignore_for_traits,
-            // Will be set later when walking debuginfo.
-            debuginfo_name: None,
-        };
-        debug!(?decl);
+            // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
+            // the information. This is alright, since `ignore_for_traits` is only relevant when
+            // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
+            // default.
+            let ignore_for_traits = match decl.local_info {
+                // Do not include raw pointers created from accessing `static` items, as those could
+                // well be re-created by another access to the same static.
+                ClearCrossCrate::Set(LocalInfo::StaticRef { is_thread_local, .. }) => {
+                    !is_thread_local
+                }
+                // Fake borrows are only read by fake reads, so do not have any reality in
+                // post-analysis MIR.
+                ClearCrossCrate::Set(LocalInfo::FakeBorrow) => true,
+                _ => false,
+            };
 
-        tys.push(decl);
-    }
+            CoroutineSavedTy {
+                ty: decl.ty,
+                source_info: decl.source_info,
+                ignore_for_traits,
+                // Will be set later when walking debuginfo.
+                debuginfo_name: None,
+            }
+        })
+        .collect();
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
@@ -1025,6 +1024,9 @@ fn compute_layout<'tcx>(
         SourceInfo::outermost(body_span.shrink_to_hi()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
     ]);
+
+    // Simple map from new to old indices to avoid repeatedly counting bits.
+    let reverse_local_map: IndexVec<CoroutineSavedLocal, Local> = saved_locals.iter().collect();
 
     // Build the coroutine variant field list.
     // Create a map from local indices to coroutine struct indices.
@@ -1044,7 +1046,7 @@ fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside coroutines, so it doesn't matter which variant
             // index we access them by.
-            remap[locals[saved_local]] = Some((tys[saved_local].ty, variant_index, idx));
+            remap[reverse_local_map[saved_local]] = Some((tys[saved_local].ty, variant_index, idx));
         }
         variant_source_info.push(source_info_at_suspension_point);
     }
