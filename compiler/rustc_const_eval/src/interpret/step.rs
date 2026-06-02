@@ -19,7 +19,7 @@ use super::{
     EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
     MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::{enter_trace_span, util};
+use crate::enter_trace_span;
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
@@ -172,7 +172,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             Use(ref operand, with_retag) => {
                 // Avoid recomputing the layout
-                let op = self.eval_operand(operand, Some(dest.layout))?;
+                let op = self.eval_operand(operand)?;
                 let mode = if with_retag.yes() { RetagMode::Default } else { RetagMode::None };
                 M::with_retag_mode(self, mode, |ecx| ecx.copy_op(&op, &dest))?;
             }
@@ -180,18 +180,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
 
             BinaryOp(bin_op, (ref left, ref right)) => {
-                let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
-                let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
-                let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                let left = self.read_immediate(&self.eval_operand(left)?)?;
+                let right = self.read_immediate(&self.eval_operand(right)?)?;
                 let result = self.binary_op(bin_op, &left, &right)?;
                 assert_eq!(result.layout, dest.layout, "layout mismatch for result of {bin_op:?}");
                 self.write_immediate(*result, &dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
-                // The operand always has the same type as the result.
-                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let val = self.read_immediate(&self.eval_operand(operand)?)?;
                 let result = self.unary_op(un_op, &val)?;
                 assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*result, &dest)?;
@@ -231,7 +228,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             Reborrow(_, mutability, place) => {
-                let op = self.eval_place_to_op(place, None)?;
+                let op = self.eval_place_to_op(place)?;
                 if mutability.is_not() {
                     // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
                     // distinct same-layout target ADT.
@@ -266,14 +263,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             Cast(cast_kind, ref operand, cast_ty) => {
-                let src = self.eval_operand(operand, None)?;
+                let src = self.eval_operand(operand)?;
                 let cast_ty =
                     self.instantiate_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
                 self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 
             Discriminant(place) => {
-                let op = self.eval_place_to_op(place, None)?;
+                let op = self.eval_place_to_op(place)?;
                 let variant = self.read_discriminant(&op)?;
                 let discr = self.discriminant_for_variant(op.layout.ty, variant)?;
                 self.write_immediate(*discr, &dest)?;
@@ -282,7 +279,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             WrapUnsafeBinder(ref op, _ty) => {
                 // Constructing an unsafe binder acts like a transmute
                 // since the operand's layout does not change.
-                let op = self.eval_operand(op, None)?;
+                let op = self.eval_operand(op)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
         }
@@ -313,9 +310,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let [data, meta] = &operands.raw else {
                     bug!("{kind:?} should have 2 operands, had {operands:?}");
                 };
-                let data = self.eval_operand(data, None)?;
+                let data = self.eval_operand(data)?;
                 let data = self.read_pointer(&data)?;
-                let meta = self.eval_operand(meta, None)?;
+                let meta = self.eval_operand(meta)?;
                 let meta = if meta.layout.is_zst() {
                     MemPlaceMeta::None
                 } else {
@@ -334,7 +331,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index)?;
-            let op = self.eval_operand(operand, Some(field_dest.layout))?;
+            let op = self.eval_operand(operand)?;
             // We validate manually below so we don't have to do it here.
             self.copy_op_no_validate(&op, &field_dest, /*allow_transmute*/ false)?;
         }
@@ -358,7 +355,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         operand: &mir::Operand<'tcx>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let src = self.eval_operand(operand, None)?;
+        let src = self.eval_operand(operand)?;
         assert!(src.layout.is_sized());
         let dest = self.force_allocation(&dest)?;
         let length = dest.len(self)?;
@@ -399,7 +396,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(match op {
             mir::Operand::Copy(_) | mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => {
                 // Make a regular copy.
-                let op = self.eval_operand(op, None)?;
+                let op = self.eval_operand(op)?;
                 FnArg::Copy(op)
             }
             mir::Operand::Move(place) => {
@@ -430,7 +427,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         args: &[Spanned<mir::Operand<'tcx>>],
         dest: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
-        let func = self.eval_operand(func, None)?;
+        let func = self.eval_operand(func)?;
 
         // Evaluating function call arguments. The tricky part here is dealing with `Move`
         // arguments: we have to ensure no two such arguments alias. This would be most easily done
@@ -517,7 +514,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Goto { target } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets } => {
-                let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
+                let discr = self.read_immediate(&self.eval_operand(discr)?)?;
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -622,7 +619,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Assert { ref cond, expected, ref msg, target, unwind } => {
                 let ignored =
                     M::ignore_optional_overflow_checks(self) && msg.is_optional_overflow_check();
-                let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
+                let cond_val = self.read_scalar(&self.eval_operand(cond)?)?.to_bool()?;
                 if ignored || expected == cond_val {
                     self.go_to_block(target);
                 } else {

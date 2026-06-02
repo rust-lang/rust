@@ -18,8 +18,8 @@ use tracing::trace;
 
 use super::{
     CtfeProvenance, Frame, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
-    OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
-    from_known_layout, interp_ok, mir_assign_valid_types, throw_ub,
+    OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, interp_ok,
+    mir_assign_valid_types, throw_ub,
 };
 use crate::enter_trace_span;
 
@@ -724,12 +724,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].
-    pub fn local_to_op(
-        &self,
-        local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        self.local_at_frame_to_op(self.frame(), local, layout)
+    pub fn local_to_op(&self, local: mir::Local) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        self.local_at_frame_to_op(self.frame(), local)
     }
 
     /// Read from a local of a given frame.
@@ -741,9 +737,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let layout = self.layout_of_local(frame, local, layout)?;
+        let layout = self.layout_of_local(frame, local)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
@@ -764,7 +759,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Right((local, offset, locals_addr, _)) => {
                 debug_assert!(place.layout.is_sized()); // only sized locals can ever be `Place::Local`.
                 debug_assert_eq!(locals_addr, self.frame().locals_addr());
-                let base = self.local_to_op(local, None)?;
+                let base = self.local_to_op(local)?;
                 interp_ok(match offset {
                     Some(offset) => base.offset(offset, place.layout, self)?,
                     None => {
@@ -782,7 +777,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn eval_place_to_op(
         &self,
         mir_place: mir::Place<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let _trace = enter_trace_span!(
             M,
@@ -791,11 +785,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tracing_separate_thread = Empty
         );
 
-        // Do not use the layout passed in as argument if the base we are looking at
-        // here is not the entire place.
-        let layout = if mir_place.projection.is_empty() { layout } else { None };
-
-        let mut op = self.local_to_op(mir_place.local, layout)?;
+        let mut op = self.local_to_op(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             op = self.project(&op, elem)?
@@ -832,7 +822,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn eval_operand(
         &self,
         mir_op: &mir::Operand<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let _trace =
             enter_trace_span!(M, step::eval_operand, ?mir_op, tracing_separate_thread = Empty);
@@ -840,7 +829,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) | &Move(place) => self.eval_place_to_op(place)?,
 
             &RuntimeChecks(checks) => {
                 let val = M::runtime_checks(self, checks)?;
@@ -856,7 +845,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.eval_mir_constant(&c, constant.span, layout)?
+                self.eval_mir_constant(&c, constant.span)?
             }
         };
         trace!("{:?}: {:?}", mir_op, op);
@@ -867,7 +856,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         val_val: mir::ConstValue,
         ty: Ty<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // Other cases need layout.
         let adjust_scalar = |scalar| -> InterpResult<'tcx, _> {
@@ -876,8 +864,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        let layout =
-            from_known_layout(self.tcx, self.typing_env(), layout, || self.layout_of(ty).into())?;
+        let layout = self.layout_of(ty)?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.

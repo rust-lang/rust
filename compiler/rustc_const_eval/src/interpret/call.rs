@@ -418,7 +418,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             "spread_arg: {:?}, locals: {:#?}",
             body.spread_arg,
             body.args_iter()
-                .map(|local| (local, self.layout_of_local(self.frame(), local, None).unwrap().ty))
+                .map(|local| (local, self.layout_of_local(self.frame(), local).unwrap().ty))
                 .collect::<Vec<_>>()
         );
 
@@ -467,7 +467,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // `layout_of_local` does more than just the instantiation we need to get the
                 // type, but the result gets cached so this avoids calling the instantiation
                 // query *again* the next time this local is accessed.
-                let ty = ecx.layout_of_local(ecx.frame(), local, None)?.ty;
+                let ty = ecx.layout_of_local(ecx.frame(), local)?.ty;
 
                 // Some arguments are special: the first (`self`) argument of a non-capturing
                 // closure; the va_list argument; and the spread_arg.
@@ -978,7 +978,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Get out the return value. Must happen *before* the frame is popped as we have to get the
         // local's value out.
         let return_op =
-            self.local_to_op(mir::RETURN_PLACE, None).expect("return place should always be live");
+            self.local_to_op(mir::RETURN_PLACE).expect("return place should always be live");
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Copy the return value and remember the return continuation.

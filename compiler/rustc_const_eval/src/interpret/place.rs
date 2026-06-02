@@ -521,7 +521,7 @@ where
         local: mir::Local,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let frame = self.frame();
-        let layout = self.layout_of_local(frame, local, None)?;
+        let layout = self.layout_of_local(frame, local)?;
         let place = if layout.is_sized() {
             // We can just always use the `Local` for sized values.
             Place::Local { local, offset: None, locals_addr: frame.locals_addr() }
@@ -597,7 +597,7 @@ where
                     Left(place.force_mplace(self)?)
                 } else {
                     debug_assert_eq!(locals_addr, self.frame().locals_addr());
-                    debug_assert_eq!(self.layout_of_local(self.frame(), local, None)?, layout);
+                    debug_assert_eq!(self.layout_of_local(self.frame(), local)?, layout);
                     match self.frame_mut().locals[local].access_mut()? {
                         Operand::Indirect(mplace) => {
                             // The local is in memory.
@@ -999,7 +999,7 @@ where
                         // We need the layout of the local. We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout = self.layout_of_local(&self.frame(), local, None)?;
+                        let local_layout = self.layout_of_local(&self.frame(), local)?;
                         assert!(local_layout.is_sized(), "unsized locals cannot be immediate");
                         let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
                         // Preserve old value. (As an optimization, we can skip this if it was uninit.)

@@ -602,7 +602,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
             }
             Constant { ref value, disambiguator: _ } => {
-                self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
+                self.ecx.eval_mir_constant(value, DUMMY_SP).discard_err()?
             }
             Aggregate(variant, ref fields) => {
                 let fields =

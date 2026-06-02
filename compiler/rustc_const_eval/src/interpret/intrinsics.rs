@@ -94,11 +94,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let tcx = self.tcx;
         let type_id_hash = tcx.type_id_hash(ty).as_u128();
-        let op = self.const_val_to_op(
-            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
-            tcx.types.u128,
-            None,
-        )?;
+        let op = self
+            .const_val_to_op(ConstValue::Scalar(Scalar::from_u128(type_id_hash)), tcx.types.u128)?;
         self.copy_op_allow_transmute(&op, dest)?;
 
         // Give the each pointer-sized chunk provenance that knows about the type id.
@@ -189,14 +186,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 let (alloc_id, meta) = alloc_type_name(tcx, tp_ty);
                 let val = ConstValue::Slice { alloc_id, meta };
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                let val = self.const_val_to_op(val, dest.layout.ty)?;
                 self.copy_op(&val, dest)?;
             }
             sym::needs_drop => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
                 let val = ConstValue::from_bool(tp_ty.needs_drop(tcx, self.typing_env));
-                let val = self.const_val_to_op(val, tcx.types.bool, Some(dest.layout))?;
+                let val = self.const_val_to_op(val, tcx.types.bool)?;
                 self.copy_op(&val, dest)?;
             }
             sym::type_id => {
@@ -283,15 +280,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::Tuple(_)
                     | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
                 };
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
+                let val = self.const_val_to_op(val, dest.layout.ty)?;
                 self.copy_op(&val, dest)?;
             }
 
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
                 let val = self.tcx.span_as_caller_location(span);
-                let val =
-                    self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
+                let val = self.const_val_to_op(val, self.tcx.caller_location_ty())?;
                 self.copy_op(&val, dest)?;
             }
 
@@ -908,7 +904,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         match intrinsic {
             NonDivergingIntrinsic::Assume(op) => {
-                let op = self.eval_operand(op, None)?;
+                let op = self.eval_operand(op)?;
                 let cond = self.read_scalar(&op)?.to_bool()?;
                 if !cond {
                     throw_ub_format!("`assume` called with `false`");
@@ -920,9 +916,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 src,
                 dst,
             }) => {
-                let src = self.eval_operand(src, None)?;
-                let dst = self.eval_operand(dst, None)?;
-                let count = self.eval_operand(count, None)?;
+                let src = self.eval_operand(src)?;
+                let dst = self.eval_operand(dst)?;
+                let count = self.eval_operand(count)?;
                 self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)
             }
         }

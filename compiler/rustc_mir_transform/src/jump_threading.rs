@@ -487,7 +487,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Operand::Constant(constant) => {
                 let Some(constant) =
-                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).discard_err()
+                    self.ecx.eval_mir_constant(&constant.const_, constant.span).discard_err()
                 else {
                     return;
                 };

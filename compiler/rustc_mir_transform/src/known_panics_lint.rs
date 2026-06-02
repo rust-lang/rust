@@ -266,9 +266,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(c.const_))
             .ok()?;
 
-        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
-            .as_mplace_or_imm()
-            .right()
+        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span))?.as_mplace_or_imm().right()
     }
 
     /// Returns the value, if any, of evaluating `place`.

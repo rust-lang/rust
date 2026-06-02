@@ -19,7 +19,7 @@ use tracing::{info_span, instrument, trace};
 use super::{
     AllocId, CtfeProvenance, FnArg, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
     MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
-    from_known_layout, interp_ok, throw_ub, throw_unsup,
+    interp_ok, throw_ub, throw_unsup,
 };
 use crate::{enter_trace_span, errors};
 
@@ -542,7 +542,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             None
         } else {
             // We need the layout.
-            let layout = self.layout_of_local(self.frame(), local, None)?;
+            let layout = self.layout_of_local(self.frame(), local)?;
             if layout.is_sized() { None } else { Some(layout) }
         };
 
@@ -611,19 +611,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let state = &frame.locals[local];
         if let Some(layout) = state.layout.get() {
             return interp_ok(layout);
         }
 
-        let layout = from_known_layout(self.tcx, self.typing_env, layout, || {
+        #[cold]
+        fn uncached<'tcx, M: Machine<'tcx>>(
+            ecx: &InterpCx<'tcx, M>,
+            frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+            local: mir::Local,
+        ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
             let local_ty = frame.body.local_decls[local].ty;
             let local_ty =
-                self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-            self.layout_of(local_ty).into()
-        })?;
+                ecx.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+            interp_ok(ecx.layout_of(local_ty)?)
+        }
+
+        let layout = uncached(self, frame, local)?;
 
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));

@@ -550,7 +550,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 if let Some(constant) = self
                     .ecx
                     .borrow()
-                    .eval_mir_constant(&constant.const_, constant.span, None)
+                    .eval_mir_constant(&constant.const_, constant.span)
                     .discard_err()
                 {
                     self.assign_constant(state, place, constant, &[]);

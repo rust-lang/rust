@@ -110,7 +110,7 @@ fn eval_trivial_const_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     let layout = ecx.layout_of(ty)?;
     let (intern_kind, return_place) = setup_for_eval(ecx, cid, layout)?;
 
-    let opty = ecx.const_val_to_op(val, ty, Some(layout))?;
+    let opty = ecx.const_val_to_op(val, ty)?;
     ecx.copy_op(&opty, &return_place)?;
 
     intern_and_validate(ecx, cid, intern_kind, return_place)
@@ -199,7 +199,7 @@ pub fn mk_eval_cx_for_const_val<'tcx>(
 ) -> Option<(CompileTimeInterpCx<'tcx>, OpTy<'tcx>)> {
     let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, typing_env, CanAccessMutGlobal::No);
     // FIXME: is it a problem to discard the error here?
-    let op = ecx.const_val_to_op(val, ty, None).discard_err()?;
+    let op = ecx.const_val_to_op(val, ty).discard_err()?;
     Some((ecx, op))
 }
 

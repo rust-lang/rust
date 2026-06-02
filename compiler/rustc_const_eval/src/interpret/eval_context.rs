@@ -191,34 +191,6 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     }
 }
 
-/// Use the already known layout if given (but sanity check in debug mode),
-/// or compute the layout.
-#[cfg_attr(not(debug_assertions), inline(always))]
-pub(super) fn from_known_layout<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
-    typing_env: TypingEnv<'tcx>,
-    known_layout: Option<TyAndLayout<'tcx>>,
-    compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
-) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-    match known_layout {
-        None => compute(),
-        Some(known_layout) => {
-            if cfg!(debug_assertions) {
-                let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, typing_env, check_layout, known_layout) {
-                    span_bug!(
-                        tcx.span,
-                        "expected type differs from actual type.\nexpected: {}\nactual: {}",
-                        known_layout.ty,
-                        check_layout.ty,
-                    );
-                }
-            }
-            interp_ok(known_layout)
-        }
-    }
-}
-
 /// Turn the given error into a human-readable string. Expects the string to be printed, so if
 /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
 /// triggered the error.
@@ -603,7 +575,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         val: &mir::Const<'tcx>,
         span: Span,
-        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let _trace = enter_trace_span!(M, const_eval::eval_mir_constant, ?val);
         let const_val = val.eval(*self.tcx, self.typing_env, span).map_err(|err| {
@@ -625,7 +596,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 err.emit_note(*self.tcx);
                 err
             })?;
-        self.const_val_to_op(const_val, val.ty(), layout)
+        self.const_val_to_op(const_val, val.ty())
     }
 
     #[must_use]
