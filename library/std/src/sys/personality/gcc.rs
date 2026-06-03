@@ -96,8 +96,8 @@ unsafe fn sign_lpad(context: *mut uw::_Unwind_Context, lpad: *const u8) -> *cons
             const SP_REG: i32 = 31;
 
             unsafe {
-                let sp = uw::_Unwind_GetGR(context, SP_REG) as u64;
-                let mut addr = lpad as usize;
+                let sp = uw::_Unwind_GetGR(context, SP_REG).addr() as u64;
+                let mut addr = lpad.addr();
 
                 // `pacib` corresponds to `ptrauth_key_process_dependent_code` in <ptrauth.h>.
                 core::arch::asm!(
