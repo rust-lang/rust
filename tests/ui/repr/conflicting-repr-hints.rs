@@ -36,14 +36,14 @@ struct G(i32); //~ ERROR type has conflicting packed and align representation hi
 #[repr(packed)]
 struct H(i32); //~ ERROR type has conflicting packed and align representation hints
 
-#[repr(packed, packed(2))]
+#[repr(packed, packed(2))] //~ WARN attribute is specified more than once
 struct I(i32); //~ ERROR type has conflicting packed representation hints
 
-#[repr(packed(2))]
+#[repr(packed(2))] //~ WARN attribute is specified more than once
 #[repr(packed)]
 struct J(i32); //~ ERROR type has conflicting packed representation hints
 
-#[repr(packed, packed(1))]
+#[repr(packed, packed(1))] //~ WARN attribute is specified more than once
 struct K(i32);
 
 #[repr(packed, align(8))]
