@@ -1,6 +1,6 @@
 //@ only-wasm32
 //@ revisions: WASM WASMEXN
-//@ [WASMEXN] compile-flags: -C panic=unwind -Z emscripten-wasm-eh
+//@ [WASMEXN] compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics, link_llvm_intrinsics)]

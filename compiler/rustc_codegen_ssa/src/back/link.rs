@@ -2772,13 +2772,7 @@ fn add_order_independent_options(
     }
 
     if sess.target.os == Os::Emscripten {
-        cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
-            "-fwasm-exceptions"
-        } else if sess.panic_strategy().unwinds() {
-            "-sDISABLE_EXCEPTION_CATCHING=0"
-        } else {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        });
+        cmd.cc_arg("-fwasm-exceptions");
     }
 
     if flavor == LinkerFlavor::Llbc {

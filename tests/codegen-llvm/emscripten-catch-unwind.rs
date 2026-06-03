@@ -1,7 +1,7 @@
-//@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
+//@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten
 //@ needs-llvm-components: webassembly
 
-// Emscripten catch_unwind using wasm exceptions
+// Emscripten catch_unwind
 
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![crate_type = "lib"]

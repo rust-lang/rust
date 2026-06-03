@@ -32,7 +32,6 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
-    (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
     (
         sym::target_has_reliable_f16,
         sym::cfg_target_has_reliable_f16_f128,
