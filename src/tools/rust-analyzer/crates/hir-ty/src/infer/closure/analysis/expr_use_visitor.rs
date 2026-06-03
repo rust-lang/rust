@@ -692,6 +692,8 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                     self.consume_expr(rhs)?;
                 }
             }
+
+            Expr::IncludeBytes => {}
         }
         Ok(())
     }

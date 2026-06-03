@@ -125,6 +125,7 @@ pub enum SyntaxKind {
     FORMAT_ARGS_KW,
     GEN_KW,
     GLOBAL_ASM_KW,
+    INCLUDE_BYTES_KW,
     INLATEOUT_KW,
     INOUT_KW,
     IS_KW,
@@ -225,6 +226,7 @@ pub enum SyntaxKind {
     IMPL,
     IMPL_RESTRICTION,
     IMPL_TRAIT_TYPE,
+    INCLUDE_BYTES_EXPR,
     INDEX_EXPR,
     INFER_TYPE,
     ITEM_LIST,
@@ -412,6 +414,7 @@ impl SyntaxKind {
             | IMPL
             | IMPL_RESTRICTION
             | IMPL_TRAIT_TYPE
+            | INCLUDE_BYTES_EXPR
             | INDEX_EXPR
             | INFER_TYPE
             | ITEM_LIST
@@ -641,6 +644,7 @@ impl SyntaxKind {
             DYN_KW => "dyn",
             FORMAT_ARGS_KW => "format_args",
             GLOBAL_ASM_KW => "global_asm",
+            INCLUDE_BYTES_KW => "include_bytes",
             INLATEOUT_KW => "inlateout",
             INOUT_KW => "inout",
             IS_KW => "is",
@@ -750,6 +754,7 @@ impl SyntaxKind {
             DYN_KW if edition < Edition::Edition2018 => true,
             FORMAT_ARGS_KW => true,
             GLOBAL_ASM_KW => true,
+            INCLUDE_BYTES_KW => true,
             INLATEOUT_KW => true,
             INOUT_KW => true,
             IS_KW => true,
@@ -847,6 +852,7 @@ impl SyntaxKind {
             DYN_KW if edition < Edition::Edition2018 => true,
             FORMAT_ARGS_KW => true,
             GLOBAL_ASM_KW => true,
+            INCLUDE_BYTES_KW => true,
             INLATEOUT_KW => true,
             INOUT_KW => true,
             IS_KW => true,
@@ -1007,6 +1013,7 @@ impl SyntaxKind {
             "dyn" if edition < Edition::Edition2018 => DYN_KW,
             "format_args" => FORMAT_ARGS_KW,
             "global_asm" => GLOBAL_ASM_KW,
+            "include_bytes" => INCLUDE_BYTES_KW,
             "inlateout" => INLATEOUT_KW,
             "inout" => INOUT_KW,
             "is" => IS_KW,
@@ -1185,6 +1192,7 @@ macro_rules ! T_ {
     [dyn] => { $ crate :: SyntaxKind :: DYN_KW };
     [format_args] => { $ crate :: SyntaxKind :: FORMAT_ARGS_KW };
     [global_asm] => { $ crate :: SyntaxKind :: GLOBAL_ASM_KW };
+    [include_bytes] => { $ crate :: SyntaxKind :: INCLUDE_BYTES_KW };
     [inlateout] => { $ crate :: SyntaxKind :: INLATEOUT_KW };
     [inout] => { $ crate :: SyntaxKind :: INOUT_KW };
     [is] => { $ crate :: SyntaxKind :: IS_KW };

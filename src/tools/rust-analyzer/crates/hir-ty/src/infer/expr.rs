@@ -269,7 +269,8 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Box { .. }
             | Expr::RecordLit { .. }
             | Expr::Yeet { .. }
-            | Expr::Missing => false,
+            | Expr::Missing
+            | Expr::IncludeBytes => false,
         }
     }
 
@@ -892,6 +893,11 @@ impl<'db> InferenceContext<'_, 'db> {
                 } else {
                     self.types.types.unit
                 }
+            }
+            Expr::IncludeBytes => {
+                let len = self.table.next_const_var(Span::Dummy);
+                let arr = Ty::new_array_with_const_len(self.interner(), self.types.types.u8, len);
+                Ty::new_ref(self.interner(), self.types.regions.statik, arr, Mutability::Not)
             }
         };
         let ty = self.insert_type_vars_shallow(ty);
