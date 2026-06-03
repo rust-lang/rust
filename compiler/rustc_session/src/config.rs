@@ -1375,9 +1375,21 @@ pub fn host_tuple() -> &'static str {
 
 fn file_path_mapping(
     remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    remap_cwd_prefix: Option<&Path>,
     remap_path_scope: RemapPathScopeComponents,
 ) -> FilePathMapping {
-    FilePathMapping::new(remap_path_prefix.clone(), remap_path_scope)
+    // Apply `-Zremap-cwd-prefix` here rather than in `parse_remap_path_prefix`, so the
+    // absolute cwd is never stored in the tracked `remap_path_prefix` option (#132132).
+    let cwd_remap = if let Some(to) = remap_cwd_prefix
+        && let Ok(cwd) = std::env::current_dir()
+    {
+        Some((cwd, to.to_path_buf()))
+    } else {
+        None
+    };
+    // The cwd remapping is appended last: `map_prefix` tries entries in reverse order, so this
+    // keeps `-Zremap-cwd-prefix` taking precedence over `--remap-path-prefix`, as documented.
+    FilePathMapping::new(remap_path_prefix.into_iter().chain(cwd_remap).collect(), remap_path_scope)
 }
 
 impl Default for Options {
@@ -1389,7 +1401,8 @@ impl Default for Options {
         // to create a default working directory.
         let working_dir = {
             let working_dir = std::env::current_dir().unwrap();
-            let file_mapping = file_path_mapping(Vec::new(), RemapPathScopeComponents::empty());
+            let file_mapping =
+                file_path_mapping(Vec::new(), None, RemapPathScopeComponents::empty());
             file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
         };
 
@@ -1450,7 +1463,11 @@ impl Options {
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        file_path_mapping(self.remap_path_prefix.clone(), self.remap_path_scope)
+        file_path_mapping(
+            self.remap_path_prefix.clone(),
+            self.unstable_opts.remap_cwd_prefix.as_deref(),
+            self.remap_path_scope,
+        )
     }
 
     /// Returns `true` if there will be an output file generated.
@@ -2384,9 +2401,8 @@ pub fn parse_externs(
 fn parse_remap_path_prefix(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-    unstable_opts: &UnstableOptions,
 ) -> Vec<(PathBuf, PathBuf)> {
-    let mut mapping: Vec<(PathBuf, PathBuf)> = matches
+    matches
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| match remap.rsplit_once('=') {
@@ -2395,15 +2411,7 @@ fn parse_remap_path_prefix(
             }
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
-        .collect();
-    match &unstable_opts.remap_cwd_prefix {
-        Some(to) => match std::env::current_dir() {
-            Ok(cwd) => mapping.push((cwd, to.clone())),
-            Err(_) => (),
-        },
-        None => (),
-    };
-    mapping
+        .collect()
 }
 
 fn parse_logical_env(
@@ -2661,7 +2669,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
-    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
+    let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches);
     let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
@@ -2729,7 +2737,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             early_dcx.early_fatal(format!("Current directory is invalid: {e}"));
         });
 
-        let file_mapping = file_path_mapping(remap_path_prefix.clone(), remap_path_scope);
+        let file_mapping = file_path_mapping(
+            remap_path_prefix.clone(),
+            unstable_opts.remap_cwd_prefix.as_deref(),
+            remap_path_scope,
+        );
         file_mapping.to_real_filename(&RealFileName::empty(), &working_dir)
     };
 
