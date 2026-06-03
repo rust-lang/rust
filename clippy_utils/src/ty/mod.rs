@@ -3,9 +3,11 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
+use itertools::Itertools as _;
 use rustc_abi::{BackendRepr, FieldsShape, VariantIdx, Variants};
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -13,7 +15,7 @@ use rustc_hir::{Expr, ExprKind, FnDecl, LangItem};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
-use rustc_lint::unused::must_use::{IsTyMustUse, is_ty_must_use};
+use rustc_lint::unused::must_use::{IsTyMustUse, MustUsePath, is_ty_must_use};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
@@ -323,7 +325,9 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// Returns whether the `ty` has `#[must_use]` attribute, or acts like it does according to the
 /// compiler determination. For example, if `ty` is a `Result`/`ControlFlow` whose `Err`/`Break`
 /// payload is an uninhabited type, the `Ok`/`Continue` payload type will be used instead.
-pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+///
+/// The [`MustUsePath`] can be used to describe the type through [`describe_must_use_type`].
+pub fn opt_must_use_path<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<MustUsePath> {
     // `is_ty_must_use` requires an expression, whose `hir_id` will be used to determine whether
     // certain types are visibly uninhabited from the module containing the expression.
     // `cx.last_node_with_lint_attrs` is initialized to the crate/module `hir_id` when linting
@@ -335,7 +339,96 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         span: DUMMY_SP,
         kind: ExprKind::Ret(None),
     };
-    matches!(is_ty_must_use(cx, ty, &dummy_expr), IsTyMustUse::Yes(_))
+    match is_ty_must_use(cx, ty, &dummy_expr) {
+        IsTyMustUse::Yes(path) => Some(path),
+        _ => None,
+    }
+}
+
+/// Describe a [`MustUsePath`] returned by [`is_must_use_ty`].
+pub fn describe_must_use_type(cx: &LateContext<'_>, path: &MustUsePath) -> String {
+    describe_must_use_type_inner(cx, path, "", "", 1)
+}
+
+// This is a rip-off from the compiler's `rustc_lint/src/unused/must_use.rs`
+fn describe_must_use_type_inner(
+    cx: &LateContext<'_>,
+    path: &MustUsePath,
+    descr_pre: &str,
+    descr_post: &str,
+    plural_len: usize,
+) -> String {
+    let plural_suffix = pluralize!(plural_len);
+
+    match path {
+        MustUsePath::Boxed(path) => {
+            let descr_pre = &format!("{descr_pre}boxed ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::Pinned(path) => {
+            let descr_pre = &format!("{descr_pre}pinned ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::Opaque(path) => {
+            let descr_pre = &format!("{descr_pre}implementer{plural_suffix} of ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::TraitObject(path) => {
+            let descr_post = &format!(" trait object{plural_suffix}{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::TupleElement(elems) => elems
+            .iter()
+            .map(|(index, path)| {
+                let descr_post = &format!(" in tuple element {index}");
+                describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+            })
+            .join(", "),
+        MustUsePath::Result(path) => {
+            let descr_post = &format!(" in a `Result` with an uninhabited error{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::ControlFlow(path) => {
+            let descr_post = &format!(" in a `ControlFlow` with an uninhabited break{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::Array(path, len) => {
+            let descr_pre = &format!("{descr_pre}array{plural_suffix} of ");
+            describe_must_use_type_inner(
+                cx,
+                path,
+                descr_pre,
+                descr_post,
+                plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
+            )
+        },
+        MustUsePath::Closure(_) => {
+            format!(
+                "{descr_pre}{} closure{plural_suffix}{descr_post}",
+                if plural_len == 1 {
+                    "one".to_string()
+                } else {
+                    plural_len.to_string()
+                }
+            )
+        },
+        MustUsePath::Coroutine(_) => {
+            format!(
+                "{descr_pre}{} coroutine{plural_suffix}{descr_post}",
+                if plural_len == 1 {
+                    "one".to_string()
+                } else {
+                    plural_len.to_string()
+                }
+            )
+        },
+        MustUsePath::Def(_, def_id, _) => {
+            format!(
+                "{descr_pre}`{}`{plural_suffix}{descr_post}",
+                cx.tcx.def_path_str(*def_id)
+            )
+        },
+    }
 }
 
 /// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any

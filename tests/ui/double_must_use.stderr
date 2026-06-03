@@ -18,6 +18,11 @@ LL | #[must_use]
 LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: the return type is `std::result::Result` in tuple element 0
+  --> tests/ui/double_must_use.rs:15:28
+   |
+LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
+   |                            ^^^^^^^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
@@ -28,6 +33,11 @@ LL | #[must_use]
 LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: the return type is array of `std::result::Result`s
+  --> tests/ui/double_must_use.rs:22:28
+   |
+LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
+   |                            ^^^^^^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
@@ -38,6 +48,11 @@ LL | #[must_use]
 LL | async fn async_must_use_result() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: the return type is implementer of `std::future::Future`
+  --> tests/ui/double_must_use.rs:40:37
+   |
+LL | async fn async_must_use_result() -> Result<(), ()> {
+   |                                     ^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
@@ -48,6 +63,11 @@ LL | #[must_use]
 LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: the return type is `T` in a `Result` with an uninhabited error
+  --> tests/ui/double_must_use.rs:55:48
+   |
+LL | pub fn must_use_result_with_uninhabited_2() -> Result<T, !> {
+   |                                                ^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
@@ -58,6 +78,11 @@ LL | #[must_use]
 LL | pub fn must_use_controlflow_with_uninhabited_2() -> ControlFlow<std::convert::Infallible, T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: the return type is `T` in a `ControlFlow` with an uninhabited break
+  --> tests/ui/double_must_use.rs:66:53
+   |
+LL | pub fn must_use_controlflow_with_uninhabited_2() -> ControlFlow<std::convert::Infallible, T> {
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
 
 error: aborting due to 6 previous errors
