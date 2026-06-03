@@ -1,5 +1,5 @@
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/issue-18107.rs:4:5
+  --> $DIR/bare-trait-object-return.rs:6:5
    |
 LL |     dyn AbstractRenderer
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

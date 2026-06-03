@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17959>.
+
 extern crate core;
 
 use core::ops::Drop;

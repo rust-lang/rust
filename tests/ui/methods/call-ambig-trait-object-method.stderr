@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/issue-18446.rs:18:7
+  --> $DIR/call-ambig-trait-object-method.rs:19:7
    |
 LL |     x.foo();
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `T`
-  --> $DIR/issue-18446.rs:5:5
+  --> $DIR/call-ambig-trait-object-method.rs:6:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
-  --> $DIR/issue-18446.rs:9:5
+  --> $DIR/call-ambig-trait-object-method.rs:10:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
