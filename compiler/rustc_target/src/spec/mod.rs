@@ -522,7 +522,6 @@ impl schemars::JsonSchema for LinkerFlavorCli {
             "type": "string",
             "enum": all
         })
-        .into()
     }
 }
 
@@ -587,7 +586,6 @@ impl schemars::JsonSchema for LinkSelfContainedDefault {
             "type": "string",
             "enum": ["false", "true", "wasm", "musl", "mingw"]
         })
-        .into()
     }
 }
 
@@ -733,7 +731,6 @@ impl schemars::JsonSchema for LinkSelfContainedComponents {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 
@@ -912,7 +909,6 @@ impl schemars::JsonSchema for SmallDataThresholdSupport {
             "type": "string",
             "pattern": r#"^none|default-for-arch|llvm-module-flag=.+|llvm-arg=.+$"#,
         })
-        .into()
     }
 }
 
@@ -1290,7 +1286,6 @@ impl schemars::JsonSchema for SanitizerSet {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 

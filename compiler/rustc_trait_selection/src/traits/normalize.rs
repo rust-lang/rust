@@ -295,7 +295,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let recursion_limit = self.cx().recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.selcx.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(free.into()),
+                OverflowCause::DeeplyNormalize(free),
                 self.cause.span,
                 false,
                 |diag| {

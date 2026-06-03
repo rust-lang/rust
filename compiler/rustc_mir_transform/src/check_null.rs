@@ -79,7 +79,7 @@ fn insert_null_check<'tcx>(
                 source_info,
                 StatementKind::Assign(Box::new((pointee_should_be_checked, rvalue))),
             ));
-            Operand::Copy(pointee_should_be_checked.into())
+            Operand::Copy(pointee_should_be_checked)
         }
     };
 

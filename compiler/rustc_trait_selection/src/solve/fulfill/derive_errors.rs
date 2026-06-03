@@ -561,12 +561,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         // and therefore is treated as rigid.
         if let Some(ty::PredicateKind::AliasRelate(lhs, rhs, _)) = pred.kind().no_bound_vars() {
             goal.infcx().visit_proof_tree_at_depth(
-                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs.into())),
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(lhs)),
                 goal.depth() + 1,
                 self,
             )?;
             goal.infcx().visit_proof_tree_at_depth(
-                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs.into())),
+                goal.goal().with(tcx, ty::ClauseKind::WellFormed(rhs)),
                 goal.depth() + 1,
                 self,
             )?;

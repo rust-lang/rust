@@ -22,7 +22,7 @@ fn test_escape() {
 fn test_parse() {
     macro_rules! assert_pns_eq_sub {
         ($in_:expr, $kind:ident($arg:expr, $pos:expr)) => {
-            assert_eq!(pns(concat!($in_, "!")), Some((S::$kind($arg.into(), $pos), "!")))
+            assert_eq!(pns(concat!($in_, "!")), Some((S::$kind($arg, $pos), "!")))
         };
     }
 

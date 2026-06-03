@@ -107,13 +107,12 @@ impl<'tcx> TyCtxt<'tcx> {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
-            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
+            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => {
                 return Err(ErrorHandled::Reported(
                     ReportedErrorInfo::non_const_eval_error(err),
                     DUMMY_SP,
-                )
-                .into());
+                ));
             }
         };
 

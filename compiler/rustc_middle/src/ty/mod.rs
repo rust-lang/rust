@@ -1098,7 +1098,7 @@ impl<'tcx> TypingEnv<'tcx> {
         def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
         let def_id = def_id.into_query_key();
-        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis().into())
+        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
