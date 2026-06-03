@@ -37,7 +37,7 @@ LL | const fn bar3() -> u32 {
    |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:34:5
+  --> $DIR/min_const_fn_libstd_stability.rs:35:5
    |
 LL |     foo()
    |     ^^^^^
@@ -49,8 +49,17 @@ LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const fn bar3() -> u32 {
    |
 
+error[E0493]: destructor of `{async block@$DIR/min_const_fn_libstd_stability.rs:32:13: 32:18}` cannot be evaluated at compile-time
+  --> $DIR/min_const_fn_libstd_stability.rs:32:9
+   |
+LL |     let x = async { 13 };
+   |         ^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:46:32
+  --> $DIR/min_const_fn_libstd_stability.rs:47:32
    |
 LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |                                ^^^^^^^^^^^^
@@ -63,7 +72,7 @@ LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:53:63
+  --> $DIR/min_const_fn_libstd_stability.rs:54:63
    |
 LL |     pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_gated() }
    |                                                               ^^^^^^^^^^^^^^^^^^^
@@ -76,7 +85,7 @@ LL |     pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_g
    |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
-  --> $DIR/min_const_fn_libstd_stability.rs:59:37
+  --> $DIR/min_const_fn_libstd_stability.rs:60:37
    |
 LL | const fn stable_indirect() -> u32 { foo2_gated() }
    |                                     ^^^^^^^^^^^^
@@ -88,5 +97,6 @@ LL + #[rustc_const_unstable(feature = "...", issue = "...")]
 LL | const fn stable_indirect() -> u32 { foo2_gated() }
    |
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0493`.
