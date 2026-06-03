@@ -11,7 +11,7 @@ impl Fiz for bool {}
 
 trait Grault {
     type A;
-    type B;
+    #[allow(dead_code)] type B;
 }
 
 impl Grault for () {
