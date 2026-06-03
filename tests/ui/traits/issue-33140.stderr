@@ -1,20 +1,20 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `(dyn Send + Sync + 'static)`
+error[E0119]: conflicting implementations of trait `Trait` for type `dyn Send + Sync + 'static`
   --> $DIR/issue-33140.rs:9:1
    |
 LL | impl Trait for dyn Send + Sync {
    | ------------------------------ first implementation here
 ...
 LL | impl Trait for dyn Sync + Send {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `dyn Send + Sync + 'static`
 
-error[E0119]: conflicting implementations of trait `Trait2` for type `(dyn Send + Sync + 'static)`
+error[E0119]: conflicting implementations of trait `Trait2` for type `dyn Send + Sync + 'static`
   --> $DIR/issue-33140.rs:22:1
    |
 LL | impl Trait2 for dyn Send + Sync {
    | ------------------------------- first implementation here
 ...
 LL | impl Trait2 for dyn Sync + Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `dyn Send + Sync + 'static`
 
 error[E0592]: duplicate definitions with name `abc`
   --> $DIR/issue-33140.rs:29:5
@@ -31,12 +31,12 @@ error[E0034]: multiple applicable items in scope
 LL |     assert_eq!(<Foo<dyn Send + Sync>>::abc(), false);
    |                                        ^^^ multiple `abc` found
    |
-note: candidate #1 is defined in an impl for the type `Foo<(dyn Send + Sync + 'static)>`
+note: candidate #1 is defined in an impl for the type `Foo<dyn Send + Sync + 'static>`
   --> $DIR/issue-33140.rs:29:5
    |
 LL |     fn abc() -> bool {
    |     ^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl for the type `Foo<(dyn Send + Sync + 'static)>`
+note: candidate #2 is defined in an impl for the type `Foo<dyn Send + Sync + 'static>`
   --> $DIR/issue-33140.rs:35:5
    |
 LL |     fn abc() -> bool {
@@ -48,12 +48,12 @@ error[E0034]: multiple applicable items in scope
 LL |     assert_eq!(<Foo<dyn Sync + Send>>::abc(), true);
    |                                        ^^^ multiple `abc` found
    |
-note: candidate #1 is defined in an impl for the type `Foo<(dyn Send + Sync + 'static)>`
+note: candidate #1 is defined in an impl for the type `Foo<dyn Send + Sync + 'static>`
   --> $DIR/issue-33140.rs:29:5
    |
 LL |     fn abc() -> bool {
    |     ^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl for the type `Foo<(dyn Send + Sync + 'static)>`
+note: candidate #2 is defined in an impl for the type `Foo<dyn Send + Sync + 'static>`
   --> $DIR/issue-33140.rs:35:5
    |
 LL |     fn abc() -> bool {

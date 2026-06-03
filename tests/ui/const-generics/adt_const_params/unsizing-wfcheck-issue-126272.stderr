@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Debug + 'static` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
    |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Debug + 'static`
 note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
    |
@@ -29,23 +29,23 @@ LL |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ----------------------------------------- this field does not implement `ConstParamTy_`
    |
-note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): ConstParamTy_`
+note: the `ConstParamTy_` impl for `&'static Bar<dyn Debug + 'static>` requires that `dyn Debug + 'static: ConstParamTy_`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
    |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): Eq`
+note: the `ConstParamTy_` impl for `&'static Bar<dyn Debug + 'static>` requires that `dyn Debug + 'static: Eq`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
    |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: the `ConstParamTy_` impl for `&'static Bar<(dyn Debug + 'static)>` requires that `(dyn Debug + 'static): Sized`
+note: the `ConstParamTy_` impl for `&'static Bar<dyn Debug + 'static>` requires that `dyn Debug + 'static: Sized`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:13
    |
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Debug + 'static` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
@@ -54,13 +54,13 @@ LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
 LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Debug + 'static`
 help: the trait `Debug` is implemented for `Bar<T>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:19:10
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
    |          ^^^^^
-note: required for `Bar<(dyn Debug + 'static)>` to implement `Debug`
+note: required for `Bar<dyn Debug + 'static>` to implement `Debug`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:8
    |
 LL | #[derive(Debug, PartialEq, Eq, ConstParamTy)]
@@ -69,8 +69,8 @@ LL | struct Bar<T>(T);
    |        ^^^ - unsatisfied trait bound
    = help: consider manually implementing `Debug` to avoid undesired bounds
    = note: 2 redundant requirements hidden
-   = note: required for `&&'static Bar<(dyn Debug + 'static)>` to implement `Debug`
-   = note: required for the cast from `&&&'static Bar<(dyn Debug + 'static)>` to `&dyn Debug`
+   = note: required for `&&'static Bar<dyn Debug + 'static>` to implement `Debug`
+   = note: required for the cast from `&&&'static Bar<dyn Debug + 'static>` to `&dyn Debug`
 
 error[E0369]: binary operation `==` cannot be applied to type `&Bar<dyn Debug>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:11:5
@@ -131,13 +131,13 @@ LL | struct Bar<T>(T);
    |            |
    |            this could be changed to `T: ?Sized`...
 
-error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Debug + 'static` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:25:33
    |
 LL |     let x: Test<{ Foo { nested: &Bar(4) } }> = Test;
    |                                 ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Debug + 'static`
 note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
    |

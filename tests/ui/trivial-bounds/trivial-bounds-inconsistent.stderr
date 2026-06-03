@@ -70,7 +70,7 @@ warning: trait bound str: Sized does not depend on any type or lifetime paramete
 LL | struct TwoStrs(str, str) where str: Sized;
    |                                     ^^^^^
 
-warning: trait bound for<'a> Dst<(dyn A + 'a)>: Sized does not depend on any type or lifetime parameters
+warning: trait bound for<'a> Dst<dyn A + 'a>: Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:57:51
    |
 LL | fn unsized_local() where for<'a> Dst<dyn A + 'a>: Sized {

@@ -61,14 +61,14 @@ fn unprincipled3_static<'a>(x: *mut (dyn Trait + Send + 'a)) -> *mut (dyn Send +
 
 fn unprincipled_wrap3<'a, 'b>(x: *mut (dyn Trait + Send + 'a)) -> *mut Wrapper<dyn Send + 'b> {
     x as _
-    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'b)>` is invalid
+    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<dyn Send + 'b>` is invalid
 }
 
 fn unprincipled_wrap3_static<'a>(
     x: *mut (dyn Trait + Send + 'a)
 ) -> *mut Wrapper<dyn Send + 'static> {
     x as _
-    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'static)>` is invalid
+    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<dyn Send + 'static>` is invalid
 }
 
 fn main() {}

@@ -18,5 +18,5 @@ where
 
 fn main() {
     foo();
-    //[current]~^ ERROR the trait bound `for<'a> (): Unsize<(dyn Trait + 'a)>` is not satisfied
+    //[current]~^ ERROR the trait bound `for<'a> (): Unsize<dyn Trait + 'a>` is not satisfied
 }

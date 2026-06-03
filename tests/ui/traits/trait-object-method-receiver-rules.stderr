@@ -21,11 +21,11 @@ LL |     fn owned(self: Box<Self>);
 LL |     x.owned();
    |       ^^^^^ method not found in `&mut dyn Foo`
 
-error[E0599]: no method named `managed` found for struct `Box<(dyn Foo + 'static)>` in the current scope
+error[E0599]: no method named `managed` found for struct `Box<dyn Foo + 'static>` in the current scope
   --> $DIR/trait-object-method-receiver-rules.rs:24:7
    |
 LL |     x.managed();
-   |       ^^^^^^^ method not found in `Box<(dyn Foo + 'static)>`
+   |       ^^^^^^^ method not found in `Box<dyn Foo + 'static>`
 
 error: aborting due to 3 previous errors
 

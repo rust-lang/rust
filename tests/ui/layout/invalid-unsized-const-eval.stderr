@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Sync + 'static` cannot be known at compilation time
   --> $DIR/invalid-unsized-const-eval.rs:9:11
    |
 LL |     data: (dyn Sync, ()),
    |           ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Sync + 'static`
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0080]: the type `(dyn Sync, ())` has an unknown layout

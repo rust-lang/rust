@@ -8,14 +8,14 @@ LL | pub fn foo(x: dyn CoerceUnsized<*const dyn Trait>) -> *const dyn Trait {
    = note: for a trait to be dyn compatible it needs to allow building a vtable
            for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
-error[E0277]: the size for values of type `(dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static` cannot be known at compilation time
   --> $DIR/dyn-coerce-unsized-ice.rs:12:5
    |
 LL |     x
    |     ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static)`
-   = note: required for the cast from `(dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static)` to `*const (dyn Trait + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static`
+   = note: required for the cast from `dyn CoerceUnsized<*const (dyn Trait + 'static)> + 'static` to `*const (dyn Trait + 'static)`
 
 error: aborting due to 2 previous errors
 

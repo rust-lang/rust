@@ -18,7 +18,7 @@ impl Trait for dyn Dyn<(), ()> {
     type Assoc = &'static str;
 }
 impl<A, B> Trait for dyn Dyn<A, B> {
-//~^ ERROR conflicting implementations of trait `Trait` for type `(dyn Dyn<(), ()> + 'static)`
+//~^ ERROR conflicting implementations of trait `Trait` for type `dyn Dyn<(), ()> + 'static`
     type Assoc = usize;
 }
 

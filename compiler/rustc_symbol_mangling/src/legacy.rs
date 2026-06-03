@@ -477,6 +477,12 @@ impl<'tcx> PrettyPrinter<'tcx> for LegacySymbolMangler<'tcx> {
         false
     }
 
+    // Mangled symbols are ABI-stable; don't pick up the default printer's
+    // parser-disambiguating parens.
+    fn add_disambiguating_parens(&self) -> bool {
+        false
+    }
+
     // Identical to `PrettyPrinter::comma_sep` except there is no space after each comma.
     fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where

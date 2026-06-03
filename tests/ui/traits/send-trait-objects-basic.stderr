@@ -4,7 +4,7 @@ error[E0277]: `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
 LL |     assert_send_static::<&'a dyn Dummy>();
    |                          ^^^^^^^^^^^^^ `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
    |
-   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'a)`
+   = help: the trait `Sync` is not implemented for `dyn Dummy + 'a`
    = note: required for `&'a (dyn Dummy + 'a)` to implement `Send`
 note: required by a bound in `assert_send_static`
   --> $DIR/send-trait-objects-basic.rs:3:26
@@ -12,15 +12,15 @@ note: required by a bound in `assert_send_static`
 LL | fn assert_send_static<T: Send + 'static>() {}
    |                          ^^^^ required by this bound in `assert_send_static`
 
-error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
+error[E0277]: `dyn Dummy + 'a` cannot be sent between threads safely
   --> $DIR/send-trait-objects-basic.rs:19:26
    |
 LL |     assert_send_static::<Box<dyn Dummy + 'a>>();
-   |                          ^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+   |                          ^^^^^^^^^^^^^^^^^^^ `dyn Dummy + 'a` cannot be sent between threads safely
    |
-   = help: the trait `Send` is not implemented for `(dyn Dummy + 'a)`
-   = note: required for `std::ptr::Unique<(dyn Dummy + 'a)>` to implement `Send`
-note: required because it appears within the type `Box<(dyn Dummy + 'a)>`
+   = help: the trait `Send` is not implemented for `dyn Dummy + 'a`
+   = note: required for `std::ptr::Unique<dyn Dummy + 'a>` to implement `Send`
+note: required because it appears within the type `Box<dyn Dummy + 'a>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `assert_send_static`
   --> $DIR/send-trait-objects-basic.rs:3:26
@@ -47,7 +47,7 @@ error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads sa
 LL |     assert_send::<&'static dyn Dummy>();
    |                   ^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
    |
-   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
+   = help: the trait `Sync` is not implemented for `dyn Dummy + 'static`
    = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
 note: required by a bound in `assert_send`
   --> $DIR/send-trait-objects-basic.rs:4:19
@@ -106,7 +106,7 @@ error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads sa
 LL |     assert_send::<&'static (dyn Dummy + 'static)>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
    |
-   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
+   = help: the trait `Sync` is not implemented for `dyn Dummy + 'static`
    = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
 note: required by a bound in `assert_send`
   --> $DIR/send-trait-objects-basic.rs:4:19
