@@ -1,5 +1,5 @@
 error[E0801]: invalid generic `self` parameter type: `R`
-  --> $DIR/arbitrary-self-from-method-substs.rs:9:43
+  --> $DIR/arbitrary-self-from-method-substs.rs:10:43
    |
 LL |     fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    |                                           ^
@@ -8,7 +8,7 @@ LL |     fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `&R`
-  --> $DIR/arbitrary-self-from-method-substs.rs:13:44
+  --> $DIR/arbitrary-self-from-method-substs.rs:14:44
    |
 LL |     fn get1<R: Deref<Target = Self>>(self: &R) -> u32 {
    |                                            ^^
@@ -17,7 +17,7 @@ LL |     fn get1<R: Deref<Target = Self>>(self: &R) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `&mut R`
-  --> $DIR/arbitrary-self-from-method-substs.rs:17:44
+  --> $DIR/arbitrary-self-from-method-substs.rs:18:44
    |
 LL |     fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32 {
    |                                            ^^^^^^
@@ -26,7 +26,7 @@ LL |     fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `Rc<R>`
-  --> $DIR/arbitrary-self-from-method-substs.rs:21:44
+  --> $DIR/arbitrary-self-from-method-substs.rs:22:44
    |
 LL |     fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
    |                                            ^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `&Rc<R>`
-  --> $DIR/arbitrary-self-from-method-substs.rs:25:44
+  --> $DIR/arbitrary-self-from-method-substs.rs:26:44
    |
 LL |     fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
    |                                            ^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `Rc<&R>`
-  --> $DIR/arbitrary-self-from-method-substs.rs:29:44
+  --> $DIR/arbitrary-self-from-method-substs.rs:30:44
    |
 LL |     fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {
    |                                            ^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0658]: `<FR as FindReceiver>::Receiver` cannot be used as the type of `self` without the `arbitrary_self_types` feature
-  --> $DIR/arbitrary-self-from-method-substs.rs:33:37
+  --> $DIR/arbitrary-self-from-method-substs.rs:34:37
    |
 LL |     fn get6<FR: FindReceiver>(self: FR::Receiver, other: FR) -> u32 {
    |                                     ^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     fn get6<FR: FindReceiver>(self: FR::Receiver, other: FR) -> u32 {
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error[E0658]: `R` cannot be used as the type of `self` without the `arbitrary_self_types` feature
-  --> $DIR/arbitrary-self-from-method-substs.rs:61:18
+  --> $DIR/arbitrary-self-from-method-substs.rs:62:18
    |
 LL |     fn get(self: R) {}
    |                  ^
@@ -75,13 +75,13 @@ LL |     fn get(self: R) {}
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
-  --> $DIR/arbitrary-self-from-method-substs.rs:92:9
+  --> $DIR/arbitrary-self-from-method-substs.rs:93:9
    |
 LL |     foo.get6(Silly);
    |         ^^^^ type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
    |
 note: expected this to be `Foo`
-  --> $DIR/arbitrary-self-from-method-substs.rs:71:21
+  --> $DIR/arbitrary-self-from-method-substs.rs:72:21
    |
 LL |     type Receiver = std::rc::Rc<Foo>;
    |                     ^^^^^^^^^^^^^^^^
@@ -89,13 +89,13 @@ LL |     type Receiver = std::rc::Rc<Foo>;
               found struct `Rc<Foo>`
 
 error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == &Foo`
-  --> $DIR/arbitrary-self-from-method-substs.rs:96:9
+  --> $DIR/arbitrary-self-from-method-substs.rs:97:9
    |
 LL |     foo.get6(Silly);
    |         ^^^^ type mismatch resolving `<Silly as FindReceiver>::Receiver == &Foo`
    |
 note: expected this to be `&Foo`
-  --> $DIR/arbitrary-self-from-method-substs.rs:71:21
+  --> $DIR/arbitrary-self-from-method-substs.rs:72:21
    |
 LL |     type Receiver = std::rc::Rc<Foo>;
    |                     ^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     type Receiver = std::rc::Rc<Foo>;
                  found struct `Rc<Foo>`
 
 error[E0599]: the method `get` exists for struct `Rc<Bar<_>>`, but its trait bounds were not satisfied
-  --> $DIR/arbitrary-self-from-method-substs.rs:100:7
+  --> $DIR/arbitrary-self-from-method-substs.rs:101:7
    |
 LL | struct Bar<R>(std::marker::PhantomData<R>);
    | ------------- doesn't satisfy `Bar<_>: Deref`
@@ -118,7 +118,7 @@ note: the following trait bounds were not satisfied:
       `<&mut Rc<Bar<_>> as Deref>::Target = Bar<&mut Rc<Bar<_>>>`
       `<Rc<Bar<_>> as Deref>::Target = Bar<Rc<Bar<_>>>`
       `Bar<_>: Deref`
-  --> $DIR/arbitrary-self-from-method-substs.rs:60:9
+  --> $DIR/arbitrary-self-from-method-substs.rs:61:9
    |
 LL | impl<R: std::ops::Deref<Target = Self>> Bar<R> {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ------
@@ -132,7 +132,7 @@ note: the trait `Deref` must be implemented
            candidate #1: `SliceIndex`
 
 error[E0599]: the method `get` exists for reference `&Rc<Bar<_>>`, but its trait bounds were not satisfied
-  --> $DIR/arbitrary-self-from-method-substs.rs:108:7
+  --> $DIR/arbitrary-self-from-method-substs.rs:109:7
    |
 LL | struct Bar<R>(std::marker::PhantomData<R>);
    | ------------- doesn't satisfy `Bar<_>: Deref`
@@ -149,7 +149,7 @@ note: the following trait bounds were not satisfied:
       `<&mut Rc<Bar<_>> as Deref>::Target = Bar<&mut Rc<Bar<_>>>`
       `<Rc<Bar<_>> as Deref>::Target = Bar<Rc<Bar<_>>>`
       `Bar<_>: Deref`
-  --> $DIR/arbitrary-self-from-method-substs.rs:60:9
+  --> $DIR/arbitrary-self-from-method-substs.rs:61:9
    |
 LL | impl<R: std::ops::Deref<Target = Self>> Bar<R> {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ------

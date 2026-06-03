@@ -7,6 +7,7 @@
 #![feature(rustc_attrs)]
 #![deny(rustc::disallowed_pass_by_ref)]
 #![allow(unused)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 #[rustc_pass_by_value]
 struct TyCtxt<'tcx> {

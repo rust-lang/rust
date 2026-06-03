@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 //@ check-pass
 
 // https://github.com/rust-lang/rust/pull/60944#issuecomment-495346120

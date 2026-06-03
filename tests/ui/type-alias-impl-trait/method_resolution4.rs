@@ -6,6 +6,7 @@
 //@[next] compile-flags: -Znext-solver
 
 #![feature(type_alias_impl_trait, arbitrary_self_types)]
+#![allow(self_lifetime_elision_not_applicable)]
 
 pub type Foo = impl Copy;
 

@@ -1,5 +1,5 @@
 error[E0599]: no method named `len` found for struct `A` in the current scope
-  --> $DIR/double-reference-ty-in-self-ty.rs:10:7
+  --> $DIR/double-reference-ty-in-self-ty.rs:11:7
    |
 LL | struct A;
    | -------- method `len` not found for this struct

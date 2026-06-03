@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 // Regression test for <https://github.com/rust-lang/rust/issues/141419>.
 
 use std::ops::Deref;

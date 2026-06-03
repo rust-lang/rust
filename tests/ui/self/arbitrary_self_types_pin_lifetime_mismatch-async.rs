@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 //@ edition:2018
 
 use std::pin::Pin;

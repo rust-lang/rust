@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 // Point at correct span for self type
 
 struct SomeType {}

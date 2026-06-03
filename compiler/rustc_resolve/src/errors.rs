@@ -1776,3 +1776,11 @@ pub(crate) enum UnusedImportsSugg {
         num_to_remove: usize,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag("`self` parameter type does not contain `Self`")]
+#[help("use `&self`, `&mut self`, or `self: &Self` for correct lifetime elision")]
+pub(crate) struct SelfLifetimeElisionNotApplicable {
+    #[primary_span]
+    pub span: Span,
+}

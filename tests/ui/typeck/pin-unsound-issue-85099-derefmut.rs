@@ -1,4 +1,5 @@
 //@ check-fail
+#![allow(self_lifetime_elision_not_applicable)]
 
 // Should fail. Can coerce `Pin<T>` into `Pin<U>` where
 // `T: Deref<Target: Unpin>` and `U: Deref<Target: !Unpin>`, using the

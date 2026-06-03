@@ -1,3 +1,4 @@
+#![allow(self_lifetime_elision_not_applicable)]
 //@ dont-require-annotations: NOTE
 //! regression test for <https://github.com/rust-lang/rust/issues/17740>
 

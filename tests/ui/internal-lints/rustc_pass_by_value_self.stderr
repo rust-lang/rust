@@ -1,5 +1,5 @@
 error: passing `TyCtxt<'tcx>` by reference
-  --> $DIR/rustc_pass_by_value_self.rs:18:15
+  --> $DIR/rustc_pass_by_value_self.rs:19:15
    |
 LL |     fn by_ref(&self) {}
    |               ^^^^^ help: try passing by value: `TyCtxt<'tcx>`
@@ -11,25 +11,25 @@ LL | #![deny(rustc::disallowed_pass_by_ref)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing `Ty<'tcx>` by reference
-  --> $DIR/rustc_pass_by_value_self.rs:30:21
+  --> $DIR/rustc_pass_by_value_self.rs:31:21
    |
 LL |     fn by_ref(self: &Ty<'tcx>) {}
    |                     ^^^^^^^^^ help: try passing by value: `Ty<'tcx>`
 
 error: passing `Foo` by reference
-  --> $DIR/rustc_pass_by_value_self.rs:37:17
+  --> $DIR/rustc_pass_by_value_self.rs:38:17
    |
 LL |     fn with_ref(&self) {}
    |                 ^^^^^ help: try passing by value: `Foo`
 
 error: passing `WithParameters<T, 1>` by reference
-  --> $DIR/rustc_pass_by_value_self.rs:47:17
+  --> $DIR/rustc_pass_by_value_self.rs:48:17
    |
 LL |     fn with_ref(&self) {}
    |                 ^^^^^ help: try passing by value: `WithParameters<T, 1>`
 
 error: passing `WithParameters<T, 1, u8>` by reference
-  --> $DIR/rustc_pass_by_value_self.rs:51:17
+  --> $DIR/rustc_pass_by_value_self.rs:52:17
    |
 LL |     fn with_ref(&self) {}
    |                 ^^^^^ help: try passing by value: `WithParameters<T, 1, u8>`
