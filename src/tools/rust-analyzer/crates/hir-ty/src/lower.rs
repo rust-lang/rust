@@ -55,7 +55,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::{
-    ImplTraitId, Span, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    ImplTraitId, Span, TyLoweringDiagnostic,
     consteval::{create_anon_const, path_to_const},
     db::{AnonConstId, GeneralConstId, HirDatabase, InternedOpaqueTyId},
     generics::{Generics, SingleGenerics, generics},
@@ -302,8 +302,14 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self
     }
 
-    pub(crate) fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
-        self.diagnostics.push(TyLoweringDiagnostic { source: type_ref, kind });
+    pub(crate) fn push_diagnostic(&mut self, diagnostic: TyLoweringDiagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    fn push_infer_vars_not_allowed(&mut self, span: Span) {
+        if !span.is_dummy() {
+            self.push_diagnostic(TyLoweringDiagnostic::InferVarsNotAllowed { source: span });
+        }
     }
 
     #[track_caller]
@@ -315,7 +321,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_ty_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.types.error
             }
         }
@@ -325,7 +331,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_const_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.consts.error
             }
         }
@@ -335,7 +341,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         match &mut self.infer_vars {
             Some(infer_vars) => infer_vars.next_region_var(span),
             None => {
-                // FIXME: Emit an error: no infer vars allowed here.
+                self.push_infer_vars_not_allowed(span);
                 self.types.regions.error
             }
         }
@@ -634,7 +640,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             data: Either::Left(PathDiagnosticCallbackData(type_ref)),
             callback: |data, this, diag| {
                 let type_ref = data.as_ref().left().unwrap().0;
-                this.push_diagnostic(type_ref, TyLoweringDiagnosticKind::PathDiagnostic(diag))
+                this.push_diagnostic(TyLoweringDiagnostic::PathDiagnostic {
+                    source: type_ref,
+                    diag,
+                })
             },
         }
     }
