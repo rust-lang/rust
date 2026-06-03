@@ -47,12 +47,12 @@ macro_rules! forward_to_parser_any_macro {
 
             for (cfg_entry, tts, span) in self.other_branches.into_iter_tts() {
                 let result = tts_to_mac_result(ecx, site_span, tts, span).$method_name();
-                ($other)(&mut *ecx, cfg_entry, span, result);
+                $other(&mut *ecx, cfg_entry, span, result);
             }
 
             tts_to_mac_result(ecx, site_span, selected_tts, selected_span)
                 .$method_name()
-                .map(|elements| ($selected)(&mut *ecx, cfg_entry, elements))
+                .map(|elements| $selected(&mut *ecx, cfg_entry, elements))
         }
     };
 
@@ -60,40 +60,6 @@ macro_rules! forward_to_parser_any_macro {
         forward_to_parser_any_macro!($method_name, $ret_ty, |_, _, _, _| {}, |_, _, elements| {
             elements
         });
-    };
-
-    (make_items) => {
-        forward_to_parser_any_macro!(
-            make_items,
-            SmallVec<[Box<ast::Item>; 1]>,
-            |ecx: &mut ExtCtxt<'_>,
-             cfg_entry: CfgEntry,
-             span: Span,
-             items: Option<SmallVec<[Box<ast::Item>; 1]>>| if let Some(items) = items {
-                // Register item names that were not selected for error reporting. We do this
-                // for `#[cfg]` too.
-                for item in items {
-                    for name in item.declared_idents() {
-                        ecx.resolver.append_stripped_cfg_item(
-                            ecx.current_expansion.lint_node_id,
-                            name,
-                            cfg_entry.clone(),
-                            span,
-                        );
-                    }
-                }
-            },
-            |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: SmallVec<[Box<ast::Item>; 1]>| {
-                items
-                    .into_iter()
-                    .map(|mut item| {
-                        item.attrs
-                            .push(mk_attr(&ecx.sess.psess.attr_id_generator, cfg_entry.clone()));
-                        item
-                    })
-                    .collect()
-            }
-        );
     };
 }
 
@@ -133,7 +99,36 @@ fn mk_attr(g: &AttrIdGenerator, cfg_entry: CfgEntry) -> ast::Attribute {
 impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
     forward_to_parser_any_macro!(make_expr, Box<Expr>);
     forward_to_parser_any_macro!(make_stmts, SmallVec<[ast::Stmt; 1]>);
-    forward_to_parser_any_macro!(make_items);
+    forward_to_parser_any_macro!(
+        make_items,
+        SmallVec<[Box<ast::Item>; 1]>,
+        |ecx: &mut ExtCtxt<'_>,
+         cfg_entry: CfgEntry,
+         span: Span,
+         items: Option<SmallVec<[Box<ast::Item>; 1]>>| if let Some(items) = items {
+            // Register item names that were not selected for error reporting. We do this
+            // for `#[cfg]` too.
+            for item in items {
+                for name in item.declared_idents() {
+                    ecx.resolver.append_stripped_cfg_item(
+                        ecx.current_expansion.lint_node_id,
+                        name,
+                        cfg_entry.clone(),
+                        span,
+                    );
+                }
+            }
+        },
+        |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: SmallVec<[Box<ast::Item>; 1]>| {
+            items
+                .into_iter()
+                .map(|mut item| {
+                    item.attrs.push(mk_attr(&ecx.sess.psess.attr_id_generator, cfg_entry.clone()));
+                    item
+                })
+                .collect()
+        }
+    );
 
     forward_to_parser_any_macro!(make_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
     forward_to_parser_any_macro!(make_trait_impl_items, SmallVec<[Box<ast::AssocItem>; 1]>);
