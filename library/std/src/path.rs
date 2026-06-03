@@ -683,7 +683,7 @@ impl<'a> Components<'a> {
     }
 
     /// This is a helper function for consuming the  physical first component in
-    /// either `Components::next`/`Components::next_back`.
+    /// `Components::next`.
     ///
     /// There are four cases we can have here:
     /// - We have an unconsumed absolute component (`/`). We should just output `/`
@@ -695,21 +695,16 @@ impl<'a> Components<'a> {
     /// - We don't have a start component (frequent case), which means we just
     ///   return `None`.
     #[inline]
-    fn consume_first_component(&mut self, dir_front: bool) -> Option<Component<'a>> {
+    fn consume_first_component_front(&mut self) -> Option<Component<'a>> {
         match self.first_comp {
             Some(FirstComponent::AbsolutePath) => {
                 self.first_comp = None;
-                if dir_front {
-                    self.normalize_front();
-                }
+                self.normalize_front();
                 return Some(Component::RootDir);
             }
             Some(FirstComponent::Prefix) => {
                 self.first_comp = None;
-                if dir_front {
-                    self.normalize_front();
-                }
-
+                self.normalize_front();
                 // SAFETY: Our front has the length of our Prefix component encoded at the start,
                 // so this slice is guaranteed to contain the Prefix component if it's
                 // unconsumed.
@@ -723,9 +718,45 @@ impl<'a> Components<'a> {
             }
             Some(FirstComponent::RelativePath) => {
                 self.first_comp = None;
-                if dir_front {
-                    return self.parse_next_component();
-                }
+                self.parse_next_component()
+            }
+            None => None,
+        }
+    }
+
+    /// This is a helper function for consuming the  physical first component in
+    /// `Components::next_back`.
+    ///
+    /// There are four cases we can have here:
+    /// - We have an unconsumed absolute component (`/`). We should just output `/`
+    ///   in this case.
+    /// - We have an unconsumed prefix component (Windows specific, e.g. `C:`).
+    ///   We should just return that prefix component
+    /// - We have a relative directory, we should just return None.
+    /// - We don't have a start component (frequent case), which means we just
+    ///   return `None`.
+    #[inline]
+    fn consume_first_component_back(&mut self) -> Option<Component<'a>> {
+        match self.first_comp {
+            Some(FirstComponent::AbsolutePath) => {
+                self.first_comp = None;
+                return Some(Component::RootDir);
+            }
+            Some(FirstComponent::Prefix) => {
+                self.first_comp = None;
+                // SAFETY: Our front has the length of our Prefix component encoded at the start,
+                // so this slice is guaranteed to contain the Prefix component if it's
+                // unconsumed.
+                let subslice =
+                    unsafe { OsStr::from_encoded_bytes_unchecked(&self.path[0..self.front]) };
+                // This prefix is guaranteed to be made since we confirmed
+                // our first component is a Prefix
+                let prefix = parse_prefix(subslice).unwrap();
+
+                Some(Component::Prefix(PrefixComponent { raw: subslice, parsed: prefix }))
+            }
+            Some(FirstComponent::RelativePath) => {
+                self.first_comp = None;
                 None
             }
             None => None,
@@ -845,6 +876,7 @@ impl<'a> Components<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn as_path(&self) -> &'a Path {
         match self.first_comp {
             Some(FirstComponent::AbsolutePath) => {
@@ -898,6 +930,7 @@ impl<'a> Components<'a> {
     }
 
     /// Parses the next component in `Components<'_>` from the left
+    #[inline]
     fn parse_next_component(&mut self) -> Option<Component<'a>> {
         // Our current `self.front` index at this point is the start
         // of the component name
@@ -923,6 +956,7 @@ impl<'a> Components<'a> {
 
     /// Parses the next back component in `Components<'_>` from the
     /// right
+    #[inline]
     fn parse_next_back_component(&mut self) -> Option<Component<'a>> {
         // Our current `self.back` index at this point encompasses
         // the parent path
@@ -1042,13 +1076,14 @@ impl FusedIterator for Iter<'_> {}
 impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
 
+    #[inline]
     fn next(&mut self) -> Option<Component<'a>> {
         // We reach this case when we no longer have anymore paths
         // to consume (return `None`), or if our front idx was initially
         // equal to back idx (e.g. if we had `C:`, `.`, `/`), or if we
         // had a front component initially
         if self.front >= self.back || self.first_comp.is_some() {
-            return self.consume_first_component(true);
+            return self.consume_first_component_front();
         }
 
         self.parse_next_component()
@@ -1057,12 +1092,13 @@ impl<'a> Iterator for Components<'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Components<'a> {
+    #[inline]
     fn next_back(&mut self) -> Option<Component<'a>> {
         // We reach here when we no longer have anymore paths
         // to consume, or we need to output Prefix component
         // (anything else falls through this conditional)
         if self.back <= self.front {
-            return self.consume_first_component(false);
+            return self.consume_first_component_back();
         }
 
         self.parse_next_back_component()
