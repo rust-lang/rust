@@ -1,6 +1,8 @@
 use std::cmp;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
+use rustc_abi::{
+    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Reg, Size, WrappingRange,
+};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
@@ -533,6 +535,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
+
         if self.fn_abi.ret.layout.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
@@ -544,6 +547,40 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.unreachable();
             return;
         }
+
+        if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry)
+            && let PassMode::Cast { cast, .. } = &self.fn_abi.ret.mode
+        {
+            // The return value of an `extern "cmse-nonsecure-entry"` function crosses the secure
+            // boundary. Ensure that stale information in padding or otherwise uninitialized memory
+            // does not leak across the secure boundary.
+            //
+            // We zero all bytes that are statically know to be uninitialized, we do not inspect the
+            // runtime value.
+            let ret_layout = self.fn_abi.ret.layout;
+            let uninit_ranges = ret_layout.uninit_ranges(bx.cx());
+            if !uninit_ranges.is_empty() {
+                // Materialize the return value.
+                let tmp = PlaceRef::alloca(bx, ret_layout);
+                let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
+                op.val.store(bx, tmp);
+
+                let zero = bx.const_u8(0);
+                for range in uninit_ranges {
+                    let len = bx.const_usize((range.end - range.start).bytes());
+                    let offset = bx.const_usize(range.start.bytes());
+
+                    let ptr = bx.inbounds_ptradd(tmp.val.llval, offset);
+                    bx.memset(ptr, zero, len, Align::ONE, MemFlags::empty());
+                }
+
+                // Load the value back and return.
+                let llval = load_cast(bx, cast, tmp.val.llval, ret_layout.align.abi);
+                bx.ret(llval);
+                return;
+            }
+        }
+
         let llval = match &self.fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => {
                 bx.ret_void();
