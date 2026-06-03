@@ -1744,6 +1744,7 @@ symbols! {
         rustc_dummy,
         rustc_dump_def_parents,
         rustc_dump_def_path,
+        rustc_dump_generics,
         rustc_dump_hidden_type_of_opaques,
         rustc_dump_inferred_outlives,
         rustc_dump_item_bounds,

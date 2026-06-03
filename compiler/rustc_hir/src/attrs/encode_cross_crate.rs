@@ -126,6 +126,7 @@ impl AttributeKind {
             RustcDummy => No,
             RustcDumpDefParents => No,
             RustcDumpDefPath(..) => No,
+            RustcDumpGenerics => No,
             RustcDumpHiddenTypeOfOpaques => No,
             RustcDumpInferredOutlives => No,
             RustcDumpItemBounds => No,
