@@ -636,10 +636,12 @@ impl EncoderState {
 
             // Outline the build of the full dep graph as it's typically disabled and cold.
             outline(move || {
-                // Do not ICE when a query is called from within `with_query`.
-                if let Some(retained_graph) = &mut retained_graph.try_lock() {
-                    retained_graph.push(index, *node, &edges);
-                }
+                // Block on the lock rather than using `try_lock`: under the parallel frontend
+                // several threads record nodes concurrently, and dropping a node on lock
+                // contention would make the retained graph nondeterministic. Readers take a
+                // clone of the graph (`retained_dep_graph`) rather than holding the lock, so
+                // this never deadlocks against a reentrant `record`.
+                retained_graph.lock().push(index, *node, &edges);
             });
         }
 
@@ -874,10 +876,8 @@ impl GraphEncoder {
         GraphEncoder { status, retained_graph, profiler: sess.prof.clone() }
     }
 
-    pub(crate) fn with_retained_dep_graph(&self, f: impl Fn(&RetainedDepGraph)) {
-        if let Some(retained_graph) = &self.retained_graph {
-            f(&retained_graph.lock())
-        }
+    pub(crate) fn retained_dep_graph(&self) -> Option<RetainedDepGraph> {
+        self.retained_graph.as_ref().map(|retained_graph| retained_graph.lock().clone())
     }
 
     /// Encodes a node that does not exists in the previous graph.
