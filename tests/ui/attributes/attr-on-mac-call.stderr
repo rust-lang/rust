@@ -201,8 +201,17 @@ LL |     #[should_panic]
    = help: `#[should_panic]` can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
+warning: `#[link_name]` attribute cannot be used on macro calls
+  --> $DIR/attr-on-mac-call.rs:72:5
+   |
+LL |     #[link_name = "x"]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
 warning: `#[repr()]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:74:5
+  --> $DIR/attr-on-mac-call.rs:77:5
    |
 LL |     #[repr()]
    |     ^^^^^^^^^
@@ -211,7 +220,7 @@ LL |     #[repr()]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: unused attribute
-  --> $DIR/attr-on-mac-call.rs:74:5
+  --> $DIR/attr-on-mac-call.rs:77:5
    |
 LL |     #[repr()]
    |     ^^^^^^^^^ help: remove this attribute
@@ -219,7 +228,7 @@ LL |     #[repr()]
    = note: using `repr` with an empty list has no effect
 
 warning: `#[repr(u8)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:79:5
+  --> $DIR/attr-on-mac-call.rs:82:5
    |
 LL |     #[repr(u8)]
    |     ^^^^^^^^^^^
@@ -228,7 +237,7 @@ LL |     #[repr(u8)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[repr(align(...))]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:83:5
+  --> $DIR/attr-on-mac-call.rs:86:5
    |
 LL |     #[repr(align(8))]
    |     ^^^^^^^^^^^^^^^^^
@@ -237,7 +246,7 @@ LL |     #[repr(align(8))]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[repr(packed)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:87:5
+  --> $DIR/attr-on-mac-call.rs:90:5
    |
 LL |     #[repr(packed)]
    |     ^^^^^^^^^^^^^^^
@@ -246,7 +255,7 @@ LL |     #[repr(packed)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[repr(C)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:91:5
+  --> $DIR/attr-on-mac-call.rs:94:5
    |
 LL |     #[repr(C)]
    |     ^^^^^^^^^^
@@ -255,7 +264,7 @@ LL |     #[repr(C)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[repr(Rust)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:95:5
+  --> $DIR/attr-on-mac-call.rs:98:5
    |
 LL |     #[repr(Rust)]
    |     ^^^^^^^^^^^^^
@@ -264,7 +273,7 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[repr(simd)]` attribute cannot be used on macro calls
-  --> $DIR/attr-on-mac-call.rs:99:5
+  --> $DIR/attr-on-mac-call.rs:102:5
    |
 LL |     #[repr(simd)]
    |     ^^^^^^^^^^^^^
@@ -272,5 +281,5 @@ LL |     #[repr(simd)]
    = help: `#[repr(simd)]` can only be applied to structs
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: 30 warnings emitted
+warning: 31 warnings emitted
 

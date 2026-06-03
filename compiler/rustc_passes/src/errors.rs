@@ -183,10 +183,7 @@ pub(crate) struct BothFfiConstAndPure {
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
-pub(crate) struct Link {
-    #[label("not an `extern` block")]
-    pub span: Option<Span>,
-}
+pub(crate) struct Link;
 
 #[derive(Diagnostic)]
 #[diag("#[rustc_legacy_const_generics] functions must only have const generics")]

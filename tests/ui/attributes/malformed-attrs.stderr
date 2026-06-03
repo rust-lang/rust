@@ -814,21 +814,6 @@ LL | |     #[coroutine = 63] || {}
 LL | | }
    | |_- not a `const fn`
 
-warning: attribute should be applied to an `extern` block with non-Rust ABI
-  --> $DIR/malformed-attrs.rs:81:1
-   |
-LL |   #[link]
-   |   ^^^^^^^
-...
-LL | / fn test() {
-LL | |     #[coroutine = 63] || {}
-...  |
-LL | | }
-   | |_- not an `extern` block
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: requested on the command line with `-W unused-attributes`
-
 error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
   --> $DIR/malformed-attrs.rs:41:1
    |
@@ -865,12 +850,22 @@ LL | |     #[coroutine = 63] || {}
 ...  |
 LL | | }
    | |_^
+   = note: requested on the command line with `-W unused-attributes`
 
 error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `#[doc(attribute)]`, `#[doc(auto_cfg)]`, `#[doc(cfg)]`, `#[doc(fake_variadic)]`, `#[doc(hidden)]`, `#[doc(html_favicon_url)]`, `#[doc(html_logo_url)]`, `#[doc(html_no_source)]`, `#[doc(html_playground_url)]`, `#[doc(html_root_url)]`, `#[doc(include)]`, `#[doc(inline)]`, `#[doc(issue_tracker_base_url)]`, `#[doc(keyword)]`, `#[doc(masked)]`, `#[doc(no_default_passes)]`, `#[doc(no_inline)]`, `#[doc(notable_trait)]`, `#[doc(passes)]`, `#[doc(plugins)]`, `#[doc(rust_logo)]`, `#[doc(search_unbox)]`, `#[doc(spotlight)]`, and `#[doc(test)]`
   --> $DIR/malformed-attrs.rs:75:1
    |
 LL | #[doc]
    | ^^^^^^
+
+warning: `#[link]` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:81:1
+   |
+LL | #[link]
+   | ^^^^^^^
+   |
+   = help: `#[link]` can only be applied to foreign modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link_name]` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:85:1
