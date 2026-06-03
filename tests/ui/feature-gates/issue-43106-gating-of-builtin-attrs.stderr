@@ -447,7 +447,7 @@ warning: `#[no_mangle]` attribute cannot be used on required trait methods
 LL |         #[no_mangle] fn foo();
    |         ^^^^^^^^^^^^
    |
-   = help: `#[no_mangle]` can be applied to functions, inherent methods, statics, and trait methods in impl blocks
+   = help: `#[no_mangle]` can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on provided trait methods
@@ -859,7 +859,7 @@ warning: `#[link_section]` attribute cannot be used on required trait methods
 LL |         #[link_section = ",1800"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[link_section]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
+   = help: `#[link_section]` can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[link]` attribute cannot be used on modules
