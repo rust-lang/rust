@@ -90,6 +90,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_middle::{middle, ty};
 use rustc_session::errors::feature_err;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -145,6 +146,34 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
+/// Force the value of a `static` or of a non-generic free `const`, so that a
+/// crate that defines an item whose value fails to evaluate does not pass
+/// compilation, even when the item is otherwise unused.
+///
+/// This only forces the (idempotent, cached) evaluation queries; side-effecting
+/// checks such as [`check::maybe_check_static_with_link_section`] are left to the
+/// caller so that they run exactly once.
+fn eval_const_or_static<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) {
+    let def_kind = tcx.def_kind(item_def_id);
+    match def_kind {
+        DefKind::Static { .. } => {
+            tcx.ensure_ok().eval_static_initializer(item_def_id);
+        }
+        DefKind::Const { .. }
+            if !tcx.generics_of(item_def_id).own_requires_monomorphization()
+                && !tcx.is_type_const(item_def_id) =>
+        {
+            // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
+            //                             seems to be fine for now. Revisit this!
+            let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
+            let cid = GlobalId { instance, promoted: None };
+            let typing_env = ty::TypingEnv::fully_monomorphized();
+            tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
+        }
+        _ => (),
+    }
+}
+
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
@@ -163,27 +192,31 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_result().crate_inherent_impls_overlap_check(());
     });
 
+    // Make sure we evaluate all static items, and all non-generic free const items, even
+    // if unused. If any of these fail to evaluate, we do not want this crate to pass
+    // compilation.
+    //
+    // Under the parallel front-end, force these values sequentially in definition order
+    // before the parallel loop below. A constant whose initializer refers to another
+    // constant evaluates that other constant as a nested, depth-limited query. Evaluating
+    // in definition order keeps these chains shallow because each constant's dependencies
+    // are already cached by the time it is evaluated, matching the single-threaded order.
+    // Without this, worker threads can start evaluating a constant before the constants it
+    // depends on are cached, building a query stack whose depth depends on scheduling and
+    // can spuriously exceed the recursion limit.
+    if matches!(tcx.sess.threads(), Some(threads) if threads > 1) {
+        for item_def_id in tcx.hir_body_owners() {
+            eval_const_or_static(tcx, item_def_id);
+        }
+    }
+
     tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
-        // Make sure we evaluate all static and (non-associated) const items, even if unused.
-        // If any of these fail to evaluate, we do not want this crate to pass compilation.
-        match def_kind {
-            DefKind::Static { .. } => {
-                tcx.ensure_ok().eval_static_initializer(item_def_id);
-                check::maybe_check_static_with_link_section(tcx, item_def_id);
-            }
-            DefKind::Const { .. }
-                if !tcx.generics_of(item_def_id).own_requires_monomorphization()
-                    && !tcx.is_type_const(item_def_id) =>
-            {
-                // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
-                //                             seems to be fine for now. Revisit this!
-                let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
-                let typing_env = ty::TypingEnv::fully_monomorphized();
-                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
-            }
-            _ => (),
+        // In single-threaded mode this is the first and only time these values are forced;
+        // under the parallel front-end they were already forced (and cached) above.
+        eval_const_or_static(tcx, item_def_id);
+        if matches!(def_kind, DefKind::Static { .. }) {
+            check::maybe_check_static_with_link_section(tcx, item_def_id);
         }
         // Skip `AnonConst`s because we feed their `type_of`.
         // Also skip items for which typeck forwards to parent typeck.
