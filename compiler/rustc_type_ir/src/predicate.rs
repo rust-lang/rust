@@ -195,6 +195,7 @@ pub struct TraitPredicate<I: Interner> {
     /// If polarity is Negative: we are proving that a negative impl of this trait
     /// exists. (Note that coherence also checks whether negative impls of supertraits
     /// exist via a series of predicates.)
+    #[lift(identity)]
     pub polarity: PredicatePolarity,
 }
 
@@ -990,6 +991,7 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
 )]
 pub struct HostEffectPredicate<I: Interner> {
     pub trait_ref: ty::TraitRef<I>,
+    #[lift(identity)]
     pub constness: BoundConstness,
 }
 
@@ -1035,6 +1037,7 @@ impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub struct SubtypePredicate<I: Interner> {
+    #[lift(identity)]
     pub a_is_expected: bool,
     pub a: I::Ty,
     pub b: I::Ty,

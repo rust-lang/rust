@@ -159,9 +159,9 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     }
 
     s.add_bounds(synstructure::AddBounds::None);
-    s.add_where_predicate(parse_quote! { I: Interner });
     s.add_impl_generic(parse_quote! { J });
     s.add_where_predicate(parse_quote! { J: Interner });
+    s.add_where_predicate(parse_quote! { I: ::rustc_type_ir::LiftInto<J> });
 
     let generic_parameters =
         s.ast().generics.type_params().map(|ty| ty.ident.clone()).collect::<Vec<_>>();
@@ -186,27 +186,12 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
 
             let lifted = lift(ty.clone(), &generic_parameters);
 
+            // Field types involving ordinary generic parameters still need
+            // explicit bounds for those parameters, e.g. `Binder<I, T>` needs
+            // `T: Lift<J>` so its own derived `Lift` impl applies. Interner
+            // associated types are covered by `I: LiftInto<J>`.
             for param in lifted.generic_parameter_bounds {
                 wc.push(parse_quote! { #param: ::rustc_type_ir::lift::Lift<J> });
-            }
-
-            // `lift(ty, ...)` rewrites any bare generic params inside the
-            // field type to their lifted associated type, e.g;
-            // `T` becomes `<T as Lift<J>>::Lifted`.
-            //
-            // That, however, does not imply that the field type itself
-            // implements `Lift<J>`. The generated body calls `lift_to_interner`
-            // on each field value, so Rust needs a `Lift<J>` impl for that
-            // value's complete declared type, not just for generic parameters
-            // that appear somewhere inside it. For non parameter fields, the
-            // implementation must also produce the exact mapped field type:
-            //
-            // Example:
-            // `I::DefId: Lift<J, Lifted = J::DefId>`
-            // `Binder<I, T>: Lift<J, Lifted = Binder<J, <T as Lift<J>>::Lifted>>`
-            if !is_type_param(&ty, &generic_parameters) {
-                let lifted_ty = lifted.ty;
-                wc.push(parse_quote! { #ty: ::rustc_type_ir::lift::Lift<J, Lifted = #lifted_ty> });
             }
 
             quote! {
@@ -247,15 +232,6 @@ fn get_first_path_segment(ty: &syn::Type) -> Option<&syn::PathSegment> {
     } else {
         None
     }
-}
-
-/// Returns true only for bare generic parameters like `T`, not paths such as
-/// `I::Ty`, `Vec<T>`, or `Binder<I, T>`
-fn is_type_param(ty: &syn::Type, generic_parameters: &[syn::Ident]) -> bool {
-    get_first_path_segment(ty).is_some_and(|segment| {
-        matches!(segment.arguments, syn::PathArguments::None)
-            && generic_parameters.iter().any(|param| segment.ident == *param)
-    })
 }
 
 /// Return if the type is `PhantomData`
