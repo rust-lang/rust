@@ -9,6 +9,7 @@ use std::{assert_matches, fs, io, str, thread};
 use rustc_abi::Size;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagInner, FatalError, FatalErrorMarker, Level,
@@ -20,7 +21,7 @@ use rustc_incremental::{
 };
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
     self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
@@ -769,7 +770,7 @@ pub(crate) enum WorkItemResult<B: WriteBackendMethods> {
 }
 
 pub enum FatLtoInput<B: WriteBackendMethods> {
-    Serialized { name: String, bitcode_path: PathBuf },
+    Serialized { wp: WorkProduct, bitcode_path: PathBuf },
     InMemory(ModuleCodegen<B::Module>),
 }
 
@@ -861,7 +862,13 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
                 WorkItemResult::NeedsFatLto(FatLtoInput::Serialized {
-                    name: module.name,
+                    wp: WorkProduct {
+                        cgu_name: module.name.clone(),
+                        saved_files: UnordMap::from_iter([(
+                            PRE_LTO_BC_EXT.to_owned(),
+                            pre_lto_bitcode_filename(&module.name),
+                        )]),
+                    },
                     bitcode_path: path,
                 })
             }
@@ -1734,7 +1741,7 @@ fn start_executing_work<B: WriteBackendMethods>(
             }
 
             for (bitcode_path, wp) in lto_import_only_modules {
-                needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, bitcode_path })
+                needs_fat_lto.push(FatLtoInput::Serialized { wp, bitcode_path })
             }
 
             return Ok(MaybeLtoModules::FatLto { cgcx, needs_fat_lto });
@@ -2135,31 +2142,54 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
-        let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
+        let compilation_output = catch_fatal_errors(|| match maybe_lto_modules {
             MaybeLtoModules::NoLto(compiled_modules) => {
                 drop(shared_emitter);
-                compiled_modules
+
+                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                    sess,
+                    incr_comp_session,
+                    &compiled_modules,
+                );
+
+                (compiled_modules, work_products)
             }
             MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
-                CompiledModules {
-                    modules: vec![do_fat_lto(
-                        sess,
-                        &cgcx,
-                        shared_emitter,
-                        tm_factory,
-                        &crate_info.exported_symbols_for_lto,
-                        &crate_info.each_linked_rlib_file_for_lto,
-                        needs_fat_lto,
-                    )],
-                    allocator_module: None,
+                let mut work_products = WorkProductMap::default();
+                if sess.opts.incremental.is_some() {
+                    for module in &needs_fat_lto {
+                        match module {
+                            FatLtoInput::Serialized { wp, bitcode_path: _ } => {
+                                work_products
+                                    .insert(WorkProductId::from_cgu_name(&wp.cgu_name), wp.clone());
+                            }
+                            FatLtoInput::InMemory(_) => {}
+                        }
+                    }
                 }
+
+                (
+                    CompiledModules {
+                        modules: vec![do_fat_lto(
+                            sess,
+                            &cgcx,
+                            shared_emitter,
+                            tm_factory,
+                            &crate_info.exported_symbols_for_lto,
+                            &crate_info.each_linked_rlib_file_for_lto,
+                            needs_fat_lto,
+                        )],
+                        allocator_module: None,
+                    },
+                    work_products,
+                )
             }
             MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
-                CompiledModules {
+                let compiled_modules = CompiledModules {
                     modules: do_thin_lto::<B>(
                         &cgcx,
                         &sess.prof,
@@ -2172,7 +2202,17 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         sess.opts.recommended_stack_size,
                     ),
                     allocator_module: None,
-                }
+                };
+
+                // FIXME include pre-LTO bitcode in workproduct tracking
+                // FIXME add separate incr comp session for post-LTO outputs to use during link step
+                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                    sess,
+                    incr_comp_session,
+                    &compiled_modules,
+                );
+
+                (compiled_modules, work_products)
             }
         });
 
@@ -2180,19 +2220,14 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         sess.dcx().abort_if_errors();
 
-        let mut compiled_modules =
-            compiled_modules.expect("fatal error emitted but not sent to SharedEmitter");
+        let (mut compiled_modules, work_products) =
+            compilation_output.expect("fatal error emitted but not sent to SharedEmitter");
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
         // out deterministic results.
         compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
-            sess,
-            incr_comp_session,
-            &compiled_modules,
-        );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         (compiled_modules, work_products)
