@@ -1,5 +1,7 @@
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicPtr, Ordering};
+
 use rustc_data_structures::sharded::ShardedHashMap;
-use rustc_data_structures::sync::Lock;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -98,12 +100,12 @@ where
 /// In-memory cache for queries whose key type only has one value (e.g. `()`).
 /// The cache therefore only needs to store one query return value.
 pub struct SingleCache<V> {
-    cache: Lock<Option<(V, DepNodeIndex)>>,
+    cache: AtomicPtr<OnceLock<(V, DepNodeIndex)>>,
 }
 
 impl<V> Default for SingleCache<V> {
     fn default() -> Self {
-        SingleCache { cache: Default::default() }
+        SingleCache { cache: AtomicPtr::new(Box::into_raw(Box::new(Default::default()))) }
     }
 }
 
@@ -116,27 +118,33 @@ where
 
     #[inline(always)]
     fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
-        self.cache.lock().clone()
+        unsafe { self.cache.load(Ordering::Relaxed).as_ref_unchecked().get().copied() }
     }
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        *self.cache.lock() = Some((value, index))
+        unsafe {
+            self.cache.load(Ordering::Relaxed).as_ref_unchecked().set((value, index)).ok();
+        }
     }
 
     fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        if let Some(value) = self.cache.lock().clone() {
-            f(&(), &value.0, value.1)
+        unsafe {
+            if let Some(value) = self.cache.load(Ordering::Relaxed).as_ref_unchecked().get() {
+                f(&(), &value.0, value.1)
+            }
         }
     }
 
     fn len(&self) -> usize {
-        self.cache.lock().is_some().into()
+        unsafe { self.cache.load(Ordering::Relaxed).as_ref_unchecked().get().is_some().into() }
     }
 
     fn invalidate(&self, selector: impl Fn(Self::Key) -> bool) {
         if selector(()) {
-            *self.cache.lock() = None;
+            let prev =
+                self.cache.swap(Box::into_raw(Box::new(Default::default())), Ordering::Relaxed);
+            unsafe { drop(Box::from_raw(prev)) }
         }
     }
 }

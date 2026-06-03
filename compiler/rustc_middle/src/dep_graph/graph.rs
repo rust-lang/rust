@@ -2,7 +2,7 @@ use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
@@ -54,8 +54,7 @@ pub enum QuerySideEffect {
 
 #[derive(Clone)]
 pub struct DepGraph {
-    is_in_sandbox: Arc<AtomicBool>,
-    data: [Option<Arc<DepGraphData>>; 2],
+    data: Arc<AtomicPtr<Option<DepGraphData>>>,
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
@@ -170,31 +169,26 @@ impl DepGraph {
         }
 
         DepGraph {
-            data: [
-                Some(Arc::new(DepGraphData {
-                    previous_work_products: prev_work_products,
-                    current,
-                    previous: prev_graph,
-                    colors,
-                    debug_loaded_from_disk: Default::default(),
-                })),
-                None,
-            ],
+            data: Arc::new(AtomicPtr::new(Box::into_raw(Box::new(Some(DepGraphData {
+                previous_work_products: prev_work_products,
+                current,
+                previous: prev_graph,
+                colors,
+                debug_loaded_from_disk: Default::default(),
+            }))))),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
-            is_in_sandbox: Default::default(),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
         DepGraph {
-            data: [None, None],
+            data: Arc::new(AtomicPtr::new(Box::into_raw(Box::new(None)))),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
-            is_in_sandbox: Default::default(),
         }
     }
 
     pub fn data(&self) -> Option<&DepGraphData> {
-        self.data[self.is_in_sandbox.load(Ordering::Relaxed) as usize].as_deref()
+        unsafe { self.data.load(Ordering::Relaxed).as_ref_unchecked().as_ref() }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -293,11 +287,12 @@ impl DepGraph {
 
     pub fn with_sandbox(&self, op: impl FnOnce()) {
         self.with_query_deserialization(|| {
-            self.is_in_sandbox.store(true, Ordering::Relaxed);
+            let real_graph = self.data.swap(Box::into_raw(Box::new(None)), Ordering::Relaxed);
 
             op();
 
-            self.is_in_sandbox.store(false, Ordering::Relaxed);
+            let fake_graph = self.data.swap(real_graph, Ordering::Relaxed);
+            unsafe { drop(Box::from_raw(fake_graph)) };
         });
     }
 
