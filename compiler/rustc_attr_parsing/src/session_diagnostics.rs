@@ -1023,3 +1023,12 @@ pub(crate) enum InvalidMachoSectionReason {
     #[note("section name `{$section}` is longer than 16 bytes")]
     SectionTooLong { section: String },
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[sanitize({$field} = ...)]` attribute cannot be used on statics")]
+#[help("`#[sanitize]` can be used on statics if only the address is sanitized")]
+pub(crate) struct SanitizeInvalidStatic {
+    #[primary_span]
+    pub span: Span,
+    pub field: &'static str,
+}

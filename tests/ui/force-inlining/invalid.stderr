@@ -134,7 +134,7 @@ error: `#[rustc_force_inline]` attribute cannot be used on foreign functions
 LL |     #[rustc_force_inline]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_force_inline]` can be applied to functions and inherent methods
+   = help: `#[rustc_force_inline]` can only be applied to functions with a body
 
 error: `#[rustc_force_inline]` attribute cannot be used on type aliases
   --> $DIR/invalid.rs:66:1

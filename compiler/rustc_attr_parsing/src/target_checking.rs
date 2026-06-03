@@ -361,6 +361,13 @@ pub(crate) fn allowed_targets_applied(
         Target::Method(MethodKind::Trait { body: true }),
         Target::Method(MethodKind::TraitImpl),
     ];
+    const FUNCTION_WITH_BODY_LIKE: &[Target] = &[
+        Target::Fn,
+        Target::Closure,
+        Target::Method(MethodKind::Inherent),
+        Target::Method(MethodKind::Trait { body: true }),
+        Target::Method(MethodKind::TraitImpl),
+    ];
     const METHOD_LIKE: &[Target] = &[
         Target::Method(MethodKind::Inherent),
         Target::Method(MethodKind::Trait { body: false }),
@@ -376,6 +383,13 @@ pub(crate) fn allowed_targets_applied(
         &mut allowed_targets,
         FUNCTION_LIKE,
         "functions",
+        target,
+        &mut added_fake_targets,
+    );
+    filter_targets(
+        &mut allowed_targets,
+        FUNCTION_WITH_BODY_LIKE,
+        "functions with a body",
         target,
         &mut added_fake_targets,
     );
