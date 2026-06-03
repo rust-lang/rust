@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/splat-overload-at-home-fail.rs:38:16
+  --> $DIR/splat-overload-at-home-fail.rs:35:16
    |
 LL |     foo.method(42f32);
    |         ------ ^^^^^ expected `i32`, found `f32`
@@ -7,7 +7,7 @@ LL |     foo.method(42f32);
    |         arguments to this method are incorrect
    |
 note: method defined here
-  --> $DIR/splat-overload-at-home-fail.rs:29:8
+  --> $DIR/splat-overload-at-home-fail.rs:26:8
    |
 LL |     fn method<T: MethodArgs>(&self, #[splat] args: T) {
    |        ^^^^^^                       ----------------
@@ -18,7 +18,7 @@ LL +     foo.method(42i32);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/splat-overload-at-home-fail.rs:42:23
+  --> $DIR/splat-overload-at-home-fail.rs:39:23
    |
 LL |     foo.method(42i32, 42i32);
    |         ------        ^^^^^ expected `String`, found `i32`
@@ -26,7 +26,7 @@ LL |     foo.method(42i32, 42i32);
    |         arguments to this method are incorrect
    |
 note: method defined here
-  --> $DIR/splat-overload-at-home-fail.rs:29:8
+  --> $DIR/splat-overload-at-home-fail.rs:26:8
    |
 LL |     fn method<T: MethodArgs>(&self, #[splat] args: T) {
    |        ^^^^^^
