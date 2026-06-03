@@ -7,7 +7,7 @@ use std::debug_assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{DelegationInfo, HirId, PathSegment};
+use rustc_hir::{DelegationInfo, PathSegment};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
@@ -551,7 +551,7 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
         }
     }
 
-    let (parent_args, child_args) = get_delegation_user_specified_args(tcx, def_id);
+    let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let self_pos_kind = create_self_position_kind(tcx, def_id, sig_id);
     let filter_self_preds = matches!(self_pos_kind, SelfPositionKind::AfterLifetimes(true));
@@ -627,7 +627,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
         return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
     }
 
-    let (parent_args, child_args) = get_delegation_user_specified_args(tcx, def_id);
+    let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let caller_sig = EarlyBinder::bind(caller_sig.skip_binder().fold_with(&mut folder));
 
@@ -640,18 +640,18 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
 // they will be used during delegation signature and predicates inheritance.
 // Example: reuse Trait::<'static, i32, 1>::foo::<A, B>
 // we want to extract [Self, 'static, i32, 1] for parent and [A, B] for child.
-fn get_delegation_user_specified_args<'tcx>(
+pub(crate) fn delegation_user_specified_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     delegation_id: LocalDefId,
 ) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
     let info = get_delegation_info(tcx, delegation_id);
 
-    let get_segment = |hir_id: HirId| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
+    let get_segment = |hir_id| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
         let segment = tcx.hir_node(hir_id).expect_path_segment();
         segment.res.opt_def_id().map(|def_id| (segment, def_id))
     };
 
-    let ctx = ItemCtxt::new(tcx, delegation_id);
+    let ctx = ItemCtxt::new_for_delegation(tcx, delegation_id);
     let lowerer = ctx.lowerer();
 
     let parent_args = info.parent_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {
