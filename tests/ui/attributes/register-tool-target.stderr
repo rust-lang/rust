@@ -1,0 +1,17 @@
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
+  --> $DIR/register-tool-target.rs:4:1
+   |
+LL | #[register_tool(no_valid_target)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/register-tool-target.rs:6:1
+   |
+LL | / fn main() {
+LL | |
+LL | | }
+   | |_^
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: 1 warning emitted
+
