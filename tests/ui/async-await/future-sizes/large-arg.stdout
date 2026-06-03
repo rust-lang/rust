@@ -1,4 +1,6 @@
 print-type-size type: `{async fn body of test()}`: 3076 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 3076 bytes
+print-type-size type: `{static coroutine body of test()}`: 3076 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Suspend0`: 3075 bytes
@@ -14,6 +16,8 @@ print-type-size     variant `MaybeUninit`: 3075 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 3075 bytes
 print-type-size type: `{async fn body of a<[u8; 1024]>()}`: 3075 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 3075 bytes
+print-type-size type: `{static coroutine body of a<[u8; 1024]>()}`: 3075 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
@@ -33,6 +37,8 @@ print-type-size     variant `MaybeUninit`: 2050 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 2050 bytes
 print-type-size type: `{async fn body of b<[u8; 1024]>()}`: 2050 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 2050 bytes
+print-type-size type: `{static coroutine body of b<[u8; 1024]>()}`: 2050 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
@@ -51,12 +57,20 @@ print-type-size type: `std::mem::MaybeUninit<{async fn body of c<[u8; 1024]>()}>
 print-type-size     variant `MaybeUninit`: 1025 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1025 bytes
+print-type-size type: `std::ops::CoroutineState<(), [u8; 1024]>`: 1025 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Complete`: 1024 bytes
+print-type-size         field `.0`: 1024 bytes
+print-type-size     variant `Yielded`: 0 bytes
+print-type-size         field `.0`: 0 bytes
 print-type-size type: `std::task::Poll<[u8; 1024]>`: 1025 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Ready`: 1024 bytes
 print-type-size         field `.0`: 1024 bytes
 print-type-size     variant `Pending`: 0 bytes
 print-type-size type: `{async fn body of c<[u8; 1024]>()}`: 1025 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1025 bytes
+print-type-size type: `{static coroutine body of c<[u8; 1024]>()}`: 1025 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
@@ -80,6 +94,9 @@ print-type-size     variant `Some`: 16 bytes
 print-type-size         field `.0`: 16 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size         field `.0`: 0 bytes
+print-type-size type: `std::fmt::Arguments<'_>`: 16 bytes, alignment: 8 bytes
+print-type-size     field `.template`: 8 bytes
+print-type-size     field `.args`: 8 bytes
 print-type-size type: `std::panic::AssertUnwindSafe<core::task::wake::ExtData<'_>>`: 16 bytes, alignment: 8 bytes
 print-type-size     field `.0`: 16 bytes
 print-type-size type: `std::ptr::NonNull<str>`: 16 bytes, alignment: 8 bytes
@@ -92,20 +109,31 @@ print-type-size type: `std::pin::Pin<&mut {async fn body of b<[u8; 1024]>()}>`: 
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::pin::Pin<&mut {async fn body of c<[u8; 1024]>()}>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
-print-type-size type: `std::pin::Pin<&mut {async fn body of test()}>`: 8 bytes, alignment: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {static coroutine body of a<[u8; 1024]>()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {static coroutine body of b<[u8; 1024]>()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {static coroutine body of c<[u8; 1024]>()}>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::pin::Pin<&mut {static coroutine body of test()}>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::ptr::DynMetadata<dyn std::any::Any>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `._vtable_ptr`: 8 bytes
 print-type-size     field `._phantom`: 0 bytes
+print-type-size type: `std::ptr::NonNull<core::fmt::rt::Argument<'_>>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::ptr::NonNull<std::ptr::metadata::VTable>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::ptr::NonNull<std::task::Context<'_>>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
-print-type-size type: `std::task::Poll<()>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `std::ptr::NonNull<u8>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::ops::CoroutineState<(), ()>`: 1 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
-print-type-size     variant `Ready`: 0 bytes
+print-type-size     variant `Yielded`: 0 bytes
 print-type-size         field `.0`: 0 bytes
-print-type-size     variant `Pending`: 0 bytes
+print-type-size     variant `Complete`: 0 bytes
+print-type-size         field `.0`: 0 bytes
 print-type-size type: `std::marker::PhantomData<&str>`: 0 bytes, alignment: 1 bytes
 print-type-size type: `std::marker::PhantomData<*mut ()>`: 0 bytes, alignment: 1 bytes
 print-type-size type: `std::marker::PhantomData<dyn std::any::Any>`: 0 bytes, alignment: 1 bytes
