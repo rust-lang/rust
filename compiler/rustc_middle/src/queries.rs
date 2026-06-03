@@ -2065,6 +2065,10 @@ rustc_queries! {
         desc { "inheriting delegation signature" }
     }
 
+    query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
+        desc { "getting delegation user-specified args" }
+    }
+
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
