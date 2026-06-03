@@ -1318,6 +1318,34 @@ pub trait DeclaredIdents {
     }
 }
 
+macro_rules! declared_idents {
+    ($($ty:ty),*) => {
+        $(impl DeclaredIdents for $ty {})*
+    };
+}
+
+// Use the default "empty" list of idents for the following:
+declared_idents! {
+    AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag>,
+    AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag>,
+    AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag>,
+    Box<ast::ForeignItem>,
+    ast::Variant,
+    ast::WherePredicate,
+    ast::FieldDef,
+    ast::PatField,
+    ast::ExprField,
+    ast::Param,
+    ast::GenericParam,
+    ast::Arm,
+    ast::Stmt,
+    ast::Crate,
+    ast::Ty,
+    ast::Pat,
+    ast::Expr,
+    AstNodeWrapper<Box<ast::Expr>, OptExprTag>
+}
+
 impl InvocationCollectorNode for Box<ast::Item> {
     const KIND: AstFragmentKind = AstFragmentKind::Items;
     fn to_annotatable(self) -> Annotatable {
@@ -1476,7 +1504,6 @@ impl DeclaredIdents for Box<ast::Item> {
 }
 
 struct TraitItemTag;
-impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1521,7 +1548,6 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
 }
 
 struct ImplItemTag;
-impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1566,7 +1592,6 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
 }
 
 struct TraitImplItemTag;
-impl DeclaredIdents for AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag> {
     type OutputTy = SmallVec<[Box<ast::AssocItem>; 1]>;
     type ItemKind = AssocItemKind;
@@ -1610,7 +1635,6 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     }
 }
 
-impl DeclaredIdents for Box<ast::ForeignItem> {}
 impl InvocationCollectorNode for Box<ast::ForeignItem> {
     const KIND: AstFragmentKind = AstFragmentKind::ForeignItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1641,7 +1665,6 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
     }
 }
 
-impl DeclaredIdents for ast::Variant {}
 impl InvocationCollectorNode for ast::Variant {
     const KIND: AstFragmentKind = AstFragmentKind::Variants;
     fn to_annotatable(self) -> Annotatable {
@@ -1658,7 +1681,6 @@ impl InvocationCollectorNode for ast::Variant {
     }
 }
 
-impl DeclaredIdents for ast::WherePredicate {}
 impl InvocationCollectorNode for ast::WherePredicate {
     const KIND: AstFragmentKind = AstFragmentKind::WherePredicates;
     fn to_annotatable(self) -> Annotatable {
@@ -1675,7 +1697,6 @@ impl InvocationCollectorNode for ast::WherePredicate {
     }
 }
 
-impl DeclaredIdents for ast::FieldDef {}
 impl InvocationCollectorNode for ast::FieldDef {
     const KIND: AstFragmentKind = AstFragmentKind::FieldDefs;
     fn to_annotatable(self) -> Annotatable {
@@ -1692,7 +1713,6 @@ impl InvocationCollectorNode for ast::FieldDef {
     }
 }
 
-impl DeclaredIdents for ast::PatField {}
 impl InvocationCollectorNode for ast::PatField {
     const KIND: AstFragmentKind = AstFragmentKind::PatFields;
     fn to_annotatable(self) -> Annotatable {
@@ -1709,7 +1729,6 @@ impl InvocationCollectorNode for ast::PatField {
     }
 }
 
-impl DeclaredIdents for ast::ExprField {}
 impl InvocationCollectorNode for ast::ExprField {
     const KIND: AstFragmentKind = AstFragmentKind::ExprFields;
     fn to_annotatable(self) -> Annotatable {
@@ -1726,7 +1745,6 @@ impl InvocationCollectorNode for ast::ExprField {
     }
 }
 
-impl DeclaredIdents for ast::Param {}
 impl InvocationCollectorNode for ast::Param {
     const KIND: AstFragmentKind = AstFragmentKind::Params;
     fn to_annotatable(self) -> Annotatable {
@@ -1743,7 +1761,6 @@ impl InvocationCollectorNode for ast::Param {
     }
 }
 
-impl DeclaredIdents for ast::GenericParam {}
 impl InvocationCollectorNode for ast::GenericParam {
     const KIND: AstFragmentKind = AstFragmentKind::GenericParams;
     fn to_annotatable(self) -> Annotatable {
@@ -1776,7 +1793,6 @@ impl InvocationCollectorNode for ast::GenericParam {
     }
 }
 
-impl DeclaredIdents for ast::Arm {}
 impl InvocationCollectorNode for ast::Arm {
     const KIND: AstFragmentKind = AstFragmentKind::Arms;
     fn to_annotatable(self) -> Annotatable {
@@ -1793,7 +1809,6 @@ impl InvocationCollectorNode for ast::Arm {
     }
 }
 
-impl DeclaredIdents for ast::Stmt {}
 impl InvocationCollectorNode for ast::Stmt {
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
@@ -1870,7 +1885,6 @@ impl InvocationCollectorNode for ast::Stmt {
     }
 }
 
-impl DeclaredIdents for ast::Crate {}
 impl InvocationCollectorNode for ast::Crate {
     type OutputTy = ast::Crate;
     const KIND: AstFragmentKind = AstFragmentKind::Crate;
@@ -1900,7 +1914,6 @@ impl InvocationCollectorNode for ast::Crate {
     }
 }
 
-impl DeclaredIdents for ast::Ty {}
 impl InvocationCollectorNode for ast::Ty {
     type OutputTy = Box<ast::Ty>;
     const KIND: AstFragmentKind = AstFragmentKind::Ty;
@@ -1938,7 +1951,6 @@ impl InvocationCollectorNode for ast::Ty {
     }
 }
 
-impl DeclaredIdents for ast::Pat {}
 impl InvocationCollectorNode for ast::Pat {
     type OutputTy = Box<ast::Pat>;
     const KIND: AstFragmentKind = AstFragmentKind::Pat;
@@ -1965,7 +1977,6 @@ impl InvocationCollectorNode for ast::Pat {
     }
 }
 
-impl DeclaredIdents for ast::Expr {}
 impl InvocationCollectorNode for ast::Expr {
     type OutputTy = Box<ast::Expr>;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
@@ -1996,7 +2007,6 @@ impl InvocationCollectorNode for ast::Expr {
 }
 
 struct OptExprTag;
-impl DeclaredIdents for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
     type OutputTy = Option<Box<ast::Expr>>;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
