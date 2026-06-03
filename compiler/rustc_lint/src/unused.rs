@@ -636,7 +636,7 @@ impl UnusedParens {
         avoid_mut: bool,
         keep_space: (bool, bool),
     ) {
-        use ast::{BindingMode, PatKind};
+        use ast::{BindingMode, ByRef, Mutability, PatKind, Pinnedness};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -649,8 +649,16 @@ impl UnusedParens {
                 PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
-                // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::MUT, ..) if avoid_mut => {
+                // Avoid bindings whose own binding mutability is `mut`, like `mut x`,
+                // `mut x @ p`, and `mut ref pin const x`, if we should.
+                PatKind::Ident(BindingMode(_, Mutability::Mut), ..) if avoid_mut => {
+                    return;
+                }
+                PatKind::Ref(_, Pinnedness::Pinned, _)
+                | PatKind::Ident(BindingMode(ByRef::Yes(Pinnedness::Pinned, _), _), ..)
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    if !cx.builder.features().pin_ergonomics() =>
+                {
                     return;
                 }
                 // Otherwise proceed with linting.
@@ -756,8 +764,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::Mutability;
         use ast::PatKind::*;
+        use ast::{Mutability, Pinnedness};
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
@@ -789,11 +797,24 @@ impl EarlyLintPass for UnusedParens {
                 self.check_unused_parens_pat(cx, p, true, false, keep_space)
             }
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
+            // This only applies to plain shared reference patterns. In `&pin const (mut x)`,
+            // `pin const` is consumed before parsing the subpattern, so removing the
+            // parentheses preserves `mut x` as a binding pattern.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            // FIXME(pin_ergonomics): check pinned patterns
-            Ref(p, _, m) => {
-                self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space)
+            Ref(p, pinned, m)
+                if *pinned != Pinnedness::Pinned
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    || cx.builder.features().pin_ergonomics() =>
+            {
+                self.check_unused_parens_pat(
+                    cx,
+                    p,
+                    true,
+                    *pinned == Pinnedness::Not && *m == Mutability::Not,
+                    keep_space,
+                );
             }
+            Ref(..) => {}
         }
     }
 
