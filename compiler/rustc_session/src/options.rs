@@ -2315,8 +2315,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
-        "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
     experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
