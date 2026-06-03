@@ -147,7 +147,7 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
         return Err(e);
     };
 
-    let typing_env = ty::TypingEnv::post_analysis(tcx, owner);
+    let typing_env = ty::TypingEnv::codegen(tcx, owner);
     let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
         result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));

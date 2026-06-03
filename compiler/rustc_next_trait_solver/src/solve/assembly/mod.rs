@@ -484,6 +484,7 @@ where
                     | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. }
                     | TypingMode::PostAnalysis
+                    | TypingMode::Codegen
                     | TypingMode::ErasedNotCoherence(MayBeErased) => !candidates.iter().any(|c| {
                         matches!(
                             c.source,
@@ -1056,7 +1057,8 @@ where
             TypingMode::Coherence
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => vec![],
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 self.opaque_accesses
                     .rerun_if_any_opaque_has_infer_as_hidden_type(RerunReason::SelfTyInfer)?;

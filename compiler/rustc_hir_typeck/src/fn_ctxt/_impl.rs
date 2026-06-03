@@ -663,7 +663,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::TypingMode::Coherence
             | ty::TypingMode::Borrowck { .. }
             | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis => {
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen => {
                 bug!()
             }
         };
