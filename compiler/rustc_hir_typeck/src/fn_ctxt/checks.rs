@@ -1734,7 +1734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(expected_param.span(), "");
                         }
                         None => {
-                            if !tuple_arguments.is_splatted() {
+                            if tuple_arguments.is_splatted() {
                                 // FIXME(splat): when the arg is splatted, adjust its index
                                 use_splat_fallback = true;
                             } else {
