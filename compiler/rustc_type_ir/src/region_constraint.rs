@@ -902,6 +902,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                 | TypingMode::ErasedNotCoherence { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostAnalysis => (),
             };
 

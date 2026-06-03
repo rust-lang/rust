@@ -532,28 +532,33 @@ where
         .entered();
 
         let (result, orig_values, canonical_goal) = 'retry_canonicalize: {
-            let skip_erased_attempt = if typing_mode.is_coherence() {
-                true
-            } else {
-                let mut skip = false;
-                if opaque_types.iter().any(|(_, ty)| ty.is_ty_var())
-                    && let PredicateKind::Clause(ClauseKind::Trait(..)) =
+            let skip_erased_attempt = match typing_mode {
+                TypingMode::Reflection | TypingMode::Coherence => true,
+                TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(_) => {
+                    let mut skip = false;
+                    if opaque_types.iter().any(|(_, ty)| ty.is_ty_var())
+                        && let PredicateKind::Clause(ClauseKind::Trait(..)) =
+                            goal.predicate.kind().skip_binder()
+                    {
+                        skip = true;
+                    }
+
+                    if let PredicateKind::Clause(ClauseKind::Trait(tr)) =
                         goal.predicate.kind().skip_binder()
-                {
-                    skip = true;
-                }
+                        && tr.self_ty().has_coroutines()
+                        && self.cx().trait_is_auto(tr.trait_ref.def_id)
+                    {
+                        // FIXME(#155443): this doesn't make a difference now, but with eager normalization
+                        // it likely will.
+                        // skip_erased_attempt = true;
+                    }
 
-                if let PredicateKind::Clause(ClauseKind::Trait(tr)) =
-                    goal.predicate.kind().skip_binder()
-                    && tr.self_ty().has_coroutines()
-                    && self.cx().trait_is_auto(tr.trait_ref.def_id)
-                {
-                    // FIXME(#155443): this doesn't make a difference now, but with eager normalization
-                    // it likely will.
-                    // skip_erased_attempt = true;
+                    skip
                 }
-
-                skip
             };
 
             if skip_erased_attempt {
@@ -767,7 +772,7 @@ where
             // =============================
             // In coherence, we never switch to erased mode, so we will never register anything
             // in the rerun state, so we should've taken the first branch of this match
-            (_, TypingMode::Coherence) => unreachable!(),
+            (_, TypingMode::Coherence | TypingMode::Reflection) => unreachable!(),
             // =============================
             (RerunCondition::Always, _) => RerunDecision::Yes,
             // =============================

@@ -251,6 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             match typing_env.typing_mode().assert_not_erased() {
                 TypingMode::PostAnalysis => {}
                 TypingMode::Coherence
+                | TypingMode::Reflection
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {
