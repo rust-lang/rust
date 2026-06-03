@@ -462,7 +462,7 @@ fn normalize_to_error<'a, 'tcx>(
     depth: usize,
 ) -> NormalizedTerm<'tcx> {
     let trait_ref = ty::Binder::dummy(projection_term.trait_ref(selcx.tcx()));
-    let new_value = match projection_term.kind(selcx.tcx()) {
+    let new_value = match projection_term.kind {
         ty::AliasTermKind::ProjectionTy { .. }
         | ty::AliasTermKind::InherentTy { .. }
         | ty::AliasTermKind::OpaqueTy { .. }
@@ -545,7 +545,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         ));
     }
 
-    let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
+    let term: Term<'tcx> = if alias_term.kind.is_type() {
         tcx.type_of(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
     } else {
         tcx.const_of_item(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
@@ -629,7 +629,7 @@ impl<'tcx> Progress<'tcx> {
         alias_term: ty::AliasTerm<'tcx>,
         guar: ErrorGuaranteed,
     ) -> Self {
-        let err_term = if alias_term.kind(tcx).is_type() {
+        let err_term = if alias_term.kind.is_type() {
             Ty::new_error(tcx, guar).into()
         } else {
             ty::Const::new_error(tcx, guar).into()
@@ -2010,7 +2010,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
         } else {
             return Ok(Projected::Progress(Progress {
-                term: if obligation.predicate.kind(tcx).is_type() {
+                term: if obligation.predicate.kind.is_type() {
                     Ty::new_misc_error(tcx).into()
                 } else {
                     ty::Const::new_misc_error(tcx).into()
@@ -2029,7 +2029,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_term.defining_node);
 
-    let term = if obligation.predicate.kind(tcx).is_type() {
+    let term = if obligation.predicate.kind.is_type() {
         tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
     } else {
         tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
@@ -2038,7 +2038,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
         let msg = "impl item and trait item have different parameters";
         let span = obligation.cause.span;
-        let err = if obligation.predicate.kind(tcx).is_type() {
+        let err = if obligation.predicate.kind.is_type() {
             Ty::new_error_with_message(tcx, span, msg).into()
         } else {
             ty::Const::new_error_with_message(tcx, span, msg).into()

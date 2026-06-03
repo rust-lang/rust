@@ -327,7 +327,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         let c_term = infcx.canonicalize_query(self.param_env.and(term), &mut orig_values);
         debug!("QueryNormalizer: c_term = {:#?}", c_term);
         debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-        let result = match term.kind(tcx) {
+        let result = match term.kind {
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 tcx.normalize_canonicalized_projection(c_term)
             }
@@ -380,7 +380,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         if res != term.to_term(tcx)
             && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
                 || matches!(
-                    term.kind(tcx),
+                    term.kind,
                     ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. }
                 ))
         {
