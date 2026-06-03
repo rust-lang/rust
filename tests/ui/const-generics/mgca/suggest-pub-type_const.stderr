@@ -1,0 +1,118 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/suggest-pub-type_const.rs:38:9
+   |
+LL |         pub const PUBLIC: usize;
+   |         ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/suggest-pub-type_const.rs:40:9
+   |
+LL |         pub(crate) const RESTRICTED: usize;
+   |         ^^^^^^^^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:15:26
+   |
+LL |     pub struct Foo1([u8; Bar::PUBLIC]);
+   |                          ^^^^^^^^^^^
+   |
+help: add `type` before `const` for `impl_item::Bar::PUBLIC`
+   |
+LL |         pub type const PUBLIC: usize = 1;
+   |             ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:17:26
+   |
+LL |     pub struct Foo2([u8; Bar::RESTRICTED]);
+   |                          ^^^^^^^^^^^^^^^
+   |
+help: add `type` before `const` for `impl_item::Bar::RESTRICTED`
+   |
+LL |         pub(crate) type const RESTRICTED: usize = 1;
+   |                    ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:19:26
+   |
+LL |     pub struct Foo3([u8; Bar::PRIVATE]);
+   |                          ^^^^^^^^^^^^
+   |
+help: add `type` before `const` for `impl_item::Bar::PRIVATE`
+   |
+LL |         type const PRIVATE: usize = 1;
+   |         ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:28:26
+   |
+LL |     pub struct Foo1([u8; PUBLIC]);
+   |                          ^^^^^^
+   |
+help: add `type` before `const` for `PUBLIC`
+   |
+LL |     pub type const PUBLIC: usize = 1;
+   |         ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:30:26
+   |
+LL |     pub struct Foo2([u8; RESTRICTED]);
+   |                          ^^^^^^^^^^
+   |
+help: add `type` before `const` for `RESTRICTED`
+   |
+LL |     pub(crate) type const RESTRICTED: usize = 1;
+   |                ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:32:26
+   |
+LL |     pub struct Foo3([u8; PRIVATE]);
+   |                          ^^^^^^^
+   |
+help: add `type` before `const` for `PRIVATE`
+   |
+LL |     type const PRIVATE: usize = 1;
+   |     ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:45:33
+   |
+LL |     pub struct Bar<T: Foo>([u8; T::PUBLIC]);
+   |                                 ^^^^^^^^^
+   |
+help: add `type` before `const` for `Foo::PUBLIC`
+   |
+LL |         type pub const PUBLIC: usize;
+   |         ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:47:34
+   |
+LL |     pub struct Bar2<T: Foo>([u8; T::RESTRICTED]);
+   |                                  ^^^^^^^^^^^^^
+   |
+help: add `type` before `const` for `Foo::RESTRICTED`
+   |
+LL |         type pub(crate) const RESTRICTED: usize;
+   |         ++++
+
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/suggest-pub-type_const.rs:49:34
+   |
+LL |     pub struct Bar3<T: Foo>([u8; T::PRIVATE]);
+   |                                  ^^^^^^^^^^
+   |
+help: add `type` before `const` for `Foo::PRIVATE`
+   |
+LL |         type const PRIVATE: usize;
+   |         ++++
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0449`.
