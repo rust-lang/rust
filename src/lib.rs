@@ -237,6 +237,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }
+
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![sym::type_id_eq]
+    }
 }
 
 /// Determine if the Cranelift ir verifier should run.
