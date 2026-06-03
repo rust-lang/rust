@@ -1,12 +1,10 @@
 //@aux-build:proc_macro_derive.rs
 //@aux-build:proc_macros.rs
 
-#![allow(
-    unused,
-    dead_code,
+#![expect(
+    clippy::needless_arbitrary_self_type,
     clippy::needless_lifetimes,
-    clippy::needless_pass_by_value,
-    clippy::needless_arbitrary_self_type
+    clippy::needless_pass_by_value
 )]
 #![warn(clippy::extra_unused_lifetimes)]
 
