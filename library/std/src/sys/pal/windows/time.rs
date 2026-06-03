@@ -20,7 +20,7 @@ pub fn intervals2dur(intervals: u64) -> Duration {
 
 pub mod perf_counter {
     use super::NANOS_PER_SEC;
-    use crate::sync::atomic::{Atomic, AtomicU64, Ordering};
+    use crate::sync::atomic::{AtomicI64, Ordering};
     use crate::sys::{c, cvt};
     use crate::time::Duration;
 
@@ -32,23 +32,32 @@ pub mod perf_counter {
 
     pub fn frequency() -> i64 {
         // Either the cached result of `QueryPerformanceFrequency` or `0` for
-        // uninitialized. Storing this as a single `AtomicU64` allows us to use
+        // uninitialized. Storing this as a single `AtomicI64` allows us to use
         // `Relaxed` operations, as we are only interested in the effects on a
         // single memory location.
-        static FREQUENCY: Atomic<u64> = AtomicU64::new(0);
+        static FREQUENCY: AtomicI64 = AtomicI64::new(0);
 
         let cached = FREQUENCY.load(Ordering::Relaxed);
         // If a previous thread has filled in this global state, use that.
         if cached != 0 {
-            return cached as i64;
+            return cached;
         }
         // ... otherwise learn for ourselves ...
+        frequency_init(&FREQUENCY)
+    }
+
+    #[cold]
+    fn frequency_init(cache: &AtomicI64) -> i64 {
         let mut frequency = 0;
         unsafe {
             cvt(c::QueryPerformanceFrequency(&mut frequency)).unwrap();
         }
 
-        FREQUENCY.store(frequency as u64, Ordering::Relaxed);
+        // SAFETY: According to the MSDN entry for `QueryPerformanceFrequency`,
+        // a value of 0 will never be returned starting from Windows XP.
+        unsafe { crate::hint::assert_unchecked(frequency != 0) }
+
+        cache.store(frequency, Ordering::Relaxed);
         frequency
     }
 
