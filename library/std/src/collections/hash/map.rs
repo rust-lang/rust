@@ -2552,7 +2552,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(try_entry)]
+    /// #![feature(try_entry)]
     /// # fn main() -> Result<(), std::num::ParseIntError> {
     /// use std::collections::HashMap;
     ///
@@ -2566,7 +2566,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "try_entry", issue = "none")]
+    #[unstable(feature = "try_entry", issue = "157354")]
     pub fn or_try_insert_with<F: FnOnce() -> Result<V, E>, E>(
         self,
         default: F,
@@ -2598,7 +2598,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     #[inline]
     #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
-        self.or_try_insert_with_key(|k| Result::<_, !>::Ok(default(k))).unwrap()
+        self.or_try_insert_with_key(|k| Result::<_, !>::Ok(default(k))).into_ok()
     }
 
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
@@ -2613,7 +2613,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(try_entry)]
+    /// #![feature(try_entry)]
     /// # fn main() -> Result<(), std::num::ParseIntError> {
     /// use std::collections::HashMap;
     ///
@@ -2626,7 +2626,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "try_entry", issue = "none")]
+    #[unstable(feature = "try_entry", issue = "157354")]
     pub fn or_try_insert_with_key<F: FnOnce(&K) -> Result<V, E>, E>(
         self,
         default: F,
