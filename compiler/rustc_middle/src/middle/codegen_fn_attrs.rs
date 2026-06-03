@@ -114,7 +114,7 @@ pub struct CodegenFnAttrs {
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
-    /// the function entry.
+    /// the function entry, or override default section to record entry location.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
     /// The `#[rustc_objc_class = "..."]` attribute.
     pub objc_class: Option<Symbol>,
@@ -162,23 +162,32 @@ pub struct TargetFeature {
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct PatchableFunctionEntry {
     /// Nops to prepend to the function
-    prefix: u8,
+    prefix: Option<u8>,
     /// Nops after entry, but before body
-    entry: u8,
+    entry: Option<u8>,
+    /// Optional, specific section to record entry location in
+    section: Option<Symbol>,
 }
 
 impl PatchableFunctionEntry {
-    pub fn from_config(config: rustc_session::config::PatchableFunctionEntry) -> Self {
-        Self { prefix: config.prefix(), entry: config.entry() }
+    pub fn from_prefix_entry_and_section(
+        prefix: Option<u8>,
+        entry: Option<u8>,
+        section: Option<Symbol>,
+    ) -> Self {
+        Self { prefix, entry, section }
     }
     pub fn from_prefix_and_entry(prefix: u8, entry: u8) -> Self {
-        Self { prefix, entry }
+        Self { prefix: Some(prefix), entry: Some(entry), section: None }
     }
-    pub fn prefix(&self) -> u8 {
+    pub fn prefix(&self) -> Option<u8> {
         self.prefix
     }
-    pub fn entry(&self) -> u8 {
+    pub fn entry(&self) -> Option<u8> {
         self.entry
+    }
+    pub fn section(&self) -> Option<Symbol> {
+        self.section
     }
 }
 
