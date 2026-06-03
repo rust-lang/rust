@@ -968,7 +968,7 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_names[*local];
+                    let field_name = coroutine.field_tys[*local].debuginfo_name;
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end

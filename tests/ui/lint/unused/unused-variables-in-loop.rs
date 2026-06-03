@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17999>.
+
 #![deny(unused_variables)]
 
 fn main() {

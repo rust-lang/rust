@@ -4,8 +4,86 @@ error[E0423]: expected function, found unit variant `None`
 LL |         reuse None::<&()>;
    |               ^^^^^^^^^^^ not a function
 
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:18
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                  ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:19
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                   ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:20
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                    ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:21
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                     ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:22
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                      ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:23
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                       ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:24
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                        ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:25
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                         ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:26
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                          ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:17:27
+   |
+LL |     reuse foo::<&&&&&&&&&&()> as foo1;
+   |                           ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:28:18
+   |
+LL |     reuse foo::<&std::borrow::Cow<'_, &()>> as foo2;
+   |                  ^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:28:35
+   |
+LL |     reuse foo::<&std::borrow::Cow<'_, &()>> as foo2;
+   |                                   ^^
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/wrong-lifetime-rib.rs:28:40
+   |
+LL |     reuse foo::<&std::borrow::Cow<'_, &()>> as foo2;
+   |                                        ^
+
 error[E0782]: expected a type, found a trait
-  --> $DIR/wrong-lifetime-rib.rs:26:10
+  --> $DIR/wrong-lifetime-rib.rs:39:10
    |
 LL |     impl X {
    |          ^
@@ -20,7 +98,7 @@ LL |     impl X for /* Type */ {
    |            ++++++++++++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/wrong-lifetime-rib.rs:35:10
+  --> $DIR/wrong-lifetime-rib.rs:48:10
    |
 LL |     impl X {
    |          ^
@@ -44,7 +122,7 @@ LL |     impl Trait {
    = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0223]: ambiguous associated type
-  --> $DIR/wrong-lifetime-rib.rs:27:16
+  --> $DIR/wrong-lifetime-rib.rs:40:16
    |
 LL |         reuse<<<&Project> :: Ty> :: Ty as Iterator>::next;
    |                ^^^^^^^^^^^^^^^^
@@ -56,7 +134,7 @@ LL +         reuse<<<&() as Example>::Ty> :: Ty as Iterator>::next;
    |
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/wrong-lifetime-rib.rs:37:21
+  --> $DIR/wrong-lifetime-rib.rs:50:21
    |
 LL |             let _: &X;
    |                     ^
@@ -66,7 +144,7 @@ help: you can add the `dyn` keyword if you want a trait object
 LL |             let _: &dyn X;
    |                     +++
 
-error: aborting due to 6 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0116, E0223, E0423, E0782.
 For more information about an error, try `rustc --explain E0116`.

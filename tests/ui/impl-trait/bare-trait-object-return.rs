@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18107>.
+
 pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->

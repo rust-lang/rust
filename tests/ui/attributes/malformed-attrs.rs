@@ -80,7 +80,7 @@
 //~^ ERROR malformed
 #[link]
 //~^ ERROR malformed
-//~| WARN attribute should be applied to an `extern` block with non-Rust ABI
+//~| WARN attribute cannot be used on
 //~| WARN previously accepted
 #[link_name]
 //~^ ERROR malformed

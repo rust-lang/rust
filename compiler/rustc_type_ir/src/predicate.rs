@@ -734,8 +734,8 @@ impl<I: Interner> AliasTerm<I> {
         Self::new_from_args(interner, kind, args)
     }
 
-    pub fn expect_ty(self, interner: I) -> ty::AliasTy<I> {
-        let kind = match self.kind(interner) {
+    pub fn expect_ty(self) -> ty::AliasTy<I> {
+        let kind = match self.kind {
             AliasTermKind::ProjectionTy { def_id } => AliasTyKind::Projection { def_id },
             AliasTermKind::InherentTy { def_id } => AliasTyKind::Inherent { def_id },
             AliasTermKind::OpaqueTy { def_id } => AliasTyKind::Opaque { def_id },
@@ -750,8 +750,8 @@ impl<I: Interner> AliasTerm<I> {
         ty::AliasTy { kind, args: self.args, _use_alias_ty_new_instead: () }
     }
 
-    pub fn expect_ct(self, interner: I) -> ty::UnevaluatedConst<I> {
-        let def = match self.kind(interner) {
+    pub fn expect_ct(self) -> ty::UnevaluatedConst<I> {
+        let kind = match self.kind {
             AliasTermKind::InherentConst { def_id } => UnevaluatedConstKind::Inherent { def_id },
             AliasTermKind::FreeConst { def_id } => UnevaluatedConstKind::Free { def_id },
             AliasTermKind::AnonConst { def_id } => UnevaluatedConstKind::Anon { def_id },
@@ -765,12 +765,7 @@ impl<I: Interner> AliasTerm<I> {
                 panic!("Cannot turn `{}` into `UnevaluatedConst`", kind.descr())
             }
         };
-        ty::UnevaluatedConst::new(interner, def, self.args)
-    }
-
-    // FIXME: remove this function (access the field instead)
-    pub fn kind(self, _interner: I) -> AliasTermKind<I> {
-        self.kind
+        ty::UnevaluatedConst { kind, args: self.args, _use_unevaluated_const_new_instead: () }
     }
 
     // FIXME: replace with explicit matches
@@ -789,7 +784,7 @@ impl<I: Interner> AliasTerm<I> {
             )
             .into()
         };
-        match self.kind(interner) {
+        match self.kind {
             AliasTermKind::FreeConst { def_id } => {
                 unevaluated_const(UnevaluatedConstKind::Free { def_id })
             }
@@ -894,7 +889,7 @@ impl<I: Interner> AliasTerm<I> {
         interner: I,
     ) -> I::GenericArgs {
         debug_assert!(matches!(
-            self.kind(interner),
+            self.kind,
             AliasTermKind::InherentTy { .. } | AliasTermKind::InherentConst { .. }
         ));
         interner.mk_args_from_iter(impl_args.iter().chain(self.args.iter().skip(1)))

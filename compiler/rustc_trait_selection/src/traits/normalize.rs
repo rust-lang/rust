@@ -339,7 +339,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }),
         );
         self.depth += 1;
-        let res = if free.kind(infcx.tcx).is_type() {
+        let res = if free.kind.is_type() {
             infcx
                 .tcx
                 .type_of(free.def_id())

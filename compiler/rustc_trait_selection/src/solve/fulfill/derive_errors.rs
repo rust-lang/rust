@@ -395,7 +395,6 @@ impl<'tcx> BestObligation<'tcx> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
-        let tcx = goal.infcx().tcx;
         let pred_kind = goal.goal().predicate.kind();
 
         match pred_kind.no_bound_vars() {
@@ -404,7 +403,7 @@ impl<'tcx> BestObligation<'tcx> {
             }
             Some(ty::PredicateKind::NormalizesTo(pred))
                 if let ty::AliasTermKind::ProjectionTy { .. }
-                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind(tcx) =>
+                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind =>
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
@@ -471,7 +470,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
-                    normalizes_to.alias.kind(tcx),
+                    normalizes_to.alias.kind,
                     ty::AliasTermKind::ProjectionTy { .. }
                         | ty::AliasTermKind::ProjectionConst { .. }
                 ) =>
