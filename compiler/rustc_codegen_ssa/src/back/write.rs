@@ -2135,15 +2135,25 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
-        let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
+        let compilation_output = catch_fatal_errors(|| match maybe_lto_modules {
             MaybeLtoModules::NoLto(compiled_modules) => {
                 drop(shared_emitter);
-                compiled_modules
+
+                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                    sess,
+                    incr_comp_session,
+                    &compiled_modules,
+                );
+
+                (compiled_modules, work_products)
             }
             MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
-                CompiledModules {
+                // FIXME cache local pre-LTO bitcode
+                let work_products = WorkProductMap::default();
+
+                let compiled_modules = CompiledModules {
                     modules: vec![do_fat_lto(
                         sess,
                         &cgcx,
@@ -2154,12 +2164,14 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         needs_fat_lto,
                     )],
                     allocator_module: None,
-                }
+                };
+
+                (compiled_modules, work_products)
             }
             MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
-                CompiledModules {
+                let compiled_modules = CompiledModules {
                     modules: do_thin_lto::<B>(
                         &cgcx,
                         &sess.prof,
@@ -2172,7 +2184,17 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         sess.opts.recommended_stack_size,
                     ),
                     allocator_module: None,
-                }
+                };
+
+                // FIXME include pre-LTO bitcode in workproduct tracking
+                // FIXME add separate incr comp session for post-LTO outputs to use during link step
+                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                    sess,
+                    incr_comp_session,
+                    &compiled_modules,
+                );
+
+                (compiled_modules, work_products)
             }
         });
 
@@ -2180,19 +2202,14 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         sess.dcx().abort_if_errors();
 
-        let mut compiled_modules =
-            compiled_modules.expect("fatal error emitted but not sent to SharedEmitter");
+        let (mut compiled_modules, work_products) =
+            compilation_output.expect("fatal error emitted but not sent to SharedEmitter");
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
         // out deterministic results.
         compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
-            sess,
-            incr_comp_session,
-            &compiled_modules,
-        );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         (compiled_modules, work_products)
