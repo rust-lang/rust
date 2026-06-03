@@ -1338,7 +1338,8 @@ declared_idents! {
     ast::Ty,
     ast::Pat,
     ast::Expr,
-    AstNodeWrapper<Box<ast::Expr>, OptExprTag>
+    AstNodeWrapper<Box<ast::Expr>, OptExprTag>,
+    AstNodeWrapper<ast::Expr, MethodReceiverTag>
 }
 
 impl InvocationCollectorNode for Box<ast::Item> {
@@ -2037,7 +2038,6 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
 /// It can be removed once that feature is stabilized.
 struct MethodReceiverTag;
 
-impl DeclaredIdents for AstNodeWrapper<ast::Expr, MethodReceiverTag> {}
 impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     type OutputTy = AstNodeWrapper<Box<ast::Expr>, MethodReceiverTag>;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
