@@ -717,7 +717,8 @@ impl IntoDiagArg for Namespace {
 }
 
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug, StableHash)]
+#[derive(Copy, Clone, Debug, StableHash)]
+#[derive_const(Default)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
