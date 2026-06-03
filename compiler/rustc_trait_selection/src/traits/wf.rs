@@ -21,9 +21,9 @@ use tracing::{debug, instrument, trace};
 use crate::infer::InferCtxt;
 use crate::traits;
 
-/// Returns the set of obligations needed to make `arg` well-formed.
-/// If `arg` contains unresolved inference variables, this may include
-/// further WF obligations. However, if `arg` IS an unresolved
+/// Returns the set of obligations needed to make `term` well-formed.
+/// If `term` contains unresolved inference variables, this may include
+/// further WF obligations. However, if `term` IS an unresolved
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent cycles where we
 /// say "?0 is WF if ?0 is WF".
@@ -99,7 +99,7 @@ pub fn unnormalized_obligations<'tcx>(
 ) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(term, infcx.resolve_vars_if_possible(term));
 
-    // However, if `arg` IS an unresolved inference variable, returns `None`,
+    // However, if `term` IS an unresolved inference variable, returns `None`,
     // because we are not able to make any progress at all. This is to prevent
     // cycles where we say "?0 is WF if ?0 is WF".
     if term.is_infer() {
