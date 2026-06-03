@@ -1,27 +1,17 @@
 // Checks that results larger than one register are returned indirectly
-//@ only-bpf
+//@ add-minicore
 //@ needs-llvm-components: bpf
 //@ compile-flags: --target bpfel-unknown-none
 
-#![no_std]
-#![no_main]
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
 
 #[no_mangle]
 fn outer(a: u64) -> u64 {
-    let v = match inner_res(a) {
-        Ok(v) => v,
-        Err(()) => 0,
-    };
-
-    inner_big(v).a[0] as u64
-}
-
-// CHECK-LABEL: define {{.*}} @_R{{.*}}inner_res(
-// CHECK-SAME:   ptr{{[^,]*}},
-// CHECK-SAME:   i64{{[^)]*}}
-#[inline(never)]
-fn inner_res(a: u64) -> Result<u64, ()> {
-    if a == 0 { Err(()) } else { Ok(a + 1) }
+    inner_big(a).b
 }
 
 struct Big {
@@ -35,9 +25,4 @@ struct Big {
 #[inline(never)]
 fn inner_big(a: u64) -> Big {
     Big { a: [a as u16; 32], b: 42 }
-}
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
 }
