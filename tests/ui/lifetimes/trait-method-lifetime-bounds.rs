@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18232>.
+
 //@ run-pass
 
 struct Cursor<'a>(::std::marker::PhantomData<&'a ()>);

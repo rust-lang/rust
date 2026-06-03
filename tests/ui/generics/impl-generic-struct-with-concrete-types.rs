@@ -1,13 +1,16 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/17905>.
+
+//@ run-pass
+
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Pair<T, V> (T, V);
 
 impl Pair<
     &str,
     isize
 > {
-    fn say(self: &Pair<&str, isize>) {
-//~^ ERROR mismatched `self` parameter type
-//~| ERROR mismatched `self` parameter type
+    fn say(&self) {
         println!("{:?}", self);
     }
 }

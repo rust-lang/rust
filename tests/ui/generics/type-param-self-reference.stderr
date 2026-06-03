@@ -1,5 +1,5 @@
 error[E0128]: generic parameter defaults cannot reference parameters before they are declared
-  --> $DIR/issue-18183.rs:1:20
+  --> $DIR/type-param-self-reference.rs:3:20
    |
 LL | pub struct Foo<Bar=Bar>(Bar);
    |                    ^^^ cannot reference `Bar` before it is declared
