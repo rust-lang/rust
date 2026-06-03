@@ -422,11 +422,15 @@ impl<'f, 'sess> AcceptContext<'f, 'sess> {
         attribute_args: &'static str,
         allowed_targets: &AllowedTargets,
     ) {
+        self.ignore_target_checks();
+        AttributeParser::check_target(allowed_targets, attribute_args, self);
+    }
+
+    pub(crate) fn ignore_target_checks(&mut self) {
         #[cfg(debug_assertions)]
         {
             self.has_target_been_checked = true;
         }
-        AttributeParser::check_target(allowed_targets, attribute_args, self);
     }
 }
 
