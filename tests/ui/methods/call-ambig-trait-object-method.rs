@@ -1,5 +1,6 @@
-// Test that name clashes between the method in an impl for the type
-// and the method in the trait when both are in the same scope.
+//! Regression test for <https://github.com/rust-lang/rust/issues/18446>.
+//! Test that name clashes between the method in an impl for the type
+//! and the method in the trait when both are in the same scope.
 
 trait T {
     fn foo(&self);

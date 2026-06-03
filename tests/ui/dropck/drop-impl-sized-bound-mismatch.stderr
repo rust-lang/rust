@@ -1,11 +1,11 @@
 error[E0367]: `Drop` impl requires `T: Sized` but the struct it is implemented for does not
-  --> $DIR/issue-17959.rs:11:6
+  --> $DIR/drop-impl-sized-bound-mismatch.rs:13:6
    |
 LL | impl<T> Drop for G<T> {
    |      ^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/issue-17959.rs:7:1
+  --> $DIR/drop-impl-sized-bound-mismatch.rs:9:1
    |
 LL | struct G<T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^
