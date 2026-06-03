@@ -41,12 +41,12 @@ struct S1(F);
 
 impl S1 {
     reuse Trait::{by_value, by_mut_ref, by_ref} {
-        //~^ ERROR: mismatched types
-        //~| ERROR: mismatched types
-        //~| ERROR: the trait bound `fn() -> F {foo}: Trait` is not satisfied
         println!("123");
         let x = &self.0;
         foo
+        //~^ ERROR: mismatched types
+        //~| ERROR: mismatched types
+        //~| ERROR: the trait bound `fn() -> F {foo}: Trait` is not satisfied
     }
 }
 
@@ -59,6 +59,7 @@ impl S2 {
         let x = foo();
 
         x
+        //~^ ERROR: cannot borrow `x` as mutable, as it is not declared as mutable
     }
 }
 

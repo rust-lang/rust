@@ -408,10 +408,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let block_id = self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::with_capacity(param_count);
             let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
+            let mut stmts: &[hir::Stmt<'hir>] = &[];
 
             for idx in 0..param_count {
                 let (param, pat_node_id) = this.generate_param(is_method, idx, span);
                 parameters.push(param);
+
+                let generate_arg =
+                    |this: &mut Self| this.generate_arg(is_method, idx, param.pat.hir_id, span);
 
                 let arg = if let Some(block) = block
                     && idx == 0
@@ -424,10 +428,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self_resolver.visit_block(block);
                     // Target expr needs to lower `self` path.
                     this.ident_and_label_to_local_id.insert(pat_node_id, param.pat.hir_id.local_id);
-                    this.lower_target_expr(&block)
+
+                    // Lower with `HirId::INVALID` as we will use only expr and stmts.
+                    // FIXME(fn_delegation): Alternatives for target expression lowering:
+                    // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
+                    let block = this.lower_block_noalloc(HirId::INVALID, block, false);
+
+                    stmts = block.stmts;
+
+                    // The behavior of the delegation's target expression differs from the
+                    // behavior of the usual block, where if there is no final expression
+                    // the `()` is returned. In case of the similar situation in delegation
+                    // (no final expression) we propagate first argument instead of replacing
+                    // it with `()`.
+                    if let Some(&expr) = block.expr { expr } else { generate_arg(this) }
                 } else {
-                    this.generate_arg(is_method, idx, param.pat.hir_id, span)
+                    generate_arg(this)
                 };
+
                 args.push(arg);
             }
 
@@ -439,11 +457,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             if param_count == 0
                 && let Some(block) = block
             {
-                args.push(this.lower_target_expr(&block));
+                args.push(this.lower_block_expr(&block));
             }
 
             let (final_expr, hir_id) =
-                this.finalize_body_lowering(delegation, args, generics, span);
+                this.finalize_body_lowering(delegation, stmts, args, generics, span);
 
             call_expr_id = hir_id;
 
@@ -455,22 +473,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (block_id, call_expr_id)
     }
 
-    // FIXME(fn_delegation): Alternatives for target expression lowering:
-    // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
-    fn lower_target_expr(&mut self, block: &Block) -> hir::Expr<'hir> {
-        if let [stmt] = block.stmts.as_slice()
-            && let StmtKind::Expr(expr) = &stmt.kind
-        {
-            return self.lower_expr_mut(expr);
-        }
-
-        let block = self.lower_block(block, false);
-        self.mk_expr(hir::ExprKind::Block(block, None), block.span)
-    }
-
     fn finalize_body_lowering(
         &mut self,
         delegation: &Delegation,
+        stmts: &'hir [hir::Stmt<'hir>],
         args: Vec<hir::Expr<'hir>>,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
@@ -522,7 +528,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let call = self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span));
 
         let block = self.arena.alloc(hir::Block {
-            stmts: &[],
+            stmts,
             expr: Some(call),
             hir_id: self.next_id(),
             rules: hir::BlockCheckMode::DefaultBlock,
@@ -587,7 +593,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let callee_path = this.arena.alloc(this.mk_expr(hir::ExprKind::Path(path), span));
             let args = if let Some(block) = delegation.body.as_ref() {
-                this.arena.alloc_slice(&[this.lower_target_expr(block)])
+                this.arena.alloc_slice(&[this.lower_block_expr(block)])
             } else {
                 &mut []
             };
