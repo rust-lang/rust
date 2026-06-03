@@ -19,7 +19,6 @@ use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conver
 use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
-#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct UniversalRegionRelations<'tcx> {
     pub(crate) universal_regions: UniversalRegions<'tcx>,
 

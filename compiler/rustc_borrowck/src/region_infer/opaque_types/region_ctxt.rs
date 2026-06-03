@@ -2,13 +2,14 @@ use std::rc::Rc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexVec;
-use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::{NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::ty::{RegionVid, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
+use tracing::debug;
 
 use crate::BorrowckInferCtxt;
 use crate::constraints::ConstraintSccIndex;
-use crate::handle_placeholders::{SccAnnotations, region_definitions};
+use crate::handle_placeholders::{RegionDefinitions, SccAnnotations};
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::RegionValues;
 use crate::region_infer::{
@@ -30,6 +31,36 @@ pub(super) struct RegionCtxt<'a, 'tcx> {
     pub(super) scc_values: RegionValues<'tcx, ConstraintSccIndex>,
 }
 
+/// Determines if the region variable definitions contain
+/// placeholders, and compute them for later use.
+// FIXME: this is duplicate code from `handle_placeholders`, but
+// it's sufficiently different to warrant its own implementation,
+// if only just barely.
+fn region_definitions<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+) -> Frozen<RegionDefinitions<'tcx>> {
+    let mut definitions: IndexVec<_, _> = infcx
+        .get_region_var_infos()
+        .iter()
+        .map(|var_info| {
+            let origin = match var_info.origin {
+                RegionVariableOrigin::Nll(origin) => origin,
+                _ => NllRegionVariableOrigin::Existential { name: None },
+            };
+
+            RegionDefinition { origin, universe: var_info.universe, external_name: None }
+        })
+        .collect();
+    // Add external names from universal regions in fun function definitions.
+    // FIXME: this two-step method is annoying, but I don't know how to avoid it.
+    for (external_name, variable) in universal_regions.named_universal_regions_iter() {
+        debug!("region {:?} has external name {:?}", variable, external_name);
+        definitions[variable].external_name = Some(external_name);
+    }
+    Frozen::freeze(definitions)
+}
+
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// Creates a new `RegionCtxt` used to compute defining opaque type uses.
     ///
@@ -43,11 +74,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ) -> RegionCtxt<'a, 'tcx> {
         let mut outlives_constraints = constraints.outlives_constraints.clone();
         let universal_regions = &universal_region_relations.universal_regions;
-        let (definitions, _has_placeholders) = region_definitions(
-            infcx,
-            universal_regions,
-            &mut constraints.liveness_constraints.clone(),
-        );
+        let definitions = region_definitions(infcx, universal_regions);
 
         let compute_sccs =
             |outlives_constraints: &OutlivesConstraintSet<'tcx>,

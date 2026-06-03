@@ -37,7 +37,6 @@ use crate::BorrowckInferCtxt;
 use crate::renumber::RegionCtxt;
 
 #[derive(Debug)]
-#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct UniversalRegions<'tcx> {
     indices: UniversalRegionIndices<'tcx>,
 

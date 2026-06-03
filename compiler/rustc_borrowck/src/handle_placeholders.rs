@@ -167,8 +167,7 @@ impl scc::Annotation for RegionTracker {
 
 /// Determines if the region variable definitions contain
 /// placeholders, and compute them for later use.
-// FIXME: This is also used by opaque type handling. Move it to a separate file.
-pub(super) fn region_definitions<'tcx>(
+fn region_definitions<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     liveness_constraints: &mut LivenessValues,

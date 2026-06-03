@@ -265,7 +265,6 @@ pub(crate) struct MirTypeckResults<'tcx> {
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
-#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// Maps from a `ty::Placeholder` to the corresponding
     /// `PlaceholderIndex` bit that we will use for it.

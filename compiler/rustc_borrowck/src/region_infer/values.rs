@@ -36,7 +36,6 @@ pub(crate) enum RegionElement<'tcx> {
 /// Either a mapping of which points a region is live at (for regular bodies),
 /// or which regions are live in the body somewhere (for promoteds, which do
 /// not care about where they are live, only that they are).
-#[derive(Clone)] // FIXME(#146079)
 enum LiveRegions {
     /// region `'r` is live at locations `L`.
     AtPoints(SparseIntervalMatrix<RegionVid, PointIndex>),
@@ -46,7 +45,6 @@ enum LiveRegions {
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
 /// an interval matrix storing liveness ranges for each region-vid.
-#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct LivenessValues {
     /// The map from locations to points.
     location_map: Rc<DenseLocationMap>,
