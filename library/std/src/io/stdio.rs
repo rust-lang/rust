@@ -1195,7 +1195,7 @@ pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
 
 /// Trait to determine if a descriptor/handle refers to a terminal/tty.
 #[stable(feature = "is_terminal", since = "1.70.0")]
-pub trait IsTerminal: crate::sealed::Sealed {
+pub impl(crate) trait IsTerminal {
     /// Returns `true` if the descriptor/handle refers to a terminal/tty.
     ///
     /// On platforms where Rust does not know how to detect a terminal yet, this will return
@@ -1250,9 +1250,6 @@ pub trait IsTerminal: crate::sealed::Sealed {
 
 macro_rules! impl_is_terminal {
     ($($t:ty),*$(,)?) => {$(
-        #[unstable(feature = "sealed", issue = "none")]
-        impl crate::sealed::Sealed for $t {}
-
         #[stable(feature = "is_terminal", since = "1.70.0")]
         impl IsTerminal for $t {
             #[inline]

@@ -7,7 +7,6 @@
 use crate::io::Result;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process::{self, ExitStatus};
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 #[cfg(not(doc))]
 use crate::sys::{fd::FileDesc, linux::pidfd::PidFd as InnerPidFd};
@@ -147,7 +146,7 @@ impl From<PidFd> for OwnedFd {
 /// Os-specific extensions for [`Child`]
 ///
 /// [`Child`]: process::Child
-pub trait ChildExt: Sealed {
+pub impl(crate) trait ChildExt {
     /// Obtains a reference to the [`PidFd`] created for this [`Child`], if available.
     ///
     /// A pidfd will only be available if its creation was requested with
@@ -186,7 +185,7 @@ pub trait ChildExt: Sealed {
 /// Os-specific extensions for [`Command`]
 ///
 /// [`Command`]: process::Command
-pub trait CommandExt: Sealed {
+pub impl(self) trait CommandExt {
     /// Sets whether a [`PidFd`](struct@PidFd) should be created for the [`Child`]
     /// spawned by this [`Command`].
     /// By default, no pidfd will be created.

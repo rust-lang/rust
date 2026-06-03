@@ -291,6 +291,7 @@
 #![feature(f128)]
 #![feature(ffi_const)]
 #![feature(gpu_offload)]
+#![feature(impl_restriction)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(link_cfg)]
@@ -792,6 +793,8 @@ include!("keyword_docs.rs");
 #[unstable(feature = "restricted_std", issue = "none")]
 mod __restricted_std_workaround {}
 
+// FIXME(jhpratt) This is currently only used by portable SIMD. Once rust-lang/portable-simd#529 is
+// merged, this should be able to be removed.
 mod sealed {
     /// This trait being unreachable from outside the crate
     /// prevents outside implementations of our extension traits.
