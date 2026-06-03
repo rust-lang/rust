@@ -5326,6 +5326,23 @@ mod tests {
         test_vld3q_lane_f16(f16, 24, 7, float16x8x3_t, vst3q_lane_f16, vld3q_lane_f16);
         test_vld4q_lane_f16(f16, 32, 7, float16x8x4_t, vst4q_lane_f16, vld4q_lane_f16);
     }
+
+    // FIXME: simd_test (which uses is_arm_feature_detected) does not support the v8
+    // feature that we need on arm.
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+    #[simd_test(enable = "crc")]
+    fn crc32() {
+        assert_eq!(__crc32b(u32::MAX, u8::MAX), 16777215);
+        assert_eq!(__crc32h(u32::MAX, u16::MAX), 65535);
+        assert_eq!(__crc32w(u32::MAX, u32::MAX), 0);
+
+        assert_eq!(__crc32cb(u32::MAX, u8::MAX), 16777215);
+        assert_eq!(__crc32ch(u32::MAX, u16::MAX), 65535);
+        assert_eq!(__crc32cw(u32::MAX, u32::MAX), 0);
+
+        assert_eq!(__crc32d(u32::MAX, u64::MAX), 3736805603);
+        assert_eq!(__crc32cd(u32::MAX, u64::MAX), 3080238136);
+    }
 }
 
 #[cfg(all(test, target_arch = "arm"))]
