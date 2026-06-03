@@ -14,7 +14,7 @@ error[E0391]: cycle detected when getting the resolver for lowering
    = note: ...which requires getting the crate HIR...
    = note: ...which requires perform lints prior to AST lowering...
    = note: ...which again requires getting the resolver for lowering, completing the cycle
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 2 previous errors
 
