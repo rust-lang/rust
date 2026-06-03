@@ -11,7 +11,6 @@ fn recur<'l>(closure: &'l impl AsyncFn()) -> Pin<Box<dyn Future<Output = ()> + '
     Box::pin(async move {
         let _ = closure();
         let _ = recur(&async || {
-            //~^ ERROR reached the recursion limit
             let _ = closure();
         });
     })
@@ -21,3 +20,5 @@ fn main() {
     let closure = async || {};
     let _ = recur(&closure);
 }
+
+//~? ERROR reached the recursion limit
