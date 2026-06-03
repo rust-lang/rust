@@ -31,6 +31,7 @@ const fn bar2() -> u32 { foo2() } //~ ERROR cannot use `#[feature(foo2)]`
 const fn bar3() -> u32 {
     let x = async { 13 };
     //~^ ERROR cannot use `#[feature(const_async_blocks)]`
+    //~| ERROR destructor of
     foo()
     //~^ ERROR cannot use `#[feature(foo)]`
 }
