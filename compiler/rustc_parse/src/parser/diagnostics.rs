@@ -6,7 +6,7 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
     MgcaDisambiguation, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
@@ -31,14 +31,16 @@ use crate::errors::{
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
-    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
-    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
-    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
+    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::FnContext;
@@ -3163,5 +3165,49 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+    pub(super) fn maybe_type_in_generic_parameter(&mut self, origin_error: Diag<'a>) -> Diag<'a> {
+        if !self.may_recover() {
+            return origin_error;
+        }
+        self.with_recovery(super::Recovery::Forbidden, |snapshot| {
+            snapshot.bump();
+            let lo = snapshot.token.span.shrink_to_lo();
+
+            let ty = match snapshot.parse_ty() {
+                Ok(t) => t,
+                Err(err) => {
+                    err.cancel();
+                    return origin_error;
+                }
+            };
+            let TyKind::Path(_, path) = ty.kind else {
+                return origin_error;
+            };
+            let Some(GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, ref args })) =
+                path.segments[0].args
+            else {
+                return origin_error;
+            };
+
+            let path_span = path.span;
+            let mut new_error = snapshot.dcx().create_err(FoundPathInGenerics {
+                span: path_span,
+                path: snapshot.span_to_snippet(path_span).unwrap(),
+            });
+            new_error.subdiagnostic(SuggestBindTypeParameter { span: lo });
+            origin_error.cancel();
+
+            let params = args
+                .iter()
+                .map(|arg| snapshot.span_to_snippet(arg.span()).unwrap())
+                .collect::<Vec<_>>()
+                .join(", ");
+            new_error.subdiagnostic(SuggestIntroduceTypeParameter {
+                span: path_span,
+                parameters: params,
+            });
+            new_error
+        })
     }
 }
