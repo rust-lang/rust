@@ -2117,6 +2117,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_non_null`]: Vec::as_non_null
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    #[rustc_as_ptr]
     #[inline]
     pub const fn as_non_null(&mut self) -> NonNull<T> {
         self.buf.non_null()
