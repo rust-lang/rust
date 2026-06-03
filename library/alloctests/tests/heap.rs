@@ -1,4 +1,4 @@
-use std::alloc::{Allocator, Global, Layout, System};
+use std::alloc::{Alloc, Allocator, Global, Layout, System};
 
 /// Issue #45955 and #62251.
 #[test]
@@ -20,12 +20,15 @@ fn check_overalign_requests<T: Allocator>(allocator: T) {
             unsafe {
                 let pointers: Vec<_> = (0..iterations)
                     .map(|_| {
-                        allocator.allocate(Layout::from_size_align(size, align).unwrap()).unwrap()
+                        allocator
+                            .alloc_ref()
+                            .allocate(Layout::from_size_align(size, align).unwrap())
+                            .unwrap()
                     })
                     .collect();
                 for &ptr in &pointers {
                     assert_eq!(
-                        ptr.as_non_null_ptr().as_ptr().addr() % align,
+                        ptr.as_ptr().addr() % align,
                         0,
                         "Got a pointer less aligned than requested"
                     )
@@ -33,10 +36,9 @@ fn check_overalign_requests<T: Allocator>(allocator: T) {
 
                 // Clean up
                 for &ptr in &pointers {
-                    allocator.deallocate(
-                        ptr.as_non_null_ptr(),
-                        Layout::from_size_align(size, align).unwrap(),
-                    )
+                    allocator
+                        .alloc_ref()
+                        .deallocate(ptr, Layout::from_size_align(size, align).unwrap())
                 }
             }
         }

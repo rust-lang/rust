@@ -19,8 +19,8 @@ LL |         assert_eq!(*ptr, 42);
 note: freed allocation ALLOC
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
-LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
+LL |                 self.1.alloc_ref().deallocate(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
    = note: stack backtrace:
            0: <std::boxed::Box<std::mem::MaybeUninit<[u8; 123]>> as std::ops::Drop>::drop

@@ -1,6 +1,6 @@
 #![feature(alloc_error_hook, allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout, System, set_alloc_error_hook};
+use std::alloc::{Alloc, AllocError, Allocator, Layout, System, set_alloc_error_hook};
 use std::collections::VecDeque;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr::NonNull;
@@ -14,16 +14,16 @@ fn test_shrink_to_unwind() {
 
     struct BadAlloc;
 
-    unsafe impl Allocator for BadAlloc {
-        fn allocate(&self, l: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for BadAlloc {
+        fn allocate(&self, l: Layout) -> Result<NonNull<u8>, AllocError> {
             // We allocate zeroed here so that the whole buffer of the deque
             // is always initialized. That way, even if the deque is left in
             // an inconsistent state, no uninitialized memory should be accessed.
-            System.allocate_zeroed(l)
+            System.alloc_ref().allocate_zeroed(l)
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            unsafe { System.deallocate(ptr, layout) }
+            unsafe { System.alloc_ref().deallocate(ptr, layout) }
         }
 
         unsafe fn shrink(
@@ -31,8 +31,14 @@ fn test_shrink_to_unwind() {
             _ptr: NonNull<u8>,
             _old_layout: Layout,
             _new_layout: Layout,
-        ) -> Result<NonNull<[u8]>, AllocError> {
+        ) -> Result<NonNull<u8>, AllocError> {
             Err(AllocError)
+        }
+    }
+    unsafe impl Allocator for BadAlloc {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 

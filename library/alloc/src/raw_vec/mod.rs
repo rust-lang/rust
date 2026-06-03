@@ -11,7 +11,7 @@ use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{Allocator, Global, Layout};
+use crate::alloc::{Alloc, Allocator, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
@@ -462,18 +462,15 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
         }
 
         let result = match init {
-            AllocInit::Uninitialized => alloc.allocate(layout),
+            AllocInit::Uninitialized => alloc.alloc_ref().allocate(layout),
             #[cfg(not(no_global_oom_handling))]
-            AllocInit::Zeroed => alloc.allocate_zeroed(layout),
+            AllocInit::Zeroed => alloc.alloc_ref().allocate_zeroed(layout),
         };
         let ptr = match result {
-            Ok(ptr) => ptr,
+            Ok(ptr) => ptr.cast_slice(layout.size()),
             Err(_) => return Err(AllocError { layout, non_exhaustive: () }.into()),
         };
 
-        // Allocators currently return a `NonNull<[u8]>` whose length
-        // matches the size requested. If that ever changes, the capacity
-        // here should change to `ptr.len() / size_of::<T>()`.
         Ok(Self {
             ptr: Unique::from(ptr.cast()),
             cap: unsafe { Cap::new_unchecked(capacity) },
@@ -553,15 +550,15 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
             unsafe {
                 // The allocator checks for alignment equality
                 hint::assert_unchecked(old_layout.align() == new_layout.align());
-                self.alloc.grow(ptr, old_layout, new_layout)
+                self.alloc.alloc_ref().grow(ptr, old_layout, new_layout)
             }
         } else {
-            self.alloc.allocate(new_layout)
+            self.alloc.alloc_ref().allocate(new_layout)
         };
 
         // FIXME(const-hack): switch back to `map_err`
         match memory {
-            Ok(memory) => Ok(memory),
+            Ok(memory) => Ok(memory.cast_slice(new_layout.size())),
             Err(_) => Err(AllocError { layout: new_layout, non_exhaustive: () }.into()),
         }
     }
@@ -770,9 +767,6 @@ impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     const unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
-        // Allocators currently return a `NonNull<[u8]>` whose length matches
-        // the size requested. If that ever changes, the capacity here should
-        // change to `ptr.len() / size_of::<T>()`.
         self.ptr = Unique::from(ptr.cast());
         self.cap = unsafe { Cap::new_unchecked(cap) };
     }
@@ -840,7 +834,7 @@ impl<A: Allocator> RawVecInner<A> {
         // for the T::IS_ZST case since current_memory() will have returned
         // None.
         if cap == 0 {
-            unsafe { self.alloc.deallocate(ptr, layout) };
+            unsafe { self.alloc.alloc_ref().deallocate(ptr, layout) };
             self.ptr =
                 unsafe { Unique::new_unchecked(ptr::without_provenance_mut(elem_layout.align())) };
             self.cap = ZERO_CAP;
@@ -851,12 +845,13 @@ impl<A: Allocator> RawVecInner<A> {
                 let new_size = elem_layout.size().unchecked_mul(cap);
                 let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
                 self.alloc
+                    .alloc_ref()
                     .shrink(ptr, layout, new_layout)
                     .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
             };
             // SAFETY: if the allocation is valid, then the capacity is too
             unsafe {
-                self.set_ptr_and_cap(ptr, cap);
+                self.set_ptr_and_cap(ptr.cast_slice(layout.size()), cap);
             }
         }
         Ok(())
@@ -873,7 +868,7 @@ impl<A: Allocator> RawVecInner<A> {
         // SAFETY: Precondition passed to caller
         if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
             unsafe {
-                self.alloc.deallocate(ptr, layout);
+                self.alloc.alloc_ref().deallocate(ptr, layout);
             }
         }
     }

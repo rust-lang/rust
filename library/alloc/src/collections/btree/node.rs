@@ -37,7 +37,7 @@ use core::num::NonZero;
 use core::ptr::{self, NonNull};
 use core::slice::SliceIndex;
 
-use crate::alloc::{Allocator, Layout};
+use crate::alloc::{Alloc, Allocator, Layout};
 use crate::boxed::Box;
 
 const B: usize = 6;
@@ -409,7 +409,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
         let node = self.node;
         let ret = self.ascend().ok();
         unsafe {
-            alloc.deallocate(
+            alloc.alloc_ref().deallocate(
                 node.cast(),
                 if height > 0 {
                     Layout::new::<InternalNode<K, V>>()
@@ -628,7 +628,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         self.clear_parent_link();
 
         unsafe {
-            alloc.deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
+            alloc.alloc_ref().deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -1446,9 +1446,13 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
                 left_node.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
 
-                alloc.deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
+                alloc
+                    .alloc_ref()
+                    .deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
-                alloc.deallocate(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
+                alloc
+                    .alloc_ref()
+                    .deallocate(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
             }
         }
         result(parent_node, left_node)

@@ -3,17 +3,17 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Layout};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
-use std::ptr::{self, NonNull};
+use std::ptr::{NonNull};
 
 struct OnceAlloc<'a> {
     space: Cell<&'a mut [MaybeUninit<u8>]>,
 }
 
-unsafe impl<'shared, 'a: 'shared> Allocator for &'shared OnceAlloc<'a> {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+unsafe impl<'shared, 'a: 'shared> Alloc for &'shared OnceAlloc<'a> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         let space = self.space.replace(&mut []);
 
         let (ptr, len) = (space.as_mut_ptr(), space.len());
@@ -22,11 +22,17 @@ unsafe impl<'shared, 'a: 'shared> Allocator for &'shared OnceAlloc<'a> {
             return Err(AllocError);
         }
 
-        let slice_ptr = ptr::slice_from_raw_parts_mut(ptr as *mut u8, len);
-        unsafe { Ok(NonNull::new_unchecked(slice_ptr)) }
+        unsafe { Ok(NonNull::new_unchecked(ptr as *mut u8)) }
     }
 
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {}
+}
+
+unsafe impl<'shared, 'a: 'shared> Allocator for &'shared OnceAlloc<'a> {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
+    }
 }
 
 trait MyTrait {
@@ -59,13 +65,20 @@ fn test1() {
 // Make the allocator itself so big that the Box is not even a ScalarPair any more.
 struct OnceAllocRef<'s, 'a>(&'s OnceAlloc<'a>, #[allow(dead_code)] u64);
 
-unsafe impl<'shared, 'a: 'shared> Allocator for OnceAllocRef<'shared, 'a> {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.0.allocate(layout)
+unsafe impl<'shared, 'a: 'shared> Alloc for OnceAllocRef<'shared, 'a> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        Alloc::allocate(self.0.alloc_ref(), layout)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        self.0.deallocate(ptr, layout)
+        Alloc::deallocate(self.0.alloc_ref(), ptr, layout)
+    }
+}
+
+unsafe impl<'shared, 'a: 'shared> Allocator for OnceAllocRef<'shared, 'a> {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

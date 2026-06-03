@@ -1,4 +1,4 @@
-use core::alloc::{AllocError, Allocator, Layout};
+use core::alloc::{Alloc, AllocError, Allocator, Layout};
 use core::cell::Cell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
@@ -64,19 +64,25 @@ fn box_deref_lval() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_no_leak() {
-    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::alloc::{Alloc, AllocError, Allocator, Global, Layout};
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::ptr::NonNull;
 
     struct AllocCount(Cell<i32>);
-    unsafe impl Allocator for AllocCount {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for AllocCount {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
             self.0.set(self.0.get() + 1);
-            Global.allocate(layout)
+            Global.alloc_ref().allocate(layout)
         }
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             self.0.set(self.0.get() - 1);
-            unsafe { Global.deallocate(ptr, layout) }
+            unsafe { Global.alloc_ref().deallocate(ptr, layout) }
+        }
+    }
+    unsafe impl Allocator for AllocCount {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 
@@ -101,13 +107,13 @@ fn panic_no_leak() {
 #[allow(unused)]
 pub struct ConstAllocator;
 
-unsafe impl Allocator for ConstAllocator {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+unsafe impl Alloc for ConstAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         match layout.size() {
-            0 => Ok(layout.dangling_ptr().cast_slice(0)),
+            0 => Ok(layout.dangling_ptr()),
             _ => unsafe {
                 let ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
-                Ok(NonNull::new_unchecked(ptr as *mut [u8; 0] as *mut [u8]))
+                Ok(NonNull::new_unchecked(ptr))
             },
         }
     }
@@ -119,11 +125,11 @@ unsafe impl Allocator for ConstAllocator {
         }
     }
 
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        let ptr = self.allocate(layout)?;
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        let ptr = Alloc::allocate(self, layout)?;
         if layout.size() > 0 {
             unsafe {
-                ptr.as_mut_ptr().write_bytes(0, layout.size());
+                ptr.write_bytes(0, layout.size());
             }
         }
         Ok(ptr)
@@ -134,25 +140,25 @@ unsafe impl Allocator for ConstAllocator {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
         );
 
-        let new_ptr = self.allocate(new_layout)?;
+        let new_ptr = Alloc::allocate(self, new_layout)?;
         if new_layout.size() > 0 {
             // Safety: `new_ptr` is valid for writes and `ptr` for reads of
             // `old_layout.size()`, because `new_layout.size() >=
             // old_layout.size()` (which is an invariant that must be upheld by
             // callers).
             unsafe {
-                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), old_layout.size());
+                new_ptr.as_ptr().copy_from_nonoverlapping(ptr.as_ptr(), old_layout.size());
             }
             // Safety: `ptr` is never used again is also an invariant which must
             // be upheld by callers.
             unsafe {
-                self.deallocate(ptr, old_layout);
+                Alloc::deallocate(self, ptr, old_layout);
             }
         }
         Ok(new_ptr)
@@ -163,14 +169,14 @@ unsafe impl Allocator for ConstAllocator {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // Safety: Invariants of `grow_zeroed` and `grow` are the same, and must
         // be enforced by callers.
         let new_ptr = unsafe { self.grow(ptr, old_layout, new_layout)? };
         if new_layout.size() > 0 {
             let old_size = old_layout.size();
             let new_size = new_layout.size();
-            let raw_ptr = new_ptr.as_mut_ptr();
+            let raw_ptr = new_ptr.as_ptr();
             // Safety:
             // - `grow` returned Ok, so the returned pointer must be valid for
             //   `new_size` bytes
@@ -188,28 +194,35 @@ unsafe impl Allocator for ConstAllocator {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
         );
 
-        let new_ptr = self.allocate(new_layout)?;
+        let new_ptr = Alloc::allocate(self, new_layout)?;
         if new_layout.size() > 0 {
             // Safety: `new_ptr` and `ptr` are valid for reads/writes of
             // `new_layout.size()` because of the invariants of shrink, which
             // include `new_layout.size()` being smaller than (or equal to)
             // `old_layout.size()`.
             unsafe {
-                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), new_layout.size());
+                new_ptr.as_ptr().copy_from_nonoverlapping(ptr.as_ptr(), new_layout.size());
             }
             // Safety: `ptr` is never used again is also an invariant which must
             // be upheld by callers.
             unsafe {
-                self.deallocate(ptr, old_layout);
+                Alloc::deallocate(self, ptr, old_layout);
             }
         }
         Ok(new_ptr)
+    }
+}
+
+unsafe impl Allocator for ConstAllocator {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 
     fn by_ref(&self) -> &Self

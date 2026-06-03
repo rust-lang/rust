@@ -1,8 +1,8 @@
 error: Undefined Behavior: deallocation through <TAG> at ALLOC[0x0] is forbidden
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
-LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+LL |                 self.1.alloc_ref().deallocate(From::from(ptr.cast()), layout);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information

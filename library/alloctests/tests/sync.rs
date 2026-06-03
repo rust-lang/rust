@@ -1,5 +1,5 @@
 use alloc::sync::*;
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Layout};
 use std::any::Any;
 use std::clone::Clone;
 use std::mem::MaybeUninit;
@@ -34,13 +34,19 @@ impl<'a> AllocCanary<'a> {
     }
 }
 
-unsafe impl Allocator for AllocCanary<'_> {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        std::alloc::Global.allocate(layout)
+unsafe impl Alloc for AllocCanary<'_> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        std::alloc::Global.alloc_ref().allocate(layout)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        unsafe { std::alloc::Global.deallocate(ptr, layout) }
+        unsafe { std::alloc::Global.alloc_ref().deallocate(ptr, layout) }
+    }
+}
+unsafe impl Allocator for AllocCanary<'_> {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

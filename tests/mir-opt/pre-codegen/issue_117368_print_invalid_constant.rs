@@ -5,12 +5,12 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{Allocator, Global, Layout};
+use std::alloc::{Alloc, Allocator, Global, Layout};
 
 // EMIT_MIR issue_117368_print_invalid_constant.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug layout => const Layout
     let layout: Layout = None.unwrap();
-    let ptr: *mut u8 = Global.allocate(layout).unwrap().as_ptr() as _;
+    let ptr: *mut u8 = Global.alloc_ref().allocate(layout).unwrap().as_ptr();
 }

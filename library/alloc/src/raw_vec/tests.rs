@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn allocator_param() {
-    use crate::alloc::AllocError;
+    use crate::alloc::{Alloc, AllocError};
 
     // Writing a test of integration between third-party
     // allocators and `RawVec` is a little tricky because the `RawVec`
@@ -21,13 +21,13 @@ fn allocator_param() {
     struct BoundedAlloc {
         fuel: Cell<usize>,
     }
-    unsafe impl Allocator for BoundedAlloc {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for BoundedAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
             let size = layout.size();
             if size > self.fuel.get() {
                 return Err(AllocError);
             }
-            match Global.allocate(layout) {
+            match Global.alloc_ref().allocate(layout) {
                 ok @ Ok(_) => {
                     self.fuel.set(self.fuel.get() - size);
                     ok
@@ -36,7 +36,13 @@ fn allocator_param() {
             }
         }
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            unsafe { Global.deallocate(ptr, layout) }
+            unsafe { Global.alloc_ref().deallocate(ptr, layout) }
+        }
+    }
+    unsafe impl Allocator for BoundedAlloc {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 

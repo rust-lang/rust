@@ -140,23 +140,23 @@ pub struct System;
 
 impl System {
     #[inline]
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<u8>, AllocError> {
         match layout.size() {
-            0 => Ok(layout.dangling_ptr().cast_slice(0)),
+            0 => Ok(layout.dangling_ptr()),
             // SAFETY: `layout` is non-zero in size,
-            size => unsafe {
+            _ => unsafe {
                 let raw_ptr = if zeroed {
                     GlobalAlloc::alloc_zeroed(self, layout)
                 } else {
                     GlobalAlloc::alloc(self, layout)
                 };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(ptr.cast_slice(size))
+                Ok(ptr)
             },
         }
     }
 
-    // SAFETY: Same as `Allocator::grow`
+    // SAFETY: Same as `Alloc::grow`
     #[inline]
     unsafe fn grow_impl(
         &self,
@@ -164,7 +164,7 @@ impl System {
         old_layout: Layout,
         new_layout: Layout,
         zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
@@ -187,7 +187,7 @@ impl System {
                 if zeroed {
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                 }
-                Ok(ptr.cast_slice(new_size))
+                Ok(ptr)
             },
 
             // SAFETY: because `new_layout.size()` must be greater than or equal to `old_size`,
@@ -197,26 +197,33 @@ impl System {
             // for `dealloc` must be upheld by the caller.
             old_size => unsafe {
                 let new_ptr = self.alloc_impl(new_layout, zeroed)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
-                Allocator::deallocate(self, ptr, old_layout);
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), old_size);
+                self.alloc_ref().deallocate(ptr, old_layout);
                 Ok(new_ptr)
             },
         }
     }
 }
 
-// The Allocator impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
+// Only needed while `Alloc::allocate` and `Allocator::allocate`
+// coexist for `hashbrown` compatibility.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[derive(Debug)]
+#[doc(hidden)]
+pub struct __SystemButOnlyAlloc(System);
+
+// The Alloc impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
 // which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Allocator for System {
+unsafe impl Alloc for __SystemButOnlyAlloc {
     #[inline]
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.alloc_impl(layout, false)
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        self.0.alloc_impl(layout, false)
     }
 
     #[inline]
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.alloc_impl(layout, true)
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        self.0.alloc_impl(layout, true)
     }
 
     #[inline]
@@ -224,7 +231,7 @@ unsafe impl Allocator for System {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
             // other conditions must be upheld by the caller
-            unsafe { GlobalAlloc::dealloc(self, ptr.as_ptr(), layout) }
+            unsafe { GlobalAlloc::dealloc(&self.0, ptr.as_ptr(), layout) }
         }
     }
 
@@ -234,9 +241,9 @@ unsafe impl Allocator for System {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, old_layout, new_layout, false) }
+        unsafe { self.0.grow_impl(ptr, old_layout, new_layout, false) }
     }
 
     #[inline]
@@ -245,9 +252,9 @@ unsafe impl Allocator for System {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, old_layout, new_layout, true) }
+        unsafe { self.0.grow_impl(ptr, old_layout, new_layout, true) }
     }
 
     #[inline]
@@ -256,7 +263,7 @@ unsafe impl Allocator for System {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
@@ -265,8 +272,8 @@ unsafe impl Allocator for System {
         match new_layout.size() {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
-                Allocator::deallocate(self, ptr, old_layout);
-                Ok(new_layout.dangling_ptr().cast_slice(0))
+                Alloc::deallocate(self, ptr, old_layout);
+                Ok(new_layout.dangling_ptr())
             },
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
@@ -274,9 +281,9 @@ unsafe impl Allocator for System {
                 // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
                 hint::assert_unchecked(new_size <= old_layout.size());
 
-                let raw_ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size);
+                let raw_ptr = GlobalAlloc::realloc(&self.0, ptr.as_ptr(), old_layout, new_size);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(ptr.cast_slice(new_size))
+                Ok(ptr)
             },
 
             // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
@@ -285,12 +292,21 @@ unsafe impl Allocator for System {
             // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
             // for `dealloc` must be upheld by the caller.
             new_size => unsafe {
-                let new_ptr = Allocator::allocate(self, new_layout)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                Allocator::deallocate(self, ptr, old_layout);
+                let new_ptr = Alloc::allocate(self, new_layout)?;
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), new_size);
+                Alloc::deallocate(self, ptr, old_layout);
                 Ok(new_ptr)
             },
         }
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl Allocator for System {
+    type Alloc = __SystemButOnlyAlloc;
+    #[inline(always)]
+    fn alloc_ref(&self) -> &Self::Alloc {
+        &__SystemButOnlyAlloc(System)
     }
 }
 

@@ -155,7 +155,7 @@
 //! vec.truncate(write_idx);
 //! ```
 
-use core::alloc::{Allocator, Layout};
+use core::alloc::{Alloc, Allocator, Layout};
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
@@ -318,7 +318,7 @@ where
             let dst_size = size_of::<T>().unchecked_mul(dst_cap);
             let new_layout = Layout::from_size_align_unchecked(dst_size, dst_align);
 
-            let result = alloc.shrink(dst_buf.cast(), old_layout, new_layout);
+            let result = alloc.alloc_ref().shrink(dst_buf.cast(), old_layout, new_layout);
             let Ok(reallocated) = result else { handle_alloc_error(new_layout) };
             dst_buf = reallocated.cast::<T>();
         }

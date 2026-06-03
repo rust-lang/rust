@@ -27,23 +27,21 @@ LL |         self.top.set(top + 1);
    = note: stack backtrace:
            0: MyBin::push
                at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
-           1: <MyAllocator as std::alloc::Allocator>::deallocate
+           1: <MyAllocator as std::alloc::Alloc>::deallocate
                at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
-           2: <&MyAllocator as std::alloc::Allocator>::deallocate
-               at RUSTLIB/core/src/alloc/mod.rs:LL:CC
-           3: alloc::raw_vec::RawVecInner::<&MyAllocator>::deallocate
+           2: alloc::raw_vec::RawVecInner::<&MyAllocator>::deallocate
                at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-           4: <alloc::raw_vec::RawVec<usize, &MyAllocator> as std::ops::Drop>::drop
+           3: <alloc::raw_vec::RawVec<usize, &MyAllocator> as std::ops::Drop>::drop
                at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-           5: std::ptr::drop_glue::<alloc::raw_vec::RawVec<usize, &MyAllocator>> - shim(Some(alloc::raw_vec::RawVec<usize, &MyAllocator>))
+           4: std::ptr::drop_glue::<alloc::raw_vec::RawVec<usize, &MyAllocator>> - shim(Some(alloc::raw_vec::RawVec<usize, &MyAllocator>))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           6: std::ptr::drop_glue::<std::vec::Vec<usize, &MyAllocator>> - shim(Some(std::vec::Vec<usize, &MyAllocator>))
+           5: std::ptr::drop_glue::<std::vec::Vec<usize, &MyAllocator>> - shim(Some(std::vec::Vec<usize, &MyAllocator>))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           7: std::ptr::drop_glue::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)> - shim(Some((std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)))
+           6: std::ptr::drop_glue::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)> - shim(Some((std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           8: std::mem::drop::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)>
+           7: std::mem::drop::<(std::vec::Vec<usize, &MyAllocator>, std::vec::Vec<usize, &MyAllocator>)>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
-           9: main
+           8: main
                at tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

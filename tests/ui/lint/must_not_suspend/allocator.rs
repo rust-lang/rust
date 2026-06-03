@@ -9,12 +9,19 @@ use std::ptr::NonNull;
 #[must_not_suspend]
 struct MyAllocatorWhichMustNotSuspend;
 
-unsafe impl Allocator for MyAllocatorWhichMustNotSuspend {
-    fn allocate(&self, l: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        Global.allocate(l)
+unsafe impl Alloc for MyAllocatorWhichMustNotSuspend {
+    fn allocate(&self, l: Layout) -> Result<NonNull<u8>, AllocError> {
+        Global.alloc_ref().allocate(l)
     }
     unsafe fn deallocate(&self, p: NonNull<u8>, l: Layout) {
-        Global.deallocate(p, l)
+        Global.alloc_ref().deallocate(p, l)
+    }
+}
+
+unsafe impl Allocator for MyAllocatorWhichMustNotSuspend {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

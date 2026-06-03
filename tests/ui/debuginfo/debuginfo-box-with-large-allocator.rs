@@ -4,17 +4,24 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Layout};
 use std::ptr::NonNull;
 
 struct ZST;
 
-unsafe impl Allocator for &ZST {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+unsafe impl Alloc for &ZST {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         todo!()
     }
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         todo!()
+    }
+}
+
+unsafe impl Allocator for &ZST {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

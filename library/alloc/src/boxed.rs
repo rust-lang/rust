@@ -206,7 +206,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{Alloc, AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
@@ -245,8 +245,8 @@ pub struct Box<
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[cfg(not(no_global_oom_handling))]
 fn box_new_uninit(layout: Layout) -> *mut u8 {
-    match Global.allocate(layout) {
-        Ok(ptr) => ptr.as_mut_ptr(),
+    match Global.alloc_ref().allocate(layout) {
+        Ok(ptr) => ptr.as_ptr(),
         Err(_) => handle_alloc_error(layout),
     }
 }
@@ -611,7 +611,7 @@ impl<T, A: Allocator> Box<T, A> {
             NonNull::dangling()
         } else {
             let layout = Layout::new::<mem::MaybeUninit<T>>();
-            alloc.allocate(layout)?.cast()
+            alloc.alloc_ref().allocate(layout)?.cast()
         };
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
@@ -683,7 +683,7 @@ impl<T, A: Allocator> Box<T, A> {
             NonNull::dangling()
         } else {
             let layout = Layout::new::<mem::MaybeUninit<T>>();
-            alloc.allocate_zeroed(layout)?.cast()
+            alloc.alloc_ref().allocate_zeroed(layout)?.cast()
         };
         unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
     }
@@ -801,7 +801,6 @@ impl<T: ?Sized + CloneToUninit> Box<T> {
     ///
     /// ```
     /// #![feature(clone_from_ref)]
-    /// #![feature(allocator_api)]
     ///
     /// let hello: Box<str> = Box::try_clone_from_ref("hello")?;
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -869,7 +868,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
                 let &mut DeallocDropGuard(layout, alloc, ptr) = self;
                 // Safety: `ptr` was allocated by `*alloc` with layout `layout`
                 unsafe {
-                    alloc.deallocate(ptr, layout);
+                    alloc.alloc_ref().deallocate(ptr, layout);
                 }
             }
         }
@@ -878,7 +877,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
             (layout.dangling_ptr(), None)
         } else {
             // Safety: layout is non-zero-sized
-            let ptr = alloc.allocate(layout)?.cast();
+            let ptr = alloc.alloc_ref().allocate(layout)?.cast();
             (ptr, Some(DeallocDropGuard(layout, &alloc, ptr)))
         };
         let ptr = ptr.as_ptr();
@@ -968,7 +967,7 @@ impl<T> Box<[T]> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            Global.allocate(layout)?.cast()
+            Global.alloc_ref().allocate(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
@@ -1002,7 +1001,7 @@ impl<T> Box<[T]> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            Global.allocate_zeroed(layout)?.cast()
+            Global.alloc_ref().allocate_zeroed(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
@@ -1094,7 +1093,7 @@ impl<T, A: Allocator> Box<[T], A> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            alloc.allocate(layout)?.cast()
+            alloc.alloc_ref().allocate(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
@@ -1133,7 +1132,7 @@ impl<T, A: Allocator> Box<[T], A> {
                 Ok(l) => l,
                 Err(_) => return Err(AllocError),
             };
-            alloc.allocate_zeroed(layout)?.cast()
+            alloc.alloc_ref().allocate_zeroed(layout)?.cast()
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
@@ -1537,12 +1536,12 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     /// Manually create a `Box` from scratch by using the system allocator:
     /// ```
-    /// #![feature(allocator_api, slice_ptr_get)]
+    /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{Allocator, Layout, System};
+    /// use std::alloc::{Alloc, Allocator, Layout, System};
     ///
     /// unsafe {
-    ///     let ptr = System.allocate(Layout::new::<i32>())?.as_mut_ptr() as *mut i32;
+    ///     let ptr = System.alloc_ref().allocate(Layout::new::<i32>())?.as_ptr() as *mut i32;
     ///     // In general .write is required to avoid attempting to destruct
     ///     // the (uninitialized) previous contents of `ptr`, though for this
     ///     // simple example `*ptr = 5` would have worked as well.
@@ -1596,10 +1595,10 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{Allocator, Layout, System};
+    /// use std::alloc::{Alloc, Allocator, Layout, System};
     ///
     /// unsafe {
-    ///     let non_null = System.allocate(Layout::new::<i32>())?.cast::<i32>();
+    ///     let non_null = System.alloc_ref().allocate(Layout::new::<i32>())?.cast::<i32>();
     ///     // In general .write is required to avoid attempting to destruct
     ///     // the (uninitialized) previous contents of `non_null`.
     ///     non_null.write(5);
@@ -1651,7 +1650,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{Allocator, Layout, System};
+    /// use std::alloc::{Alloc, Allocator, Layout, System};
     /// use std::ptr::{self, NonNull};
     ///
     /// let x = Box::new_in(String::from("Hello"), System);
@@ -1659,7 +1658,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// unsafe {
     ///     ptr::drop_in_place(ptr);
     ///     let non_null = NonNull::new_unchecked(ptr);
-    ///     alloc.deallocate(non_null.cast(), Layout::new::<String>());
+    ///     alloc.alloc_ref().deallocate(non_null.cast(), Layout::new::<String>());
     /// }
     /// ```
     ///
@@ -1713,13 +1712,13 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{Allocator, Layout, System};
+    /// use std::alloc::{Alloc, Allocator, Layout, System};
     ///
     /// let x = Box::new_in(String::from("Hello"), System);
     /// let (non_null, alloc) = Box::into_non_null_with_allocator(x);
     /// unsafe {
     ///     non_null.drop_in_place();
-    ///     alloc.deallocate(non_null.cast::<u8>(), Layout::new::<String>());
+    ///     alloc.alloc_ref().deallocate(non_null.cast::<u8>(), Layout::new::<String>());
     /// }
     /// ```
     ///
@@ -1955,7 +1954,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
         unsafe {
             let layout = Layout::for_value_raw(ptr.as_ptr());
             if layout.size() != 0 {
-                self.1.deallocate(From::from(ptr.cast()), layout);
+                self.1.alloc_ref().deallocate(From::from(ptr.cast()), layout);
             }
         }
     }
@@ -2434,15 +2433,15 @@ impl<E: Error> Error for Box<E> {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
+#[stable(feature = "allocator_api_mvp", since = "CURRENT_RUSTC_VERSION")]
+unsafe impl<T: ?Sized + Alloc, A: Allocator> Alloc for Box<T, A> {
     #[inline]
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         (**self).allocate(layout)
     }
 
     #[inline]
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         (**self).allocate_zeroed(layout)
     }
 
@@ -2458,7 +2457,7 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow(ptr, old_layout, new_layout) }
     }
@@ -2469,7 +2468,7 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
     }
@@ -2480,8 +2479,17 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: Allocator, A: Allocator> Allocator for Box<T, A> {
+    type Alloc = T::Alloc;
+    #[inline(always)]
+    fn alloc_ref(&self) -> &Self::Alloc {
+        (**self).alloc_ref()
     }
 }

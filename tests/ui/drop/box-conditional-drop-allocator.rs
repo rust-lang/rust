@@ -4,18 +4,24 @@
 // Regression test for #131082.
 // Testing that the allocator of a Box is dropped in conditional drops
 
-use std::alloc::{AllocError, Allocator, Global, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Global, Layout};
 use std::cell::Cell;
 use std::ptr::NonNull;
 
 struct DropCheckingAllocator<'a>(&'a Cell<bool>);
 
-unsafe impl Allocator for DropCheckingAllocator<'_> {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        Global.allocate(layout)
+unsafe impl Alloc for DropCheckingAllocator<'_> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
+        Global.alloc_ref().allocate(layout)
     }
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        Global.deallocate(ptr, layout);
+        Global.alloc_ref().deallocate(ptr, layout);
+    }
+}
+unsafe impl Allocator for DropCheckingAllocator<'_> {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 impl Drop for DropCheckingAllocator<'_> {

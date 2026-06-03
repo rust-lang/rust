@@ -238,19 +238,25 @@ fn weak_may_dangle() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_no_leak() {
-    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::alloc::{Alloc, AllocError, Allocator, Global, Layout};
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::ptr::NonNull;
 
     struct AllocCount(Cell<i32>);
-    unsafe impl Allocator for AllocCount {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for AllocCount {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
             self.0.set(self.0.get() + 1);
-            Global.allocate(layout)
+            Global.alloc_ref().allocate(layout)
         }
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             self.0.set(self.0.get() - 1);
-            unsafe { Global.deallocate(ptr, layout) }
+            unsafe { Global.alloc_ref().deallocate(ptr, layout) }
+        }
+    }
+    unsafe impl Allocator for AllocCount {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 

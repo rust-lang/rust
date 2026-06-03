@@ -1130,8 +1130,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`String`]: crate::string::String
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
-    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
-    /// [*fit*]: crate::alloc::Allocator#memory-fitting
+    /// [*currently allocated*]: crate::alloc::Alloc#currently-allocated-memory
+    /// [*fit*]: crate::alloc::Alloc#memory-fitting
     ///
     /// # Examples
     ///
@@ -1167,13 +1167,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```rust
     /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{AllocError, Allocator, Global, Layout};
+    /// use std::alloc::{Alloc, Allocator, AllocError, Global, Layout};
     ///
     /// fn main() {
     ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
     ///
     ///     let vec = unsafe {
-    ///         let mem = match Global.allocate(layout) {
+    ///         let mem = match Global.alloc_ref().allocate(layout) {
     ///             Ok(mem) => mem.cast::<u32>().as_ptr(),
     ///             Err(AllocError) => return,
     ///         };
@@ -1247,8 +1247,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`String`]: crate::string::String
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
-    /// [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
-    /// [*fit*]: crate::alloc::Allocator#memory-fitting
+    /// [*currently allocated*]: crate::alloc::Alloc#currently-allocated-memory
+    /// [*fit*]: crate::alloc::Alloc#memory-fitting
     ///
     /// # Examples
     ///
@@ -1282,13 +1282,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```rust
     /// #![feature(allocator_api)]
     ///
-    /// use std::alloc::{AllocError, Allocator, Global, Layout};
+    /// use std::alloc::{Alloc, Allocator, AllocError, Global, Layout};
     ///
     /// fn main() {
     ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
     ///
     ///     let vec = unsafe {
-    ///         let mem = match Global.allocate(layout) {
+    ///         let mem = match Global.alloc_ref().allocate(layout) {
     ///             Ok(mem) => mem.cast::<u32>(),
     ///             Err(AllocError) => return,
     ///         };
@@ -1585,9 +1585,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The behavior of this method depends on the allocator, which may either shrink the vector
     /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
-    /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
+    /// is the case for [`with_capacity`]. See [`Alloc::shrink`] for more details.
     ///
     /// [`with_capacity`]: Vec::with_capacity
+    /// [`Alloc::shrink`]: crate::alloc::Alloc::shrink
     ///
     /// # Examples
     ///
@@ -1640,15 +1641,16 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The behavior of this method depends on the allocator, which may either shrink the vector
     /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
-    /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
+    /// is the case for [`with_capacity`]. See [`Alloc::shrink`] for more details.
     ///
     /// [`with_capacity`]: Vec::with_capacity
+    /// [`Alloc::shrink`]: crate::alloc::Alloc::shrink
     ///
     /// # Errors
     ///
     /// This function returns an error if the allocator fails to shrink the allocation,
     /// the vector thereafter is still safe to use, the capacity remains unchanged
-    /// however. See [`Allocator::shrink`].
+    /// however. See [`Alloc::shrink`].
     ///
     /// # Examples
     ///
@@ -1678,7 +1680,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// This function returns an error if the allocator fails to shrink the allocation,
     /// the vector thereafter is still safe to use, the capacity remains unchanged
-    /// however. See [`Allocator::shrink`].
+    /// however. See [`Alloc::shrink`].
+    ///
+    /// [`Alloc::shrink`]: crate::alloc::Alloc::shrink
     ///
     /// # Examples
     ///

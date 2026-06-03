@@ -1157,7 +1157,7 @@ fn test_drop_panic() {
 
 #[test]
 fn test_allocator() {
-    use core::alloc::{AllocError, Allocator, Layout};
+    use core::alloc::{Alloc, AllocError, Allocator, Layout};
     use core::cell::Cell;
 
     struct A {
@@ -1165,19 +1165,25 @@ fn test_allocator() {
         has_deallocated: Cell<bool>,
     }
 
-    unsafe impl Allocator for A {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for A {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
             assert!(!self.has_allocated.get());
             self.has_allocated.set(true);
 
-            Global.allocate(layout)
+            Global.alloc_ref().allocate(layout)
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             assert!(!self.has_deallocated.get());
             self.has_deallocated.set(true);
 
-            unsafe { Global.deallocate(ptr, layout) }
+            unsafe { Global.alloc_ref().deallocate(ptr, layout) }
+        }
+    }
+    unsafe impl Allocator for A {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 

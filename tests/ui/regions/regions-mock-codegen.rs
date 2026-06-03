@@ -3,7 +3,7 @@
 #![allow(non_camel_case_types)]
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, Allocator, Global, Layout};
+use std::alloc::{handle_alloc_error, Alloc, Allocator, Global, Layout};
 use std::ptr::NonNull;
 
 struct arena(());
@@ -24,7 +24,10 @@ struct Ccx {
 fn allocate(_bcx: &arena) -> &mut Bcx<'_> {
     unsafe {
         let layout = Layout::new::<Bcx>();
-        let ptr = Global.allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global
+            .alloc_ref()
+            .allocate(layout)
+            .unwrap_or_else(|_| handle_alloc_error(layout));
         &mut *ptr.as_ptr().cast()
     }
 }
@@ -37,7 +40,9 @@ fn g(fcx: &Fcx) {
     let bcx = Bcx { fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        Global.deallocate(NonNull::new_unchecked(bcx2 as *mut _ as *mut _), Layout::new::<Bcx>());
+        Global
+            .alloc_ref()
+            .deallocate(NonNull::new_unchecked(bcx2 as *mut _ as *mut _), Layout::new::<Bcx>());
     }
 }
 

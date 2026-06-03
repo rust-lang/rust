@@ -1,4 +1,4 @@
-use core::alloc::{Allocator, Layout};
+use core::alloc::{Alloc, Allocator, Layout};
 use core::num::NonZero;
 use core::ptr::NonNull;
 use core::{assert_eq, assert_ne};
@@ -1082,14 +1082,20 @@ fn test_into_iter_advance_by() {
 fn test_into_iter_drop_allocator() {
     struct ReferenceCountedAllocator<'a>(#[allow(dead_code)] DropCounter<'a>);
 
-    unsafe impl Allocator for ReferenceCountedAllocator<'_> {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
-            System.allocate(layout)
+    unsafe impl Alloc for ReferenceCountedAllocator<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, core::alloc::AllocError> {
+            System.alloc_ref().allocate(layout)
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             // Safety: Invariants passed to caller.
-            unsafe { System.deallocate(ptr, layout) }
+            unsafe { System.alloc_ref().deallocate(ptr, layout) }
+        }
+    }
+    unsafe impl Allocator for ReferenceCountedAllocator<'_> {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 
@@ -2557,8 +2563,8 @@ fn test_box_zero_allocator() {
     struct ZstTracker {
         state: RefCell<(HashSet<usize>, usize)>,
     }
-    unsafe impl Allocator for ZstTracker {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    unsafe impl Alloc for ZstTracker {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
             let ptr = if layout.size() == 0 {
                 let mut state = self.state.borrow_mut();
                 let addr = state.1;
@@ -2569,7 +2575,7 @@ fn test_box_zero_allocator() {
             } else {
                 unsafe { std::alloc::alloc(layout) }
             };
-            Ok(NonNull::new(ptr).ok_or(AllocError)?.cast_slice(layout.size()))
+            Ok(NonNull::new(ptr).ok_or(AllocError)?)
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
@@ -2581,6 +2587,12 @@ fn test_box_zero_allocator() {
             } else {
                 unsafe { std::alloc::dealloc(ptr.as_ptr(), layout) }
             }
+        }
+    }
+    unsafe impl Allocator for ZstTracker {
+        type Alloc = Self;
+        fn alloc_ref(&self) -> &Self::Alloc {
+            self
         }
     }
 

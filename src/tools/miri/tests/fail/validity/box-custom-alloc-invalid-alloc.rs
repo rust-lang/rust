@@ -13,13 +13,20 @@ struct MyAlloc {
     my_alloc_field2: usize,
 }
 
-unsafe impl std::alloc::Allocator for MyAlloc {
-    fn allocate(&self, _layout: Layout) -> Result<NonNull<[u8]>, std::alloc::AllocError> {
+unsafe impl std::alloc::Alloc for MyAlloc {
+    fn allocate(&self, _layout: Layout) -> Result<NonNull<u8>, std::alloc::AllocError> {
         unimplemented!()
     }
 
     unsafe fn deallocate(&self, _ptr: NonNull<u8>, _layout: Layout) {
         unimplemented!()
+    }
+}
+
+unsafe impl std::alloc::Allocator for MyAlloc {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

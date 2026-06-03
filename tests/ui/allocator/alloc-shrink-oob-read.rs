@@ -5,9 +5,8 @@
 //@ run-pass
 
 #![feature(allocator_api)]
-#![feature(slice_ptr_get)]
 
-use std::alloc::{Allocator, Global, Layout, handle_alloc_error};
+use std::alloc::{Alloc, Allocator, Global, Layout, handle_alloc_error};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -42,13 +41,16 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ptr = Global.allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global
+            .alloc_ref()
+            .allocate(layout)
+            .unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ptr);
         }
 
-        ptr.as_mut_ptr()
+        ptr.as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -56,7 +58,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Global.deallocate(NonNull::new_unchecked(ptr), layout);
+        Global.alloc_ref().deallocate(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -65,9 +67,9 @@ unsafe fn test_triangle() -> bool {
         }
 
         let memory = if new.size() > old.size() {
-            Global.grow(NonNull::new_unchecked(ptr), old, new)
+            Global.alloc_ref().grow(NonNull::new_unchecked(ptr), old, new)
         } else {
-            Global.shrink(NonNull::new_unchecked(ptr), old, new)
+            Global.alloc_ref().shrink(NonNull::new_unchecked(ptr), old, new)
         };
 
         let ptr = memory.unwrap_or_else(|_| handle_alloc_error(new));
@@ -75,7 +77,7 @@ unsafe fn test_triangle() -> bool {
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, ptr);
         }
-        ptr.as_mut_ptr()
+        ptr.as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize {

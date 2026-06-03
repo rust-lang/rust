@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Layout};
 use std::ptr::NonNull;
 
 struct SizedStruct(i32);
@@ -11,12 +11,18 @@ struct UnsizedStruct([i32]);
 struct BigStruct([i32; 10000]);
 
 struct DummyAllocator;
-unsafe impl Allocator for DummyAllocator {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+unsafe impl Alloc for DummyAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         todo!()
     }
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         todo!()
+    }
+}
+unsafe impl Allocator for DummyAllocator {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

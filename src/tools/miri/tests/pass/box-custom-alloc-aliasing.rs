@@ -7,7 +7,7 @@
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-relax-custom-allocator-uniqueness -Zmiri-tree-borrows-implicit-writes
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{Alloc, AllocError, Allocator, Layout};
 use std::cell::{Cell, UnsafeCell};
 use std::mem;
 use std::ptr::{self, NonNull, addr_of};
@@ -80,12 +80,12 @@ impl MyAllocator {
     }
 }
 
-unsafe impl Allocator for MyAllocator {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+unsafe impl Alloc for MyAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         // Expensive bin search.
         let bin = self.find_bin(layout).ok_or(AllocError)?;
         let ptr = bin.pop().ok_or(AllocError)?;
-        Ok(NonNull::slice_from_raw_parts(ptr, layout.size()))
+        Ok(ptr)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, _layout: Layout) {
@@ -104,6 +104,13 @@ unsafe impl Allocator for MyAllocator {
         }
         // Make sure we can also still access this via `self` after the rest is done.
         let _val = self.bins[0].top.get();
+    }
+}
+
+unsafe impl Allocator for MyAllocator {
+    type Alloc = Self;
+    fn alloc_ref(&self) -> &Self::Alloc {
+        self
     }
 }
 

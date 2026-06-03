@@ -268,7 +268,7 @@ use core::{borrow, fmt, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{Alloc, AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
@@ -512,7 +512,7 @@ impl<T> Rc<T> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.allocate(layout),
+                |layout| Global.alloc_ref().allocate(layout),
                 <*mut u8>::cast,
             ))
         }
@@ -543,7 +543,7 @@ impl<T> Rc<T> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
+                |layout| Global.alloc_ref().allocate_zeroed(layout),
                 <*mut u8>::cast,
             ))
         }
@@ -602,7 +602,7 @@ impl<T> Rc<T> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.allocate(layout),
+                |layout| Global.alloc_ref().allocate(layout),
                 <*mut u8>::cast,
             )?))
         }
@@ -634,7 +634,7 @@ impl<T> Rc<T> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
+                |layout| Global.alloc_ref().allocate_zeroed(layout),
                 <*mut u8>::cast,
             )?))
         }
@@ -791,7 +791,7 @@ impl<T, A: Allocator> Rc<T, A> {
             Rc::from_ptr_in(
                 Rc::allocate_for_layout(
                     Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
+                    |layout| alloc.alloc_ref().allocate(layout),
                     <*mut u8>::cast,
                 ),
                 alloc,
@@ -828,7 +828,7 @@ impl<T, A: Allocator> Rc<T, A> {
             Rc::from_ptr_in(
                 Rc::allocate_for_layout(
                     Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
+                    |layout| alloc.alloc_ref().allocate_zeroed(layout),
                     <*mut u8>::cast,
                 ),
                 alloc,
@@ -972,7 +972,7 @@ impl<T, A: Allocator> Rc<T, A> {
             Ok(Rc::from_ptr_in(
                 Rc::try_allocate_for_layout(
                     Layout::new::<T>(),
-                    |layout| alloc.allocate(layout),
+                    |layout| alloc.alloc_ref().allocate(layout),
                     <*mut u8>::cast,
                 )?,
                 alloc,
@@ -1010,7 +1010,7 @@ impl<T, A: Allocator> Rc<T, A> {
             Ok(Rc::from_ptr_in(
                 Rc::try_allocate_for_layout(
                     Layout::new::<T>(),
-                    |layout| alloc.allocate_zeroed(layout),
+                    |layout| alloc.alloc_ref().allocate_zeroed(layout),
                     <*mut u8>::cast,
                 )?,
                 alloc,
@@ -1159,7 +1159,7 @@ impl<T> Rc<[T]> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate_zeroed(layout),
+                |layout| Global.alloc_ref().allocate_zeroed(layout),
                 |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
             ))
         }
@@ -1227,7 +1227,7 @@ impl<T, A: Allocator> Rc<[T], A> {
             Rc::from_ptr_in(
                 Rc::allocate_for_layout(
                     Layout::array::<T>(len).unwrap(),
-                    |layout| alloc.allocate_zeroed(layout),
+                    |layout| alloc.alloc_ref().allocate_zeroed(layout),
                     |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
                 ),
                 alloc,
@@ -1328,7 +1328,6 @@ impl<T: ?Sized + CloneToUninit> Rc<T> {
     ///
     /// ```
     /// #![feature(clone_from_ref)]
-    /// #![feature(allocator_api)]
     /// use std::rc::Rc;
     ///
     /// let hello: Rc<str> = Rc::try_clone_from_ref("hello")?;
@@ -2236,7 +2235,7 @@ impl<T: ?Sized> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<u8>, AllocError>,
         mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
     ) -> *mut RcInner<T> {
         let layout = rc_inner_layout_for_value_layout(value_layout);
@@ -2255,7 +2254,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     unsafe fn try_allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<u8>, AllocError>,
         mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
     ) -> Result<*mut RcInner<T>, AllocError> {
         let layout = rc_inner_layout_for_value_layout(value_layout);
@@ -2264,7 +2263,7 @@ impl<T: ?Sized> Rc<T> {
         let ptr = allocate(layout)?;
 
         // Initialize the RcInner
-        let inner = mem_to_rc_inner(ptr.as_non_null_ptr().as_ptr());
+        let inner = mem_to_rc_inner(ptr.as_ptr());
         unsafe {
             debug_assert_eq!(Layout::for_value_raw(inner), layout);
 
@@ -2284,7 +2283,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         unsafe {
             Rc::<T>::allocate_for_layout(
                 Layout::for_value_raw(ptr),
-                |layout| alloc.allocate(layout),
+                |layout| alloc.alloc_ref().allocate(layout),
                 |mem| mem.with_metadata_of(ptr as *const RcInner<T>),
             )
         }
@@ -2320,7 +2319,7 @@ impl<T> Rc<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
+                |layout| Global.alloc_ref().allocate(layout),
                 |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
@@ -2360,7 +2359,7 @@ impl<T> Rc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.deallocate(self.mem, self.layout);
+                    Global.alloc_ref().deallocate(self.mem, self.layout);
                 }
             }
         }
@@ -2397,7 +2396,7 @@ impl<T, A: Allocator> Rc<[T], A> {
         unsafe {
             Rc::<[T]>::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| alloc.allocate(layout),
+                |layout| alloc.alloc_ref().allocate(layout),
                 |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
@@ -3681,7 +3680,9 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
         // the strong pointers have disappeared.
         if inner.weak() == 0 {
             unsafe {
-                self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
+                self.alloc
+                    .alloc_ref()
+                    .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
         }
     }
@@ -4465,7 +4466,9 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
             self.ptr.as_ref().dec_weak();
 
             if self.ptr.as_ref().weak() == 0 {
-                self.alloc.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
+                self.alloc
+                    .alloc_ref()
+                    .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
         }
     }
@@ -4491,7 +4494,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
         let ptr = unsafe {
             Rc::allocate_for_layout(
                 layout,
-                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
+                |layout_for_rc_inner| alloc.alloc_ref().allocate(layout_for_rc_inner),
                 |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
             )
         };
@@ -4505,7 +4508,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
         let ptr = unsafe {
             Rc::try_allocate_for_layout(
                 layout,
-                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
+                |layout_for_rc_inner| alloc.alloc_ref().allocate(layout_for_rc_inner),
                 |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
             )?
         };
@@ -4540,7 +4543,7 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
         // * new() produced a pointer safe to deallocate.
         // * We own the pointer unless into_rc() was called, which forgets us.
         unsafe {
-            self.alloc.take().unwrap().deallocate(
+            self.alloc.take().unwrap().alloc_ref().deallocate(
                 self.ptr.cast(),
                 rc_inner_layout_for_value_layout(self.layout_for_value),
             );
@@ -4548,15 +4551,15 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
+#[stable(feature = "allocator_api_mvp", since = "CURRENT_RUSTC_VERSION")]
+unsafe impl<T: ?Sized + Alloc, A: Allocator> Alloc for Rc<T, A> {
     #[inline]
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         (**self).allocate(layout)
     }
 
     #[inline]
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<u8>, AllocError> {
         (**self).allocate_zeroed(layout)
     }
 
@@ -4572,7 +4575,7 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow(ptr, old_layout, new_layout) }
     }
@@ -4583,7 +4586,7 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
     }
@@ -4594,8 +4597,26 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
+    ) -> Result<NonNull<u8>, AllocError> {
         // SAFETY: the safety contract must be upheld by the caller
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A: Allocator> Allocator for Rc<dyn Alloc, A> {
+    type Alloc = dyn Alloc + 'static;
+    #[inline(always)]
+    fn alloc_ref(&self) -> &Self::Alloc {
+        &**self
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: Allocator, A: Allocator> Allocator for Rc<T, A> {
+    type Alloc = T::Alloc;
+    #[inline(always)]
+    fn alloc_ref(&self) -> &Self::Alloc {
+        (**self).alloc_ref()
     }
 }
