@@ -1,5 +1,5 @@
 use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, Range};
 
 use rustc_data_structures::intern::Interned;
 use rustc_macros::StableHash;
@@ -281,5 +281,134 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
+    }
+
+    pub fn uninit_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut data = RangeSet(Vec::new());
+        self.add_data_ranges(cx, Size::ZERO, &mut data);
+
+        // Find gaps between the data ranges.
+        let mut uninit_ranges = Vec::new();
+        let mut covered_until = Size::ZERO;
+        for &(offset, size) in data.0.iter() {
+            if offset > covered_until {
+                uninit_ranges.push(covered_until..offset);
+            }
+            covered_until = Ord::max(covered_until, offset + size);
+        }
+
+        // Add trailing padding.
+        if self.size > covered_until {
+            uninit_ranges.push(covered_until..self.size);
+        }
+
+        uninit_ranges
+    }
+
+    /// Ranges of bytes that are initialized for some valid value of this type. In particular for
+    /// enums and unions there are offsets that are initialized for some variants but not for
+    /// others.
+    fn add_data_ranges<C>(self, cx: &C, base_offset: Size, out: &mut RangeSet)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if self.is_zst() {
+            return;
+        }
+
+        match &self.variants {
+            Variants::Empty => { /* done */ }
+            Variants::Single { index: _ } => match &self.fields {
+                FieldsShape::Primitive => {
+                    out.add_range(base_offset, self.size);
+                }
+                &FieldsShape::Union(field_count) => {
+                    for field in 0..field_count.get() {
+                        let field = self.field(cx, field);
+                        field.add_data_ranges(cx, base_offset, out);
+                    }
+                }
+                &FieldsShape::Array { stride, count } => {
+                    let elem = self.field(cx, 0);
+
+                    // For scalars we know there is no padding between the elements.
+                    if elem.backend_repr.is_scalar() {
+                        out.add_range(base_offset, elem.size * count);
+                    } else {
+                        // FIXME: this is really inefficient for large arrays.
+                        for idx in 0..count {
+                            elem.add_data_ranges(cx, base_offset + idx * stride, out);
+                        }
+                    }
+                }
+                FieldsShape::Arbitrary { offsets, in_memory_order: _ } => {
+                    for (field, &offset) in offsets.iter_enumerated() {
+                        let field = self.field(cx, field.as_usize());
+                        field.add_data_ranges(cx, base_offset + offset, out);
+                    }
+                }
+            },
+            Variants::Multiple { variants, .. } => {
+                for variant in variants.indices() {
+                    let variant = self.for_variant(cx, variant);
+                    variant.add_data_ranges(cx, base_offset, out);
+                }
+            }
+        }
+    }
+}
+
+// FIXME: dedup with the one in
+// `compiler/rustc_const_eval/src/interpret/validity.rs`
+/// Represents a set of `Size` values as a sorted list of ranges.
+// These are (offset, length) pairs, and they are sorted and mutually disjoint,
+// and never adjacent (i.e. there's always a gap between two of them).
+#[derive(Debug, Clone)]
+struct RangeSet(Vec<(Size, Size)>);
+
+impl RangeSet {
+    fn add_range(&mut self, offset: Size, size: Size) {
+        if size.bytes() == 0 {
+            // No need to track empty ranges.
+            return;
+        }
+        let v = &mut self.0;
+        // We scan for a partition point where the left partition is all the elements that end
+        // strictly before we start. Those are elements that are too "low" to merge with us.
+        let idx =
+            v.partition_point(|&(other_offset, other_size)| other_offset + other_size < offset);
+        // Now we want to either merge with the first element of the second partition, or insert ourselves before that.
+        if let Some(&(other_offset, other_size)) = v.get(idx)
+            && offset + size >= other_offset
+        {
+            // Their end is >= our start (otherwise it would not be in the 2nd partition) and
+            // our end is >= their start. This means we can merge the ranges.
+            let new_start = other_offset.min(offset);
+            let mut new_end = (other_offset + other_size).max(offset + size);
+            // We grew to the right, so merge with overlapping/adjacent elements.
+            // (We also may have grown to the left, but that can never make us adjacent with
+            // anything there since we selected the first such candidate via `partition_point`.)
+            let mut scan_right = 1;
+            while let Some(&(next_offset, next_size)) = v.get(idx + scan_right)
+                && new_end >= next_offset
+            {
+                // Increase our size to absorb the next element.
+                new_end = new_end.max(next_offset + next_size);
+                // Look at the next element.
+                scan_right += 1;
+            }
+            // Update the element we grew.
+            v[idx] = (new_start, new_end - new_start);
+            // Remove the elements we absorbed (if any).
+            if scan_right > 1 {
+                drop(v.drain((idx + 1)..(idx + scan_right)));
+            }
+        } else {
+            // Insert new element.
+            v.insert(idx, (offset, size));
+        }
     }
 }
