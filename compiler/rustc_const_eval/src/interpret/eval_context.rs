@@ -165,25 +165,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 }
 
 /// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
-/// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    // Type-changing assignments can happen when subtyping is used. While
-    // all normal lifetimes are erased, higher-ranked types with their
-    // late-bound lifetimes are still around and can lead to type
-    // differences.
+    // We *could* check `Invariant` here since all subtyping must be explicit post-borrowck.
+    // However, this check is also used by the interpreter to figure out if a transmute can be
+    // turned into a regular assignment (which has a more efficient codepath), so we want the check
+    // to consider as many assignments as possible to be valid. Therefore we are happy to accept
+    // one-way subtyping.
     if util::relate_types(tcx, typing_env, Variance::Covariant, src.ty, dest.ty) {
-        // Make sure the layout is equal, too -- just to be safe. Miri really
-        // needs layout equality. For performance reason we skip this check when
-        // the types are equal. Equal types *can* have different layouts when
-        // enum downcast is involved (as enum variants carry the type of the
-        // enum), but those should never occur in assignments.
+        // Make sure the layout is equal, too -- just to be safe. Miri really needs layout equality.
+        // For performance reason we skip this check when the types are equal. Equal types *can*
+        // have different layouts when enum downcast is involved (as enum variants carry the type of
+        // the enum), but those should never occur in assignments.
         if cfg!(debug_assertions) || src.ty != dest.ty {
-            assert_eq!(src.layout, dest.layout);
+            assert_eq!(
+                src.layout,
+                dest.layout,
+                "{src} is a subtype of {dest} but they have different layout",
+                src = src.ty,
+                dest = dest.ty,
+            );
         }
         true
     } else {
