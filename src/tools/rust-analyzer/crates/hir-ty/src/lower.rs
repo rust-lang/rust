@@ -1273,18 +1273,14 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             trait_id.into(),
                             GenericArgs::new_from_slice(&[self_ty.into()]),
                         );
-                        let binder = ctx.peek_bound_vars();
                         Clause(Predicate::new(
                             interner,
-                            Binder::bind_with_vars(
-                                rustc_type_ir::PredicateKind::Clause(
-                                    rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                        trait_ref,
-                                        polarity: rustc_type_ir::PredicatePolarity::Positive,
-                                    }),
-                                ),
-                                binder,
-                            ),
+                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                                    trait_ref,
+                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                }),
+                            )),
                         ))
                     });
                     predicates.extend(sized_clause);
