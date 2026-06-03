@@ -33,11 +33,20 @@ help: escape `unsafe` to use it as an identifier
 LL |     let _a = cfg!(r#unsafe(foo));
    |                   ++
 
-error[E0537]: invalid predicate `r#unsafe`
-  --> $DIR/extraneous-unsafe-attributes.rs:30:19
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/extraneous-unsafe-attributes.rs:30:14
    |
 LL |     let _a = cfg!(unsafe(foo));
-   |                   ^^^^^^^^^^^
+   |              ^^^^^-----------^
+   |                   |
+   |                   valid arguments are `any`, `all`, `not`, `target` or `version`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL -     let _a = cfg!(unsafe(foo));
+LL +     let _a = cfg!(predicate);
+   |
 
 error: `ignore` is not an unsafe attribute
   --> $DIR/extraneous-unsafe-attributes.rs:12:3
@@ -81,4 +90,4 @@ LL | #[unsafe(used)]
 
 error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0537`.
+For more information about this error, try `rustc --explain E0539`.

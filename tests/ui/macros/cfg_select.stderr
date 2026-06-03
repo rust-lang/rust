@@ -37,11 +37,11 @@ error[E0565]: malformed `cfg_select` macro input
 LL |     a::b => {}
    |     ^^^^ expected a valid identifier here
 
-error[E0537]: invalid predicate `a`
+error[E0539]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:190:5
    |
 LL |     a() => {}
-   |     ^^^
+   |     ^^^ valid arguments are `any`, `all`, `not`, `target` or `version`
 
 error: expected one of `(`, `::`, `=>`, or `=`, found `+`
   --> $DIR/cfg_select.rs:195:7
@@ -185,5 +185,5 @@ LL |     cfg!() => {}
 
 error: aborting due to 17 previous errors; 7 warnings emitted
 
-Some errors have detailed explanations: E0537, E0565, E0753.
-For more information about an error, try `rustc --explain E0537`.
+Some errors have detailed explanations: E0539, E0565, E0753.
+For more information about an error, try `rustc --explain E0539`.

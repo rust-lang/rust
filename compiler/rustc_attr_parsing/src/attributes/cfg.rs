@@ -103,10 +103,8 @@ pub fn parse_cfg_entry(
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
-                    return Err(cx.emit_err(session_diagnostics::InvalidPredicate {
-                        span: meta.span(),
-                        predicate: meta.path().to_string(),
-                    }));
+                    let possibilities = &[sym::any, sym::all, sym::not, sym::target, sym::version];
+                    return Err(cx.adcx().expected_specific_argument(meta.span(), possibilities));
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
