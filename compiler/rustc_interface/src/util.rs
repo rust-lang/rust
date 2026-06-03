@@ -249,20 +249,22 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                         tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
                             tls::with(|tcx| {
                                 // Accessing session globals is sound as they outlive `GlobalCtxt`.
-                                // They are needed to hash query keys containing spans or symbols.
-                                let job_map = rustc_span::set_session_globals_then(
+                                // They are needed to hash query keys containing spans or symbols,
+                                // and to print query descriptions while breaking the cycle, so the
+                                // whole cycle search runs inside this scope.
+                                rustc_span::set_session_globals_then(
                                     unsafe { &*(session_globals as *const SessionGlobals) },
                                     || {
                                         // Ensure there were no errors collecting all active jobs.
                                         // We need the complete map to ensure we find a cycle to
                                         // break.
-                                        collect_active_query_jobs(
+                                        let job_map = collect_active_query_jobs(
                                             tcx,
                                             CollectActiveJobsKind::FullNoContention,
-                                        )
+                                        );
+                                        break_query_cycle(tcx, job_map, &registry);
                                     },
                                 );
-                                break_query_cycle(job_map, &registry);
                             })
                         })
                     });

@@ -230,7 +230,11 @@ fn connected_to_root<'tcx>(
 }
 
 /// Processes a found query cycle into a `Cycle`
-fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId)>) -> Cycle<'tcx> {
+fn process_cycle<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    job_map: &QueryJobMap<'tcx>,
+    stack: Vec<(Span, QueryJobId)>,
+) -> Cycle<'tcx> {
     // The stack is a vector of pairs of spans and queries; reverse it so that
     // the earlier entries require later entries
     let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
@@ -277,11 +281,43 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
         })
         .collect::<Vec<EntryPoint>>();
 
-    // Pick an entry point, preferring ones with waiters
+    // The query jobs in the cycle carry no useful span of their own here (it is
+    // `DUMMY_SP`), but the cycle stack records, for each query, its incoming edge:
+    // the span where its predecessor in the cycle requested it.
+    let stack_span = |query: QueryJobId| {
+        stack.iter().find(|(_, q)| *q == query).map_or(DUMMY_SP, |&(span, _)| span)
+    };
+
+    // Pick an entry point with a stable ordering. The parallel deadlock handler
+    // collects active query jobs in a nondeterministic order, so both the order
+    // of `entry_points` and the original `entry_points[0]` fallback were racy,
+    // which made the reported cycle anchor change from run to run.
+    //
+    // Order by incoming-edge span first: for the recursive-definition cycles
+    // these errors come from, the entry point with the latest incoming-edge span
+    // is the query the single-threaded path anchors at, so this keeps the
+    // parallel output matching the committed `.stderr`. Span ties prefer an entry
+    // point with an outside waiter so the "cycle used when ..." note is still
+    // produced, then fall back to the query's stable description.
+    //
+    // This is a heuristic, not a guaranteed total order: two entry points that
+    // share both a span and a description still resolve arbitrarily, and there is
+    // no stable per-job key to order them by since `QueryJobId` is assigned in
+    // racy execution order. The cycles these tests exercise have distinct edge
+    // spans, so the anchor is deterministic in practice.
+    let description = |query: QueryJobId| job_map.tagged_key_of(query).description(tcx);
     let entry_point = entry_points
         .iter()
-        .find(|entry_point| entry_point.query_waiting_on_cycle.is_some())
-        .unwrap_or(&entry_points[0]);
+        .max_by(|a, b| {
+            let (sa, sb) = (stack_span(a.query_in_cycle), stack_span(b.query_in_cycle));
+            (sa.lo(), sa.hi())
+                .cmp(&(sb.lo(), sb.hi()))
+                .then_with(|| {
+                    a.query_waiting_on_cycle.is_some().cmp(&b.query_waiting_on_cycle.is_some())
+                })
+                .then_with(|| description(a.query_in_cycle).cmp(&description(b.query_in_cycle)))
+        })
+        .expect("a query cycle must have at least one entry point");
 
     // Shift the stack so that our entry point is first
     let entry_point_pos = stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
@@ -306,6 +342,7 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
 /// Looks for a query cycle starting at `query`.
 /// Returns a waiter to resume if a cycle is found.
 fn find_and_process_cycle<'tcx>(
+    tcx: TyCtxt<'tcx>,
     job_map: &QueryJobMap<'tcx>,
     query: QueryJobId,
 ) -> Option<Arc<QueryWaiter<'tcx>>> {
@@ -315,7 +352,7 @@ fn find_and_process_cycle<'tcx>(
         find_cycle(job_map, query, DUMMY_SP, &mut stack, &mut visited)
     {
         // Create the cycle error
-        let error = process_cycle(job_map, stack);
+        let error = process_cycle(tcx, job_map, stack);
 
         // We unwrap `resumable` here since there must always be one
         // edge which is resumable / waited using a query latch
@@ -341,12 +378,16 @@ fn find_and_process_cycle<'tcx>(
 /// There may be multiple cycles involved in a deadlock, but this only breaks one at a time so
 /// there will be multiple rounds through the deadlock handler if multiple cycles are present.
 #[allow(rustc::potential_query_instability)]
-pub fn break_query_cycle<'tcx>(job_map: QueryJobMap<'tcx>, registry: &rustc_thread_pool::Registry) {
+pub fn break_query_cycle<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    job_map: QueryJobMap<'tcx>,
+    registry: &rustc_thread_pool::Registry,
+) {
     // Look for a cycle starting at each query job
     let waiter = job_map
         .map
         .keys()
-        .find_map(|query| find_and_process_cycle(&job_map, *query))
+        .find_map(|query| find_and_process_cycle(tcx, &job_map, *query))
         .expect("unable to find a query cycle");
 
     // Mark the thread we're about to wake up as unblocked.
