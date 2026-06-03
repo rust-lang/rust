@@ -70,7 +70,8 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
