@@ -442,6 +442,12 @@ Expr =
 | YeetExpr
 | LetExpr
 | UnderscoreExpr
+| IncludeBytesExpr
+
+// We need a special expression for this because we don't have access to the file,
+// and emitting a specific array will have problems with the length.
+IncludeBytesExpr =
+  'builtin' '#' 'include_bytes'
 
 OffsetOfExpr =
   Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'

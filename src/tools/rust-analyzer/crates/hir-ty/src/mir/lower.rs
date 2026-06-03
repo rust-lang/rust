@@ -1397,6 +1397,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 Ok(Some(current))
             }
             Expr::Underscore => Ok(Some(current)),
+            Expr::IncludeBytes => not_supported!("include_bytes!()"),
         }
     }
 

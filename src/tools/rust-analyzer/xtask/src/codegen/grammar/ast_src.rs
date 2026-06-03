@@ -154,6 +154,7 @@ const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     "deref",
     "pattern_type",
     "is",
+    "include_bytes",
 ];
 
 // keywords that are keywords depending on the edition
