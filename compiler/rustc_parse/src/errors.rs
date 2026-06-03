@@ -4664,3 +4664,33 @@ pub(crate) struct UseRegularStructSuggestion {
     #[suggestion_part(code = "")]
     pub semicolon: Option<Span>,
 }
+#[derive(Diagnostic)]
+#[diag("expected type parameter, found path `{$path}`")]
+pub(crate) struct FoundPathInGenerics {
+    #[primary_span]
+    pub span: Span,
+    pub path: String,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "you might have meant to bind a type parameter to a trait",
+    applicability = "maybe-incorrect",
+    code = "T: "
+)]
+
+pub(crate) struct SuggestBindTypeParameter {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "alternatively, you might have meant to introduce type parameter",
+    applicability = "maybe-incorrect",
+    code = "{parameters}"
+)]
+pub(crate) struct SuggestIntroduceTypeParameter {
+    #[primary_span]
+    pub span: Span,
+    pub parameters: String,
+}

@@ -31,14 +31,16 @@ use crate::errors::{
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
-    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
-    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
-    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
+    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::FnContext;
@@ -3158,5 +3160,45 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+    pub(super) fn maybe_type_in_generic_parameter(&mut self, origin_error: Diag<'a>) -> Diag<'a> {
+        if !self.may_recover() {
+            return origin_error;
+        }
+        self.with_recovery(super::Recovery::Forbidden, |snapshot| {
+            snapshot.bump();
+            let indent = match snapshot.parse_ident() {
+                Ok(t) => t,
+                Err(err) => {
+                    err.cancel();
+                    return origin_error;
+                }
+            };
+            let generics = match snapshot.parse_generics() {
+                Ok(t) => t,
+                Err(err) => {
+                    err.cancel();
+                    return origin_error;
+                }
+            };
+
+            let span = indent.span.to(generics.span);
+            origin_error.cancel();
+            let mut new_error = snapshot.dcx().create_err(FoundPathInGenerics {
+                span,
+                path: snapshot.span_to_snippet(span).unwrap(),
+            });
+
+            new_error.subdiagnostic(SuggestBindTypeParameter { span: indent.span.shrink_to_lo() });
+            let mut string = generics.params.into_iter().fold(String::new(), |mut string, item| {
+                string.push_str(item.ident.as_str());
+                string.push_str(", ");
+                string
+            });
+            string.truncate(string.len() - 2);
+
+            new_error.subdiagnostic(SuggestIntroduceTypeParameter { span, parameters: string });
+            new_error
+        })
     }
 }
