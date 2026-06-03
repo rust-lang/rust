@@ -39,7 +39,6 @@ pub mod ast;
 pub mod fuzz;
 pub mod hacks;
 pub mod syntax_editor;
-pub mod ted;
 pub mod utils;
 
 use std::{marker::PhantomData, ops::Range};
