@@ -9,7 +9,7 @@ fn f(_c: impl Future<Output = ()>) {}
 
 fn main() {
     f((async || {})()); //~ ERROR: expected function, found `()`
-    //~^ ERROR: is not a future
+
     f(async {});
     //~^ ERROR: is not a future
 }

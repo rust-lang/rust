@@ -8,8 +8,8 @@ impl<T> Trait<'_> for T { }
 
 // Fails to recognize that both 'a and 'b are mentioned and should thus be accepted
 async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
-    //~^ ERROR lifetime may not live long enough
     (a, b)
+    //~^ ERROR lifetime may not live long enough
 }
 
 // Only `'a` permitted in return type, not `'b`.
