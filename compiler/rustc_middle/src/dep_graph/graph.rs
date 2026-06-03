@@ -224,7 +224,7 @@ impl DepGraph {
     }
 
     pub fn assert_eval_always(&self) {
-        if self.data.is_some() {
+        if self.data().is_some() {
             read_deps(|deps| {
                 assert_matches!(deps, TaskDepsRef::EvalAlways, "expected eval always context")
             });

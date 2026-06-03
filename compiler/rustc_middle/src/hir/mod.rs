@@ -520,7 +520,7 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
             }),
             MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
             // Can't debug fmt `def_id` since it doesn't exist.
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id.local_def_index),
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
         }
     }
 

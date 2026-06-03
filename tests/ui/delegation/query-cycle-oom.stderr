@@ -90,20 +90,19 @@ LL -         reuse Trait::* { &self.0 }
 LL +         reuse Trait::&self.0 }
    |
 
-error[E0599]: no method named `foo` found for reference `&()` in the current scope
+error[E0277]: the trait bound `(): test_3::Trait` is not satisfied
   --> $DIR/query-cycle-oom.rs:50:22
    |
 LL |         reuse Trait::*;
-   |                      ^ method not found in `&()`
+   |                      ^ the trait `test_3::Trait` is not implemented for `()`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
-           candidate #1: `test_1::Trait`
-           candidate #2: `test_2::Trait`
-           candidate #3: `test_3::Trait`
-           candidate #4: `test_4::Trait`
+help: this trait has no implementations, consider adding one
+  --> $DIR/query-cycle-oom.rs:43:5
+   |
+LL |     trait Trait {
+   |     ^^^^^^^^^^^
 
 error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0046, E0061, E0107, E0121, E0220, E0390, E0433, E0599.
+Some errors have detailed explanations: E0046, E0061, E0107, E0121, E0220, E0277, E0390, E0433.
 For more information about an error, try `rustc --explain E0046`.

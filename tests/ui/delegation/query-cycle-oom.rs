@@ -48,7 +48,7 @@ mod test_3 {
 
     impl () { //~ ERROR: cannot define inherent `impl` for primitive types
         reuse Trait::*;
-        //~^ ERROR: no method named `foo` found for reference `&()` in the current scope
+        //~^ ERROR: the trait bound `(): test_3::Trait` is not satisfied
     }
 }
 

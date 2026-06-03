@@ -67,7 +67,7 @@ fn enter_sandbox<'tcx, C: QueryCache>(query: &'tcx QueryVTable<'tcx, C>) {
 
 fn leave_sandbox<'tcx, C: QueryCache>(query: &'tcx QueryVTable<'tcx, C>) {
     if query.name == "lower_delayed_owner"
-        || query.name == "delayed_owner"
+        || query.name == "hir_delayed_owner"
         || query.name == "def_kind"
     {
         return;
