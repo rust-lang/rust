@@ -197,12 +197,20 @@ mod expressions {
         |x: u8| { };
         || ();
         move || value;
-        || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
+        ||
+            future_from_coroutine(|mut _task_context: ResumeTy|
+                    { { let _t = value; _t } });
+        move ||
+            future_from_coroutine(|mut _task_context: ResumeTy|
+                    { { let _t = value; _t } });
         || value;
         move || value;
-        || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
+        ||
+            future_from_coroutine(|mut _task_context: ResumeTy|
+                    { { let _t = value; _t } });
+        move ||
+            future_from_coroutine(|mut _task_context: ResumeTy|
+                    { { let _t = value; _t } });
         || -> u8 { value };
         1 + (|| { });
     }
@@ -220,12 +228,12 @@ mod expressions {
 
     /// ExprKind::Gen
     fn expr_gen() {
-        |mut _task_context: ResumeTy| { };
-        move |mut _task_context: ResumeTy| { };
-        || { };
-        move || { };
-        |mut _task_context: ResumeTy| { };
-        move |mut _task_context: ResumeTy| { };
+        future_from_coroutine(|mut _task_context: ResumeTy| { });
+        future_from_coroutine(move |mut _task_context: ResumeTy| { });
+        iter_from_coroutine(|| { });
+        iter_from_coroutine(move || { });
+        async_iterator_from_coroutine(|mut _task_context: ResumeTy| { });
+        async_iterator_from_coroutine(move |mut _task_context: ResumeTy| { });
     }
 
     /// ExprKind::Await
@@ -433,8 +441,8 @@ mod items {
         const unsafe extern "C" fn f() { }
         async unsafe extern "C" fn g()
             ->
-                /*impl Trait*/ |mut _task_context: ResumeTy|
-            { { let _t = { }; _t } }
+                /*impl Trait*/ future_from_coroutine(|mut _task_context:
+                    ResumeTy| { { let _t = { }; _t } })
         fn h<'a, T>() where T: 'a { }
         trait TraitItems {
             unsafe extern "C" fn f();
