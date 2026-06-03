@@ -2797,11 +2797,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let ty::Param(_) = *ty.kind() {
-                    let infcx = self.infcx;
-                    *self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
-                } else {
-                    ty.super_fold_with(self)
+                match ty.kind() {
+                    ty::Param(_) => {
+                        let infcx = self.infcx;
+                        *self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
+                    }
+                    // FIXME: why don't we also instantiate const and region params with infer vars
+                    // here?
+                    ty::Alias(alias)
+                        if alias.is_rigid == ty::IsRigid::Yes
+                            && ty.has_type_flags(ty::TypeFlags::HAS_TY_PARAM) =>
+                    {
+                        let alias = alias.fold_with(self);
+                        Ty::new_alias(self.cx(), alias.to_non_rigid())
+                    }
+                    _ => ty.super_fold_with(self),
                 }
             }
         }
