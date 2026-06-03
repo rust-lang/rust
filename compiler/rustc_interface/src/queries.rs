@@ -3,12 +3,11 @@ use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
@@ -51,7 +50,7 @@ impl Linker {
         let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
             match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
+                Ok(compiled_modules) => (*compiled_modules, WorkProductMap::default()),
 
                 Err(ongoing_codegen) => codegen_backend.join_codegen(
                     ongoing_codegen,
