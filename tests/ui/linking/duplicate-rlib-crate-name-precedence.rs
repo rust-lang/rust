@@ -1,6 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18913>.
+
 //@ run-pass
-//@ aux-build:issue-18913-1.rs
-//@ aux-build:issue-18913-2.rs
+//@ aux-build:duplicate-rlib-crate-name-precedence-1.rs
+//@ aux-build:duplicate-rlib-crate-name-precedence-2.rs
 
 extern crate foo;
 

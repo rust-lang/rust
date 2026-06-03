@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18859>.
+
 //@ run-pass
 
 mod foo {
@@ -11,6 +13,6 @@ mod foo {
 }
 
 fn main() {
-    assert_eq!(module_path!(), "issue_18859");
-    assert_eq!(foo::bar::baz::name(), "issue_18859::foo::bar::baz");
+    assert_eq!(module_path!(), "module_path_in_nested_modules");
+    assert_eq!(foo::bar::baz::name(), "module_path_in_nested_modules::foo::bar::baz");
 }
