@@ -839,7 +839,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(
         patchable_function_entry,
-        PatchableFunctionEntry::from_total_and_prefix_nops(10, 5)
+        PatchableFunctionEntry::from_parts(10, 5, None)
             .expect("total must be greater than or equal to prefix")
     );
     tracked!(plt, Some(true));

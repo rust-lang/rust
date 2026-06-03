@@ -289,9 +289,11 @@ fn process_builtin_attrs(
             AttributeKind::RustcOffloadKernel => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::OFFLOAD_KERNEL
             }
-            AttributeKind::PatchableFunctionEntry { prefix, entry } => {
+            AttributeKind::PatchableFunctionEntry { prefix, entry, section } => {
                 codegen_fn_attrs.patchable_function_entry =
-                    Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
+                    Some(PatchableFunctionEntry::from_prefix_entry_and_section(
+                        *prefix, *entry, *section,
+                    ));
             }
             _ => {}
         }

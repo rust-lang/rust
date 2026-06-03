@@ -1199,8 +1199,9 @@ pub enum AttributeKind {
 
     /// Represents `#[patchable_function_entry]`
     PatchableFunctionEntry {
-        prefix: u8,
-        entry: u8,
+        prefix: Option<u8>,
+        entry: Option<u8>,
+        section: Option<Symbol>,
     },
 
     /// Represents `#[path]`

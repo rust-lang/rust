@@ -83,11 +83,25 @@ fn patchable_function_entry_attrs<'ll>(
     attr: Option<PatchableFunctionEntry>,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
-    let patchable_spec = attr.unwrap_or_else(|| {
-        PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry)
-    });
-    let entry = patchable_spec.entry();
-    let prefix = patchable_spec.prefix();
+
+    let mut entry = sess.opts.unstable_opts.patchable_function_entry.entry();
+    let mut prefix = sess.opts.unstable_opts.patchable_function_entry.prefix();
+    let mut section = sess.opts.unstable_opts.patchable_function_entry.section();
+    let section_sym;
+
+    // Apply attribute specified overrides, if any.
+    if let Some(patchable_spec) = attr {
+        if let Some(sym) = patchable_spec.section() {
+            section_sym = sym;
+            section = Some(section_sym.as_str());
+        }
+        // Override the cmdline specified options if any nop count is specified.
+        if patchable_spec.entry().is_some() || patchable_spec.prefix().is_some() {
+            entry = patchable_spec.entry().unwrap_or(0);
+            prefix = patchable_spec.prefix().unwrap_or(0);
+        }
+    }
+
     if entry > 0 {
         attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
@@ -100,6 +114,13 @@ fn patchable_function_entry_attrs<'ll>(
             cx.llcx,
             "patchable-function-prefix",
             &format!("{}", prefix),
+        ));
+    }
+    if let Some(section) = section {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-entry-section",
+            section,
         ));
     }
     attrs

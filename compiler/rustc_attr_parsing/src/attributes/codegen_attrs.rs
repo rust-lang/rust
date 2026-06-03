@@ -729,7 +729,8 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl SingleAttributeParser for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &["prefix_nops = m, entry_nops = n, section = \"section\""]);
     const STABILITY: AttributeStability = unstable!(patchable_function_entry);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -737,6 +738,7 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
 
         let mut prefix = None;
         let mut entry = None;
+        let mut section = None;
 
         if meta_item_list.len() == 0 {
             cx.adcx().expected_at_least_one_argument(meta_item_list.span);
@@ -768,6 +770,22 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
                         continue;
                     }
                     &mut entry
+                }
+                sym::section => {
+                    // Duplicate entries are not allowed
+                    if section.is_some() {
+                        errored = true;
+                        cx.adcx().duplicate_key(ident.span, sym::section);
+                        continue;
+                    }
+                    // Only a string type value is allowed.
+                    let Some(value_str) = value.value_as_str() else {
+                        cx.adcx().expect_string_literal(value);
+                        continue;
+                    };
+                    section = Some(value_str);
+                    // Integer parsing is not needed, process next item.
+                    continue;
                 }
                 _ => {
                     errored = true;
@@ -801,10 +819,7 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
         if errored {
             None
         } else {
-            Some(AttributeKind::PatchableFunctionEntry {
-                prefix: prefix.unwrap_or(0),
-                entry: entry.unwrap_or(0),
-            })
+            Some(AttributeKind::PatchableFunctionEntry { prefix, entry, section })
         }
     }
 }
