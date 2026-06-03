@@ -1235,7 +1235,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match repr {
                 ReprAttr::ReprRust => {
                     if is_explicit_rust {
-                        repeated_repr = true
+                        repeated_repr = true;
                     }
                     is_explicit_rust = true;
                 }
