@@ -28,7 +28,7 @@ use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::{Arch, Os};
+use rustc_target::spec::Arch;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -1356,8 +1356,6 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
         codegen_msvc_try(bx, try_func, data, catch_func)
     } else if wants_wasm_eh(bx.sess()) {
         codegen_wasm_try(bx, try_func, data, catch_func)
-    } else if bx.sess().target.os == Os::Emscripten {
-        codegen_emcc_try(bx, try_func, data, catch_func)
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func)
     }
@@ -1645,87 +1643,6 @@ fn codegen_gnu_try<'ll, 'tcx>(
         let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
-        bx.ret(bx.const_bool(true));
-    });
-
-    // Note that no invoke is used here because by definition this function
-    // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
-    ret
-}
-
-// Variant of codegen_gnu_try used for emscripten where Rust panics are
-// implemented using C++ exceptions. Here we use exceptions of a specific type
-// (`struct rust_panic`) to represent Rust panics.
-fn codegen_emcc_try<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    try_func: &'ll Value,
-    data: &'ll Value,
-    catch_func: &'ll Value,
-) -> &'ll Value {
-    let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
-        // Codegens the shims described above:
-        //
-        //   bx:
-        //      invoke %try_func(%data) normal %normal unwind %catch
-        //
-        //   normal:
-        //      ret 0
-        //
-        //   catch:
-        //      (%ptr, %selector) = landingpad
-        //      %rust_typeid = @llvm.eh.typeid.for(@_ZTI10rust_panic)
-        //      %is_rust_panic = %selector == %rust_typeid
-        //      %catch_data = alloca { i8*, i8 }
-        //      %catch_data[0] = %ptr
-        //      %catch_data[1] = %is_rust_panic
-        //      call %catch_func(%data, %catch_data)
-        //      ret 1
-        let then = bx.append_sibling_block("then");
-        let catch = bx.append_sibling_block("catch");
-
-        let try_func = llvm::get_param(bx.llfn(), 0);
-        let data = llvm::get_param(bx.llfn(), 1);
-        let catch_func = llvm::get_param(bx.llfn(), 2);
-        let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
-
-        bx.switch_to_block(then);
-        bx.ret(bx.const_bool(false));
-
-        // Type indicator for the exception being thrown.
-        //
-        // The first value in this tuple is a pointer to the exception object
-        // being thrown. The second value is a "selector" indicating which of
-        // the landing pad clauses the exception's type had been matched to.
-        bx.switch_to_block(catch);
-        let tydesc = bx.eh_catch_typeinfo();
-        let lpad_ty = bx.type_struct(&[bx.type_ptr(), bx.type_i32()], false);
-        let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 2);
-        bx.add_clause(vals, tydesc);
-        bx.add_clause(vals, bx.const_null(bx.type_ptr()));
-        let ptr = bx.extract_value(vals, 0);
-        let selector = bx.extract_value(vals, 1);
-
-        // Check if the typeid we got is the one for a Rust panic.
-        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[bx.val_ty(tydesc)], &[tydesc]);
-        let is_rust_panic = bx.icmp(IntPredicate::IntEQ, selector, rust_typeid);
-        let is_rust_panic = bx.zext(is_rust_panic, bx.type_bool());
-
-        // We need to pass two values to catch_func (ptr and is_rust_panic), so
-        // create an alloca and pass a pointer to that.
-        let ptr_size = bx.tcx().data_layout.pointer_size();
-        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
-        let i8_align = bx.tcx().data_layout.i8_align;
-        // Required in order for there to be no padding between the fields.
-        assert!(i8_align <= ptr_align);
-        let catch_data = bx.alloca(2 * ptr_size, ptr_align);
-        bx.store(ptr, catch_data, ptr_align);
-        let catch_data_1 = bx.inbounds_ptradd(catch_data, bx.const_usize(ptr_size.bytes()));
-        bx.store(is_rust_panic, catch_data_1, i8_align);
-
-        let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, catch_data], None, None);
         bx.ret(bx.const_bool(true));
     });
 

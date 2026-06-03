@@ -2,11 +2,12 @@
 //!
 //! This crate is an implementation of panics in Rust using "most native" stack
 //! unwinding mechanism of the platform this is being compiled for. This
-//! essentially gets categorized into three buckets currently:
+//! essentially gets categorized into four buckets currently:
 //!
-//! 1. MSVC targets use SEH in the `seh.rs` file.
-//! 2. Emscripten uses C++ exceptions in the `emcc.rs` file.
-//! 3. All other targets use libunwind/libgcc in the `gcc.rs` file.
+//! 1. When running inside miri, MSVC targets use Miri intrinsics in the `miri.rs` file.
+//! 2. MSVC targets use SEH in the `seh.rs` file.
+//! 3. Some targets use an aborting implementation in the `dummy.rs` or `hermit.rs` files.
+//! 4. All other targets use libunwind/libgcc in the `gcc.rs` file.
 //!
 //! More documentation about each implementation can be found in the respective
 //! module.
@@ -14,8 +15,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
-#![cfg_attr(all(target_os = "emscripten", not(emscripten_wasm_eh)), feature(lang_items))]
-#![feature(cfg_emscripten_wasm_eh)]
 #![feature(core_intrinsics)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
@@ -33,10 +32,6 @@ use core::any::Any;
 use core::panic::PanicPayload;
 
 cfg_select! {
-    all(target_os = "emscripten", not(emscripten_wasm_eh)) => {
-        #[path = "emcc.rs"]
-        mod imp;
-    }
     target_os = "hermit" => {
         #[path = "hermit.rs"]
         mod imp;
