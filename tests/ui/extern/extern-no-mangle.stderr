@@ -18,7 +18,7 @@ warning: `#[no_mangle]` attribute cannot be used on foreign functions
 LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
-   = help: `#[no_mangle]` can be applied to functions, methods, and statics
+   = help: `#[no_mangle]` can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[no_mangle]` attribute cannot be used on statements

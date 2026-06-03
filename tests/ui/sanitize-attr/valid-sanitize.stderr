@@ -44,7 +44,7 @@ error: `#[sanitize]` attribute cannot be used on required trait methods
 LL |     #[sanitize(address = "off")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to closures, crates, functions, impl blocks, inherent methods, modules, provided trait methods, statics, and trait methods in impl blocks
+   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
 
 error: `#[sanitize]` attribute cannot be used on required trait methods
   --> $DIR/valid-sanitize.rs:35:5
@@ -52,7 +52,7 @@ error: `#[sanitize]` attribute cannot be used on required trait methods
 LL |     #[sanitize(address = "off")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to closures, crates, functions, impl blocks, inherent methods, modules, provided trait methods, statics, and trait methods in impl blocks
+   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
 
 error: `#[sanitize]` attribute cannot be used on associated types
   --> $DIR/valid-sanitize.rs:43:5
@@ -108,7 +108,7 @@ error: `#[sanitize]` attribute cannot be used on foreign functions
 LL |     #[sanitize(address = "off", thread = "on")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[sanitize]` can be applied to closures, crates, functions, impl blocks, methods, modules, and statics
+   = help: `#[sanitize]` can be applied to crates, functions with a body, impl blocks, modules, and statics
 
 error: `#[sanitize]` attribute cannot be used on statements
   --> $DIR/valid-sanitize.rs:92:5
