@@ -143,7 +143,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                         .opts
                         .unstable_opts
                         .inline_mir_preserve_debug
-                        .unwrap_or(self.tcx.sess.overflow_checks())
+                        .unwrap_or(self.tcx.sess.overflow_checks().is_checked())
                 {
                     INSTR_COST
                 } else {

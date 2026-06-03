@@ -3052,8 +3052,8 @@ pub(crate) mod dep_tracking {
         OutputTypes, PatchableFunctionEntry, Polonius, ResolveDocLinks, SourceFileHashAlgorithm,
         SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
-    use crate::lint;
     use crate::utils::NativeLib;
+    use crate::{CheckOverflow, lint};
 
     pub(crate) trait DepTrackingHash {
         fn hash(
@@ -3154,6 +3154,7 @@ pub(crate) mod dep_tracking {
         InliningThreshold,
         FunctionReturn,
         Align,
+        CheckOverflow,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

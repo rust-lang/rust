@@ -85,7 +85,7 @@ use std::mem;
 
 use interpret::ErrorHandled;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::HirId;
+use rustc_hir::{HirId, LangItem};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
@@ -93,6 +93,7 @@ use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
+use rustc_session::CheckOverflow;
 use rustc_session::lint::Level;
 use rustc_span::{DUMMY_SP, Span, Spanned};
 use tracing::{debug, instrument};
@@ -1778,6 +1779,69 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.diverge_from(block);
 
         success_block
+    }
+
+    pub(crate) fn overflow_check(
+        &mut self,
+        block: BasicBlock,
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        span: Span,
+    ) -> BasicBlock {
+        match self.check_overflow {
+            CheckOverflow::Checked => self.assert(block, cond, expected, msg, span),
+            CheckOverflow::Recoverable => {
+                self.recoverable_overflow_check(block, cond, expected, msg, span)
+            }
+            CheckOverflow::Ignore => unreachable!(),
+        }
+    }
+
+    pub(crate) fn recoverable_overflow_check(
+        &mut self,
+        block: BasicBlock,
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        span: Span,
+    ) -> BasicBlock {
+        assert!(
+            msg.is_optional_overflow_check(),
+            "recoverable_overflow_check should only be called with an overflow-related assertion"
+        );
+
+        let source_info = self.source_info(span);
+
+        let no_overflow_block = self.cfg.start_new_block();
+        let overflow_block = self.cfg.start_new_block();
+
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::if_(cond, overflow_block, no_overflow_block),
+        );
+
+        let recovery_lang_item_def_id = self.tcx.require_lang_item(LangItem::RecoverOverflow, span);
+        let func = Operand::function_handle(self.tcx, recovery_lang_item_def_id, [], span);
+        let destination = self.get_unit_temp();
+
+        self.cfg.terminate(
+            overflow_block,
+            source_info,
+            TerminatorKind::Call {
+                func,
+                args: Box::new([]),
+                destination,
+                // if this function returns, continue as if no overflow happend!
+                target: Some(no_overflow_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: span,
+            },
+        );
+
+        no_overflow_block
     }
 
     /// Unschedules any drops in the top two scopes.

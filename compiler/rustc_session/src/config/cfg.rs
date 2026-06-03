@@ -31,7 +31,7 @@ use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::config::{CrateType, FmtDebug};
-use crate::{Session, errors};
+use crate::{CheckOverflow, Session, errors};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -208,8 +208,17 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
-    if sess.overflow_checks() {
-        ins_none!(sym::overflow_checks);
+    match sess.overflow_checks() {
+        CheckOverflow::Checked => {
+            ins_none!(sym::overflow_checks);
+        }
+        // this treats recoverable also as checked for cfg purposes.
+        // That's mostly backwards compatible, but may be unintuitive if the overflow ends up recovering,
+        // and we expected an unwind based on this cfg.
+        CheckOverflow::Recoverable => {
+            ins_none!(sym::overflow_checks);
+        }
+        CheckOverflow::Ignore => {}
     }
 
     // We insert a cfg for the name of session's panic strategy.

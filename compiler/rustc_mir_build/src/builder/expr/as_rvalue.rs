@@ -99,7 +99,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 // Check for -MIN on signed integers
-                if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
+                if this.check_overflow.is_checked() && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.tcx.types.bool;
 
                     let minval = this.minval_literal(expr_span, expr.ty);
@@ -112,7 +112,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Rvalue::BinaryOp(BinOp::Eq, Box::new((arg.to_copy(), minval))),
                     );
 
-                    block = this.assert(
+                    block = this.overflow_check(
                         block,
                         Operand::Move(is_min),
                         false,
@@ -453,7 +453,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
         let rvalue = match op {
-            BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
+            BinOp::Add | BinOp::Sub | BinOp::Mul
+                if self.check_overflow.is_checked() && ty.is_integral() =>
+            {
                 let result_tup = Ty::new_tup(self.tcx, &[ty, bool_ty]);
                 let result_value = self.temp(result_tup, span);
 
@@ -473,11 +475,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
                 let err = AssertKind::Overflow(op, lhs, rhs);
-                block = self.assert(block, Operand::Move(of), false, err, span);
+                block = self.overflow_check(block, Operand::Move(of), false, err, span);
 
                 Rvalue::Use(Operand::Move(val), WithRetag::Yes)
             }
-            BinOp::Shl | BinOp::Shr if self.check_overflow && ty.is_integral() => {
+            BinOp::Shl | BinOp::Shr if self.check_overflow.is_checked() && ty.is_integral() => {
                 // For an unsigned RHS, the shift is in-range for `rhs < bits`.
                 // For a signed RHS, `IntToInt` cast to the equivalent unsigned
                 // type and do that same comparison.
@@ -523,7 +525,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
 
                 let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
-                block = self.assert(block, Operand::Move(inbounds), true, overflow_err, span);
+                block =
+                    self.overflow_check(block, Operand::Move(inbounds), true, overflow_err, span);
                 Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
             }
             BinOp::Div | BinOp::Rem if ty.is_integral() => {

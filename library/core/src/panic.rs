@@ -199,3 +199,34 @@ pub macro const_assert {
         }
     }}
 }
+
+// HACK: currently it's hard to make foreign items lang items,
+// this lang item is a function instead that serves as a proxy for the foreign item.
+#[lang = "recover_overflow"]
+#[doc(hidden)]
+#[unstable(feature = "recoverable_integer_overflow_internals", issue = "none")]
+pub fn call_recover_overflow_handler() {
+    recoverable_integer_overflow_handler();
+}
+
+/// Called on overflow when `-Coverflow-checks=recoverable` is set.
+///
+/// Panics by default, mirroring `-Coverflow-checks=checked`, but can be overridden not to panic:
+///
+/// ```
+/// #![feature(recoverable_integer_overflow)]
+///
+/// use core::sync::atomic::{AtomicUsize, Ordering};
+///
+/// static COUNT_OVERFLOWS: AtomicUsize = AtomicUsize::new(0);
+///
+/// #[core::panic::integer_overflow_action]
+/// fn count_integer_overflows(_fmt: fmt::Arguments<'_>) {
+///     COUNT_OVERFLOWS.fetch_add(1, Ordering::Relaxed);
+/// }
+/// ```
+#[eii(integer_overflow_action)]
+#[unstable(feature = "recoverable_integer_overflow", issue = "none")]
+fn recoverable_integer_overflow_handler() {
+    crate::panicking::panic_fmt(format_args!("integer overflow"));
+}

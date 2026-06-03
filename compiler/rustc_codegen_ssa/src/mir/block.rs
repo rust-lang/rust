@@ -711,7 +711,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bx.sess().overflow_checks() && msg.is_optional_overflow_check() {
+        if !bx.sess().overflow_checks().is_checked() && msg.is_optional_overflow_check() {
             const_cond = Some(expected);
         }
 

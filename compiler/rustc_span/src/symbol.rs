@@ -1628,6 +1628,7 @@ symbols! {
         reborrow,
         receiver,
         receiver_target,
+        recover_overflow,
         recursion_limit,
         reexport_test_harness_main,
         ref_pat_eat_one_layer_2024,
