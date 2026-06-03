@@ -1,8 +1,7 @@
 use rustc_ast::attr::{AttrIdGenerator, mk_attr_from_item};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
-    AttrItem, AttrItemKind, EarlyParsedAttribute, Expr, Path, Safety, ast, token,
-    tokenstream as tts,
+    AttrItem, AttrItemKind, EarlyParsedAttribute, Expr, Path, Safety, ast, tokenstream as tts,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{CfgSelectBranches, EvalConfigResult, parse_cfg_select};
@@ -68,25 +67,8 @@ macro_rules! forward_to_parser_any_macro {
 fn mk_attr(g: &AttrIdGenerator, cfg_entry: CfgEntry) -> ast::Attribute {
     let cfg_span = cfg_entry.span();
     let args = AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg_entry));
-    let trees = vec![
-        tts::AttrTokenTree::Token(
-            token::Token { kind: token::TokenKind::Pound, span: cfg_span },
-            tts::Spacing::JointHidden,
-        ),
-        tts::AttrTokenTree::Delimited(
-            tts::DelimSpan::dummy(),
-            tts::DelimSpacing::new(tts::Spacing::JointHidden, tts::Spacing::Alone),
-            token::Delimiter::Bracket,
-            tts::AttrTokenStream::new(vec![tts::AttrTokenTree::Token(
-                token::Token {
-                    kind: token::TokenKind::Ident(sym::cfg_trace, token::IdentIsRaw::No),
-                    span: cfg_span,
-                },
-                tts::Spacing::Alone,
-            )]),
-        ),
-    ];
-    let tokens = Some(tts::LazyAttrTokenStream::new_direct(tts::AttrTokenStream::new(trees)));
+    // This makes the trace attributes unobservable to token-based proc macros.
+    let tokens = Some(tts::LazyAttrTokenStream::new_direct(tts::AttrTokenStream::default()));
     let attr_item = AttrItem {
         unsafety: Safety::Default,
         path: Path::from_ident(Ident::new(sym::cfg_trace, cfg_span)),
