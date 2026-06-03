@@ -787,6 +787,42 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.neon.sqdmulh.v2i32"
+        | "llvm.aarch64.neon.sqdmulh.v4i16"
+        | "llvm.aarch64.neon.sqdmulh.v4i32"
+        | "llvm.aarch64.neon.sqdmulh.v8i16" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/SQDMULH--vector---Signed-saturating-doubling-multiply-returning-high-half-
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            // Simplify the "double and shift by esize" into "shift by esize - 1".
+            // https://github.com/qemu/qemu/blob/81cc5f39aa3042e9c0b2ea772b42a2c8b1488e76/target/arm/tcg/mve_helper.c#L1267-L1283
+            let (result_ty, product_ty, shift, max) = match intrinsic {
+                "llvm.aarch64.neon.sqdmulh.v4i16" | "llvm.aarch64.neon.sqdmulh.v8i16" => {
+                    (types::I16, types::I32, 15, i64::from(i16::MAX))
+                }
+                "llvm.aarch64.neon.sqdmulh.v2i32" | "llvm.aarch64.neon.sqdmulh.v4i32" => {
+                    (types::I32, types::I64, 31, i64::from(i32::MAX))
+                }
+                _ => unreachable!(),
+            };
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    let a_lane = fx.bcx.ins().sextend(product_ty, a_lane);
+                    let b_lane = fx.bcx.ins().sextend(product_ty, b_lane);
+                    let product = fx.bcx.ins().imul(a_lane, b_lane);
+                    let product = fx.bcx.ins().sshr_imm(product, shift);
+                    let max = fx.bcx.ins().iconst(product_ty, max);
+                    let result = fx.bcx.ins().smin(product, max);
+                    fx.bcx.ins().ireduce(result_ty, result)
+                },
+            );
+        }
+
         _ => {
             fx.tcx.dcx().warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
