@@ -4380,6 +4380,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "fence"]
+#[doc(alias = "atomic_thread_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
@@ -4463,6 +4464,7 @@ pub fn fence(order: Ordering) {
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 #[rustc_diagnostic_item = "compiler_fence"]
+#[doc(alias = "atomic_signal_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
