@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ compile-flags: --target=bpfel-unknown-none
+//@ compile-flags: --target=bpfel-unknown-none -C opt-level=0
 //@ needs-llvm-components: bpf
 #![crate_type = "lib"]
 #![feature(bpf_target_feature, no_core)]
