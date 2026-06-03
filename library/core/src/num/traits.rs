@@ -1,34 +1,34 @@
 /// Definitions of traits for numeric types
 // Implementation based on `num_conv` by jhpratt, under (MIT OR Apache-2.0).
 
-/// Trait for types that this type can be truncated to
+/// Trait for types that this type can be narrowed to
 #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
-#[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-pub const trait TruncateTarget<Target>: crate::sealed::Sealed {
+#[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
+pub const trait NarrowTarget<Target>: crate::sealed::Sealed {
     #[doc(hidden)]
-    fn internal_truncate(self) -> Target;
+    fn internal_narrow(self) -> Target;
 
     #[doc(hidden)]
-    fn internal_saturating_truncate(self) -> Target;
+    fn internal_saturating_narrow(self) -> Target;
 
     #[doc(hidden)]
-    fn internal_checked_truncate(self) -> Option<Target>;
+    fn internal_checked_narrow(self) -> Option<Target>;
 }
 
 /// Trait for types that this type can be widened to
 #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
-#[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+#[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
 pub const trait WidenTarget<Target>: crate::sealed::Sealed {
     #[doc(hidden)]
     fn internal_widen(self) -> Target;
 }
 
-macro_rules! impl_truncate {
+macro_rules! impl_narrow {
     ($($from:ty => $($to:ty),+;)*) => {$($(
         const _: () = assert!(
             size_of::<$from>() >= size_of::<$to>(),
             concat!(
-                "cannot truncate ",
+                "cannot narrow ",
                 stringify!($from),
                 " to ",
                 stringify!($to),
@@ -40,15 +40,15 @@ macro_rules! impl_truncate {
         );
 
         #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
-        impl const TruncateTarget<$to> for $from {
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
+        impl const NarrowTarget<$to> for $from {
             #[inline]
-            fn internal_truncate(self) -> $to {
+            fn internal_narrow(self) -> $to {
                 self as _
             }
 
             #[inline]
-            fn internal_saturating_truncate(self) -> $to {
+            fn internal_saturating_narrow(self) -> $to {
                 if self > <$to>::MAX as Self {
                     <$to>::MAX
                 } else if self < <$to>::MIN as Self {
@@ -59,7 +59,7 @@ macro_rules! impl_truncate {
             }
 
             #[inline]
-            fn internal_checked_truncate(self) -> Option<$to> {
+            fn internal_checked_narrow(self) -> Option<$to> {
                 if self > <$to>::MAX as Self || self < <$to>::MIN as Self {
                     None
                 } else {
@@ -87,7 +87,7 @@ macro_rules! impl_widen {
         );
 
         #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
         impl const WidenTarget<$to> for $from {
             fn internal_widen(self) -> $to {
                 self as _
@@ -96,7 +96,7 @@ macro_rules! impl_widen {
     )+)*};
 }
 
-impl_truncate! {
+impl_narrow! {
     u8 => u8;
     u16 => u16, u8;
     u32 => u32, u16, u8;

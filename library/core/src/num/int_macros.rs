@@ -3985,69 +3985,69 @@ macro_rules! int_impl {
             }
         }
 
-        /// Truncate an integer to an integer of the same size or smaller, preserving the least
+        /// Narrow an integer to an integer of the same size or smaller, preserving the least
         /// significant bits.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_widen_truncate)]
-        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".truncate());")]
-        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").truncate());")]
-        /// assert_eq!(120i8, 376i32.truncate());
+        /// #![feature(integer_widen_narrow)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".narrow());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").narrow());")]
+        /// assert_eq!(120i8, 376i32.narrow());
         /// ```
-        #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[must_use = "this returns the narrowed value and does not modify the original"]
+        #[unstable(feature = "integer_widen_narrow", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
         #[inline]
-        pub const fn truncate<Target>(self) -> Target
-            where Self: [const] traits::TruncateTarget<Target>
+        pub const fn narrow<Target>(self) -> Target
+            where Self: [const] traits::NarrowTarget<Target>
         {
-            traits::TruncateTarget::internal_truncate(self)
+            traits::NarrowTarget::internal_narrow(self)
         }
 
-        /// Truncate an integer to an integer of the same size or smaller, saturating at numeric bounds
-        /// instead of truncating.
+        /// Narrow an integer to an integer of the same size or smaller, saturating at numeric
+        /// bounds.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_widen_truncate)]
-        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".saturating_truncate());")]
-        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").saturating_truncate());")]
-        /// assert_eq!(127i8, 376i32.saturating_truncate());
-        /// assert_eq!(-128i8, (-1000i32).saturating_truncate());
+        /// #![feature(integer_widen_narrow)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".saturating_narrow());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").saturating_narrow());")]
+        /// assert_eq!(127i8, 376i32.saturating_narrow());
+        /// assert_eq!(-128i8, (-1000i32).saturating_narrow());
         /// ```
-        #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[must_use = "this returns the narrowed value and does not modify the original"]
+        #[unstable(feature = "integer_widen_narrow", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
         #[inline]
-        pub const fn saturating_truncate<Target>(self) -> Target
-            where Self: [const] traits::TruncateTarget<Target>
+        pub const fn saturating_narrow<Target>(self) -> Target
+            where Self: [const] traits::NarrowTarget<Target>
         {
-            traits::TruncateTarget::internal_saturating_truncate(self)
+            traits::NarrowTarget::internal_saturating_narrow(self)
         }
 
-        /// Truncate an integer to an integer of the same size or smaller, returning `None` if the value
+        /// Narrow an integer to an integer of the same size or smaller, returning `None` if the value
         /// is outside the bounds of the smaller type.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_widen_truncate)]
-        #[doc = concat!("assert_eq!(Some(120i8), 120", stringify!($SelfT), ".checked_truncate());")]
-        #[doc = concat!("assert_eq!(Some(-120i8), (-120", stringify!($SelfT), ").checked_truncate());")]
-        /// assert_eq!(None, 376i32.checked_truncate::<i8>());
-        /// assert_eq!(None, (-1000i32).checked_truncate::<i8>());
+        /// #![feature(integer_widen_narrow)]
+        #[doc = concat!("assert_eq!(Some(120i8), 120", stringify!($SelfT), ".checked_narrow());")]
+        #[doc = concat!("assert_eq!(Some(-120i8), (-120", stringify!($SelfT), ").checked_narrow());")]
+        /// assert_eq!(None, 376i32.checked_narrow::<i8>());
+        /// assert_eq!(None, (-1000i32).checked_narrow::<i8>());
         /// ```
-        #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[must_use = "this returns the narrowed value and does not modify the original"]
+        #[unstable(feature = "integer_widen_narrow", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
         #[inline]
-        pub const fn checked_truncate<Target>(self) -> Option<Target>
-            where Self: [const] traits::TruncateTarget<Target>
+        pub const fn checked_narrow<Target>(self) -> Option<Target>
+            where Self: [const] traits::NarrowTarget<Target>
         {
-            traits::TruncateTarget::internal_checked_truncate(self)
+            traits::NarrowTarget::internal_checked_narrow(self)
         }
 
         /// Widen to an integer of the same size or larger, preserving its value.
@@ -4055,13 +4055,13 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_widen_truncate)]
+        /// #![feature(integer_widen_narrow)]
         #[doc = concat!("assert_eq!(120i128, 120i8.widen());")]
         #[doc = concat!("assert_eq!(-120i128, (-120i8).widen());")]
         /// ```
         #[must_use = "this returns the widened value and does not modify the original"]
-        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_narrow", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_narrow", issue = "154330")]
         #[inline]
         pub const fn widen<Target>(self) -> Target
             where Self: [const] traits::WidenTarget<Target>
