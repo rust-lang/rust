@@ -3156,7 +3156,7 @@ define_print! {
     }
 
     ty::AliasTerm<'tcx> {
-        match self.kind(p.tcx()) {
+        match self.kind {
             ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
