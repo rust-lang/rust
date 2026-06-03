@@ -1,7 +1,7 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
-    AstNode, AstToken, SyntaxKind, T, TextRange,
+    AstNode, AstToken, SyntaxKind, T,
     ast::{
         self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
         syntax_factory::SyntaxFactory,
@@ -173,22 +173,15 @@ fn used_params(
     make: &SyntaxFactory,
     ctx: &AssistContext<'_, '_>,
 ) -> Option<ast::GenericParamList> {
-    let item_in_trait_range = |item| match item {
-        ast::AssocItem::Const(_) | ast::AssocItem::MacroCall(_) | ast::AssocItem::TypeAlias(_) => {
-            item.syntax().text_range()
-        }
-        ast::AssocItem::Fn(fn_item) => {
-            let range = fn_item.syntax().text_range();
-            fn_item.body().map_or(range, |body| {
-                TextRange::new(range.start(), body.syntax().text_range().start())
-            })
-        }
-    };
-    let trait_ranges = impl_ast
+    let impl_only_ranges = impl_ast
         .assoc_item_list()
         .into_iter()
         .flat_map(|list| list.assoc_items())
-        .map(item_in_trait_range)
+        .filter_map(|item| match item {
+            ast::AssocItem::Fn(f) => Some(f.body()?.syntax().text_range()),
+            _ => None,
+        })
+        .chain(impl_ast.self_ty().map(|it| it.syntax().text_range()))
         .collect::<Vec<_>>();
     let used_in_impl = |param: &ast::GenericParam| {
         let Some(def) = ctx.sema.to_def(param) else { return true };
@@ -197,7 +190,7 @@ fn used_params(
             .in_scope(&SearchScope::single_file(ctx.file_id()))
             .all()
             .file_ranges()
-            .any(|it| trait_ranges.iter().any(|range| range.contains_range(it.range)))
+            .any(|it| !impl_only_ranges.iter().any(|range| range.contains_range(it.range)))
     };
     let params = impl_ast.generic_param_list()?;
     let mut params = params.generic_params().filter(used_in_impl).peekable();
@@ -476,6 +469,32 @@ trait SpecLen<T, const N: usize> {
 
 impl<T, const N: usize> SpecLen<T, N> for Foo<T, N> {
     fn spec_len(&self, other: [T; N]) -> usize {
+        0
+    }
+}
+            "#,
+        );
+
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> F$0oo<T, N> where T: Copy {
+    fn spec_len(&self) -> usize {
+        0
+    }
+}
+            "#,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+trait SpecLen<T> where T: Copy {
+    fn spec_len(&self) -> usize;
+}
+
+impl<T, const N: usize> SpecLen<T> for Foo<T, N> where T: Copy {
+    fn spec_len(&self) -> usize {
         0
     }
 }
