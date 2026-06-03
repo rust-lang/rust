@@ -224,20 +224,6 @@ jobs:
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
-      # XXX: check SIP status.
-      - name: check SIP status
-        if: runner.os == 'macOS'
-        run: csrutil status
-
-      # XXX: try to see if
-      # <https://github.com/actions/runner-images/issues/13096> hacks do
-      # anything.
-      - name:
-        if: runner.os == 'macOS'
-        run: |
-          sudo launchctl bootout system/com.apple.PerfPowerServices || true
-          sudo launchctl bootout system/com.apple.metadata.mds || true
-
       - name: run the build
         run: |
           set +e
