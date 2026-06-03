@@ -1359,29 +1359,33 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `iter().next()` on a Slice or an Array
+    /// Checks for usage of `iter().next()` or `iter_mut().next()` on a Slice or an Array
     ///
     /// ### Why is this bad?
-    /// These can be shortened into `.get()`
+    /// These can be shortened into `.first()` or `.first_mut()`
     ///
     /// ### Example
     /// ```no_run
     /// # let a = [1, 2, 3];
     /// # let b = vec![1, 2, 3];
+    /// # let mut c = vec![1, 2, 3];
     /// a[2..].iter().next();
     /// b.iter().next();
+    /// c.iter_mut().next();
     /// ```
     /// should be written as:
     /// ```no_run
     /// # let a = [1, 2, 3];
     /// # let b = vec![1, 2, 3];
+    /// # let mut c = vec![1, 2, 3];
     /// a.get(2);
-    /// b.get(0);
+    /// b.first();
+    /// c.first_mut();
     /// ```
     #[clippy::version = "1.46.0"]
     pub ITER_NEXT_SLICE,
     style,
-    "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
+    "using `.iter().next()` or `.iter_mut().next()` on a sliced array, which can be shortened to just `.first()` or `.first_mut()`"
 }
 
 declare_clippy_lint! {
@@ -5588,7 +5592,7 @@ impl Methods {
                                 filter_next::check(cx, expr, recv2, arg, filter_next::Direction::Forward);
                             },
                             (sym::filter_map, [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
-                            (sym::iter, []) => iter_next_slice::check(cx, expr, recv2),
+                            (sym::iter | sym::iter_mut, []) => iter_next_slice::check(cx, expr, recv2, name2),
                             (sym::skip, [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
                             (sym::skip_while, [_]) => skip_while_next::check(cx, expr),
                             (sym::rev, []) => manual_next_back::check(cx, expr, recv, recv2),
