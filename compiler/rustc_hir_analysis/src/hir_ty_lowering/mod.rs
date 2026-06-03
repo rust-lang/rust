@@ -1267,6 +1267,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// associated item, this function eliminates any traits which are a
     /// supertrait of another candidate trait.
     ///
+    /// This is the type-level analogue of
+    /// `rustc_hir_typeck::method::probe::ProbeContext::collapse_candidates_to_subtrait_pick`;
+    /// keep both implementations in sync.
+    ///
     /// This implements RFC #3624.
     fn collapse_candidates_to_subtrait_pick(
         &self,
@@ -1291,8 +1295,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     continue;
                 }
 
-                // This pick is not a supertrait of the `child_pick`.
-                // Check if it's a subtrait of the `child_pick`, instead.
+                // This candidate is not a supertrait of the `child_trait`.
+                // Check if it's a subtrait of the `child_trait`, instead.
                 // If it is, then it must have been a subtrait of every
                 // other pick we've eliminated at this point. It will
                 // take over at this point.
@@ -1305,7 +1309,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     continue;
                 }
 
-                // `child_pick` is not a supertrait of this pick.
+                // Neither `child_trait` or the current candidate are
+                // supertraits of each other.
                 // Don't bail here, since we may be comparing two supertraits
                 // of a common subtrait. These two supertraits won't be related
                 // at all, but we will pick them up next round when we find their
@@ -1318,7 +1323,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 remaining_candidates = next_round;
             } else {
                 // Otherwise, we must have at least two candidates which
-                // are not related to each other at all.;
+                // are not related to each other at all.
                 return None;
             }
         }
@@ -1362,8 +1367,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let Some(bound2) = matching_candidates.next() {
             let all_matching_candidates: Vec<_> =
                 [bound1, bound2].into_iter().chain(matching_candidates).collect();
-            if let Some(bound) =
-                self.collapse_candidates_to_subtrait_pick(&all_matching_candidates)
+            if let Some(bound) = self.collapse_candidates_to_subtrait_pick(&all_matching_candidates)
             {
                 return Ok(bound);
             }
