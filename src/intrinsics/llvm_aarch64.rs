@@ -823,6 +823,56 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.neon.saddlp.v1i64.v2i32"
+        | "llvm.aarch64.neon.saddlp.v2i32.v4i16"
+        | "llvm.aarch64.neon.saddlp.v2i64.v4i32"
+        | "llvm.aarch64.neon.saddlp.v4i16.v8i8"
+        | "llvm.aarch64.neon.saddlp.v4i32.v8i16"
+        | "llvm.aarch64.neon.saddlp.v8i16.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/SADDLP--Signed-add-long-pairwise-
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+            let wide_ty = fx.clif_type(ret_lane_ty).unwrap();
+
+            for lane_idx in 0..ret_lane_count {
+                let base = lane_idx * 2;
+                let a_lane0 = a.value_lane(fx, base).load_scalar(fx);
+                let a_lane1 = a.value_lane(fx, base + 1).load_scalar(fx);
+                let a_lane0 = fx.bcx.ins().sextend(wide_ty, a_lane0);
+                let a_lane1 = fx.bcx.ins().sextend(wide_ty, a_lane1);
+                let sum = fx.bcx.ins().iadd(a_lane0, a_lane1);
+                let res_lane = CValue::by_val(sum, ret_lane_layout);
+                ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.aarch64.neon.uaddlp.v1i64.v2i32"
+        | "llvm.aarch64.neon.uaddlp.v2i32.v4i16"
+        | "llvm.aarch64.neon.uaddlp.v2i64.v4i32"
+        | "llvm.aarch64.neon.uaddlp.v4i16.v8i8"
+        | "llvm.aarch64.neon.uaddlp.v4i32.v8i16"
+        | "llvm.aarch64.neon.uaddlp.v8i16.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/UADDLP--Unsigned-add-long-pairwise-
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+            let wide_ty = fx.clif_type(ret_lane_ty).unwrap();
+
+            for lane_idx in 0..ret_lane_count {
+                let base = lane_idx * 2;
+                let a_lane0 = a.value_lane(fx, base).load_scalar(fx);
+                let a_lane1 = a.value_lane(fx, base + 1).load_scalar(fx);
+                let a_lane0 = fx.bcx.ins().uextend(wide_ty, a_lane0);
+                let a_lane1 = fx.bcx.ins().uextend(wide_ty, a_lane1);
+                let sum = fx.bcx.ins().iadd(a_lane0, a_lane1);
+                let res_lane = CValue::by_val(sum, ret_lane_layout);
+                ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
         _ => {
             fx.tcx.dcx().warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
