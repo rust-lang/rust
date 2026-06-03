@@ -103,7 +103,10 @@ pub(crate) fn unexpected_cfg_name(
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> errors::UnexpectedCfgName {
-    #[allow(rustc::potential_query_instability)]
+    #[allow(
+        rustc::potential_query_instability,
+        reason = "all uses either do not care about order or sort before use"
+    )]
     let possibilities: Vec<Symbol> = sess.check_config.expecteds.keys().copied().collect();
 
     let mut names_possibilities: Vec<_> = if value.is_none() {
@@ -425,7 +428,10 @@ pub(crate) fn unexpected_cfg_value(
 }
 
 fn possible_well_known_names_for_cfg_value(sess: &Session, value: Symbol) -> Vec<Symbol> {
-    #[allow(rustc::potential_query_instability)]
+    #[allow(
+        rustc::potential_query_instability,
+        reason = "the names are sorted before being returned"
+    )]
     let mut names = sess
         .check_config
         .well_known_names

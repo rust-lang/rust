@@ -67,7 +67,10 @@ impl<V: Clone> Clone for StateData<V> {
 impl<V: JoinSemiLattice + Clone> JoinSemiLattice for StateData<V> {
     fn join(&mut self, other: &Self) -> bool {
         let mut changed = false;
-        #[allow(rustc::potential_query_instability)]
+        #[allow(
+            rustc::potential_query_instability,
+            reason = "the lattice join is applied independently for each value index"
+        )]
         for (i, v) in other.map.iter() {
             match self.map.entry(*i) {
                 StdEntry::Vacant(e) => {
@@ -552,7 +555,10 @@ impl<'tcx> Map<'tcx> {
                 *opt_place = None;
             }
         }
-        #[allow(rustc::potential_query_instability)]
+        #[allow(
+            rustc::potential_query_instability,
+            reason = "each projection is retained or removed independently"
+        )]
         self.projections.retain(|_, child| !self.inner_values[*child].is_empty());
     }
 

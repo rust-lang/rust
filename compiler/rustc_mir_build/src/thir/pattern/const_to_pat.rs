@@ -518,7 +518,10 @@ fn extend_type_not_partial_eq<'tcx>(
             "must be annotated with `#[derive(PartialEq)]` to be usable in patterns",
         );
     }
-    #[allow(rustc::potential_query_instability)]
+    #[allow(
+        rustc::potential_query_instability,
+        reason = "the type names are sorted before emitting diagnostics"
+    )]
     let mut manual: Vec<_> = v.manual.into_iter().map(|t| t.to_string()).collect();
     manual.sort();
     for ty in manual {
@@ -526,7 +529,10 @@ fn extend_type_not_partial_eq<'tcx>(
             "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
         ));
     }
-    #[allow(rustc::potential_query_instability)]
+    #[allow(
+        rustc::potential_query_instability,
+        reason = "the type names are sorted before emitting diagnostics"
+    )]
     let mut without: Vec<_> = v.without.into_iter().map(|t| t.to_string()).collect();
     without.sort();
     for ty in without {

@@ -200,7 +200,10 @@ fn parse_rust_feature_list<'a>(
             while let Some(new_feature) = new_features.pop() {
                 if features.insert(new_feature) {
                     if let Some(implied_features) = inverse_implied_features.get(&new_feature) {
-                        #[allow(rustc::potential_query_instability)]
+                        #[allow(
+                            rustc::potential_query_instability,
+                            reason = "traversal order does not change the final set"
+                        )]
                         new_features.extend(implied_features)
                     }
                 }

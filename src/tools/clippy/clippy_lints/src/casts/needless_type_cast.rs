@@ -44,7 +44,10 @@ pub(super) fn check<'a>(cx: &LateContext<'a>, body: &Body<'a>) {
         ControlFlow::<()>::Continue(())
     });
 
-    #[allow(rustc::potential_query_instability)]
+    #[allow(
+        rustc::potential_query_instability,
+        reason = "the bindings are sorted by source span before being checked"
+    )]
     let mut binding_vec: Vec<_> = bindings.into_iter().collect();
     binding_vec.sort_by_key(|(_, info)| info.ty_span.lo());
 

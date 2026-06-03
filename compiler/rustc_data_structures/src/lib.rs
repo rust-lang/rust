@@ -9,7 +9,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
-#![allow(rustc::potential_query_instability)]
+#![allow(rustc::potential_query_instability, reason = "unordered containers are this crate's API")]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]

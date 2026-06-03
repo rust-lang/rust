@@ -290,7 +290,10 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                     .and_modify(|v| match v {
                         ExpectedValues::Some(v) if !values_any_specified =>
                         {
-                            #[allow(rustc::potential_query_instability)]
+                            #[allow(
+                                rustc::potential_query_instability,
+                                reason = "extending this set does not observe insertion order"
+                            )]
                             v.extend(values.clone())
                         }
                         ExpectedValues::Some(_) => *v = ExpectedValues::Any,
