@@ -27,9 +27,9 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
 };
-use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -204,7 +204,7 @@ pub struct ResolverGlobalCtxt {
 }
 
 #[derive(Debug)]
-pub struct PerOwnerResolverData {
+pub struct PerOwnerResolverData<'tcx> {
     pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
     /// Whether lifetime elision was successful.
     pub lifetime_elision_allowed: bool = false,
@@ -214,14 +214,19 @@ pub struct PerOwnerResolverData {
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
 
+    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]> = Default::default(),
+
+    /// Resolution for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
     pub def_id: LocalDefId,
 }
 
-impl PerOwnerResolverData {
-    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
+impl<'tcx> PerOwnerResolverData<'tcx> {
+    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData<'tcx> {
         PerOwnerResolverData { id, def_id, .. }
     }
 
@@ -242,16 +247,12 @@ impl PerOwnerResolverData {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>>,
 
     pub next_node_id: ast::NodeId,
 
-    pub owners: NodeMap<PerOwnerResolverData>,
-
-    pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
+    pub owners: NodeMap<PerOwnerResolverData<'tcx>>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
@@ -1098,7 +1099,7 @@ impl<'tcx> TypingEnv<'tcx> {
         def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
         let def_id = def_id.into_query_key();
-        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis().into())
+        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {

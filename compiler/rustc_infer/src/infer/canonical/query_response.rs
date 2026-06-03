@@ -286,7 +286,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
                     if v_o != v_r {
                         output_query_region_constraints.constraints.push((
-                            ty::RegionEqPredicate(v_o.into(), v_r).into(),
+                            ty::RegionEqPredicate(v_o, v_r).into(),
                             constraint_category,
                             ty::VisibleForLeakCheck::Yes,
                         ));

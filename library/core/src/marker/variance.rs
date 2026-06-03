@@ -30,7 +30,7 @@ macro_rules! phantom_type {
             }
         }
 
-        impl<T> self::sealed::Sealed for $name<T> where T: ?Sized {
+        impl<T> self::private_items::PrivateItems for $name<T> where T: ?Sized {
             const VALUE: Self = Self::new();
         }
         impl<T> Variance for $name<T> where T: ?Sized {}
@@ -114,7 +114,7 @@ macro_rules! phantom_lifetime {
             }
         }
 
-        impl self::sealed::Sealed for $name<'_> {
+        impl self::private_items::PrivateItems for $name<'_> {
             const VALUE: Self = Self::new();
         }
         impl Variance for $name<'_> {}
@@ -233,14 +233,14 @@ phantom_type! {
     pub struct PhantomInvariant<T>(PhantomData<fn(T) -> T>);
 }
 
-mod sealed {
-    pub trait Sealed {
+mod private_items {
+    pub trait PrivateItems {
         const VALUE: Self;
     }
 }
 
 /// A marker trait for phantom variance types.
-pub trait Variance: sealed::Sealed + Default {}
+pub trait Variance: private_items::PrivateItems + Default {}
 
 /// Construct a variance marker; equivalent to [`Default::default`].
 ///

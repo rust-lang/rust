@@ -1364,8 +1364,6 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes> = Default::default(),
-    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
-    import_res_map: NodeMap<PerNS<Option<Res>>> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
     /// Lifetime parameters that lowering will have to introduce.
@@ -1375,7 +1373,6 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
-    trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1490,10 +1487,10 @@ pub struct Resolver<'ra, 'tcx> {
     next_node_id: NodeId = CRATE_NODE_ID,
 
     /// Preserves per owner data once the owner is finished resolving.
-    owners: NodeMap<PerOwnerResolverData>,
+    owners: NodeMap<PerOwnerResolverData<'tcx>>,
 
     /// An entry of `owners` that gets taken out and reinserted whenever an owner is handled.
-    current_owner: PerOwnerResolverData,
+    current_owner: PerOwnerResolverData<'tcx>,
 
     disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
 
@@ -1997,11 +1994,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
-            import_res_map: self.import_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             owners: self.owners,
-            trait_map: self.trait_map,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_infos: self.delegation_infos,
             disambiguators,
@@ -2658,7 +2653,7 @@ fn with_owner<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
 fn with_owner_tables<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
     this: &mut R,
     owner: NodeId,
-    tables: PerOwnerResolverData,
+    tables: PerOwnerResolverData<'tcx>,
     work: impl FnOnce(&mut R) -> T,
 ) -> T {
     debug_assert!(!this.as_mut().owners.contains_key(&owner));

@@ -275,10 +275,13 @@ pub fn normalize_projection_term<'a, 'b, 'tcx>(
             // and a deferred predicate to resolve this when more type
             // information is available.
 
-            selcx
-                .infcx
-                .projection_term_to_infer(param_env, alias_term, cause, depth + 1, obligations)
-                .into()
+            selcx.infcx.projection_term_to_infer(
+                param_env,
+                alias_term,
+                cause,
+                depth + 1,
+                obligations,
+            )
         })
 }
 

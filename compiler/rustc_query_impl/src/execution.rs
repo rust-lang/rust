@@ -14,7 +14,7 @@ use rustc_middle::query::{
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::warn;
+use tracing::debug;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
 use crate::handle_cycle_error;
@@ -100,7 +100,12 @@ fn collect_active_query_jobs_inner<'tcx, C>(
             for shard in query.state.active.try_lock_shards() {
                 match shard {
                     Some(shard) => collect_shard_jobs(&shard),
-                    None => warn!("Failed to collect active jobs for query `{}`!", query.name),
+                    // This collection is best-effort (it is only used to print the query
+                    // stack on panic), so a contended shard is expected and fine to skip.
+                    // Emitting this at `warn!` would leak nondeterministically into the
+                    // panic output under the parallel front-end, where another thread may
+                    // still hold a shard lock, so keep it at `debug!`.
+                    None => debug!("Failed to collect active jobs for query `{}`!", query.name),
                 }
             }
         }

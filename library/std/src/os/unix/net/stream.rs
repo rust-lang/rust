@@ -35,7 +35,6 @@ use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, cvt};
 use crate::time::Duration;
@@ -72,10 +71,6 @@ use crate::time::Duration;
 /// In some cases getting a `SIGPIPE` would trigger process termination.
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(pub(super) Socket);
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for UnixStream {}
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
