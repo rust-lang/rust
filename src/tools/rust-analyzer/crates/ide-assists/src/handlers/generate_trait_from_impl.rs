@@ -1,7 +1,7 @@
 use crate::assist_context::{AssistContext, Assists};
-use ide_db::assists::AssistId;
+use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
-    AstNode, AstToken, SyntaxKind, T,
+    AstNode, AstToken, SyntaxKind, T, TextRange,
     ast::{
         self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
         syntax_factory::SyntaxFactory,
@@ -114,10 +114,11 @@ pub(crate) fn generate_trait_from_impl(
 
             let editor = builder.make_editor(impl_ast.syntax());
             let make = editor.make();
+            let params = used_params(&impl_ast, make, ctx);
             let trait_ast = make.trait_(
                 false,
                 &trait_name(&impl_assoc_items, make).text(),
-                impl_ast.generic_param_list(),
+                params.clone(),
                 impl_ast.where_clause(),
                 trait_items,
             );
@@ -133,7 +134,7 @@ pub(crate) fn generate_trait_from_impl(
                 make.whitespace(" ").into(),
             ];
 
-            if let Some(params) = impl_ast.generic_param_list() {
+            if let Some(params) = params {
                 let gen_args = &params.to_generic_args(make);
                 elements.insert(1, gen_args.syntax().clone().into());
             }
@@ -165,6 +166,42 @@ pub(crate) fn generate_trait_from_impl(
     );
 
     Some(())
+}
+
+fn used_params(
+    impl_ast: &ast::Impl,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<ast::GenericParamList> {
+    let item_in_trait_range = |item| match item {
+        ast::AssocItem::Const(_) | ast::AssocItem::MacroCall(_) | ast::AssocItem::TypeAlias(_) => {
+            item.syntax().text_range()
+        }
+        ast::AssocItem::Fn(fn_item) => {
+            let range = fn_item.syntax().text_range();
+            fn_item.body().map_or(range, |body| {
+                TextRange::new(range.start(), body.syntax().text_range().start())
+            })
+        }
+    };
+    let trait_ranges = impl_ast
+        .assoc_item_list()
+        .into_iter()
+        .flat_map(|list| list.assoc_items())
+        .map(item_in_trait_range)
+        .collect::<Vec<_>>();
+    let used_in_impl = |param: &ast::GenericParam| {
+        let Some(def) = ctx.sema.to_def(param) else { return true };
+        Definition::GenericParam(def)
+            .usages(&ctx.sema)
+            .in_scope(&SearchScope::single_file(ctx.file_id()))
+            .all()
+            .file_ranges()
+            .any(|it| trait_ranges.iter().any(|range| range.contains_range(it.range)))
+    };
+    let params = impl_ast.generic_param_list()?;
+    let mut params = params.generic_params().filter(used_in_impl).peekable();
+    params.peek().is_some().then(|| make.generic_param_list(params))
 }
 
 fn trait_name(items: &ast::AssocItemList, make: &SyntaxFactory) -> ast::Name {
@@ -389,6 +426,61 @@ impl<const N: usize> NewTrait<N> for Foo<N> {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn test_impl_with_generics_only_used_in_trait() {
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> F$0oo<T, N> {
+    fn spec_len(&self) -> usize {
+        N
+    }
+}
+            "#,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+trait SpecLen {
+    fn spec_len(&self) -> usize;
+}
+
+impl<T, const N: usize> SpecLen for Foo<T, N> {
+    fn spec_len(&self) -> usize {
+        N
+    }
+}
+            "#,
+        );
+
+        check_assist_no_snippet_cap(
+            generate_trait_from_impl,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> F$0oo<T, N> {
+    fn spec_len(&self, other: [T; N]) -> usize {
+        0
+    }
+}
+            "#,
+            r#"
+struct Foo<T, const N: usize>([T; N]);
+
+trait SpecLen<T, const N: usize> {
+    fn spec_len(&self, other: [T; N]) -> usize;
+}
+
+impl<T, const N: usize> SpecLen<T, N> for Foo<T, N> {
+    fn spec_len(&self, other: [T; N]) -> usize {
+        0
+    }
+}
+            "#,
+        );
     }
 
     #[test]
