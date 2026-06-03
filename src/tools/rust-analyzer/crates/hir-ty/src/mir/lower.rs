@@ -5,11 +5,11 @@ use std::{fmt::Write, iter, mem};
 use base_db::Crate;
 use hir_def::{
     AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
+    ItemContainerId, LocalFieldId, Lookup, TraitId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ClosureKind, ExprId, ExprOrPatId,
-        LabelId, Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        LabelId, Literal, MatchArm, Pat, PatId, RecordLitField, RecordSpread,
         generics::GenericParams,
     },
     item_tree::FieldsShape,
@@ -19,7 +19,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use itertools::{EitherOrBoth, Itertools};
-use la_arena::ArenaMap;
+use la_arena::{ArenaMap, RawIdx};
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
@@ -43,11 +43,11 @@ use crate::{
     layout::LayoutError,
     method_resolution::CandidateId,
     mir::{
-        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, Either, Expr,
-        FieldId, GenericArgs, Idx, InferenceResult, Local, LocalId, MemoryMap, MirBody, MirSpan,
-        Mutability, Operand, Place, PlaceElem, PointerCast, Projection, ProjectionElem, RawIdx,
-        Rvalue, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, TupleFieldId,
-        Ty, UnOp, VariantId, return_slot,
+        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, Expr,
+        FieldIndex, GenericArgs, Idx, InferenceResult, Local, LocalId, MemoryMap, MirBody, MirSpan,
+        Mutability, Operand, Place, PlaceElem, PointerCast, Projection, ProjectionElem, Rvalue,
+        Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind, Ty, UnOp, VariantId,
+        return_slot,
     },
     next_solver::{
         Const, DbInterner, ParamConst, ParamEnv, Region, StoredGenericArgs, StoredTy, TyKind,
@@ -919,20 +919,15 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         let rvalue = Rvalue::Aggregate(
                             AggregateKind::Adt(variant_id, subst.store()),
                             match spread_place {
-                                Some(sp) => operands
+                                Some(sp) if let VariantId::StructId(_) = variant_id => operands
                                     .into_iter()
                                     .enumerate()
                                     .map(|(i, it)| match it {
                                         Some(it) => it,
                                         None => {
-                                            let p = sp.project(ProjectionElem::Field(
-                                                Either::Left(FieldId {
-                                                    parent: variant_id,
-                                                    local_id: LocalFieldId::from_raw(RawIdx::from(
-                                                        i as u32,
-                                                    )),
-                                                }),
-                                            ));
+                                            let p = sp.project(ProjectionElem::Field(FieldIndex(
+                                                i as u32,
+                                            )));
                                             Operand {
                                                 kind: OperandKind::Copy(p.store()),
                                                 span: None,
@@ -940,6 +935,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                         }
                                     })
                                     .collect(),
+                                Some(_) => {
+                                    return Err(MirLowerError::TypeError(
+                                        "functional record update syntax requires a struct",
+                                    ));
+                                }
                                 None => operands.into_iter().collect::<Option<_>>().ok_or(
                                     MirLowerError::TypeError("missing field in record literal"),
                                 )?,
@@ -948,16 +948,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         self.push_assignment(current, place, rvalue, expr_id.into());
                         Ok(Some(current))
                     }
-                    VariantId::UnionId(union_id) => {
+                    VariantId::UnionId(_union_id) => {
                         let [RecordLitField { name, expr }] = fields.as_ref() else {
                             not_supported!("Union record literal with more than one field");
                         };
                         let local_id =
                             variant_fields.field(name).ok_or(MirLowerError::UnresolvedField)?;
-                        let place = place.project(PlaceElem::Field(Either::Left(FieldId {
-                            parent: union_id.into(),
-                            local_id,
-                        })));
+                        let place = place.project(PlaceElem::Field(local_id.into()));
                         self.lower_expr_to_place(*expr, place, current)
                     }
                 }
@@ -1411,13 +1408,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let index =
                     name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
                         as u32;
-                *place = place.project(ProjectionElem::Field(Either::Right(TupleFieldId {
-                    tuple: TupleId(!0), // dummy as its unused
-                    index,
-                })))
+                *place = place.project(ProjectionElem::Field(FieldIndex(index)))
             } else {
-                let field =
-                    self.infer.field_resolution(expr_id).ok_or(MirLowerError::UnresolvedField)?;
+                let field = self
+                    .infer
+                    .field_resolution(expr_id)
+                    .ok_or(MirLowerError::UnresolvedField)?
+                    .either(|f| f.local_id.into(), |t| FieldIndex(t.index));
                 *place = place.project(ProjectionElem::Field(field));
             }
         } else {
@@ -2087,35 +2084,18 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 }
 
 fn convert_closure_capture_projections(
-    db: &dyn HirDatabase,
+    _db: &dyn HirDatabase,
     place: &HirPlace,
 ) -> impl Iterator<Item = PlaceElem> {
     place.projections.iter().enumerate().map(|(i, proj)| match proj.kind {
         HirProjectionKind::Deref => ProjectionElem::Deref,
-        HirProjectionKind::Field { field_idx, variant_idx } => {
+        HirProjectionKind::Field { field_idx, variant_idx: _ } => {
             let ty = place.ty_before_projection(i);
             match ty.kind() {
-                TyKind::Tuple(_) => {
-                    ProjectionElem::Field(Either::Right(TupleFieldId {
-                        tuple: TupleId(!0), // Dummy as it's unused
-                        index: field_idx,
-                    }))
-                }
-                TyKind::Adt(adt_def, _) => {
+                TyKind::Tuple(_) => ProjectionElem::Field(FieldIndex(field_idx)),
+                TyKind::Adt(_, _) => {
                     let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
-                    let field = match adt_def.def_id() {
-                        AdtId::StructId(id) => {
-                            FieldId { parent: id.into(), local_id: local_field_id }
-                        }
-                        AdtId::UnionId(id) => {
-                            FieldId { parent: id.into(), local_id: local_field_id }
-                        }
-                        AdtId::EnumId(id) => {
-                            let variant = id.enum_variants(db).variants[variant_idx as usize].0;
-                            FieldId { parent: variant.into(), local_id: local_field_id }
-                        }
-                    };
-                    ProjectionElem::Field(Either::Left(field))
+                    ProjectionElem::Field(local_field_id.into())
                 }
                 _ => panic!("unexpected type"),
             }
@@ -2208,7 +2188,7 @@ pub fn mir_body_for_closure_query<'db>(
         if is_by_ref_closure {
             projections.push(ProjectionElem::Deref);
         }
-        projections.push(ProjectionElem::ClosureField(capture_idx));
+        projections.push(ProjectionElem::Field(FieldIndex(capture_idx as u32)));
         let capture_param_place = Place {
             local: closure_local,
             projection: Projection::new_from_slice(&projections).store(),
@@ -2240,7 +2220,6 @@ pub fn mir_body_for_closure_query<'db>(
         let current = ctx.pop_drop_scope_assert_finished(current, root.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());
     }
-
     let mut err = None;
     ctx.result.walk_places(|mir_place| {
         let mir_projections = mir_place.projection.lookup();
