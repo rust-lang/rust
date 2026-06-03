@@ -1,6 +1,3 @@
-// tests/ui/splat/splat-overload-at-home-fail.rs
-
-// ignore-tidy-linelength
 //! Test error cases for `#[splat]` "overloading at home" example code.
 //! Splatted calls that don't match any registered MethodArgs impl should fail.
 #![allow(incomplete_features)]
@@ -41,5 +38,4 @@ fn main() {
     // No impl for (i32,i32) - wrong type
     foo.method(42i32, 42i32);
     //~^ ERROR mismatched types
-
- }
+}
