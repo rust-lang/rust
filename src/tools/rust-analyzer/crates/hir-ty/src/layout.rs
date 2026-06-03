@@ -418,17 +418,15 @@ pub fn layout_of_ty_query(
                                 .iter()
                                 .map(|pat| match pat.kind() {
                                     PatternKind::Range { start, end } => Ok::<_, LayoutError>((
-                                        extract_const_value(start)
-                                            .unwrap()
+                                        extract_const_value(start)?
                                             .try_to_bits(db, trait_env.as_ref())
                                             .ok_or(LayoutError::Unknown)?,
-                                        extract_const_value(end)
-                                            .unwrap()
+                                        extract_const_value(end)?
                                             .try_to_bits(db, trait_env.as_ref())
                                             .ok_or(LayoutError::Unknown)?,
                                     )),
                                     PatternKind::NotNull | PatternKind::Or(_) => {
-                                        unreachable!("mixed or patterns are not allowed")
+                                        Err(LayoutError::Unknown)
                                     }
                                 })
                                 .collect();

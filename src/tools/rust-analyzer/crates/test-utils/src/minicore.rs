@@ -2353,6 +2353,18 @@ pub mod pat {
         }
     }
 
+    impl const RangePattern for i32 {
+        const MIN: i32 = 0x80_00_00_00;
+        const MAX: i32 = 0x7F_FF_FF_FF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
     // region:coerce_unsized
     impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
         crate::ops::CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null)

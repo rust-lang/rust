@@ -535,12 +535,20 @@ fn non_zero_and_non_null() {
     }
     check_size_and_align(
         r#"
-const END: usize = 10;
-struct Goal(core::pattern_type!(usize is 0..=END));
-    "#,
+    const END: usize = 10;
+    struct Goal(core::pattern_type!(usize is 0..=END));
+        "#,
         "//- minicore: pat\n",
         8,
         8,
+    );
+    check_size_and_align(
+        r#"
+pub struct Goal(core::pattern_type!(i32 is ..0 | 1..));
+    "#,
+        "//- minicore: pat\n",
+        4,
+        4,
     );
 }
 
