@@ -1,5 +1,5 @@
 //@ revisions: feature_old gated_old feature_new gated_new
-//@ ignore-parallel-frontend query cycle
+
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [feature_new] compile-flags: -Znext-solver
 //@ [gated_new] compile-flags: -Znext-solver
