@@ -328,7 +328,8 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                 .map(|field_index| {
                     let coroutine_saved_local = coroutine_layout.variant_fields[variant_index]
                         [FieldIdx::from_usize(field_index)];
-                    let field_name_maybe = coroutine_layout.field_names[coroutine_saved_local];
+                    let field_name_maybe =
+                        coroutine_layout.field_tys[coroutine_saved_local].debuginfo_name;
                     let field_name = field_name_maybe
                         .as_ref()
                         .map(|s| Cow::from(s.as_str()))
