@@ -53,7 +53,7 @@ use rustc_target::spec::{
 };
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
@@ -342,11 +342,11 @@ fn link_rlib<'a>(
                     // normal linkers for the platform. Sometimes this is not possible however.
                     // If it is possible however, placing the metadata object first improves
                     // performance of getting metadata from rlibs.
-                    ab.add_file(&metadata);
+                    ab.add_file(&metadata, ArchiveEntryKind::Other);
                     // Place the rmeta-link member immediately after metadata so consumers
                     // can find it without iterating the whole archive.
                     if let Some(file) = &metadata_link_file {
-                        ab.add_file(file);
+                        ab.add_file(file, ArchiveEntryKind::Other);
                     }
                     None
                 }
@@ -359,15 +359,15 @@ fn link_rlib<'a>(
 
     for m in &compiled_modules.modules {
         if let Some(obj) = m.object.as_ref() {
-            ab.add_file(obj);
+            ab.add_file(obj, ArchiveEntryKind::RustObj);
         }
 
         if let Some(obj) = m.global_asm_object.as_ref() {
-            ab.add_file(obj);
+            ab.add_file(obj, ArchiveEntryKind::RustObj);
         }
 
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
-            ab.add_file(dwarf_obj);
+            ab.add_file(dwarf_obj, ArchiveEntryKind::Other);
         }
     }
 
@@ -376,10 +376,10 @@ fn link_rlib<'a>(
         RlibFlavor::StaticlibBase => {
             if let Some(m) = &compiled_modules.allocator_module {
                 if let Some(obj) = &m.object {
-                    ab.add_file(obj);
+                    ab.add_file(obj, ArchiveEntryKind::RustObj);
                 }
                 if let Some(obj) = &m.global_asm_object {
-                    ab.add_file(obj);
+                    ab.add_file(obj, ArchiveEntryKind::RustObj);
                 }
             }
         }
@@ -419,7 +419,7 @@ fn link_rlib<'a>(
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
-            ab.add_archive(&path, None).unwrap_or_else(|error| {
+            ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
         }
@@ -436,7 +436,7 @@ fn link_rlib<'a>(
             tmpdir.as_ref(),
             true,
         ) {
-            ab.add_archive(&output_path, None).unwrap_or_else(|error| {
+            ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx()
                     .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
             });
@@ -469,18 +469,18 @@ fn link_rlib<'a>(
         //
         // Basically, all this means is that this code should not move above the
         // code above.
-        ab.add_file(&trailing_metadata);
+        ab.add_file(&trailing_metadata, ArchiveEntryKind::Other);
         // Place the rmeta-link member immediately after metadata so consumers can
         // find it without iterating the whole archive.
         if let Some(file) = &metadata_link_file {
-            ab.add_file(file);
+            ab.add_file(file, ArchiveEntryKind::Other);
         }
     }
 
     // Add all bundled static native library dependencies.
     // Archives added to the end of .rlib archive, see comment above for the reason.
     for lib in packed_bundled_libs {
-        ab.add_file(&lib)
+        ab.add_file(&lib, ArchiveEntryKind::Other)
     }
 
     ab
@@ -529,16 +529,14 @@ fn link_staticlib(
         let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
         ab.add_archive(
             path,
-            Some(Box::new(move |fname: &str, metadata_link| {
+            AddArchiveKind::Rlib(&|fname: &str, entry_kind| {
                 // Ignore metadata and rmeta-link files.
                 if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
                 }
 
                 // Don't include Rust objects if LTO is enabled.
-                if lto
-                    && metadata_link.is_some_and(|m| m.rust_object_files.iter().any(|f| f == fname))
-                {
+                if lto && entry_kind == ArchiveEntryKind::RustObj {
                     return true;
                 }
 
@@ -548,7 +546,7 @@ fn link_staticlib(
                 }
 
                 false
-            })),
+            }),
         )
         .unwrap();
 
@@ -559,7 +557,7 @@ fn link_staticlib(
         for filename in relevant_libs.iter() {
             let joined = tempdir.as_ref().join(filename.as_str());
             let path = joined.as_path();
-            ab.add_archive(path, None).unwrap();
+            ab.add_archive(path, AddArchiveKind::Other).unwrap();
         }
 
         all_native_libs.extend(crate_info.native_libraries[&cnum].iter().cloned());
@@ -1266,7 +1264,7 @@ fn link_natively(
 
     if should_archive {
         let mut ab = archive_builder_builder.new_archive_builder(sess);
-        ab.add_file(temp_filename);
+        ab.add_file(temp_filename, ArchiveEntryKind::Other);
         ab.build(out_filename);
     }
 }
@@ -3242,19 +3240,19 @@ fn add_static_crate(
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
             cratepath,
-            Some(Box::new(move |f, metadata_link| {
+            AddArchiveKind::Rlib(&|f, entry_kind| {
                 if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
-
-                let is_rust_object =
-                    metadata_link.is_some_and(|m| m.rust_object_files.iter().any(|rf| rf == f));
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                if upstream_rust_objects_already_included && is_rust_object && is_builtins {
+                if upstream_rust_objects_already_included
+                    && entry_kind == ArchiveEntryKind::RustObj
+                    && is_builtins
+                {
                     return true;
                 }
 
@@ -3268,7 +3266,7 @@ fn add_static_crate(
                 }
 
                 false
-            })),
+            }),
         ) {
             sess.dcx()
                 .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
