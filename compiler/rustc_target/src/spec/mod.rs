@@ -992,6 +992,8 @@ crate::target_spec_enum! {
     pub enum RustcAbi {
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
+        /// On PowerPC only: build for SPE.
+        PowerPcSpe = "powerpc-spe",
         /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
         Softfloat = "softfloat", "x86-softfloat",
     }
@@ -3427,13 +3429,15 @@ impl Target {
                     "`llvm_abiname` is unused on PowerPC"
                 );
                 check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on PowerPC");
-                // FIXME: Check that `target_abi` matches the actually configured ABI (with or
-                // without SPE).
                 check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (Some(RustcAbi::PowerPcSpe), CfgAbi::Spe)
+                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid PowerPC Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
                     self.cfg_abi,
-                    CfgAbi::Spe | CfgAbi::Unspecified | CfgAbi::Other(_),
-                    "invalid `target_abi` for PowerPC"
                 );
             }
             Arch::PowerPC64 => {
