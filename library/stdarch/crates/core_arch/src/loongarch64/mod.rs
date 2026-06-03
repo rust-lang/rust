@@ -64,14 +64,14 @@ unsafe extern "unadjusted" {
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crc_w_b_w(a: i8, b: i32) -> i32 {
-    unsafe { __crc_w_b_w(a as i32, b) }
+    unsafe { __crc_w_b_w(a.cast_unsigned() as i32, b) }
 }
 
 /// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crc_w_h_w(a: i16, b: i32) -> i32 {
-    unsafe { __crc_w_h_w(a as i32, b) }
+    unsafe { __crc_w_h_w(a.cast_unsigned() as i32, b) }
 }
 
 /// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
@@ -92,14 +92,14 @@ pub fn crc_w_d_w(a: i64, b: i32) -> i32 {
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crcc_w_b_w(a: i8, b: i32) -> i32 {
-    unsafe { __crcc_w_b_w(a as i32, b) }
+    unsafe { __crcc_w_b_w(a.cast_unsigned() as i32, b) }
 }
 
 /// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crcc_w_h_w(a: i16, b: i32) -> i32 {
-    unsafe { __crcc_w_h_w(a as i32, b) }
+    unsafe { __crcc_w_h_w(a.cast_unsigned() as i32, b) }
 }
 
 /// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
@@ -163,14 +163,14 @@ pub unsafe fn iocsrwr_d(a: i64, b: i32) {
     __iocsrwr_d(a, b)
 }
 
-/// Generates the less-than-or-equal asseration instruction
+/// Generates the less-than-or-equal assertion instruction
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtle(a: i64, b: i64) {
     __asrtle(a, b);
 }
 
-/// Generates the greater-than asseration instruction
+/// Generates the greater-than assertion instruction
 #[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtgt(a: i64, b: i64) {
@@ -193,4 +193,22 @@ pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
 pub unsafe fn ldpte<const IMM8: i64>(a: i64) {
     static_assert_uimm_bits!(IMM8, 8);
     __ldpte(a, IMM8)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crc32() {
+        assert_eq!(crc_w_b_w(-1, -1), 16777215);
+        assert_eq!(crc_w_h_w(-1, -1), 65535);
+        assert_eq!(crc_w_w_w(-1, -1), 0);
+        assert_eq!(crc_w_d_w(-1, -1), 3736805603u32.cast_signed());
+
+        assert_eq!(crcc_w_b_w(-1, -1), 16777215);
+        assert_eq!(crcc_w_h_w(-1, -1), 65535);
+        assert_eq!(crcc_w_w_w(-1, -1), 0);
+        assert_eq!(crcc_w_d_w(-1, -1), 3080238136u32.cast_signed());
+    }
 }
