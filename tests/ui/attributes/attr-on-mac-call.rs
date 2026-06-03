@@ -1,6 +1,7 @@
-//@ check-pass
+//@ check-fail
 // Regression test for https://github.com/rust-lang/rust/issues/145779
 #![warn(unused_attributes)]
+#![feature(sanitize)]
 
 fn main() {
     #[export_name = "x"]
@@ -69,6 +70,8 @@ fn main() {
     #[should_panic]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    #[sanitize(address = "off")]
+    //~^ ERROR attribute cannot be used on macro calls
     unreachable!();
 
     #[repr()]
