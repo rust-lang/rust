@@ -441,7 +441,10 @@ macro_rules! uint_impl {
         pub const fn strict_cast_signed(self) -> $SignedT {
             match self.checked_cast_signed() {
                 Some(n) => n,
-                None => imp::overflow_panic::cast_integer(),
+                None => {
+                    imp::overflow_panic::cast_integer();
+                    <$SignedT>::MAX
+                }
             }
         }
 
@@ -929,7 +932,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_add(rhs);
-            if b { imp::overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add() }
+            a
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -1024,7 +1028,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_add_signed(self, rhs: $SignedT) -> Self {
             let (a, b) = self.overflowing_add_signed(rhs);
-            if b { imp::overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add(); }
+            a
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
@@ -1083,7 +1088,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_sub(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_sub(rhs);
-            if b { imp::overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() };
+            a
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -1208,7 +1214,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_sub_signed(self, rhs: $SignedT) -> Self {
             let (a, b) = self.overflowing_sub_signed(rhs);
-            if b { imp::overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() }
+            a
         }
 
         #[doc = concat!(
@@ -1317,7 +1324,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_mul(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_mul(rhs);
-            if b { imp::overflow_panic::mul() } else { a }
+            if b { imp::overflow_panic::mul() }
+            a
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
@@ -1954,7 +1962,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_neg(self) -> Self {
             let (a, b) = self.overflowing_neg();
-            if b { imp::overflow_panic::neg() } else { a }
+            if b { imp::overflow_panic::neg() }
+            a
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None`
@@ -2010,7 +2019,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shl(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shl(rhs);
-            if b { imp::overflow_panic::shl() } else { a }
+            if b { imp::overflow_panic::shl() }
+            a
         }
 
         /// Unchecked shift left. Computes `self << rhs`, assuming that
@@ -2195,7 +2205,8 @@ macro_rules! uint_impl {
         #[track_caller]
         pub const fn strict_shr(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shr(rhs);
-            if b { imp::overflow_panic::shr() } else { a }
+            if b { imp::overflow_panic::shr() }
+            a
         }
 
         /// Unchecked shift right. Computes `self >> rhs`, assuming that
