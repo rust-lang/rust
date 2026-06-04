@@ -1,6 +1,5 @@
 use crate::ffi::{OsStr, OsString};
 use crate::mem;
-use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys::{AsInner, FromInner, IntoInner};
 
@@ -12,7 +11,7 @@ use crate::sys::{AsInner, FromInner, IntoInner};
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStringExt: Sealed {
+pub impl(self) trait OsStringExt {
     /// Creates an [`OsString`] from a byte vector.
     ///
     /// See the module documentation for an example.
@@ -43,7 +42,7 @@ impl OsStringExt for OsString {
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt: Sealed {
+pub impl(self) trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Creates an [`OsStr`] from a byte slice.
     ///

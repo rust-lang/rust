@@ -9,7 +9,6 @@ use crate::mem::MaybeUninit;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, marker, process, ptr, sys};
 
@@ -153,7 +152,7 @@ impl From<OwnedHandle> for process::ChildStderr {
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "exit_status_from", since = "1.12.0")]
-pub trait ExitStatusExt: Sealed {
+pub impl(self) trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
     /// a process.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
@@ -172,7 +171,7 @@ impl ExitStatusExt for process::ExitStatus {
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
-pub trait CommandExt: Sealed {
+pub impl(self) trait CommandExt {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
     ///
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
@@ -443,7 +442,7 @@ impl CommandExt for process::Command {
 }
 
 #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
-pub trait ChildExt: Sealed {
+pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
     #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
@@ -461,7 +460,7 @@ impl ChildExt for process::Child {
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
-pub trait ExitCodeExt: Sealed {
+pub impl(self) trait ExitCodeExt {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
     ///

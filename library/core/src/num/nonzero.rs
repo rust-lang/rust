@@ -31,30 +31,14 @@ use crate::{fmt, intrinsics, ptr, ub_checks};
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
+pub impl(self) unsafe trait ZeroablePrimitive: Sized + Copy {
     /// A type like `Self` but with a niche that includes zero.
     type NonZeroInner: Sized + Copy;
 }
 
 macro_rules! impl_zeroable_primitive {
     ($($NonZeroInner:ident ( $primitive:ty )),+ $(,)?) => {
-        mod private {
-            #[unstable(
-                feature = "nonzero_internals",
-                reason = "implementation detail which may disappear or be replaced at any time",
-                issue = "none"
-            )]
-            pub trait Sealed {}
-        }
-
         $(
-            #[unstable(
-                feature = "nonzero_internals",
-                reason = "implementation detail which may disappear or be replaced at any time",
-                issue = "none"
-            )]
-            impl private::Sealed for $primitive {}
-
             #[unstable(
                 feature = "nonzero_internals",
                 reason = "implementation detail which may disappear or be replaced at any time",

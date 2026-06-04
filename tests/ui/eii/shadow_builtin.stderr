@@ -13,7 +13,7 @@ LL | #[eii(inline)]
    | ^^^^^^^^^^^^^^
    = help: use `crate::inline` to refer to this attribute macro unambiguously
 
-error: `#[inline]` required, but not found
+error: `#[inline]` function required, but not found
   --> $DIR/shadow_builtin.rs:7:7
    |
 LL | #[eii(inline)]

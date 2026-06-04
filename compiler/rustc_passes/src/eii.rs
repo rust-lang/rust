@@ -141,6 +141,7 @@ pub(crate) fn check_externally_implementable_items<'tcx>(tcx: TyCtxt<'tcx>, (): 
                         decl_crate_name: tcx.crate_name(decl_crate),
                         // FIXME: shouldn't call `item_name`
                         name: decl.name.name,
+                        kind: tcx.def_kind(decl.foreign_item).descr(decl.foreign_item),
                         span: decl.name.span,
                         help: (),
                     });

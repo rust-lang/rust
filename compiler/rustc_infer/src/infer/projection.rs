@@ -23,7 +23,7 @@ impl<'tcx> InferCtxt<'tcx> {
         debug_assert!(!self.next_trait_solver());
 
         let span = self.tcx.def_span(alias_term.def_id());
-        let infer_var = if alias_term.kind(self.tcx).is_type() {
+        let infer_var = if alias_term.kind.is_type() {
             self.next_ty_var(span).into()
         } else {
             self.next_const_var(span).into()

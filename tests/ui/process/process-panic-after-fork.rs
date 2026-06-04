@@ -142,7 +142,7 @@ fn main() {
         let mut status: c_int = 0;
         let got = unsafe { libc::waitpid(child, &mut status, 0) };
         assert_eq!(got, child);
-        let status = ExitStatus::from_raw(status.into());
+        let status = ExitStatus::from_raw(status);
         status
     }
 

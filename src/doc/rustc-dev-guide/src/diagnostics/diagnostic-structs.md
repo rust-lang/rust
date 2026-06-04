@@ -49,7 +49,6 @@ translatable error messages are written and how they are generated.
 
 Every field of the `Diagnostic` which does not have an annotation is
 available in Fluent messages as a variable, like `field_name` in the example above.
-Fields can be annotated `#[skip_arg]` if this is undesired.
 
 Using the `#[primary_span]` attribute on a field (that has type `Span`)
 indicates the primary span of the diagnostic which will have the main message of the diagnostic.
@@ -172,9 +171,6 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
 - `#[primary_span]` (_Optional_)
   - _Applied to `Span` fields on `Subdiagnostic`s.
   - Indicates the primary span of the diagnostic.
-- `#[skip_arg]` (_Optional_)
-  - _Applied to any field._
-  - Prevents the field from being provided as a diagnostic argument.
 
 ## `#[derive(Subdiagnostic)]`
 It is common in the compiler to write a function that conditionally adds a
@@ -225,7 +221,6 @@ A primary span is only necessary for a label or suggestion, which can not be spa
 
 Every field of the type/variant which does not have an annotation is available
 in Fluent messages as a variable.
-Fields can be annotated `#[skip_arg]` if this is undesired.
 
 Like `Diagnostic`, `Subdiagnostic` supports `Option<T>` and `Vec<T>` fields.
 
@@ -348,9 +343,6 @@ to multipart suggestions)
 - `#[applicability]` (_Optional_; only applicable to (simple and multipart) suggestions)
   - _Applied to `Applicability` fields._
   - Indicates the applicability of the suggestion.
-- `#[skip_arg]` (_Optional_)
-  - _Applied to any field._
-  - Prevents the field from being provided as a diagnostic argument.
 
 [defn]: https://github.com/rust-lang/rust/blob/6201eabde85db854c1ebb57624be5ec699246b50/compiler/rustc_hir_analysis/src/errors.rs#L68-L77
 [use]: https://github.com/rust-lang/rust/blob/f1112099eba41abadb6f921df7edba70affe92c5/compiler/rustc_hir_analysis/src/collect.rs#L823-L827

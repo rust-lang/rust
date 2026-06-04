@@ -454,13 +454,42 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Adt(def, args) => {
-                // Only newtypes and enums w/ nullable pointer optimization.
+                // Only newtypes and enums w/ nullable pointer optimization (NPO).
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
                 }
+                // Only default repr types.
+                {
+                    // We can ignore the seed and some particular flags that can never affect the
+                    // layout of newtypes / NPO types, but we have to check everything else.
+                    // If you are adding a new field to `ReprOptions`, make sure to extend the check
+                    // below so that we bail out if it is not at its default value!
+                    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } =
+                        def.repr();
+                    let mut ignored_flags = ReprFlags::IS_TRANSPARENT
+                        | ReprFlags::IS_LINEAR
+                        | ReprFlags::RANDOMIZE_LAYOUT;
+                    if def.is_struct() {
+                        // `repr(C)` is only okay for structs, not for enums.
+                        // Below, the *only* thing we do for structs is propagating
+                        // `SizeSkeleton::Pointer`. We do *not* assume that `repr(C)` preserved
+                        // ZST-ness (which might stop being true eventually).
+                        ignored_flags |= ReprFlags::IS_C;
+                    }
+                    if int.is_some()
+                        || align.is_some()
+                        || pack.is_some()
+                        || flags.difference(ignored_flags) != ReprFlags::default()
+                        || scalable.is_some()
+                    {
+                        return Err(err);
+                    }
+                }
 
                 // Get a zero-sized variant or a pointer newtype.
-                let zero_or_ptr_variant = |i| {
+                // Returns `Ok(None)` for 1-ZST types, `Ok(Some)` if (ignoring all 1-ZST fields)
+                // there's just a single pointer, and `Err` otherwise.
+                let zero_or_ptr_variant = |i| -> Result<Option<SizeSkeleton<'tcx>>, _> {
                     let i = VariantIdx::from_usize(i);
                     let fields = def.variant(i).fields.iter().map(|field| {
                         SizeSkeleton::compute_inner(
@@ -494,7 +523,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 };
 
                 let v0 = zero_or_ptr_variant(0)?;
-                // Newtype.
+                // Single-variant case: Check if this is a newtype around a pointer.
+                // Such types are themselves pointer-sized.
                 if def.variants().len() == 1 {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer { non_zero, tail });
@@ -504,7 +534,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
 
                 let v1 = zero_or_ptr_variant(1)?;
-                // Nullable pointer enum optimization.
+                // 2-variant case: Check if one variant is a *non-zero* pointer and the other a
+                // 1-ZST. Such types are eligible to for the nullable pointer enum optimization, so
+                // they are themselves pointer-sized.
                 match (v0, v1) {
                     (Some(SizeSkeleton::Pointer { non_zero: true, tail }), None)
                     | (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {

@@ -79,6 +79,7 @@ use crate::html::format::{
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
 };
+use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
@@ -941,6 +942,16 @@ fn short_item_info(
     extra_info
 }
 
+// Prints the polarity and path of an impl's trait, if it has one, e.g. `Send`, `!Sync`.
+fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
+    let trait_ = i.inner_impl().trait_.as_ref()?;
+    let prefix = match i.inner_impl().polarity {
+        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Negative => "!",
+    };
+    Some(format!("{prefix}{:#}", print_path(trait_, cx)))
+}
+
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
 fn render_impls(
@@ -950,7 +961,9 @@ fn render_impls(
     containing_item: &clean::Item,
     toggle_open_by_default: bool,
 ) -> fmt::Result {
-    let mut rendered_impls = impls
+    // Render each impl alongside its `impl_trait_key`, which is used as the primary sorting key
+    // to match the impl order in the sidebar.
+    let mut keyed_rendered_impls = impls
         .iter()
         .map(|i| {
             let did = i.trait_did().unwrap();
@@ -971,11 +984,16 @@ fn render_impls(
                     toggle_open_by_default,
                 },
             );
-            imp.to_string()
+            (impl_trait_key(cx, i).unwrap(), imp.to_string())
         })
         .collect::<Vec<_>>();
-    rendered_impls.sort();
-    w.write_str(&rendered_impls.join(""))
+
+    // Sort and then remove the `impl_trait_key`s, which are no longer needed after sorting.
+    keyed_rendered_impls
+        .sort_by(|(k1, h1), (k2, h2)| compare_names(k1, k2).then_with(|| h1.cmp(h2)));
+    let joined: String = keyed_rendered_impls.into_iter().map(|a| a.1).collect();
+
+    w.write_str(&joined)
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.

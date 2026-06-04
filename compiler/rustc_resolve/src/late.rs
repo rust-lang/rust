@@ -5388,7 +5388,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ident.span,
             Some((ident.name, ValueNS)),
         );
-        self.r.trait_map.insert(node_id, traits);
+        self.r.current_owner.trait_map.insert(node_id, traits);
     }
 
     fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {

@@ -4,7 +4,6 @@
 
 use crate::io;
 use crate::os::unix::net;
-use crate::sealed::Sealed;
 use crate::sys::AsInner;
 
 /// illumos-specific functionality for `AF_UNIX` sockets [`UnixDatagram`]
@@ -13,7 +12,7 @@ use crate::sys::AsInner;
 /// [`UnixDatagram`]: net::UnixDatagram
 /// [`UnixStream`]: net::UnixStream
 #[unstable(feature = "unix_socket_exclbind", issue = "123481")]
-pub trait UnixSocketExt: Sealed {
+pub impl(self) trait UnixSocketExt {
     /// Enables exclusive binding on the socket.
     ///
     /// If true and if the socket had been set with `SO_REUSEADDR`,

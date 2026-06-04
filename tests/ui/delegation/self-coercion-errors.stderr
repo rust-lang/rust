@@ -1,32 +1,25 @@
 error[E0277]: the trait bound `fn() -> F {foo}: Trait` is not satisfied
-  --> $DIR/self-coercion-errors.rs:43:49
+  --> $DIR/self-coercion-errors.rs:46:9
    |
-LL |       reuse Trait::{by_value, by_mut_ref, by_ref} {
-   |  ___________________--------______________________^
-   | |                   |
-   | |                   required by a bound introduced by this call
-...  |
-LL | |         foo
-   | |         --- this tail expression is of type `fn() -> F {foo}`
-LL | |     }
-   | |_____^ the trait `Trait` is not implemented for fn item `fn() -> F {foo}`
+LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
+   |                   -------- required by a bound introduced by this call
+...
+LL |         foo
+   |         ^^^ the trait `Trait` is not implemented for fn item `fn() -> F {foo}`
    |
 help: use parentheses to call this function
    |
-LL |     }()
-   |      ++
+LL |         foo()
+   |            ++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:43:49
+  --> $DIR/self-coercion-errors.rs:46:9
    |
-LL |       reuse Trait::{by_value, by_mut_ref, by_ref} {
-   |  _____________________________----------__________^
-   | |                             |
-   | |                             arguments to this function are incorrect
-...  |
-LL | |         foo
-LL | |     }
-   | |_____^ expected `&mut _`, found fn item
+LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
+   |                             ---------- arguments to this function are incorrect
+...
+LL |         foo
+   |         ^^^ expected `&mut _`, found fn item
    |
    = note: expected mutable reference `&mut _`
                         found fn item `fn() -> F {foo}`
@@ -41,16 +34,13 @@ LL |         &mut foo
    |         ++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:43:49
+  --> $DIR/self-coercion-errors.rs:46:9
    |
-LL |       reuse Trait::{by_value, by_mut_ref, by_ref} {
-   |  _________________________________________------__^
-   | |                                         |
-   | |                                         arguments to this function are incorrect
-...  |
-LL | |         foo
-LL | |     }
-   | |_____^ expected `&_`, found fn item
+LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
+   |                                         ------ arguments to this function are incorrect
+...
+LL |         foo
+   |         ^^^ expected `&_`, found fn item
    |
    = note: expected reference `&_`
                 found fn item `fn() -> F {foo}`
@@ -65,7 +55,7 @@ LL |         &foo
    |         +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Box<_>`, found `&mut F`
@@ -86,7 +76,7 @@ LL |     reuse Trait::* { Box::new(&mut self.0) }
    |                      +++++++++           +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Arc<_>`, found `&mut F`
@@ -106,7 +96,7 @@ LL |     reuse Trait::* { (&mut self.0).into() }
    |                      +           ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Rc<_>`, found `&mut F`
@@ -126,7 +116,7 @@ LL |     reuse Trait::* { (&mut self.0).into() }
    |                      +           ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Pin<Box<_>>`, found `&mut F`
@@ -146,7 +136,7 @@ LL |     reuse Trait::* { Box::pin(&mut self.0) }
    |                      +++++++++           +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Pin<Rc<_>>`, found `&mut F`
@@ -162,7 +152,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Pin<Arc<_>>`, found `&mut F`
@@ -178,7 +168,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ expected `Box<Box<_>>`, found `&mut F`
@@ -194,7 +184,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Box<_>`, found `&F`
@@ -215,7 +205,7 @@ LL |     reuse Trait::* { Box::new(&self.0) }
    |                      +++++++++       +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Arc<_>`, found `&F`
@@ -235,7 +225,7 @@ LL |     reuse Trait::* { (&self.0).into() }
    |                      +       ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Rc<_>`, found `&F`
@@ -255,7 +245,7 @@ LL |     reuse Trait::* { (&self.0).into() }
    |                      +       ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Pin<Box<_>>`, found `&F`
@@ -275,7 +265,7 @@ LL |     reuse Trait::* { Box::pin(&self.0) }
    |                      +++++++++       +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Pin<Rc<_>>`, found `&F`
@@ -291,7 +281,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Pin<Arc<_>>`, found `&F`
@@ -307,7 +297,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ expected `Box<Box<_>>`, found `&F`
@@ -323,7 +313,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Box<_>`, found `&&&&F`
@@ -344,7 +334,7 @@ LL |     reuse Trait::* { Box::new(&&&&self.0) }
    |                      +++++++++          +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Arc<_>`, found `&&&&F`
@@ -364,7 +354,7 @@ LL |     reuse Trait::* { (&&&&self.0).into() }
    |                      +          ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Rc<_>`, found `&&&&F`
@@ -384,7 +374,7 @@ LL |     reuse Trait::* { (&&&&self.0).into() }
    |                      +          ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Pin<Box<_>>`, found `&&&&F`
@@ -404,7 +394,7 @@ LL |     reuse Trait::* { Box::pin(&&&&self.0) }
    |                      +++++++++          +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Pin<Rc<_>>`, found `&&&&F`
@@ -420,7 +410,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Pin<Arc<_>>`, found `&&&&F`
@@ -436,7 +426,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ expected `Box<Box<_>>`, found `&&&&F`
@@ -452,7 +442,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Box<_>`, found `&F`
@@ -473,7 +463,7 @@ LL +     reuse Trait::* { self.0 }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Arc<_>`, found `&F`
@@ -493,7 +483,7 @@ LL |     reuse Trait::* { self.0.as_ref().into() }
    |                                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Rc<_>`, found `&F`
@@ -513,7 +503,7 @@ LL |     reuse Trait::* { self.0.as_ref().into() }
    |                                     +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Pin<Box<_>>`, found `&F`
@@ -533,7 +523,7 @@ LL |     reuse Trait::* { Box::pin(self.0.as_ref()) }
    |                      +++++++++               +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Pin<Rc<_>>`, found `&F`
@@ -549,7 +539,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Pin<Arc<_>>`, found `&F`
@@ -565,7 +555,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ expected `Box<Box<_>>`, found `&F`
@@ -581,7 +571,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Box<_>`, found `&mut &mut &mut F`
@@ -602,7 +592,7 @@ LL |     reuse Trait::* { Box::new(&mut &mut &mut self.0) }
    |                      +++++++++                     +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Arc<_>`, found `&mut &mut &mut F`
@@ -622,7 +612,7 @@ LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
    |                      +                     ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Rc<_>`, found `&mut &mut &mut F`
@@ -642,7 +632,7 @@ LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
    |                      +                     ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<_>>`, found `&mut &mut &mut F`
@@ -662,7 +652,7 @@ LL |     reuse Trait::* { Box::pin(&mut &mut &mut self.0) }
    |                      +++++++++                     +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Rc<_>>`, found `&mut &mut &mut F`
@@ -678,7 +668,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Arc<_>>`, found `&mut &mut &mut F`
@@ -694,7 +684,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ expected `Box<Box<_>>`, found `&mut &mut &mut F`
@@ -710,7 +700,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Box<_>`, found `&&mut F`
@@ -731,7 +721,7 @@ LL |     reuse Trait::* { Box::new(&&mut self.0) }
    |                      +++++++++            +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Arc<_>`, found `&&mut F`
@@ -751,7 +741,7 @@ LL |     reuse Trait::* { (&&mut self.0).into() }
    |                      +            ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Rc<_>`, found `&&mut F`
@@ -771,7 +761,7 @@ LL |     reuse Trait::* { (&&mut self.0).into() }
    |                      +            ++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Pin<Box<_>>`, found `&&mut F`
@@ -791,7 +781,7 @@ LL |     reuse Trait::* { Box::pin(&&mut self.0) }
    |                      +++++++++            +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Pin<Rc<_>>`, found `&&mut F`
@@ -807,7 +797,7 @@ LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Pin<Arc<_>>`, found `&&mut F`
@@ -823,7 +813,7 @@ LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ expected `Box<Box<_>>`, found `&&mut F`
@@ -839,7 +829,7 @@ LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Arc<_>`, found `Box<F>`
@@ -860,7 +850,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Rc<_>`, found `Box<F>`
@@ -881,7 +871,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Box<_>>`, found `Box<F>`
@@ -902,7 +892,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Rc<_>>`, found `Box<F>`
@@ -923,7 +913,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Arc<_>>`, found `Box<F>`
@@ -944,7 +934,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:178:22
+  --> $DIR/self-coercion-errors.rs:179:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Box<F>`
@@ -959,7 +949,7 @@ note: there is a field `0` on `Box<Box<X6>>` with type `std::ptr::Unique<Box<X6>
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:175:8
+  ::: $DIR/self-coercion-errors.rs:176:8
    |
 LL | struct X6(Box<F>);
    |        -- ------ this is the field that was accessed
@@ -979,7 +969,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Arc<_>`, found `Box<Arc<Box<F>>>`
@@ -999,7 +989,7 @@ LL |     reuse Trait::* { *self.0 }
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Rc<_>`, found `Box<Arc<Box<F>>>`
@@ -1020,7 +1010,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Box<_>>`, found `Box<Arc<Box<F>>>`
@@ -1041,7 +1031,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Rc<_>>`, found `Box<Arc<Box<F>>>`
@@ -1062,7 +1052,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Arc<_>>`, found `Box<Arc<Box<F>>>`
@@ -1083,7 +1073,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Box<Arc<Box<F>>>`
@@ -1098,7 +1088,7 @@ note: there is a field `0` on `Box<Box<X7>>` with type `std::ptr::Unique<Box<X7>
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:187:8
+  ::: $DIR/self-coercion-errors.rs:188:8
    |
 LL | struct X7(Box<Arc<Box<F>>>);
    |        -- ---------------- this is the field that was accessed
@@ -1118,7 +1108,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<_>`, found `Pin<Box<F>>`
@@ -1133,7 +1123,7 @@ note: there is a field `0` on `Box<X8>` with type `std::ptr::Unique<X8>` but it 
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:202:8
+  ::: $DIR/self-coercion-errors.rs:203:8
    |
 LL | struct X8(Pin<Box<F>>);
    |        -- ----------- this is the field that was accessed
@@ -1153,7 +1143,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Arc<_>`, found `Pin<Box<F>>`
@@ -1174,7 +1164,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Rc<_>`, found `Pin<Box<F>>`
@@ -1195,7 +1185,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Rc<_>>`, found `Pin<Box<F>>`
@@ -1216,7 +1206,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Arc<_>>`, found `Pin<Box<F>>`
@@ -1237,7 +1227,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Pin<Box<F>>`
@@ -1252,7 +1242,7 @@ note: there is a field `0` on `Box<Box<X8>>` with type `std::ptr::Unique<Box<X8>
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:202:8
+  ::: $DIR/self-coercion-errors.rs:203:8
    |
 LL | struct X8(Pin<Box<F>>);
    |        -- ----------- this is the field that was accessed
@@ -1272,7 +1262,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0277]: the trait bound `OtherStruct: Trait` is not satisfied
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ unsatisfied trait bound
@@ -1280,7 +1270,7 @@ LL |     reuse Trait::* { self.0 }
    |                  required by a bound introduced by this call
    |
 help: the trait `Trait` is not implemented for `OtherStruct`
-  --> $DIR/self-coercion-errors.rs:217:1
+  --> $DIR/self-coercion-errors.rs:218:1
    |
 LL | struct OtherStruct;
    | ^^^^^^^^^^^^^^^^^^
@@ -1291,7 +1281,7 @@ LL | impl Trait for F {}
    | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `&mut _`, found `OtherStruct`
@@ -1311,7 +1301,7 @@ LL |     reuse Trait::* { &mut self.0 }
    |                      ++++
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `&_`, found `OtherStruct`
@@ -1331,7 +1321,7 @@ LL |     reuse Trait::* { &self.0 }
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<_>`, found `OtherStruct`
@@ -1346,7 +1336,7 @@ note: there is a field `0` on `Box<X9>` with type `std::ptr::Unique<X9>` but it 
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:218:8
+  ::: $DIR/self-coercion-errors.rs:219:8
    |
 LL | struct X9(OtherStruct);
    |        -- ----------- this is the field that was accessed
@@ -1366,7 +1356,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Arc<_>`, found `OtherStruct`
@@ -1387,7 +1377,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Rc<_>`, found `OtherStruct`
@@ -1408,7 +1398,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Box<_>>`, found `OtherStruct`
@@ -1429,7 +1419,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Rc<_>>`, found `OtherStruct`
@@ -1450,7 +1440,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Pin<Arc<_>>`, found `OtherStruct`
@@ -1471,7 +1461,7 @@ LL +     reuse Trait::* { self }
    |
 
 error[E0308]: mismatched types
-  --> $DIR/self-coercion-errors.rs:221:22
+  --> $DIR/self-coercion-errors.rs:222:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `OtherStruct`
@@ -1486,7 +1476,7 @@ note: there is a field `0` on `Box<Box<X9>>` with type `std::ptr::Unique<Box<X9>
    |
    = note: if this field wasn't private, it would be accessible
    |
-  ::: $DIR/self-coercion-errors.rs:218:8
+  ::: $DIR/self-coercion-errors.rs:219:8
    |
 LL | struct X9(OtherStruct);
    |        -- ----------- this is the field that was accessed
@@ -1505,8 +1495,19 @@ LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
 
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/self-coercion-errors.rs:61:9
+   |
+LL |         x
+   |         ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         let mut x = foo();
+   |             +++
+
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/self-coercion-errors.rs:73:9
+  --> $DIR/self-coercion-errors.rs:74:9
    |
 LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
    |                   -------- value moved due to this method call
@@ -1529,7 +1530,7 @@ LL |         &mut x
    |         ------ you could clone this value
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:73:9
+  --> $DIR/self-coercion-errors.rs:74:9
    |
 LL |         &mut x
    |         ^^^^^^ cannot borrow as mutable
@@ -1540,7 +1541,7 @@ LL |         let mut x = foo();
    |             +++
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:73:9
+  --> $DIR/self-coercion-errors.rs:74:9
    |
 LL |         &mut x
    |         ^^^^^^ cannot borrow as mutable
@@ -1552,7 +1553,7 @@ LL |         let mut x = foo();
    |             +++
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:73:9
+  --> $DIR/self-coercion-errors.rs:74:9
    |
 LL |         &mut x
    |         ^^^^^^ cannot borrow as mutable
@@ -1564,7 +1565,7 @@ LL |         let mut x = foo();
    |             +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                  -   ^^^^^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1586,7 +1587,7 @@ LL |     reuse Trait::* { &mut self.0 }
    |                      ----------- you could clone this value
 
 error[E0596]: cannot borrow `self.0` as mutable, as `self` is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                      ^^^^^^^^^^^ cannot borrow as mutable
@@ -1597,7 +1598,7 @@ LL |     reuse Trait::mut * { &mut self.0 }
    |                  +++
 
 error[E0596]: cannot borrow `self.0` as mutable, as it is behind a `&` reference
-  --> $DIR/self-coercion-errors.rs:84:22
+  --> $DIR/self-coercion-errors.rs:85:22
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                      ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
@@ -1609,7 +1610,7 @@ LL +     reuse Trait::&mut self { &mut self.0 }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                  -   ^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1631,13 +1632,13 @@ LL |     reuse Trait::* { &self.0 }
    |                      ------- you could clone this value
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/self-coercion-errors.rs:100:22
+  --> $DIR/self-coercion-errors.rs:101:22
    |
 LL |     reuse Trait::* { &self.0 }
    |                      ^^^^^^^ cannot borrow as mutable
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                  -   ^^^^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1659,13 +1660,13 @@ LL |     reuse Trait::* { &&&&self.0 }
    |                      ---------- you could clone this value
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/self-coercion-errors.rs:115:22
+  --> $DIR/self-coercion-errors.rs:116:22
    |
 LL |     reuse Trait::* { &&&&self.0 }
    |                      ^^^^^^^^^^ cannot borrow as mutable
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                  -   ^^^^^^^^^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1687,13 +1688,13 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |                      --------------- you could clone this value
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/self-coercion-errors.rs:130:22
+  --> $DIR/self-coercion-errors.rs:131:22
    |
 LL |     reuse Trait::* { self.0.as_ref() }
    |                      ^^^^^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/self-coercion-errors.rs:145:22
+  --> $DIR/self-coercion-errors.rs:146:22
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  -   ^^^^^^^^^^^^^^^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1715,7 +1716,7 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                      --------------------- you could clone this value
 
 error[E0596]: cannot borrow `self.0` as mutable, as `self` is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:145:32
+  --> $DIR/self-coercion-errors.rs:146:32
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                                ^^^^^^^^^^^ cannot borrow as mutable
@@ -1726,7 +1727,7 @@ LL |     reuse Trait::mut * { &mut &mut &mut self.0 }
    |                  +++
 
 error[E0596]: cannot borrow `self.0` as mutable, as it is behind a `&` reference
-  --> $DIR/self-coercion-errors.rs:145:32
+  --> $DIR/self-coercion-errors.rs:146:32
    |
 LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                                ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
@@ -1738,7 +1739,7 @@ LL +     reuse Trait::&mut self { &mut &mut &mut self.0 }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                  -   ^^^^^^^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1760,7 +1761,7 @@ LL |     reuse Trait::* { &&mut self.0 }
    |                      ------------ you could clone this value
 
 error[E0596]: cannot borrow `self.0` as mutable, as `self` is not declared as mutable
-  --> $DIR/self-coercion-errors.rs:161:23
+  --> $DIR/self-coercion-errors.rs:162:23
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                       ^^^^^^^^^^^ cannot borrow as mutable
@@ -1771,13 +1772,13 @@ LL |     reuse Trait::mut * { &&mut self.0 }
    |                  +++
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/self-coercion-errors.rs:161:22
+  --> $DIR/self-coercion-errors.rs:162:22
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                      ^^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self.0` as mutable, as it is behind a `&` reference
-  --> $DIR/self-coercion-errors.rs:161:23
+  --> $DIR/self-coercion-errors.rs:162:23
    |
 LL |     reuse Trait::* { &&mut self.0 }
    |                       ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
@@ -1789,7 +1790,7 @@ LL +     reuse Trait::&mut self { &&mut self.0 }
    |
 
 error[E0507]: cannot move out of an `Arc`
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1811,7 +1812,7 @@ LL |     reuse Trait::* { self.0 }
    |                      ------ you could clone this value
 
 error[E0596]: cannot borrow data in an `Arc` as mutable
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                      ^^^^^^ cannot borrow as mutable
@@ -1819,7 +1820,7 @@ LL |     reuse Trait::* { self.0 }
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Arc<Box<F>>`
 
 error[E0507]: cannot move out of an `Arc`
-  --> $DIR/self-coercion-errors.rs:190:22
+  --> $DIR/self-coercion-errors.rs:191:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ move occurs because value has type `Box<F>`, which does not implement the `Copy` trait
@@ -1850,7 +1851,7 @@ LL | struct F;
    |
 
 error[E0507]: cannot move out of dereference of `Pin<Box<F>>`
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ move occurs because value has type `F`, which does not implement the `Copy` trait
@@ -1872,7 +1873,7 @@ LL |     reuse Trait::* { self.0 }
    |                      ------ you could clone this value
 
 error[E0596]: cannot borrow data in dereference of `Pin<Box<F>>` as mutable
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                      ^^^^^^ cannot borrow as mutable
@@ -1880,7 +1881,7 @@ LL |     reuse Trait::* { self.0 }
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `Pin<Box<F>>`
 
 error[E0507]: cannot move out of dereference of `Pin<Box<X8>>`
-  --> $DIR/self-coercion-errors.rs:205:22
+  --> $DIR/self-coercion-errors.rs:206:22
    |
 LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ move occurs because value has type `Pin<Box<F>>`, which does not implement the `Copy` trait
@@ -1910,7 +1911,7 @@ LL + #[derive(Clone)]
 LL | struct F;
    |
 
-error: aborting due to 99 previous errors
+error: aborting due to 100 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0507, E0596.
 For more information about an error, try `rustc --explain E0277`.

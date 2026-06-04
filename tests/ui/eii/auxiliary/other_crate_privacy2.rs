@@ -14,8 +14,10 @@ mod private {
     pub fn decl3(x: u64);
 }
 
-pub use private::eii3 as eii4;
-pub use private::decl3 as decl4;
+pub use private::{decl3 as decl4, eii3 as eii4};
+
+#[eii(eii5)]
+static FOO: u8;
 
 pub fn local_call_decl1(x: u64) {
     decl1(x)

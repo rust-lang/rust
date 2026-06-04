@@ -328,7 +328,12 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                             })
                         }
                     }
-                    _ => unreachable!(),
+                    _ => Err(UnresolvedPath {
+                        item_id,
+                        module_id,
+                        partial_res: Some(Res::Def(DefKind::TyAlias, did)),
+                        unresolved: variant_name.to_string().into(),
+                    }),
                 }
             }
             _ => Err(UnresolvedPath {

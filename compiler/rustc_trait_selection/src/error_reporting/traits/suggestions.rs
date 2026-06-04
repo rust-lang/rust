@@ -4876,7 +4876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         expected: where_pred
                             .skip_binder()
                             .projection_term
-                            .expect_ty(self.tcx)
+                            .expect_ty()
                             .to_ty(self.tcx),
                         found,
                     })];

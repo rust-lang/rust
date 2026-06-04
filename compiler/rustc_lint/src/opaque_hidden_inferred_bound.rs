@@ -232,6 +232,5 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 struct AddBound<'tcx> {
     #[primary_span]
     suggest_span: Span,
-    #[skip_arg]
     trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
 }
