@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18959>.
+
 pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
 pub trait Bar: Foo { }
 impl<T: Foo> Bar for T { }

@@ -1,3 +1,5 @@
+//! Auxiliary crate for <https://github.com/rust-lang/rust/issues/18501>.
+
 #![crate_type = "rlib"]
 struct Foo;
 
