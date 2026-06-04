@@ -348,71 +348,95 @@ fn module_codegen(
 ) -> OngoingModuleCodegen {
     let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-    let (mut debug_context, codegened_functions, mut global_asm) =
+    let (debug_context, codegened_functions, global_asm) =
         codegen_cgu_content(tcx, &mut module, cgu_name);
 
     let cgu_name = cgu_name.as_str().to_owned();
 
-    let producer = crate::debuginfo::producer(tcx.sess);
-
-    let profiler = tcx.prof.clone();
+    let prof = tcx.prof.clone();
     let output_filenames = tcx.output_filenames(()).clone();
-    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
+    let producer = crate::debuginfo::producer(tcx.sess);
     let global_asm_config = GlobalAsmConfig::new(tcx.sess);
+    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
-        profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
-            cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-                profiler.clone(),
-            )));
-
-            let mut cached_context = Context::new();
-            for codegened_func in codegened_functions {
-                crate::base::compile_fn(
-                    &profiler,
-                    &output_filenames,
-                    should_write_ir,
-                    &mut cached_context,
-                    &mut module,
-                    debug_context.as_mut(),
-                    &mut global_asm,
-                    codegened_func,
-                );
-            }
-        });
-
-        let global_asm_object_file =
-            profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
-                if global_asm.is_empty() {
-                    return Ok::<_, String>(None);
-                }
-
-                let global_asm_object_file =
-                    output_filenames.temp_path_ext_for_cgu("asm.o", &*cgu_name);
-                crate::global_asm::compile_global_asm(
-                    &global_asm_config,
-                    global_asm,
-                    &global_asm_object_file,
-                )?;
-
-                Ok(Some(global_asm_object_file))
-            })?;
-
-        let codegen_result =
-            profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
-                emit_cgu(
-                    &output_filenames,
-                    &profiler,
-                    cgu_name,
-                    module,
-                    debug_context,
-                    global_asm_object_file,
-                    &producer,
-                )
-            });
-        std::mem::drop(token);
+        let codegen_result = compile_cgu(
+            &prof,
+            &output_filenames,
+            producer,
+            global_asm_config,
+            should_write_ir,
+            module,
+            debug_context,
+            codegened_functions,
+            global_asm,
+            cgu_name,
+        );
+        drop(token);
         codegen_result
     }))
+}
+
+fn compile_cgu(
+    prof: &SelfProfilerRef,
+    output_filenames: &OutputFilenames,
+    producer: String,
+    global_asm_config: GlobalAsmConfig,
+    should_write_ir: bool,
+    mut module: UnwindModule<ObjectModule>,
+    mut debug_context: Option<DebugContext>,
+    codegened_functions: Vec<CodegenedFunction>,
+    mut global_asm: String,
+    cgu_name: String,
+) -> Result<ModuleCodegenResult, String> {
+    prof.generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
+        cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
+            prof.clone(),
+        )));
+
+        let mut cached_context = Context::new();
+        for codegened_func in codegened_functions {
+            crate::base::compile_fn(
+                &prof,
+                &output_filenames,
+                should_write_ir,
+                &mut cached_context,
+                &mut module,
+                debug_context.as_mut(),
+                &mut global_asm,
+                codegened_func,
+            );
+        }
+    });
+
+    let global_asm_object_file =
+        prof.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
+            if global_asm.is_empty() {
+                return Ok::<_, String>(None);
+            }
+
+            let global_asm_object_file =
+                output_filenames.temp_path_ext_for_cgu("asm.o", &*cgu_name);
+            crate::global_asm::compile_global_asm(
+                &global_asm_config,
+                global_asm,
+                &global_asm_object_file,
+            )?;
+
+            Ok(Some(global_asm_object_file))
+        })?;
+
+    prof.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
+        emit_cgu(
+            &output_filenames,
+            &prof,
+            cgu_name,
+            module,
+            debug_context,
+            global_asm_object_file,
+            &producer,
+        )
+    })
 }
 
 fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
