@@ -4,7 +4,6 @@
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
@@ -344,7 +343,6 @@ fn codegen_cgu_content(
 
 fn module_codegen(
     tcx: TyCtxt<'_>,
-    global_asm_config: Arc<GlobalAsmConfig>,
     cgu_name: rustc_span::Symbol,
     token: ConcurrencyLimiterToken,
 ) -> OngoingModuleCodegen {
@@ -360,6 +358,7 @@ fn module_codegen(
     let profiler = tcx.prof.clone();
     let output_filenames = tcx.output_filenames(()).clone();
     let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
+    let global_asm_config = GlobalAsmConfig::new(tcx.sess);
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
@@ -461,8 +460,6 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
         }
     });
 
-    let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx.sess));
-
     let (todo_cgus, done_cgus) =
         cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
             _ if tcx.sess.opts.unstable_opts.disable_incr_comp_backend_caching => true,
@@ -479,14 +476,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
                 let (module, _) = tcx.dep_graph.with_task(
                     dep_node,
                     tcx,
-                    || {
-                        module_codegen(
-                            tcx,
-                            global_asm_config.clone(),
-                            cgu.name(),
-                            concurrency_limiter.acquire(tcx.dcx()),
-                        )
-                    },
+                    || module_codegen(tcx, cgu.name(), concurrency_limiter.acquire(tcx.dcx())),
                     Some(rustc_middle::dep_graph::hash_result),
                 );
                 IntoDynSyncSend(module)
