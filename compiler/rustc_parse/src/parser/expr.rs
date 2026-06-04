@@ -29,7 +29,7 @@ use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
-use super::diagnostics::{ConsumeClosingDelim, SnapshotParser};
+use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
@@ -1286,10 +1286,29 @@ impl<'a> Parser<'a> {
                 let guar = err.emit();
                 // Preserve the call expression so later passes can still diagnose the callee,
                 // while treating the malformed `&raw <expr>` argument as an error expression.
-                self.consume_block(exp!(OpenParen), exp!(CloseParen), ConsumeClosingDelim::Yes);
-                let err_arg = self.mk_expr_err(err_span, guar);
-                return self
-                    .mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, thin_vec![err_arg]));
+                let mut args = thin_vec![self.mk_expr_err(err_span, guar)];
+                let mut depth = 0usize;
+                loop {
+                    if self.token == token::Eof {
+                        break;
+                    } else if depth == 0 && self.check(exp!(CloseParen)) {
+                        self.bump();
+                        break;
+                    } else if depth == 0 && self.check(exp!(Comma)) {
+                        let comma_span = self.token.span;
+                        self.bump();
+                        if !self.check(exp!(CloseParen)) {
+                            args.push(self.mk_expr_err(comma_span.shrink_to_hi(), guar));
+                        }
+                        continue;
+                    } else if self.token.kind.open_delim().is_some() {
+                        depth += 1;
+                    } else if self.token.kind.close_delim().is_some() && depth > 0 {
+                        depth -= 1;
+                    }
+                    self.bump();
+                }
+                return self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args));
             }
             Err(err) => Err(err),
         };
