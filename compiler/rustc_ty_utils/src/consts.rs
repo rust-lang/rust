@@ -70,7 +70,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(def_id, args);
+            let uneval = ty::UnevaluatedConst::new(
+                tcx,
+                ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
+                args,
+            );
             ty::Const::new_unevaluated(tcx, uneval)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),

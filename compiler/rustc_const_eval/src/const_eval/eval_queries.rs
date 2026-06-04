@@ -8,7 +8,7 @@ use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::{bug, throw_inval};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -22,6 +22,33 @@ use crate::interpret::{
     intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
 use crate::{CTRL_C_RECEIVED, errors};
+
+fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>(
+    key: ty::PseudoCanonicalInput<'tcx, K>,
+    f: impl FnOnce(ty::PseudoCanonicalInput<'tcx, K>) -> Result<V, ErrorHandled>,
+) -> Option<Result<V, ErrorHandled>> {
+    let ty::PseudoCanonicalInput { typing_env, value } = key;
+    match typing_env.typing_mode().assert_not_erased() {
+        // We are in codegen. It's very likely this constant has been evaluated in PostAnalysis
+        // before. Try to reuse this evaluation, and only re-run if we hit a `TooGeneric` error.
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let with_postanalysis = f(with_postanalysis.as_query_input(value));
+            match with_postanalysis {
+                Ok(_) | Err(ErrorHandled::Reported(..)) => return Some(with_postanalysis),
+                Err(ErrorHandled::TooGeneric(_)) => {}
+            }
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Analysis { .. }
+        | ty::TypingMode::Borrowck { .. }
+        | ty::TypingMode::PostBorrowckAnalysis { .. }
+        | ty::TypingMode::PostAnalysis => {}
+    }
+
+    None
+}
 
 fn setup_for_eval<'tcx>(
     ecx: &mut CompileTimeInterpCx<'tcx>,
@@ -327,9 +354,18 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
+    crate::assert_typing_mode(key.typing_env.typing_mode());
+
     if let Some((value, _ty)) = tcx.trivial_const(key.value.instance.def_id()) {
         return Ok(value);
     }
+
+    if let Some(retry) =
+        retry_codegen_mode_with_postanalysis(key, |key| tcx.eval_to_const_value_raw(key))
+    {
+        return retry;
+    }
+
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 
@@ -369,23 +405,18 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
+    crate::assert_typing_mode(key.typing_env.typing_mode());
+    if let Some(retry) =
+        retry_codegen_mode_with_postanalysis(key, |key| tcx.eval_to_allocation_raw(key))
+    {
+        return retry;
+    }
+
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
 
     if cfg!(debug_assertions) {
-        match key.typing_env.typing_mode().assert_not_erased() {
-            ty::TypingMode::PostAnalysis => {}
-            ty::TypingMode::Coherence
-            | ty::TypingMode::Analysis { .. }
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. } => {
-                bug!(
-                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
-                )
-            }
-        }
-
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
         // The next two lines concatenated contain some discussion:

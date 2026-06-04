@@ -184,10 +184,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
             } else {
-                let Some(source_alias) = source_term.to_alias_term(self.tcx) else {
+                let Some(source_alias) = source_term.to_alias_term() else {
                     bug!("generalized `{source_term:?} to infer, not an alias");
                 };
-                match source_alias.kind(self.tcx) {
+                match source_alias.kind {
                     ty::AliasTermKind::ProjectionTy { .. }
                     | ty::AliasTermKind::ProjectionConst { .. } => {
                         // FIXME: This does not handle subtyping correctly, we could
@@ -207,7 +207,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                     ty::AliasTermKind::InherentConst { .. }
                     | ty::AliasTermKind::FreeConst { .. }
-                    | ty::AliasTermKind::UnevaluatedConst { .. } => {
+                    | ty::AliasTermKind::AnonConst { .. } => {
                         return Err(TypeError::CyclicConst(source_term.expect_const()));
                     }
                 }
@@ -426,7 +426,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create a new type variable in the universe of the target when
     /// generalizing an alias.
     fn next_var_for_alias_of_kind(&self, alias: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
-        if alias.kind(self.cx()).is_type() {
+        if alias.kind.is_type() {
             self.infcx.next_ty_var_in_universe(self.span, self.for_universe).into()
         } else {
             self.infcx.next_const_var_in_universe(self.span, self.for_universe).into()
@@ -701,6 +701,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         c: ty::Const<'tcx>,
         c2: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        let tcx = self.cx();
         assert_eq!(c, c2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
         match c.kind() {
@@ -741,7 +742,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             {
                                 variable_table.union(vid, new_var_id);
                             }
-                            Ok(ty::Const::new_var(self.cx(), new_var_id))
+                            Ok(ty::Const::new_var(tcx, new_var_id))
                         }
                     }
                 }
@@ -755,19 +756,18 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
                 // path), as doing this new No path breaks some GCE things. I expect GCE to be
                 // ripped out soon so this shouldn't matter soon.
-                StructurallyRelateAliases::No if !self.cx().features().generic_const_exprs() => {
-                    self.generalize_alias_term(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))
-                        .map(|v| v.expect_const())
+                StructurallyRelateAliases::No if !tcx.features().generic_const_exprs() => {
+                    self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
                 }
                 _ => {
-                    let ty::UnevaluatedConst { def, args } = uv;
+                    let ty::UnevaluatedConst { kind, args, .. } = uv;
                     let args = self.relate_with_variance(
                         ty::Invariant,
                         ty::VarianceDiagInfo::default(),
                         args,
                         args,
                     )?;
-                    Ok(ty::Const::new_unevaluated(self.cx(), ty::UnevaluatedConst { def, args }))
+                    Ok(ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(tcx, kind, args)))
                 }
             },
             ty::ConstKind::Placeholder(placeholder) => {

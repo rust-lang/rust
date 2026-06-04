@@ -6,73 +6,50 @@ We currently work on launching the following Rust kernel on the GPU.
 To follow along, copy it to a `src/lib.rs` file.
 
 ```rust
-#![feature(abi_gpu_kernel)]
-#![feature(rustc_attrs)]
-#![feature(core_intrinsics)]
+#![allow(internal_features)]
+#![feature(gpu_offload)]
+#![cfg_attr(target_os = "linux", feature(core_intrinsics))]
+#![cfg_attr(target_arch = "amdgpu", feature(stdarch_amdgpu, abi_gpu_kernel))]
+#![cfg_attr(target_arch = "nvptx64", feature(stdarch_nvptx, abi_gpu_kernel))]
 #![no_std]
 
 #[cfg(target_os = "linux")]
 extern crate libc;
-#[cfg(target_os = "linux")]
-use libc::c_char;
 
-#[cfg(target_os = "linux")]
-use core::mem;
+use core::offload::offload_kernel;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+#[cfg(target_arch = "amdgpu")]
+use core::arch::amdgpu::{workgroup_id_x as block_idx_x, workitem_id_x as thread_idx_x};
+#[cfg(target_arch = "nvptx64")]
+use core::arch::nvptx::{
+    _block_dim_x as block_dim_x, _block_idx_x as block_idx_x, _thread_idx_x as thread_idx_x,
+};
+
+#[offload_kernel]
+fn kernel(x: *mut [f64; 256]) {
+    unsafe {
+        let n = (*x).len();
+        let i = (thread_idx_x() + block_idx_x() * block_dim_x()) as usize;
+        if i < n {
+            (*x)[i] = i as f64;
+        }
+    }
+}
+
 #[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-#[inline(never)]
 fn main() {
-    let array_c: *mut [f64; 256] =
-        unsafe { libc::calloc(256, (mem::size_of::<f64>()) as libc::size_t) as *mut [f64; 256] };
-    let output = c"The first element is zero %f\n";
-    let output2 = c"The first element is NOT zero %f\n";
-    let output3 = c"The second element is %f\n";
-    unsafe {
-        let val: *const c_char = if (*array_c)[0] < 0.1 {
-            output.as_ptr()
-        } else {
-            output2.as_ptr()
-        };
-        libc::printf(val, (*array_c)[0]);
+    let mut x = [0.0f64; 256];
+    core::intrinsics::offload::<_, _, ()>(kernel, [256, 1, 1], [1, 1, 1], (&mut x as *mut [f64; 256],));
+    for i in 0..x.len() {
+        assert_eq!(x[i], i as f64);
     }
-
-    unsafe {
-        kernel(array_c);
-    }
-    core::hint::black_box(&array_c);
-    unsafe {
-        let val: *const c_char = if (*array_c)[0] < 0.1 {
-            output.as_ptr()
-        } else {
-            output2.as_ptr()
-        };
-        libc::printf(val, (*array_c)[0]);
-        libc::printf(output3.as_ptr(), (*array_c)[1]);
-    }
-}
-
-#[inline(never)]
-unsafe fn kernel(x: *mut [f64; 256]) {
-    core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
-}
-
-#[cfg(target_os = "linux")]
-unsafe extern "C" {
-    pub fn kernel_1(array_b: *mut [f64; 256]);
-}
-
-#[cfg(not(target_os = "linux"))]
-#[unsafe(no_mangle)]
-#[inline(never)]
-#[rustc_offload_kernel]
-pub extern "gpu-kernel" fn kernel_1(x: *mut [f64; 256]) {
-    unsafe { (*x)[0] = 21.0 };
+    unsafe { libc::printf(c"all checks passed".as_ptr()); }
 }
 ```
 
@@ -84,7 +61,7 @@ So either substitute clang/lld invocations below with absolute path, or set your
 First we generate the device (GPU) code.
 
 <div class="warning">
-    
+
 Replace the `target-cpu` (gfx90a) with the right code for your GPU. These are often referred to as "LLVM target names"[^list].
 
 </div>
@@ -102,7 +79,7 @@ This call also does a lot of work and generates multiple intermediate files for 
 While we integrated most offload steps into rustc by now, one binary invocation still remains for now:
 
 ```
-"clang-linker-wrapper" "--should-extract=gfx90a" "--device-compiler=amdgcn-amd-amdhsa=-g" "--device-compiler=amdgcn-amd-amdhsa=-save-temps=cwd" "--device-linker=amdgcn-amd-amdhsa=-lompdevice" "--host-triple=x86_64-unknown-linux-gnu" "--save-temps" "--linker-path=/ABSOlUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/lld/bin/ld.lld" "--hash-style=gnu" "--eh-frame-hdr" "-m" "elf_x86_64" "-pie" "-dynamic-linker" "/lib64/ld-linux-x86-64.so.2" "-o" "bare" "/lib/../lib64/Scrt1.o" "/lib/../lib64/crti.o" "/ABSOLUTE_PATH_TO/crtbeginS.o" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/bin/../lib/x86_64-unknown-linux-gnu" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib/clang/21/lib/x86_64-unknown-linux-gnu" "-L/lib/../lib64" "-L/usr/lib64" "-L/lib" "-L/usr/lib" "target/<GPU_DIR>/release/host.o" "-lstdc++" "-lm" "-lomp" "-lomptarget" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib" "-lgcc_s" "-lgcc" "-lpthread" "-lc" "-lgcc_s" "-lgcc" "/ABSOLUTE_PATH_TO/crtendS.o" "/lib/../lib64/crtn.o"
+"clang-linker-wrapper" "--should-extract=gfx90a" "--device-compiler=amdgcn-amd-amdhsa=-g" "--device-compiler=amdgcn-amd-amdhsa=-save-temps=cwd" "--device-linker=amdgcn-amd-amdhsa=-lompdevice" "--host-triple=x86_64-unknown-linux-gnu" "--save-temps" "--linker-path=/ABSOlUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/lld/bin/ld.lld" "--hash-style=gnu" "--eh-frame-hdr" "-m" "elf_x86_64" "-pie" "-dynamic-linker" "/lib64/ld-linux-x86-64.so.2" "-o" "main" "/lib/../lib64/Scrt1.o" "/lib/../lib64/crti.o" "/ABSOLUTE_PATH_TO/crtbeginS.o" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/bin/../lib/x86_64-unknown-linux-gnu" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib/clang/21/lib/x86_64-unknown-linux-gnu" "-L/lib/../lib64" "-L/usr/lib64" "-L/lib" "-L/usr/lib" "target/<GPU_DIR>/release/host.o" "-lstdc++" "-lm" "-lomp" "-lomptarget" "-L/ABSOLUTE_PATH_TO/rust/build/x86_64-unknown-linux-gnu/llvm/lib" "-lgcc_s" "-lgcc" "-lpthread" "-lc" "-lgcc_s" "-lgcc" "/ABSOLUTE_PATH_TO/crtendS.o" "/lib/../lib64/crtn.o"
 ```
 
 You can try to find the paths to those files on your system.
@@ -118,9 +95,7 @@ In the final step, you can now run your binary
 
 ```
 ./main
-The first element is zero 0.000000
-The first element is NOT zero 21.000000
-The second element is  0.000000
+all checks passed!
 ```
 
 To receive more information about the memory transfer, you can enable info printing with

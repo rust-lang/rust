@@ -4,6 +4,7 @@ mod aarch64;
 mod alloc;
 mod backtrace;
 mod files;
+mod loongarch;
 mod math;
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib;

@@ -318,7 +318,7 @@ fn test_encode_utf8() {
         let mut buf = [0; char::MAX_LEN_UTF8];
         let ptr = buf.as_ptr();
         let s = input.encode_utf8(&mut buf);
-        assert_eq!(s.as_ptr() as usize, ptr as usize);
+        assert_eq!(s.as_ptr(), ptr);
         assert!(str::from_utf8(s.as_bytes()).is_ok());
         assert_eq!(s.as_bytes(), expect);
     }
@@ -335,7 +335,7 @@ fn test_encode_utf16() {
         let mut buf = [0; 2];
         let ptr = buf.as_mut_ptr();
         let b = input.encode_utf16(&mut buf);
-        assert_eq!(b.as_mut_ptr() as usize, ptr as usize);
+        assert_eq!(b.as_mut_ptr(), ptr);
         assert_eq!(b, expect);
     }
 

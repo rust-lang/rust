@@ -103,17 +103,16 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
+        let cid = match ty::Instance::try_resolve(self, typing_env, ct.kind.def_id(), ct.args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
-            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
+            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => {
                 return Err(ErrorHandled::Reported(
                     ReportedErrorInfo::non_const_eval_error(err),
                     DUMMY_SP,
-                )
-                .into());
+                ));
             }
         };
 
@@ -138,11 +137,11 @@ impl<'tcx> TyCtxt<'tcx> {
             {
                 let mir_body = self.mir_for_ctfe(cid.instance.def_id());
                 if mir_body.is_polymorphic {
-                    let Some(local_def_id) = ct.def.as_local() else { return };
+                    let Some(local_def_id) = ct.kind.def_id().as_local() else { return };
                     self.emit_node_span_lint(
                         lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
-                        self.def_span(ct.def),
+                        self.def_span(ct.kind.def_id()),
                         rustc_errors::DiagDecorator(|lint| {
                             lint.primary_message(
                                 "cannot use constants which depend on generic parameters in types",

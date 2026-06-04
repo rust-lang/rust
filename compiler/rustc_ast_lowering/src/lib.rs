@@ -55,7 +55,7 @@ use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
+    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -126,7 +126,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    owner: &'a PerOwnerResolverData,
+    owner: &'a PerOwnerResolverData<'hir>,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
@@ -288,21 +288,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
-    /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
-        self.import_res_map.get(&id).copied().unwrap_or_default()
-    }
-
-    /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).copied()
-    }
-
-    /// Obtains resolution for a lifetime with the given `NodeId`.
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
-    }
-
     /// Obtain the list of lifetimes parameters to add to an item.
     ///
     /// Extra lifetime parameters should only be added in places that can appear
@@ -310,7 +295,7 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, LifetimeRes)] {
+    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 
@@ -320,10 +305,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
     fn owner_def_id(&self, id: NodeId) -> LocalDefId {
         self.owners[&id].def_id
-    }
-
-    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.lifetime_elision_allowed.contains(&id)
     }
 }
 
@@ -542,7 +523,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let ast_index = index_crate(&resolver, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
-        tcx.definitions_untracked().def_index_count(),
+        tcx.definitions_untracked().num_definitions(),
     );
 
     let mut lowerer = item::ItemLowerer {
@@ -824,8 +805,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.get(&ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, &traits[..]);
+        if let Some(traits) = self.owner.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, *traits);
         }
 
         // Check whether the same `NodeId` is lowered more than once.
@@ -870,8 +851,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        let per_ns = self.resolver.get_import_res(id);
-        let per_ns = per_ns.map(|res| res.map(|res| self.lower_res(res)));
+        debug_assert_eq!(id, self.owner.id);
+        let per_ns = self.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");
@@ -948,43 +929,30 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         ident: Ident,
         node_id: NodeId,
-        res: LifetimeRes,
+        kind: MissingLifetimeKind,
         source: hir::GenericParamSource,
-    ) -> Option<hir::GenericParam<'hir>> {
-        let (name, kind) = match res {
-            LifetimeRes::Param { .. } => {
-                (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
-            }
-            LifetimeRes::Fresh { param, kind, .. } => {
-                // Late resolution delegates to us the creation of the `LocalDefId`.
-                let _def_id = self.create_def(
-                    param,
-                    Some(kw::UnderscoreLifetime),
-                    DefKind::LifetimeParam,
-                    ident.span,
-                );
-                debug!(?_def_id);
+    ) -> hir::GenericParam<'hir> {
+        // Late resolution delegates to us the creation of the `LocalDefId`.
+        let _def_id = self.create_def(
+            node_id,
+            Some(kw::UnderscoreLifetime),
+            DefKind::LifetimeParam,
+            ident.span,
+        );
+        debug!(?_def_id);
 
-                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
-            }
-            LifetimeRes::Static { .. } | LifetimeRes::Error(..) => return None,
-            res => panic!(
-                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
-                res, ident, ident.span
-            ),
-        };
         let hir_id = self.lower_node_id(node_id);
         let def_id = self.local_def_id(node_id);
-        Some(hir::GenericParam {
+        hir::GenericParam {
             hir_id,
             def_id,
-            name,
+            name: hir::ParamName::Fresh,
             span: self.lower_span(ident.span),
             pure_wrt_drop: false,
-            kind: hir::GenericParamKind::Lifetime { kind },
+            kind: hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided(kind) },
             colon_span: None,
             source,
-        })
+        }
     }
 
     /// Lowers a lifetime binder that defines `generic_params`, returning the corresponding HIR
@@ -1005,7 +973,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .iter()
-            .filter_map(|&(ident, node_id, res)| {
+            .map(|&(ident, node_id, res)| {
                 self.lifetime_res_to_generic_param(
                     ident,
                     node_id,
@@ -1625,7 +1593,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             None => {
                 let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-                    self.resolver.get_lifetime_res(t.id)
+                    self.owner.get_lifetime_res(t.id)
                 {
                     assert_eq!(start.plus(1), end);
                     start
@@ -1866,7 +1834,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     _ => hir::ImplicitSelfKind::None,
                 }
             }))
-            .set_lifetime_elision_allowed(self.resolver.lifetime_elision_allowed(fn_node_id))
+            .set_lifetime_elision_allowed(
+                self.owner.id == fn_node_id && self.owner.lifetime_elision_allowed,
+            )
             .set_c_variadic(c_variadic);
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
@@ -2032,7 +2002,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         source: LifetimeSource,
         syntax: LifetimeSyntax,
     ) -> &'hir hir::Lifetime {
-        let res = if let Some(res) = self.resolver.get_lifetime_res(id) {
+        let res = if let Some(res) = self.owner.get_lifetime_res(id) {
             match res {
                 LifetimeRes::Param { param, .. } => hir::LifetimeKind::Param(param),
                 LifetimeRes::Fresh { param, .. } => {
@@ -2118,13 +2088,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
                 let ident = self.lower_ident(param.ident);
-                let param_name = if let Some(LifetimeRes::Error(..)) =
-                    self.resolver.get_lifetime_res(param.id)
-                {
-                    ParamName::Error(ident)
-                } else {
-                    ParamName::Plain(ident)
-                };
+                let param_name =
+                    if let Some(LifetimeRes::Error(..)) = self.owner.get_lifetime_res(param.id) {
+                        ParamName::Error(ident)
+                    } else {
+                        ParamName::Plain(ident)
+                    };
                 let kind =
                     hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit };
 

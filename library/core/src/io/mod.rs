@@ -3,6 +3,7 @@
 mod borrowed_buf;
 mod cursor;
 mod error;
+mod io_slice;
 mod util;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
@@ -13,6 +14,8 @@ pub use self::cursor::Cursor;
 pub use self::error::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
+#[unstable(feature = "core_io", issue = "154046")]
+pub use self::io_slice::{IoSlice, IoSliceMut};
 #[unstable(feature = "core_io", issue = "154046")]
 pub use self::util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
 #[doc(hidden)]

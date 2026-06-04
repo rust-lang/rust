@@ -1,5 +1,6 @@
 use std::{fmt, iter};
 
+use arrayvec::ArrayVec;
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
     Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
@@ -264,7 +265,11 @@ impl Uniform {
 /// (and all data in the padding between the registers is dropped).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub struct CastTarget {
-    pub prefix: [Option<Reg>; 8],
+    // Note that this is fixed to 8 elements for now as ABIs currently don't
+    // need anything further beyond that, and when this code was originally
+    // refactored to use `ArrayVec` it was already using 8, so that stuck
+    // around.
+    pub prefix: ArrayVec<Reg, 8>,
     /// The offset of `rest` from the start of the value. Currently only implemented for a `Reg`
     /// pair created by the `offset_pair` method.
     pub rest_offset: Option<Size>,
@@ -280,18 +285,20 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        Self::prefixed([None; 8], uniform)
+        Self::prefixed(Default::default(), uniform)
     }
 }
 
 impl CastTarget {
-    pub fn prefixed(prefix: [Option<Reg>; 8], rest: Uniform) -> Self {
+    pub fn prefixed(prefix: ArrayVec<Reg, 8>, rest: Uniform) -> Self {
         Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
     }
 
     pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
+        let mut prefix = ArrayVec::new();
+        prefix.push(a);
         Self {
-            prefix: [Some(a), None, None, None, None, None, None, None],
+            prefix,
             rest_offset: Some(offset_from_start),
             rest: b.into(),
             attrs: ArgAttributes::new(),
@@ -304,7 +311,9 @@ impl CastTarget {
     }
 
     pub fn pair(a: Reg, b: Reg) -> CastTarget {
-        Self::prefixed([Some(a), None, None, None, None, None, None, None], Uniform::from(b))
+        let mut prefix = ArrayVec::new();
+        prefix.push(a);
+        Self::prefixed(prefix, Uniform::from(b))
     }
 
     /// When you only access the range containing valid data, you can use this unaligned size;
@@ -314,10 +323,7 @@ impl CastTarget {
         let prefix_size = if let Some(offset_from_start) = self.rest_offset {
             offset_from_start
         } else {
-            self.prefix
-                .iter()
-                .filter_map(|x| x.map(|reg| reg.size))
-                .fold(Size::ZERO, |acc, size| acc + size)
+            self.prefix.iter().map(|reg| reg.size).fold(Size::ZERO, |acc, size| acc + size)
         };
         // Remaining arguments are passed in chunks of the unit size
         let rest_size =
@@ -333,7 +339,7 @@ impl CastTarget {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix
             .iter()
-            .filter_map(|x| x.map(|reg| reg.align(cx)))
+            .map(|reg| reg.align(cx))
             .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })

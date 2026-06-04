@@ -264,6 +264,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     bx.lifetime_end(tmp, size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
+
+                // If the return value was retagged as it was stored,
+                // then we might be in a different basic block now.
+                // Update the cached block for `target` to point to this new
+                // block, where codegen will continue.
+                fx.cached_llbbs[target] = CachedLlbb::Some(bx.llbb());
             }
             MergingSucc::False
         } else {
@@ -1585,9 +1591,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync before codegen"
                 );
                 self.codegen_drop_terminator(
@@ -1737,7 +1743,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
-                _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
+                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
+                PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, on_stack, .. } => {
@@ -2185,19 +2192,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         llval: Bx::Value,
     ) {
         use self::ReturnDest::*;
-
+        let retags_enabled = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some();
         match dest {
             Nothing => (),
-            Store(dst) => bx.store_arg(ret_abi, llval, dst),
+            Store(dst) => {
+                bx.store_arg(ret_abi, llval, dst);
+                if retags_enabled {
+                    self.codegen_retag_place(bx, dst, false);
+                }
+            }
             IndirectOperand(tmp, index) => {
-                let op = bx.load_operand(tmp);
+                let mut op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
+                if retags_enabled {
+                    op = self.codegen_retag_operand(bx, op, false);
+                }
                 self.overwrite_local(index, LocalRef::Operand(op));
                 self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if let PassMode::Cast { .. } = ret_abi.mode {
+                let mut op = if let PassMode::Cast { .. } = ret_abi.mode {
                     let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
                     bx.store_arg(ret_abi, llval, tmp);
@@ -2207,6 +2222,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
+                if retags_enabled {
+                    op = self.codegen_retag_operand(bx, op, false);
+                }
                 self.overwrite_local(index, LocalRef::Operand(op));
                 self.debug_introduce_local(bx, index);
             }
@@ -2233,9 +2251,9 @@ fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cast_ty = bx.cast_backend_type(cast);
     if let Some(offset_from_start) = cast.rest_offset {
-        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
-        let first_ty = bx.reg_backend_type(&cast.prefix[0].unwrap());
+        let first_ty = bx.reg_backend_type(&cast.prefix[0]);
         let second_ty = bx.reg_backend_type(&cast.rest.unit);
         let first = bx.load(first_ty, ptr, align);
         let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
@@ -2256,9 +2274,8 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     align: Align,
 ) {
     if let Some(offset_from_start) = cast.rest_offset {
-        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
-        assert!(cast.prefix[0].is_some());
         let first = bx.extract_value(value, 0);
         let second = bx.extract_value(value, 1);
         bx.store(first, ptr, align);

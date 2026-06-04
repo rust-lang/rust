@@ -11,6 +11,6 @@ trait Private {
 }
 
 pub trait Public {
-    fn t(_: impl Trait); //~ ERROR: `impl Trait` used as a function parameter
+    fn t(_: impl Trait); //~ impl_trait_in_params
     fn tt<T: Trait>(_: T);
 }

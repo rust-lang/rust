@@ -40,7 +40,8 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, Sub};
+use std::range::RangeInclusive;
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -1958,7 +1959,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
 }
 
 // NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum TagEncoding<VariantIdx: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout

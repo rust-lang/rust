@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 pub(crate) struct CfiEncodingParser;
 impl SingleAttributeParser for CfiEncodingParser {
@@ -9,6 +11,7 @@ impl SingleAttributeParser for CfiEncodingParser {
         Allow(Target::Union),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
+    const STABILITY: AttributeStability = unstable!(cfi_encoding);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::cfi_encoding))?;

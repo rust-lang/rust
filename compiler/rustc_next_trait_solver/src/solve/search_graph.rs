@@ -72,6 +72,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis
+                | TypingMode::Codegen
                 | TypingMode::ErasedNotCoherence(MayBeErased) => {
                     (Err(NoSolution), AccessedOpaques::default())
                 }

@@ -1,5 +1,5 @@
 //@aux-build:extern_types.rs
-#![allow(nonstandard_style, unused)]
+#![allow(nonstandard_style)]
 #![warn(clippy::min_ident_chars)]
 
 extern crate extern_types;

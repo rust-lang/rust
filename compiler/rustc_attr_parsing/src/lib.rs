@@ -111,6 +111,7 @@ mod early_parsed;
 mod errors;
 mod safety;
 mod session_diagnostics;
+mod stability;
 mod target_checking;
 pub mod validate_attr;
 

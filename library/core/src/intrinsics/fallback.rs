@@ -80,7 +80,7 @@ const fn wide_mul_u128(a: u128, b: u128) -> (u128, u128) {
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-impl const CarryingMulAdd for u128 {
+const impl CarryingMulAdd for u128 {
     type Unsigned = u128;
     #[inline]
     fn carrying_mul_add(self, b: u128, c: u128, d: u128) -> (u128, u128) {
@@ -94,7 +94,7 @@ impl const CarryingMulAdd for u128 {
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-impl const CarryingMulAdd for i128 {
+const impl CarryingMulAdd for i128 {
     type Unsigned = u128;
     #[inline]
     fn carrying_mul_add(self, b: i128, c: i128, d: i128) -> (u128, i128) {

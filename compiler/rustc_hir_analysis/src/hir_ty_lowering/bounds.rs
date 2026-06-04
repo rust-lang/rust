@@ -636,7 +636,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     | PredicateFilter::SelfAndAssociatedTypeBounds
                     | PredicateFilter::ConstIfConst => {
                         let projection_ty = projection_term
-                            .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
+                            .map_bound(|projection_term| projection_term.expect_ty());
                         // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
                         // parameter to have a skipped binder.
                         let param_ty = Ty::new_alias(tcx, projection_ty.skip_binder());

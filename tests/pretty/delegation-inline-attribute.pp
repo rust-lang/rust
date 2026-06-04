@@ -38,34 +38,32 @@ impl Trait for S {
     fn foo(self: _)
         ->
             _ {
-        Trait::foo(
-            // Check that #[inline(hint)] is added to foo0 reuse inside another reuse
+        // Check that #[inline(hint)] is added to foo0 reuse inside another reuse
+        #[attr = Inline(Hint)]
+        fn foo0(arg0: _) -> _ { to_reuse::foo(self + 1) }
 
-            // Check that #[inline(hint)] is added when other attributes present in inner reuse
+        // Check that #[inline(hint)] is added when other attributes present in inner reuse
+        #[attr = Cold]
+        #[attr = MustUse]
+        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+        #[attr = Inline(Hint)]
+        fn foo1(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
-            // Check that #[inline(never)] is preserved in inner reuse
+        // Check that #[inline(never)] is preserved in inner reuse
+        #[attr = Inline(Never)]
+        fn foo2(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
-            // Check that #[inline(always)] is preserved in inner reuse
+        // Check that #[inline(always)] is preserved in inner reuse
+        #[attr = Inline(Always)]
+        fn foo3(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
-            // Check that #[inline(never)] is preserved when there are other attributes in inner reuse
-            {
-                #[attr = Inline(Hint)]
-                fn foo0(arg0: _) -> _ { to_reuse::foo(self + 1) }
-                #[attr = Cold]
-                #[attr = MustUse]
-                #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
-                #[attr = Inline(Hint)]
-                fn foo1(arg0: _) -> _ { to_reuse::foo(self / 2) }
-                #[attr = Inline(Never)]
-                fn foo2(arg0: _) -> _ { to_reuse::foo(self / 2) }
-                #[attr = Inline(Always)]
-                fn foo3(arg0: _) -> _ { to_reuse::foo(self / 2) }
-                #[attr = Cold]
-                #[attr = MustUse]
-                #[attr = Inline(Never)]
-                #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
-                fn foo4(arg0: _) -> _ { to_reuse::foo(self / 2) }
-            })
+        // Check that #[inline(never)] is preserved when there are other attributes in inner reuse
+        #[attr = Cold]
+        #[attr = MustUse]
+        #[attr = Inline(Never)]
+        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+        fn foo4(arg0: _) -> _ { to_reuse::foo(self / 2) }
+        Trait::foo(self)
     }
 
     // Check that #[inline(hint)] is added when there are other attributes present in trait reuse

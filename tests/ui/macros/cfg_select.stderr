@@ -25,13 +25,13 @@ error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expres
 LL |     () => {}
    |     ^^ expressions are not allowed here
 
-error[E0539]: malformed `cfg_select` macro input
+error[E0565]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:180:5
    |
 LL |     "str" => {}
    |     ^^^^^ expected a valid identifier here
 
-error[E0539]: malformed `cfg_select` macro input
+error[E0565]: malformed `cfg_select` macro input
   --> $DIR/cfg_select.rs:185:5
    |
 LL |     a::b => {}
@@ -185,5 +185,5 @@ LL |     cfg!() => {}
 
 error: aborting due to 17 previous errors; 7 warnings emitted
 
-Some errors have detailed explanations: E0537, E0539, E0753.
+Some errors have detailed explanations: E0537, E0565, E0753.
 For more information about an error, try `rustc --explain E0537`.

@@ -717,7 +717,8 @@ impl IntoDiagArg for Namespace {
 }
 
 /// Just a helper ‒ separate structure for each namespace.
-#[derive(Copy, Clone, Default, Debug, StableHash)]
+#[derive(Copy, Clone, Debug, StableHash)]
+#[derive_const(Default)]
 pub struct PerNS<T> {
     pub value_ns: T,
     pub type_ns: T,
@@ -991,8 +992,6 @@ pub enum LifetimeRes {
         ///
         /// Creating the associated `LocalDefId` is the responsibility of lowering.
         param: NodeId,
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
         /// Kind of elided lifetime
         kind: hir::MissingLifetimeKind,
     },

@@ -88,6 +88,8 @@ LL |     for _ in 1..1 + 1 {}
    |              ^^^^^^^^ help: use: `1..=1`
 ```
 
+### Applicability
+
 **Not all suggestions are always right**, some of them require human
 supervision, that's why we have [Applicability][applicability].
 
@@ -105,14 +107,18 @@ impl<'tcx> LateLintPass<'tcx> for LintName {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>)  {
         // Imagine that `some_lint_expr_logic` checks for requirements for emitting the lint
         if some_lint_expr_logic(expr) {
-            span_lint_and_sugg( // < Note this change
+            span_lint_and_then( // < Note this change
                 cx,
                 LINT_NAME,
-                span,
+                expr.span,
                 "message on why the lint is emitted",
-                "use",
-                format!("foo + {} * bar", snippet(cx, expr.span, "<default>")), // < Suggestion
-                Applicability::MachineApplicable,
+                |diag| {
+                    // v Build and emit the suggestion
+                    let mut app = Applicability::MachineApplicable;
+                    let expr_snippet = snippet_with_applicability(cx, expr.span, "_", &mut app);
+                    let sugg = format!("foo + {expr_snippet} * bar");
+                    diag.span_suggestion(expr.span, "use", sugg, app);
+                }
             );
         }
     }
@@ -120,8 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for LintName {
 ```
 
 Suggestions generally use the [`format!`][format_macro] macro to interpolate the
-old values with the new ones. To get code snippets, use one of the `snippet*`
-functions from `clippy_utils::source`.
+old values with the new ones. For information on getting code snippets, see [Snippets](emitting_lints.md#snippets).
 
 ## How to choose between notes, help messages and suggestions
 
@@ -183,13 +188,50 @@ error: This `.fold` can be more succinctly expressed as `.any`
     |
 ```
 
-### Snippets
+## Snippets
 
 Snippets are pieces of the source code (as a string), they are extracted
-generally using the [`snippet`][snippet_fn] function.
+generally using the various `snippet_*` functions from [`clippy_utils::source`][].
+
+If you're using the snippets _not_ to build a suggestion, it's usually
+enough to use [`snippet`][snippet_fn] -- it accepts the span of the item, and
+also a fallback string (see [Fallback string](emitting_lints.md#fallback-string)).
 
 For example, if you want to know how an item looks (and you know the item's
-span), you could use `snippet(cx, span, "..")`.
+span), you could use `snippet(cx, span, "_")`.
+
+If you do use the snippet for a suggestion, it's recommended to use
+[`snippet_with_applicability`] instead. This is so that Clippy can reduce the
+[applicability](emitting_lints.md#applicability) of the suggestion in case it couldn't extract
+the snippet "cleanly" -- see the function's documentation for more information.
+
+It's often necessary to create multiple snippets to build a suggestion, in which
+case you'll have the following pattern:
+
+```rust
+// inside `span_lint_and_then`
+
+// 1. Create initial applicability.
+let mut app = Applicability::MachineApplicable;
+
+// 2. Use it to create all the snippets
+let foo_snippet = snippet_with_applicability(cx, foo.span, "_", &mut app);
+let bar_snippet = snippet_with_applicability(cx, bar.span, "_", &mut app);
+let sugg = format!("{foo_snippet} + {bar_snippet}"); // or whatever
+
+// 3. Use it to emit the final suggestion
+diag.span_suggestion(span, msg, sugg, app);
+```
+
+### Fallback string
+This is the string that is used for the snippet when the source code that the
+span points to is unavailable. That mostly only happens when proc-macros
+mishandle spans -- see [the section on proc-macros][proc-macro-spans].
+
+Most of the time, the snippets in a suggestion come from a (span of a) single
+expression, and so `"_"` is an appropriate fallback string. If you instead
+find yourself suggesting to insert multiple statements, or a block--basically
+anything "big"--then consider using `".."` instead.
 
 ## Final: Run UI Tests to Emit the Lint
 
@@ -210,8 +252,11 @@ cover in the next chapters.
 [`span_lint_and_help`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_help.html
 [`span_lint_and_sugg`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
 [`span_lint_and_then`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_then.html
+[`clippy_utils::source`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/index.html
 [range_plus_one]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
 [inclusive_range]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html
 [applicability]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_errors/enum.Applicability.html
 [snippet_fn]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/source/fn.snippet.html
+[`snippet_with_applicability`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/source/fn.snippet_with_applicability.html
+[proc-macro-spans]: macro_expansions.html#the-is_from_proc_macro-function
 [format_macro]: https://doc.rust-lang.org/std/macro.format.html

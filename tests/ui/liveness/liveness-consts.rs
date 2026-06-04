@@ -1,4 +1,5 @@
 //@ check-pass
+//@ ignore-parallel-frontend unstable liveness diagnostics
 #![warn(unused)]
 #![allow(unreachable_code)]
 

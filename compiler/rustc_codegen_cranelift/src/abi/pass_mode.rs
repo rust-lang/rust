@@ -44,9 +44,9 @@ fn apply_attrs_to_abi_param(param: AbiParam, arg_attrs: ArgAttributes) -> AbiPar
 
 fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2]> {
     if let Some(offset_from_start) = cast.rest_offset {
-        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
-        let first = cast.prefix[0].unwrap();
+        let first = cast.prefix[0];
         let second = cast.rest.unit;
         return smallvec![
             (Size::ZERO, reg_to_abi_param(first)),
@@ -71,7 +71,6 @@ fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2
     let args = cast
         .prefix
         .iter()
-        .flatten()
         .map(|&reg| reg_to_abi_param(reg))
         .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)));
 

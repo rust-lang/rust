@@ -1,0 +1,19 @@
+[package]
+description = "Debugger for Rust MIR."
+license = "MIT OR Apache-2.0"
+name = "priroda"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+edition = "2024"
+
+
+[[bin]]
+name = "priroda"
+path = "src/main.rs"
+doctest = false      # and no doc tests
+
+[dependencies]
+miri = { path = ".." }
+
+[package.metadata.rust-analyzer]
+rustc_private = true

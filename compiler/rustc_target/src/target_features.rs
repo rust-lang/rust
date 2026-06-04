@@ -1,6 +1,44 @@
 //! Declares Rust's target feature names for each target.
 //! Note that these are similar to but not always identical to LLVM's feature names,
 //! and Rust adds some features that do not correspond to LLVM features at all.
+//!
+//! The target features listed here can be used in `#[target_feature]` and `#[cfg(target_feature)]`.
+//! They also do not trigger any warnings when used with `-Ctarget-feature`.
+//!
+//! Note that even unstable (and even entirely unlisted) features can be used with `-Ctarget-feature`
+//! on stable. Using a feature not on the list of Rust target features only emits a warning.
+//! Only `cfg(target_feature)` and `#[target_feature]` actually do any stability gating.
+//! `cfg(target_feature)` for unstable features just works on nightly without any feature gate.
+//! `#[target_feature]` requires a feature gate.
+//!
+//! When adding features to the below lists
+//! check whether they're named already elsewhere in rust
+//! e.g. in stdarch and whether the given name matches LLVM's
+//! if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted.
+//! Additionally, if the feature is not available in older version of LLVM supported by the current
+//! rust, the same function must be updated to filter out these features to avoid triggering
+//! warnings.
+//!
+//! Also note that all target features listed here must be purely additive: for target_feature 1.1 to
+//! be sound, we can never allow features like `+soft-float` (on x86) to be controlled on a
+//! per-function level, since we would then allow safe calls from functions with `+soft-float` to
+//! functions without that feature!
+//!
+//! It is important for soundness to consider the interaction of target features and the function
+//! call ABI. For example, disabling the `x87` feature on x86 changes how scalar floats are passed as
+//! arguments, so letting people toggle that feature would be unsound. To this end, the
+//! [`Target::abi_required_features`] function computes which target features must and must not be
+//! enabled for any given target, and individual features can also be marked as [`Forbidden`]. See
+//! <https://github.com/rust-lang/rust/issues/116344> for some more context.
+//!
+//! The one exception to features that change the ABI is features that enable larger vector
+//! registers. Those are permitted to be listed here. The `*_FOR_CORRECT_VECTOR_ABI` arrays store
+//! information about which target feature is ABI-required for which vector size; this is used to
+//! ensure that vectors can only be passed via `extern "C"` when the right feature is enabled. (For
+//! the "Rust" ABI we generally pass vectors by-ref exactly to avoid these issues.)
+//! Also see <https://github.com/rust-lang/rust/issues/116558>.
+//!
+//! Stabilizing a target feature requires t-lang approval.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::StableHash;
 use rustc_span::{Symbol, sym};
@@ -32,9 +70,12 @@ pub enum Stability {
         Symbol,
     ),
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
-    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
-    /// particular for features are actually ABI configuration flags (not all targets are as nice as
-    /// RISC-V and have an explicit way to set the ABI separate from target features).
+    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in particular for
+    /// features are actually ABI configuration flags (such as "soft-float" on many targets).
+    /// However, "forbidden" target features can still sometimes be enabled via `-Ctarget-cpu` or
+    /// target feature implications (on the Rust/LLVM level). To prevent that, ABI-relevant target
+    /// features are ideally pinned down (required or forbidden) in
+    /// [`Target::abi_required_features`].
     Forbidden {
         reason: &'static str,
         /// True if this is always an error, false if this can be reported as a warning when set via
@@ -102,50 +143,11 @@ impl Stability {
     }
 }
 
-// Here we list target features that rustc "understands": they can be used in `#[target_feature]`
-// and `#[cfg(target_feature)]`. They also do not trigger any warnings when used with
-// `-Ctarget-feature`.
-//
-// Note that even unstable (and even entirely unlisted) features can be used with `-Ctarget-feature`
-// on stable. Using a feature not on the list of Rust target features only emits a warning.
-// Only `cfg(target_feature)` and `#[target_feature]` actually do any stability gating.
-// `cfg(target_feature)` for unstable features just works on nightly without any feature gate.
-// `#[target_feature]` requires a feature gate.
-//
-// When adding features to the below lists
-// check whether they're named already elsewhere in rust
-// e.g. in stdarch and whether the given name matches LLVM's
-// if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted.
-// Additionally, if the feature is not available in older version of LLVM supported by the current
-// rust, the same function must be updated to filter out these features to avoid triggering
-// warnings.
-//
-// Also note that all target features listed here must be purely additive: for target_feature 1.1 to
-// be sound, we can never allow features like `+soft-float` (on x86) to be controlled on a
-// per-function level, since we would then allow safe calls from functions with `+soft-float` to
-// functions without that feature!
-//
-// It is important for soundness to consider the interaction of targets features and the function
-// call ABI. For example, disabling the `x87` feature on x86 changes how scalar floats are passed as
-// arguments, so letting people toggle that feature would be unsound. To this end, the
-// `abi_required_features` function computes which target features must and must not be enabled for
-// any given target, and individual features can also be marked as `Forbidden`.
-// See https://github.com/rust-lang/rust/issues/116344 for some more context.
-//
-// The one exception to features that change the ABI is features that enable larger vector
-// registers. Those are permitted to be listed here. The `*_FOR_CORRECT_VECTOR_ABI` arrays store
-// information about which target feature is ABI-required for which vector size; this is used to
-// ensure that vectors can only be passed via `extern "C"` when the right feature is enabled. (For
-// the "Rust" ABI we generally pass vectors by-ref exactly to avoid these issues.)
-// Also see https://github.com/rust-lang/rust/issues/116558.
-//
-// Stabilizing a target feature requires t-lang approval.
-
-// If feature A "implies" feature B, then:
-// - when A gets enabled (via `-Ctarget-feature` or `#[target_feature]`), we also enable B
-// - when B gets disabled (via `-Ctarget-feature`), we also disable A
-//
-// Both of these are also applied transitively.
+/// If feature A "implies" feature B, then:
+/// - when A gets enabled (via `-Ctarget-feature` or `#[target_feature]`), we also enable B
+/// - when B gets disabled (via `-Ctarget-feature`), we also disable A
+///
+/// Both of these are also applied transitively.
 type ImpliedFeatures = &'static [&'static str];
 
 static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
@@ -464,6 +466,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("avxvnniint16", Stable, &["avx2"]),
     ("bmi1", Stable, &[]),
     ("bmi2", Stable, &[]),
+    ("clflushopt", Unstable(sym::clflushopt_target_feature), &[]),
     ("cmpxchg16b", Stable, &[]),
     ("ermsb", Unstable(sym::ermsb_target_feature), &[]),
     ("f16c", Stable, &["avx"]),
@@ -570,8 +573,15 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 ];
 
 static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // If you are thinking of adding "efpu2" here, please double-check that it really does not
+    // affect the ABI.
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    (
+        "hard-float",
+        Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false },
+        &[],
+    ),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -581,6 +591,7 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("power9-vector", Unstable(sym::powerpc_target_feature), &["power8-vector", "power9-altivec"]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
+    ("spe", Forbidden { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
     // tidy-alphabetical-end
 ];
@@ -1136,12 +1147,12 @@ impl Target {
     /// the first list contains target features that must be enabled for ABI reasons,
     /// and the second list contains target feature that must be disabled for ABI reasons.
     ///
-    /// These features are automatically appended to whatever the target spec sets as default
-    /// features for the target.
+    /// These features are checked against the target features reported by LLVM based on
+    /// `-Ctarget-cpu` and `-Ctarget-features`. Constraint violations result in a warning.
     ///
-    /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
-    /// against this. We also check any implied features, based on the information above. If LLVM
-    /// implicitly enables more implied features than we do, that could bypass this check!
+    /// We also check features enabled via `#[target_features]` (and here, constraint violations
+    /// emit a hard error), including features enabled indirectly via implications -- but if LLVM
+    /// considers more features to be implied than we do, that could bypass this check!
     pub fn abi_required_features(&self) -> FeatureConstraints {
         const NOTHING: FeatureConstraints = FeatureConstraints { required: &[], incompatible: &[] };
         // Some architectures don't have a clean explicit ABI designation; instead, the ABI is
@@ -1172,6 +1183,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
+                    _ => unreachable!(),
                 }
             }
             Arch::X86_64 => {
@@ -1192,7 +1204,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
-                    Some(r) => panic!("invalid Rust ABI for x86_64: {r:?}"),
+                    _ => unreachable!(),
                 }
             }
             Arch::Arm => {
@@ -1229,7 +1241,7 @@ impl Target {
                         // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
                         FeatureConstraints { required: &["neon"], incompatible: &[] }
                     }
-                    Some(r) => panic!("invalid Rust ABI for aarch64: {r:?}"),
+                    _ => unreachable!(),
                 }
             }
             Arch::RiscV32 | Arch::RiscV64 => {
@@ -1306,16 +1318,44 @@ impl Target {
                         // llvm will switch to soft-float ABI just based on this feature.
                         FeatureConstraints { required: &["soft-float"], incompatible: &["vector"] }
                     }
-                    Some(r) => {
-                        panic!("invalid Rust ABI for s390x: {r:?}");
-                    }
+                    _ => unreachable!(),
                 }
             }
+            Arch::PowerPC => {
+                // The main ABI-relevant target features are "hard-float" and "spe". We use our own
+                // ABI indicator here.
+                match self.rustc_abi {
+                    None => {
+                        // Default hardfloat ABI.
+                        FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+                    }
+                    Some(RustcAbi::PowerPcSpe) => {
+                        // "efpu2" (which disables some register use in LLVM) *should* be okay
+                        // because SPE uses soft-float ABI's parameter passing rules and passes
+                        // floats via GPRs.
+                        // <https://github.com/rust-lang/rust/pull/157085#discussion_r3349260222>
+                        FeatureConstraints { required: &["hard-float", "spe"], incompatible: &[] }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Arch::PowerPC64 => {
+                // There's no SPE for PowerPC64, and we currently don't support any soft-float
+                // targets. (If we ever add one, we need to match on `RustcAbi::Softfloat` similar
+                // to other targets above.)
+                FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+            }
             Arch::Avr => {
+                // We only support one ABI on AVR at the moment.
                 // SRAM is minimum requirement for C/C++ in both avr-gcc and Clang,
                 // and backends of them only support assembly for devices have no SRAM.
                 // See the discussion in https://github.com/rust-lang/rust/pull/146900 for more.
                 FeatureConstraints { required: &["sram"], incompatible: &[] }
+            }
+            Arch::Wasm32 | Arch::Wasm64 => {
+                // We only support one ABI on wasm at the moment.
+                // No ABI-relevant target features have been identified thus far.
+                NOTHING
             }
             _ => NOTHING,
         }

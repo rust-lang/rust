@@ -137,6 +137,7 @@ pub fn provide(providers: &mut Providers) {
         inferred_outlives_crate: outlives::inferred_outlives_crate,
         inferred_outlives_of: outlives::inferred_outlives_of,
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        delegation_user_specified_args: delegation::delegation_user_specified_args,
         enforce_impl_non_lifetime_params_are_constrained:
             impl_wf_check::enforce_impl_non_lifetime_params_are_constrained,
         crate_variances: variance::crate_variances,

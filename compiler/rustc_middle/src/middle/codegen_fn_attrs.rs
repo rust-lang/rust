@@ -272,7 +272,7 @@ pub struct SanitizerFnAttrs {
     pub rtsan_setting: RtsanSetting,
 }
 
-impl const Default for SanitizerFnAttrs {
+const impl Default for SanitizerFnAttrs {
     fn default() -> Self {
         Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }

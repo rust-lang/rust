@@ -373,7 +373,6 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
     sess.target.is_like_wasm
-        && (sess.target.os != Os::Emscripten || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -688,7 +687,13 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
     methods
 }
 
-pub fn codegen_crate<B: ExtraBackendMethods>(backend: B, tcx: TyCtxt<'_>) -> OngoingCodegen<B> {
+pub fn codegen_crate<
+    B: ExtraBackendMethods<Module = M> + WriteBackendMethods<Module = M>,
+    M: Send,
+>(
+    backend: B,
+    tcx: TyCtxt<'_>,
+) -> OngoingCodegen<B> {
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);

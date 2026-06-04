@@ -133,26 +133,6 @@ pub(crate) struct EmptyAttributeList {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
-pub(crate) struct InvalidTargetLint {
-    pub name: String,
-    pub target: &'static str,
-    pub applied: DiagArgValue,
-    pub only: &'static str,
-    #[suggestion(
-        "remove the attribute",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "{$is_used_as_inner ->
         [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`

@@ -527,14 +527,14 @@ impl<T> StableHash for ::std::mem::Discriminant<T> {
     }
 }
 
-impl<T> StableHash for ::std::ops::RangeInclusive<T>
+impl<T> StableHash for ::std::range::RangeInclusive<T>
 where
     T: StableHash,
 {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.start().stable_hash(hcx, hasher);
-        self.end().stable_hash(hcx, hasher);
+        self.start.stable_hash(hcx, hasher);
+        self.last.stable_hash(hcx, hasher);
     }
 }
 

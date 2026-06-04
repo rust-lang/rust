@@ -55,7 +55,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             if variant_index != untagged_variant {
                 let niche = place.place_field(fx, tag_field);
                 let niche_type = fx.clif_type(niche.layout().ty).unwrap();
-                let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
+                let niche_value = variant_index.as_u32() - niche_variants.start.as_u32();
                 let niche_value = (niche_value as u128).wrapping_add(niche_start);
                 let niche_value = match niche_type {
                     types::I128 => {
@@ -133,7 +133,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             dest.write_cvalue(fx, res);
         }
         TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
-            let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+            let relative_max = niche_variants.last.as_u32() - niche_variants.start.as_u32();
 
             // We have a subrange `niche_start..=niche_end` inside `range`.
             // If the value of the tag is inside this subrange, it's a
@@ -162,7 +162,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 // }
                 let is_niche = codegen_icmp_imm(fx, IntCC::Equal, tag, niche_start as i128);
                 let tagged_discr =
-                    fx.bcx.ins().iconst(cast_to, niche_variants.start().as_u32() as i64);
+                    fx.bcx.ins().iconst(cast_to, niche_variants.start.as_u32() as i64);
                 (is_niche, tagged_discr, 0)
             } else {
                 // The special cases don't apply, so we'll have to go with
@@ -184,7 +184,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                     relative_discr,
                     i128::from(relative_max),
                 );
-                (is_niche, cast_tag, niche_variants.start().as_u32() as u128)
+                (is_niche, cast_tag, niche_variants.start.as_u32() as u128)
             };
 
             let tagged_discr = if delta == 0 {

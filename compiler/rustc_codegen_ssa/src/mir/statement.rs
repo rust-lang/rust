@@ -3,6 +3,7 @@ use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::mir::retag;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -12,9 +13,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign((ref place, ref rvalue)) => {
+                let needs_retag = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some()
+                    && retag::rvalue_needs_retag(rvalue);
+
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {
-                        LocalRef::Place(cg_dest) => self.codegen_rvalue(bx, cg_dest, rvalue),
+                        LocalRef::Place(cg_dest) => {
+                            self.codegen_rvalue(bx, cg_dest, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_place(bx, cg_dest, false);
+                            }
+                        }
                         LocalRef::UnsizedPlace(cg_indirect_dest) => {
                             let ty = cg_indirect_dest.layout.ty;
                             span_bug!(
@@ -24,7 +33,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                         }
                         LocalRef::PendingOperand => {
-                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            let mut operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                operand = self.codegen_retag_operand(bx, operand, false);
+                            }
                             self.overwrite_local(index, LocalRef::Operand(operand));
                             self.debug_introduce_local(bx, index);
                         }
@@ -39,12 +51,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                             // If the type is zero-sized, it's already been set here,
                             // but we still need to make sure we codegen the operand
-                            self.codegen_rvalue_operand(bx, rvalue);
+                            // and emit a retag.
+                            let operand = self.codegen_rvalue_operand(bx, rvalue);
+                            if needs_retag {
+                                self.codegen_retag_operand(bx, operand, false);
+                            }
                         }
                     }
                 } else {
                     let cg_dest = self.codegen_place(bx, place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue);
+                    if needs_retag {
+                        self.codegen_retag_place(bx, cg_dest, false);
+                    }
                 }
             }
             mir::StatementKind::SetDiscriminant { ref place, variant_index } => {

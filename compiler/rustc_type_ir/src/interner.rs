@@ -244,6 +244,11 @@ pub trait Interner:
 
     fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTyKind<Self>;
 
+    fn unevaluated_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::UnevaluatedConstKind<Self>;
+
     // FIXME: remove in favor of explicit construction
     fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
 

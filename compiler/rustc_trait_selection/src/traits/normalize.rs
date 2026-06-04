@@ -2,7 +2,6 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
@@ -144,7 +143,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }
         | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis => {}
+        TypingMode::PostAnalysis | TypingMode::Codegen => {}
     }
 
     value.has_type_flags(flags)
@@ -296,7 +295,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let recursion_limit = self.cx().recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.selcx.infcx.err_ctxt().report_overflow_error(
-                OverflowCause::DeeplyNormalize(free.into()),
+                OverflowCause::DeeplyNormalize(free),
                 self.cause.span,
                 false,
                 |diag| {
@@ -340,7 +339,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }),
         );
         self.depth += 1;
-        let res = if free.kind(infcx.tcx).is_type() {
+        let res = if free.kind.is_type() {
             infcx
                 .tcx
                 .type_of(free.def_id())
@@ -416,7 +415,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     | TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
-                    TypingMode::PostAnalysis => {
+                    TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
@@ -450,7 +449,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if tcx.is_type_const(uv.def))
+            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if tcx.is_type_const(uv.kind.def_id()))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
@@ -461,30 +460,24 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             _ => return ct.super_fold_with(self),
         };
 
-        // Note that the AssocConst and Const cases are unreachable on stable,
+        // Note that the Projection/Inherent/Free cases are unreachable on stable,
         // unless a `min_generic_const_args` feature gate error has already
         // been emitted earlier in compilation.
         //
         // That's because we can only end up with an Unevaluated ty::Const for a const item
         // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
-        let ct = match tcx.def_kind(uv.def) {
-            DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
-                DefKind::Trait => self
-                    .normalize_trait_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                DefKind::Impl { of_trait: false } => self
-                    .normalize_inherent_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                    .expect_const(),
-                kind => unreachable!(
-                    "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
-                    kind
-                ),
-            },
-            DefKind::Const { .. } => self
-                .normalize_free_alias(ty::AliasTerm::from_unevaluated_const(tcx, uv))
-                .expect_const(),
-            DefKind::AnonConst => {
+        let ct = match uv.kind {
+            ty::UnevaluatedConstKind::Projection { .. } => {
+                self.normalize_trait_projection(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Inherent { .. } => {
+                self.normalize_inherent_projection(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Free { .. } => {
+                self.normalize_free_alias(uv.into()).expect_const()
+            }
+            ty::UnevaluatedConstKind::Anon { .. } => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(
                     self.selcx.infcx,
@@ -492,9 +485,6 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                     ct,
                     |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
                 )
-            }
-            kind => {
-                unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
             }
         };
 

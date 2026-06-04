@@ -776,7 +776,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     // need to store default and type of default
                     let ct = tcx.const_param_default(param.def_id).skip_binder();
                     if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-                        tcx.ensure_ok().type_of(uv.def);
+                        tcx.ensure_ok().type_of(uv.kind.def_id());
                     }
                 }
             }

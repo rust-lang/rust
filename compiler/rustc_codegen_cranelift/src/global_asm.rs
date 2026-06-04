@@ -12,7 +12,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::config::OutputFilenames;
 use rustc_target::asm::InlineAsmArch;
 
 use crate::prelude::*;
@@ -198,10 +198,7 @@ pub(crate) fn compile_global_asm(
         .join("\n");
     global_asm.push('\n');
 
-    let global_asm_object_file = add_file_stem_postfix(
-        config.output_filenames.temp_path_for_cgu(OutputType::Object, cgu_name),
-        ".asm",
-    );
+    let global_asm_object_file = config.output_filenames.temp_path_ext_for_cgu("asm.o", cgu_name);
 
     // Assemble `global_asm`
     if option_env!("CG_CLIF_FORCE_GNU_AS").is_some() {
@@ -270,15 +267,4 @@ pub(crate) fn compile_global_asm(
     }
 
     Ok(Some(global_asm_object_file))
-}
-
-pub(crate) fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
-    let mut new_filename = path.file_stem().unwrap().to_owned();
-    new_filename.push(postfix);
-    if let Some(extension) = path.extension() {
-        new_filename.push(".");
-        new_filename.push(extension);
-    }
-    path.set_file_name(new_filename);
-    path
 }

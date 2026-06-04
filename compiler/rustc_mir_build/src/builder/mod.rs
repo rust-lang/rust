@@ -890,6 +890,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     {
                         continue;
                     }
+                    // Ignore return value plumbing. After a call returning a non-`!`
+                    // uninhabited type, a tail expression can be unreachable while
+                    // still being needed to satisfy the surrounding return type.
+                    StatementKind::Assign((place, _)) if place.as_local() == Some(RETURN_PLACE) => {
+                        continue;
+                    }
                     StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
                         continue;
                     }

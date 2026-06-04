@@ -73,6 +73,7 @@
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(lossy_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -140,6 +141,7 @@
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(ptr_alignment_type)]
+#![feature(ptr_cast_slice)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(rev_into_inner)]

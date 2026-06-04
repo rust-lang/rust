@@ -44,7 +44,6 @@ mod tests;
 use crate::ffi::OsString;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
@@ -1598,6 +1597,25 @@ impl Dir {
             .open_file(path.as_ref(), &OpenOptions::new().read(true).0)
             .map(|f| File { inner: f })
     }
+
+    /// Queries metadata about the underlying directory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.inner.metadata().map(Metadata)
+    }
 }
 
 impl AsInner<fs_imp::Dir> for Dir {
@@ -2147,6 +2165,12 @@ impl fmt::Debug for Metadata {
     }
 }
 
+impl IntoInner<fs_imp::FileAttr> for Metadata {
+    fn into_inner(self) -> fs_imp::FileAttr {
+        self.0
+    }
+}
+
 impl AsInner<fs_imp::FileAttr> for Metadata {
     #[inline]
     fn as_inner(&self) -> &fs_imp::FileAttr {
@@ -2189,10 +2213,6 @@ impl AsInnerMut<fs_imp::FileTimes> for FileTimes {
         &mut self.0
     }
 }
-
-// For implementing OS extension traits in `std::os`
-#[stable(feature = "file_set_times", since = "1.75.0")]
-impl Sealed for FileTimes {}
 
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.

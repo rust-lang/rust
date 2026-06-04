@@ -93,6 +93,8 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -121,6 +123,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ModuleBuffer = back::lto::ModuleBuffer;
     type TargetMachine = OwnedTargetMachine;
     type ThinData = back::lto::ThinData;
+
     fn thread_profiler() -> Box<dyn Any> {
         Box::new(TimeTraceProfiler::new())
     }
