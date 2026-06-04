@@ -489,14 +489,13 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         if let Some(path) = &module.bytecode {
             files.push((OutputType::Bitcode.extension(), path.as_path()));
         }
-        if let Some((id, product)) = copy_cgu_workproduct_to_incr_comp_cache_dir(
+        let (id, product) = copy_cgu_workproduct_to_incr_comp_cache_dir(
             sess,
             &module.name,
             files.as_slice(),
             &module.links_from_incr_cache,
-        ) {
-            work_products.insert(id, product);
-        }
+        );
+        work_products.insert(id, product);
     }
 
     work_products
