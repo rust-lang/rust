@@ -2069,6 +2069,12 @@ rustc_queries! {
         desc { "getting delegation user-specified args" }
     }
 
+    query delegations_resolutions(_: ()) -> &'tcx FxIndexMap<LocalDefId, Result<DefId, ErrorGuaranteed>> {
+        arena_cache
+        eval_always
+        desc { "getting delegations resolutions" }
+    }
+
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
