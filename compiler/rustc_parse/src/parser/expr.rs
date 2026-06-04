@@ -1281,12 +1281,7 @@ impl<'a> Parser<'a> {
 
         let seq = match self.parse_expr_paren_seq() {
             Ok(args) => Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args))),
-            Err(err)
-                if self.prev_token.is_keyword(kw::Raw)
-                    && self.expected_token_types.contains(TokenType::KwMut)
-                    && self.expected_token_types.contains(TokenType::KwConst)
-                    && self.token.can_begin_expr() =>
-            {
+            Err(err) if self.is_expected_raw_ref_mut() => {
                 let err_span = self.prev_token.span.to(self.token.span);
                 let guar = err.emit();
                 // Preserve the call expression so later passes can still diagnose the callee,

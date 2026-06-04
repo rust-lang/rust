@@ -920,11 +920,7 @@ impl<'a> Parser<'a> {
                             // `&raw <expr>` already has a specific suggestion for missing
                             // `const`/`mut`, so don't recover `<expr>` as the next element in
                             // a comma-separated list.
-                            if exp.token_type == TokenType::Comma
-                                && self.prev_token.is_keyword(kw::Raw)
-                                && self.expected_token_types.contains(TokenType::KwMut)
-                                && self.expected_token_types.contains(TokenType::KwConst)
-                                && self.token.can_begin_expr()
+                            if exp.token_type == TokenType::Comma && self.is_expected_raw_ref_mut()
                             {
                                 return Err(expect_err);
                             }
