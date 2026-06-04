@@ -1687,16 +1687,20 @@ macro_rules! nop_lift {
 
 macro_rules! nop_list_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a List<$ty> {
-            type Lifted = &'tcx List<$lifted>;
+        nop_list_lift! { $set: List; $ty => $lifted }
+    };
+    // Allows defining own list type
+    ($set:ident: $list:ident; $ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a $list<$ty> {
+            type Lifted = &'tcx $list<$lifted>;
             fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
                 // Assert that the set has the right type.
                 if false {
-                    let _x: &InternedSet<'tcx, List<$lifted>> = &tcx.interners.$set;
+                    let _x: &InternedSet<'tcx, $list<$lifted>> = &tcx.interners.$set;
                 }
 
                 if self.is_empty() {
-                    return List::empty();
+                    return $list::empty();
                 }
                 assert!(tcx.interners.$set.contains_pointer_to(&InternedInSet(self)));
                 // SAFETY: we just checked that `self` is interned and therefore is valid for the
@@ -1718,10 +1722,15 @@ nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
+nop_list_lift! { clauses: ListWithCachedTypeInfo; Clause<'a> => Clause<'tcx> }
 nop_list_lift! {
     poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
 }
 nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind<'a> => ty::BoundVariableKind<'tcx> }
+nop_list_lift! { patterns; Pattern<'a> => Pattern<'tcx> }
+nop_list_lift! {
+    outlives; ty::ArgOutlivesPredicate<'a> => ty::ArgOutlivesPredicate<'tcx>
+}
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
