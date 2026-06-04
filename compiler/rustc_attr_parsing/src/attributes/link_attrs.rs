@@ -688,7 +688,8 @@ pub(crate) struct NeedsAllocatorParser;
 
 impl NoArgsAttributeParser for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(allocator_internals);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
@@ -697,7 +698,8 @@ pub(crate) struct CompilerBuiltinsParser;
 
 impl NoArgsAttributeParser for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(compiler_builtins);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

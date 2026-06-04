@@ -370,7 +370,8 @@ pub(crate) struct RustcNeverTypeOptionsParser;
 
 impl SingleAttributeParser for RustcNeverTypeOptionsParser {
     const PATH: &[Symbol] = &[sym::rustc_never_type_options];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &[
         r#"fallback = "unit", "never", "no""#,
         r#"diverging_block_default = "unit", "never""#,

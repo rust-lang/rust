@@ -83,7 +83,8 @@ pub(crate) struct ReexportTestHarnessMainParser;
 
 impl SingleAttributeParser for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 
@@ -174,7 +175,8 @@ pub(crate) struct TestRunnerParser;
 
 impl SingleAttributeParser for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
     const STABILITY: AttributeStability = unstable!(custom_test_frameworks);
 

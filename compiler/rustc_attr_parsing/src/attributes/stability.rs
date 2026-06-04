@@ -460,7 +460,8 @@ pub(crate) struct UnstableRemovedParser;
 impl CombineAttributeParser for UnstableRemovedParser {
     type Item = UnstableRemovedFeature;
     const PATH: &[Symbol] = &[sym::unstable_removed];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]);
     const STABILITY: AttributeStability = unstable!(staged_api);
