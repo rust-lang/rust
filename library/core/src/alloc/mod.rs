@@ -126,7 +126,7 @@ impl fmt::Display for AllocError {
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 // NOTE: the above bound on allocating methods not unwinding, alongside the similar
-// bount on `AllocatorClone`, are currently load-bearing in std! see #156490 and #155746
+// bound on `AllocatorClone`, are currently load-bearing in std! see #156490 and #155746
 // and make sure those issues cannot be triggered before relaxing this.
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
