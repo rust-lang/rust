@@ -917,6 +917,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
+        } else if matches!(item_ident.name.as_str(), "cloned" | "copied")
+            && let ty::Adt(adt_def, args) = rcvr_ty.kind()
+            && tcx.is_diagnostic_item(sym::Option, adt_def.did())
+            && let inner_ty = args.type_at(0)
+            // Skip refs (`Option<&T>.into_iter().cloned()` is valid, let the default branch
+            // handle it), and params/infer where we can't statically rule out a reference.
+            && !matches!(inner_ty.kind(), ty::Ref(..) | ty::Param(_) | ty::Infer(_))
+        {
+            // The default branch below would suggest `.into_iter()`, but that still
+            // fails: `Option<T>` yields `T` by value, not `&T`, so `.cloned()`/`.copied()`
+            // can't resolve. Give a targeted diagnostic instead.
+            err.span_label(span, format!("this method is only available on `Option<&_>`"));
+            if let SelfSource::MethodCall(rcvr_expr) = source
+                && !span.in_external_macro(tcx.sess.source_map())
+            {
+                let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
+                err.span_suggestion(
+                    rcvr_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi()),
+                    format!("consider removing the `.{}()` call", item_ident.name),
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            return Err(());
         } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
