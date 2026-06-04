@@ -215,7 +215,7 @@ for (id, rust, c) in specializations {{
         loaded_args = intrinsic.arguments.load_values_rust(),
         rust_args = intrinsic.arguments.as_call_param_rust(),
         c_args = intrinsic.arguments.as_c_call_param_rust(),
-        comparison = intrinsic.results.get_comparison_function(),
+        comparison = intrinsic.results.comparison_function(),
     )
 }
 

@@ -201,10 +201,10 @@ impl IntrinsicType {
 
 pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
     /// Determines the load function for this type.
-    fn get_load_function(&self) -> String;
+    fn load_function(&self) -> String;
 
     /// Determines the comparison function for this type.
-    fn get_comparison_function(&self) -> String {
+    fn comparison_function(&self) -> String {
         match self.simd_len {
             Some(SimdLen::Scalable) => unimplemented!("architecture-specific"),
             Some(SimdLen::Fixed(_)) | None => {

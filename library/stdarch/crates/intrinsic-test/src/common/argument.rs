@@ -183,7 +183,7 @@ where
                         "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);",
                         name = arg.generate_name(),
                         vals_name = test_values_array_name(&arg.ty),
-                        load = arg.ty.get_load_function(),
+                        load = arg.ty.load_function(),
                     )
                 } else {
                     format!(

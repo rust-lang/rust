@@ -71,7 +71,7 @@ impl TypeDefinition for ArmType {
     }
 
     /// Determines the load function for this type.
-    fn get_load_function(&self) -> String {
+    fn load_function(&self) -> String {
         if let IntrinsicType {
             kind: k,
             bit_len: Some(bl),
@@ -95,7 +95,7 @@ impl TypeDefinition for ArmType {
                 len = vec_len.unwrap_or(1),
             )
         } else {
-            todo!("get_load_function IntrinsicType: {self:#?}")
+            todo!("load_function IntrinsicType: {self:#?}")
         }
     }
 }
