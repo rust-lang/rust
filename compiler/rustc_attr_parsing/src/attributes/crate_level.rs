@@ -92,8 +92,7 @@ pub(crate) struct MoveSizeLimitParser;
 impl SingleAttributeParser for MoveSizeLimitParser {
     const PATH: &[Symbol] = &[sym::move_size_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(large_assignments);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -125,8 +124,7 @@ pub(crate) struct PatternComplexityLimitParser;
 impl SingleAttributeParser for PatternComplexityLimitParser {
     const PATH: &[Symbol] = &[sym::pattern_complexity_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
         "the `#[pattern_complexity_limit]` attribute is used for rustc unit tests"
@@ -143,8 +141,7 @@ pub(crate) struct NoCoreParser;
 
 impl NoArgsAttributeParser for NoCoreParser {
     const PATH: &[Symbol] = &[sym::no_core];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(no_core);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoCore;
 }
@@ -175,8 +172,7 @@ pub(crate) struct RustcCoherenceIsCoreParser;
 
 impl NoArgsAttributeParser for RustcCoherenceIsCoreParser {
     const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCoherenceIsCore;
 }
@@ -214,8 +210,7 @@ pub(crate) struct PanicRuntimeParser;
 
 impl NoArgsAttributeParser for PanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::panic_runtime];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(panic_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PanicRuntime;
 }
@@ -224,8 +219,7 @@ pub(crate) struct NeedsPanicRuntimeParser;
 
 impl NoArgsAttributeParser for NeedsPanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::needs_panic_runtime];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(needs_panic_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
 }
@@ -234,8 +228,7 @@ pub(crate) struct ProfilerRuntimeParser;
 
 impl NoArgsAttributeParser for ProfilerRuntimeParser {
     const PATH: &[Symbol] = &[sym::profiler_runtime];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(profiler_runtime);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
 }
@@ -255,8 +248,7 @@ pub(crate) struct RustcPreserveUbChecksParser;
 
 impl NoArgsAttributeParser for RustcPreserveUbChecksParser {
     const PATH: &[Symbol] = &[sym::rustc_preserve_ub_checks];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
 }
@@ -265,8 +257,7 @@ pub(crate) struct RustcNoImplicitBoundsParser;
 
 impl NoArgsAttributeParser for RustcNoImplicitBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_no_implicit_bounds];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
 }
@@ -275,8 +266,7 @@ pub(crate) struct DefaultLibAllocatorParser;
 
 impl NoArgsAttributeParser for DefaultLibAllocatorParser {
     const PATH: &[Symbol] = &[sym::default_lib_allocator];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(allocator_internals);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
 }
@@ -333,8 +323,7 @@ impl CombineAttributeParser for RegisterToolParser {
     const PATH: &[Symbol] = &[sym::register_tool];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = |tools, _span| AttributeKind::RegisterTool(tools);
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
     const STABILITY: AttributeStability = unstable!(register_tool);
 

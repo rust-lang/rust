@@ -49,8 +49,7 @@ pub(crate) struct RustcDumpHiddenTypeOfOpaquesParser;
 
 impl NoArgsAttributeParser for RustcDumpHiddenTypeOfOpaquesParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_hidden_type_of_opaques];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpHiddenTypeOfOpaques;
 }
@@ -243,8 +242,7 @@ pub(crate) struct RustcDumpVariancesOfOpaquesParser;
 
 impl NoArgsAttributeParser for RustcDumpVariancesOfOpaquesParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_variances_of_opaques];
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariancesOfOpaques;
 }
