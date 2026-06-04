@@ -445,6 +445,11 @@ pub unsafe trait NoaliasAllocator: Allocator {}
 /// (i.e. it is possible to free memory with one that was allocated with the other).
 /// Further, mutable accesses such as moving or dropping the allocator must not invalidate
 /// its currently allocated blocks at least so long as clones exist.
+///
+/// Additionally, the currently-experimental bound that allocators do not unwind when
+/// (de)allocating also applies to guaranteeing allocators will not panic when cloned.
+/// As this is an exprimental requirement that may be relaxed later, unsafe code cannot
+/// rely on it for correctness. This bound trivially holds for allocators that are `Copy`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
 
