@@ -1165,47 +1165,191 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
     // Fast path for long shared prefixes
     //
     // - compare raw bytes to find first mismatch
-    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
-    // - if found update state to only do a component-wise comparison on the remainder,
-    //   otherwise do it on the full path
+    // - if mismatch is between non-separator bytes, return comparison between bytes
+    // - if mismatch is between a non-separator byte and a separator byte, normalize
+    // the conflicting byte with the separator byte to make sure that the conflict
+    // is not due to path not being normalized
+    // - otherwise if we see a '.' (which could be from `..`, a current directory, or something
+    // that we should normalize), defer to comparison via `Iterator::cmp`. Before handing it off
+    // to `Iterator::cmp`, backtrack to find separator before mismatch to avoid ambiguous parsings
+    // of '.' or '..' characters.
     //
-    // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
-    // the middle of one. If both left and right are at 0, that means no prefix was encoded
-    // into this
-    // possible future improvement: a [u8]::first_mismatch simd implementation
-    // Optimization: can check if the differing character is not a '/' or '.'
-    // and then return either `Ordering::Greater` or `Ordering::Less`
-    if left.front == 0 && right.front == 0 {
-        // Note: Benchmarking details shows that using `left.back.min(right.back)`
-        // causes this function to run slower than using a variable that stores
-        // the `left.back` and `right.back` information (which `back` field
-        // encodes the length of the `Components<'_>` unconsumed path)
-        let left_back = left.back;
-        let right_back = right.back;
-        let first_difference = match left.path[..left.back]
+    // The faster path isn't taken for paths with a PrefixComponent to avoid backtracking
+    // into the middle of one.
+
+    // If we have a `FirstComponent` on both left and right `Components`,
+    // an optimization we can take is that if our left path is absolute
+    // and right path is relative (or vice versa), just compare the first
+    // byte (or return Greater/Less if relative path is empty string) since
+    // we know these two bytes are different
+    if let Some(left_first_comp) = left.first_comp
+        && let Some(right_first_comp) = right.first_comp
+    {
+        match (left_first_comp, right_first_comp) {
+            (FirstComponent::AbsolutePath, FirstComponent::RelativePath) => {
+                if right.back > 0 {
+                    return left.path[0].cmp(&right.path[0]);
+                }
+                return cmp::Ordering::Greater;
+            }
+            (FirstComponent::RelativePath, FirstComponent::AbsolutePath) => {
+                if left.back > 0 {
+                    return left.path[0].cmp(&right.path[0]);
+                }
+                return cmp::Ordering::Less;
+            }
+            (FirstComponent::AbsolutePath, FirstComponent::AbsolutePath)
+            | (FirstComponent::RelativePath, FirstComponent::RelativePath) => {}
+            _ => return Iterator::cmp(left, right),
+        }
+    }
+
+    let mut left_front = left.front;
+    let mut right_front = right.front;
+    let left_back = left.back;
+    let right_back = right.back;
+
+    loop {
+        match left.path[left_front..left_back]
             .iter()
-            .zip(&right.path[..right.back])
+            .zip(right.path[right_front..right_back].iter())
             .position(|(&a, &b)| a != b)
         {
-            None if left.back == right.back => return cmp::Ordering::Equal,
-            None => left_back.min(right_back),
-            Some(diff) => diff,
-        };
-        if let Some(previous_sep) =
-            left.path[..first_difference].iter().rposition(|&b| is_sep_byte(b))
-        {
-            // We should always set first_comp to `None` since we got past
-            // the first character (could be root dir or a part of a relative path)
-            // we normalize both `Components<'_>` because we want both to start
-            // at a non-separator character and start comparing from there
-            // (e.g. comparing "/a" with "///a")
-            left.first_comp = None;
-            left.front = previous_sep;
-            left.normalize_front();
-            right.first_comp = None;
-            right.front = previous_sep;
-            right.normalize_front();
+            None if left_back - left_front == right_back - right_front => {
+                return cmp::Ordering::Equal;
+            }
+            None => {
+                let mut cur_dir_present = false;
+                if left_back - left_front > right_back - right_front {
+                    // For path comparison between /foo/bar. vs /foo/bar, we
+                    // can't treat this '.' as a current directory component
+                    // to be normalized
+                    if right_back > 0
+                        && left.path[right_back] == b'.'
+                        && left.path[right_back - 1] != MAIN_SEPARATOR as u8
+                    {
+                        return cmp::Ordering::Greater;
+                    }
+
+                    match left.path[right_back..left_back].iter().position(|b| {
+                        if !is_sep_byte(*b) {
+                            if *b == b'.' && !cur_dir_present {
+                                cur_dir_present = true;
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            cur_dir_present = false;
+                            false
+                        }
+                    }) {
+                        None => return cmp::Ordering::Equal,
+                        Some(_) => return cmp::Ordering::Greater,
+                    }
+                } else {
+                    // For path comparison between /foo/bar vs /foo/bar., we
+                    // can't treat this '.' as a current directory component
+                    // to be normalized
+                    if left_back > 0
+                        && right.path[left_back] == b'.'
+                        && right.path[left_back - 1] != MAIN_SEPARATOR as u8
+                    {
+                        return cmp::Ordering::Less;
+                    }
+                    match right.path[left_back..right_back].iter().position(|b| {
+                        if !is_sep_byte(*b) {
+                            if *b == b'.' && !cur_dir_present {
+                                cur_dir_present = true;
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            cur_dir_present = false;
+                            false
+                        }
+                    }) {
+                        None => return cmp::Ordering::Equal,
+                        Some(_) => return cmp::Ordering::Less,
+                    }
+                }
+            }
+            Some(ind) => {
+                left_front += ind;
+                right_front += ind;
+                let left_byte = left.path[left_front];
+                let right_byte = right.path[right_front];
+                if left_byte == MAIN_SEPARATOR as u8 && right_byte != MAIN_SEPARATOR as u8 {
+                    let mut cur_dir_present = false;
+                    match left.path[left_front..left_back].iter().position(|b| {
+                        if !is_sep_byte(*b) {
+                            if *b == b'.' && !cur_dir_present {
+                                cur_dir_present = true;
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            cur_dir_present = false;
+                            false
+                        }
+                    }) {
+                        None => return cmp::Ordering::Less,
+                        Some(i) => {
+                            if cur_dir_present {
+                                left_front += i - 1;
+                            } else {
+                                left_front += i;
+                            }
+                        }
+                    }
+                } else if left_byte != MAIN_SEPARATOR as u8 && right_byte == MAIN_SEPARATOR as u8 {
+                    let mut cur_dir_present = false;
+                    match right.path[right_front..right_back].iter().position(|b| {
+                        if !is_sep_byte(*b) {
+                            if *b == b'.' && !cur_dir_present {
+                                cur_dir_present = true;
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            cur_dir_present = false;
+                            false
+                        }
+                    }) {
+                        None => return cmp::Ordering::Greater,
+                        Some(i) => {
+                            if cur_dir_present {
+                                right_front += i - 1;
+                            } else {
+                                right_front += i;
+                            }
+                        }
+                    }
+                } else {
+                    if left_byte == b'.' || right_byte == b'.' {
+                        break;
+                    }
+                    return left_byte.cmp(&right_byte);
+                }
+            }
         }
+    }
+
+    // Start from the last separator before handing it off to be processed
+    // and compared by `Components::next`
+    if let Some(left_previous_sep) = left.path[..left_front].iter().rposition(|&b| is_sep_byte(b))
+        && let Some(right_prev_sep) =
+            right.path[..right_front].iter().rposition(|&b| is_sep_byte(b))
+    {
+        left.first_comp = None;
+        left.front = left_previous_sep;
+        left.normalize_front();
+        right.first_comp = None;
+        right.front = right_prev_sep;
+        right.normalize_front();
     }
 
     Iterator::cmp(left, right)
