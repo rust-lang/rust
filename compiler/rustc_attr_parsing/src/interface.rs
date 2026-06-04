@@ -1,3 +1,4 @@
+//! API for other crates to parse attributes themselves.
 use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
