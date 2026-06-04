@@ -1,3 +1,5 @@
+//! Traits for parsing attributes.
+//!
 //! This module defines traits for attribute parsers, little state machines that recognize and parse
 //! attributes out of a longer list of attributes. The main trait is called [`AttributeParser`].
 //! You can find more docs about [`AttributeParser`]s on the trait itself.
@@ -7,9 +9,11 @@
 //! Specifically, you might not care about managing the state of your [`AttributeParser`]
 //! state machine yourself. In this case you can choose to implement:
 //!
-//! - [`SingleAttributeParser`](crate::attributes::SingleAttributeParser): makes it easy to implement an attribute which should error if it
+//! - [`NoArgsAttributeParser`]: used for implementing an attribute that appears only once and
+//! accepts no arguments
+//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
 //! appears more than once in a list of attributes
-//! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
+//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.

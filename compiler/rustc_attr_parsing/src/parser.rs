@@ -1,3 +1,8 @@
+//! Parsing of attribute arguments.
+//!
+//! Depending on the attribute parser, an [`ArgParser`] can be used to parse the arguments given to
+//! an attribute. See its documentation for more information.
+//!
 //! This is in essence an (improved) duplicate of `rustc_ast/attr/mod.rs`.
 //! That module is intended to be deleted in its entirety.
 //!
@@ -89,6 +94,12 @@ impl<P: Borrow<Path>> Display for PathParser<P> {
     }
 }
 
+/// Used for parsing attribute arguments.
+///
+/// See also [`AttributeDiagnosticContext`], which is the preferred interface for issuing argument
+/// parsing related diagnostics.
+///
+/// [`AttributeDiagnosticContext`]: crate::context::AttributeDiagnosticContext
 #[derive(Debug)]
 #[must_use]
 pub enum ArgParser {
