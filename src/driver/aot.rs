@@ -124,14 +124,15 @@ fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
     UnwindModule::new(ObjectModule::new(builder), true)
 }
 
-fn emit_cgu(
+fn emit_module(
     output_filenames: &OutputFilenames,
     prof: &SelfProfilerRef,
-    name: String,
     module: UnwindModule<ObjectModule>,
     debug: Option<DebugContext>,
-    global_asm_object_file: Option<PathBuf>,
-    producer: &str,
+    kind: ModuleKind,
+    name: String,
+    global_asm_object: Option<PathBuf>,
+    producer_str: &str,
 ) -> Result<CompiledModule, String> {
     let mut product = module.finish();
 
@@ -139,28 +140,8 @@ fn emit_cgu(
         debug.emit(&mut product);
     }
 
-    emit_module(
-        output_filenames,
-        prof,
-        product.object,
-        ModuleKind::Regular,
-        name.clone(),
-        global_asm_object_file,
-        producer,
-    )
-}
-
-fn emit_module(
-    output_filenames: &OutputFilenames,
-    prof: &SelfProfilerRef,
-    mut object: cranelift_object::object::write::Object<'_>,
-    kind: ModuleKind,
-    name: String,
-    global_asm_object: Option<PathBuf>,
-    producer_str: &str,
-) -> Result<CompiledModule, String> {
-    if object.format() == cranelift_object::object::BinaryFormat::Elf {
-        let comment_section = object.add_section(
+    if product.object.format() == cranelift_object::object::BinaryFormat::Elf {
+        let comment_section = product.object.add_section(
             Vec::new(),
             b".comment".to_vec(),
             cranelift_object::object::SectionKind::OtherString,
@@ -168,7 +149,7 @@ fn emit_module(
         let mut producer = vec![0];
         producer.extend(producer_str.as_bytes());
         producer.push(0);
-        object.set_section_data(comment_section, producer, 1);
+        product.object.set_section_data(comment_section, producer, 1);
     }
 
     let tmp_file = output_filenames.temp_path_for_cgu(OutputType::Object, &name);
@@ -178,7 +159,7 @@ fn emit_module(
     };
 
     let mut file = BufWriter::new(file);
-    if let Err(err) = object.write_stream(&mut file) {
+    if let Err(err) = product.object.write_stream(&mut file) {
         return Err(format!("error writing object file: {}", err));
     }
     let file = match file.into_inner() {
@@ -414,12 +395,13 @@ fn compile_cgu(
         })?;
 
     prof.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
-        emit_cgu(
-            &output_filenames,
-            &prof,
-            cgu_name,
+        emit_module(
+            output_filenames,
+            prof,
             module,
             debug_context,
+            ModuleKind::Regular,
+            cgu_name.clone(),
             global_asm_object_file,
             &producer,
         )
@@ -433,12 +415,11 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
 
     crate::allocator::codegen(tcx, &mut allocator_module, &allocator_shim_contents(tcx, kind));
 
-    let product = allocator_module.finish();
-
     match emit_module(
         tcx.output_filenames(()),
         &tcx.sess.prof,
-        product.object,
+        allocator_module,
+        None,
         ModuleKind::Allocator,
         "allocator_shim".to_owned(),
         None,
