@@ -281,34 +281,32 @@ pub(crate) fn target_machine_factory(
         let output_obj_file = path_to_cstring_helper(config.output_obj_file);
 
         OwnedTargetMachine::new(
-            &triple,
-            &cpu,
-            &features,
-            &abi,
-            code_model,
-            reloc_model,
-            opt_level,
-            float_abi,
-            ffunction_sections,
-            fdata_sections,
-            funique_section_names,
-            trap_unreachable,
-            singlethread,
-            verbose_asm,
-            emit_stack_size_section,
-            relax_elf_relocations,
-            use_init_array,
-            &split_dwarf_file,
-            &output_obj_file,
-            debuginfo_compression,
-            use_emulated_tls,
-            use_wasm_eh,
-            large_data_threshold,
-        )
-        .unwrap_or_else(|err| {
-            dcx.emit_fatal(ParseTargetMachineConfig(err))
-        })
-    })
+                    &triple,
+                    &cpu,
+                    &features,
+                    &abi,
+                    code_model,
+                    reloc_model,
+                    opt_level,
+                    float_abi,
+                    ffunction_sections,
+                    fdata_sections,
+                    funique_section_names,
+                    trap_unreachable,
+                    singlethread,
+                    verbose_asm,
+                    emit_stack_size_section,
+                    relax_elf_relocations,
+                    use_init_array,
+                    &split_dwarf_file,
+                    &output_obj_file,
+                    debuginfo_compression,
+                    use_emulated_tls,
+                    use_wasm_eh,
+                    large_data_threshold,
+                )
+                .unwrap_or_else(|err| dcx.emit_fatal(ParseTargetMachineConfig(err)))
+            })
 }
 
 pub(crate) fn save_temp_bitcode(
