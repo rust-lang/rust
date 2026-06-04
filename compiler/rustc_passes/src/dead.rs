@@ -454,118 +454,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         false
     }
 
-    fn handle_type_dep_def(&mut self, value: &Result<(DefKind, DefId), ErrorGuaranteed>) {
-        let Ok((DefKind::AssocTy, def_id)) = value else {
-            return;
-        };
-        self.check_def_id(*def_id);
-    }
-
-    fn handle_type_dep_defs(&mut self, type_dep_defs: &ty::TypeDepDefs) {
-        for (_, value) in type_dep_defs.type_dependent_defs().items_in_stable_order() {
-            self.handle_type_dep_def(value);
-        }
-    }
-
-    fn handle_type_dep_defs_for_node(&mut self, node: Node<'tcx>) {
-        let mut type_dep_defs = Vec::new();
-
-        match node {
-            Node::Item(item) => {
-                let def_id = item.owner_id.def_id;
-                match item.kind {
-                    hir::ItemKind::Fn { .. } => {
-                        type_dep_defs.push(self.tcx.fn_sig_with_type_dep_defs(def_id).1);
-                        type_dep_defs
-                            .push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-                    }
-                    hir::ItemKind::Static(..)
-                    | hir::ItemKind::Const(..)
-                    | hir::ItemKind::TyAlias(..) => {
-                        type_dep_defs.push(self.tcx.type_of_with_type_dep_defs(def_id).1);
-                        type_dep_defs
-                            .push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-                    }
-                    hir::ItemKind::Enum(..)
-                    | hir::ItemKind::Struct(..)
-                    | hir::ItemKind::Union(..)
-                    | hir::ItemKind::Trait { .. }
-                    | hir::ItemKind::TraitAlias(..) => {
-                        type_dep_defs
-                            .push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-                    }
-                    hir::ItemKind::Impl(impl_) => {
-                        type_dep_defs.push(self.tcx.type_of_with_type_dep_defs(def_id).1);
-                        type_dep_defs
-                            .push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-                        if impl_.of_trait.is_some() {
-                            type_dep_defs
-                                .push(self.tcx.impl_trait_header_with_type_dep_defs(def_id).1);
-                        }
-                    }
-                    hir::ItemKind::GlobalAsm { .. }
-                    | hir::ItemKind::Macro(..)
-                    | hir::ItemKind::Mod(..)
-                    | hir::ItemKind::ForeignMod { .. }
-                    | hir::ItemKind::ExternCrate(..)
-                    | hir::ItemKind::Use(..) => {}
-                }
-            }
-            Node::TraitItem(trait_item) => {
-                let def_id = trait_item.owner_id.def_id;
-                match trait_item.kind {
-                    hir::TraitItemKind::Fn(..) => {
-                        type_dep_defs.push(self.tcx.fn_sig_with_type_dep_defs(def_id).1);
-                    }
-                    hir::TraitItemKind::Const(..) => {
-                        type_dep_defs.push(self.tcx.type_of_with_type_dep_defs(def_id).1);
-                    }
-                    hir::TraitItemKind::Type(_, default) => {
-                        if default.is_some() {
-                            type_dep_defs.push(self.tcx.type_of_with_type_dep_defs(def_id).1);
-                        }
-                        type_dep_defs
-                            .push(self.tcx.explicit_item_bounds_with_type_dep_defs(def_id).1);
-                    }
-                }
-                type_dep_defs.push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-            }
-            Node::ImplItem(impl_item) => {
-                let def_id = impl_item.owner_id.def_id;
-                match impl_item.kind {
-                    hir::ImplItemKind::Fn(..) => {
-                        type_dep_defs.push(self.tcx.fn_sig_with_type_dep_defs(def_id).1);
-                    }
-                    hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(..) => {
-                        type_dep_defs.push(self.tcx.type_of_with_type_dep_defs(def_id).1);
-                    }
-                }
-                type_dep_defs.push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-            }
-            Node::ForeignItem(foreign_item) => match foreign_item.kind {
-                hir::ForeignItemKind::Fn(..) => {
-                    type_dep_defs
-                        .push(self.tcx.fn_sig_with_type_dep_defs(foreign_item.owner_id.def_id).1);
-                }
-                hir::ForeignItemKind::Static(..) => {
-                    type_dep_defs
-                        .push(self.tcx.type_of_with_type_dep_defs(foreign_item.owner_id.def_id).1);
-                }
-                hir::ForeignItemKind::Type => {}
-            },
-            Node::OpaqueTy(opaq) => {
-                let def_id = opaq.def_id;
-                type_dep_defs.push(self.tcx.explicit_predicates_of_with_type_dep_defs(def_id).1);
-                type_dep_defs.push(self.tcx.explicit_item_bounds_with_type_dep_defs(def_id).1);
-            }
-            _ => {}
-        }
-
-        for type_dep_defs in type_dep_defs {
-            self.handle_type_dep_defs(type_dep_defs);
-        }
-    }
-
     fn visit_node(
         &mut self,
         node: Node<'tcx>,
@@ -581,9 +469,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         let had_repr_simd = self.repr_has_repr_simd;
         self.repr_unconditionally_treats_fields_as_live = false;
         self.repr_has_repr_simd = false;
-
-        self.handle_type_dep_defs_for_node(node);
-
         let walk_result = match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
@@ -595,6 +480,15 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => ControlFlow::Continue(()),
+                hir::ItemKind::Trait { items: trait_item_refs, .. } => {
+                    // mark assoc ty live if the trait is live
+                    for trait_item in trait_item_refs {
+                        if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
+                            self.check_def_id(trait_item.owner_id.to_def_id());
+                        }
+                    }
+                    intravisit::walk_item(self, item)
+                }
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
@@ -685,14 +579,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
-
-    fn visit_body(&mut self, body: &hir::Body<'tcx>) -> Self::Result {
-        for (_, value) in self.typeck_results().type_dependent_defs().items_in_stable_order() {
-            self.handle_type_dep_def(value);
-        }
-
-        intravisit::walk_body(self, body)
-    }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) -> Self::Result {
         let typeck_results = self.tcx.typeck_body(body);
@@ -849,7 +735,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_trait_ref(&mut self, t: &'tcx hir::TraitRef<'tcx>) -> Self::Result {
-        // Mark assoc items used if they are constrained in the trait ref
         if let Some(trait_def_id) = t.path.res.opt_def_id()
             && let Some(segment) = t.path.segments.last()
             && let Some(args) = segment.args
@@ -858,11 +743,12 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 if let Some(local_def_id) = self
                     .tcx
                     .associated_items(trait_def_id)
-                    .filter_by_name_unhygienic(constraint.ident.name)
-                    .filter(|item| matches!(item.tag(), AssocTag::Const | AssocTag::Type))
-                    .find(|item| {
-                        self.tcx.hygienic_eq(constraint.ident, item.ident(self.tcx), trait_def_id)
-                    })
+                    .find_by_ident_and_kind(
+                        self.tcx,
+                        constraint.ident,
+                        AssocTag::Const,
+                        trait_def_id,
+                    )
                     .and_then(|item| item.def_id.as_local())
                 {
                     self.worklist.push(WorkItem {
@@ -875,19 +761,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         }
 
         intravisit::walk_trait_ref(self, t)
-    }
-
-    fn visit_field_def(&mut self, field_def: &'tcx hir::FieldDef<'tcx>) -> Self::Result {
-        // Check `T::Ty` used in field's type, marks assoc types live whether the field is used or not
-        // Consider that there would be three situations:
-        // 1. `field` is used, it's good
-        // 2. `field` is not used but marked like `#[allow(dead_code)]`,
-        //    it's annoying to mark the assoc type `#[allow(dead_code)]` again
-        // 3. `field` is not used and will be linted,
-        //    the assoc type will be linted after removing the unused field
-        let (_, type_dep_defs) = self.tcx.type_of_with_type_dep_defs(field_def.def_id);
-        self.handle_type_dep_defs(type_dep_defs);
-        intravisit::walk_field_def(self, field_def)
     }
 }
 
