@@ -305,7 +305,7 @@ pub(crate) fn target_machine_factory(
             use_wasm_eh,
             large_data_threshold,
         )
-        .unwrap_or_else(|err| dcx.emit_fatal(ParseTargetMachineConfig(err)))
+        .map_err(|err| dcx.emit_err(ParseTargetMachineConfig(err)))
     })
 }
 
