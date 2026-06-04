@@ -1,110 +1,36 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::convert::Infallible;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::thread::JoinHandle;
+use std::sync::Arc;
+use std::time::Instant;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
-use rustc_codegen_ssa::assert_module_sources::CguReuse;
-use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
-use rustc_codegen_ssa::base::{
-    allocator_kind_for_codegen, allocator_shim_contents, determine_cgu_reuse,
+use rustc_ast::expand::allocator::AllocatorMethod;
+use rustc_codegen_ssa::back::lto::ThinModule;
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
-use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
+use rustc_codegen_ssa::traits::{ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
-use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
+use rustc_errors::DiagCtxt;
 use rustc_hir::attrs::Linkage as RLinkage;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mono::{CodegenUnit, MonoItem, MonoItemData, Visibility};
+use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
 use rustc_session::Session;
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::config::{OptLevel, OutputFilenames, OutputType};
 use rustc_span::Symbol;
 
 use crate::base::CodegenedFunction;
-use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::{GlobalAsmConfig, GlobalAsmContext};
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-
-enum OngoingModuleCodegen {
-    Sync(Result<CompiledModule, String>),
-    Async(JoinHandle<Result<CompiledModule, String>>),
-}
-
-impl StableHash for OngoingModuleCodegen {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {
-        // do nothing
-    }
-}
-
-pub(crate) struct OngoingCodegen {
-    modules: Vec<OngoingModuleCodegen>,
-    allocator_module: Option<CompiledModule>,
-    concurrency_limiter: ConcurrencyLimiter,
-}
-
-impl OngoingCodegen {
-    pub(crate) fn join(
-        self,
-        sess: &Session,
-        outputs: &OutputFilenames,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
-        let mut work_products = FxIndexMap::default();
-        let mut modules = vec![];
-        for module_codegen in self.modules {
-            let module_codegen_result = match module_codegen {
-                OngoingModuleCodegen::Sync(module_codegen_result) => module_codegen_result,
-                OngoingModuleCodegen::Async(join_handle) => match join_handle.join() {
-                    Ok(module_codegen_result) => module_codegen_result,
-                    Err(panic) => std::panic::resume_unwind(panic),
-                },
-            };
-
-            let module = match module_codegen_result {
-                Ok(module) => module,
-                Err(err) => sess.dcx().fatal(err),
-            };
-
-            let work_product = if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
-                None
-            } else if let Some(global_asm_object) = &module.global_asm_object {
-                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                    sess,
-                    &module.name,
-                    &[("o", module.object.as_ref().unwrap()), ("asm.o", global_asm_object)],
-                    &[],
-                )
-            } else {
-                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                    sess,
-                    &module.name,
-                    &[("o", module.object.as_ref().unwrap())],
-                    &[],
-                )
-            };
-            if let Some((work_product_id, work_product)) = work_product {
-                work_products.insert(work_product_id, work_product);
-            }
-
-            modules.push(module);
-        }
-
-        self.concurrency_limiter.finished();
-
-        sess.dcx().abort_if_errors();
-
-        let compiled_modules = CompiledModules { modules, allocator_module: self.allocator_module };
-
-        produce_final_output_artifacts(sess, &compiled_modules, outputs);
-
-        (compiled_modules, work_products)
-    }
-}
 
 pub(crate) struct AotModule {
     producer: String,
@@ -218,62 +144,6 @@ fn emit_module(
     })
 }
 
-fn reuse_workproduct_for_cgu(
-    tcx: TyCtxt<'_>,
-    cgu: &CodegenUnit<'_>,
-) -> Result<CompiledModule, String> {
-    let work_product = cgu.previous_work_product(tcx);
-    let obj_out_regular =
-        tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, cgu.name().as_str());
-    let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
-        tcx.sess,
-        work_product.saved_files.get("o").expect("no saved object file in work product"),
-    );
-
-    if let Err(err) = rustc_fs_util::link_or_copy(&source_file_regular, &obj_out_regular) {
-        return Err(format!(
-            "unable to copy {} to {}: {}",
-            source_file_regular.display(),
-            obj_out_regular.display(),
-            err
-        ));
-    }
-
-    let obj_out_global_asm =
-        tcx.output_filenames(()).temp_path_ext_for_cgu("asm.o", cgu.name().as_str());
-    let source_file_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
-        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(tcx.sess, asm_o);
-        if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
-        {
-            return Err(format!(
-                "unable to copy {} to {}: {}",
-                source_file_global_asm.display(),
-                obj_out_global_asm.display(),
-                err
-            ));
-        }
-        Some(source_file_global_asm)
-    } else {
-        None
-    };
-
-    Ok(CompiledModule {
-        name: cgu.name().to_string(),
-        kind: ModuleKind::Regular,
-        object: Some(obj_out_regular),
-        global_asm_object: source_file_global_asm.as_ref().map(|_| obj_out_global_asm),
-        dwarf_object: None,
-        bytecode: None,
-        assembly: None,
-        llvm_ir: None,
-        links_from_incr_cache: if let Some(source_file_global_asm) = source_file_global_asm {
-            vec![source_file_regular, source_file_global_asm]
-        } else {
-            vec![source_file_regular]
-        },
-    })
-}
-
 fn codegen_cgu(tcx: TyCtxt<'_>, cgu_name: Symbol) -> AotModule {
     let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
 
@@ -305,7 +175,7 @@ fn codegen_cgu(tcx: TyCtxt<'_>, cgu_name: Symbol) -> AotModule {
                 }
                 let codegened_function = crate::base::codegen_fn(
                     tcx,
-                    cgu_name,
+                    cgu.name(),
                     module.debug_context.as_mut(),
                     &mut type_dbg,
                     Function::new(),
@@ -331,33 +201,6 @@ fn codegen_cgu(tcx: TyCtxt<'_>, cgu_name: Symbol) -> AotModule {
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module.module, false, cgu.is_primary());
 
     module
-}
-
-fn module_codegen(
-    tcx: TyCtxt<'_>,
-    cgu_name: Symbol,
-    token: ConcurrencyLimiterToken,
-) -> OngoingModuleCodegen {
-    let module = codegen_cgu(tcx, cgu_name);
-
-    let cgu_name = cgu_name.as_str().to_owned();
-
-    let prof = tcx.prof.clone();
-    let output_filenames = tcx.output_filenames(()).clone();
-    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
-
-    OngoingModuleCodegen::Async(std::thread::spawn(move || {
-        let codegen_result = compile_cgu(
-            &prof,
-            &output_filenames,
-            should_write_ir,
-            module,
-            cgu_name,
-            ModuleKind::Regular,
-        );
-        std::mem::drop(token);
-        codegen_result
-    }))
 }
 
 fn compile_cgu(
@@ -418,86 +261,133 @@ fn compile_cgu(
     })
 }
 
-fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
-    let Some(kind) = allocator_kind_for_codegen(tcx) else { return None };
+#[derive(Copy, Clone)]
+pub(crate) struct AotDriver;
 
-    let mut allocator_module = make_module(tcx, "allocator_shim");
+impl ExtraBackendMethods for AotDriver {
+    type Module = AotModule;
 
-    crate::allocator::codegen(
-        tcx,
-        &mut allocator_module.module,
-        &allocator_shim_contents(tcx, kind),
-    );
+    fn codegen_allocator<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        module_name: &str,
+        methods: &[AllocatorMethod],
+    ) -> Self::Module {
+        let mut allocator_module = make_module(tcx, module_name);
+        crate::allocator::codegen(tcx, &mut allocator_module.module, methods);
+        allocator_module
+    }
 
-    match compile_cgu(
-        &tcx.sess.prof,
-        tcx.output_filenames(()),
-        false,
-        allocator_module,
-        "allocator_shim".to_owned(),
-        ModuleKind::Allocator,
-    ) {
-        Ok(allocator_module) => Some(allocator_module),
-        Err(err) => tcx.dcx().fatal(err),
+    fn compile_codegen_unit(
+        &self,
+        tcx: TyCtxt<'_>,
+        cgu_name: Symbol,
+    ) -> (ModuleCodegen<Self::Module>, u64) {
+        let start_time = Instant::now();
+
+        let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
+        let (module, _) = tcx.dep_graph.with_task(
+            dep_node,
+            tcx,
+            || {
+                let aot_module = codegen_cgu(tcx, cgu_name);
+                ModuleCodegen::new_regular(cgu_name.as_str().to_owned(), aot_module)
+            },
+            Some(rustc_middle::dep_graph::hash_result),
+        );
+
+        let time_to_codegen = start_time.elapsed();
+
+        // We assume that the cost to run LLVM on a CGU is proportional to
+        // the time we needed for codegenning it.
+        let cost = time_to_codegen.as_nanos() as u64;
+
+        (module, cost)
     }
 }
 
-pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
-    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
+impl WriteBackendMethods for AotDriver {
+    type Module = AotModule;
 
-    if tcx.dep_graph.is_fully_enabled() {
-        for cgu in cgus {
-            tcx.ensure_ok().codegen_unit(cgu.name());
-        }
+    type TargetMachine = ();
+
+    type ModuleBuffer = Infallible;
+
+    type ThinData = Infallible;
+
+    fn target_machine_factory(
+        &self,
+        _sess: &Session,
+        _opt_level: OptLevel,
+        _target_features: &[String],
+    ) -> TargetMachineFactoryFn<Self> {
+        Arc::new(|_, _| ())
     }
 
-    // Calculate the CGU reuse
-    let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, cgu)).collect::<Vec<_>>()
-    });
+    fn optimize_and_codegen_fat_lto(
+        _sess: &Session,
+        _cgcx: &CodegenContext,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
+        _exported_symbols_for_lto: &[String],
+        _each_linked_rlib_for_lto: &[PathBuf],
+        _modules: Vec<FatLtoInput<Self>>,
+    ) -> CompiledModule {
+        unreachable!()
+    }
 
-    rustc_codegen_ssa::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {
-        for (i, cgu) in cgus.iter().enumerate() {
-            let cgu_reuse = cgu_reuse[i];
-            cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
-        }
-    });
+    fn run_thin_lto(
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _dcx: rustc_errors::DiagCtxtHandle<'_>,
+        _exported_symbols_for_lto: &[String],
+        _each_linked_rlib_for_lto: &[PathBuf],
+        _modules: Vec<ThinLtoInput<Self>>,
+    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
+        unreachable!()
+    }
 
-    let (todo_cgus, done_cgus) =
-        cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
-            _ if tcx.sess.opts.unstable_opts.disable_incr_comp_backend_caching => true,
-            CguReuse::No => true,
-            CguReuse::PreLto | CguReuse::PostLto => false,
-        });
+    fn optimize(
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
+        _module: &mut ModuleCodegen<Self::Module>,
+        _config: &ModuleConfig,
+    ) {
+    }
 
-    let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(todo_cgus.len()));
+    fn optimize_and_codegen_thin(
+        _cgcx: &CodegenContext,
+        _prof: &SelfProfilerRef,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
+        _thin: ThinModule<Self>,
+    ) -> CompiledModule {
+        unreachable!()
+    }
 
-    let modules: Vec<_> =
-        tcx.sess.time("codegen mono items", || {
-            let modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {
-                let dep_node = cgu.codegen_dep_node(tcx);
-                let (module, _) = tcx.dep_graph.with_task(
-                    dep_node,
-                    tcx,
-                    || module_codegen(tcx, cgu.name(), concurrency_limiter.acquire(tcx.dcx())),
-                    Some(rustc_middle::dep_graph::hash_result),
-                );
-                IntoDynSyncSend(module)
-            });
-            modules
-                .into_iter()
-                .map(|module| module.0)
-                .chain(done_cgus.into_iter().map(|(_, cgu)| {
-                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
-                }))
-                .collect()
-        });
+    fn codegen(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        module: ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) -> CompiledModule {
+        compile_cgu(
+            prof,
+            &cgcx.output_filenames,
+            config.emit_ir,
+            module.module_llvm,
+            module.name,
+            module.kind,
+        )
+        .unwrap_or_else(|err| {
+            let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+            dcx.handle().fatal(err)
+        })
+    }
 
-    let allocator_module = emit_allocator_module(tcx);
-
-    Box::new(OngoingCodegen {
-        modules,
-        allocator_module,
-        concurrency_limiter: concurrency_limiter.0,
-    })
+    fn serialize_module(_module: Self::Module, _is_thin: bool) -> Self::ModuleBuffer {
+        unreachable!()
+    }
 }
