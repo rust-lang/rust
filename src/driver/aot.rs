@@ -9,7 +9,9 @@ use std::thread::JoinHandle;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
 use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
-use rustc_codegen_ssa::base::determine_cgu_reuse;
+use rustc_codegen_ssa::base::{
+    allocator_kind_for_codegen, allocator_shim_contents, determine_cgu_reuse,
+};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -440,26 +442,25 @@ fn compile_cgu(
 }
 
 fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
+    let Some(kind) = allocator_kind_for_codegen(tcx) else { return None };
+
     let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
-    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
-    if created_alloc_shim {
-        let product = allocator_module.finish();
+    crate::allocator::codegen(tcx, &mut allocator_module, &allocator_shim_contents(tcx, kind));
 
-        match emit_module(
-            tcx.output_filenames(()),
-            &tcx.sess.prof,
-            product.object,
-            ModuleKind::Allocator,
-            "allocator_shim".to_owned(),
-            None,
-            &crate::debuginfo::producer(tcx.sess),
-        ) {
-            Ok(allocator_module) => Some(allocator_module),
-            Err(err) => tcx.dcx().fatal(err),
-        }
-    } else {
-        None
+    let product = allocator_module.finish();
+
+    match emit_module(
+        tcx.output_filenames(()),
+        &tcx.sess.prof,
+        product.object,
+        ModuleKind::Allocator,
+        "allocator_shim".to_owned(),
+        None,
+        &crate::debuginfo::producer(tcx.sess),
+    ) {
+        Ok(allocator_module) => Some(allocator_module),
+        Err(err) => tcx.dcx().fatal(err),
     }
 }
 
