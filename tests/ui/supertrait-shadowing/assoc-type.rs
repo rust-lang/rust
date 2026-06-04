@@ -7,17 +7,17 @@
 use std::mem::size_of;
 
 trait A {
-    type T;
+    type Assoc;
 }
 impl<T> A for T {
-    type T = i8;
+    type Assoc = i8;
 }
 
 trait B: A {
-    type T;
+    type Assoc;
 }
 impl<T> B for T {
-    type T = i16;
+    type Assoc = i16;
 }
 
 trait C: B {}
@@ -28,20 +28,26 @@ fn main() {
     generic2::<u32>();
     generic3::<u32>();
     generic4::<u32>();
+    generic5::<u32>();
 }
 
-fn generic<U: B>() {
-    println!("{}", size_of::<U::T>());
+fn generic<T: B>() {
+    assert_eq!(size_of::<T::Assoc>(), 2);
 }
 
-fn generic2<U: A<T = i8>>() {
-    println!("{}", size_of::<U::T>());
+fn generic2<T: A<Assoc = i8>>() {
+    assert_eq!(size_of::<T::Assoc>(), 1);
 }
 
-fn generic3<U: B<T = i16>>() {
-    println!("{}", size_of::<U::T>());
+fn generic3<T: B<Assoc = i16>>() {
+    assert_eq!(size_of::<T::Assoc>(), 2);
 }
 
-fn generic4<U: C<T = i16>>() {
-    println!("{}", size_of::<U::T>());
+fn generic4<T: C<Assoc = i16>>() {
+    assert_eq!(size_of::<T::Assoc>(), 2);
+}
+
+fn generic5<T: B>() {
+    assert_eq!(size_of::<<T as A>::Assoc>(), 1);
+    assert_eq!(size_of::<<T as B>::Assoc>(), 2);
 }

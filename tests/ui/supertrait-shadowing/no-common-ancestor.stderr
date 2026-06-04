@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/no-common-ancestor.rs:18:8
+  --> $DIR/no-common-ancestor.rs:31:8
    |
 LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor.rs:4:5
+  --> $DIR/no-common-ancestor.rs:7:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor.rs:11:5
+  --> $DIR/no-common-ancestor.rs:19:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,6 +25,55 @@ LL -     ().hello();
 LL +     B::hello(&());
    |
 
-error: aborting due to 1 previous error
+error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
+  --> $DIR/no-common-ancestor.rs:37:23
+   |
+LL |     type Assoc;
+   |     ---------- ambiguous `Assoc` from `A`
+...
+LL |     type Assoc;
+   |     ---------- ambiguous `Assoc` from `B`
+...
+LL |     let _ = size_of::<T::Assoc>();
+   |                       ^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = size_of::<T::Assoc>();
+LL +     let _ = size_of::<<T as A>::Assoc>();
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = size_of::<T::Assoc>();
+LL +     let _ = size_of::<<T as B>::Assoc>();
+   |
 
-For more information about this error, try `rustc --explain E0034`.
+error[E0034]: multiple applicable items in scope
+  --> $DIR/no-common-ancestor.rs:39:16
+   |
+LL |     let _ = T::CONST;
+   |                ^^^^^ multiple `CONST` found
+   |
+note: candidate #1 is defined in the trait `A`
+  --> $DIR/no-common-ancestor.rs:11:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `B`
+  --> $DIR/no-common-ancestor.rs:23:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as A>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as B>::CONST;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0034, E0221.
+For more information about an error, try `rustc --explain E0034`.

@@ -1,5 +1,5 @@
 error: trait item `method` from `Super` shadows identically named item from supertrait
-  --> $DIR/definition-site.rs:9:5
+  --> $DIR/definition-site.rs:11:5
    |
 LL |     fn method();
    |     ^^^^^^^^^^^^
@@ -15,8 +15,32 @@ note: the lint level is defined here
 LL | #![deny(shadowing_supertrait_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: trait item `CONST` from `Super` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:13:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: item from `SuperSuper` is shadowed by a subtrait item
+  --> $DIR/definition-site.rs:6:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+
+error: trait item `Assoc` from `Super` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:15:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+   |
+note: item from `SuperSuper` is shadowed by a subtrait item
+  --> $DIR/definition-site.rs:7:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
 error: trait item `method` from `Sub` shadows identically named item from supertrait
-  --> $DIR/definition-site.rs:14:5
+  --> $DIR/definition-site.rs:20:5
    |
 LL |     fn method();
    |     ^^^^^^^^^^^^
@@ -30,5 +54,35 @@ LL |     fn method();
 LL |     fn method();
    |     ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: trait item `CONST` from `Sub` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:22:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: items from several supertraits are shadowed: `Super` and `SuperSuper`
+  --> $DIR/definition-site.rs:6:5
+   |
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+...
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
+
+error: trait item `Assoc` from `Sub` shadows identically named item from supertrait
+  --> $DIR/definition-site.rs:24:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+   |
+note: items from several supertraits are shadowed: `Super` and `SuperSuper`
+  --> $DIR/definition-site.rs:7:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+...
+LL |     type Assoc;
+   |     ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
