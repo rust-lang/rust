@@ -62,7 +62,7 @@ pub struct Global;
 unsafe impl core::alloc::AllocatorClone for Global {}
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl core::alloc::PinSafeAllocator for Global {}
+unsafe impl core::alloc::StaticAllocator for Global {}
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl core::alloc::NoaliasAllocator for Global {}

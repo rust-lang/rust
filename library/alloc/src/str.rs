@@ -794,7 +794,12 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
-#[doc(hidden)]
+/// Converts a boxed slice of bytes to a boxed string slice without checking
+/// that the string contains valid UTF-8 generically over the box's allocator.
+///
+/// # Safety
+///
+/// * The provided bytes must contain a valid UTF-8 sequence.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
     v: Box<[u8], A>,

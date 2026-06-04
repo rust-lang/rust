@@ -96,9 +96,8 @@ impl fmt::Display for AllocError {
 ///  - the memory block is deallocated,
 ///  - the allocator is mutated through public API taking `&mut` access (notably,
 ///    running the allocator's destructor is such a mutation), or
-///  - the allocator's type becomes invalid.
-///    (For example, the type `&'a T` becomes invalid when `'a` expires.
-///    More generally, a type becomes invalid when any of its lifetime parameters has expired.)
+///  - any lifetime parameter on the allocator's type expires, thus making the
+///    type invalid.
 ///
 /// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it.
 /// A copied or cloned allocator must behave like the original allocator.
@@ -108,7 +107,9 @@ impl fmt::Display for AllocError {
 ///
 /// Users of this trait must not rely on side effects of allocating or deallocating method calls
 /// on `Allocator` implementors being observable (i.e. it is sound for an allocation followed
-/// immediately by a deallocation to be optimised away).
+/// immediately by a deallocation to be optimised away). While it is possible to make
+/// such calls *unlikely* to be elided (e.g. for benchmarking), this cannot be relied upon
+/// for soundness.
 ///
 /// Additionally, any memory block returned by the allocator must
 /// satisfy the allocation invariants described in `core::ptr`.
@@ -118,16 +119,17 @@ impl fmt::Display for AllocError {
 /// This ensures that pointer arithmetic within the allocation
 /// (for example, `ptr.add(len)`) cannot overflow the address space.
 ///
-/// Additionally, the following requirements must be upheld by implementors, but are still
-/// considered experimental and thus downstream users cannot rely on them being upheld for
-/// correctness as they may be relaxed in the future:
-///
-/// Implementors of the trait must guarantee that none of the methods on this trait unwind.
+/// As an experimental requirement, implementors of the trait must guarantee that
+/// none of the methods herein unwind. Due to the bound being experimental, it may be
+/// removed in the future and so this cannot be relied upon by other unsafe code for
+/// proving soundness.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 // NOTE: the above bound on allocating methods not unwinding, alongside the similar
-// bound on `AllocatorClone`, are currently load-bearing in std! see #156490 and #155746
-// and make sure those issues cannot be triggered before relaxing this.
+// bound on `AllocatorClone`, are currently load-bearing in std! see the below issues
+// and make sure they cannot be triggered before relaxing this:
+// https://rust.tf/156490
+// https://rust.tf/155746
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustc_dyn_incompatible_trait]
@@ -141,7 +143,8 @@ pub const unsafe trait Allocator {
     ///
     /// The returned block of memory remains valid as long as it is [*currently allocated*] and
     /// the borrow-checker lifetime of the allocator type has not expired. Note that implementors
-    /// which are also [`AllocatorClone`] must obey stricter semantics.
+    /// which are also [`AllocatorClone`], [`AllocatorEq`], or [`StaticAllocator`] must obey
+    /// stricter semantics.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     ///
@@ -189,10 +192,12 @@ pub const unsafe trait Allocator {
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator, and
     /// * `layout` must [*fit*] that block of memory.
     ///
-    /// Note that it is UB for a deallocation or reallocation to invalidate any
-    /// outstanding references, `Rc<_>`s, etc.; thus, notably, an allocator that has
-    /// been moved into its own [*currently allocated*] memory must not be invalidated
-    /// by a call to this method, as it would invalidate the `&self` reference used.
+    /// Note that it is *immediate* language UB for a deallocation or reallocation to
+    /// invalidate any outstanding references, smart pointers, etc.; thus, notably, an
+    /// allocator that has been moved into its own [*currently allocated*] memory may
+    /// not have its backing memory be freed, even if the allocator is never used again
+    /// afterwards. This is due to the fact that such a deallocation would invalidate the
+    /// `&self` reference passed to this method.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -394,7 +399,7 @@ pub const unsafe trait Allocator {
 ///
 /// # Safety
 ///
-/// See [`Allocator`].
+/// Same as [`Allocator`].
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub impl(self) unsafe trait DynAllocator {
     #[doc(hidden)]
@@ -468,13 +473,18 @@ where
 {
 }
 
-/// Marks that an allocator will not break [`Pin`] guarantees, even if subtyped with a
-/// shorter lifetime. This trivially applies to allocators that always maintain
-/// global state, e.g. `System` or `Global`.
+/// Marks that an allocator will behave as if it were `'static`, even if subtyped
+/// with a shorter lifetime. This trivially applies to allocators that always maintain
+/// global state, e.g. `System` or `Global`. Notably, the requirement means that
+/// downstream consumers may rely on this allocator not invalidating its currently
+/// allocated memory even if its lifetime has expired.
+///
+/// This is a necessity in conjunction with [`Pin`], as only `'static` allocators may
+/// be used to back a pinned pointer.
 ///
 /// [`Pin`]: ../../core/pin/struct.Pin.html
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait PinSafeAllocator: Allocator + 'static {}
+pub unsafe trait StaticAllocator: Allocator {}
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
@@ -628,7 +638,9 @@ unsafe impl<A: Allocator + ?Sized> DynAllocator for A {
     }
 }
 
-// FIXME(nia-e): Make this all builtin
+// FIXME(nia-e): See if it's possible to make this built-in to the typesystem,
+// e.g. by making the impl work on arbitrary `dyn DynAlloc + Foo + Bar`. Otherwise,
+// just expand this macro with other trait combinations for now.
 
 macro_rules! impl_dyn_allocator {
     ($t:ty, $($n:ty),+) => {

@@ -142,7 +142,7 @@ pub struct System;
 unsafe impl core::alloc::AllocatorClone for System {}
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl core::alloc::PinSafeAllocator for System {}
+unsafe impl core::alloc::StaticAllocator for System {}
 
 impl System {
     #[inline]

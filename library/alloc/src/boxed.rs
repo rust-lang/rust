@@ -207,7 +207,7 @@ use core::task::{Context, Poll};
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 use crate::alloc::{
-    AllocError, Allocator, AllocatorClone, AllocatorEq, Global, Layout, PinSafeAllocator,
+    AllocError, Allocator, AllocatorClone, AllocatorEq, Global, Layout, StaticAllocator,
 };
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
@@ -712,7 +712,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[inline(always)]
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: PinSafeAllocator,
+        A: StaticAllocator,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }
@@ -1937,7 +1937,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[stable(feature = "box_into_pin", since = "1.63.0")]
     pub fn into_pin(boxed: Self) -> Pin<Self>
     where
-        A: PinSafeAllocator,
+        A: StaticAllocator,
     {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`, so it's safe to pin it directly without any
