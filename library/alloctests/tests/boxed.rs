@@ -211,13 +211,6 @@ unsafe impl Allocator for ConstAllocator {
         }
         Ok(new_ptr)
     }
-
-    fn by_ref(&self) -> &Self
-    where
-        Self: Sized,
-    {
-        self
-    }
 }
 
 #[allow(unused)]
