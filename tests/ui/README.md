@@ -1501,6 +1501,10 @@ See [Uninhabited | Reference](https://doc.rust-lang.org/reference/glossary.html?
 
 See [Unions | Reference](https://doc.rust-lang.org/reference/items/unions.html).
 
+## `tests/ui/unnamed-enum-variants`: `_ = <range-or-int>` in an `enum`
+
+See [Tracking Issue for Unnamed Enum Variants (Open Enums) #156628](https://github.com/rust-lang/rust/issues/156628)
+
 ## `tests/ui/unop/`: Unary operators `-`, `*` and `!`
 
 Tests the three unary operators for negating, dereferencing and inverting, across different contexts.
