@@ -1,4 +1,4 @@
-#![allow(improper_ctypes_definitions)]
+#![expect(improper_ctypes_definitions)]
 
 use std::fmt;
 
