@@ -239,7 +239,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         if a.def_id() != b.def_id() {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
         } else {
-            let args = match a.kind(relation.cx()) {
+            let args = match a.kind {
                 ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
                     relation,
                     relation.cx().variances_of(a.def_id()),

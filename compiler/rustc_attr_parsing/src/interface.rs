@@ -240,6 +240,8 @@ impl<'sess> AttributeParser<'sess> {
             template,
             attr_safety: attr_safety.unwrap_or(Safety::Default),
             attr_path,
+            #[cfg(debug_assertions)]
+            has_target_been_checked: false,
         };
         parse_fn(&mut cx, args)
     }
@@ -351,6 +353,7 @@ impl<'sess> AttributeParser<'sess> {
                             accept.safety,
                             &mut emit_lint,
                         );
+                        self.check_attribute_stability(&attr_path, attr_span, accept.stability);
 
                         let Some(args) = ArgParser::from_attr_args(
                             args,
@@ -409,12 +412,14 @@ impl<'sess> AttributeParser<'sess> {
                             template: &accept.template,
                             attr_safety: n.item.unsafety,
                             attr_path: attr_path.clone(),
+                            #[cfg(debug_assertions)]
+                            has_target_been_checked: false,
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(accept.finalizer);
 
-                        Self::check_target(&accept.allowed_targets, &mut cx);
+                        Self::check_target(&accept.allowed_targets, "", &mut cx);
                         #[cfg(debug_assertions)]
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(&attr, &args)

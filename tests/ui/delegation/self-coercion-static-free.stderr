@@ -1,9 +1,17 @@
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:24:9
    |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
+   |                                        -------------- arguments to this function are incorrect
+LL |         let _ = self;
 LL |         S::static_self()
    |         ^^^^^^^^^^^^^^^^ expected `&mut F`, found `F`
    |
+note: associated function defined here
+  --> $DIR/self-coercion-static-free.rs:11:8
+   |
+LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
+   |        ^^^^^^^^^^^^^^ ------------
 help: consider mutably borrowing here
    |
 LL |         &mut S::static_self()
@@ -12,9 +20,17 @@ LL |         &mut S::static_self()
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:24:9
    |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
+   |                                                        ---------- arguments to this function are incorrect
+LL |         let _ = self;
 LL |         S::static_self()
    |         ^^^^^^^^^^^^^^^^ expected `&F`, found `F`
    |
+note: associated function defined here
+  --> $DIR/self-coercion-static-free.rs:12:8
+   |
+LL |     fn static_ref(_: &Self) -> i32 { 3 }
+   |        ^^^^^^^^^^ --------
 help: consider borrowing here
    |
 LL |         &S::static_self()
@@ -23,9 +39,17 @@ LL |         &S::static_self()
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:35:9
    |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
+   |                                        -------------- arguments to this function are incorrect
+LL |         let _ = self;
 LL |         S1::static_self()
    |         ^^^^^^^^^^^^^^^^^ expected `&mut F`, found `F`
    |
+note: associated function defined here
+  --> $DIR/self-coercion-static-free.rs:11:8
+   |
+LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
+   |        ^^^^^^^^^^^^^^ ------------
 help: consider mutably borrowing here
    |
 LL |         &mut S1::static_self()
@@ -34,9 +58,17 @@ LL |         &mut S1::static_self()
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:35:9
    |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
+   |                                                        ---------- arguments to this function are incorrect
+LL |         let _ = self;
 LL |         S1::static_self()
    |         ^^^^^^^^^^^^^^^^^ expected `&F`, found `F`
    |
+note: associated function defined here
+  --> $DIR/self-coercion-static-free.rs:12:8
+   |
+LL |     fn static_ref(_: &Self) -> i32 { 3 }
+   |        ^^^^^^^^^^ --------
 help: consider borrowing here
    |
 LL |         &S1::static_self()

@@ -9,10 +9,9 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, TypingMode,
-    Variance,
+    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -165,25 +164,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 }
 
 /// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
-/// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    // Type-changing assignments can happen when subtyping is used. While
-    // all normal lifetimes are erased, higher-ranked types with their
-    // late-bound lifetimes are still around and can lead to type
-    // differences.
+    // We *could* check `Invariant` here since all subtyping must be explicit post-borrowck.
+    // However, this check is also used by the interpreter to figure out if a transmute can be
+    // turned into a regular assignment (which has a more efficient codepath), so we want the check
+    // to consider as many assignments as possible to be valid. Therefore we are happy to accept
+    // one-way subtyping.
     if util::relate_types(tcx, typing_env, Variance::Covariant, src.ty, dest.ty) {
-        // Make sure the layout is equal, too -- just to be safe. Miri really
-        // needs layout equality. For performance reason we skip this check when
-        // the types are equal. Equal types *can* have different layouts when
-        // enum downcast is involved (as enum variants carry the type of the
-        // enum), but those should never occur in assignments.
+        // Make sure the layout is equal, too -- just to be safe. Miri really needs layout equality.
+        // For performance reason we skip this check when the types are equal. Equal types *can*
+        // have different layouts when enum downcast is involved (as enum variants carry the type of
+        // the enum), but those should never occur in assignments.
         if cfg!(debug_assertions) || src.ty != dest.ty {
-            assert_eq!(src.layout, dest.layout);
+            assert_eq!(
+                src.layout,
+                dest.layout,
+                "{src} is a subtype of {dest} but they have different layout",
+                src = src.ty,
+                dest = dest.ty,
+            );
         }
         true
     } else {
@@ -238,21 +242,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         typing_env: ty::TypingEnv<'tcx>,
         machine: M,
     ) -> Self {
-        // Const eval always happens in post analysis mode in order to be able to use the hidden types of
-        // opaque types. This is needed for trivial things like `size_of`, but also for using associated
-        // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
-        // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
-        if cfg!(debug_assertions) {
-            match typing_env.typing_mode().assert_not_erased() {
-                TypingMode::PostAnalysis => {}
-                TypingMode::Coherence
-                | TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. } => {
-                    bug!("Const eval should always happens in PostAnalysis mode.");
-                }
-            }
-        }
+        crate::assert_typing_mode(typing_env.typing_mode());
 
         InterpCx {
             machine,

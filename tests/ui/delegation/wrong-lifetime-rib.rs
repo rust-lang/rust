@@ -15,7 +15,20 @@ mod ice_156342 {
     fn foo<T>() {}
 
     reuse foo::<&&&&&&&&&&()> as foo1;
+    //~^ ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
     reuse foo::<&std::borrow::Cow<'_, &()>> as foo2;
+    //~^ ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 }
 
 mod ice_156758 {

@@ -279,26 +279,6 @@ const impl<'f> Drop for VaList<'f> {
     }
 }
 
-mod sealed {
-    pub trait Sealed {}
-
-    impl Sealed for i16 {}
-    impl Sealed for i32 {}
-    impl Sealed for i64 {}
-    impl Sealed for isize {}
-
-    impl Sealed for u16 {}
-    impl Sealed for u32 {}
-    impl Sealed for u64 {}
-    impl Sealed for usize {}
-
-    impl Sealed for f32 {}
-    impl Sealed for f64 {}
-
-    impl<T> Sealed for *mut T {}
-    impl<T> Sealed for *const T {}
-}
-
 /// Types that are valid to read using [`VaList::next_arg`].
 ///
 /// This trait is implemented for primitive types that have a variable argument application-binary
@@ -333,7 +313,7 @@ mod sealed {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe: Copy + sealed::Sealed {}
+pub impl(self) unsafe trait VaArgSafe: Copy {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {

@@ -40,8 +40,8 @@ warning: `#[macro_use]` attribute cannot be used on structs
 LL |     #[macro_use = "2700"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
 warning: `#[macro_use]` attribute cannot be used on functions
@@ -50,8 +50,8 @@ warning: `#[macro_use]` attribute cannot be used on functions
 LL |     #[macro_use] fn f() { }
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-macro_use.rs:24:5
@@ -59,8 +59,8 @@ warning: `#[macro_use]` attribute cannot be used on type aliases
 LL |     #[macro_use] type T = S;
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-macro_use.rs:28:5
@@ -68,8 +68,8 @@ warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
 LL |     #[macro_use] impl S { }
    |     ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 4 previous errors; 4 warnings emitted
 

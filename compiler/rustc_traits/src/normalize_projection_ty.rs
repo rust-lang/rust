@@ -86,7 +86,7 @@ fn normalize_canonicalized_free_alias<'tcx>(
                 },
             );
             ocx.register_obligations(obligations);
-            let normalized_term = if goal.kind(tcx).is_type() {
+            let normalized_term = if goal.kind.is_type() {
                 tcx.type_of(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
                 tcx.const_of_item(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()

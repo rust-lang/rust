@@ -15,30 +15,20 @@ pub(super) trait Decode<'a, 's, S>: Sized {
 }
 
 macro_rules! rpc_encode_decode {
-    (le $ty:ident $size:literal) => {
+    (le $ty:ty) => {
         impl<S> Encode<S> for $ty {
             fn encode(self, w: &mut Buffer, _: &mut S) {
-                const N: usize = size_of::<$ty>();
-
-                // We can pad with zeros without changing the value because of
-                // little endian encoding.
-                let mut bytes = [0; $size];
-                bytes[..N].copy_from_slice(&self.to_le_bytes());
-
-                w.extend_from_array(&bytes);
+                w.extend_from_array(&self.to_le_bytes());
             }
         }
 
         impl<S> Decode<'_, '_, S> for $ty {
             fn decode(r: &mut &[u8], _: &mut S) -> Self {
                 const N: usize = size_of::<$ty>();
-                const {
-                    assert!(N <= $size);
-                }
 
                 let mut bytes = [0; N];
                 bytes.copy_from_slice(&r[..N]);
-                *r = &r[$size..];
+                *r = &r[N..];
 
                 Self::from_le_bytes(bytes)
             }
@@ -118,8 +108,42 @@ impl<S> Decode<'_, '_, S> for u8 {
     }
 }
 
-rpc_encode_decode!(le u32 4);
-rpc_encode_decode!(le usize 8);
+rpc_encode_decode!(le u32);
+#[cfg(target_pointer_width = "64")]
+rpc_encode_decode!(le usize);
+
+#[cfg(not(target_pointer_width = "64"))]
+const MAX_USIZE_SIZE: usize = 8;
+
+#[cfg(not(target_pointer_width = "64"))]
+impl<S> Encode<S> for usize {
+    fn encode(self, w: &mut Buffer, _: &mut S) {
+        const N: usize = size_of::<usize>();
+
+        // We can pad with zeros without changing the value because of
+        // little endian encoding.
+        let mut bytes = [0; MAX_USIZE_SIZE];
+        bytes[..N].copy_from_slice(&self.to_le_bytes());
+
+        w.extend_from_array(&bytes);
+    }
+}
+
+#[cfg(not(target_pointer_width = "64"))]
+impl<S> Decode<'_, '_, S> for usize {
+    fn decode(r: &mut &[u8], _: &mut S) -> Self {
+        const N: usize = size_of::<usize>();
+        const {
+            assert!(N <= MAX_USIZE_SIZE);
+        }
+
+        let mut bytes = [0; N];
+        bytes.copy_from_slice(&r[..N]);
+        *r = &r[MAX_USIZE_SIZE..];
+
+        Self::from_le_bytes(bytes)
+    }
+}
 
 impl<S> Encode<S> for bool {
     fn encode(self, w: &mut Buffer, s: &mut S) {

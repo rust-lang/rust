@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
+use rustc_feature::{AttrSuggestionStyle, AttributeStability, AttributeTemplate};
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
 use rustc_parse::parser::Recovery;
@@ -83,6 +83,7 @@ pub(super) struct GroupTypeInnerAccept {
     pub(super) accept_fn: AcceptFn,
     pub(super) allowed_targets: AllowedTargets,
     pub(super) safety: AttributeSafety,
+    pub(super) stability: AttributeStability,
     pub(super) finalizer: FinalizeFn,
 }
 
@@ -102,7 +103,7 @@ macro_rules! attribute_parsers {
                         static STATE_OBJECT: RefCell<$names> = RefCell::new(<$names>::default());
                     };
 
-                    for (path, template, accept_fn) in <$names>::ATTRIBUTES {
+                    for (path, template, stability, accept_fn) in <$names>::ATTRIBUTES {
                         match accepters.entry(*path) {
                             Entry::Vacant(e) => {
                                 e.insert(GroupTypeInnerAccept {
@@ -113,6 +114,7 @@ macro_rules! attribute_parsers {
                                         })
                                     }),
                                     safety: <$names as crate::attributes::AttributeParser>::SAFETY,
+                                    stability: *stability,
                                     allowed_targets: <$names as crate::attributes::AttributeParser>::ALLOWED_TARGETS,
                                     finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
@@ -154,7 +156,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowInternalUnstableParser>,
         Combine<CrateTypeParser>,
-        Combine<DebuggerViualizerParser>,
+        Combine<DebuggerVisualizerParser>,
         Combine<FeatureParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
@@ -364,6 +366,10 @@ pub struct AcceptContext<'f, 'sess> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    /// Used for `AllowedTargets::ManuallyChecked`, to assert that the manual target check has been done
+    #[cfg(debug_assertions)]
+    pub(crate) has_target_been_checked: bool,
 }
 
 impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {

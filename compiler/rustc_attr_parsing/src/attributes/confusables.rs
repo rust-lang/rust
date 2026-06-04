@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 use crate::session_diagnostics::EmptyConfusables;
 
@@ -11,6 +13,7 @@ impl AttributeParser for ConfusablesParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::rustc_confusables],
         template!(List: &[r#""name1", "name2", ..."#]),
+        unstable!(rustc_attrs),
         |this, cx, args| {
             let Some(list) = cx.expect_list(args, cx.attr_span) else { return };
 

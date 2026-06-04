@@ -3461,10 +3461,6 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// The unexpected expr's precedence. Not used directly in the error message, but needed for
-    /// the stashing of this error to work correctly. We store a `u32` rather than an
-    /// `ExprPrecedence` to avoid having to impl `IntoDiagArg` for `ExprPrecedence`.
-    pub expr_precedence: u32,
 }
 
 #[derive(Subdiagnostic)]
@@ -4642,7 +4638,7 @@ pub(crate) struct ReservedMultihashLint {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    "if you meant to write a path, use a double colon:",
+    "if you meant to write a path, use a double colon",
     code = "::",
     applicability = "maybe-incorrect"
 )]
@@ -4653,13 +4649,13 @@ pub(crate) struct UseDoubleColonSuggestion {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "if you meant to create a regular struct, use curly braces:",
+    "if you meant to create a regular struct, use curly braces",
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct UseRegularStructSuggestion {
-    #[suggestion_part(code = "{{")]
+    #[suggestion_part(code = " {{ ")]
     pub open: Span,
-    #[suggestion_part(code = "}}")]
+    #[suggestion_part(code = " }}")]
     pub close: Span,
     #[suggestion_part(code = "")]
     pub semicolon: Option<Span>,

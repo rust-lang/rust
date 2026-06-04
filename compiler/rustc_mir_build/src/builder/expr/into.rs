@@ -914,7 +914,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     destination,
-                    Rvalue::Reborrow(target, mutability, place.into()),
+                    Rvalue::Reborrow(target, mutability, place),
                 );
                 block.unit()
             }

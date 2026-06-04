@@ -21,6 +21,12 @@ impl Signal {
             set = cvar.wait(set).unwrap();
         }
     }
+
+    fn is_set(&self) -> bool {
+        let (set, _cvar) = &*self.0;
+        let set = set.lock().unwrap();
+        *set
+    }
 }
 
 struct NotifyOnDrop(Signal);
@@ -97,6 +103,7 @@ fn smoke_dtor() {
             });
         });
         signal.wait();
+        assert!(signal.is_set());
         t.join().unwrap();
     }
 }
@@ -392,4 +399,52 @@ fn thread_current_in_dtor() {
     let name = NAME.lock().unwrap();
     let name = name.as_ref().unwrap();
     assert_eq!(name, "test");
+}
+
+// Test that if a thread uses fibers while the dtors callback is running,
+// we do NOT trigger dtors.
+// This prevents a UAF if a fiber is the first to use Tls and is deleted,
+// like in the example here:
+// https://github.com/rust-lang/rust/pull/148799#issuecomment-3731806901
+#[cfg(target_os = "windows")]
+#[test]
+fn fiber_does_not_trigger_dtor() {
+    use core::ffi::c_void;
+    use std::ptr;
+
+    unsafe extern "system" {
+        fn ConvertFiberToThread() -> i32;
+        fn ConvertThreadToFiber(lpParameter: *const c_void) -> *mut c_void;
+    }
+
+    thread_local!(static FOO: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+    let signal = Signal::default();
+
+    let signal2 = signal.clone();
+    let t = thread::spawn(move || unsafe {
+        let mut signal = Some(signal2);
+        FOO.with(|f| {
+            *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
+        });
+        let _main = ConvertThreadToFiber(ptr::null());
+        // A user can then switch to a new fiber and delete the main fiber.
+        // If destructors are triggered when the fiber is deleted,
+        // the new fiber will be able to observe already-destructed values.
+    });
+    t.join().unwrap();
+    assert!(!signal.is_set());
+
+    // As long as we stop using fibers before thread teardown, everything works as expected.
+    let signal2 = signal.clone();
+    let t = thread::spawn(move || unsafe {
+        let mut signal = Some(signal2);
+        let _ = ConvertThreadToFiber(ptr::null());
+        FOO.with(|f| {
+            *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
+        });
+        let _ = ConvertFiberToThread();
+    });
+    signal.wait();
+    assert!(signal.is_set());
+    t.join().unwrap();
 }

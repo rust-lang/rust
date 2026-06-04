@@ -130,7 +130,6 @@ impl<I: Interner> UnevaluatedConstKind<I> {
             UnevaluatedConstKind::Inherent { def_id } => def_id.into(),
             UnevaluatedConstKind::Free { def_id } => def_id.into(),
             UnevaluatedConstKind::Anon { def_id } => def_id.into(),
-            //UnevaluatedConstKind::Expr { def_id } => def_id.into(),
         }
     }
 }

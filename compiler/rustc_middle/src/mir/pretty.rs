@@ -429,9 +429,9 @@ fn write_scope_tree(
 
     // Coroutine debuginfo.
     if let Some(layout) = body.coroutine_layout_raw() {
-        for (field, name) in layout.field_names.iter_enumerated() {
-            let source_info = layout.field_tys[field].source_info;
-            if let Some(name) = name
+        for (field, field_decl) in layout.field_tys.iter_enumerated() {
+            let source_info = field_decl.source_info;
+            if let Some(name) = field_decl.debuginfo_name
                 && source_info.scope == parent
             {
                 let indented_debug_info =
@@ -559,17 +559,12 @@ fn write_coroutine_layout<'tcx>(
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()> {
-    let CoroutineLayout {
-        field_tys,
-        field_names: _, // Dumped in scope tree with debug info.
-        variant_fields,
-        variant_source_info,
-        storage_conflicts,
-    } = layout;
+    let CoroutineLayout { field_tys, variant_fields, variant_source_info, storage_conflicts } =
+        layout;
 
     writeln!(w, "{INDENT}coroutine layout {{")?;
 
-    for (field, CoroutineSavedTy { ty, source_info, ignore_for_traits }) in
+    for (field, CoroutineSavedTy { ty, source_info, ignore_for_traits, debuginfo_name: _ }) in
         field_tys.iter_enumerated()
     {
         let ignore_for_traits = if *ignore_for_traits { " (ignored for traits)" } else { "" };

@@ -259,7 +259,7 @@ fn process_builtin_attrs(
 
                     codegen_fn_attrs.foreign_item_symbol_aliases.push((
                         foreign_item,
-                        if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
+                        if i.is_default { Linkage::WeakAny } else { Linkage::External },
                         Visibility::Default,
                     ));
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;

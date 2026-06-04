@@ -66,6 +66,24 @@ fn layout_of<'tcx>(
         return tcx.layout_of(typing_env.as_query_input(ty));
     }
 
+    match typing_env.typing_mode() {
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let res = tcx.layout_of(with_postanalysis.as_query_input(ty));
+            match res {
+                Err(LayoutError::TooGeneric(_)) => {}
+                _ => return res,
+            };
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Analysis { .. }
+        | ty::TypingMode::Borrowck { .. }
+        | ty::TypingMode::PostBorrowckAnalysis { .. }
+        | ty::TypingMode::ErasedNotCoherence(_)
+        | ty::TypingMode::PostAnalysis => {}
+    }
+
     let cx = LayoutCx::new(tcx, typing_env);
 
     let layout = layout_of_uncached(&cx, ty)?;
@@ -519,6 +537,18 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::Coroutine(def_id, args) => {
+            match cx.typing_env.typing_mode() {
+                ty::TypingMode::Codegen => {}
+                ty::TypingMode::Coherence
+                | ty::TypingMode::Analysis { .. }
+                | ty::TypingMode::Borrowck { .. }
+                | ty::TypingMode::PostBorrowckAnalysis { .. }
+                | ty::TypingMode::ErasedNotCoherence(_)
+                | ty::TypingMode::PostAnalysis => {
+                    return Err(error(cx, LayoutError::TooGeneric(ty)));
+                }
+            }
+
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
             let info = tcx.coroutine_layout(def_id, args)?;
@@ -686,7 +716,10 @@ fn layout_of_uncached<'tcx>(
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+                    let typing_env = ty::TypingEnv::new(
+                        tcx.param_env_normalized_for_post_analysis(def.did()),
+                        cx.typing_env.typing_mode(),
+                    );
                     !tcx.type_of(last_field.did)
                         .instantiate_identity()
                         .skip_norm_wip()
@@ -968,7 +1001,7 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_names[*local];
+                    let field_name = coroutine.field_tys[*local].debuginfo_name;
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end

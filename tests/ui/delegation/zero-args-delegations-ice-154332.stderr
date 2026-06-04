@@ -25,7 +25,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/zero-args-delegations-ice-154332.rs:25:21
    |
 LL |     reuse to_reuse::zero_args { self }
-   |                     ^^^^^^^^^   ---- unexpected argument
+   |                     ^^^^^^^^^ -------- unexpected argument
    |
 note: function defined here
   --> $DIR/zero-args-delegations-ice-154332.rs:20:16
@@ -35,7 +35,7 @@ LL |         pub fn zero_args() -> i32 {
 help: remove the extra argument
    |
 LL -     reuse to_reuse::zero_args { self }
-LL +     reuse to_reuse::zero_argself }
+LL +     reuse to_reuse::zero_arg{ self }
    |
 
 error: aborting due to 2 previous errors

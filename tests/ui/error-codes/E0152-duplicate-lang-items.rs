@@ -8,10 +8,6 @@
 
 #![feature(lang_items)]
 
-extern crate core;
-
-use core::panic::PanicInfo;
-
 #[lang = "eh_personality"]
 fn personality() {
     //~^ ERROR: found duplicate lang item `eh_personality`
