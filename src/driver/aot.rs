@@ -384,13 +384,25 @@ fn module_codegen(
 
         let global_asm_object_file =
             profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
-                crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, global_asm)
+                if global_asm.is_empty() {
+                    return Ok::<_, String>(None);
+                }
+
+                let global_asm_object_file =
+                    output_filenames.temp_path_ext_for_cgu("asm.o", &*cgu_name);
+                crate::global_asm::compile_global_asm(
+                    &global_asm_config,
+                    global_asm,
+                    &global_asm_object_file,
+                )?;
+
+                Ok(Some(global_asm_object_file))
             })?;
 
         let codegen_result =
             profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
-                    &global_asm_config.output_filenames,
+                    &output_filenames,
                     &profiler,
                     cgu_name,
                     module,
@@ -449,7 +461,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
         }
     });
 
-    let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
+    let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx.sess));
 
     let (todo_cgus, done_cgus) =
         cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
