@@ -7001,6 +7001,7 @@ Released 2018-09-13
 [`manual_is_multiple_of`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_multiple_of
 [`manual_is_power_of_two`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_power_of_two
 [`manual_is_variant_and`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_variant_and
+[`manual_isolate_lowest_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_isolate_lowest_one
 [`manual_let_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else
 [`manual_main_separator_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_main_separator_str
 [`manual_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
