@@ -8,7 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
+use rustc_type_ir::search_graph::{CandidateHeadUsages, IncreaseDepthForNested, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
@@ -477,7 +477,7 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
         let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, stalled_on)?;
+            self.evaluate_goal_raw(source, goal, stalled_on, IncreaseDepthForNested::Yes)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
     }
@@ -494,6 +494,7 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
+        increase_depth_for_nested: IncreaseDepthForNested,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
@@ -584,6 +585,7 @@ where
                     self.cx(),
                     canonical_goal,
                     step_kind,
+                    increase_depth_for_nested,
                     &mut inspect::ProofTreeBuilder::new_noop(),
                 );
 
@@ -611,6 +613,7 @@ where
                 self.cx(),
                 canonical_goal,
                 step_kind,
+                increase_depth_for_nested,
                 &mut inspect::ProofTreeBuilder::new_noop(),
             );
             assert!(
