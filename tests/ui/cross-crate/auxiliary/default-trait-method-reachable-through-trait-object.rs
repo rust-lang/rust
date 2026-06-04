@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/38226
 #![crate_type="rlib"]
 
 #[inline(never)]

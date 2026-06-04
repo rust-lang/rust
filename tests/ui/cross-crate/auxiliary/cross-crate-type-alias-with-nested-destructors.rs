@@ -1,4 +1,5 @@
-#![crate_name="issue_2526"]
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/2526
+#![crate_name="cross_crate_type_alias_with_nested_destructors"]
 #![crate_type = "lib"]
 
 use std::marker;

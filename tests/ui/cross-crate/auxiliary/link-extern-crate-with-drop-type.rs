@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/20389
 fn foo(_x: i32) {
 }
 

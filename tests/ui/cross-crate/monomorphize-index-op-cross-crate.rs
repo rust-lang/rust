@@ -1,6 +1,8 @@
 //@ run-pass
 
-//@ aux-build:issue-2631-a.rs
+//@ aux-build:monomorphize-index-op-cross-crate.rs
+
+//! Regression test for https://github.com/rust-lang/rust/issues/2631
 
 extern crate req;
 

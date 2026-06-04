@@ -1,4 +1,5 @@
-#![crate_name="numeric"]
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/4208
+#![crate_name="generic_fn_with_supertrait_bound_cross_crate"]
 #![crate_type = "lib"]
 
 pub trait Trig<T> {

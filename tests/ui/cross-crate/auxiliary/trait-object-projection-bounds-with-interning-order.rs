@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/25467
 #![crate_type="lib"]
 
 pub trait Trait {

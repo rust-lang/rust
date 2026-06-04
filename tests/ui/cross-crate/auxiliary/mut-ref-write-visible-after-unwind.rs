@@ -1,4 +1,5 @@
-#![crate_name="a"]
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/29265
+#![crate_name="mut_ref_write_visible_after_unwind"]
 #![crate_type = "lib"]
 
 pub struct X(pub u8);

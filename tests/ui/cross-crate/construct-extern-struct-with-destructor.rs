@@ -1,8 +1,10 @@
 //@ run-pass
-//@ aux-build:issue-3012-1.rs
+//@ aux-build:construct-extern-struct-with-destructor.rs
 
+//! Regression test for https://github.com/rust-lang/rust/issues/3012
+//! Guarantees that you can construct cross crate structs.
 
-extern crate socketlib;
+extern crate construct_extern_struct_with_destructor as socketlib;
 
 use socketlib::socket;
 

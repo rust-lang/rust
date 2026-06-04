@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/3136
 #![crate_type = "lib"]
 
 trait x {

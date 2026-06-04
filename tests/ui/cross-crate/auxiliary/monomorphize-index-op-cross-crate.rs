@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/2631
 #![crate_name="req"]
 #![crate_type = "lib"]
 

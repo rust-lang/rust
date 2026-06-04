@@ -1,17 +1,19 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/29485
+//! Exposed an LLVM bug that caused rustc to panic.
 //@ run-pass
 #![allow(unused_attributes)]
-//@ aux-build:issue-29485.rs
+//@ aux-build:mut-ref-write-visible-after-unwind.rs
 //@ needs-unwind
 //@ needs-threads
 //@ ignore-backends: gcc
 
 #[feature(recover)]
 
-extern crate a;
+extern crate mut_ref_write_visible_after_unwind as lib;
 
 fn main() {
     let _ = std::thread::spawn(move || {
-        a::f(&mut a::X(0), g);
+        lib::f(&mut lib::X(0), g);
     }).join();
 }
 

@@ -1,7 +1,8 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/32518
 //@ no-prefer-dynamic
 //@ compile-flags: -Ccodegen-units=2 --crate-type=lib
 
-extern crate cgu_test;
+extern crate no_duplicate_symbols_with_codegen_units_cgu_test as cgu_test;
 
 pub mod a {
     pub fn a() {
