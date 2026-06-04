@@ -783,9 +783,6 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             }
         })?;
 
-        // Trait documentation
-        write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
-
         if let rustc_middle::ty::trait_def::ImplRestrictionKind::Restricted(def_id, _) =
             impl_restriction
         {
@@ -793,7 +790,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             let v2;
             write!(
                 w,
-                "<div class=\"stab impl_restriction\">This trait cannot be implemented outside <code>{}</code>.</div>",
+                "<div class=\"impl-restriction\">ⓘ <i>This trait cannot be implemented outside <code>{}</code>.</i></div>",
                 if cx.cache().document_private {
                     v1 =
                         rustc_middle::ty::print::with_resolve_crate_name!(tcx.def_path_str(def_id));
@@ -804,6 +801,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 },
             )?;
         }
+
+        // Trait documentation
+        write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
 
         fn trait_item(cx: &Context<'_>, m: &clean::Item, t: &clean::Item) -> impl fmt::Display {
             fmt::from_fn(|w| {
