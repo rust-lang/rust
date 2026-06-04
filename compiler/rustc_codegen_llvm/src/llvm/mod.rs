@@ -8,6 +8,7 @@ use std::string::FromUtf8Error;
 use libc::c_uint;
 use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
 use rustc_llvm::RustString;
+use rustc_session::config::CrateType;
 
 pub(crate) use self::CallConv::*;
 pub(crate) use self::CodeGenOptSize::*;
@@ -474,4 +475,28 @@ pub(crate) fn add_alias<'ll>(
     name: &CStr,
 ) -> &'ll Value {
     unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
+}
+
+/// Safe wrapper for setting the PIC and PIE levels via
+/// `LLVMRustSetModulePICLevel` and `LLVMRustSetModulePIELevel`.
+pub(crate) fn set_module_pic_and_pie_levels(
+    llmod: &Module,
+    reloc_model: rustc_target::spec::RelocModel,
+    crate_types: &[CrateType],
+) {
+    if matches!(
+        reloc_model,
+        rustc_target::spec::RelocModel::Pic | rustc_target::spec::RelocModel::Pie
+    ) {
+        unsafe {
+            LLVMRustSetModulePICLevel(llmod);
+        }
+        if reloc_model == rustc_target::spec::RelocModel::Pie
+            || crate_types.iter().all(|ty| *ty == CrateType::Executable)
+        {
+            unsafe {
+                LLVMRustSetModulePIELevel(llmod);
+            }
+        }
+    }
 }

@@ -30,7 +30,7 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData};
-use rustc_target::spec::{MergeFunctions, SanitizerSet};
+use rustc_target::spec::{MergeFunctions, RelocModel, SanitizerSet};
 use tracing::debug;
 
 use crate::back::link::ensure_removed;
@@ -340,6 +340,7 @@ pub struct CodegenContext {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
     pub pointer_size: Size,
+    pub relocation_model: RelocModel,
 
     /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
@@ -1281,6 +1282,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
         pointer_size: tcx.data_layout.pointer_size(),
+        relocation_model: sess.relocation_model(),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.

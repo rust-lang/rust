@@ -42,7 +42,7 @@ fn main() {
             reloc: "pie",
             direct_access: None,
             expected_prefix: "PIE",
-            dep_prefixes: &["DEP-NO-PIE"],
+            dep_prefixes: &["DEP-PIE"],
         },
         TestCase {
             lto: "fat",
@@ -56,7 +56,7 @@ fn main() {
             reloc: "pie",
             direct_access: Some("yes"),
             expected_prefix: "DIRECT",
-            dep_prefixes: &["DEP-NO-PIE"],
+            dep_prefixes: &["DEP-PIE"],
         },
         TestCase {
             lto: "fat",
@@ -144,13 +144,7 @@ fn main() {
         rfs::write(relocs_out, relocs.stdout_utf8());
 
         let reloc_prefix = match case.expected_prefix {
-            "DIRECT" => {
-                if case.lto == "thin" {
-                    Some("DIRECT-RELOC-THIN")
-                } else {
-                    Some("DIRECT-RELOC-FAT")
-                }
-            }
+            "DIRECT" => Some("DIRECT-RELOC"),
             "PIE" => Some("PIE-RELOC"),
             "INDIRECT" => Some("INDIRECT-RELOC"),
             _ => None,

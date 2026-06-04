@@ -49,20 +49,11 @@ pub fn call_dep() -> i32 {
 // INDIRECT: !{{[0-9]+}} = !{i32 7, !"direct-access-external-data", i32 0}
 // INDIRECT-NOT: PIE Level
 
-// FIXME: Under normal circumstances PIE Level should be set consistently, so
-// GOT relocations don't get emitted with direct-access-external-data enabled
-// for all versions of Full/Thin LTO.
-// DEP-NO-PIE-NOT: PIE Level
+// DEP-PIE: !{{[0-9]+}} = !{i32 7, !"PIE Level", i32 2}
 
-// Demonstrate incorrect GOT relocation under direct-access-external-data for ThinLTO.
-// Even with direct-access enabled, the missing PIE Level on the dependency's module
-// causes LLVM to fall back to GOT indirection.
-// DIRECT-RELOC-THIN: R_X86_64_GOTPCREL{{.*}}VAR
-
-// For Full LTO we expect direct PC-relative access since the merged module
-// correctly inherits the main module's PIE Level.
-// DIRECT-RELOC-FAT-NOT: R_X86_64_GOTPCREL{{.*}}VAR
-// DIRECT-RELOC-FAT: R_X86_64_PC32{{.*}}VAR
+// For Full & Thin LTO we expect direct PC-relative access.
+// DIRECT-RELOC-NOT: R_X86_64_GOTPCREL{{.*}}VAR
+// DIRECT-RELOC: R_X86_64_PC32{{.*}}VAR
 
 // For indirect cases, we always expect GOT indirection.
 // INDIRECT-RELOC: R_X86_64_GOTPCREL{{.*}}VAR

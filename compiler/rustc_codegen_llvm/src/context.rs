@@ -23,12 +23,11 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_target::spec::{
-    Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
-    Target, TlsModel,
+    Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -256,20 +255,7 @@ pub(crate) unsafe fn create_module<'ll>(
     }
 
     let reloc_model = sess.relocation_model();
-    if matches!(reloc_model, RelocModel::Pic | RelocModel::Pie) {
-        unsafe {
-            llvm::LLVMRustSetModulePICLevel(llmod);
-        }
-        // PIE is potentially more effective than PIC, but can only be used in executables.
-        // If all our outputs are executables, then we can relax PIC to PIE.
-        if reloc_model == RelocModel::Pie
-            || tcx.crate_types().iter().all(|ty| *ty == CrateType::Executable)
-        {
-            unsafe {
-                llvm::LLVMRustSetModulePIELevel(llmod);
-            }
-        }
-    }
+    llvm::set_module_pic_and_pie_levels(llmod, reloc_model, tcx.crate_types());
 
     // Linking object files with different code models is undefined behavior
     // because the compiler would have to generate additional code (to span
