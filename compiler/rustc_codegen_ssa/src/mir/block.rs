@@ -264,6 +264,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     bx.lifetime_end(tmp, size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
+
+                // If the return value was retagged as it was stored,
+                // then we might be in a different basic block now.
+                // Update the cached block for `target` to point to this new
+                // block, where codegen will continue.
+                fx.cached_llbbs[target] = CachedLlbb::Some(bx.llbb());
             }
             MergingSucc::False
         } else {
@@ -2186,19 +2192,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         llval: Bx::Value,
     ) {
         use self::ReturnDest::*;
-
+        let retags_enabled = bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some();
         match dest {
             Nothing => (),
-            Store(dst) => bx.store_arg(ret_abi, llval, dst),
+            Store(dst) => {
+                bx.store_arg(ret_abi, llval, dst);
+                if retags_enabled {
+                    self.codegen_retag_place(bx, dst, false);
+                }
+            }
             IndirectOperand(tmp, index) => {
-                let op = bx.load_operand(tmp);
+                let mut op = bx.load_operand(tmp);
                 tmp.storage_dead(bx);
+                if retags_enabled {
+                    op = self.codegen_retag_operand(bx, op, false);
+                }
                 self.overwrite_local(index, LocalRef::Operand(op));
                 self.debug_introduce_local(bx, index);
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if let PassMode::Cast { .. } = ret_abi.mode {
+                let mut op = if let PassMode::Cast { .. } = ret_abi.mode {
                     let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
                     bx.store_arg(ret_abi, llval, tmp);
@@ -2208,6 +2222,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     OperandRef::from_immediate_or_packed_pair(bx, llval, ret_abi.layout)
                 };
+                if retags_enabled {
+                    op = self.codegen_retag_operand(bx, op, false);
+                }
                 self.overwrite_local(index, LocalRef::Operand(op));
                 self.debug_introduce_local(bx, index);
             }
