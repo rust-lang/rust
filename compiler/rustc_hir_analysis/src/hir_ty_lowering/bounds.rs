@@ -166,7 +166,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
+        //if self.tcx().features().move_trait() {
         self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
+        //}
         self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
         if including_sized {
             self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
@@ -278,12 +280,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let relaxed_bounds = collect_relaxed_bounds(hir_bounds, context);
         self.reject_duplicate_relaxed_bounds(relaxed_bounds);
 
-        let Some(move_did) = tcx.lang_items().move_trait() else {
-            if tcx.features().move_trait() {
-                let _ = tcx.require_lang_item(hir::LangItem::Move, span);
-            }
-            return;
-        };
+        let move_did = tcx.require_lang_item(hir::LangItem::Move, span);
         let move_bounds = collect_bounds(hir_bounds, context, move_did);
         if !move_bounds.any() {
             add_trait_bound(tcx, bounds, self_ty, move_did, span);
