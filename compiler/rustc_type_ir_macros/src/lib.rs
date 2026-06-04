@@ -149,6 +149,18 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     )
 }
 
+/// `Lift_Generic` is specialised for structs/enums parameterised by an interner
+/// `I: Interner`. It derives `Lift<J>` by rewriting interner associated types
+/// from `I::Assoc` to `J::Assoc`. The required associated type lift bounds are
+/// supplied by `I: LiftInto<J>`.
+///
+/// Ordinary generic parameters still get explicit `Lift<J>` bounds. Interner
+/// independent fields must either implement `Lift` manually or use
+/// `#[lift(identity)]`.
+///
+/// `PhantomData` is a special case that occurs enough in the code base to be
+/// handled here directly. We collect any generic bounds from the type then
+/// produce another `PhantomData`.
 fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
         panic!("cannot derive on union")
@@ -178,12 +190,6 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
                 return bind.to_token_stream();
             }
 
-            if is_type_phantom(&ty) {
-                return quote! {
-                    PhantomData
-                };
-            }
-
             let lifted = lift(ty.clone(), &generic_parameters);
 
             // Field types involving ordinary generic parameters still need
@@ -192,6 +198,12 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
             // associated types are covered by `I: LiftInto<J>`.
             for param in lifted.generic_parameter_bounds {
                 wc.push(parse_quote! { #param: ::rustc_type_ir::lift::Lift<J> });
+            }
+
+            if is_type_phantom(&ty) {
+                return quote! {
+                    PhantomData
+                };
             }
 
             quote! {
