@@ -22,6 +22,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    #[inline(always)]
     fn disable_trait_solver_fast_paths(&self) -> bool {
         self.disable_trait_solver_fast_paths()
     }

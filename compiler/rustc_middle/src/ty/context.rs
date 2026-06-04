@@ -13,7 +13,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PointeeSized;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
-use std::{fmt, iter, mem};
+use std::{fmt, hint, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
@@ -2680,8 +2680,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.next_solver.coherence
     }
 
+    #[inline(always)]
     pub fn disable_trait_solver_fast_paths(self) -> bool {
-        self.sess.opts.unstable_opts.disable_fast_paths
+        hint::unlikely(self.sess.opts.unstable_opts.disable_fast_paths)
     }
 
     #[allow(rustc::bad_opt_access)]
