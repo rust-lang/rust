@@ -199,6 +199,7 @@ pub use id::ThreadId;
 pub use join_handle::JoinHandle;
 pub(crate) use lifecycle::ThreadInit;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(test))] // we use the realstd types instead, see below
 pub use local::{AccessError, LocalKey};
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub use scoped::{Scope, ScopedJoinHandle, scope};
@@ -210,10 +211,18 @@ pub use thread::Thread;
 // Implementation details used by the thread_local!{} macro.
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals", issue = "none")]
+#[cfg(not(test))] // we use the realstd types instead, see below
 pub mod local_impl {
     pub use super::local::thread_local_process_attrs;
     pub use crate::sys::thread_local::*;
 }
+// Under cfg(test), avoid having two instances of the thread-local machinery.
+// Things too easily get mixed up and then we end up with memory leaks because we're not calling
+// all the right dtors.
+#[cfg(test)]
+pub use realstd::thread::local_impl;
+#[cfg(test)]
+pub use realstd::thread::{AccessError, LocalKey};
 
 /// A specialized [`Result`] type for threads.
 ///
