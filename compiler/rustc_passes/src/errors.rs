@@ -969,8 +969,10 @@ pub(crate) struct DeadCodePubInBinaryNote;
 
 #[derive(Subdiagnostic)]
 #[note(
-    "this `pub` struct has private fields, no public constructor, and is not otherwise reachable through the external API, so consider providing a public constructor or removing it"
+    "this `pub` struct has private fields, no public constructor, and is not otherwise reachable through the external API"
 )]
+#[help("consider removing it if it has not been used")]
+#[help("consider adding a field of type `!` or `()` if it is intended")]
 pub(crate) struct UnusedUnconstructablePubStructsNote;
 
 #[derive(Subdiagnostic)]
