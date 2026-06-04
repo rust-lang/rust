@@ -24,6 +24,7 @@ mod locals;
 pub mod naked_asm;
 pub mod operand;
 pub mod place;
+mod retag;
 mod rvalue;
 mod statement;
 
@@ -425,7 +426,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         return vec![];
     }
 
-    let args = mir
+    let mut args = mir
         .args_iter()
         .enumerate()
         .map(|(arg_index, local)| {
@@ -562,6 +563,32 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         })
         .collect::<Vec<_>>();
+    if bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
+        args = args
+            .iter()
+            .map(|arg| match arg {
+                &LocalRef::Place(place_ref) => {
+                    fx.codegen_retag_place(bx, place_ref, true);
+                    LocalRef::Place(place_ref)
+                }
+                &LocalRef::UnsizedPlace(place_ref) => {
+                    let operand = bx.load_operand(place_ref);
+                    let retagged = fx.codegen_retag_operand(bx, operand, true);
+                    assert!(matches!(retagged.val, OperandValue::Pair(_, _)));
+                    retagged.val.store(bx, place_ref);
+                    LocalRef::UnsizedPlace(place_ref)
+                }
+                &LocalRef::Operand(operand_ref) => {
+                    let retagged = fx.codegen_retag_operand(bx, operand_ref, true);
+                    LocalRef::Operand(retagged)
+                }
+                LocalRef::PendingOperand => LocalRef::PendingOperand,
+            })
+            .collect::<Vec<_>>();
+        // If we branched during retagging, then we need to update the
+        // start block to the new location.
+        fx.cached_llbbs[mir::START_BLOCK] = CachedLlbb::Some(bx.llbb());
+    }
 
     if fx.instance.def.requires_caller_location(bx.tcx()) {
         let mir_args = if let Some(num_untupled) = num_untupled {

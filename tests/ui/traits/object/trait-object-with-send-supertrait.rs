@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/18988>.
+
 //@ check-pass
 #![allow(dead_code)]
 pub trait Foo : Send { }
