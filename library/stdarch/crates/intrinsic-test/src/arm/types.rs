@@ -74,6 +74,16 @@ impl TypeDefinition for ArmType {
         }
     }
 
+    fn rust_scalar_type_for_test_value_array(&self) -> String {
+        if self.kind() == TypeKind::Bool && self.num_lanes() == SimdLen::Scalable {
+            let mut ty = self.clone();
+            ty.kind = TypeKind::Int(Sign::Signed);
+            ty.rust_scalar_type()
+        } else {
+            self.rust_scalar_type()
+        }
+    }
+
     /// Determines the load function for this type.
     fn load_function(&self) -> String {
         if let Some(bl) = self.bit_len {

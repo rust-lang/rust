@@ -230,6 +230,12 @@ pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
         ty.vec_len = None;
         ty.rust_type()
     }
+
+    /// Gets a string containing the name of the scalar type corresponding to this type that should
+    /// be used as the element type for the test value array.
+    fn rust_scalar_type_for_test_value_array(&self) -> String {
+        self.rust_scalar_type()
+    }
 }
 
 /// Returns the default comparison between results of an intrinsic - casting the vectors to arrays

@@ -121,8 +121,14 @@ fn json_to_intrinsic(
                     }
                 });
 
-            let mut arg =
-                Argument::<Arm>::new(i, String::from(arg_name), ArmType(arg_ty), constraint);
+            let is_predicate = arg_name == "pg";
+            let mut arg = Argument::<Arm>::new(
+                i,
+                String::from(arg_name),
+                ArmType(arg_ty),
+                constraint,
+                is_predicate,
+            );
 
             // The JSON doesn't list immediates as const
             let IntrinsicType {

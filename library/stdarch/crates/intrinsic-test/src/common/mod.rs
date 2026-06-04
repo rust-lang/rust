@@ -5,12 +5,14 @@ use rayon::prelude::*;
 use cli::ProcessedCli;
 
 use crate::common::{
+    argument::Argument,
     gen_c::write_wrapper_c,
     gen_rust::{
         run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
     },
     intrinsic::Intrinsic,
     intrinsic_helpers::TypeDefinition,
+    values::test_values_array_name,
 };
 
 pub mod argument;
@@ -18,10 +20,10 @@ pub mod cli;
 pub mod constraint;
 pub mod intrinsic;
 pub mod intrinsic_helpers;
+pub mod values;
 
 mod gen_c;
 mod gen_rust;
-mod values;
 
 /// Many scalable intrinsics take a predicate argument and for the purposes of intrinsic testing,
 /// a predicate that enables all lanes is used for all of these intrinsic calls (i.e. loading inputs,
@@ -109,6 +111,16 @@ pub trait SupportedArchitecture: Sized {
 
     /// Return a call to a intrinsic to generate a predicate, if reqd.
     fn predicate_function(_: u32) -> String;
+
+    /// Return a call loading `arg`. Can assume that `arg.is_simd()` holds.
+    fn load_call(arg: &Argument<Self>, idx: usize) -> String {
+        format!(
+            "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
+            name = arg.generate_name(),
+            vals_name = test_values_array_name(&arg.ty),
+            load = arg.ty.load_function(),
+        )
+    }
 }
 
 pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {

@@ -2,10 +2,12 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use crate::common::SupportedArchitecture;
+use crate::common::argument::Argument;
 use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
+use crate::common::intrinsic_helpers::{SimdLen, TypeDefinition, TypeKind};
+use crate::common::values::test_values_array_name;
+use crate::common::{PASSES, PREDICATE_LOCAL, SupportedArchitecture};
 use intrinsic::ArmType;
 use json_parser::get_neon_intrinsics;
 
@@ -141,6 +143,31 @@ impl SupportedArchitecture for Arm {
 
     fn predicate_function(size: u32) -> String {
         format!("svptrue_b{size}()")
+    }
+
+    fn load_call(arg: &Argument<Self>, idx: usize) -> String {
+        let name = arg.generate_name();
+        let load = arg.ty.load_function();
+        let ptr = format!(
+            "{vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _",
+            vals_name = test_values_array_name(&arg.ty)
+        );
+
+        match arg.ty.num_lanes() {
+            // If the load is of a `svbool_t`, then we load a `svint8_t` and
+            SimdLen::Scalable if matches!(arg.ty.kind(), TypeKind::Bool) => {
+                format!(
+                    r#"
+let {name} = {load}({PREDICATE_LOCAL}, {ptr});
+let {name} = svcmpne_n_s8({PREDICATE_LOCAL}, {name}, 0);
+                "#
+                )
+            }
+            // If this load is of a scalable vector, then prepend an additional argument
+            // containing the predicate for the load.
+            SimdLen::Scalable => format!("let {name} = {load}({PREDICATE_LOCAL}, {ptr});"),
+            SimdLen::Fixed(..) => format!("let {name} = {load}({ptr});"),
+        }
     }
 }
 

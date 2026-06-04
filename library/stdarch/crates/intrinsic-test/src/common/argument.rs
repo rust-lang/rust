@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::common::SupportedArchitecture;
-use crate::common::intrinsic_helpers::{SimdLen, TypeKind};
+use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::test_values_array_name;
 
 use super::constraint::Constraint;
@@ -19,18 +19,27 @@ pub struct Argument<A: SupportedArchitecture> {
     pub ty: A::Type,
     /// Any constraints that are on this argument
     pub constraint: Option<Constraint>,
+    /// Is the argument a predicate for a scalable intrinsic?
+    pub is_predicate: bool,
 }
 
 impl<A> Argument<A>
 where
     A: SupportedArchitecture,
 {
-    pub fn new(pos: usize, name: String, ty: A::Type, constraint: Option<Constraint>) -> Self {
+    pub fn new(
+        pos: usize,
+        name: String,
+        ty: A::Type,
+        constraint: Option<Constraint>,
+        is_predicate: bool,
+    ) -> Self {
         Argument {
             pos,
             name,
             ty,
             constraint,
+            is_predicate,
         }
     }
 
@@ -41,8 +50,7 @@ where
     /// Generates local variable name for the value passed to this argument
     pub fn generate_name(&self) -> String {
         // The same predicate is used for scalable intrinsic invocations
-        // FIXME(davidtwco): Only for predicate arguments, not all boolean arguments
-        if self.is_scalable_bool() {
+        if self.is_predicate {
             format!("{PREDICATE_LOCAL}")
         } else {
             format!("{}_val", self.name)
@@ -59,11 +67,6 @@ where
 
     pub fn has_constraint(&self) -> bool {
         self.constraint.is_some()
-    }
-
-    /// Is this argument of type `svbool_t` (or otherwise a scalable bool)?
-    pub fn is_scalable_bool(&self) -> bool {
-        self.ty.kind == TypeKind::Bool && self.ty.num_lanes() == SimdLen::Scalable
     }
 
     /// Should this argument be passed by reference in C wrapper function declarations?
@@ -188,24 +191,11 @@ where
     pub fn load_values_rust(&self) -> String {
         self.iter()
             .filter(|&arg| !arg.has_constraint())
-            // FIXME(davidtwco): Need test values for `svbool_t` when the argument is *not* a
-            // predicate.
-            .filter(|&arg| !arg.is_scalable_bool())
+            .filter(|&arg| !arg.is_predicate)
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
-                    // If this load is of a scalable vector, then prepend an additional argument
-                    // containing the predicate for the load.
-                    let pred_arg = match arg.ty.num_lanes() {
-                        SimdLen::Scalable => format!("{PREDICATE_LOCAL},"),
-                        SimdLen::Fixed(..) => "".to_string(),
-                    };
-                    format!(
-                        "let {name} = {load}({pred_arg}{vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
-                        name = arg.generate_name(),
-                        vals_name = test_values_array_name(&arg.ty),
-                        load = arg.ty.load_function(),
-                    )
+                    A::load_call(arg, idx)
                 } else {
                     format!(
                         "let {name} = {vals_name}[(i+{idx}) % {PASSES}];",

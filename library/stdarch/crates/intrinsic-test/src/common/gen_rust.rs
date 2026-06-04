@@ -128,11 +128,9 @@ pub fn write_lib_rs<A: SupportedArchitecture>(
     for intrinsic in intrinsics {
         for arg in &intrinsic.arguments.args {
             // Skip arguments with constraints as these correspond to generic instantiatons, and
-            // arguments of scalable bool types as the same predicate is used for all intrinsics
+            // predicates for scalable intrinsics as the same predicate is used for all intrinsics
             // under test.
-            // FIXME(davidtwco): Need test values for `svbool_t` when the argument is *not* a
-            // predicate.
-            if !arg.has_constraint() && !arg.is_scalable_bool() {
+            if !arg.has_constraint() && !arg.is_predicate {
                 let name = test_values_array_name(&arg.ty);
 
                 if seen.insert(name) {
