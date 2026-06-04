@@ -1681,6 +1681,13 @@ pub(crate) struct DelegationSelfTypeNotSpecified {
 }
 
 #[derive(Diagnostic)]
+#[diag("inferred lifetimes are not allowed in delegations as we need to inherit signature")]
+pub(crate) struct ElidedLifetimesAreNotAllowedInDelegations {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("method should be `async` or return a future, but it is synchronous")]
 pub(crate) struct MethodShouldReturnFuture {
     #[primary_span]

@@ -717,7 +717,7 @@ mod impls {
 
     #[unstable(feature = "never_type", issue = "35121")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl const Clone for ! {
+    const impl Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
@@ -727,11 +727,11 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl const TrivialClone for ! {}
+    const unsafe impl TrivialClone for ! {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for *const T {
+    const impl<T: PointeeSized> Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -741,11 +741,11 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for *const T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for *const T {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for *mut T {
+    const impl<T: PointeeSized> Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -755,12 +755,12 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for *mut T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    impl<T: PointeeSized> const Clone for &T {
+    const impl<T: PointeeSized> Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
@@ -771,7 +771,7 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    unsafe impl<T: PointeeSized> const TrivialClone for &T {}
+    const unsafe impl<T: PointeeSized> TrivialClone for &T {}
 
     #[unstable(feature = "share_trait", issue = "156756")]
     impl<T: PointeeSized> Share for &T {}

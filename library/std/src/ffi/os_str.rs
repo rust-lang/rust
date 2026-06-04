@@ -94,10 +94,6 @@ pub struct OsString {
     inner: Buf,
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsString {}
-
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
 /// This type represents a borrowed reference to a string in the operating system's preferred
@@ -119,10 +115,6 @@ impl crate::sealed::Sealed for OsString {}
 pub struct OsStr {
     inner: Slice,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
@@ -1758,7 +1750,7 @@ impl ToOwned for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<OsStr> for OsStr {
+const impl AsRef<OsStr> for OsStr {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         self

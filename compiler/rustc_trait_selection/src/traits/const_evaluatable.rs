@@ -9,7 +9,6 @@
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
@@ -43,11 +42,13 @@ pub fn is_const_evaluatable<'tcx>(
     if tcx.features().generic_const_exprs() {
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
-        let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-            tcx.def_kind(uv.def) == DefKind::AnonConst
-        } else {
-            false
-        };
+        let is_anon_ct = matches!(
+            ct.kind(),
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
+                kind: ty::UnevaluatedConstKind::Anon { .. },
+                ..
+            })
+        );
 
         if !is_anon_ct {
             if satisfied_from_param_env(tcx, infcx, ct, param_env) {
@@ -116,7 +117,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx()
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == DUMMY_SP { tcx.def_span(uv.def) } else { span },
+                        if span == DUMMY_SP { tcx.def_span(uv.kind.def_id()) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .with_note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")

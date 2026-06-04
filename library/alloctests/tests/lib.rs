@@ -41,8 +41,10 @@
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
+#![feature(ptr_cast_slice)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
+#![deny(lossy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;

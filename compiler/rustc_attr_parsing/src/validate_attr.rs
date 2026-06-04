@@ -9,7 +9,7 @@ use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, Diagnostic, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, template};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, template};
 use rustc_hir::AttrPath;
 use rustc_parse::parse_in;
 use rustc_session::errors::report_lit_error;
@@ -29,7 +29,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
 
     // Check input tokens for built-in and key-value attributes.
     match builtin_attr_info {
-        Some(BuiltinAttribute { name, .. }) => {
+        Some(name) => {
             if AttributeParser::is_parsed_attribute(slice::from_ref(&name)) {
                 return;
             }

@@ -1830,7 +1830,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 return;
             }
             let remaining_len = self.len - len;
-            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
+            let s = self.as_mut_ptr().add(len).cast_slice(remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
@@ -3786,7 +3786,7 @@ impl<T: TrivialClone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, A: Allocator> const ops::Deref for Vec<T, A> {
+const impl<T, A: Allocator> ops::Deref for Vec<T, A> {
     type Target = [T];
 
     #[inline]
@@ -3797,7 +3797,7 @@ impl<T, A: Allocator> const ops::Deref for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T, A: Allocator> const ops::DerefMut for Vec<T, A> {
+const impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
@@ -3863,7 +3863,7 @@ impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I: [const] SliceIndex<[T]>, A: Allocator> const Index<I> for Vec<T, A> {
+const impl<T, I: [const] SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
     #[inline]
@@ -3874,7 +3874,7 @@ impl<T, I: [const] SliceIndex<[T]>, A: Allocator> const Index<I> for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-impl<T, I: [const] SliceIndex<[T]>, A: Allocator> const IndexMut<I> for Vec<T, A> {
+const impl<T, I: [const] SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
@@ -4289,7 +4289,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
             // use drop for [T]
             // use a raw slice to refer to the elements of the vector as weakest necessary type;
             // could avoid questions of validity in certain cases
-            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
+            self.as_mut_ptr().cast_slice(self.len).drop_in_place()
         }
         // RawVec handles deallocation
     }
@@ -4297,7 +4297,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for Vec<T> {
+const impl<T> Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.

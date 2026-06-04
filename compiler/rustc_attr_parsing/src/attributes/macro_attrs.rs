@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CollapseMacroDebuginfo, MacroUseArgs};
 use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
@@ -8,6 +9,7 @@ impl NoArgsAttributeParser for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::MacroEscape;
 }
 
@@ -41,6 +43,7 @@ impl AttributeParser for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::macro_use],
         MACRO_USE_TEMPLATE,
+        AttributeStability::Stable,
         |group: &mut Self, cx: &mut AcceptContext<'_, '_>, args| {
             let span = cx.attr_span;
             group.first_span.get_or_insert(span);
@@ -122,6 +125,7 @@ impl NoArgsAttributeParser for AllowInternalUnsafeParser {
         Warn(Target::Field),
         Warn(Target::Arm),
     ]);
+    const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
 }
 
@@ -136,6 +140,7 @@ impl SingleAttributeParser for MacroExportParser {
         Error(Target::WherePredicate),
         Error(Target::Crate),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
@@ -145,7 +150,7 @@ impl SingleAttributeParser for MacroExportParser {
                     cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                     Some(sym::local_inner_macros) => true,
                     _ => {
                         cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
@@ -171,6 +176,7 @@ impl SingleAttributeParser for CollapseDebugInfoParser {
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
     );
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
@@ -200,5 +206,6 @@ pub(crate) struct RustcProcMacroDeclsParser;
 impl NoArgsAttributeParser for RustcProcMacroDeclsParser {
     const PATH: &[Symbol] = &[sym::rustc_proc_macro_decls];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcProcMacroDecls;
 }

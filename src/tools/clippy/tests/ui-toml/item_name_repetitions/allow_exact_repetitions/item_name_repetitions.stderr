@@ -1,5 +1,5 @@
 error: item name is the same as its containing module's name
-  --> tests/ui-toml/item_name_repetitions/allow_exact_repetitions/item_name_repetitions.rs:6:12
+  --> tests/ui-toml/item_name_repetitions/allow_exact_repetitions/item_name_repetitions.rs:5:12
    |
 LL |     pub fn foo() {}
    |            ^^^

@@ -190,8 +190,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                // The operand always has the same type as the result.
-                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let layout = util::unop_homogeneous(un_op).then_some(dest.layout);
+                let val = self.read_immediate(&self.eval_operand(operand, layout)?)?;
                 let result = self.unary_op(un_op, &val)?;
                 assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
                 self.write_immediate(*result, &dest)?;
@@ -596,9 +596,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;

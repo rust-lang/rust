@@ -574,7 +574,7 @@ step_nonzero_impls! {
 
 #[unstable(feature = "step_trait", issue = "42168")]
 #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
-impl const Step for char {
+const impl Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> (usize, Option<usize>) {
         let start = start as u32;
@@ -662,7 +662,7 @@ impl const Step for char {
 
 #[unstable(feature = "step_trait", issue = "42168")]
 #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
-impl const Step for AsciiChar {
+const impl Step for AsciiChar {
     #[inline]
     fn steps_between(&start: &AsciiChar, &end: &AsciiChar) -> (usize, Option<usize>) {
         Step::steps_between(&start.to_u8(), &end.to_u8())
@@ -705,7 +705,7 @@ impl const Step for AsciiChar {
 
 #[unstable(feature = "step_trait", issue = "42168")]
 #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
-impl const Step for Ipv4Addr {
+const impl Step for Ipv4Addr {
     #[inline]
     fn steps_between(&start: &Ipv4Addr, &end: &Ipv4Addr) -> (usize, Option<usize>) {
         u32::steps_between(&start.to_bits(), &end.to_bits())
@@ -738,7 +738,7 @@ impl const Step for Ipv4Addr {
 
 #[unstable(feature = "step_trait", issue = "42168")]
 #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
-impl const Step for Ipv6Addr {
+const impl Step for Ipv6Addr {
     #[inline]
     fn steps_between(&start: &Ipv6Addr, &end: &Ipv6Addr) -> (usize, Option<usize>) {
         u128::steps_between(&start.to_bits(), &end.to_bits())

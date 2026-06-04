@@ -599,15 +599,15 @@ impl FileAttr {
 #[cfg(target_os = "aix")]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_mtime.tv_sec as i64, self.stat.st_mtime.tv_nsec as i64)
+        SystemTime::new(self.stat.st_mtim.tv_sec as i64, self.stat.st_mtim.tv_nsec as i64)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_atime.tv_sec as i64, self.stat.st_atime.tv_nsec as i64)
+        SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        SystemTime::new(self.stat.st_ctime.tv_sec as i64, self.stat.st_ctime.tv_nsec as i64)
+        SystemTime::new(self.stat.st_ctim.tv_sec as i64, self.stat.st_ctim.tv_nsec as i64)
     }
 }
 
@@ -1451,6 +1451,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1478,6 +1479,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1494,6 +1496,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1521,6 +1524,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1537,6 +1541,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1580,6 +1585,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1599,6 +1605,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1642,6 +1649,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1661,6 +1669,7 @@ impl File {
         target_os = "cygwin",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     ))]
     pub fn unlock(&self) -> io::Result<()> {
@@ -1688,6 +1697,7 @@ impl File {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
+        target_os = "android",
         target_vendor = "apple",
     )))]
     pub fn unlock(&self) -> io::Result<()> {

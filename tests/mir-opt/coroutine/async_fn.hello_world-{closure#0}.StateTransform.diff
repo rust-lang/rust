@@ -1,0 +1,453 @@
+- // MIR for `hello_world::{closure#0}` before StateTransform
++ // MIR for `hello_world::{closure#0}` after StateTransform
+  
+- fn hello_world::{closure#0}(_1: {async fn body of hello_world()}, _2: std::future::ResumeTy) -> ()
+- yields ()
+-  {
++ fn hello_world::{closure#0}(_1: Pin<&mut {async fn body of hello_world()}>, _2: &mut Context<'_>) -> Poll<()> {
++     coroutine layout {
++         field _s0: [u8; 1];
++         field _s1: &[u8];
++         field _s2: [u8; 1];
++         field _s3: {async fn body of read_exact()};
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++             Suspend0 (3): [_s0, _s1, _s2, _s3],
++         }
++         storage_conflicts = BitMatrix(4x4) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s0, _s3), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s1, _s3), (_s2, _s0), (_s2, _s1), (_s2, _s2), (_s2, _s3), (_s3, _s0), (_s3, _s1), (_s3, _s2), (_s3, _s3)}
++     }
+      debug _task_context => _2;
+-     let mut _0: ();
++     coroutine debug data => _s0;
++     let mut _0: std::task::Poll<()>;
+      let _3: [u8; 1];
+      let _5: &[u8];
+      let mut _6: &[u8; 1];
+      let mut _7: std::ops::RangeFull;
+      let _9: ();
+      let mut _10: std::option::Option<()>;
+      let mut _11: {async fn body of read_exact()};
+      let mut _12: {async fn body of read_exact()};
+      let mut _13: &mut &[u8];
+      let mut _14: &mut &[u8];
+      let mut _15: &mut [u8];
+      let mut _16: &mut [u8; 1];
+      let mut _17: &mut [u8; 1];
+      let mut _19: ();
+      let _20: ();
+      let mut _21: std::task::Poll<std::option::Option<()>>;
+      let mut _22: std::pin::Pin<&mut {async fn body of read_exact()}>;
+      let mut _23: &mut {async fn body of read_exact()};
+      let mut _24: &mut {async fn body of read_exact()};
+      let mut _25: &mut std::task::Context<'_>;
+      let mut _26: &mut std::task::Context<'_>;
+-     let mut _27: std::future::ResumeTy;
++     let mut _27: &mut std::task::Context<'_>;
+      let mut _28: isize;
+      let mut _30: !;
+-     let mut _31: std::future::ResumeTy;
++     let mut _31: &mut std::task::Context<'_>;
+      let mut _32: ();
++     let mut _33: ();
++     let mut _34: u32;
++     let mut _35: &mut {async fn body of hello_world()};
+      scope 1 {
+-         debug data => _3;
++         debug data => (((*_35) as variant#3).0: [u8; 1]);
++         coroutine debug reader => _s1;
+          let mut _4: &[u8];
+          scope 2 {
+-             debug reader => _4;
++             debug reader => (((*_35) as variant#3).1: &[u8]);
++             coroutine debug marker => _s2;
+              let mut _8: [u8; 1];
+              scope 3 {
+-                 debug marker => _8;
++                 debug marker => (((*_35) as variant#3).2: [u8; 1]);
++                 coroutine debug __awaitee => _s3;
+                  let mut _18: {async fn body of read_exact()};
+                  scope 4 {
+-                     debug __awaitee => _18;
++                     debug __awaitee => (((*_35) as variant#3).3: {async fn body of read_exact()});
+                      let _29: std::option::Option<()>;
+                      scope 5 {
+                          debug result => _29;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
+-         _3 = [const 0_u8; 1];
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = &_3;
+-         StorageLive(_7);
+-         _7 = RangeFull;
+-         _5 = <[u8; 1] as Index<RangeFull>>::index(move _6, move _7) -> [return: bb1, unwind: bb30];
++         _35 = copy (_1.0: &mut {async fn body of hello_world()});
++         _34 = discriminant((*_35));
++         switchInt(move _34) -> [0: bb33, 1: bb32, 2: bb31, 3: bb30, otherwise: bb8];
+      }
+  
+      bb1: {
+          StorageDead(_7);
+          StorageDead(_6);
+-         _4 = &(*_5);
+-         StorageLive(_8);
+-         _8 = [const 0_u8; 1];
++         (((*_35) as variant#3).1: &[u8]) = &(*_5);
++         nop;
++         (((*_35) as variant#3).2: [u8; 1]) = [const 0_u8; 1];
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+-         _14 = &mut _4;
++         _14 = &mut (((*_35) as variant#3).1: &[u8]);
+          _13 = &mut (*_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+-         _17 = &mut _8;
++         _17 = &mut (((*_35) as variant#3).2: [u8; 1]);
+          _16 = &mut (*_17);
+          _15 = move _16 as &mut [u8] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_16);
+-         _12 = read_exact(move _13, move _15) -> [return: bb2, unwind: bb27];
++         _12 = read_exact(move _13, move _15) -> [return: bb2, unwind: bb22];
+      }
+  
+      bb2: {
+          StorageDead(_15);
+          StorageDead(_13);
+-         _11 = <{async fn body of read_exact()} as IntoFuture>::into_future(move _12) -> [return: bb3, unwind: bb26];
++         _11 = <{async fn body of read_exact()} as IntoFuture>::into_future(move _12) -> [return: bb3, unwind: bb21];
+      }
+  
+      bb3: {
+          StorageDead(_12);
+          PlaceMention(_11);
+-         StorageLive(_18);
+-         _18 = move _11;
++         nop;
++         (((*_35) as variant#3).3: {async fn body of read_exact()}) = move _11;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageLive(_20);
+          StorageLive(_21);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
+-         _24 = &mut _18;
++         _24 = &mut (((*_35) as variant#3).3: {async fn body of read_exact()});
+          _23 = &mut (*_24);
+-         _22 = Pin::<&mut {async fn body of read_exact()}>::new_unchecked(move _23) -> [return: bb5, unwind: bb22];
++         _22 = Pin::<&mut {async fn body of read_exact()}>::new_unchecked(move _23) -> [return: bb5, unwind: bb17];
+      }
+  
+      bb5: {
+          StorageDead(_23);
+          StorageLive(_25);
+          StorageLive(_26);
+          StorageLive(_27);
+          _27 = copy _2;
+-         _26 = std::future::get_context::<'_, '_>(move _27) -> [return: bb6, unwind: bb20];
++         _26 = move _27;
++         goto -> bb6;
+      }
+  
+      bb6: {
+          _25 = &mut (*_26);
+          StorageDead(_27);
+-         _21 = <{async fn body of read_exact()} as Future>::poll(move _22, move _25) -> [return: bb7, unwind: bb21];
++         _21 = <{async fn body of read_exact()} as Future>::poll(move _22, move _25) -> [return: bb7, unwind: bb16];
+      }
+  
+      bb7: {
+          StorageDead(_26);
+          StorageDead(_25);
+          StorageDead(_24);
+          StorageDead(_22);
+          PlaceMention(_21);
+          _28 = discriminant(_21);
+          switchInt(move _28) -> [0: bb10, 1: bb9, otherwise: bb8];
+      }
+  
+      bb8: {
+          unreachable;
+      }
+  
+      bb9: {
+          _20 = const ();
+          StorageDead(_21);
+          StorageDead(_20);
+          StorageLive(_31);
+          StorageLive(_32);
+          _32 = ();
+-         _31 = yield(move _32) -> [resume: bb11, drop: bb16];
++         _0 = Poll::<()>::Pending;
++         StorageDead(_5);
++         StorageDead(_9);
++         StorageDead(_10);
++         StorageDead(_11);
++         StorageDead(_14);
++         StorageDead(_17);
++         StorageDead(_31);
++         StorageDead(_32);
++         discriminant((*_35)) = 3;
++         return;
+      }
+  
+      bb10: {
+          StorageLive(_29);
+          _29 = copy ((_21 as Ready).0: std::option::Option<()>);
+          _10 = copy _29;
+          StorageDead(_29);
+          StorageDead(_21);
+          StorageDead(_20);
+-         drop(_18) -> [return: bb12, unwind: bb24];
++         drop((((*_35) as variant#3).3: {async fn body of read_exact()})) -> [return: bb12, unwind: bb19];
+      }
+  
+      bb11: {
+          StorageDead(_32);
+          _2 = move _31;
+          StorageDead(_31);
+          _19 = const ();
+          goto -> bb4;
+      }
+  
+      bb12: {
+-         StorageDead(_18);
+-         _9 = Option::<()>::unwrap(move _10) -> [return: bb13, unwind: bb25];
++         nop;
++         _9 = Option::<()>::unwrap(move _10) -> [return: bb13, unwind: bb20];
+      }
+  
+      bb13: {
+          StorageDead(_10);
+          goto -> bb14;
+      }
+  
+      bb14: {
+          StorageDead(_17);
+          StorageDead(_14);
+          StorageDead(_11);
+          StorageDead(_9);
+-         _0 = const ();
+-         StorageDead(_8);
++         _33 = const ();
++         nop;
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb15, unwind: bb32];
++         nop;
++         nop;
++         goto -> bb28;
+      }
+  
+      bb15: {
++         _0 = Poll::<()>::Ready(move _33);
++         discriminant((*_35)) = 1;
+          return;
+      }
+  
+-     bb16: {
+-         StorageDead(_32);
+-         StorageDead(_31);
+-         drop(_18) -> [return: bb17, unwind: bb33];
+-     }
+- 
+-     bb17: {
+-         StorageDead(_18);
+-         StorageDead(_10);
+-         goto -> bb18;
+-     }
+- 
+-     bb18: {
+-         StorageDead(_17);
+-         StorageDead(_14);
+-         StorageDead(_11);
+-         StorageDead(_9);
+-         StorageDead(_8);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb19, unwind: bb32];
+-     }
+- 
+-     bb19: {
+-         coroutine_drop;
+-     }
+- 
+-     bb20 (cleanup): {
+-         StorageDead(_27);
+-         goto -> bb21;
+-     }
+- 
+-     bb21 (cleanup): {
++     bb16 (cleanup): {
+          StorageDead(_26);
+          StorageDead(_25);
+-         goto -> bb23;
++         goto -> bb18;
+      }
+  
+-     bb22 (cleanup): {
++     bb17 (cleanup): {
+          StorageDead(_23);
+-         goto -> bb23;
++         goto -> bb18;
+      }
+  
+-     bb23 (cleanup): {
++     bb18 (cleanup): {
+          StorageDead(_24);
+          StorageDead(_22);
+          StorageDead(_21);
+          StorageDead(_20);
+-         drop(_18) -> [return: bb24, unwind terminate(cleanup)];
++         drop((((*_35) as variant#3).3: {async fn body of read_exact()})) -> [return: bb19, unwind terminate(cleanup)];
+      }
+  
+-     bb24 (cleanup): {
+-         StorageDead(_18);
+-         goto -> bb25;
++     bb19 (cleanup): {
++         nop;
++         goto -> bb20;
+      }
+  
+-     bb25 (cleanup): {
++     bb20 (cleanup): {
+          StorageDead(_10);
+-         goto -> bb29;
++         goto -> bb24;
+      }
+  
+-     bb26 (cleanup): {
+-         goto -> bb28;
++     bb21 (cleanup): {
++         goto -> bb23;
+      }
+  
+-     bb27 (cleanup): {
++     bb22 (cleanup): {
+          StorageDead(_15);
+          StorageDead(_13);
+-         goto -> bb28;
++         goto -> bb23;
+      }
+  
+-     bb28 (cleanup): {
++     bb23 (cleanup): {
+          StorageDead(_12);
+          StorageDead(_10);
+-         goto -> bb29;
++         goto -> bb24;
+      }
+  
+-     bb29 (cleanup): {
++     bb24 (cleanup): {
+          StorageDead(_17);
+          StorageDead(_14);
+          StorageDead(_11);
+          StorageDead(_9);
+-         StorageDead(_8);
+-         goto -> bb31;
++         nop;
++         goto -> bb26;
+      }
+  
+-     bb30 (cleanup): {
++     bb25 (cleanup): {
+          StorageDead(_7);
+          StorageDead(_6);
+-         goto -> bb31;
++         goto -> bb26;
+      }
+  
+-     bb31 (cleanup): {
++     bb26 (cleanup): {
+          StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb32, unwind terminate(cleanup)];
++         nop;
++         nop;
++         goto -> bb27;
+      }
+  
+-     bb32 (cleanup): {
++     bb27 (cleanup): {
++         goto -> bb29;
++     }
++ 
++     bb28: {
++         goto -> bb15;
++     }
++ 
++     bb29 (cleanup): {
++         discriminant((*_35)) = 2;
+          resume;
+      }
+  
+-     bb33 (cleanup): {
+-         StorageDead(_18);
+-         StorageDead(_10);
+-         goto -> bb34;
++     bb30: {
++         StorageLive(_5);
++         StorageLive(_9);
++         StorageLive(_10);
++         StorageLive(_11);
++         StorageLive(_14);
++         StorageLive(_17);
++         StorageLive(_31);
++         StorageLive(_32);
++         _31 = move _2;
++         goto -> bb11;
+      }
+  
+-     bb34 (cleanup): {
+-         StorageDead(_17);
+-         StorageDead(_14);
+-         StorageDead(_11);
+-         StorageDead(_9);
+-         StorageDead(_8);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb32, unwind terminate(cleanup)];
++     bb31: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb31, unwind continue];
++     }
++ 
++     bb32: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb32, unwind continue];
++     }
++ 
++     bb33: {
++         nop;
++         (((*_35) as variant#3).0: [u8; 1]) = [const 0_u8; 1];
++         nop;
++         StorageLive(_5);
++         StorageLive(_6);
++         _6 = &(((*_35) as variant#3).0: [u8; 1]);
++         StorageLive(_7);
++         _7 = RangeFull;
++         _5 = <[u8; 1] as Index<RangeFull>>::index(move _6, move _7) -> [return: bb1, unwind: bb25];
+      }
+  }
+  

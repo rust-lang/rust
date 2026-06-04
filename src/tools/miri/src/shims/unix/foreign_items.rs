@@ -342,7 +342,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "flock" => {
                 // Currently this function does not exist on all Unixes, e.g. on Solaris.
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::MacOs, Os::Illumos], link_name)?;
+                this.check_target_os(
+                    &[Os::Linux, Os::Android, Os::FreeBsd, Os::MacOs, Os::Illumos],
+                    link_name,
+                )?;
 
                 let [fd, op] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32) -> i32),
@@ -391,6 +394,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     args,
                 )?;
                 let result = this.symlink(target, linkpath)?;
+                this.write_scalar(result, dest)?;
+            }
+            "linkat" => {
+                let [oldfd, oldpath, newfd, newpath, flags] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *const _, i32, *const _, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.linkat(oldfd, oldpath, newfd, newpath, flags)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" => {

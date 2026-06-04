@@ -1364,7 +1364,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
         bx.call(fn_type, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
-        OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
+        OperandValue::Immediate(bx.const_bool(false)).store(bx, dest);
     } else {
         if wants_msvc_seh(bx.sess()) {
             unimplemented!();
@@ -1421,7 +1421,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
         let current_block = bx.block;
 
         bx.switch_to_block(then);
-        bx.ret(bx.const_i32(0));
+        bx.ret(bx.const_bool(false));
 
         // Type indicator for the exception being thrown.
         //
@@ -1435,7 +1435,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
         bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
-        bx.ret(bx.const_i32(1));
+        bx.ret(bx.const_bool(true));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
@@ -1468,7 +1468,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
     let i8p = Ty::new_mut_ptr(tcx, tcx.types.i8);
-    // `unsafe fn(*mut i8) -> ()`
+    // `unsafe fn(*mut Data) -> ()`
     let try_fn_ty = Ty::new_fn_ptr(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
@@ -1477,7 +1477,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             rustc_hir::Safety::Unsafe,
         )),
     );
-    // `unsafe fn(*mut i8, *mut i8) -> ()`
+    // `unsafe fn(*mut Data, *mut i8) -> ()`
     let catch_fn_ty = Ty::new_fn_ptr(
         tcx,
         ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
@@ -1486,10 +1486,10 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             rustc_hir::Safety::Unsafe,
         )),
     );
-    // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
+    // `unsafe fn(unsafe fn(*mut Data) -> (), *mut Data, unsafe fn(*mut Data, *mut i8) -> ()) -> bool`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig_rust_abi(
         [try_fn_ty, i8p, catch_fn_ty],
-        tcx.types.i32,
+        tcx.types.bool,
         rustc_hir::Safety::Unsafe,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);

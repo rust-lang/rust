@@ -1118,7 +1118,7 @@ rustc_queries! {
     }
 
     /// Unsafety-check this `LocalDefId`.
-    query check_transmutes(key: LocalDefId) {
+    query check_transmutes(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { "check transmute calls inside `{}`", tcx.def_path_str(key) }
     }
 
@@ -1627,7 +1627,7 @@ rustc_queries! {
     /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
     /// replaced with their hidden type. This is used in the old trait solver
     /// when in `PostAnalysis` mode and should not be called directly.
-    query typing_env_normalized_for_post_analysis(def_id: DefId) -> ty::TypingEnv<'tcx> {
+    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -2063,6 +2063,10 @@ rustc_queries! {
 
     query inherit_sig_for_delegation_item(def_id: LocalDefId) -> &'tcx [Ty<'tcx>] {
         desc { "inheriting delegation signature" }
+    }
+
+    query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
+        desc { "getting delegation user-specified args" }
     }
 
     /// Does lifetime resolution on items. Importantly, we can't resolve

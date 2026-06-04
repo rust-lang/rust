@@ -857,6 +857,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this, link_name, abi, args, dest,
                 );
             }
+            name if name.starts_with("llvm.loongarch.")
+                && matches!(this.tcx.sess.target.arch, Arch::LoongArch32 | Arch::LoongArch64)
+                && this.tcx.sess.target.endian == Endian::Little =>
+            {
+                return shims::loongarch::EvalContextExt::emulate_loongarch_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
 
             // Fallback to shims in submodules.
             _ => {

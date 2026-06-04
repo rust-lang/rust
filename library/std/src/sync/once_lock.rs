@@ -592,7 +592,7 @@ impl<T: UnwindSafe> UnwindSafe for OnceLock<T> {}
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for OnceLock<T> {
+const impl<T> Default for OnceLock<T> {
     /// Creates a new uninitialized cell.
     ///
     /// # Example

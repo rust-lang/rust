@@ -183,10 +183,7 @@ pub(crate) struct BothFfiConstAndPure {
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
-pub(crate) struct Link {
-    #[label("not an `extern` block")]
-    pub span: Option<Span>,
-}
+pub(crate) struct Link;
 
 #[derive(Diagnostic)]
 #[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
@@ -699,38 +696,6 @@ pub(crate) struct UselessAssignment<'a> {
 pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
-pub(crate) enum AttrApplication {
-    #[diag("attribute should be applied to an enum", code = E0517)]
-    Enum {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not an enum")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct", code = E0517)]
-    Struct {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct or union", code = E0517)]
-    StructUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct or union")]
-        span: Span,
-    },
-    #[diag("attribute should be applied to a struct, enum, or union", code = E0517)]
-    StructEnumUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label("not a struct, enum, or union")]
-        span: Span,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag("transparent {$target} cannot have other repr hints", code = E0692)]
 pub(crate) struct TransparentIncompatible {
     #[primary_span]
@@ -1084,19 +1049,6 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")]
 pub(crate) struct IneffectiveUnstableImpl;
 
-#[derive(Diagnostic)]
-#[diag("sanitize attribute not allowed here")]
-pub(crate) struct SanitizeAttributeNotAllowed {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a function, impl block, or module")]
-    pub not_fn_impl_mod: Option<Span>,
-    #[label("function has no body")]
-    pub no_body: Option<Span>,
-    #[help("sanitize attribute can be applied to a function (with body), impl block, or module")]
-    pub help: (),
-}
-
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]
 #[diag(
@@ -1155,24 +1107,6 @@ pub(crate) enum UnexportableItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[repr(align(...))]` is not supported on {$item}")]
-pub(crate) struct ReprAlignShouldBeAlign {
-    #[primary_span]
-    #[help("use `#[rustc_align(...)]` instead")]
-    pub span: Span,
-    pub item: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[repr(align(...))]` is not supported on {$item}")]
-pub(crate) struct ReprAlignShouldBeAlignStatic {
-    #[primary_span]
-    #[help("use `#[rustc_align_static(...)]` instead")]
-    pub span: Span,
-    pub item: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag("`eii_macro_for` is only valid on functions and statics")]
 pub(crate) struct EiiImplTarget {
     #[primary_span]
@@ -1209,12 +1143,13 @@ pub(crate) struct EiiWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` required, but not found")]
+#[diag("`#[{$name}]` {$kind} required, but not found")]
 pub(crate) struct EiiWithoutImpl {
     #[primary_span]
     #[label("expected because `#[{$name}]` was declared here in crate `{$decl_crate_name}`")]
     pub span: Span,
     pub name: Symbol,
+    pub kind: &'static str,
 
     pub current_crate_name: Symbol,
     pub decl_crate_name: Symbol,

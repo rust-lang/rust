@@ -62,12 +62,15 @@ pub fn walk_native_lib_search_dirs<R>(
         f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
     }
 
+    let has_shared_llvm_apple_darwin =
+        sess.target.is_like_darwin && sess.target_tlib_path.dir.join("libLLVM.dylib").exists();
+
     // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
     // library directory instead of the self-contained directories.
     // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
     // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
-    // Finally there is shared LLVM library, which unlike compiler libraries, is linked by the name,
-    // therefore requiring the search path for the linker.
+    // On Apple targets, shared LLVM is linked by name, so when `libLLVM.dylib` is
+    // present in the target libdir, add that directory to the linker search path.
     // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
     // and sanitizers to self-contained directory, and stop adding this search path.
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
@@ -77,7 +80,8 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == Os::Linux
         || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
+        || sess.target.is_like_darwin
+            && (!sess.sanitizers().is_empty() || has_shared_llvm_apple_darwin)
         || sess.target.os == Os::Windows
             && sess.target.env == Env::Gnu
             && sess.target.cfg_abi == CfgAbi::Llvm

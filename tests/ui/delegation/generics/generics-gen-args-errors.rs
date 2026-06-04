@@ -36,6 +36,7 @@ mod test_1 {
         //~| ERROR can't use generic parameters from outer item
         //~| ERROR: unresolved item provided when a constant was expected
         //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
+        //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
     }
 }
 
@@ -44,36 +45,45 @@ mod test_2 {
 
     reuse foo::<> as bar1;
     //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<String, String> as bar2;
     //~^ ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
     //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _> as bar3;
     //~^ ERROR: use of undeclared lifetime name `'asdasd`
     //~| ERROR: function takes 2 lifetime arguments but 5 lifetime arguments were supplied
     //~| ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+
     reuse foo::<String, 'static, 123, asdasd> as bar4;
     //~^ ERROR: cannot find type `asdasd` in this scope
     //~| ERROR: function takes 2 lifetime arguments but 1 lifetime argument was supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<1, 2, _, 4, 5, _> as bar5;
     //~^ ERROR: function takes 3 generic arguments but 6 generic arguments were supplied
     //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<1, 2,asd,String, { let x = 0; }> as bar6;
     //~^ ERROR: cannot find type `asd` in this scope
     //~| ERROR: function takes 3 generic arguments but 5 generic arguments were supplied
     //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<"asdasd", asd, "askdn", 'static, 'a> as bar7;
     //~^ ERROR: use of undeclared lifetime name `'a`
     //~| ERROR: cannot find type `asd` in this scope
     //~| ERROR: constant provided when a type was expected
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse foo::<{}, {}, {}> as bar8;
     //~^ ERROR: constant provided when a type was expected
     //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 }
 
 mod test_3 {
@@ -90,21 +100,26 @@ mod test_3 {
     //~| ERROR: cannot find type `asdasa` in this scope
     //~| ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
     //~| ERROR: trait takes 2 generic arguments but 6 generic arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<'static, 'static>::foo as bar2;
     //~^ ERROR: trait takes 3 lifetime arguments but 2 lifetime arguments were supplied
     //~| ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
     reuse Trait::<1, 2, 3, 4, 5>::foo as bar3;
     //~^ ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
     //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<1, 2, true>::foo as bar4;
     //~^ ERROR: trait takes 3 lifetime arguments but 0 lifetime arguments were supplied
     //~| ERROR: trait takes 2 generic arguments but 3 generic arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<'static>::foo as bar5;
     //~^ ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
     //~^ ERROR: cannot find type `DDDD` in this scope [E0425]
@@ -112,12 +127,16 @@ mod test_3 {
     //~| ERROR: trait takes 2 generic arguments but 3 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 6 generic arguments were supplied
     //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 
     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
     //~^ ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
+    //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
 }
 
 fn main() {}

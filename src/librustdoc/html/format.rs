@@ -4,8 +4,7 @@
 //! various types in `rustdoc::clean`.
 //!
 //! These implementations all emit HTML. As an internal implementation detail,
-//! some of them support an alternate format that emits text, but that should
-//! not be used external to this module.
+//! some of them support an alternate format that emits plain text.
 
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
@@ -184,9 +183,9 @@ pub(crate) fn print_where_clause(
 
         let clause = if f.alternate() {
             if ending == Ending::Newline {
-                format!(" where{where_preds},")
+                format!(" where{where_preds:#},")
             } else {
-                format!(" where{where_preds}")
+                format!(" where{where_preds:#}")
             }
         } else {
             let mut br_with_padding = String::with_capacity(6 * indent + 28);

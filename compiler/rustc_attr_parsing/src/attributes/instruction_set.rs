@@ -1,3 +1,4 @@
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::InstructionSetAttr;
 
 use super::prelude::*;
@@ -15,13 +16,14 @@ impl SingleAttributeParser for InstructionSetParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         const POSSIBLE_SYMBOLS: &[Symbol] = &[sym::arm_a32, sym::arm_t32];
         const POSSIBLE_ARM_SYMBOLS: &[Symbol] = &[sym::a32, sym::t32];
         let maybe_meta_item = cx.expect_single_element_list(args, cx.attr_span)?;
 
-        let Some(meta_item) = maybe_meta_item.meta_item() else {
+        let Some(meta_item) = maybe_meta_item.meta_item_no_args() else {
             cx.adcx().expected_specific_argument(maybe_meta_item.span(), POSSIBLE_SYMBOLS);
             return None;
         };

@@ -1,6 +1,5 @@
 use std::num::IntErrorKind;
 
-use rustc_ast as ast;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -183,126 +182,6 @@ pub(crate) struct MissingIssue {
     pub span: Span,
 }
 
-// FIXME: Why is this the same error code as `InvalidReprHintNoParen` and `InvalidReprHintNoValue`?
-// It is more similar to `IncorrectReprFormatGeneric`.
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all", code = E0552)]
-pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
-    #[primary_span]
-    pub span: Span,
-}
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(packed)` attribute format: `packed` expects a literal integer as argument", code = E0552)]
-pub(crate) struct IncorrectReprFormatPackedExpectInteger {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("invalid representation hint: `{$name}` does not take a parenthesized argument list", code = E0552)]
-pub(crate) struct InvalidReprHintNoParen {
-    #[primary_span]
-    pub span: Span,
-
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("invalid representation hint: `{$name}` does not take a value", code = E0552)]
-pub(crate) struct InvalidReprHintNoValue {
-    #[primary_span]
-    pub span: Span,
-
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("invalid `repr(align)` attribute: `align` needs an argument", code = E0589)]
-pub(crate) struct InvalidReprAlignNeedArg {
-    #[primary_span]
-    #[suggestion(
-        "supply an argument here",
-        code = "align(...)",
-        applicability = "has-placeholders"
-    )]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("invalid `repr({$repr_arg})` attribute: {$error_part}", code = E0589)]
-pub(crate) struct InvalidReprGeneric {
-    #[primary_span]
-    pub span: Span,
-
-    pub repr_arg: String,
-    pub error_part: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses", code = E0693)]
-pub(crate) struct IncorrectReprFormatAlignOneArg {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("incorrect `repr(align)` attribute format: `align` expects a literal integer as argument", code = E0693)]
-pub(crate) struct IncorrectReprFormatExpectInteger {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("incorrect `repr({$repr_arg})` attribute format", code = E0693)]
-pub(crate) struct IncorrectReprFormatGeneric {
-    #[primary_span]
-    pub span: Span,
-
-    pub repr_arg: Symbol,
-
-    #[subdiagnostic]
-    pub cause: Option<IncorrectReprFormatGenericCause>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum IncorrectReprFormatGenericCause {
-    #[suggestion(
-        "use parentheses instead",
-        code = "{name}({value})",
-        applicability = "machine-applicable"
-    )]
-    Int {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        value: u128,
-    },
-
-    #[suggestion(
-        "use parentheses instead",
-        code = "{name}({value})",
-        applicability = "machine-applicable"
-    )]
-    Symbol {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        value: Symbol,
-    },
-}
-
-impl IncorrectReprFormatGenericCause {
-    pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: Symbol) -> Option<Self> {
-        match *kind {
-            ast::LitKind::Int(value, ast::LitIntType::Unsuffixed) => {
-                Some(Self::Int { span, name, value: value.get() })
-            }
-            ast::LitKind::Str(value, _) => Some(Self::Symbol { span, name, value }),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag("`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute", code = E0717)]
 pub(crate) struct RustcPromotablePairing {
@@ -445,13 +324,6 @@ pub(crate) struct ObjcSelectorExpectedStringLiteral {
 }
 
 #[derive(Diagnostic)]
-#[diag("stability attributes may not be used outside of the standard library", code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected at least one confusable name")]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
@@ -459,8 +331,8 @@ pub(crate) struct EmptyConfusables {
 }
 
 #[derive(Diagnostic)]
-#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
-#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
+#[help("`#[{$name}{$attribute_args}]` can {$only}be applied to {$applied}")]
+#[diag("`#[{$name}{$attribute_args}]` attribute cannot be used on {$target}")]
 pub(crate) struct InvalidTarget {
     #[primary_span]
     #[suggestion(
@@ -474,6 +346,21 @@ pub(crate) struct InvalidTarget {
     pub target: &'static str,
     pub applied: DiagArgValue,
     pub only: &'static str,
+    pub attribute_args: &'static str,
+    #[subdiagnostic]
+    pub help: Option<InvalidTargetHelp>,
+    #[warning(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    pub previously_accepted: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidTargetHelp {
+    #[help("use `#[rustc_align(...)]` instead")]
+    UseRustcAlign,
+    #[help("use `#[rustc_align_static(...)]` instead")]
+    UseRustcAlignStatic,
 }
 
 #[derive(Diagnostic)]
@@ -482,26 +369,6 @@ pub(crate) struct InvalidAlignmentValue {
     #[primary_span]
     pub span: Span,
     pub error_part: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("meta item in `repr` must be an identifier", code = E0565)]
-pub(crate) struct ReprIdent {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("unrecognized representation hint", code = E0552)]
-#[help(
-    "valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`"
-)]
-#[note(
-    "for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>"
-)]
-pub(crate) struct UnrecognizedReprHint {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -849,6 +716,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
+                diag.code(E0565);
             }
         }
 
@@ -1154,4 +1022,13 @@ pub(crate) enum InvalidMachoSectionReason {
     MissingSection,
     #[note("section name `{$section}` is longer than 16 bytes")]
     SectionTooLong { section: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[sanitize({$field} = ...)]` attribute cannot be used on statics")]
+#[help("`#[sanitize]` can be used on statics if only the address is sanitized")]
+pub(crate) struct SanitizeInvalidStatic {
+    #[primary_span]
+    pub span: Span,
+    pub field: &'static str,
 }

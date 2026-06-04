@@ -1,4 +1,4 @@
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::{AttributeStability, AttributeTemplate, template};
 use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::{
@@ -19,6 +19,7 @@ impl SingleAttributeParser for DoNotRecommendParser {
     // "Allowed" on any target, noop on all but trait impls
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let attr_span = cx.attr_span;

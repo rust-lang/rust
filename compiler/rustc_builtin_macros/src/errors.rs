@@ -1187,6 +1187,15 @@ pub(crate) struct EiiMacroExpectedMaxOneArgument {
 }
 
 #[derive(Diagnostic)]
+#[diag("only a small subset of attributes are supported on externally implementable items")]
+pub(crate) struct EiiAttributeNotSupported {
+    #[primary_span]
+    pub span: Span,
+    #[note("this attribute is not supported")]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("named argument `{$named_arg_name}` is not used by name")]
 pub(crate) struct NamedArgumentUsedPositionally {
     #[label("this named argument is referred to by position in formatting string")]

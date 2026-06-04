@@ -6,10 +6,10 @@ use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefIdMap, DefIdSet};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
-use super::{Context, ItemSection, item_ty_to_section};
+use super::{Context, ItemSection, impl_trait_key, item_ty_to_section};
 use crate::clean;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
@@ -707,15 +707,9 @@ fn sidebar_render_assoc_items(
 
         let mut ret = impls
             .iter()
-            .filter_map(|it| {
-                let trait_ = it.inner_impl().trait_.as_ref()?;
-                let encoded = id_map.derive(super::get_id_for_impl(cx.tcx(), it.impl_item.item_id));
-
-                let prefix = match it.inner_impl().polarity {
-                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
-                    ty::ImplPolarity::Negative => "!",
-                };
-                let generated = Link::new(encoded, format!("{prefix}{:#}", print_path(trait_, cx)));
+            .filter_map(|i| {
+                let encoded = id_map.derive(super::get_id_for_impl(cx.tcx(), i.impl_item.item_id));
+                let generated = Link::new(encoded, impl_trait_key(cx, i)?);
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
             .collect::<Vec<Link<'static>>>();

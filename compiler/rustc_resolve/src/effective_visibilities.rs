@@ -278,9 +278,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // all the parents in the loop below are also guaranteed to be modules.
         let mut module_def_id = macro_module_def_id;
         loop {
-            let changed_reachability =
-                self.update_macro_reachable(module_def_id, macro_module_def_id, macro_ev);
-            if changed_reachability || module_def_id == CRATE_DEF_ID {
+            self.update_macro_reachable(module_def_id, macro_module_def_id, macro_ev);
+            if module_def_id == CRATE_DEF_ID {
                 break;
             }
             module_def_id = self.r.tcx.local_parent(module_def_id);
@@ -294,7 +293,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         module_def_id: LocalDefId,
         defining_mod: LocalDefId,
         macro_ev: EffectiveVisibility,
-    ) -> bool {
+    ) {
         if self.macro_reachable.insert((module_def_id, defining_mod)) {
             let module = self.r.expect_module(module_def_id.to_def_id());
             for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
@@ -311,9 +310,6 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                     self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod, macro_ev);
                 }
             }
-            true
-        } else {
-            false
         }
     }
 
@@ -334,11 +330,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 }
             }
             DefKind::Struct | DefKind::Union => {
-                self.r
-                    .macro_reachable_adts
-                    .entry(def_id)
-                    .or_insert_with(Default::default)
-                    .insert(module);
+                self.r.macro_reachable_adts.entry(def_id).or_default().insert(module);
             }
             _ => {}
         }

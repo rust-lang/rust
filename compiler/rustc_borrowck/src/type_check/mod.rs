@@ -1760,9 +1760,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => {
-                        Some(UnevaluatedConst { def: uv.def, args: uv.args, promoted: None })
-                    }
+                    ty::ConstKind::Unevaluated(uv) => Some(UnevaluatedConst {
+                        def: uv.kind.def_id(),
+                        args: uv.args,
+                        promoted: None,
+                    }),
                     _ => None,
                 },
                 Const::Unevaluated(uv, _) => Some(uv),

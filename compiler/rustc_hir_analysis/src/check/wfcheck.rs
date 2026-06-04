@@ -1535,9 +1535,11 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     | ty::ConstKind::Bound(_, _) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
-                    ty::ConstKind::Unevaluated(uv) => {
-                        infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args).skip_norm_wip()
-                    }
+                    ty::ConstKind::Unevaluated(uv) => infcx
+                        .tcx
+                        .type_of(uv.kind.def_id())
+                        .instantiate(infcx.tcx, uv.args)
+                        .skip_norm_wip(),
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }

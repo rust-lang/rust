@@ -38,11 +38,14 @@ fn main() {
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
+        #[cfg(not(target_os = "solaris"))]
+        test_flock();
+        #[cfg(not(target_os = "android"))]
+        test_hard_link();
+
+        test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(not(any(target_os = "solaris", target_os = "android")))]
-        test_flock();
-        test_readv_writev();
         #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
         test_preadv_pwritev();
     }
@@ -221,9 +224,10 @@ fn test_file_set_len() {
     let file = OpenOptions::new().read(true).open(&path).unwrap();
     // Due to https://github.com/rust-lang/miri/issues/4457, we have to assume the failure could
     // be either of the Windows or Unix kind, no matter which platform we're on.
+    let err = file.set_len(14).unwrap_err();
     assert!(
-        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput]
-            .contains(&file.set_len(14).unwrap_err().kind())
+        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput].contains(&err.kind()),
+        "unexpected error: {err}"
     );
 
     remove_file(&path).unwrap();
@@ -406,31 +410,30 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// The standard library does not support this operation on Android
-// (https://github.com/rust-lang/rust/issues/148325).
 // Miri does not support the way this is implemented on Solaris
 // (https://github.com/rust-lang/miri/issues/5038).
-#[cfg(not(any(target_os = "solaris", target_os = "android")))]
+#[cfg(not(target_os = "solaris"))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);
     let file1 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
     let file2 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
 
-    // Test that we can apply many shared locks
+    // Test that we can apply many shared locks.
     file1.lock_shared().unwrap();
     file2.lock_shared().unwrap();
-    // Test that shared lock prevents exclusive lock
+    // Test that shared lock prevents exclusive lock.
     assert!(matches!(file1.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
-    // Unlock shared lock
+    // Unlock both files.
     file1.unlock().unwrap();
     file2.unlock().unwrap();
-    // Take exclusive lock
+
+    // Take exclusive lock.
     file1.lock().unwrap();
-    // Test that shared lock prevents exclusive and shared locks
+    // Test that shared lock prevents exclusive and shared locks.
     assert!(matches!(file2.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
     assert!(matches!(file2.try_lock_shared().unwrap_err(), fs::TryLockError::WouldBlock));
-    // Unlock exclusive lock
+    // Unlock exclusive lock.
     file1.unlock().unwrap();
 }
 
@@ -511,4 +514,35 @@ fn test_preadv_pwritev() {
     let mut written_bytes = vec![0u8; bytes_written];
     f.read_exact(&mut written_bytes).unwrap();
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+// std uses `libc::link` on Android which we do not support.
+#[cfg(not(target_os = "android"))]
+fn test_hard_link() {
+    let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
+    let link = utils::prepare("miri_test_fs_hard_link_link.txt");
+
+    fs::hard_link(&source, &link).unwrap();
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Only on Unix: verify both files have same inode
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let source_meta = std::fs::metadata(&source).unwrap();
+        let link_meta = std::fs::metadata(&link).unwrap();
+        assert_eq!(source_meta.ino(), link_meta.ino());
+    }
+
+    // Test error: link already exists
+    assert_eq!(ErrorKind::AlreadyExists, fs::hard_link(&source, &link).unwrap_err().kind());
+
+    // Cleanup after test
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }

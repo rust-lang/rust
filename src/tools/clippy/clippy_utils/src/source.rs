@@ -352,7 +352,7 @@ impl SourceFileRange {
     }
 }
 
-/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block` with no label.
+/// Like [`snippet_block`], but add braces if the expr is not an `ExprKind::Block` with no label.
 pub fn expr_block(
     sess: &impl HasSession,
     expr: &Expr<'_>,
@@ -518,8 +518,10 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 /// Converts a span to a code snippet if available, otherwise returns the default.
 ///
 /// This is useful if you want to provide suggestions for your lint or more generally, if you want
-/// to convert a given `Span` to a `str`. To create suggestions consider using
-/// [`snippet_with_applicability`] to ensure that the applicability stays correct.
+/// to convert a given `Span` to a `str`.
+///
+/// To create suggestions consider using [`snippet_with_applicability`] to ensure that the
+/// applicability stays correct.
 ///
 /// # Example
 /// ```rust,ignore
@@ -528,7 +530,7 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 /// //  ^^^^^   ^^^^^^^^^^
 /// //  span1   span2
 ///
-/// // The snipped call would return the corresponding code snippet
+/// // The snippet call would return the corresponding code snippet
 /// snippet(cx, span1, "..") // -> "value"
 /// snippet(cx, span2, "..") // -> "Vec::new()"
 /// ```
@@ -542,6 +544,9 @@ pub fn snippet<'a>(sess: &impl HasSession, span: Span, default: &'a str) -> Cow<
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
 /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
 ///   `HasPlaceholders`
+///
+/// If the span might realistically contain a macro call (e.g. `vec![]`), consider using
+/// [`snippet_with_context`] instead.
 pub fn snippet_with_applicability<'a>(
     sess: &impl HasSession,
     span: Span,
@@ -560,15 +565,14 @@ fn snippet_with_applicability_sess<'a>(
     if *applicability != Applicability::Unspecified && span.from_expansion() {
         *applicability = Applicability::MaybeIncorrect;
     }
-    snippet_opt(sess, span).map_or_else(
-        || {
-            if *applicability == Applicability::MachineApplicable {
-                *applicability = Applicability::HasPlaceholders;
-            }
-            Cow::Borrowed(default)
-        },
-        From::from,
-    )
+    if let Some(t) = snippet_opt(sess, span) {
+        Cow::Owned(t)
+    } else {
+        if *applicability == Applicability::MachineApplicable {
+            *applicability = Applicability::HasPlaceholders;
+        }
+        Cow::Borrowed(default)
+    }
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
@@ -616,8 +620,8 @@ pub fn snippet_block(sess: &impl HasSession, span: Span, default: &str, indent_r
     reindent_multiline(&snip, true, indent)
 }
 
-/// Same as `snippet_block`, but adapts the applicability level by the rules of
-/// `snippet_with_applicability`.
+/// Same as [`snippet_block`], but adapts the applicability level by the rules of
+/// [`snippet_with_applicability`].
 pub fn snippet_block_with_applicability(
     sess: &impl HasSession,
     span: Span,
@@ -630,6 +634,7 @@ pub fn snippet_block_with_applicability(
     reindent_multiline(&snip, true, indent)
 }
 
+/// Combination of [`snippet_block`] and [`snippet_with_context`].
 pub fn snippet_block_with_context(
     sess: &impl HasSession,
     span: Span,
@@ -643,7 +648,7 @@ pub fn snippet_block_with_context(
     (reindent_multiline(&snip, true, indent), from_macro)
 }
 
-/// Same as `snippet_with_applicability`, but first walks the span up to the given context.
+/// Same as [`snippet_with_applicability`], but first walks the span up to the given context.
 ///
 /// This will result in the macro call, rather than the expansion, if the span is from a child
 /// context. If the span is not from a child context, it will be used directly instead.

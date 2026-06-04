@@ -226,9 +226,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// `range` must lie inside `0..self.capacity()`.
     #[inline]
     unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
-        unsafe {
-            ptr::slice_from_raw_parts_mut(self.ptr().add(range.start), range.end - range.start)
-        }
+        unsafe { self.ptr().add(range.start).cast_slice(range.end - range.start) }
     }
 
     /// Returns `true` if the buffer is at full capacity.
