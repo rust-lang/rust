@@ -470,18 +470,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         while let Some(key) = state.remaining_keys.pop_front() {
             // Fetch dtor for this `key`.
             // If the key doesn't have a dtor or does not exist any more, move on to the next key.
-            let (data, dtor) = match this.machine.tls.keys.get(&key) {
-                Some(TlsEntry { data, dtor: Some(dtor) }) => (data, dtor),
-                _ => continue,
+            let Some(TlsEntry { data, dtor: Some(dtor) }) = this.machine.tls.keys.get(&key) else {
+                continue;
             };
 
             let (instance, span) = dtor.to_owned();
 
             // If the key has no value in this thread, move on to the next key.
-            let ptr = match data.get(&active_thread) {
-                Some(data_scalar) => *data_scalar,
-                None => continue,
-            };
+            let Some(&ptr) = data.get(&active_thread) else { continue };
 
             assert!(
                 ptr.to_target_usize(this).unwrap() != 0,
