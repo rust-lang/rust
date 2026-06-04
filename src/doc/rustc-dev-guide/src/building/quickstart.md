@@ -40,6 +40,12 @@ compiler toolchain. You can use it with rustup by linking it.
 rustup toolchain link stage1 build/host/stage1
 ```
 
+**NOTE**: If you use `./x setup tools`, the default stage will be set to 2 instead of 1.
+Adjust your command accordingly:
+```sh
+rustup toolchain link stage2 build/host/stage2
+```
+
 Now you have a toolchain called `stage1` linked to your build. You can use it to
 test the compiler.
 

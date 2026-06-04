@@ -3921,6 +3921,12 @@ pub struct Delegation {
     pub from_glob: bool,
 }
 
+impl Delegation {
+    pub fn last_segment_span(&self) -> Span {
+        self.path.segments.last().unwrap().ident.span
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum DelegationSuffixes {
     List(ThinVec<(Ident, Option<Ident>)>),
