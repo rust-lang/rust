@@ -38,6 +38,7 @@ error: layout_of((*const T) is !null) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/non_null.rs:11:1
@@ -131,6 +132,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/non_null.rs:14:1
@@ -185,6 +187,7 @@ error: layout_of((*const [u8]) is !null) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(8 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/non_null.rs:17:1
