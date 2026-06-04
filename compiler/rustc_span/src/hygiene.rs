@@ -1286,9 +1286,30 @@ pub struct HygieneEncodeContext {
     serialized_expns: Lock<FxHashSet<ExpnId>>,
 
     latest_expns: Lock<FxHashSet<ExpnId>>,
+
+    /// Maps each `SyntaxContext` to the index it is encoded with. The index is
+    /// assigned by order of first appearance during encoding rather than reusing
+    /// the raw `SyntaxContext` id, because that raw id is allocated in a
+    /// nondeterministic order under the parallel front-end. Encoding by first
+    /// appearance (which follows the deterministic encoding traversal) keeps the
+    /// emitted metadata reproducible. The root context is never stored here; it
+    /// is always encoded as index 0 and special-cased on the decoding side.
+    ctxt_indices: Lock<FxHashMap<SyntaxContext, u32>>,
 }
 
 impl HygieneEncodeContext {
+    /// Returns the index that `ctxt` is encoded with, assigning a fresh one on
+    /// first appearance. The root context always maps to 0 (and is never stored),
+    /// so non-root contexts are numbered from 1. See [`HygieneEncodeContext::ctxt_indices`].
+    fn ctxt_index(&self, ctxt: SyntaxContext) -> u32 {
+        if ctxt.is_root() {
+            return 0;
+        }
+        let mut indices = self.ctxt_indices.lock();
+        let next = indices.len() as u32 + 1;
+        *indices.entry(ctxt).or_insert(next)
+    }
+
     /// Record the fact that we need to serialize the corresponding `ExpnData`.
     pub fn schedule_expn_data_for_encoding(&self, expn: ExpnId) {
         if !self.serialized_expns.lock().contains(&expn) {
@@ -1313,29 +1334,36 @@ impl HygieneEncodeContext {
 
             // Consume the current round of syntax contexts.
             // Drop the lock() temporary early.
-            // It's fine to iterate over a HashMap, because the serialization of the table
-            // that we insert data into doesn't depend on insertion order.
             #[allow(rustc::potential_query_instability)]
             let latest_ctxts = { mem::take(&mut *self.latest_ctxts.lock()) }.into_iter();
-            let all_ctxt_data: Vec<_> = HygieneData::with(|data| {
+            let mut all_ctxt_data: Vec<_> = HygieneData::with(|data| {
                 latest_ctxts
                     .map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].key()))
                     .collect()
             });
+            // Encode in order of the deterministic index each context was assigned, so that
+            // contexts first discovered here (e.g. the parents of these contexts, encoded as
+            // part of their data) are themselves assigned indices in a deterministic order.
+            all_ctxt_data.sort_by_key(|&(ctxt, _)| self.ctxt_index(ctxt));
             for (ctxt, ctxt_key) in all_ctxt_data {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, ctxt.0, &ctxt_key);
+                    encode_ctxt(encoder, self.ctxt_index(ctxt), &ctxt_key);
                 }
             }
 
             // Same as above, but for expansions instead of syntax contexts.
             #[allow(rustc::potential_query_instability)]
             let latest_expns = { mem::take(&mut *self.latest_expns.lock()) }.into_iter();
-            let all_expn_data: Vec<_> = HygieneData::with(|data| {
+            let mut all_expn_data: Vec<_> = HygieneData::with(|data| {
                 latest_expns
                     .map(|expn| (expn, data.expn_data(expn).clone(), data.expn_hash(expn)))
                     .collect()
             });
+            // Only local expansions are written here, and their data may reference further
+            // syntax contexts, so encode them in the deterministic order of their local id to
+            // keep the assigned context indices reproducible. Foreign expansions are not
+            // serialized, so their relative order does not affect the output.
+            all_expn_data.sort_by_key(|(expn, _, _)| expn.as_local().map(|expn| expn.as_u32()));
             for (expn, expn_data, expn_hash) in all_expn_data {
                 if self.serialized_expns.lock().insert(expn) {
                     encode_expn(encoder, expn, &expn_data, expn_hash);
@@ -1469,10 +1497,13 @@ pub fn raw_encode_syntax_context(
     context: &HygieneEncodeContext,
     e: &mut impl Encoder,
 ) {
-    if !context.serialized_ctxts.lock().contains(&ctxt) {
+    // Encode the context's deterministic index rather than its raw id, which is
+    // allocated nondeterministically under the parallel front-end.
+    let index = context.ctxt_index(ctxt);
+    if index != 0 && !context.serialized_ctxts.lock().contains(&ctxt) {
         context.latest_ctxts.lock().insert(ctxt);
     }
-    ctxt.0.encode(e);
+    index.encode(e);
 }
 
 /// Updates the `disambiguator` field of the corresponding `ExpnData`
