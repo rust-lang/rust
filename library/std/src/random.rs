@@ -45,7 +45,7 @@ use crate::sys::random as sys;
 /// TEEOS                  | `TEE_GenerateRandom`
 /// UEFI                   | [`EFI_RNG_PROTOCOL`](https://uefi.org/specs/UEFI/2.10/37_Secure_Technologies.html#random-number-generator-protocol)
 /// VxWorks                | `randABytes` after waiting for `randSecure` to become ready
-/// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
+/// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
 /// ZKVM                   | `sys_rand`
 ///
 /// Note that the sources used might change over time.
