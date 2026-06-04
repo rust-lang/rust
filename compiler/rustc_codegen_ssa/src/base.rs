@@ -1132,7 +1132,9 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
-    if !tcx.dep_graph.is_fully_enabled() {
+    if !tcx.dep_graph.is_fully_enabled()
+        || tcx.sess.opts.unstable_opts.disable_incr_comp_backend_caching
+    {
         return CguReuse::No;
     }
 
