@@ -391,9 +391,9 @@ pub const unsafe trait Allocator {
 ///
 /// # Safety
 ///
-/// This trait should never be manually implemented.
+/// See [`Allocator`].
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait DynAllocator {
+pub impl(self) unsafe trait DynAllocator {
     #[doc(hidden)]
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
     #[doc(hidden)]
@@ -442,7 +442,7 @@ pub unsafe trait NoaliasAllocator: Allocator {}
 
 /// Marks a type's [`Clone`] implementation as sound with regard to [`Allocator`].
 /// Implementors must ensure that, upon cloning, the two allocators are interchangeable
-/// (i.e. is is possible to free memory with one that was allocated with the other).
+/// (i.e. it is possible to free memory with one that was allocated with the other).
 /// Further, mutable accesses such as moving or dropping the allocator must not invalidate
 /// its currently allocated blocks at least so long as clones exist.
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -450,7 +450,7 @@ pub unsafe trait AllocatorClone: Allocator + Clone {}
 
 /// Marks a type's [`PartialEq`] implementation as sound with regard to [`Allocator`].
 /// Implementors must ensure that, upon equality, the two allocators are interchangeable
-/// (i.e. is is possible to free memory with one that was allocated with the other), and
+/// (i.e. it is possible to free memory with one that was allocated with the other), and
 /// that the two allocators behave "as if" they are clones of each other as per
 /// [`AllocatorClone`].
 #[unstable(feature = "allocator_api", issue = "32838")]
