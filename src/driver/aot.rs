@@ -30,14 +30,9 @@ use crate::global_asm::{GlobalAsmConfig, GlobalAsmContext};
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
 
-struct ModuleCodegenResult {
-    module: CompiledModule,
-    existing_work_product: Option<(WorkProductId, WorkProduct)>,
-}
-
 enum OngoingModuleCodegen {
-    Sync(Result<ModuleCodegenResult, String>),
-    Async(JoinHandle<Result<ModuleCodegenResult, String>>),
+    Sync(Result<CompiledModule, String>),
+    Async(JoinHandle<Result<CompiledModule, String>>),
 }
 
 impl StableHash for OngoingModuleCodegen {
@@ -69,35 +64,30 @@ impl OngoingCodegen {
                 },
             };
 
-            let module_codegen_result = match module_codegen_result {
-                Ok(module_codegen_result) => module_codegen_result,
+            let module = match module_codegen_result {
+                Ok(module) => module,
                 Err(err) => sess.dcx().fatal(err),
             };
-            let ModuleCodegenResult { module, existing_work_product } = module_codegen_result;
 
-            if let Some((work_product_id, work_product)) = existing_work_product {
-                work_products.insert(work_product_id, work_product);
+            let work_product = if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
+                None
+            } else if let Some(global_asm_object) = &module.global_asm_object {
+                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                    sess,
+                    &module.name,
+                    &[("o", module.object.as_ref().unwrap()), ("asm.o", global_asm_object)],
+                    &[],
+                )
             } else {
-                let work_product = if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
-                    None
-                } else if let Some(global_asm_object) = &module.global_asm_object {
-                    rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                        sess,
-                        &module.name,
-                        &[("o", module.object.as_ref().unwrap()), ("asm.o", global_asm_object)],
-                        &[],
-                    )
-                } else {
-                    rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                        sess,
-                        &module.name,
-                        &[("o", module.object.as_ref().unwrap())],
-                        &[],
-                    )
-                };
-                if let Some((work_product_id, work_product)) = work_product {
-                    work_products.insert(work_product_id, work_product);
-                }
+                rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                    sess,
+                    &module.name,
+                    &[("o", module.object.as_ref().unwrap())],
+                    &[],
+                )
+            };
+            if let Some((work_product_id, work_product)) = work_product {
+                work_products.insert(work_product_id, work_product);
             }
 
             modules.push(module);
@@ -142,14 +132,14 @@ fn emit_cgu(
     debug: Option<DebugContext>,
     global_asm_object_file: Option<PathBuf>,
     producer: &str,
-) -> Result<ModuleCodegenResult, String> {
+) -> Result<CompiledModule, String> {
     let mut product = module.finish();
 
     if let Some(mut debug) = debug {
         debug.emit(&mut product);
     }
 
-    let module = emit_module(
+    emit_module(
         output_filenames,
         prof,
         product.object,
@@ -157,9 +147,7 @@ fn emit_cgu(
         name.clone(),
         global_asm_object_file,
         producer,
-    )?;
-
-    Ok(ModuleCodegenResult { module, existing_work_product: None })
+    )
 }
 
 fn emit_module(
@@ -222,7 +210,7 @@ fn emit_module(
 fn reuse_workproduct_for_cgu(
     tcx: TyCtxt<'_>,
     cgu: &CodegenUnit<'_>,
-) -> Result<ModuleCodegenResult, String> {
+) -> Result<CompiledModule, String> {
     let work_product = cgu.previous_work_product(tcx);
     let obj_out_regular =
         tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, cgu.name().as_str());
@@ -258,23 +246,20 @@ fn reuse_workproduct_for_cgu(
         None
     };
 
-    Ok(ModuleCodegenResult {
-        module: CompiledModule {
-            name: cgu.name().to_string(),
-            kind: ModuleKind::Regular,
-            object: Some(obj_out_regular),
-            global_asm_object: source_file_global_asm.as_ref().map(|_| obj_out_global_asm),
-            dwarf_object: None,
-            bytecode: None,
-            assembly: None,
-            llvm_ir: None,
-            links_from_incr_cache: if let Some(source_file_global_asm) = source_file_global_asm {
-                vec![source_file_regular, source_file_global_asm]
-            } else {
-                vec![source_file_regular]
-            },
+    Ok(CompiledModule {
+        name: cgu.name().to_string(),
+        kind: ModuleKind::Regular,
+        object: Some(obj_out_regular),
+        global_asm_object: source_file_global_asm.as_ref().map(|_| obj_out_global_asm),
+        dwarf_object: None,
+        bytecode: None,
+        assembly: None,
+        llvm_ir: None,
+        links_from_incr_cache: if let Some(source_file_global_asm) = source_file_global_asm {
+            vec![source_file_regular, source_file_global_asm]
+        } else {
+            vec![source_file_regular]
         },
-        existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
 }
 
@@ -390,7 +375,7 @@ fn compile_cgu(
     codegened_functions: Vec<CodegenedFunction>,
     mut global_asm: String,
     cgu_name: String,
-) -> Result<ModuleCodegenResult, String> {
+) -> Result<CompiledModule, String> {
     prof.generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
         cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
             prof.clone(),
