@@ -136,6 +136,13 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
+    pub(crate) fn crate_adts(&self, crate_num: CrateNum) -> Vec<AdtDef> {
+        self.with_cx(|tables, cx| {
+            let krate = crate_num.internal(tables, cx.tcx);
+            cx.crate_adts(krate).iter().map(|did| tables.adt_def(*did)).collect()
+        })
+    }
+
     /// Retrieve all static items defined in this crate.
     pub(crate) fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
         self.with_cx(|tables, cx| {
