@@ -159,7 +159,7 @@ pub const fn panic(expr: &'static str) -> ! {
 // This is especially important when this code is called often (e.g., with -Coverflow-checks) for
 // reducing binary size impact.
 macro_rules! panic_const {
-    ($($lang:ident = $message:expr,)+) => {
+    ($($lang:ident = $message:expr $(; -> $ret: ty)?,)+) => {
         $(
             /// This is a panic called with a message that's a result of a MIR-produced Assert.
             //
@@ -170,7 +170,7 @@ macro_rules! panic_const {
             #[track_caller]
             #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
             #[lang = stringify!($lang)]
-            pub const fn $lang() -> ! {
+            pub const fn $lang() $(-> $ret)? {
                 // See the comment in `panic(&'static str)` for why we use `Arguments::from_str` here.
                 panic_fmt(fmt::Arguments::from_str($message));
             }
@@ -193,24 +193,24 @@ pub mod panic_const {
         panic_const_neg_overflow = "attempt to negate with overflow",
         panic_const_shr_overflow = "attempt to shift right with overflow",
         panic_const_shl_overflow = "attempt to shift left with overflow",
-        panic_const_div_by_zero = "attempt to divide by zero",
-        panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero",
-        panic_const_coroutine_resumed = "coroutine resumed after completion",
-        panic_const_async_fn_resumed = "`async fn` resumed after completion",
-        panic_const_async_gen_fn_resumed = "`async gen fn` resumed after completion",
-        panic_const_gen_fn_none = "`gen fn` should just keep returning `None` after completion",
-        panic_const_coroutine_resumed_panic = "coroutine resumed after panicking",
-        panic_const_async_fn_resumed_panic = "`async fn` resumed after panicking",
-        panic_const_async_gen_fn_resumed_panic = "`async gen fn` resumed after panicking",
-        panic_const_gen_fn_none_panic = "`gen fn` should just keep returning `None` after panicking",
+        panic_const_div_by_zero = "attempt to divide by zero"; -> !,
+        panic_const_rem_by_zero = "attempt to calculate the remainder with a divisor of zero"; -> !,
+        panic_const_coroutine_resumed = "coroutine resumed after completion"; -> !,
+        panic_const_async_fn_resumed = "`async fn` resumed after completion"; -> !,
+        panic_const_async_gen_fn_resumed = "`async gen fn` resumed after completion"; -> !,
+        panic_const_gen_fn_none = "`gen fn` should just keep returning `None` after completion"; -> !,
+        panic_const_coroutine_resumed_panic = "coroutine resumed after panicking"; -> !,
+        panic_const_async_fn_resumed_panic = "`async fn` resumed after panicking"; -> !,
+        panic_const_async_gen_fn_resumed_panic = "`async gen fn` resumed after panicking"; -> !,
+        panic_const_gen_fn_none_panic = "`gen fn` should just keep returning `None` after panicking"; -> !,
     }
     // Separated panic constants list for async drop feature
     // (May be joined when the corresponding lang items will be in the bootstrap)
     panic_const! {
-        panic_const_coroutine_resumed_drop = "coroutine resumed after async drop",
-        panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop",
-        panic_const_async_gen_fn_resumed_drop = "`async gen fn` resumed after async drop",
-        panic_const_gen_fn_none_drop = "`gen fn` resumed after async drop",
+        panic_const_coroutine_resumed_drop = "coroutine resumed after async drop"; -> !,
+        panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop"; -> !,
+        panic_const_async_gen_fn_resumed_drop = "`async gen fn` resumed after async drop"; -> !,
+        panic_const_gen_fn_none_drop = "`gen fn` resumed after async drop"; -> !,
     }
 }
 

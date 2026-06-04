@@ -22,7 +22,6 @@ pub unsafe fn add(a: u8, b: u8) -> u8 {
     //        CHECK: add i8 %b, %a
     //        DEBUG: icmp ult i8 [[zero:[^,]+]], %a
     //        DEBUG: call core::num::imp::overflow_panic::add
-    //        DEBUG: unreachable
     // NOCHECKS-NOT: unreachable
     //     NOCHECKS: ret i8 %0
     overflow_checks_add::add(a, b)
