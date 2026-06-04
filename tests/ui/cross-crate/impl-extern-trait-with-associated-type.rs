@@ -1,13 +1,15 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ aux-build:issue-20389.rs
+//@ aux-build:impl-extern-trait-with-associated-type.rs
+//! Regression test for https://github.com/rust-lang/rust/issues/20389
+//! This test confirms that code implementing a trait with an associated type from an external crate
+//! runs.
 
-
-extern crate issue_20389;
+extern crate impl_extern_trait_with_associated_type;
 
 struct Foo;
 
-impl issue_20389::T for Foo {
+impl impl_extern_trait_with_associated_type::T for Foo {
     type C = ();
 }
 

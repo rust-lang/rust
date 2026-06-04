@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/30123
 use std::marker::PhantomData;
 
 pub struct Directed;

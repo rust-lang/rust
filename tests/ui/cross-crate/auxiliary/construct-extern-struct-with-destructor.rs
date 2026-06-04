@@ -1,4 +1,5 @@
-#![crate_name="socketlib"]
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/3012
+#![crate_name="construct_extern_struct_with_destructor"]
 #![crate_type = "lib"]
 
 pub mod socket {

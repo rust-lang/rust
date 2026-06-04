@@ -1,9 +1,10 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/31702
 //@ compile-flags: -g
 
-extern crate issue_31702_1;
+extern crate optimized_closure_with_debug_info_cross_crate_1;
 
 use std::collections::HashMap;
-use issue_31702_1::U256;
+use optimized_closure_with_debug_info_cross_crate_1::U256;
 
 pub struct Ethash {
     engine_params: fn() -> Option<&'static Vec<u8>>,

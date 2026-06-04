@@ -1,3 +1,4 @@
+//! Auxiliary crate testing this issue https://github.com/rust-lang/rust/issues/31702
 #[derive(Copy)]
 pub struct U256(pub [u64; 4]);
 

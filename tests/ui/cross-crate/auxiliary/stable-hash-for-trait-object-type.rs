@@ -1,3 +1,4 @@
+//! Auxiliary crate for regression test of https://github.com/rust-lang/rust/issues/34796
 #![crate_type = "lib"]
 pub trait Future {
     type Item;

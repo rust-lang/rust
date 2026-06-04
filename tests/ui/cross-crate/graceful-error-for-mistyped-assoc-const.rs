@@ -1,7 +1,8 @@
-//@ aux-build:issue-41549.rs
-
-
-extern crate issue_41549;
+//@ aux-build:graceful-error-for-mistyped-assoc-const.rs
+//! Regression test for https://github.com/rust-lang/rust/issues/41549
+//! Mismatched types on exernal associated constants used to ice,
+//! this test confirms that it errors correctly.
+extern crate graceful_error_for_mistyped_assoc_const as issue_41549;
 
 struct S;
 
