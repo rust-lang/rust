@@ -31,7 +31,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         found_errors: Ok(()),
         // FIXME(explicit_tail_calls): we are blocked on next trait solver ^^'
         typing_env: if tcx.next_trait_solver_globally() {
-            ty::TypingEnv::new(ty::ParamEnv::empty(), ty::TypingMode::borrowck(tcx, def))
+            ty::TypingEnv::new(tcx.param_env(def), ty::TypingMode::borrowck(tcx, def))
         } else {
             ty::TypingEnv::non_body_analysis(tcx, def)
         },
