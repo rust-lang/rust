@@ -18,16 +18,3 @@ pub enum GenericArgKind<I: Interner> {
 }
 
 impl<I: Interner> Eq for GenericArgKind<I> {}
-
-#[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
-#[derive(GenericTypeVisitable)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
-)]
-pub enum TermKind<I: Interner> {
-    Ty(I::Ty),
-    Const(I::Const),
-}
-
-impl<I: Interner> Eq for TermKind<I> {}
