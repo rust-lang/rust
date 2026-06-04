@@ -15,7 +15,7 @@
 //@ run-pass
 
 trait Foo {
-    #[allow(dead_code)] type Bar<'a>
+    type Bar<'a>
     where
         Self: Sized;
 

@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(dead_code)]
 
 trait Tr {
@@ -8,7 +10,7 @@ trait Tr {
     type E;
     type F;
     type G;
-    type H; //~ ERROR associated type `H` is never used
+    type H;
 }
 
 impl Tr for i32 {

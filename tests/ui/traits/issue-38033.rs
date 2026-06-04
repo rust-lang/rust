@@ -16,11 +16,10 @@ trait Future {
 
 trait IntoFuture {
     type Future: Future<Item=Self::Item, Error=Self::Error>;
-    //~^ WARN associated items `Future` and `into_future` are never used
     type Item;
     type Error;
 
-    fn into_future(self) -> Self::Future;
+    fn into_future(self) -> Self::Future; //~ WARN method `into_future` is never used
 }
 
 impl<F: Future> IntoFuture for F {
