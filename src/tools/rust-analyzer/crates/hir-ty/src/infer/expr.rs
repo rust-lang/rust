@@ -1061,14 +1061,14 @@ impl<'db> InferenceContext<'_, 'db> {
                     });
                 }
 
-                variant_field_tys[i].get().instantiate(interner, args).skip_norm_wip()
+                variant_field_tys[i].ty().instantiate(interner, args).skip_norm_wip()
             } else {
                 if let Some(field_idx) = seen_fields.get(&name) {
                     self.push_diagnostic(InferenceDiagnostic::DuplicateField {
                         field: field.expr.into(),
                         variant,
                     });
-                    variant_field_tys[*field_idx].get().instantiate(interner, args).skip_norm_wip()
+                    variant_field_tys[*field_idx].ty().instantiate(interner, args).skip_norm_wip()
                 } else {
                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                         field: field.expr.into(),
@@ -1124,12 +1124,12 @@ impl<'db> InferenceContext<'_, 'db> {
                         // type we expect from the expectation value.
                         for (field_idx, field) in variant_fields.fields().iter() {
                             let fru_ty = variant_field_tys[field_idx]
-                                .get()
+                                .ty()
                                 .instantiate(interner, fresh_args)
                                 .skip_norm_wip();
                             if remaining_fields.remove(&field.name).is_some() {
                                 let target_ty = variant_field_tys[field_idx]
-                                    .get()
+                                    .ty()
                                     .instantiate(interner, args)
                                     .skip_norm_wip();
                                 let cause = ObligationCause::new(expr);
@@ -1684,7 +1684,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 return None;
             }
             let ty = self.db.field_types(field_id.parent)[field_id.local_id]
-                .get()
+                .ty()
                 .instantiate(interner, parameters)
                 .skip_norm_wip();
             Some((Either::Left(field_id), ty))
@@ -1703,7 +1703,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 let adjustments =
                     self.table.register_infer_ok(autoderef.adjust_steps_as_infer_ok());
                 let ty = self.db.field_types(field_id.parent)[field_id.local_id]
-                    .get()
+                    .ty()
                     .instantiate(self.interner(), subst)
                     .skip_norm_wip();
                 let ty = self.process_remote_user_written_ty(ty);

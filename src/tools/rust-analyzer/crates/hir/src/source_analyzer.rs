@@ -927,7 +927,7 @@ impl<'db> SourceAnalyzer<'db> {
         let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty = (*db.field_types(variant).get(field.local_id)?)
-            .get()
+            .ty()
             .instantiate(interner, subst)
             .skip_norm_wip();
         Some((
@@ -952,7 +952,7 @@ impl<'db> SourceAnalyzer<'db> {
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
         let (adt, subst) = self.infer()?.pat_ty(pat_id.as_pat()?).as_adt()?;
         let field_ty = (*db.field_types(variant).get(field.local_id)?)
-            .get()
+            .ty()
             .instantiate(interner, subst)
             .skip_norm_wip();
         Some((
@@ -975,9 +975,9 @@ impl<'db> SourceAnalyzer<'db> {
         Some(
             db.field_types(variant_id)
                 .iter()
-                .map(|(local_id, ty)| {
+                .map(|(local_id, field)| {
                     let def = Field { parent: variant_id.into(), id: local_id };
-                    let ty = ty.get().instantiate(interner, substs).skip_norm_wip();
+                    let ty = field.ty().instantiate(interner, substs).skip_norm_wip();
                     (def, self.ty(ty))
                 })
                 .collect(),
@@ -1051,7 +1051,7 @@ impl<'db> SourceAnalyzer<'db> {
                     let field = fields.field(&field_name.as_name())?;
                     let field_types = db.field_types(variant);
                     *container = Either::Right(
-                        field_types[field].get().instantiate(interner, subst).skip_norm_wip(),
+                        field_types[field].ty().instantiate(interner, subst).skip_norm_wip(),
                     );
                     let generic_def = match variant {
                         VariantId::EnumVariantId(it) => it.loc(db).parent.into(),
@@ -1530,7 +1530,7 @@ impl<'db> SourceAnalyzer<'db> {
             .into_iter()
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
-                let ty = field_types[local_id].get().instantiate(interner, substs).skip_norm_wip();
+                let ty = field_types[local_id].ty().instantiate(interner, substs).skip_norm_wip();
                 (field.into(), self.ty(ty))
             })
             .collect()

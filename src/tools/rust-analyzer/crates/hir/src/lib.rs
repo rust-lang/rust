@@ -1406,7 +1406,7 @@ impl Field {
     /// context of the field definition.
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
         let var_id = self.parent.into();
-        let ty = db.field_types(var_id)[self.id].get().instantiate_identity().skip_norm_wip();
+        let ty = db.field_types(var_id)[self.id].ty().instantiate_identity().skip_norm_wip();
         Type::new(var_id.adt_id(db).into(), ty)
     }
 
@@ -5557,7 +5557,7 @@ impl<'db> Type<'db> {
                                     .iter()
                                     .map(|(idx, _)| {
                                         field_types[idx]
-                                            .get()
+                                            .ty()
                                             .instantiate(self.interner, args)
                                             .skip_norm_wip()
                                     })
@@ -5978,9 +5978,9 @@ impl<'db> Type<'db> {
 
         db.field_types(variant_id)
             .iter()
-            .map(|(local_id, ty)| {
+            .map(|(local_id, field)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
-                let ty = ty.get().instantiate(interner, substs).skip_norm_wip();
+                let ty = field.ty().instantiate(interner, substs).skip_norm_wip();
                 (def, self.derived(ty))
             })
             .collect()
@@ -7454,7 +7454,7 @@ pub fn struct_tail_raw<'db>(
                 let last_field = db.field_types(def_id.into()).iter().next_back();
                 match last_field {
                     Some((_, field)) => {
-                        ty = normalize(field.get().instantiate(interner, args).skip_norm_wip())
+                        ty = normalize(field.ty().instantiate(interner, args).skip_norm_wip())
                     }
                     None => break,
                 }

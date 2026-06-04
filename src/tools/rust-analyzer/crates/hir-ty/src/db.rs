@@ -22,8 +22,8 @@ use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
-    GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId, TyLoweringResult,
-    ValueTyDefId,
+    FieldType, GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId,
+    TyLoweringResult, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
@@ -225,11 +225,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn field_types_with_diagnostics(
         &self,
         var: VariantId,
-    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>>;
+    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, FieldType>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
     #[salsa::transparent]
-    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, StoredEarlyBinder<StoredTy>>;
+    fn field_types(&self, var: VariantId) -> &ArenaMap<LocalFieldId, FieldType>;
 
     #[salsa::invoke(crate::lower::callable_item_signature)]
     #[salsa::transparent]

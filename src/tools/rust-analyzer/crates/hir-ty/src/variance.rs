@@ -126,7 +126,7 @@ impl<'db> Context<'db> {
                 let mut add_constraints_from_variant = |variant| {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            field.get().instantiate_identity().skip_norm_wip(),
+                            field.ty().instantiate_identity().skip_norm_wip(),
                             Variance::Covariant,
                         );
                     }

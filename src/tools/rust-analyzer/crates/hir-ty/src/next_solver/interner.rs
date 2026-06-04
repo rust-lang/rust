@@ -589,7 +589,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         let id: VariantId = struct_id.into();
         let field_types = interner.db().field_types(id);
 
-        field_types.iter().last().map(|f| f.1.get())
+        field_types.iter().last().map(|f| f.1.ty())
     }
 
     fn all_field_tys(
@@ -599,7 +599,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         let db = interner.db();
         // FIXME: this is disabled just to match the behavior with chalk right now
         let _field_tys = |id: VariantId| {
-            db.field_types(id).iter().map(|(_, ty)| ty.get().skip_binder()).collect::<Vec<_>>()
+            db.field_types(id).iter().map(|(_, ty)| ty.ty().skip_binder()).collect::<Vec<_>>()
         };
         let field_tys = |_id: VariantId| vec![];
         let tys: Vec<_> = match self.def_id() {
@@ -1882,7 +1882,7 @@ impl<'db> Interner for DbInterner<'db> {
 
         let field_types = self.db().field_types(variant);
         let mut unsizing_params = DenseBitSet::new_empty(num_params);
-        let ty = field_types[tail_field.0].get();
+        let ty = field_types[tail_field.0].ty();
         for arg in ty.instantiate_identity().skip_norm_wip().walk() {
             if let Some(i) = maybe_unsizing_param_idx(arg) {
                 unsizing_params.insert(i);
@@ -1892,7 +1892,7 @@ impl<'db> Interner for DbInterner<'db> {
         // Ensure none of the other fields mention the parameters used
         // in unsizing.
         for field in prefix_fields {
-            for arg in field_types[field.0].get().instantiate_identity().skip_norm_wip().walk() {
+            for arg in field_types[field.0].ty().instantiate_identity().skip_norm_wip().walk() {
                 if let Some(i) = maybe_unsizing_param_idx(arg) {
                     unsizing_params.remove(i);
                 }
