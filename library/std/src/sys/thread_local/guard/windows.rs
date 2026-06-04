@@ -155,9 +155,13 @@ pub fn enable() {
                     //
                     // If a main non-Rust binary is exiting, it must not be trigger the `enable` guard
                     // for the first time during process shutdown.
-                    let res = unsafe { c::atexit(free_fls_key_at_exit) };
-                    if res != 0 {
-                        rtabort!("failed to register fls atexit hook");
+                    //
+                    // Miri has no DLL unloading so we can skip this step here.
+                    if !cfg!(miri) {
+                        let res = unsafe { c::atexit(free_fls_key_at_exit) };
+                        if res != 0 {
+                            rtabort!("failed to register fls atexit hook");
+                        }
                     }
 
                     new_key
