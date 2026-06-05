@@ -535,3 +535,10 @@ pub(crate) struct CycleInDelegationSignatureResolution {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("using `global_asm!` in statement positions is experimental")]
+pub(crate) struct GlobalAsmStatementPositionUnstable {
+    #[primary_span]
+    pub span: Span,
+}

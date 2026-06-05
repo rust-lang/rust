@@ -573,6 +573,8 @@ declare_features! (
     (incomplete, generic_const_parameter_types, "1.87.0", Some(137626)),
     /// Allows any generic constants being used as pattern type range ends
     (incomplete, generic_pattern_types, "1.86.0", Some(136574)),
+    /// Allows `global_asm!` in statement positions.
+    (unstable, global_asm_statement_position, "CURRENT_RUSTC_VERSION", Some(156965)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
