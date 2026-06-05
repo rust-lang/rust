@@ -2066,7 +2066,11 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
                 ident: rename.unwrap_or(ident),
                 rename,
                 body: deleg.body.clone(),
-                from_glob,
+                source: if from_glob {
+                    ast::DelegationSource::Glob
+                } else {
+                    ast::DelegationSource::List
+                },
             })),
             tokens: None,
         }
