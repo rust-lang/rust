@@ -473,11 +473,11 @@ where
 {
 }
 
-/// Marks that an allocator will behave as if it were `'static`, even if subtyped
-/// with a shorter lifetime. This trivially applies to allocators that always maintain
-/// global state, e.g. `System` or `Global`. Notably, the requirement means that
-/// downstream consumers may rely on this allocator not invalidating its currently
-/// allocated memory even if its lifetime has expired.
+/// Marks that an allocator will never invalidate currently allocated memory, even
+/// if its lifetime expires or a mutable reference to it is acquired. This trivially
+/// applies to allocators that always maintain global state, e.g. `System` or `Global`.
+/// Notably, this means that the only way for memory obtained from such an allocator
+/// to be invalidated is an explicit call to a de/reallocating method.
 ///
 /// This is a necessity in conjunction with [`Pin`], as only `'static` allocators may
 /// be used to back a pinned pointer.
@@ -641,6 +641,7 @@ unsafe impl<A: Allocator + ?Sized> DynAllocator for A {
 // FIXME(nia-e): See if it's possible to make this built-in to the typesystem,
 // e.g. by making the impl work on arbitrary `dyn DynAlloc + Foo + Bar`. Otherwise,
 // just expand this macro with other trait combinations for now.
+// https://rust.tf/157506
 
 macro_rules! impl_dyn_allocator {
     ($t:ty, $($n:ty),+) => {
