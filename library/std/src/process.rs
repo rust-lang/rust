@@ -1062,6 +1062,26 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
+    /// # Errors
+    ///
+    /// This method returns an [`io::Error`] if the child process could not be
+    /// spawned. Common reasons include:
+    ///
+    /// * the program could not be found (for example, it does not exist, or,
+    ///   when given a bare name, it is not present in the `PATH`);
+    /// * the current process does not have permission to execute the program
+    ///   (for example, the file is not marked executable, or execution is
+    ///   denied by a security policy such as `seccomp`);
+    /// * the operating system could not create the new process because of
+    ///   resource exhaustion (for example, a limit on the number of processes
+    ///   was reached).
+    ///
+    /// An error is only returned for failures that occur while the child is
+    /// being spawned. Once the child has started successfully, anything that
+    /// happens to it afterwards — including being terminated by a signal — is
+    /// reported through its [`ExitStatus`] rather than as an error from the
+    /// spawning method.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1083,6 +1103,20 @@ impl Command {
     /// resulting output). Stdin is not inherited from the parent and any
     /// attempt by the child process to read from the stdin stream will result
     /// in the stream immediately closing.
+    ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if reading the child's output or waiting on the
+    /// child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the
+    /// [`ExitStatus`] stored in the returned [`Output`].
+    ///
+    /// [`spawn`]: Command::spawn
     ///
     /// # Examples
     ///
@@ -1110,6 +1144,19 @@ impl Command {
     /// collecting its status.
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
+    ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if waiting on the child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the returned
+    /// [`ExitStatus`].
+    ///
+    /// [`spawn`]: Command::spawn
     ///
     /// # Examples
     ///

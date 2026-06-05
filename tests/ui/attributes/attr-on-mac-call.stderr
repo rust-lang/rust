@@ -6,6 +6,18 @@ LL |     #[sanitize(address = "off")]
    |
    = help: `#[sanitize]` can be applied to crates, functions, impl blocks, modules, and statics
 
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
+  --> $DIR/attr-on-mac-call.rs:110:5
+   |
+LL |     #[register_tool(xyz)]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this macro call
+  --> $DIR/attr-on-mac-call.rs:112:5
+   |
+LL |     unreachable!();
+   |     ^^^^^^^^^^^^^^
+
 warning: `#[export_name]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:8:5
    |
@@ -289,17 +301,5 @@ LL |     #[repr(simd)]
    = help: `#[repr(simd)]` can only be applied to structs
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
-  --> $DIR/attr-on-mac-call.rs:110:5
-   |
-LL |     #[register_tool(xyz)]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-note: this attribute does not have an `!`, which means it is applied to this macro call
-  --> $DIR/attr-on-mac-call.rs:112:5
-   |
-LL |     unreachable!();
-   |     ^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error; 32 warnings emitted
+error: aborting due to 2 previous errors; 31 warnings emitted
 

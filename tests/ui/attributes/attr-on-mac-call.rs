@@ -108,6 +108,6 @@ fn main() {
     //~| WARN previously accepted
     unreachable!();
     #[register_tool(xyz)]
-    //~^ WARN crate-level attribute should be an inner attribute
+    //~^ ERROR crate-level attribute should be an inner attribute
     unreachable!();
 }
