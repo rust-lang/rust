@@ -1,11 +1,9 @@
-//@ assembly-output: emit-asm
-//@ compile-flags: --crate-type cdylib
-//@ only-nvptx64
-
-#![no_std]
-
-//@ aux-build: breakpoint-panic-handler.rs
-extern crate breakpoint_panic_handler;
+//@ assembly-output: target-linker-default
+//@ compile-flags: --target nvptx64-nvidia-cuda --crate-type cdylib
+//@ needs-llvm-components: nvptx
+//@ ignore-backends: gcc
+#![feature(no_core)]
+#![no_core]
 
 // Verify default arch with llvm-bitcode-linker.
 // CHECK: .version 7.0
