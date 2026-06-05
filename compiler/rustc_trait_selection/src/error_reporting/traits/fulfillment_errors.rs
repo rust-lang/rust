@@ -2927,8 +2927,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return (obligation.clone(), trait_predicate);
         };
 
+        let caller_module = self.tcx.parent_module_from_def_id(obligation.cause.body_id);
         let is_normalized_yes = matches!(
-            rustc_transmute::TransmuteTypeEnv::new(self.tcx).is_transmutable(
+            rustc_transmute::TransmuteTypeEnv::new(self.tcx, caller_module).is_transmutable(
                 trait_ref.args.type_at(1),
                 trait_ref.args.type_at(0),
                 assume,
@@ -2985,8 +2986,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let dst = trait_pred.trait_ref.args.type_at(0);
             let src = trait_pred.trait_ref.args.type_at(1);
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
+            let caller_module = self.tcx.parent_module_from_def_id(obligation.cause.body_id);
 
-            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx)
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx, caller_module)
                 .is_transmutable(src, dst, assume)
             {
                 Answer::No(reason) => {

@@ -362,7 +362,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let src = predicate.trait_ref.args.type_at(1);
 
         debug!(?src, ?dst);
-        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx);
+        let caller_module = self.tcx().parent_module_from_def_id(obligation.cause.body_id);
+        let mut transmute_env =
+            rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx, caller_module);
         let maybe_transmutable = transmute_env.is_transmutable(src, dst, assume);
 
         let fully_flattened = match maybe_transmutable {

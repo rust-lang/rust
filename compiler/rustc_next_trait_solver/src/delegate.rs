@@ -88,5 +88,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         src: <Self::Interner as Interner>::Ty,
         dst: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,
+        body_id: Option<<Self::Interner as Interner>::LocalDefId>,
     ) -> Result<Certainty, NoSolution>;
 }

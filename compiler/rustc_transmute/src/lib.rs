@@ -88,18 +88,20 @@ pub enum Reason<T> {
 
 #[cfg(feature = "rustc")]
 mod rustc {
+    use rustc_hir::def_id::LocalModDefId;
     use rustc_hir::lang_items::LangItem;
     use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
 
     use super::*;
+    use crate::maybe_transmutable::query_context::rustc::RustcQueryContext;
 
     pub struct TransmuteTypeEnv<'tcx> {
-        tcx: TyCtxt<'tcx>,
+        context: RustcQueryContext<'tcx>,
     }
 
     impl<'tcx> TransmuteTypeEnv<'tcx> {
-        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-            Self { tcx }
+        pub fn new(tcx: TyCtxt<'tcx>, caller_module: LocalModDefId) -> Self {
+            Self { context: RustcQueryContext { tcx, caller_module: caller_module.to_def_id() } }
         }
 
         pub fn is_transmutable(
@@ -108,7 +110,7 @@ mod rustc {
             dst: Ty<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<Region<'tcx>, Ty<'tcx>> {
-            crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, self.tcx)
+            crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, self.context)
                 .answer()
         }
     }

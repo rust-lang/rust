@@ -94,8 +94,9 @@ fn type_op_prove_predicate<'tcx>(
 pub fn type_op_prove_predicate_with_cause<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     key: ParamEnvAnd<'tcx, ProvePredicate<'tcx>>,
-    cause: ObligationCause<'tcx>,
+    mut cause: ObligationCause<'tcx>,
 ) {
-    let ParamEnvAnd { param_env, value: ProvePredicate { predicate } } = key;
+    let ParamEnvAnd { param_env, value: ProvePredicate { predicate, body_id } } = key;
+    cause.body_id = body_id;
     ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
 }

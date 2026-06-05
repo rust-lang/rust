@@ -45,12 +45,25 @@ pub(crate) mod test {
 }
 
 #[cfg(feature = "rustc")]
-mod rustc {
+pub(crate) mod rustc {
+    use rustc_hir::def_id::DefId;
     use rustc_middle::ty::{Region, Ty, TyCtxt};
 
     use super::*;
 
+    #[derive(Clone, Copy)]
+    pub(crate) struct RustcQueryContext<'tcx> {
+        pub(crate) tcx: TyCtxt<'tcx>,
+        pub(crate) caller_module: DefId,
+    }
+
     impl<'tcx> super::QueryContext for TyCtxt<'tcx> {
+        type Def = layout::rustc::Def<'tcx>;
+        type Region = Region<'tcx>;
+        type Type = Ty<'tcx>;
+    }
+
+    impl<'tcx> super::QueryContext for RustcQueryContext<'tcx> {
         type Def = layout::rustc::Def<'tcx>;
         type Region = Region<'tcx>;
         type Type = Ty<'tcx>;

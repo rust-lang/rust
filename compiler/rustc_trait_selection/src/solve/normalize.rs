@@ -53,7 +53,8 @@ where
                 ty::AliasRelationDirection::Equate,
             );
             let goal = Goal::new(infcx.tcx, at.param_env, predicate);
-            let result = delegate.evaluate_root_goal(goal, at.cause.span, None)?;
+            let result =
+                delegate.evaluate_root_goal(goal, at.cause.span, Some(at.cause.body_id), None)?;
             let normalized = infcx.resolve_vars_if_possible(infer_term);
             let stalled_goal = match result.certainty {
                 Certainty::Yes => None,
