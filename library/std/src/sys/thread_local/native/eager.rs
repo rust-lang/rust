@@ -4,7 +4,7 @@ use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
 enum State {
-    Uninitialized,
+    Unregistered,
     Alive,
     Destroyed,
 }
@@ -19,7 +19,7 @@ pub struct Storage<T> {
 
 impl<T> Storage<T> {
     pub const fn new(val: T) -> Storage<T> {
-        Storage { state: Cell::new(State::Uninitialized), val: UnsafeCell::new(val) }
+        Storage { state: Cell::new(State::Unregistered), val: UnsafeCell::new(val) }
     }
 
     /// Gets a pointer to the TLS value. If the TLS variable has been destroyed,
@@ -42,7 +42,7 @@ impl<T> Storage<T> {
     #[cold]
     unsafe fn get_or_init_slow(&self) -> *const T {
         match self.state.get() {
-            State::Uninitialized => {}
+            State::Unregistered => {}
             State::Alive => return self.val.get(),
             State::Destroyed => return ptr::null(),
         }
