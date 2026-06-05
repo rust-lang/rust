@@ -1,0 +1,29 @@
+//@ run-pass
+#![allow(dead_code)]
+// Regression test for https://github.com/rust-lang/rust/issues/34796
+// This test case exposes conditions where the encoding of a trait object type
+// with projection predicates would differ between this crate and the upstream
+// crate, because the predicates were encoded in different order within each
+// crate. This led to different symbol hashes of functions using these type,
+// which in turn led to linker errors because the two crates would not agree on
+// the symbol name.
+// The fix was to make the order in which predicates get encoded stable.
+
+//@ aux-build:stable-symbol-hash-for-trait-object-projections.rs
+extern crate stable_symbol_hash_for_trait_object_projections as issue_34796_aux;
+
+fn mk<T>() -> T { loop {} }
+
+struct Data<T, E> {
+    data: T,
+    error: E,
+}
+
+fn main() {
+    issue_34796_aux::bar(|()| {
+        Data::<(), std::io::Error> {
+            data: mk(),
+            error: mk(),
+        }
+    })
+}
