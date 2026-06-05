@@ -429,34 +429,34 @@
       bb37: {
           StorageDead(_2);
 -         drop(_44) -> [return: bb38, unwind: bb78];
-+         goto -> bb96;
++         goto -> bb94;
       }
   
       bb38: {
           StorageDead(_44);
 -         drop(_34) -> [return: bb39, unwind: bb83];
-+         goto -> bb101;
++         goto -> bb97;
       }
   
       bb39: {
 +         _53 = const false;
           StorageDead(_34);
 -         drop(_24) -> [return: bb40, unwind: bb87];
-+         goto -> bb106;
++         goto -> bb100;
       }
   
       bb40: {
 +         _54 = const false;
           StorageDead(_24);
 -         drop(_14) -> [return: bb41, unwind: bb90];
-+         goto -> bb111;
++         goto -> bb103;
       }
   
       bb41: {
 +         _55 = const false;
           StorageDead(_14);
 -         drop(_4) -> [return: bb42, unwind continue];
-+         goto -> bb116;
++         goto -> bb106;
       }
   
       bb42: {
@@ -484,7 +484,7 @@
           StorageDead(_3);
           StorageDead(_2);
 -         drop(_44) -> [return: bb47, unwind: bb78];
-+         goto -> bb121;
++         goto -> bb109;
       }
   
       bb47: {
@@ -510,7 +510,7 @@
   
       bb51: {
 -         drop(_34) -> [return: bb52, unwind: bb83];
-+         goto -> bb126;
++         goto -> bb112;
       }
   
       bb52: {
@@ -532,7 +532,7 @@
   
       bb55: {
 -         drop(_24) -> [return: bb56, unwind: bb87];
-+         goto -> bb131;
++         goto -> bb115;
       }
   
       bb56: {
@@ -549,7 +549,7 @@
   
       bb58: {
 -         drop(_14) -> [return: bb59, unwind: bb90];
-+         goto -> bb136;
++         goto -> bb118;
       }
   
       bb59: {
@@ -560,7 +560,7 @@
   
       bb60: {
 -         drop(_4) -> [return: bb61, unwind continue];
-+         goto -> bb141;
++         goto -> bb121;
       }
   
       bb61: {
@@ -616,7 +616,7 @@
   
       bb72 (cleanup): {
 -         drop(_44) -> [return: bb78, unwind terminate(cleanup)];
-+         goto -> bb144;
++         goto -> bb123;
       }
   
       bb73 (cleanup): {
@@ -642,7 +642,7 @@
   
       bb78 (cleanup): {
 -         drop(_34) -> [return: bb83, unwind terminate(cleanup)];
-+         goto -> bb146;
++         goto -> bb124;
       }
   
       bb79 (cleanup): {
@@ -664,7 +664,7 @@
   
       bb83 (cleanup): {
 -         drop(_24) -> [return: bb87, unwind terminate(cleanup)];
-+         goto -> bb148;
++         goto -> bb125;
       }
   
       bb84 (cleanup): {
@@ -682,7 +682,7 @@
   
       bb87 (cleanup): {
 -         drop(_14) -> [return: bb90, unwind terminate(cleanup)];
-+         goto -> bb150;
++         goto -> bb126;
       }
   
       bb88 (cleanup): {
@@ -696,7 +696,7 @@
   
       bb90 (cleanup): {
 -         drop(_4) -> [return: bb92, unwind terminate(cleanup)];
-+         goto -> bb152;
++         goto -> bb127;
       }
   
       bb91 (cleanup): {
@@ -713,264 +713,164 @@
 +     }
 + 
 +     bb94: {
-+         goto -> bb93;
++         _57 = discriminant(_44);
++         switchInt(move _57) -> [0: bb93, otherwise: bb93];
 +     }
 + 
 +     bb95 (cleanup): {
-+         goto -> bb78;
++         _58 = discriminant(_44);
++         switchInt(move _58) -> [0: bb78, otherwise: bb78];
 +     }
 + 
 +     bb96: {
-+         _57 = discriminant(_44);
-+         switchInt(move _57) -> [0: bb93, otherwise: bb94];
-+     }
-+ 
-+     bb97 (cleanup): {
-+         _58 = discriminant(_44);
-+         switchInt(move _58) -> [0: bb78, otherwise: bb95];
-+     }
-+ 
-+     bb98: {
 +         goto -> bb39;
 +     }
 + 
-+     bb99: {
-+         goto -> bb98;
-+     }
-+ 
-+     bb100 (cleanup): {
-+         goto -> bb83;
-+     }
-+ 
-+     bb101: {
++     bb97: {
 +         _59 = discriminant(_34);
-+         switchInt(move _59) -> [0: bb98, otherwise: bb99];
++         switchInt(move _59) -> [0: bb96, otherwise: bb96];
 +     }
 + 
-+     bb102 (cleanup): {
++     bb98 (cleanup): {
 +         _60 = discriminant(_34);
-+         switchInt(move _60) -> [0: bb83, otherwise: bb100];
++         switchInt(move _60) -> [0: bb83, otherwise: bb83];
 +     }
 + 
-+     bb103: {
++     bb99: {
 +         goto -> bb40;
 +     }
 + 
-+     bb104: {
-+         goto -> bb103;
-+     }
-+ 
-+     bb105 (cleanup): {
-+         goto -> bb87;
-+     }
-+ 
-+     bb106: {
++     bb100: {
 +         _61 = discriminant(_24);
-+         switchInt(move _61) -> [0: bb103, otherwise: bb104];
++         switchInt(move _61) -> [0: bb99, otherwise: bb99];
 +     }
 + 
-+     bb107 (cleanup): {
++     bb101 (cleanup): {
 +         _62 = discriminant(_24);
-+         switchInt(move _62) -> [0: bb87, otherwise: bb105];
++         switchInt(move _62) -> [0: bb87, otherwise: bb87];
 +     }
 + 
-+     bb108: {
++     bb102: {
 +         goto -> bb41;
 +     }
 + 
-+     bb109: {
-+         goto -> bb108;
-+     }
-+ 
-+     bb110 (cleanup): {
-+         goto -> bb90;
-+     }
-+ 
-+     bb111: {
++     bb103: {
 +         _63 = discriminant(_14);
-+         switchInt(move _63) -> [0: bb108, otherwise: bb109];
++         switchInt(move _63) -> [0: bb102, otherwise: bb102];
 +     }
 + 
-+     bb112 (cleanup): {
++     bb104 (cleanup): {
 +         _64 = discriminant(_14);
-+         switchInt(move _64) -> [0: bb90, otherwise: bb110];
++         switchInt(move _64) -> [0: bb90, otherwise: bb90];
 +     }
 + 
-+     bb113: {
++     bb105: {
 +         goto -> bb42;
 +     }
 + 
-+     bb114: {
-+         goto -> bb113;
-+     }
-+ 
-+     bb115 (cleanup): {
-+         goto -> bb92;
-+     }
-+ 
-+     bb116: {
++     bb106: {
 +         _65 = discriminant(_4);
-+         switchInt(move _65) -> [0: bb113, otherwise: bb114];
++         switchInt(move _65) -> [0: bb105, otherwise: bb105];
 +     }
 + 
-+     bb117 (cleanup): {
++     bb107 (cleanup): {
 +         _66 = discriminant(_4);
-+         switchInt(move _66) -> [0: bb92, otherwise: bb115];
++         switchInt(move _66) -> [0: bb92, otherwise: bb92];
 +     }
 + 
-+     bb118: {
++     bb108: {
 +         goto -> bb47;
 +     }
 + 
-+     bb119: {
-+         goto -> bb118;
-+     }
-+ 
-+     bb120 (cleanup): {
-+         goto -> bb78;
-+     }
-+ 
-+     bb121: {
++     bb109: {
 +         _67 = discriminant(_44);
-+         switchInt(move _67) -> [0: bb118, otherwise: bb119];
++         switchInt(move _67) -> [0: bb108, otherwise: bb108];
 +     }
 + 
-+     bb122 (cleanup): {
++     bb110 (cleanup): {
 +         _68 = discriminant(_44);
-+         switchInt(move _68) -> [0: bb78, otherwise: bb120];
++         switchInt(move _68) -> [0: bb78, otherwise: bb78];
 +     }
 + 
-+     bb123: {
++     bb111: {
 +         goto -> bb52;
 +     }
 + 
-+     bb124: {
-+         goto -> bb123;
-+     }
-+ 
-+     bb125 (cleanup): {
-+         goto -> bb83;
-+     }
-+ 
-+     bb126: {
++     bb112: {
 +         _69 = discriminant(_34);
-+         switchInt(move _69) -> [0: bb123, otherwise: bb124];
++         switchInt(move _69) -> [0: bb111, otherwise: bb111];
 +     }
 + 
-+     bb127 (cleanup): {
++     bb113 (cleanup): {
 +         _70 = discriminant(_34);
-+         switchInt(move _70) -> [0: bb83, otherwise: bb125];
++         switchInt(move _70) -> [0: bb83, otherwise: bb83];
 +     }
 + 
-+     bb128: {
++     bb114: {
 +         goto -> bb56;
 +     }
 + 
-+     bb129: {
-+         goto -> bb128;
-+     }
-+ 
-+     bb130 (cleanup): {
-+         goto -> bb87;
-+     }
-+ 
-+     bb131: {
++     bb115: {
 +         _71 = discriminant(_24);
-+         switchInt(move _71) -> [0: bb128, otherwise: bb129];
++         switchInt(move _71) -> [0: bb114, otherwise: bb114];
 +     }
 + 
-+     bb132 (cleanup): {
++     bb116 (cleanup): {
 +         _72 = discriminant(_24);
-+         switchInt(move _72) -> [0: bb87, otherwise: bb130];
++         switchInt(move _72) -> [0: bb87, otherwise: bb87];
 +     }
 + 
-+     bb133: {
++     bb117: {
 +         goto -> bb59;
 +     }
 + 
-+     bb134: {
-+         goto -> bb133;
-+     }
-+ 
-+     bb135 (cleanup): {
-+         goto -> bb90;
-+     }
-+ 
-+     bb136: {
++     bb118: {
 +         _73 = discriminant(_14);
-+         switchInt(move _73) -> [0: bb133, otherwise: bb134];
++         switchInt(move _73) -> [0: bb117, otherwise: bb117];
 +     }
 + 
-+     bb137 (cleanup): {
++     bb119 (cleanup): {
 +         _74 = discriminant(_14);
-+         switchInt(move _74) -> [0: bb90, otherwise: bb135];
++         switchInt(move _74) -> [0: bb90, otherwise: bb90];
 +     }
 + 
-+     bb138: {
++     bb120: {
 +         goto -> bb61;
 +     }
 + 
-+     bb139: {
-+         goto -> bb138;
-+     }
-+ 
-+     bb140 (cleanup): {
-+         goto -> bb92;
-+     }
-+ 
-+     bb141: {
++     bb121: {
 +         _75 = discriminant(_4);
-+         switchInt(move _75) -> [0: bb138, otherwise: bb139];
++         switchInt(move _75) -> [0: bb120, otherwise: bb120];
 +     }
 + 
-+     bb142 (cleanup): {
++     bb122 (cleanup): {
 +         _76 = discriminant(_4);
-+         switchInt(move _76) -> [0: bb92, otherwise: bb140];
++         switchInt(move _76) -> [0: bb92, otherwise: bb92];
 +     }
 + 
-+     bb143 (cleanup): {
-+         goto -> bb78;
-+     }
-+ 
-+     bb144 (cleanup): {
++     bb123 (cleanup): {
 +         _77 = discriminant(_44);
-+         switchInt(move _77) -> [0: bb78, otherwise: bb143];
++         switchInt(move _77) -> [0: bb78, otherwise: bb78];
 +     }
 + 
-+     bb145 (cleanup): {
-+         goto -> bb83;
-+     }
-+ 
-+     bb146 (cleanup): {
++     bb124 (cleanup): {
 +         _78 = discriminant(_34);
-+         switchInt(move _78) -> [0: bb83, otherwise: bb145];
++         switchInt(move _78) -> [0: bb83, otherwise: bb83];
 +     }
 + 
-+     bb147 (cleanup): {
-+         goto -> bb87;
-+     }
-+ 
-+     bb148 (cleanup): {
++     bb125 (cleanup): {
 +         _79 = discriminant(_24);
-+         switchInt(move _79) -> [0: bb87, otherwise: bb147];
++         switchInt(move _79) -> [0: bb87, otherwise: bb87];
 +     }
 + 
-+     bb149 (cleanup): {
-+         goto -> bb90;
-+     }
-+ 
-+     bb150 (cleanup): {
++     bb126 (cleanup): {
 +         _80 = discriminant(_14);
-+         switchInt(move _80) -> [0: bb90, otherwise: bb149];
++         switchInt(move _80) -> [0: bb90, otherwise: bb90];
 +     }
 + 
-+     bb151 (cleanup): {
-+         goto -> bb92;
-+     }
-+ 
-+     bb152 (cleanup): {
++     bb127 (cleanup): {
 +         _81 = discriminant(_4);
-+         switchInt(move _81) -> [0: bb92, otherwise: bb151];
++         switchInt(move _81) -> [0: bb92, otherwise: bb92];
       }
   }
   
