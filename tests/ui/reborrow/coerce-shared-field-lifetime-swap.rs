@@ -1,3 +1,5 @@
+//@ normalize-stderr: "\n\n\z" -> "\n"
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
@@ -12,10 +14,10 @@ impl Reborrow for MyMut<'_> {}
 #[derive(Copy, Clone)]
 struct MyRef<'a> {
     x: &'a (),
+    //~^ ERROR
     y: &'static (),
 }
 
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-//~^ ERROR
 
 fn main() {}

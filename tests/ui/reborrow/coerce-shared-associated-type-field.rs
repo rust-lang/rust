@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -25,6 +27,5 @@ struct MyRef<'a> {
 impl Reborrow for MyMut<'_> {}
 
 impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-//~^ ERROR
 
 fn main() {}

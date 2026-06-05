@@ -1,3 +1,5 @@
+//@ normalize-stderr: "\n\n\z" -> "\n"
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
@@ -25,7 +27,6 @@ struct AliasRef<'a> {
 }
 
 impl<'a> CoerceShared<AliasRef<'a>> for AliasMut<'a> {}
-//~^ ERROR
 
 struct InnerLifetimeMut<'a> {
     value: &'a mut &'static (),
@@ -36,6 +37,7 @@ impl Reborrow for InnerLifetimeMut<'_> {}
 #[derive(Copy, Clone)]
 struct InnerLifetimeRef<'a> {
     value: &'a &'a (),
+    //~^ ERROR
 }
 
 impl<'a> CoerceShared<InnerLifetimeRef<'a>> for InnerLifetimeMut<'a> {}

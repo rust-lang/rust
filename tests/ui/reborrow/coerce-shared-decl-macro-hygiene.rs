@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(reborrow, decl_macro)]
 #![allow(incomplete_features)]
 
@@ -18,7 +20,6 @@ macro my_macro($field:ident) {
     impl Reborrow for MyMut<'_> {}
 
     impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-    //~^ ERROR
 }
 
 my_macro!(field);

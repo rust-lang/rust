@@ -1,4 +1,4 @@
-//@ check-pass
+//@ normalize-stderr: "\n\n\z" -> "\n"
 
 //@ aux-build: reborrow_foreign_private.rs
 
@@ -16,5 +16,6 @@ struct LocalMut<'a> {
 impl<'a> Reborrow for LocalMut<'a> {}
 
 impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
+//~^ ERROR
 
 fn main() {}

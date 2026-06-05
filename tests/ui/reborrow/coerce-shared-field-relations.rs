@@ -1,3 +1,5 @@
+//@ normalize-stderr: "\n\n\z" -> "\n"
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
@@ -24,6 +26,7 @@ impl<'a, T> Reborrow for RenamedMut<'a, T> {}
 #[derive(Clone, Copy)]
 struct RenamedRef<'a, T> {
     target: &'a T,
+    //~^ ERROR
 }
 
 impl<'a, T> CoerceShared<RenamedRef<'a, T>> for RenamedMut<'a, T> {}
@@ -37,11 +40,11 @@ impl<'a, T> Reborrow for BadMut<'a, T> {}
 #[derive(Clone, Copy)]
 struct BadRef<'a, T> {
     value: &'a u32,
+    //~^ ERROR
     _marker: std::marker::PhantomData<T>,
 }
 
 impl<'a, T> CoerceShared<BadRef<'a, T>> for BadMut<'a, T> {}
-//~^ ERROR
 
 fn good(_value: CustomRef<'_, u32>) {}
 
