@@ -53,7 +53,7 @@ use std::{error, fmt};
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
-#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
 pub use rustc_literal_escaper::EscapeError;
 use rustc_literal_escaper::{
     MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
@@ -65,7 +65,7 @@ use crate::bridge::client::Methods as BridgeMethods;
 use crate::escape::{EscapeOptions, escape_bytes};
 
 /// Errors returned when trying to retrieve a literal unescaped value.
-#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug, PartialEq, Eq)]
 pub enum ConversionErrorKind {
     /// The literal failed to be escaped, take a look at [`EscapeError`] for more information.
@@ -1458,7 +1458,7 @@ impl Literal {
     }
 
     /// Returns the unescaped character value if the current literal is a byte character literal.
-    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    #[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
     pub fn byte_character_value(&self) -> Result<u8, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::Char => {
@@ -1469,7 +1469,7 @@ impl Literal {
     }
 
     /// Returns the unescaped character value if the current literal is a character literal.
-    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    #[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
     pub fn character_value(&self) -> Result<char, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::Char => {
@@ -1480,7 +1480,7 @@ impl Literal {
     }
 
     /// Returns the unescaped string value if the current literal is a string or a string literal.
-    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    #[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
     pub fn str_value(&self) -> Result<String, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::Str => {
@@ -1514,7 +1514,7 @@ impl Literal {
 
     /// Returns the unescaped string value if the current literal is a c-string or a c-string
     /// literal.
-    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    #[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
     pub fn cstr_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::CStr => {
@@ -1553,7 +1553,7 @@ impl Literal {
 
     /// Returns the unescaped string value if the current literal is a byte string or a byte string
     /// literal.
-    #[unstable(feature = "proc_macro_value", issue = "136652")]
+    #[stable(feature = "proc_macro_value", since = "CURRENT_RUSTC_VERSION")]
     pub fn byte_str_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::ByteStr => {
