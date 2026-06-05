@@ -11,7 +11,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
-use rustc_span::{DUMMY_SP, Span, Spanned};
+use rustc_span::Span;
 use tracing::debug;
 
 use crate::builder::expr::as_place::PlaceBase;
@@ -74,6 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             NeedsTemporary::No
                         )
                     );
+                    this.record_operand_moved(&value_operand);
                     block.and(Rvalue::Repeat(value_operand, count))
                 }
             }
@@ -219,6 +220,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                for operand in fields.iter() {
+                    this.record_operand_moved(operand);
+                }
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
             }
             ExprKind::Tuple { ref fields } => {
@@ -240,6 +244,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
+                for operand in fields.iter() {
+                    this.record_operand_moved(operand);
+                }
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
             ExprKind::Closure(ClosureExpr {
@@ -342,6 +349,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Box::new(AggregateKind::CoroutineClosure(closure_id.to_def_id(), args))
                     }
                 };
+                for operand in operands.iter() {
+                    this.record_operand_moved(operand);
+                }
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
@@ -424,6 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No,
                     )
                 );
+                this.record_operand_moved(&operand);
                 block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
 
@@ -647,7 +658,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
+            this.record_operand_moved(&value_operand);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
