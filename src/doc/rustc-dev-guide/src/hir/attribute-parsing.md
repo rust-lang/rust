@@ -54,7 +54,7 @@ To use the parsed representation before the HIR is built, you usually need to us
 This function takes a slice of `&[ast::Attribute]`s, and the name of an attribute you're interested in, and parses the attribute if it is present.
 
 No diagnostics will be emitted when parsing limited. Lints are not emitted at all, while errors will be emitted as a delayed bugs. 
-In other words, we expect attributes parsed with parse_limited to be reparsed later during ast lowering where we do emit the errors
+In other words, we expect attributes parsed with `parse_limited` to be reparsed later during ast lowering where we do emit the errors.
 
 
 [attributes_page]: ../attributes.md
