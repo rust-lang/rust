@@ -8,7 +8,7 @@ use std::{env, thread};
 use rand::{RngCore, rng};
 use rustc_ast as ast;
 use rustc_attr_parsing::ShouldEmit;
-use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
+use rustc_codegen_ssa::back::archive::ArArchiveBuilderBuilder;
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -444,35 +444,13 @@ impl CodegenBackend for DummyCodegenBackend {
 
         link_binary(
             sess,
-            &DummyArchiveBuilderBuilder,
+            &ArArchiveBuilderBuilder,
             compiled_modules,
             crate_info,
             metadata,
             outputs,
             self.name(),
         );
-    }
-}
-
-struct DummyArchiveBuilderBuilder;
-
-impl ArchiveBuilderBuilder for DummyArchiveBuilderBuilder {
-    fn new_archive_builder<'a>(
-        &self,
-        sess: &'a Session,
-    ) -> Box<dyn rustc_codegen_ssa::back::archive::ArchiveBuilder + 'a> {
-        ArArchiveBuilderBuilder.new_archive_builder(sess)
-    }
-
-    fn create_dll_import_lib(
-        &self,
-        sess: &Session,
-        _lib_name: &str,
-        _items: Vec<rustc_codegen_ssa::back::archive::ImportLibraryItem>,
-        output_path: &Path,
-    ) {
-        // Build an empty static library to avoid calling an external dlltool on mingw
-        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path, None);
     }
 }
 

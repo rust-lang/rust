@@ -224,7 +224,7 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     } else {
         "gcc.exe"
     };
-    let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    let target_tools = [compiler, "ld.exe", "libwinpthread-1.dll"];
 
     // Libraries necessary to link the windows-gnu toolchains.
     // System libraries will be preferred if they are available (see #67429).
