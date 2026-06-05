@@ -12,9 +12,6 @@ fn method_1(_1: Guard) -> () {
     let _8: OtherDrop;
     let _9: ();
     let mut _10: bool;
-    let mut _11: isize;
-    let mut _12: isize;
-    let mut _13: isize;
     scope 1 {
         debug other_drop => _8;
     }
@@ -73,7 +70,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb7: {
-        goto -> bb16;
+        goto -> bb15;
     }
 
     bb8: {
@@ -93,7 +90,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb11 (cleanup): {
-        goto -> bb18;
+        goto -> bb12;
     }
 
     bb12 (cleanup): {
@@ -110,20 +107,5 @@ fn method_1(_1: Guard) -> () {
 
     bb15: {
         goto -> bb8;
-    }
-
-    bb16: {
-        _11 = discriminant(_2);
-        switchInt(move _11) -> [0: bb15, otherwise: bb15];
-    }
-
-    bb17 (cleanup): {
-        _12 = discriminant(_2);
-        switchInt(move _12) -> [0: bb12, otherwise: bb12];
-    }
-
-    bb18 (cleanup): {
-        _13 = discriminant(_2);
-        switchInt(move _13) -> [0: bb12, otherwise: bb12];
     }
 }

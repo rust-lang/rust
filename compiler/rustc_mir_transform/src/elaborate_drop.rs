@@ -1,5 +1,6 @@
 use std::{fmt, iter, mem};
 
+use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
@@ -1196,27 +1197,29 @@ where
         succ: BasicBlock,
         unwind: Unwind,
     ) -> BasicBlock {
-        // If there are multiple variants, then if something
-        // is present within the enum the discriminant, tracked
-        // by the rest path, must be initialized.
-        //
-        // Additionally, we do not want to switch on the
-        // discriminant after it is free-ed, because that
-        // way lies only trouble.
-        let discr_ty = adt.repr().discr_type().to_ty(self.tcx());
-        let discr = Place::from(self.new_temp(discr_ty));
-        let discr_rv = Rvalue::Discriminant(self.place);
-        let switch_block = self.new_block_with_statements(
-            unwind,
-            vec![self.assign(discr, discr_rv)],
-            TerminatorKind::SwitchInt {
-                discr: Operand::Move(discr),
-                targets: SwitchTargets::new(
-                    values.iter().copied().zip(blocks.iter().copied()),
-                    *blocks.last().unwrap(),
-                ),
-            },
-        );
+        let switch_block = blocks.iter().copied().all_equal_value().unwrap_or_else(|_| {
+            // If there are multiple variants, then if something
+            // is present within the enum the discriminant, tracked
+            // by the rest path, must be initialized.
+            //
+            // Additionally, we do not want to switch on the
+            // discriminant after it is free-ed, because that
+            // way lies only trouble.
+            let discr_ty = adt.repr().discr_type().to_ty(self.tcx());
+            let discr = Place::from(self.new_temp(discr_ty));
+            let discr_rv = Rvalue::Discriminant(self.place);
+            self.new_block_with_statements(
+                unwind,
+                vec![self.assign(discr, discr_rv)],
+                TerminatorKind::SwitchInt {
+                    discr: Operand::Move(discr),
+                    targets: SwitchTargets::new(
+                        values.iter().copied().zip(blocks.iter().copied()),
+                        *blocks.last().unwrap(),
+                    ),
+                },
+            )
+        });
         self.drop_flag_test_block(switch_block, succ, unwind)
     }
 

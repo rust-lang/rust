@@ -59,31 +59,6 @@
 +     let mut _54: bool;
 +     let mut _55: bool;
 +     let mut _56: bool;
-+     let mut _57: isize;
-+     let mut _58: isize;
-+     let mut _59: isize;
-+     let mut _60: isize;
-+     let mut _61: isize;
-+     let mut _62: isize;
-+     let mut _63: isize;
-+     let mut _64: isize;
-+     let mut _65: isize;
-+     let mut _66: isize;
-+     let mut _67: isize;
-+     let mut _68: isize;
-+     let mut _69: isize;
-+     let mut _70: isize;
-+     let mut _71: isize;
-+     let mut _72: isize;
-+     let mut _73: isize;
-+     let mut _74: isize;
-+     let mut _75: isize;
-+     let mut _76: isize;
-+     let mut _77: isize;
-+     let mut _78: isize;
-+     let mut _79: isize;
-+     let mut _80: isize;
-+     let mut _81: isize;
       scope 1 {
           debug residual => _9;
           scope 2 {
@@ -429,34 +404,34 @@
       bb37: {
           StorageDead(_2);
 -         drop(_44) -> [return: bb38, unwind: bb78];
-+         goto -> bb94;
++         goto -> bb93;
       }
   
       bb38: {
           StorageDead(_44);
 -         drop(_34) -> [return: bb39, unwind: bb83];
-+         goto -> bb97;
++         goto -> bb94;
       }
   
       bb39: {
 +         _53 = const false;
           StorageDead(_34);
 -         drop(_24) -> [return: bb40, unwind: bb87];
-+         goto -> bb100;
++         goto -> bb95;
       }
   
       bb40: {
 +         _54 = const false;
           StorageDead(_24);
 -         drop(_14) -> [return: bb41, unwind: bb90];
-+         goto -> bb103;
++         goto -> bb96;
       }
   
       bb41: {
 +         _55 = const false;
           StorageDead(_14);
 -         drop(_4) -> [return: bb42, unwind continue];
-+         goto -> bb106;
++         goto -> bb97;
       }
   
       bb42: {
@@ -484,7 +459,7 @@
           StorageDead(_3);
           StorageDead(_2);
 -         drop(_44) -> [return: bb47, unwind: bb78];
-+         goto -> bb109;
++         goto -> bb98;
       }
   
       bb47: {
@@ -510,7 +485,7 @@
   
       bb51: {
 -         drop(_34) -> [return: bb52, unwind: bb83];
-+         goto -> bb112;
++         goto -> bb99;
       }
   
       bb52: {
@@ -532,7 +507,7 @@
   
       bb55: {
 -         drop(_24) -> [return: bb56, unwind: bb87];
-+         goto -> bb115;
++         goto -> bb100;
       }
   
       bb56: {
@@ -549,7 +524,7 @@
   
       bb58: {
 -         drop(_14) -> [return: bb59, unwind: bb90];
-+         goto -> bb118;
++         goto -> bb101;
       }
   
       bb59: {
@@ -560,7 +535,7 @@
   
       bb60: {
 -         drop(_4) -> [return: bb61, unwind continue];
-+         goto -> bb121;
++         goto -> bb102;
       }
   
       bb61: {
@@ -616,7 +591,7 @@
   
       bb72 (cleanup): {
 -         drop(_44) -> [return: bb78, unwind terminate(cleanup)];
-+         goto -> bb123;
++         goto -> bb78;
       }
   
       bb73 (cleanup): {
@@ -642,7 +617,7 @@
   
       bb78 (cleanup): {
 -         drop(_34) -> [return: bb83, unwind terminate(cleanup)];
-+         goto -> bb124;
++         goto -> bb83;
       }
   
       bb79 (cleanup): {
@@ -664,7 +639,7 @@
   
       bb83 (cleanup): {
 -         drop(_24) -> [return: bb87, unwind terminate(cleanup)];
-+         goto -> bb125;
++         goto -> bb87;
       }
   
       bb84 (cleanup): {
@@ -682,7 +657,7 @@
   
       bb87 (cleanup): {
 -         drop(_14) -> [return: bb90, unwind terminate(cleanup)];
-+         goto -> bb126;
++         goto -> bb90;
       }
   
       bb88 (cleanup): {
@@ -696,7 +671,7 @@
   
       bb90 (cleanup): {
 -         drop(_4) -> [return: bb92, unwind terminate(cleanup)];
-+         goto -> bb127;
++         goto -> bb92;
       }
   
       bb91 (cleanup): {
@@ -713,164 +688,39 @@
 +     }
 + 
 +     bb94: {
-+         _57 = discriminant(_44);
-+         switchInt(move _57) -> [0: bb93, otherwise: bb93];
-+     }
-+ 
-+     bb95 (cleanup): {
-+         _58 = discriminant(_44);
-+         switchInt(move _58) -> [0: bb78, otherwise: bb78];
-+     }
-+ 
-+     bb96: {
 +         goto -> bb39;
 +     }
 + 
-+     bb97: {
-+         _59 = discriminant(_34);
-+         switchInt(move _59) -> [0: bb96, otherwise: bb96];
-+     }
-+ 
-+     bb98 (cleanup): {
-+         _60 = discriminant(_34);
-+         switchInt(move _60) -> [0: bb83, otherwise: bb83];
-+     }
-+ 
-+     bb99: {
++     bb95: {
 +         goto -> bb40;
 +     }
 + 
-+     bb100: {
-+         _61 = discriminant(_24);
-+         switchInt(move _61) -> [0: bb99, otherwise: bb99];
-+     }
-+ 
-+     bb101 (cleanup): {
-+         _62 = discriminant(_24);
-+         switchInt(move _62) -> [0: bb87, otherwise: bb87];
-+     }
-+ 
-+     bb102: {
++     bb96: {
 +         goto -> bb41;
 +     }
 + 
-+     bb103: {
-+         _63 = discriminant(_14);
-+         switchInt(move _63) -> [0: bb102, otherwise: bb102];
-+     }
-+ 
-+     bb104 (cleanup): {
-+         _64 = discriminant(_14);
-+         switchInt(move _64) -> [0: bb90, otherwise: bb90];
-+     }
-+ 
-+     bb105: {
++     bb97: {
 +         goto -> bb42;
 +     }
 + 
-+     bb106: {
-+         _65 = discriminant(_4);
-+         switchInt(move _65) -> [0: bb105, otherwise: bb105];
-+     }
-+ 
-+     bb107 (cleanup): {
-+         _66 = discriminant(_4);
-+         switchInt(move _66) -> [0: bb92, otherwise: bb92];
-+     }
-+ 
-+     bb108: {
++     bb98: {
 +         goto -> bb47;
 +     }
 + 
-+     bb109: {
-+         _67 = discriminant(_44);
-+         switchInt(move _67) -> [0: bb108, otherwise: bb108];
-+     }
-+ 
-+     bb110 (cleanup): {
-+         _68 = discriminant(_44);
-+         switchInt(move _68) -> [0: bb78, otherwise: bb78];
-+     }
-+ 
-+     bb111: {
++     bb99: {
 +         goto -> bb52;
 +     }
 + 
-+     bb112: {
-+         _69 = discriminant(_34);
-+         switchInt(move _69) -> [0: bb111, otherwise: bb111];
-+     }
-+ 
-+     bb113 (cleanup): {
-+         _70 = discriminant(_34);
-+         switchInt(move _70) -> [0: bb83, otherwise: bb83];
-+     }
-+ 
-+     bb114: {
++     bb100: {
 +         goto -> bb56;
 +     }
 + 
-+     bb115: {
-+         _71 = discriminant(_24);
-+         switchInt(move _71) -> [0: bb114, otherwise: bb114];
-+     }
-+ 
-+     bb116 (cleanup): {
-+         _72 = discriminant(_24);
-+         switchInt(move _72) -> [0: bb87, otherwise: bb87];
-+     }
-+ 
-+     bb117: {
++     bb101: {
 +         goto -> bb59;
 +     }
 + 
-+     bb118: {
-+         _73 = discriminant(_14);
-+         switchInt(move _73) -> [0: bb117, otherwise: bb117];
-+     }
-+ 
-+     bb119 (cleanup): {
-+         _74 = discriminant(_14);
-+         switchInt(move _74) -> [0: bb90, otherwise: bb90];
-+     }
-+ 
-+     bb120: {
++     bb102: {
 +         goto -> bb61;
-+     }
-+ 
-+     bb121: {
-+         _75 = discriminant(_4);
-+         switchInt(move _75) -> [0: bb120, otherwise: bb120];
-+     }
-+ 
-+     bb122 (cleanup): {
-+         _76 = discriminant(_4);
-+         switchInt(move _76) -> [0: bb92, otherwise: bb92];
-+     }
-+ 
-+     bb123 (cleanup): {
-+         _77 = discriminant(_44);
-+         switchInt(move _77) -> [0: bb78, otherwise: bb78];
-+     }
-+ 
-+     bb124 (cleanup): {
-+         _78 = discriminant(_34);
-+         switchInt(move _78) -> [0: bb83, otherwise: bb83];
-+     }
-+ 
-+     bb125 (cleanup): {
-+         _79 = discriminant(_24);
-+         switchInt(move _79) -> [0: bb87, otherwise: bb87];
-+     }
-+ 
-+     bb126 (cleanup): {
-+         _80 = discriminant(_14);
-+         switchInt(move _80) -> [0: bb90, otherwise: bb90];
-+     }
-+ 
-+     bb127 (cleanup): {
-+         _81 = discriminant(_4);
-+         switchInt(move _81) -> [0: bb92, otherwise: bb92];
       }
   }
   
