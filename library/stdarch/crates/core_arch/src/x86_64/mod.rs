@@ -3,6 +3,43 @@
 #[macro_use]
 mod macros;
 
+// Any 1024-byte vector should work
+type Tile = crate::core_arch::simd::Simd<u8, 1024>;
+
+/// A tile register, used by AMX instructions.
+///
+/// This type is the same as the `__tile1024i` type defined by Intel, representing a 1024-byte tile register.
+/// Usage of this type typically corresponds to the `amx-tile` and up target features for x86_64.
+///
+/// This struct contains the tile configuration information as well as the tile itself.
+/// The tile configuration information consists of the row count and the size of each column in bytes,
+/// with `row * colsb` never exceeding 1024.
+///
+/// The typical usage pattern looks like
+/// ```ignore
+/// let tile = MaybeUninit::uninit();
+/// let tile_ptr = tile.as_mut_ptr();
+///
+/// (*tile_ptr).rows = rows;
+/// (*tile_ptr).colsb = colsb;
+/// __tile_zero(tile_ptr);
+///
+/// let tile = tile.assume_init();
+/// ```
+/// Most intrinsics using `__tile1024i` (except for the store intrinsics) have a destination parameter
+/// of type `*mut __tile1024i`, and it expects the `rows` and `colsb` fields of the destination
+/// to be initialized. After the function call, the whole struct can be assumed to be initialized.
+/// Moreover, for dot-product intrinsics, it is UB if the shape of two operands are not compatible
+/// as a matrix product or if the shape of the destination doesn't match the expected shape.
+#[derive(Copy, Clone, Debug)]
+#[allow(non_camel_case_types)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub struct __tile1024i {
+    pub rows: u16,
+    pub colsb: u16,
+    tile: Tile,
+}
+
 mod fxsr;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use self::fxsr::*;
