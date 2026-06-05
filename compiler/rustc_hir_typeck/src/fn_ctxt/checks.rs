@@ -2444,15 +2444,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                 format!("arguments to this {call_name} are incorrect"),
             );
 
-            self.fn_ctxt.label_generic_mismatches(
-                &mut err,
-                self.fn_def_id,
-                &self.matched_inputs,
-                &self.provided_arg_tys,
-                &self.formal_and_expected_inputs,
-                self.call_metadata.is_method,
-                self.tuple_arguments.is_splatted(),
-            );
+            self.label_generic_mismatches(&mut err);
 
             if let hir::ExprKind::MethodCall(_, rcvr, _, _) =
                 self.arg_matching_ctxt.args_ctxt.call_ctxt.call_expr.kind
