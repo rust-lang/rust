@@ -121,20 +121,11 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
+    ///
+    /// Additionally, when `term` is a const, this registers a `ConstArgHasType`
+    /// goal to ensure that the const value's type matches the type of the
+    /// alias it was normalized from, preventing ICEs from type mismatches.
     pub fn instantiate_normalizes_to_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-        term: I::Term,
-    ) {
-        self.eq(goal.param_env, goal.predicate.term, term)
-            .expect("expected goal term to be fully unconstrained");
-    }
-
-    /// Like `instantiate_normalizes_to_term`, but also registers a
-    /// `ConstArgHasType` goal when the term is a const. This ensures that
-    /// the const value's type matches the type of the alias it was
-    /// normalized from, preventing ICEs from type mismatches.
-    pub fn instantiate_normalizes_to_term_with_type_check(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
         term: I::Term,
@@ -149,7 +140,8 @@ where
                 goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
             );
         }
-        self.instantiate_normalizes_to_term(goal, term);
+        self.eq(goal.param_env, goal.predicate.term, term)
+            .expect("expected goal term to be fully unconstrained");
     }
 
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
@@ -450,7 +442,7 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term_with_type_check(goal, term);
+            ecx.instantiate_normalizes_to_term(goal, term);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
         })
     }
