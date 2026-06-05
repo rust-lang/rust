@@ -131,7 +131,7 @@ pub fn link_binary(
                         RlibFlavor::Normal,
                         &path,
                     )
-                    .build(&out_filename);
+                    .build(&out_filename, None);
                 }
                 CrateType::StaticLib => {
                     link_staticlib(
@@ -566,7 +566,22 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
-    ab.build(out_filename);
+    let exported_symbols = if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+        if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
+            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                binary_format: sess.target.archive_format.to_string(),
+            });
+            None
+        } else {
+            crate_info
+                .exported_symbols
+                .get(&CrateType::StaticLib)
+                .map(|symbols| symbols.iter().map(|(s, _)| s.clone()).collect())
+        }
+    } else {
+        None
+    };
+    ab.build(out_filename, exported_symbols);
 
     let crates = crate_info.used_crates.iter();
 
@@ -1265,7 +1280,7 @@ fn link_natively(
     if should_archive {
         let mut ab = archive_builder_builder.new_archive_builder(sess);
         ab.add_file(temp_filename, ArchiveEntryKind::Other);
-        ab.build(out_filename);
+        ab.build(out_filename, None);
     }
 }
 
@@ -3265,7 +3280,7 @@ fn add_static_crate(
             sess.dcx()
                 .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
         }
-        if archive.build(&dst) {
+        if archive.build(&dst, None) {
             link_upstream(&dst);
         }
     });
