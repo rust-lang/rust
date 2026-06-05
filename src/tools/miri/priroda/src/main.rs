@@ -11,7 +11,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -107,19 +107,15 @@ struct SourceLocation {
     line: usize,
 }
 
-/// A source-level breakpoint matched by path and line.
-#[derive(Clone, Eq, Hash, PartialEq)]
-struct Breakpoint {
-    path: PathBuf,
-    line: usize,
-}
+/// Source-level breakpoints indexed by normalized path, then line.
+type BreakpointTable = HashMap<PathBuf, HashSet<usize>>;
 
 /// Owns one interpreter session and its debugger state.
 ///
 /// Frontend rendering should eventually live outside this type.
 struct PrirodaContext<'tcx> {
     ecx: MiriInterpCx<'tcx>,
-    breakpoints: HashSet<Breakpoint>,
+    breakpoints: BreakpointTable,
     current_location: Option<SourceLocation>,
     last_location: Option<SourceLocation>,
 }
@@ -151,7 +147,7 @@ fn normalize_path(path: PathBuf) -> PathBuf {
 
 impl<'tcx> PrirodaContext<'tcx> {
     fn new(ecx: MiriInterpCx<'tcx>) -> Self {
-        Self { ecx, breakpoints: HashSet::new(), current_location: None, last_location: None }
+        Self { ecx, breakpoints: HashMap::new(), current_location: None, last_location: None }
     }
 
     /// Step to the next visible MIR instruction.
@@ -164,14 +160,17 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.resume(ResumeMode::Continue)
     }
 
-    fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> Breakpoint {
+    fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> BreakpointSetResult {
         // FIXME: validate breakpoints here so every frontend gets the same behavior.
         // Reject empty paths, missing files, directories, and line 0. Decide whether
         // out-of-range lines should be rejected or kept as pending breakpoints.
         // Report duplicate registrations separately.
-        let breakpoint = Breakpoint { path: normalize_path(path), line };
-        self.breakpoints.insert(breakpoint.clone());
-        breakpoint
+
+        let path = normalize_path(path);
+        match self.breakpoints.entry(path.clone()).or_default().insert(line) {
+            true => BreakpointSetResult::Added(path, line),
+            false => BreakpointSetResult::Duplicate,
+        }
     }
 
     /// Advance execution until the selected resume mode reaches a stopping point.
@@ -249,7 +248,11 @@ impl<'tcx> PrirodaContext<'tcx> {
             return false;
         };
 
-        self.breakpoints.contains(&Breakpoint { path: path.clone(), line: location.line })
+        let lines = match self.breakpoints.get(path) {
+            Some(lines) => lines,
+            None => return false,
+        };
+        lines.contains(&location.line)
     }
 
     fn resolve_current_location(&self) -> Option<SourceLocation> {
@@ -264,6 +267,8 @@ impl<'tcx> PrirodaContext<'tcx> {
         let loc = source_map.lookup_char_pos(span.lo());
 
         Some(SourceLocation {
+            // TODO: store the span here instead and compute the normalized path
+            // lazily only when a caller actually needs it.
             // FIXME: cache normalized source paths; this runs after every MIR step.
             local_path: loc.file.name.clone().into_local_path().map(normalize_path),
             // FIXME: keep presentation formatting in the CLI layer; the context
@@ -279,7 +284,7 @@ impl<'tcx> PrirodaContext<'tcx> {
             DebuggerCommand::Continue =>
                 self.continue_execution().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Breakpoint(path, line) =>
-                interp_ok(CommandResult::BreakpointAdded(self.set_breakpoint(path, line))),
+                interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
             DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
         }
     }
@@ -292,9 +297,15 @@ enum DebuggerCommand {
     Breakpoint(PathBuf, usize),
 }
 
+enum BreakpointSetResult {
+    Added(PathBuf, usize),
+    Duplicate,
+    // FIXME: add pending breakpoint support later if needed.
+}
+
 enum CommandResult {
     ExecutionStopped(StepResult),
-    BreakpointAdded(Breakpoint),
+    BreakpointResult(BreakpointSetResult),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
@@ -324,9 +335,13 @@ impl CLI {
                         }
                         self.print_location(&session);
                     }
-                    CommandResult::BreakpointAdded(bp) => {
-                        println!("breakpoint added: {}:{}", bp.path.display(), bp.line);
-                    }
+                    CommandResult::BreakpointResult(res) =>
+                        match res {
+                            BreakpointSetResult::Added(path, line) =>
+                                println!("breakpoint added: {}:{}", path.display(), line),
+
+                            BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
+                        },
                     CommandResult::TerminateSession => {
                         println!("quitting");
                         return interp_ok(());
@@ -335,10 +350,14 @@ impl CLI {
             } else {
                 println!("no command");
             }
+
+            io::stdout().flush().unwrap();
         }
     }
 
     fn parse_command(&self, input: &str) -> Option<DebuggerCommand> {
+        // TODO: look at the Spanned crate for how to easily produce errors in
+        // rustc's style while manually parsing text input.
         // FIXME: we need to distinguish malformed input from the unknown commands by returning useful
         // command error that describes if it malformed or non exist command
         let input = input.trim();
