@@ -11,7 +11,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Unnormalized, Upcast as _,
+    self as ty, Alias, FieldInfo, Interner, NormalizesTo, PredicateKind, Unnormalized, Upcast as _,
 };
 use tracing::instrument;
 
@@ -50,7 +50,13 @@ where
                 self.normalize_free_alias(goal).map_err(Into::into)
             }
             ty::AliasTermKind::AnonConst { def_id } => {
-                self.normalize_anon_const(goal, def_id).map_err(Into::into)
+                let cx = self.cx();
+                let alias =
+                    Alias::new_unevaluated_const_from_args(cx, def_id, goal.predicate.alias.args);
+                self.normalize_anon_const(
+                    goal.with(cx, ty::NormalizesTo { alias, term: goal.predicate.term }),
+                )
+                .map_err(Into::into)
             }
         }
     }
@@ -121,9 +127,9 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
-    pub fn instantiate_normalizes_to_term(
+    pub fn instantiate_normalizes_to_term<K>(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, NormalizesTo<I, K>>,
         term: I::Term,
     ) {
         self.eq(goal.param_env, goal.predicate.term, term)
@@ -132,9 +138,9 @@ where
 
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
-    pub fn structurally_instantiate_normalizes_to_term(
+    pub fn structurally_instantiate_normalizes_to_term<K>(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, NormalizesTo<I, K>>,
         term: ty::AliasTerm<I>,
     ) {
         self.relate_rigid_alias_non_alias(goal.param_env, term, ty::Invariant, goal.predicate.term)
