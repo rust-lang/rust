@@ -62,5 +62,21 @@ note: attribute also specified here
 LL | #[optimize(speed)]
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: `#[optimize(none)]` cannot be used with `#[inline]` attributes
+  --> $DIR/optimize.rs:66:1
+   |
+LL | #[optimize(none)]
+   | ^^^^^^^^^^^^^^^^^ `#[optimize(none)]` here
+LL | #[inline]
+   | --------- `#[inline]` here
+
+error: `#[optimize(none)]` cannot be used with `#[inline]` attributes
+  --> $DIR/optimize.rs:71:1
+   |
+LL | #[inline(always)]
+   | ----------------- `#[inline]` here
+LL | #[optimize(none)]
+   | ^^^^^^^^^^^^^^^^^ `#[optimize(none)]` here
+
+error: aborting due to 9 previous errors
 
