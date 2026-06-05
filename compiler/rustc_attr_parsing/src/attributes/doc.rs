@@ -505,6 +505,7 @@ impl DocParser {
         match path.word_sym() {
             Some(sym::alias) => self.parse_alias(cx, path, args),
             Some(sym::hidden) => no_args!(hidden),
+            Some(sym::label_trait) => no_args!(label_trait),
             Some(sym::html_favicon_url) => string_arg_and_crate_level!(html_favicon_url),
             Some(sym::html_logo_url) => string_arg_and_crate_level!(html_logo_url),
             Some(sym::html_no_source) => no_args_and_crate_level!(html_no_source),
@@ -690,6 +691,7 @@ impl AttributeParser for DocParser {
                 "masked",
                 "cfg",
                 "notable_trait",
+                "label_trait",
                 "keyword",
                 "fake_variadic",
                 "search_unbox",

@@ -171,6 +171,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         auto_cfg => doc_cfg
                         masked => doc_masked
                         notable_trait => doc_notable_trait
+                        label_trait => doc_label_trait
                     }
                     "meant for internal use only" {
                         attribute => rustdoc_internals

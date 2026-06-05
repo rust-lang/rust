@@ -313,6 +313,8 @@ declare_features! (
     (unstable, box_patterns, "1.0.0", Some(29641)),
     /// Allows builtin # foo() syntax
     (internal, builtin_syntax, "1.71.0", Some(110680)),
+    /// Allows `#[doc(label_trait)]`.
+    (unstable, doc_label_trait, "CURRENT_RUSTC_VERSION", Some(156865)),
     /// Allows `#[doc(notable_trait)]`.
     /// Renamed from `doc_spotlight`.
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),

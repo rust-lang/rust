@@ -964,6 +964,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 first_span: _,
                 aliases,
                 hidden,
+                label_trait,
                 inline,
                 cfg,
                 auto_cfg,
@@ -993,6 +994,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 ret.push(Attribute::Other(format!("#[doc(alias = {:?})]", alias.as_str())));
             }
             toggle_attr(&mut ret, "hidden", hidden);
+            toggle_attr(&mut ret, "label_trait", label_trait);
             if let Some(inline) = inline.first() {
                 ret.push(Attribute::Other(format!(
                     "#[doc({})]",

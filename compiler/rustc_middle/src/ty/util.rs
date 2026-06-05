@@ -1670,6 +1670,11 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some())
 }
 
+/// Determines whether an item is annotated with `doc(notable_trait)`.
+pub fn is_doc_label_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    find_attr!(tcx, def_id, Doc(doc) if doc.label_trait.is_some())
+}
+
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
 ///
 /// We double check the feature gate here because whether a function may be defined as an intrinsic causes
@@ -1697,6 +1702,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
+        is_doc_label_trait,
         is_doc_notable_trait,
         intrinsic_raw,
         ..*providers

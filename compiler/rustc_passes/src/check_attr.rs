@@ -989,6 +989,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // valid pretty much anywhere, not checked here?
             // FIXME: should we?
             hidden: _,
+            // FIXME: valid for traits, should be checked in attr_parsing
+            label_trait: _,
             inline,
             // FIXME: currently unchecked
             cfg: _,
