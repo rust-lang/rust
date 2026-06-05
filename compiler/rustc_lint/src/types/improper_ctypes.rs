@@ -147,7 +147,15 @@ fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), value).unwrap_or(value.skip_norm_wip())
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaques and
+    // leak `OpaqueTypeStorage` state on `InferCtxt` drop (issue #156352).
+    let typing_env = if let Some(body_id) = cx.enclosing_body {
+        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    } else {
+        cx.typing_env()
+    };
+    cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value.skip_norm_wip())
 }
 
 /// Check a variant of a non-exhaustive enum for improper ctypes
@@ -468,8 +476,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         base_ty: Unnormalized<'tcx, Ty<'tcx>>,
         base_fn_mode: CItemKind,
     ) -> Self {
-        // Don't normalize opaques: the new solver populates OpaqueTypeStorage during
-        // normalization, causing a delayed bug on InferCtxt drop (issue #156352).
+        // Skip normalization for opaques: the new solver would put the revealed
+        // hidden type into the `InferCtxt`'s `OpaqueTypeStorage` and trigger a
+        // delayed bug on drop (issue #156352).
         let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
             base_ty.skip_norm_wip()
         } else {
@@ -896,7 +905,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
-            // Can appear when the new solver reveals an opaque before the lint intercepts it.
+            // Reachable when the new solver reveals a body's defining opaque.
             ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
@@ -949,8 +958,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> FfiResult<'tcx> {
-        // Check before normalizing: the new solver can reveal opaques (e.g.
-        // `async extern fn` return → `Coroutine`), bypassing the opaque check below.
+        // Catch opaques before normalization so the new solver doesn't reveal them
+        // (e.g. `async extern fn` return → `Coroutine`) and we get the nicer
+        // "opaque types have no C equivalent" message.
         if let Some(res) = self.visit_for_opaque_ty(ty.skip_norm_wip()) {
             return res;
         }
