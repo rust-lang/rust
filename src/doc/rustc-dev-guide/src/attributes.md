@@ -5,11 +5,12 @@ Attributes come in two types: *inert* (or *built-in*) and *active* (*non-builtin
 ## Builtin/inert attributes
 
 These attributes are defined in the compiler itself, in
-[`compiler/rustc_feature/src/builtin_attrs.rs`][builtin_attrs].
+[`compiler/rustc_feature/src/builtin_attrs.rs`][builtin_attrs] and in the [attribute parsers][attr_parsing].
 
 Examples include `#[allow]` and `#[macro_use]`.
 
 [builtin_attrs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/builtin_attrs/index.html
+[attr_parsing]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html
 
 These attributes have several important characteristics:
 * They are always in scope, and do not participate in typical path-based resolution.
@@ -19,6 +20,10 @@ These attributes have several important characteristics:
   As a result, any behavior comes as a result of the compiler explicitly checking for their presence.
   For example, lint-related code explicitly checks for `#[allow]`, `#[warn]`, `#[deny]`, and
   `#[forbid]`, rather than the behavior coming from the expansion of the attributes themselves.
+
+For more information on these attributes, see the chapter about [attribute parsing][attr-parsing-chapter].
+
+[attr-parsing-chapter]: ./hir/attribute-parsing.md
 
 ## 'Non-builtin'/'active' attributes
 

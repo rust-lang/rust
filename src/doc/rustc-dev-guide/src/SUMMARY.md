@@ -129,6 +129,7 @@
     - [Lang Items](./lang-items.md)
 - [The HIR (High-level IR)](./hir.md)
     - [Lowering AST to HIR](./hir/lowering.md)
+    - [Attribute Parsing](./hir/attribute-parsing.md)
     - [Debugging](./hir/debugging.md)
 - [Ambig/Unambig Types and Consts](./ambig-unambig-ty-and-consts.md)
 - [The THIR (Typed High-level IR)](./thir.md)
