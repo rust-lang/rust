@@ -188,17 +188,23 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
         }
     }
 
-    fn clear_drop_flag(&mut self, loc: Location, path: Self::Path, mode: DropFlagMode) {
+    fn drop_flags_for(&mut self, path: Self::Path, mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        let mut flags = vec![];
         match mode {
             DropFlagMode::Shallow => {
-                self.set_drop_flag(loc, path, DropFlagState::Absent);
+                if let Some(flag) = self.drop_flags[path] {
+                    flags.push(flag.into());
+                }
             }
             DropFlagMode::Deep => {
                 on_all_children_bits(self.move_data(), path, |child| {
-                    self.set_drop_flag(loc, child, DropFlagState::Absent)
+                    if let Some(flag) = self.drop_flags[child] {
+                        flags.push(flag.into());
+                    }
                 });
             }
         }
+        flags
     }
 
     fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path> {

@@ -226,7 +226,7 @@
 -     bb22: {
 -         drop(_2) -> [return: bb24, unwind: bb26];
 +     bb19: {
-+         goto -> bb24;
++         goto -> bb21;
       }
   
 -     bb23: {
@@ -251,10 +251,6 @@
 -     bb26 (cleanup): {
 +     bb23 (cleanup): {
           resume;
-+     }
-+ 
-+     bb24: {
-+         goto -> bb21;
       }
   }
   

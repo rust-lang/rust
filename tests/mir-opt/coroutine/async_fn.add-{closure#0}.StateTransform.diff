@@ -95,7 +95,7 @@
 +         _28 = std::future::ResumeTy(move _29);
 +         _27 = copy (_1.0: &mut {async fn body of add()});
 +         _26 = discriminant((*_27));
-+         switchInt(move _26) -> [0: bb28, 1: bb27, 2: bb26, 3: bb25, otherwise: bb6];
++         switchInt(move _26) -> [0: bb27, 1: bb26, 2: bb25, 3: bb24, otherwise: bb6];
       }
   
       bb1: {
@@ -210,7 +210,7 @@
 -         drop(_1) -> [return: bb13, unwind: bb28];
 +         nop;
 +         nop;
-+         goto -> bb23;
++         goto -> bb13;
       }
   
       bb13: {
@@ -291,26 +291,19 @@
 -         StorageDead(_13);
 -         StorageDead(_12);
 -         drop(_10) -> [return: bb23, unwind terminate(cleanup)];
-+         goto -> bb24;
++         goto -> bb23;
       }
   
--     bb23 (cleanup): {
+      bb23 (cleanup): {
 -         StorageDead(_10);
 -         goto -> bb26;
-+     bb23: {
-+         goto -> bb13;
-      }
-  
-      bb24 (cleanup): {
--         goto -> bb25;
 +         discriminant((*_27)) = 2;
 +         resume;
       }
   
--     bb25 (cleanup): {
--         StorageDead(_9);
--         goto -> bb26;
-+     bb25: {
+-     bb24 (cleanup): {
+-         goto -> bb25;
++     bb24: {
 +         StorageLive(_5);
 +         StorageLive(_8);
 +         StorageLive(_23);
@@ -319,11 +312,18 @@
 +         goto -> bb9;
       }
   
+-     bb25 (cleanup): {
+-         StorageDead(_9);
+-         goto -> bb26;
++     bb25: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb25, unwind continue];
+      }
+  
 -     bb26 (cleanup): {
 -         StorageDead(_8);
 -         goto -> bb27;
 +     bb26: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb26, unwind continue];
++         assert(const false, "`async fn` resumed after completion") -> [success: bb26, unwind continue];
       }
   
 -     bb27 (cleanup): {
@@ -331,10 +331,8 @@
 -         StorageDead(_4);
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb28, unwind terminate(cleanup)];
-+     bb27: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb27, unwind continue];
-      }
-  
+-     }
+- 
 -     bb28 (cleanup): {
 -         resume;
 -     }
@@ -354,7 +352,7 @@
 -         StorageDead(_4);
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb28, unwind terminate(cleanup)];
-+     bb28: {
++     bb27: {
 +         nop;
 +         (((*_27) as variant#3).0: u32) = copy ((*_27).0: u32);
 +         nop;

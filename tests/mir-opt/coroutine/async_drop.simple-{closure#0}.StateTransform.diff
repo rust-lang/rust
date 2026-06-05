@@ -69,7 +69,7 @@
 +         _25 = std::future::ResumeTy(move _26);
 +         _24 = copy (_1.0: &mut {async fn body of simple()});
 +         _23 = discriminant((*_24));
-+         switchInt(move _23) -> [0: bb26, 1: bb25, 2: bb24, 3: bb22, 4: bb23, otherwise: bb11];
++         switchInt(move _23) -> [0: bb25, 1: bb24, 2: bb23, 3: bb21, 4: bb22, otherwise: bb11];
       }
   
       bb1: {
@@ -83,7 +83,7 @@
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb3, unwind: bb9];
 +         nop;
-+         goto -> bb20;
++         goto -> bb3;
       }
   
       bb3: {
@@ -110,7 +110,7 @@
 -     bb6: {
 -         coroutine_drop;
 +     bb6 (cleanup): {
-+         goto -> bb21;
++         goto -> bb20;
       }
   
 -     bb7 (cleanup): {
@@ -208,51 +208,50 @@
 +         _20 = Pin::<&mut AsyncInt>::new_unchecked(move _21) -> [return: bb18, unwind: bb4];
       }
   
-      bb20: {
+-     bb20: {
 -         _11 = move _2;
 -         _10 = std::future::get_context::<'_, '_>(move _11) -> [return: bb19, unwind: bb12];
-+         goto -> bb3;
-      }
-  
--     bb21: {
--         _12 = &mut _5;
--         _9 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _12) -> [return: bb20, unwind: bb12];
-+     bb21 (cleanup): {
++     bb20 (cleanup): {
 +         discriminant((*_24)) = 2;
 +         resume;
+      }
+  
+      bb21: {
+-         _12 = &mut _5;
+-         _9 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _12) -> [return: bb20, unwind: bb12];
++         StorageLive(_6);
++         _6 = move _25;
++         goto -> bb10;
       }
   
       bb22: {
 -         _2 = move _13;
 -         StorageDead(_13);
 -         goto -> bb28;
-+         StorageLive(_6);
-+         _6 = move _25;
-+         goto -> bb10;
++         StorageLive(_13);
++         _13 = move _25;
++         goto -> bb12;
       }
   
       bb23: {
 -         _2 = move _13;
 -         StorageDead(_13);
 -         goto -> bb21;
-+         StorageLive(_13);
-+         _13 = move _25;
-+         goto -> bb12;
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb23, unwind continue];
       }
   
       bb24: {
 -         StorageLive(_13);
 -         _13 = yield(const ()) -> [resume: bb22, drop: bb23];
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb24, unwind continue];
++         assert(const false, "`async fn` resumed after completion") -> [success: bb24, unwind continue];
       }
   
       bb25: {
 -         _15 = discriminant(_14);
 -         switchInt(move _15) -> [0: bb10, 1: bb24, otherwise: bb17];
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb25, unwind continue];
-      }
-  
-      bb26: {
+-     }
+- 
+-     bb26: {
 -         _14 = <impl Future<Output = ()> as Future>::poll(move _16, move _17) -> [return: bb25, unwind: bb12];
 -     }
 - 

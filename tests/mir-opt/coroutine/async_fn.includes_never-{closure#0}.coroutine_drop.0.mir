@@ -82,7 +82,7 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
 
     bb0: {
         _49 = discriminant((*_1));
-        switchInt(move _49) -> [0: bb9, 3: bb12, otherwise: bb13];
+        switchInt(move _49) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
@@ -101,7 +101,7 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
         StorageDead(_5);
         nop;
         nop;
-        goto -> bb10;
+        goto -> bb4;
     }
 
     bb4: {
@@ -130,18 +130,10 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
     }
 
     bb9: {
-        goto -> bb11;
-    }
-
-    bb10: {
-        goto -> bb4;
-    }
-
-    bb11: {
         goto -> bb8;
     }
 
-    bb12: {
+    bb10: {
         StorageLive(_5);
         StorageLive(_6);
         StorageLive(_22);
@@ -149,7 +141,7 @@ fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> 
         goto -> bb1;
     }
 
-    bb13: {
+    bb11: {
         return;
     }
 }

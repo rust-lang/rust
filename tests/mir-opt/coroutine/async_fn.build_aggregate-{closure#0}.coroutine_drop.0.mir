@@ -86,7 +86,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
 
     bb0: {
         _50 = discriminant((*_1));
-        switchInt(move _50) -> [0: bb16, 3: bb19, 4: bb20, otherwise: bb21];
+        switchInt(move _50) -> [0: bb16, 3: bb17, 4: bb18, otherwise: bb19];
     }
 
     bb1: {
@@ -130,7 +130,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         nop;
         StorageDead(_4);
         StorageDead(_3);
-        goto -> bb17;
+        goto -> bb8;
     }
 
     bb8: {
@@ -178,18 +178,10 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
     }
 
     bb16: {
-        goto -> bb18;
-    }
-
-    bb17: {
-        goto -> bb8;
-    }
-
-    bb18: {
         goto -> bb15;
     }
 
-    bb19: {
+    bb17: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_7);
@@ -199,7 +191,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         goto -> bb4;
     }
 
-    bb20: {
+    bb18: {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_7);
@@ -211,7 +203,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
         goto -> bb1;
     }
 
-    bb21: {
+    bb19: {
         return;
     }
 }
