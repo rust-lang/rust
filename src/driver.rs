@@ -35,7 +35,7 @@ use std::process::ExitCode;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
-fn arg_value<'a>(args: &'a [String], find_arg: &str, pred: impl Fn(&str) -> bool) -> Option<&'a str> {
+fn arg_value(args: &[String], find_arg: &str, pred: impl Fn(&str) -> bool) -> bool {
     let mut args = args.iter().map(String::as_str);
     while let Some(arg) = args.next() {
         let mut arg = arg.splitn(2, '=');
@@ -44,43 +44,48 @@ fn arg_value<'a>(args: &'a [String], find_arg: &str, pred: impl Fn(&str) -> bool
         }
 
         match arg.next().or_else(|| args.next()) {
-            Some(v) if pred(v) => return Some(v),
+            Some(v) if pred(v) => return true,
             _ => {},
         }
     }
-    None
+    false
 }
 
-fn has_arg(args: &[String], find_arg: &str) -> bool {
-    args.iter().any(|arg| {
-        arg.strip_prefix(find_arg)
-            .is_some_and(|s| s.is_empty() || s.starts_with('='))
-    })
+/// Returns true if this is `arg` or `arg=...`, otherwise returns false.
+fn is_arg(argument: &str, key: &str) -> bool {
+    argument
+        .strip_prefix(key)
+        .is_some_and(|s| s.is_empty() || s.starts_with('='))
 }
 
 #[test]
 fn test_arg_value() {
+    use std::ops::Not;
+
     let args = &["--bar=bar", "--foobar", "123", "--foo"].map(String::from);
 
-    assert_eq!(arg_value(&[], "--foobar", |_| true), None);
-    assert_eq!(arg_value(args, "--bar", |_| false), None);
-    assert_eq!(arg_value(args, "--bar", |_| true), Some("bar"));
-    assert_eq!(arg_value(args, "--bar", |p| p == "bar"), Some("bar"));
-    assert_eq!(arg_value(args, "--bar", |p| p == "foo"), None);
-    assert_eq!(arg_value(args, "--foobar", |p| p == "foo"), None);
-    assert_eq!(arg_value(args, "--foobar", |p| p == "123"), Some("123"));
-    assert_eq!(arg_value(args, "--foobar", |p| p.contains("12")), Some("123"));
-    assert_eq!(arg_value(args, "--foo", |_| true), None);
+    assert!(arg_value(&[], "--foobar", |_| true).not());
+    assert!(arg_value(args, "--bar", |_| false).not());
+    assert!(arg_value(args, "--bar", |_| true));
+    assert!(arg_value(args, "--bar", |p| p == "bar"));
+    assert!(arg_value(args, "--bar", |p| p == "foo").not());
+    assert!(arg_value(args, "--foobar", |p| p == "foo").not());
+    assert!(arg_value(args, "--foobar", |p| p == "123"));
+    assert!(arg_value(args, "--foobar", |p| p.contains("12")));
+    assert!(arg_value(args, "--foo", |_| true).not());
 }
 
 #[test]
 fn test_has_arg() {
-    let args = &["--foo=bar", "-vV", "--baz"].map(String::from);
-    assert!(has_arg(args, "--foo"));
-    assert!(has_arg(args, "--baz"));
-    assert!(has_arg(args, "-vV"));
+    assert!(is_arg("--foo=bar", "--foo"));
+    assert!(is_arg("--baz", "--baz"));
+    assert!(is_arg("-vV", "-vV"));
 
-    assert!(!has_arg(args, "--bar"));
+    assert!(
+        ["--=bar", "--barr", "-bar", "bar"]
+            .iter()
+            .all(|arg| !is_arg(arg, "--bar"))
+    );
 }
 
 fn track_clippy_args(sess: &Session, args_env_var: Option<&str>) {
@@ -208,34 +213,29 @@ fn main() -> ExitCode {
     });
 
     rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
-
-        let has_sysroot_arg = |args: &mut [String]| -> bool {
-            if has_arg(args, "--sysroot") {
-                return true;
-            }
+        fn has_sysroot_arg(args: &[String]) -> bool {
             // https://doc.rust-lang.org/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
             // Beside checking for existence of `--sysroot` on the command line, we need to
             // check for the arg files that are prefixed with @ as well to be consistent with rustc
-            for arg in args.iter() {
+            args.iter().any(|arg| {
                 if let Some(arg_file_path) = arg.strip_prefix('@')
                     && let Ok(arg_file) = read_to_string(arg_file_path)
                 {
-                    let split_arg_file: Vec<String> = arg_file.lines().map(ToString::to_string).collect();
-                    if has_arg(&split_arg_file, "--sysroot") {
-                        return true;
-                    }
+                    arg_file.lines().any(|arg| is_arg(arg, "--sysroot"))
+                } else {
+                    is_arg(arg, "--sysroot")
                 }
-            }
-            false
-        };
+            })
+        }
+
+        let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
 
         let sys_root_env = std::env::var("SYSROOT").ok();
         let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
             if let Some(sys_root) = sys_root_env
                 && !has_sysroot_arg(args)
             {
-                args.extend(vec!["--sysroot".into(), sys_root]);
+                args.extend(["--sysroot".to_string(), sys_root]);
             }
         };
 
@@ -296,16 +296,16 @@ fn main() -> ExitCode {
             .collect::<Vec<String>>();
 
         // If no Clippy lints will be run we do not need to run Clippy
-        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
-            && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow")
+            && !arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::"));
 
         // If `--no-deps` is enabled only lint the primary package
         let relevant_package = !no_deps || env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
         // Do not run Clippy for Cargo's info queries so that invalid CLIPPY_ARGS are not cached
         // https://github.com/rust-lang/cargo/issues/14385
-        let info_query = has_arg(&orig_args, "-vV")
-            || arg_value(&orig_args, "--print", |val| val != "crate-root-lint-levels").is_some();
+        let info_query = args.iter().any(|arg| arg == "-vV")
+            || arg_value(&orig_args, "--print", |val| val != "crate-root-lint-levels");
 
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
