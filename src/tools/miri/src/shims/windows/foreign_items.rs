@@ -1400,18 +1400,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
             }
-            "atexit" if this.frame_in_std() => {
-                let [_value] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _) -> winapi::c_int),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-
-                // We do not support registering atexit handlers, which is used by the thread-local destructor implementation in std.
-                // But we also do not support manually unloading DLLs, so this has no visible effect.
-                this.write_int(0, dest)?;
-            }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
