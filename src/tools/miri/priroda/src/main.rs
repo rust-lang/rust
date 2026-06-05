@@ -10,6 +10,7 @@ extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
+extern crate rustc_span;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
@@ -23,6 +24,8 @@ use rustc_middle::mir;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
+use rustc_span::Span;
+use rustc_span::source_map::SourceMap;
 
 fn find_sysroot() -> String {
     std::env::var("MIRI_SYSROOT")
@@ -101,10 +104,16 @@ fn create_ecx<'tcx>(tcx: TyCtxt<'tcx>) -> MiriInterpCx<'tcx> {
 
 /// Structured source information for frontends.
 struct SourceLocation {
-    // The path can be absent for synthetic spans.
-    local_path: Option<PathBuf>,
-    display: String,
+    // storing `span` to use it lazily to compute path.
+    span: Span,
     line: usize,
+}
+
+impl SourceLocation {
+    fn local_path(&self, source_map: &SourceMap) -> Option<PathBuf> {
+        let loc = source_map.lookup_char_pos(self.span.lo());
+        loc.file.name.clone().into_local_path().map(normalize_path)
+    }
 }
 
 /// Source-level breakpoints indexed by normalized path, then line.
@@ -244,7 +253,8 @@ impl<'tcx> PrirodaContext<'tcx> {
             return false;
         };
 
-        let Some(path) = &location.local_path else {
+        let source_map = self.ecx.tcx.sess.source_map();
+        let Some(path) = &location.local_path(source_map) else {
             return false;
         };
 
@@ -266,16 +276,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         let source_map = self.ecx.tcx.sess.source_map();
         let loc = source_map.lookup_char_pos(span.lo());
 
-        Some(SourceLocation {
-            // TODO: store the span here instead and compute the normalized path
-            // lazily only when a caller actually needs it.
-            // FIXME: cache normalized source paths; this runs after every MIR step.
-            local_path: loc.file.name.clone().into_local_path().map(normalize_path),
-            // FIXME: keep presentation formatting in the CLI layer; the context
-            // should expose structured path and line data.
-            display: source_map.span_to_diagnostic_string(span),
-            line: loc.line,
-        })
+        Some(SourceLocation { span: span, line: loc.line })
     }
 
     fn run_command(&mut self, command: DebuggerCommand) -> InterpResult<'tcx, CommandResult> {
@@ -375,10 +376,14 @@ impl CLI {
     }
 
     fn print_location(&self, session: &PrirodaContext) {
-        // FIXME: skip noisy std/runtime spans and avoid printing `no-location`
-        // once the basic command loop is solid.
+        let source_map = session.ecx.tcx.sess.source_map();
         match &session.current_location {
-            Some(location) => println!("{}", location.display),
+            Some(location) =>
+                if let Some(path) = location.local_path(source_map) {
+                    println!("{}:{}", path.display(), location.line);
+                } else {
+                    println!("{}", source_map.span_to_diagnostic_string(location.span));
+                },
             None => println!("no-location"),
         }
         io::stdout().flush().unwrap();
