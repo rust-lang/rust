@@ -51,10 +51,9 @@ jobs:
           mkdir intel-sde
           cd intel-sde
           version=10.8.0-2026-03-15
-          url_path=915934
           dir=sde-external-$version-lin
           file=$dir.tar.xz
-          wget https://downloadmirror.intel.com/$url_path/$file
+          wget http://ci-mirrors.rust-lang.org/$file
           tar xvf $file
           sudo mkdir /usr/share/intel-sde
           sudo cp -r $dir/* /usr/share/intel-sde
