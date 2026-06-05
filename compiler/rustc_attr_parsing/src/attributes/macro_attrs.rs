@@ -35,7 +35,6 @@ const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
 const MACRO_USE_ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
     Allow(Target::Mod),
     Allow(Target::ExternCrate),
-    Allow(Target::Crate),
     Error(Target::WherePredicate),
 ]);
 
