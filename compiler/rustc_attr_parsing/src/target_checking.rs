@@ -114,7 +114,11 @@ impl<'sess> AttributeParser<'sess> {
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
         if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx);
+            Self::check_crate_level(cx, false);
+            return;
+        }
+        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
+            Self::check_crate_level(cx, true);
             return;
         }
 
@@ -181,7 +185,7 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>) {
+    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>, warn: bool) {
         if cx.target == Target::Crate {
             return;
         }
@@ -205,19 +209,20 @@ impl<'sess> AttributeParser<'sess> {
             })
             .unwrap_or_default();
 
-        let target = cx.target;
-        cx.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            crate::errors::InvalidAttrStyle {
-                name,
-                is_used_as_inner,
-                target_span: (!is_used_as_inner).then_some(target_span),
-                target: target.name(),
-                crate_root_path,
-                show_crate_root_help,
-            },
-            attr_span,
-        );
+        let diag = crate::errors::InvalidAttrStyle {
+            name,
+            is_used_as_inner,
+            target_span: (!is_used_as_inner).then_some(target_span),
+            target: cx.target.name(),
+            crate_root_path,
+            show_crate_root_help,
+            span: attr_span,
+        };
+        if warn {
+            cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, diag, attr_span);
+        } else {
+            cx.emit_err(diag);
+        }
     }
 
     // FIXME: Fix "Cannot determine resolution" error and remove built-in macros

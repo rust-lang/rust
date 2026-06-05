@@ -1,3 +1,4 @@
+//! Context given to attribute parsers when parsing.
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -846,6 +847,9 @@ impl ShouldEmit {
     }
 }
 
+/// The interface for issuing argument parsing related diagnostics.
+///
+/// It can be obtained through the [`adcx`](AcceptContext::adcx) method on [`AcceptContext`].
 pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
     ctx: &'a mut AcceptContext<'f, 'sess>,
     custom_suggestions: Vec<Suggestion>,

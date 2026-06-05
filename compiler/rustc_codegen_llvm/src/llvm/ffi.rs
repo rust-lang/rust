@@ -318,6 +318,7 @@ pub(crate) enum AttributeKind {
     SanitizeRealtimeNonblocking = 47,
     SanitizeRealtimeBlocking = 48,
     Convergent = 49,
+    NoFree = 50,
 }
 
 /// LLVMIntPredicate

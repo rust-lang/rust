@@ -463,7 +463,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
 ) -> FxIndexMap<WorkProductId, WorkProduct> {
     let mut work_products = FxIndexMap::default();
 
-    if sess.opts.incremental.is_none() {
+    if sess.opts.incremental.is_none() || sess.opts.unstable_opts.disable_incr_comp_backend_caching
+    {
         return work_products;
     }
 

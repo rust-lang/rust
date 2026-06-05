@@ -506,7 +506,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type in bytes.
+/// Returns the [ABI]-required minimum alignment of a type, in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -519,6 +519,11 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 /// assert_eq!(4, align_of::<i32>());
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, the above assertion does not pass on all platforms.)
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -529,10 +534,12 @@ pub const fn align_of<T>() -> usize {
     <T as SizedTypeProperties>::ALIGN
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to, in
 /// bytes.
 ///
-/// Every reference to a value of the type `T` must be a multiple of this number.
+/// This function is identical to [`align_of::<T>()`][align_of] whenever <code>T: [Sized]</code>,
+/// but also supports determining the alignment required by a `dyn Trait` value, which is the
+/// alignment of the underlying concrete type.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -541,6 +548,22 @@ pub const fn align_of<T>() -> usize {
 /// ```
 /// assert_eq!(4, align_of_val(&5i32));
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, this example assertion does not pass on all platforms.)
+///
+/// `dyn` types may have different alignments for different values;
+/// `align_of_val` can be used to learn those alignments:
+///
+/// ```
+/// let a: &dyn ToString = &1234u16;
+/// let b: &dyn ToString = &String::from("abcd");
+///
+/// assert_eq!(align_of_val(a), align_of::<u16>());
+/// assert_eq!(align_of_val(b), align_of::<String>());
+/// ```
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -550,10 +573,12 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to, in
 /// bytes.
 ///
-/// Every reference to a value of the type `T` must be a multiple of this number.
+/// This function is identical to [`align_of_val()`], except that it can be used with raw pointers
+/// in situations where it would be unsound or undesirable to convert them to
+/// [`&` references][primitive@reference] and impose the aliasing rules that come with that.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -589,6 +614,11 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
+///
+/// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+/// that is, the above assertion does not pass on all platforms.)
+///
+/// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]

@@ -1038,33 +1038,19 @@ where
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
-                    let (size, kind);
-                    match mt {
+                    let kind = match mt {
                         hir::Mutability::Not => {
                             let frozen = optimize && ty.is_freeze(tcx, typing_env);
-
-                            // Non-frozen shared references are not necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/rust/pull/98017>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if frozen { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::SharedRef { frozen };
+                            PointerKind::SharedRef { frozen }
                         }
                         hir::Mutability::Mut => {
                             let unpin = optimize
                                 && ty.is_unpin(tcx, typing_env)
                                 && ty.is_unsafe_unpin(tcx, typing_env);
-
-                            // Mutable references to potentially self-referential types are not
-                            // necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if unpin { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::MutableRef { unpin };
+                            PointerKind::MutableRef { unpin }
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo { safe: Some(kind), size: layout.size, align: layout.align.abi }
                 })
             }
 
@@ -1080,12 +1066,7 @@ where
                             && pointee.is_unsafe_unpin(tcx, typing_env),
                         global: this.ty.is_box_global(tcx),
                     }),
-
-                    // `Box` are not necessarily dereferenceable for the entire duration of the function as
-                    // they can be deallocated at any time.
-                    // (if we had "dereferenceable on entry", we could support this)
-                    size: Size::ZERO,
-
+                    size: layout.size,
                     align: layout.align.abi,
                 })
             }

@@ -30,5 +30,37 @@ LL | #[optimize(speed)]
    |
    = help: `#[optimize]` can only be applied to functions
 
-error: aborting due to 4 previous errors
+error: `#[optimize]` attribute cannot be used on required trait methods
+  --> $DIR/optimize.rs:45:5
+   |
+LL |     #[optimize(speed)]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions with a body
+
+error: multiple `optimize` attributes
+  --> $DIR/optimize.rs:59:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/optimize.rs:58:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: multiple `optimize` attributes
+  --> $DIR/optimize.rs:63:1
+   |
+LL | #[optimize(size)]
+   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/optimize.rs:62:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 

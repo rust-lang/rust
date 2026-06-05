@@ -2,6 +2,7 @@
 //! where one region is named and the other is anonymous.
 
 use rustc_errors::Diag;
+use rustc_middle::ty;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
@@ -72,7 +73,18 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             return None;
         }
+        let orig_ty = anon_param_info.orig_param_ty;
+        // Don't suggest naming the outer lifetime when it already appears in the pointee
+        // (e.g. `&'a mut Buffer<'a>`); point at borrow splitting instead.
+        let suggestion_would_alias_lifetime =
+            if let ty::Ref(_, orig_inner_ty, ty::Mutability::Mut) = orig_ty.kind() {
+                self.tcx().any_free_region_meets(orig_inner_ty, |r| r == named)
+            } else {
+                false
+            };
+
         let named = named.to_string();
+        let new_ty_span = if suggestion_would_alias_lifetime { None } else { Some(new_ty_span) };
         let err = match param.pat.simple_ident() {
             Some(simple_ident) => ExplicitLifetimeRequired::WithIdent {
                 span,
@@ -80,8 +92,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 named,
                 new_ty_span,
                 new_ty,
+                link_nomicon: suggestion_would_alias_lifetime,
             },
-            None => ExplicitLifetimeRequired::WithParamType { span, named, new_ty_span, new_ty },
+            None => ExplicitLifetimeRequired::WithParamType {
+                span,
+                named,
+                new_ty_span,
+                new_ty,
+                link_nomicon: suggestion_would_alias_lifetime,
+            },
         };
         Some(self.tcx().sess.dcx().create_err(err))
     }

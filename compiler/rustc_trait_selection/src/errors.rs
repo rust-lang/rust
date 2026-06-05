@@ -868,8 +868,13 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             applicability = "unspecified",
             style = "verbose"
         )]
-        new_ty_span: Span,
+        new_ty_span: Option<Span>,
         new_ty: Ty<'a>,
+        #[help(
+            "see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> \
+             for more information about lifetime errors related to mutable references"
+        )]
+        link_nomicon: bool,
     },
     #[diag("explicit lifetime required in parameter type", code = E0621)]
     WithParamType {
@@ -883,8 +888,13 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             applicability = "unspecified",
             style = "verbose"
         )]
-        new_ty_span: Span,
+        new_ty_span: Option<Span>,
         new_ty: Ty<'a>,
+        #[help(
+            "see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> \
+             for more information about lifetime errors related to mutable references"
+        )]
+        link_nomicon: bool,
     },
 }
 
