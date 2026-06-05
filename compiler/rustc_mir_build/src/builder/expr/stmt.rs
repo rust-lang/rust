@@ -126,7 +126,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         })
                         .collect();
 
-                    this.record_operands_moved(&args);
+                    for operand in args.iter() {
+                        this.record_operand_moved(&operand.node);
+                    }
 
                     debug!("expr_into_dest: fn_span={:?}", fn_span);
 
