@@ -18,7 +18,7 @@ use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    ReprAttr,
+    OptimizeAttr, ReprAttr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -163,6 +163,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_rustc_force_inline(hir_id, attrs, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
+        self.check_optimize_and_inline(attrs);
     }
 
     /// Called by [`Self::check_attributes()`] to check a single attribute which is
@@ -1579,6 +1580,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     export_name_attr,
                 },
             );
+        }
+    }
+
+    fn check_optimize_and_inline(&self, attrs: &[Attribute]) {
+        if let Some(optimize_span) =
+            find_attr!(attrs, Optimize(OptimizeAttr::DoNotOptimize, span) => *span)
+            && let Some((inline_attr, inline_span)) =
+                find_attr!(attrs, Inline(inline_attr, span) => (inline_attr, *span))
+            && inline_attr != &InlineAttr::Never
+        {
+            self.dcx().emit_err(errors::BothOptimizeNoneAndInline { optimize_span, inline_span });
         }
     }
 
