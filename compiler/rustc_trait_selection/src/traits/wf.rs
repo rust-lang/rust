@@ -1008,6 +1008,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 pred.kind().skip_binder(),
                                 ty::ClauseKind::Trait(tp) if tp.self_ty() == t
                             )
+                            && !matches!(
+                                pred.kind().skip_binder(),
+                                ty::ClauseKind::TypeOutlives(..)
+                                    | ty::ClauseKind::RegionOutlives(..)
+                            )
                         {
                             self.out.push(traits::Obligation::with_depth(
                                 tcx,
