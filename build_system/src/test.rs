@@ -45,6 +45,7 @@ fn get_runners() -> Runners {
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
     runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
     runners.insert("--no-builtins-tests", ("Test #![no_builtins] attribute", no_builtins_tests));
+    runners.insert("--stdarch-tests", ("Run stdarch tests", test_stdarch as Runner));
     runners
 }
 
@@ -762,6 +763,23 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     let _ = remove_dir_all(path.join("target"));
     // FIXME(antoyo): run in release mode when we fix the failures.
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
+    Ok(())
+}
+
+fn test_stdarch(env: &Env, args: &TestArg) -> Result<(), String> {
+    println!("[TEST] stdarch");
+    let manifest_path = get_sysroot_dir().join("sysroot_src/library/stdarch/Cargo.toml");
+    let mut env = env.clone();
+
+    // `config.setup` already baked `CG_RUSTFLAGS` into `RUSTFLAGS`, so append the lint-allow to
+    // `RUSTFLAGS` directly (which `run_cargo_command` also propagates to `RUSTDOCFLAGS`).
+    let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+    env.insert(
+        "RUSTFLAGS".to_string(),
+        format!("{rustflags} -Ainternal_features").trim().to_owned(),
+    );
+    env.insert("TARGET".to_string(), args.config_info.target_triple.clone());
+    run_cargo_command(&[&"test", &"--manifest-path", &manifest_path], None, &env, args)?;
     Ok(())
 }
 
