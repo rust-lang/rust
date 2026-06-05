@@ -1459,15 +1459,6 @@ impl File {
         return Ok(());
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn lock(&self) -> io::Result<()> {
-        let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_WRLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
-        cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETLKW, &flock) })?;
-        Ok(())
-    }
-
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1476,7 +1467,6 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
-        target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
         target_os = "android",
@@ -1504,15 +1494,6 @@ impl File {
         return Ok(());
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn lock_shared(&self) -> io::Result<()> {
-        let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_RDLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
-        cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETLKW, &flock) })?;
-        Ok(())
-    }
-
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1521,7 +1502,6 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
-        target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
         target_os = "android",
@@ -1557,23 +1537,6 @@ impl File {
         }
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn try_lock(&self) -> Result<(), TryLockError> {
-        let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_WRLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
-        let result = cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETLK, &flock) });
-        if let Err(err) = result {
-            if err.kind() == io::ErrorKind::WouldBlock {
-                Err(TryLockError::WouldBlock)
-            } else {
-                Err(TryLockError::Error(err))
-            }
-        } else {
-            Ok(())
-        }
-    }
-
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1582,7 +1545,6 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
-        target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
         target_os = "android",
@@ -1621,23 +1583,6 @@ impl File {
         }
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
-        let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_RDLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
-        let result = cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETLK, &flock) });
-        if let Err(err) = result {
-            if err.kind() == io::ErrorKind::WouldBlock {
-                Err(TryLockError::WouldBlock)
-            } else {
-                Err(TryLockError::Error(err))
-            }
-        } else {
-            Ok(())
-        }
-    }
-
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1646,7 +1591,6 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
-        target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
         target_os = "android",
@@ -1677,15 +1621,6 @@ impl File {
         return Ok(());
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn unlock(&self) -> io::Result<()> {
-        let mut flock: libc::flock = unsafe { mem::zeroed() };
-        flock.l_type = libc::F_UNLCK as libc::c_short;
-        flock.l_whence = libc::SEEK_SET as libc::c_short;
-        cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_SETLKW, &flock) })?;
-        Ok(())
-    }
-
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1694,7 +1629,6 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
-        target_os = "solaris",
         target_os = "illumos",
         target_os = "aix",
         target_os = "android",
