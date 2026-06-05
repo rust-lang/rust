@@ -62,3 +62,15 @@ fn duplicate_same() {}
 #[optimize(speed)]
 #[optimize(size)] //~ ERROR multiple `optimize` attributes
 fn duplicate_different() {}
+
+#[optimize(none)] //~ ERROR `#[optimize(none)]` cannot be used with `#[inline]` attributes
+#[inline]
+fn inline_conflict_a() {}
+
+#[inline(always)]
+#[optimize(none)] //~ ERROR `#[optimize(none)]` cannot be used with `#[inline]` attributes
+fn inline_conflict_b() {}
+
+#[inline(never)]
+#[optimize(none)]
+fn inline_conflict_c() {}
