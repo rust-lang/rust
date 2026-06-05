@@ -9,5 +9,5 @@
 // tidy-alphabetical-end
 
 pub mod ast_validation;
-mod errors;
+mod diagnostics;
 pub mod feature_gate;
