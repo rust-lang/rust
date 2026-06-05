@@ -50,18 +50,18 @@ use crate::ptr;
 /// * The `ManuallyDrop` is not inside a `union`.
 /// * The struct or enum is part of public API, or is stored in a struct or an
 ///   enum that is part of public API.
-/// * There is code that drops the contents of the `ManuallyDrop` field, and
-///   this code is outside the struct or enum's `Drop` implementation.
+/// * There is a _safe_ function that drops the contents of the `ManuallyDrop`
+///   field, and it can be called outside the struct or enum's `Drop` implementation.
 ///
 /// In particular, deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`,
 /// or `Hash` on the struct or enum could be unsound, since the derived
-/// implementations of these traits would access the `ManuallyDrop` field. For
-/// example, the following code causes undefined behavior:
+/// implementations of these traits would access the `ManuallyDrop` field.
+///
+/// For example, in the following code, `derive(Debug)` is unsound in combination
+/// with the `ManuallyDrop::drop` call in `Foo::new`:
 ///
 /// ```no_run
-/// use std::mem::ManuallyDrop;
-///
-/// // This derive is unsound in combination with the `ManuallyDrop::drop` call.
+/// # use std::mem::ManuallyDrop;
 /// #[derive(Debug)]
 /// pub struct Foo {
 ///     value: ManuallyDrop<String>,
@@ -78,12 +78,19 @@ use crate::ptr;
 ///         temp
 ///     }
 /// }
-///
-/// // In another crate:
-///
-/// let foo = Foo::new();
-/// println!("{:?}", foo); // Undefined behavior!
 /// ```
+///
+/// As one could use the `Debug` implementation to access an already dropped
+/// field:
+///
+/// ```rust,ignore (uses-type-from-separate-snippet)
+/// let foo = Foo::new();
+/// println!("{foo:?}"); // Undefined behavior!
+/// ```
+///
+/// Note that derives are not a required to cause similar unsoundness. The cause
+/// of the unsoundness are public APIs which allow to access an already dropped
+/// value inside `ManuallyDrop`.
 ///
 /// # Pre-`1.96` Interaction with `Box`
 ///
