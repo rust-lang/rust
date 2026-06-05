@@ -8,8 +8,8 @@
 // the symbol name.
 // The fix was to make the order in which predicates get encoded stable.
 
-//@ aux-build:issue-34796-aux.rs
-extern crate issue_34796_aux;
+//@ aux-build:xxx-what-is-happening.rs
+extern crate xxx_what_is_happening as issue_34796_aux;
 
 fn mk<T>() -> T { loop {} }
 
