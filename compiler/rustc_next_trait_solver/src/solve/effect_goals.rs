@@ -191,6 +191,7 @@ where
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
         _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
