@@ -36,9 +36,9 @@ struct CollectedBound {
 }
 
 impl CollectedBound {
-    /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
+    /// Returns `true` if any of `Trait`, `?Trait`, `only Trait` or `!Trait` were encountered.
     fn any(&self) -> bool {
-        self.positive || self.maybe || self.negative
+        self.positive || self.maybe || self.negative || self.only_modifier
     }
 }
 
