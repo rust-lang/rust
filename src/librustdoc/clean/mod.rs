@@ -2815,6 +2815,7 @@ fn add_without_unwanted_attributes<'hir>(
                     first_span: _,
                     aliases,
                     hidden,
+                    label_trait: _,
                     inline,
                     cfg,
                     auto_cfg: _,

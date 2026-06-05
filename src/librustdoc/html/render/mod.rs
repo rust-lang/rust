@@ -41,7 +41,7 @@ mod write_shared;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display as _, Write};
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -1788,6 +1788,47 @@ fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Cont
     let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
     mp.sort_unstable_keys();
     serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
+}
+
+pub(crate) struct LabelTraitInfo {
+    pub name: String,
+    pub full_path: String,
+    /// Relative URL to the trait page, or `None` if it cannot be linked.
+    pub href: Option<String>,
+}
+
+/// Returns all `#[doc(label_trait)]` traits that `item` implements.
+pub(crate) fn label_traits_for_item(item: &clean::Item, cx: &Context<'_>) -> Vec<LabelTraitInfo> {
+    let Some(did) = item.def_id() else { return Vec::new() };
+
+    if Some(did) == cx.tcx().lang_items().owned_box()
+        || Some(did) == cx.tcx().lang_items().pin_type()
+    {
+        return Vec::new();
+    }
+
+    let Some(impls) = cx.cache().impls.get(&did) else { return Vec::new() };
+
+    impls
+        .iter()
+        .map(Impl::inner_impl)
+        .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+        .filter_map(|impl_| {
+            let path_ = impl_.trait_.as_ref()?;
+            let trait_did = path_.def_id();
+            if !cx.cache().traits.get(&trait_did)?.is_label_trait(cx.tcx()) {
+                return None;
+            }
+            let name = cx.tcx().item_name(trait_did).to_string();
+            let (full_path, href) = match href(trait_did, cx) {
+                Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
+                Err(_) => (cx.tcx().def_path_str(trait_did), None),
+            };
+            Some((name.clone(), LabelTraitInfo { name, full_path, href }))
+        })
+        .collect::<BTreeMap<String, LabelTraitInfo>>()
+        .into_values()
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug)]
