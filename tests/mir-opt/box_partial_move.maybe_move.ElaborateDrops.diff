@@ -19,7 +19,7 @@
 +         _5 = const true;
           StorageLive(_3);
           _3 = copy _1;
-          switchInt(move _3) -> [0: bb3, otherwise: bb1];
+          switchInt(move _3) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -27,64 +27,54 @@
 +         _5 = const false;
           _4 = move (*_2);
           _0 = Option::<String>::Some(move _4);
--         drop(_4) -> [return: bb2, unwind: bb6];
-+         goto -> bb2;
+          StorageDead(_4);
+          goto -> bb3;
       }
   
       bb2: {
-          StorageDead(_4);
-          goto -> bb4;
+          _0 = Option::<String>::None;
+          goto -> bb3;
       }
   
       bb3: {
-          _0 = Option::<String>::None;
-          goto -> bb4;
+          StorageDead(_3);
+-         drop(_2) -> [return: bb4, unwind continue];
++         goto -> bb11;
       }
   
       bb4: {
-          StorageDead(_3);
--         drop(_2) -> [return: bb5, unwind continue];
-+         goto -> bb13;
-      }
-  
-      bb5: {
           return;
-      }
-  
-      bb6 (cleanup): {
--         drop(_2) -> [return: bb7, unwind terminate(cleanup)];
-+         goto -> bb7;
-      }
-  
-      bb7 (cleanup): {
-          resume;
++     }
++ 
++     bb5 (cleanup): {
++         resume;
++     }
++ 
++     bb6: {
++         _6 = &mut _2;
++         _7 = <Box<String> as Drop>::drop(move _6) -> [return: bb4, unwind: bb5];
++     }
++ 
++     bb7 (cleanup): {
++         _8 = &mut _2;
++         _9 = <Box<String> as Drop>::drop(move _8) -> [return: bb5, unwind terminate(cleanup)];
 +     }
 + 
 +     bb8: {
-+         _6 = &mut _2;
-+         _7 = <Box<String> as Drop>::drop(move _6) -> [return: bb5, unwind: bb7];
++         goto -> bb10;
 +     }
 + 
-+     bb9 (cleanup): {
-+         _8 = &mut _2;
-+         _9 = <Box<String> as Drop>::drop(move _8) -> [return: bb7, unwind terminate(cleanup)];
++     bb9: {
++         drop((*_10)) -> [return: bb6, unwind: bb7];
 +     }
 + 
 +     bb10: {
-+         goto -> bb12;
++         switchInt(copy _5) -> [0: bb6, otherwise: bb9];
 +     }
 + 
 +     bb11: {
-+         drop((*_10)) -> [return: bb8, unwind: bb9];
-+     }
-+ 
-+     bb12: {
-+         switchInt(copy _5) -> [0: bb8, otherwise: bb11];
-+     }
-+ 
-+     bb13: {
 +         _10 = copy ((_2.0: std::ptr::Unique<std::string::String>).0: std::ptr::NonNull<std::string::String>) as *const std::string::String (Transmute);
-+         goto -> bb10;
++         goto -> bb8;
       }
   }
   
