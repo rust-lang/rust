@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation, Fn,
-    ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias,
-    TyAlias,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation,
+    DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
+    StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
@@ -1461,7 +1461,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let parent = self.parent_scope.module.expect_local();
             let expansion = self.parent_scope.expansion;
             self.r.define_local(parent, ident, ns, self.res(def_id), vis, item.span, expansion);
-        } else if !matches!(&item.kind, AssocItemKind::Delegation(deleg) if deleg.from_glob)
+        } else if !matches!(&item.kind, AssocItemKind::Delegation(d) if d.source == DelegationSource::Glob)
             && ident.name != kw::Underscore
         {
             // Don't add underscore names, they cannot be looked up anyway.
