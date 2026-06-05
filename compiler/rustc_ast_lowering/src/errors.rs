@@ -535,3 +535,17 @@ pub(crate) struct CycleInDelegationSignatureResolution {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("delegation's target expression is specified for function with no params")]
+pub(crate) struct DelegationBlockSpecifiedWhenNoParams {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("attempted to delete delegation's target expression that contains definitions inside")]
+pub(crate) struct DelegationAttemptedBlockWithDefsDeletion {
+    #[primary_span]
+    pub span: Span,
+}
