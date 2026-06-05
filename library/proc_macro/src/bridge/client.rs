@@ -20,30 +20,35 @@ impl Drop for TokenStream {
 }
 
 impl<S> Encode<S> for TokenStream {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         mem::ManuallyDrop::new(self).handle.encode(w, s);
     }
 }
 
 impl<S> Encode<S> for &TokenStream {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for TokenStream {
+    #[inline]
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         TokenStream { handle: handle::Handle::decode(r, s) }
     }
 }
 
 impl Encode<()> for crate::TokenStream {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut ()) {
         self.0.encode(w, s)
     }
 }
 
 impl Decode<'_, '_, ()> for crate::TokenStream {
+    #[inline]
     fn decode(r: &mut &[u8], s: &mut ()) -> Self {
         crate::TokenStream(Some(Decode::decode(r, s)))
     }
@@ -58,12 +63,14 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
+    #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
 
 impl<S> Decode<'_, '_, S> for Span {
+    #[inline]
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Span { handle: handle::Handle::decode(r, s) }
     }

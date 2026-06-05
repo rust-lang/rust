@@ -1498,6 +1498,7 @@ libs = [
     "@nia-e",
     "@LawnGnome",
     "@clarfonthey",
+    "@aapoalas",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
