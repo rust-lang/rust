@@ -3,6 +3,15 @@
 // Helper macro used to trigger const eval errors when the const generic immediate value `imm` is
 // not a round number.
 #[allow(unused)]
+macro_rules! static_assert_round_mode {
+    ($imm:ident) => {
+        static_assert!($imm >= 0 && $imm < 5, "Invalid IMM value")
+    };
+}
+
+// Helper macro used to trigger const eval errors when the const generic immediate value `imm` is
+// not a round number.
+#[allow(unused)]
 macro_rules! static_assert_rounding {
     ($imm:ident) => {
         static_assert!(
