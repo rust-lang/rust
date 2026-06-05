@@ -13,6 +13,7 @@
 //! temporary was missing from the unwind path from the tuple operand's drop due to issue
 //! <https://github.com/rust-lang/rust/issues/47949>, so there was no drop order conflict.
 //@ edition: 2015
+//@ check-pass
 
 struct Foo;
 impl Drop for Foo {
@@ -37,7 +38,6 @@ fn works() {
 fn fails() {
     let foo = Foo;
     let bar = Bar(&foo);
-    //~^ ERROR `foo` does not live long enough
     drop(match (bar,) {
         args => args,
     })

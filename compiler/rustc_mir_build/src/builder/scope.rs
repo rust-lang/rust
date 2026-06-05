@@ -1512,7 +1512,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(span, region_scope, local, DropKind::ForLint);
     }
 
-    /// Indicates that the "local operand" stored in `local` is
+    /// Indicates that the "local operand" stored in `operand` is
     /// *moved* at some point during execution (see `local_scope` for
     /// more information about what a "local operand" is -- in short,
     /// it's an intermediate operand created as part of preparing some
@@ -1548,25 +1548,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn record_operand_moved(&mut self, operand: &Operand<'tcx>) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
-
-        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
+        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!");
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
-            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
+        let local_moved = match operand {
+            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => return,
             Operand::Move(place) => place.as_local(),
-        });
+        };
 
-        for local in locals_moved {
-            // Mark this operand as moved, to skip dropping it when exiting this scope.
-            //
-            // Note we only mark it in the innermost scope: this local might not have been an
-            // operand created for this scope, it could come from other places too.
-            // If that's the case, marking as moved in the innermost scope will do nothing,
-            // which is correct in case of non-trivial control flow between scopes.
+        // Mark this operand as moved, to skip dropping it when exiting this scope.
+        //
+        // Note we only mark it in the innermost scope: this local might not have been an
+        // operand created for this scope, it could come from other places too.
+        // If that's the case, marking as moved in the innermost scope will do nothing,
+        // which is correct in case of non-trivial control flow between scopes.
+        if let Some(local) = local_moved {
             scope.moved_locals.insert(local);
         }
     }
