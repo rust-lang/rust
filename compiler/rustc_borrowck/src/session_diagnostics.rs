@@ -633,3 +633,19 @@ impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for TailExprDropOrder<
         diag
     }
 }
+
+pub(crate) struct UnwindDropOrder<F: FnOnce(&mut Diag<'_, ()>)> {
+    pub borrowed: Span,
+    pub callback: F,
+}
+
+impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for UnwindDropOrder<F> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { borrowed, callback } = self;
+        let mut diag =
+            Diag::new(dcx, level, "relative drop order on unwind changing in a future release")
+                .with_span_label(borrowed, "this value would be considered dead on an unwind path");
+        callback(&mut diag);
+        diag
+    }
+}

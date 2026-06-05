@@ -1,6 +1,6 @@
 - // MIR for `complicated_match` after SimplifyCfg-initial
 + // MIR for `complicated_match` after ElaborateDrops
-  
+
   fn complicated_match(_1: bool, _2: (bool, bool, String)) -> i32 {
       debug cond => _1;
       debug items => _2;
@@ -29,35 +29,35 @@
           debug b => _15;
           debug t => _16;
       }
-  
+
       bb0: {
           PlaceMention(_2);
 -         switchInt(copy (_2.0: bool)) -> [0: bb2, otherwise: bb1];
 +         switchInt(copy (_2.0: bool)) -> [0: bb6, otherwise: bb1];
       }
-  
+
       bb1: {
 -         switchInt(copy (_2.1: bool)) -> [0: bb4, otherwise: bb3];
 +         switchInt(copy (_2.1: bool)) -> [0: bb5, otherwise: bb2];
       }
-  
+
       bb2: {
 -         falseEdge -> [real: bb9, imaginary: bb1];
 +         switchInt(copy (_2.0: bool)) -> [0: bb3, otherwise: bb4];
       }
-  
+
       bb3: {
 -         switchInt(copy (_2.0: bool)) -> [0: bb6, otherwise: bb5];
 -     }
-- 
+-
 -     bb4: {
 -         falseEdge -> [real: bb8, imaginary: bb3];
 -     }
-- 
+-
 -     bb5: {
 -         falseEdge -> [real: bb7, imaginary: bb6];
 -     }
-- 
+-
 -     bb6: {
           StorageLive(_15);
           _15 = copy (_2.1: bool);
@@ -66,7 +66,7 @@
 -         goto -> bb20;
 +         goto -> bb17;
       }
-  
+
 -     bb7: {
 +     bb4: {
           StorageLive(_15);
@@ -76,7 +76,7 @@
 -         goto -> bb20;
 +         goto -> bb17;
       }
-  
+
 -     bb8: {
 +     bb5: {
           StorageLive(_6);
@@ -91,7 +91,7 @@
 -         switchInt(move _10) -> [0: bb12, otherwise: bb11];
 +         switchInt(move _10) -> [0: bb9, otherwise: bb8];
       }
-  
+
 -     bb9: {
 +     bb6: {
           StorageLive(_6);
@@ -106,14 +106,14 @@
 -         switchInt(move _13) -> [0: bb16, otherwise: bb15];
 +         switchInt(move _13) -> [0: bb13, otherwise: bb12];
       }
-  
+
 -     bb10: {
 +     bb7: {
           _0 = const 1_i32;
--         drop(_7) -> [return: bb19, unwind: bb25];
+-         drop(_7) -> [return: bb19, unwind: bb26];
 +         drop(_7) -> [return: bb16, unwind: bb22];
       }
-  
+
 -     bb11: {
 +     bb8: {
           _0 = const 3_i32;
@@ -122,14 +122,14 @@
 -         goto -> bb23;
 +         goto -> bb20;
       }
-  
+
 -     bb12: {
 +     bb9: {
           _9 = copy (*_6);
 -         switchInt(move _9) -> [0: bb14, otherwise: bb13];
 +         switchInt(move _9) -> [0: bb11, otherwise: bb10];
       }
-  
+
 -     bb13: {
 +     bb10: {
           StorageDead(_10);
@@ -145,7 +145,7 @@
 -         goto -> bb10;
 +         goto -> bb7;
       }
-  
+
 -     bb14: {
 +     bb11: {
           StorageDead(_10);
@@ -155,7 +155,7 @@
 -         falseEdge -> [real: bb3, imaginary: bb3];
 +         goto -> bb2;
       }
-  
+
 -     bb15: {
 +     bb12: {
           _0 = const 3_i32;
@@ -164,14 +164,14 @@
 -         goto -> bb23;
 +         goto -> bb20;
       }
-  
+
 -     bb16: {
 +     bb13: {
           _12 = copy (*_6);
 -         switchInt(move _12) -> [0: bb18, otherwise: bb17];
 +         switchInt(move _12) -> [0: bb15, otherwise: bb14];
       }
-  
+
 -     bb17: {
 +     bb14: {
           StorageDead(_13);
@@ -187,7 +187,7 @@
 -         goto -> bb10;
 +         goto -> bb7;
       }
-  
+
 -     bb18: {
 +     bb15: {
           StorageDead(_13);
@@ -197,7 +197,7 @@
 -         falseEdge -> [real: bb1, imaginary: bb1];
 +         goto -> bb1;
       }
-  
+
 -     bb19: {
 +     bb16: {
           StorageDead(_7);
@@ -207,14 +207,14 @@
 -         goto -> bb22;
 +         goto -> bb19;
       }
-  
+
 -     bb20: {
 +     bb17: {
           _0 = const 2_i32;
 -         drop(_16) -> [return: bb21, unwind: bb25];
 +         drop(_16) -> [return: bb18, unwind: bb22];
       }
-  
+
 -     bb21: {
 +     bb18: {
           StorageDead(_16);
@@ -222,51 +222,61 @@
 -         goto -> bb22;
 +         goto -> bb19;
       }
-  
+
 -     bb22: {
--         drop(_2) -> [return: bb24, unwind: bb26];
+-         drop(_2) -> [return: bb24, unwind: bb28];
 +     bb19: {
 +         goto -> bb26;
       }
-  
+
 -     bb23: {
 +     bb20: {
           StorageDead(_8);
           StorageDead(_6);
--         drop(_2) -> [return: bb24, unwind: bb26];
+-         drop(_2) -> [return: bb24, unwind: bb28];
 +         drop(_2) -> [return: bb21, unwind: bb23];
       }
-  
+
 -     bb24: {
 +     bb21: {
           return;
       }
-  
+
 -     bb25 (cleanup): {
--         drop(_2) -> [return: bb26, unwind terminate(cleanup)];
+-         BackwardIncompatibleDropHint(_16);
+-         BackwardIncompatibleDropHint(_15);
 +     bb22 (cleanup): {
-+         goto -> bb27;
+          goto -> bb27;
       }
-  
+
 -     bb26 (cleanup): {
+-         BackwardIncompatibleDropHint(_7);
+-         BackwardIncompatibleDropHint(_5);
+-         BackwardIncompatibleDropHint(_8);
+-         BackwardIncompatibleDropHint(_6);
+-         goto -> bb27;
 +     bb23 (cleanup): {
-          resume;
-+     }
-+ 
++         resume;
+      }
+
+-     bb27 (cleanup): {
+-         drop(_2) -> [return: bb28, unwind terminate(cleanup)];
 +     bb24: {
 +         goto -> bb21;
-+     }
-+ 
+      }
+
+-     bb28 (cleanup): {
+-         resume;
 +     bb25 (cleanup): {
 +         goto -> bb23;
 +     }
-+ 
++
 +     bb26: {
 +         goto -> bb24;
 +     }
-+ 
++
 +     bb27 (cleanup): {
 +         goto -> bb23;
       }
   }
-  
+
