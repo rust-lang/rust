@@ -73,14 +73,19 @@ fn main() -> () {
     }
 
     bb6 (cleanup): {
+        StorageDead(_6);
         drop(_5) -> [return: bb7, unwind terminate(cleanup)];
     }
 
     bb7 (cleanup): {
+        StorageDead(_5);
         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
     }
 
     bb8 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
         resume;
     }
 }

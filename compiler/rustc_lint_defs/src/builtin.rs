@@ -150,6 +150,7 @@ pub mod hardwired {
             UNUSED_UNSAFE,
             UNUSED_VARIABLES,
             UNUSED_VISIBILITIES,
+            UNWIND_DROP_ORDER,
             USELESS_DEPRECATED,
             VARARGS_WITHOUT_PATTERN,
             WARNINGS,
@@ -5230,6 +5231,47 @@ declare_lint! {
     "Detect and warn on significant change in drop order in tail expression location",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "temporary-tail-expr-scope"),
+    };
+}
+
+declare_lint! {
+    /// The `unwind_drop_order` lint detects values whose relative drop order on
+    /// panic unwind paths will change in a future release.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// #![warn(unwind_drop_order)]
+    ///
+    /// struct Wrap<T>(T);
+    ///
+    /// impl<T> Drop for Wrap<T> {
+    ///     fn drop(&mut self) {}
+    /// }
+    ///
+    /// fn main() {
+    ///     let x;
+    ///     {
+    ///         let y = 1;
+    ///         x = Wrap(&y);
+    ///         panic!();
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// During panic unwinding, Rust currently does not mark locals as dead at
+    /// the same program points as normal control flow. A future release may
+    /// make unwind paths use the same storage-dead points as normal paths. This
+    /// lint reports code where that change can affect relative drop order
+    /// checking.
+    pub UNWIND_DROP_ORDER,
+    Allow,
+    "detects future changes to drop order during panic unwinding",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseSemanticsChange #147875),
     };
 }
 

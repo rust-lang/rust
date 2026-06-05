@@ -43,7 +43,7 @@ fn const_array_len(_1: [T; 5]) -> () {
         StorageLive(_6);
         StorageLive(_7);
         _7 = move _2;
-        _6 = opaque::<T>(move _7) -> [return: bb3, unwind: bb17];
+        _6 = opaque::<T>(move _7) -> [return: bb3, unwind: bb20];
     }
 
     bb3: {
@@ -52,7 +52,7 @@ fn const_array_len(_1: [T; 5]) -> () {
         StorageLive(_8);
         StorageLive(_9);
         _9 = move _3;
-        _8 = opaque::<T>(move _9) -> [return: bb4, unwind: bb16];
+        _8 = opaque::<T>(move _9) -> [return: bb4, unwind: bb18];
     }
 
     bb4: {
@@ -61,7 +61,7 @@ fn const_array_len(_1: [T; 5]) -> () {
         StorageLive(_10);
         StorageLive(_11);
         _11 = move _4;
-        _10 = opaque::<[T; 2]>(move _11) -> [return: bb5, unwind: bb15];
+        _10 = opaque::<[T; 2]>(move _11) -> [return: bb5, unwind: bb16];
     }
 
     bb5: {
@@ -77,7 +77,7 @@ fn const_array_len(_1: [T; 5]) -> () {
         StorageDead(_13);
         StorageDead(_12);
         _0 = const ();
-        drop(_5) -> [return: bb8, unwind: bb19];
+        drop(_5) -> [return: bb8, unwind: bb23];
     }
 
     bb7: {
@@ -87,17 +87,17 @@ fn const_array_len(_1: [T; 5]) -> () {
 
     bb8: {
         StorageDead(_5);
-        drop(_4) -> [return: bb9, unwind: bb20];
+        drop(_4) -> [return: bb9, unwind: bb24];
     }
 
     bb9: {
         StorageDead(_4);
-        drop(_3) -> [return: bb10, unwind: bb21];
+        drop(_3) -> [return: bb10, unwind: bb25];
     }
 
     bb10: {
         StorageDead(_3);
-        drop(_2) -> [return: bb11, unwind: bb22];
+        drop(_2) -> [return: bb11, unwind: bb26];
     }
 
     bb11: {
@@ -106,7 +106,7 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb12: {
-        drop(_1) -> [return: bb13, unwind: bb23];
+        drop(_1) -> [return: bb13, unwind: bb27];
     }
 
     bb13: {
@@ -114,42 +114,70 @@ fn const_array_len(_1: [T; 5]) -> () {
     }
 
     bb14 (cleanup): {
-        drop(_13) -> [return: bb18, unwind terminate(cleanup)];
+        drop(_13) -> [return: bb15, unwind terminate(cleanup)];
     }
 
     bb15 (cleanup): {
-        drop(_11) -> [return: bb18, unwind terminate(cleanup)];
+        StorageDead(_13);
+        StorageDead(_12);
+        goto -> bb22;
     }
 
     bb16 (cleanup): {
-        drop(_9) -> [return: bb18, unwind terminate(cleanup)];
+        drop(_11) -> [return: bb17, unwind terminate(cleanup)];
     }
 
     bb17 (cleanup): {
-        drop(_7) -> [return: bb18, unwind terminate(cleanup)];
+        StorageDead(_11);
+        StorageDead(_10);
+        goto -> bb22;
     }
 
     bb18 (cleanup): {
-        drop(_5) -> [return: bb19, unwind terminate(cleanup)];
+        drop(_9) -> [return: bb19, unwind terminate(cleanup)];
     }
 
     bb19 (cleanup): {
-        drop(_4) -> [return: bb20, unwind terminate(cleanup)];
+        StorageDead(_9);
+        StorageDead(_8);
+        goto -> bb22;
     }
 
     bb20 (cleanup): {
-        drop(_3) -> [return: bb21, unwind terminate(cleanup)];
+        drop(_7) -> [return: bb21, unwind terminate(cleanup)];
     }
 
     bb21 (cleanup): {
-        drop(_2) -> [return: bb22, unwind terminate(cleanup)];
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb22;
     }
 
     bb22 (cleanup): {
-        drop(_1) -> [return: bb23, unwind terminate(cleanup)];
+        drop(_5) -> [return: bb23, unwind terminate(cleanup)];
     }
 
     bb23 (cleanup): {
+        StorageDead(_5);
+        drop(_4) -> [return: bb24, unwind terminate(cleanup)];
+    }
+
+    bb24 (cleanup): {
+        StorageDead(_4);
+        drop(_3) -> [return: bb25, unwind terminate(cleanup)];
+    }
+
+    bb25 (cleanup): {
+        StorageDead(_3);
+        drop(_2) -> [return: bb26, unwind terminate(cleanup)];
+    }
+
+    bb26 (cleanup): {
+        StorageDead(_2);
+        drop(_1) -> [return: bb27, unwind terminate(cleanup)];
+    }
+
+    bb27 (cleanup): {
         resume;
     }
 }
