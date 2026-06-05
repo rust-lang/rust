@@ -63,19 +63,19 @@ impl<'tcx> Default for TlsData<'tcx> {
 
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
-    /// `max_size` determines the integer size the key has to fit in.
+    /// `key_size` determines the integer size the key has to fit in.
     #[expect(clippy::arithmetic_side_effects)]
     pub fn create_tls_key(
         &mut self,
         dtor: Option<(ty::Instance<'tcx>, Span)>,
-        max_size: Size,
+        key_size: Size,
     ) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
-        if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits()) {
+        if new_key > key_size.unsigned_int_max() {
             throw_unsup_format!("we ran out of TLS key space");
         }
         interp_ok(new_key)
