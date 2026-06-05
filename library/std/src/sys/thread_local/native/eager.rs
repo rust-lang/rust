@@ -4,8 +4,8 @@ use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
 enum State {
+    Alive = 0,
     Unregistered,
-    Alive,
     Destroyed,
 }
 
