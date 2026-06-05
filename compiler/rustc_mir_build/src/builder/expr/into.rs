@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
@@ -491,7 +492,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let success = this.cfg.start_new_block();
 
-                this.record_operands_moved(&args);
+                for operand in args.iter() {
+                    this.record_operand_moved(&operand.node);
+                }
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
@@ -636,7 +639,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let variant = adt_def.variant(variant_index);
                 let field_names = variant.fields.indices();
 
-                let fields = match base {
+                let fields: IndexVec<_, _> = match base {
                     AdtExprBase::None => {
                         field_names.filter_map(|n| fields_map.get(&n).cloned()).collect()
                     }
@@ -701,6 +704,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 ));
+                for operand in fields.iter() {
+                    this.record_operand_moved(operand);
+                }
                 this.cfg.push_assign(
                     block,
                     source_info,
@@ -849,7 +855,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
+                let operand = this.consume_by_copy_or_move(place);
+                this.record_operand_moved(&operand);
+                let rvalue = Rvalue::Use(operand, WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -875,6 +883,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
                 );
+                this.record_operand_moved(&value);
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,

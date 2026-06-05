@@ -1522,7 +1522,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(span, region_scope, local, DropKind::ForLint);
     }
 
-    /// Indicates that the "local operand" stored in `local` is
+    /// Indicates that the "local operand" stored in `operand` is
     /// *moved* at some point during execution (see `local_scope` for
     /// more information about what a "local operand" is -- in short,
     /// it's an intermediate operand created as part of preparing some
@@ -1558,19 +1558,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn record_operand_moved(&mut self, operand: &Operand<'tcx>) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
-
-        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
+        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!");
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
+        let local_moved = match operand {
             Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
             Operand::Move(place) => place.as_local(),
-        });
+        };
 
-        for local in locals_moved {
+        if let Some(local) = local_moved {
             // check if we have a Drop for this operand and -- if so
             // -- add it to the list of moved operands. Note that this
             // local might not have been an operand created for this
