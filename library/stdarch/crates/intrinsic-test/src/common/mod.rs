@@ -23,6 +23,10 @@ mod gen_c;
 mod gen_rust;
 mod values;
 
+// The number of times each intrinsic will be called - influences the generation of the
+// test arrays to minimise repeated testing of the same test values.
+pub(crate) const PASSES: u32 = 20;
+
 /// Architectures must support this trait
 /// to be successfully tested.
 pub trait SupportedArchitectureTest {
