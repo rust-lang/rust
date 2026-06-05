@@ -5253,6 +5253,7 @@ impl<'hir> Node<'hir> {
                 GenericParamKind::Type { default, .. } => default,
                 GenericParamKind::Const { ty, .. } => Some(ty),
             },
+            Node::Field(f) => Some(f.ty),
             _ => None,
         }
     }
