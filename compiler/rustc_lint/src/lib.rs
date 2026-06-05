@@ -178,7 +178,7 @@ early_lint_methods!(
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
             WhileTrue: WhileTrue,
-            NonAsciiIdents: NonAsciiIdents,
+            NonAsciiIdents: NonAsciiIdents::default(),
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
