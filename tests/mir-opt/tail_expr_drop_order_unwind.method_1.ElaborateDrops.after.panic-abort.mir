@@ -73,7 +73,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb7: {
-        goto -> bb21;
+        goto -> bb18;
     }
 
     bb8: {
@@ -93,7 +93,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb11 (cleanup): {
-        goto -> bb25;
+        goto -> bb21;
     }
 
     bb12 (cleanup): {
@@ -112,8 +112,8 @@ fn method_1(_1: Guard) -> () {
         goto -> bb8;
     }
 
-    bb16 (cleanup): {
-        goto -> bb12;
+    bb16: {
+        goto -> bb15;
     }
 
     bb17 (cleanup): {
@@ -121,37 +121,21 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb18: {
-        goto -> bb15;
+        _11 = discriminant(_2);
+        switchInt(move _11) -> [0: bb15, otherwise: bb16];
     }
 
-    bb19: {
-        goto -> bb15;
+    bb19 (cleanup): {
+        _12 = discriminant(_2);
+        switchInt(move _12) -> [0: bb12, otherwise: bb17];
     }
 
     bb20 (cleanup): {
         goto -> bb12;
     }
 
-    bb21: {
-        _11 = discriminant(_2);
-        switchInt(move _11) -> [0: bb18, otherwise: bb19];
-    }
-
-    bb22 (cleanup): {
-        _12 = discriminant(_2);
-        switchInt(move _12) -> [0: bb16, otherwise: bb20];
-    }
-
-    bb23 (cleanup): {
-        goto -> bb12;
-    }
-
-    bb24 (cleanup): {
-        goto -> bb12;
-    }
-
-    bb25 (cleanup): {
+    bb21 (cleanup): {
         _13 = discriminant(_2);
-        switchInt(move _13) -> [0: bb23, otherwise: bb24];
+        switchInt(move _13) -> [0: bb12, otherwise: bb20];
     }
 }

@@ -50,7 +50,7 @@
   
       bb5: {
 -         drop(_1) -> [return: bb6, unwind: bb9];
-+         goto -> bb16;
++         goto -> bb13;
       }
   
       bb6: {
@@ -75,8 +75,8 @@
 +         goto -> bb6;
 +     }
 + 
-+     bb11 (cleanup): {
-+         goto -> bb9;
++     bb11: {
++         goto -> bb10;
 +     }
 + 
 +     bb12 (cleanup): {
@@ -84,25 +84,13 @@
 +     }
 + 
 +     bb13: {
-+         goto -> bb10;
-+     }
-+ 
-+     bb14: {
-+         goto -> bb10;
-+     }
-+ 
-+     bb15 (cleanup): {
-+         goto -> bb9;
-+     }
-+ 
-+     bb16: {
 +         _6 = discriminant(_1);
-+         switchInt(move _6) -> [0: bb13, otherwise: bb14];
++         switchInt(move _6) -> [0: bb10, otherwise: bb11];
 +     }
 + 
-+     bb17 (cleanup): {
++     bb14 (cleanup): {
 +         _7 = discriminant(_1);
-+         switchInt(move _7) -> [0: bb11, otherwise: bb15];
++         switchInt(move _7) -> [0: bb9, otherwise: bb12];
       }
   }
   

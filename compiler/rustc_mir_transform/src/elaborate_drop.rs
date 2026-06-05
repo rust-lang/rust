@@ -798,6 +798,7 @@ where
 
                 (tcx.mk_place_field(base_place, field_idx, field_ty), subpath)
             })
+            .filter(|path| self.should_retain_for_ladder(path))
             .collect()
     }
 
@@ -875,6 +876,19 @@ where
         )
     }
 
+    /// Whether this drop is useful. This is purely an optimization to avoid generating useless blocks.
+    fn should_retain_for_ladder(&self, (place, subpath): &(Place<'tcx>, Option<D::Path>)) -> bool {
+        if !self.place_ty(*place).needs_drop(self.tcx(), self.elaborator.typing_env()) {
+            return false;
+        }
+        if let Some(subpath) = subpath
+            && let DropStyle::Dead = self.elaborator.drop_style(*subpath, DropFlagMode::Deep)
+        {
+            return false;
+        }
+        true
+    }
+
     /// Creates a full drop ladder, consisting of 2 connected half-drop-ladders
     ///
     /// For example, with 3 fields, the drop ladder is
@@ -915,7 +929,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_ladder(
         &mut self,
-        fields: Vec<(Place<'tcx>, Option<D::Path>)>,
+        mut fields: Vec<(Place<'tcx>, Option<D::Path>)>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -925,10 +939,7 @@ where
             "Dropline is set for cleanup drop ladder"
         );
 
-        let mut fields = fields;
-        fields.retain(|&(place, _)| {
-            self.place_ty(place).needs_drop(self.tcx(), self.elaborator.typing_env())
-        });
+        fields.retain(|path| self.should_retain_for_ladder(path));
 
         debug!("drop_ladder - fields needing drop: {:?}", fields);
 

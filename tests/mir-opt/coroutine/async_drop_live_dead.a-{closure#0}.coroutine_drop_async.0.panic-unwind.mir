@@ -32,7 +32,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     bb0: {
         _23 = copy (_1.0: &mut {async fn body of a<T>()});
         _22 = discriminant((*_23));
-        switchInt(move _22) -> [0: bb17, 2: bb23, 3: bb21, 4: bb22, otherwise: bb24];
+        switchInt(move _22) -> [0: bb16, 2: bb22, 3: bb20, 4: bb21, otherwise: bb23];
     }
 
     bb1: {
@@ -47,11 +47,11 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb3 (cleanup): {
         nop;
-        goto -> bb15;
+        goto -> bb4;
     }
 
     bb4 (cleanup): {
-        goto -> bb20;
+        goto -> bb19;
     }
 
     bb5: {
@@ -108,49 +108,45 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
         goto -> bb13;
     }
 
-    bb15 (cleanup): {
-        goto -> bb4;
-    }
-
-    bb16: {
+    bb15: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }
 
+    bb16: {
+        goto -> bb18;
+    }
+
     bb17: {
-        goto -> bb19;
+        goto -> bb15;
     }
 
     bb18: {
-        goto -> bb16;
+        drop(((*_23).0: T)) -> [return: bb17, unwind: bb4];
     }
 
-    bb19: {
-        drop(((*_23).0: T)) -> [return: bb18, unwind: bb4];
-    }
-
-    bb20 (cleanup): {
+    bb19 (cleanup): {
         discriminant((*_23)) = 2;
         resume;
     }
 
-    bb21: {
+    bb20: {
         StorageLive(_5);
         _5 = move _2;
         goto -> bb7;
     }
 
-    bb22: {
+    bb21: {
         StorageLive(_12);
         _12 = move _2;
         goto -> bb14;
     }
 
-    bb23: {
-        assert(const false, "`async fn` resumed after panicking") -> [success: bb23, unwind continue];
+    bb22: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb22, unwind continue];
     }
 
-    bb24: {
+    bb23: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }
