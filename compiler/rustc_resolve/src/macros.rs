@@ -43,8 +43,8 @@ use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
     BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
-    InvocationParent, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
-    ResolutionError, Resolver, ScopeSet, Segment, Used,
+    InvocationParent, ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError, Resolver,
+    ScopeSet, Segment, Used,
 };
 
 /// Name declaration produced by a `macro_rules` item definition.
@@ -1193,15 +1193,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Silence `unused_imports` on the fallback import as well.
                 self.get_mut().record_use(ident, fallback_binding, Used::Other);
             } else {
-                let location = match parent_scope.module.kind {
-                    ModuleKind::Def(kind, def_id, _, name) => {
-                        if let Some(name) = name {
+                let location = match parent_scope.module.def() {
+                    Some((kind, def_id)) => {
+                        if let Some(name) = parent_scope.module.name() {
                             format!("{} `{name}`", kind.descr(def_id))
                         } else {
                             "the crate root".to_string()
                         }
                     }
-                    ModuleKind::Block => "this scope".to_string(),
+                    None => "this scope".to_string(),
                 };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,

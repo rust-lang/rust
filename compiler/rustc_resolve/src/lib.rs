@@ -534,7 +534,7 @@ enum ModuleKind {
     /// }
     /// ```
     Block,
-    /// Any module with a name.
+    /// A local non-block module.
     ///
     /// This could be:
     ///
@@ -543,13 +543,16 @@ enum ModuleKind {
     ///   The crate root will have `None` for the symbol.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, NodeId, Option<Symbol>),
+    Local(DefKind, LocalDefId, NodeId, Option<Symbol>),
+    /// An external module, non-block by definition.
+    Extern(DefKind, DefId, Symbol),
 }
 
 impl ModuleKind {
     fn opt_def_id(&self) -> Option<DefId> {
         match self {
-            ModuleKind::Def(_, def_id, _, _) => Some(*def_id),
+            ModuleKind::Local(_, def_id, _, _) => Some(def_id.to_def_id()),
+            ModuleKind::Extern(_, def_id, _) => Some(*def_id),
             _ => None,
         }
     }
@@ -558,11 +561,16 @@ impl ModuleKind {
         self.opt_def_id().expect("`Module::def_id` is called on a block module")
     }
 
-    fn is_local(&self) -> bool {
+    fn def(&self) -> Option<(DefKind, DefId)> {
         match self {
-            ModuleKind::Def(_, def_id, ..) => def_id.is_local(),
-            ModuleKind::Block => true,
+            ModuleKind::Local(def_kind, def_id, _, _) => Some((*def_kind, def_id.to_def_id())),
+            ModuleKind::Extern(def_kind, def_id, _) => Some((*def_kind, *def_id)),
+            ModuleKind::Block => None,
         }
+    }
+
+    fn is_local(&self) -> bool {
+        matches!(self, ModuleKind::Local(..) | ModuleKind::Block)
     }
 }
 
@@ -730,13 +738,10 @@ impl<'ra> ModuleData<'ra> {
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Self {
         let is_foreign = !kind.is_local();
-        let self_decl = match kind {
-            ModuleKind::Def(def_kind, def_id, ..) => {
-                let expn_id = expansion.as_local().unwrap_or(LocalExpnId::ROOT);
-                Some(arenas.new_def_decl(Res::Def(def_kind, def_id), vis, span, expn_id, parent))
-            }
-            ModuleKind::Block => None,
-        };
+        let self_decl = kind.def().map(|(def_kind, def_id)| {
+            let expn_id = expansion.as_local().unwrap_or(LocalExpnId::ROOT);
+            arenas.new_def_decl(Res::Def(def_kind, def_id), vis, span, expn_id, parent)
+        });
         ModuleData {
             parent,
             kind,
@@ -758,7 +763,8 @@ impl<'ra> ModuleData<'ra> {
     fn name(&self) -> Option<Symbol> {
         match self.kind {
             ModuleKind::Block => None,
-            ModuleKind::Def(.., name) => name,
+            ModuleKind::Local(.., name) => name,
+            ModuleKind::Extern(.., name) => Some(name),
         }
     }
 
@@ -768,6 +774,10 @@ impl<'ra> ModuleData<'ra> {
 
     fn def_id(&self) -> DefId {
         self.kind.def_id()
+    }
+
+    fn def(&self) -> Option<(DefKind, DefId)> {
+        self.kind.def()
     }
 
     fn is_local(&self) -> bool {
@@ -780,14 +790,15 @@ impl<'ra> ModuleData<'ra> {
 
     fn res(&self) -> Option<Res> {
         match self.kind {
-            ModuleKind::Def(kind, def_id, _, _) => Some(Res::Def(kind, def_id)),
+            ModuleKind::Local(kind, def_id, _, _) => Some(Res::Def(kind, def_id.to_def_id())),
+            ModuleKind::Extern(kind, def_id, _) => Some(Res::Def(kind, def_id)),
             _ => None,
         }
     }
 
     fn def_kind(&self) -> Option<DefKind> {
         match self.kind {
-            ModuleKind::Def(def_kind, ..) => Some(def_kind),
+            ModuleKind::Local(def_kind, ..) | ModuleKind::Extern(def_kind, ..) => Some(def_kind),
             ModuleKind::Block => None,
         }
     }
@@ -864,7 +875,8 @@ impl<'ra> Module<'ra> {
     /// This may be the crate root.
     fn nearest_parent_mod(self) -> DefId {
         match self.kind {
-            ModuleKind::Def(DefKind::Mod, def_id, _, _) => def_id,
+            ModuleKind::Local(DefKind::Mod, def_id, _, _) => def_id.to_def_id(),
+            ModuleKind::Extern(DefKind::Mod, def_id, _) => def_id,
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
         }
     }
@@ -873,7 +885,8 @@ impl<'ra> Module<'ra> {
     /// This may be the crate root.
     fn nearest_parent_mod_node_id(self) -> NodeId {
         match self.kind {
-            ModuleKind::Def(DefKind::Mod, _, node_id, _) => node_id,
+            ModuleKind::Local(DefKind::Mod, _, node_id, _) => node_id,
+            ModuleKind::Extern(..) => ast::DUMMY_NODE_ID,
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod_node_id(),
         }
     }
@@ -892,20 +905,16 @@ impl<'ra> Module<'ra> {
     #[track_caller]
     fn expect_local(self) -> LocalModule<'ra> {
         match self.kind {
-            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => {
-                span_bug!(self.span, "unexpected extern module: {self:?}")
-            }
-            ModuleKind::Def(..) | ModuleKind::Block => LocalModule(self.0),
+            ModuleKind::Local(..) | ModuleKind::Block => LocalModule(self.0),
+            _ => span_bug!(self.span, "unexpected extern module: {self:?}"),
         }
     }
 
     #[track_caller]
     fn expect_extern(self) -> ExternModule<'ra> {
         match self.kind {
-            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => ExternModule(self.0),
-            ModuleKind::Def(..) | ModuleKind::Block => {
-                span_bug!(self.span, "unexpected local module: {self:?}")
-            }
+            ModuleKind::Extern(..) => ExternModule(self.0),
+            _ => span_bug!(self.span, "unexpected local module: {self:?}"),
         }
     }
 }
@@ -1769,10 +1778,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         current_crate_outer_attr_insert_span: Span,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Resolver<'ra, 'tcx> {
-        let root_def_id = CRATE_DEF_ID.to_def_id();
         let graph_root = LocalModule::new(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, CRATE_NODE_ID, None),
+            ModuleKind::Local(DefKind::Mod, CRATE_DEF_ID, CRATE_NODE_ID, None),
             Visibility::Public,
             ExpnId::root(),
             crate_span,
@@ -1783,7 +1791,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let local_module_map = FxIndexMap::from_iter([(CRATE_DEF_ID, graph_root)]);
         let empty_module = LocalModule::new(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, CRATE_NODE_ID, None),
+            ModuleKind::Local(DefKind::Mod, CRATE_DEF_ID, CRATE_NODE_ID, None),
             Visibility::Public,
             ExpnId::root(),
             DUMMY_SP,
