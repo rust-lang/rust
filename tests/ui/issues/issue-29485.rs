@@ -1,11 +1,8 @@
 //@ run-pass
-#![allow(unused_attributes)]
 //@ aux-build:issue-29485.rs
 //@ needs-unwind
 //@ needs-threads
 //@ ignore-backends: gcc
-
-#[feature(recover)]
 
 extern crate a;
 
