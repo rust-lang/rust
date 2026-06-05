@@ -63,11 +63,11 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
 fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
     match p.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
-        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..)) => false,
+        | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..)) => false,
         ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
         | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)

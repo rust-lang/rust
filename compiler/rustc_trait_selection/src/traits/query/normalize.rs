@@ -4,7 +4,7 @@
 
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_infer::traits::{Obligation, PredicateObligations};
+use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
@@ -372,18 +372,6 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         } else {
             result.normalized_term
         };
-        // When normalizing a const alias, register a `ConstArgHasType` obligation
-        // to ensure the const value's type matches the declared type.
-        if let Some(ct) = res.as_const() {
-            let expected_ty =
-                tcx.type_of(term.def_id()).instantiate(tcx, term.args).skip_norm_wip();
-            self.obligations.push(Obligation::new(
-                tcx,
-                self.cause.clone(),
-                self.param_env,
-                ty::ClauseKind::ConstArgHasType(ct, expected_ty),
-            ));
-        }
         // `tcx.normalize_canonicalized_projection` may normalize to a type that
         // still has unevaluated consts, so keep normalizing here if that's the case.
         // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
