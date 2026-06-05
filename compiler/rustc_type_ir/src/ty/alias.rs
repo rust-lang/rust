@@ -6,6 +6,8 @@ use rustc_type_ir_macros::{
 };
 
 use crate::Interner;
+use crate::predicate::AliasTermKind;
+use crate::ty_kind::AliasTyKind;
 
 /// Represents an alias of a type, constant, or other term-like item.
 ///
@@ -59,3 +61,6 @@ impl<I: Interner> Alias<I, I::UnevaluatedConstId> {
         Alias { kind, args, _use_alias_new_instead: () }
     }
 }
+
+pub type AliasTerm<I> = Alias<I, AliasTermKind<I>>;
+pub type AliasTy<I> = Alias<I, AliasTyKind<I>>;

@@ -17,7 +17,7 @@ use rustc_type_ir_macros::{
 use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
-use crate::ty::Alias;
+use crate::ty::AliasTy;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
 use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
@@ -431,8 +431,6 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
         }
     }
 }
-
-pub type AliasTy<I> = Alias<I, AliasTyKind<I>>;
 
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {

@@ -81,7 +81,7 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
-pub use ty::Alias;
+pub use ty::{Alias, AliasTerm, AliasTy};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use unnormalized::Unnormalized;

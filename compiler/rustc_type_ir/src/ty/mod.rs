@@ -1,3 +1,3 @@
 mod alias;
 
-pub use alias::Alias;
+pub use alias::{Alias, AliasTerm, AliasTy};

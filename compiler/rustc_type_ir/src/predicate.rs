@@ -10,6 +10,7 @@ use rustc_type_ir_macros::{
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
+use crate::ty::AliasTerm;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::{TypeVisitable, TypeVisitableExt as _, TypeVisitor};
 use crate::{self as ty, Alias, AliasTyKind, Interner, UnevaluatedConstKind, try_visit};
@@ -662,8 +663,6 @@ impl<I: Interner> From<ty::UnevaluatedConstKind<I>> for AliasTermKind<I> {
     }
 }
 
-pub type AliasTerm<I> = Alias<I, AliasTermKind<I>>;
-
 impl<I: Interner> AliasTerm<I> {
     pub fn new_from_args(
         interner: I,
@@ -722,6 +721,7 @@ impl<I: Interner> AliasTerm<I> {
         ty::UnevaluatedConst { kind, args: self.args, _use_unevaluated_const_new_instead: () }
     }
 
+    // FIXME: replace with explicit matches
     pub fn def_id(self) -> I::DefId {
         self.kind.def_id()
     }
