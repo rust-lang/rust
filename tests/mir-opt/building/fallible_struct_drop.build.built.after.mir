@@ -1,0 +1,794 @@
+// MIR for `build` after built
+
+fn build(_1: u64) -> Result<Big, ()> {
+    debug s => _1;
+    let mut _0: std::result::Result<Big, ()>;
+    let mut _2: Big;
+    let mut _3: std::string::String;
+    let mut _4: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+    let mut _5: std::result::Result<std::string::String, ()>;
+    let mut _6: u64;
+    let mut _7: u64;
+    let mut _8: isize;
+    let _9: std::result::Result<std::convert::Infallible, ()>;
+    let mut _10: !;
+    let mut _11: std::result::Result<std::convert::Infallible, ()>;
+    let _12: std::string::String;
+    let mut _13: std::string::String;
+    let mut _14: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+    let mut _15: std::result::Result<std::string::String, ()>;
+    let mut _16: u64;
+    let mut _17: u64;
+    let mut _18: isize;
+    let _19: std::result::Result<std::convert::Infallible, ()>;
+    let mut _20: !;
+    let mut _21: std::result::Result<std::convert::Infallible, ()>;
+    let _22: std::string::String;
+    let mut _23: std::string::String;
+    let mut _24: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+    let mut _25: std::result::Result<std::string::String, ()>;
+    let mut _26: u64;
+    let mut _27: u64;
+    let mut _28: isize;
+    let _29: std::result::Result<std::convert::Infallible, ()>;
+    let mut _30: !;
+    let mut _31: std::result::Result<std::convert::Infallible, ()>;
+    let _32: std::string::String;
+    let mut _33: std::string::String;
+    let mut _34: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+    let mut _35: std::result::Result<std::string::String, ()>;
+    let mut _36: u64;
+    let mut _37: u64;
+    let mut _38: isize;
+    let _39: std::result::Result<std::convert::Infallible, ()>;
+    let mut _40: !;
+    let mut _41: std::result::Result<std::convert::Infallible, ()>;
+    let _42: std::string::String;
+    let mut _43: std::string::String;
+    let mut _44: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+    let mut _45: std::result::Result<std::string::String, ()>;
+    let mut _46: u64;
+    let mut _47: u64;
+    let mut _48: isize;
+    let _49: std::result::Result<std::convert::Infallible, ()>;
+    let mut _50: !;
+    let mut _51: std::result::Result<std::convert::Infallible, ()>;
+    let _52: std::string::String;
+    scope 1 {
+        debug residual => _9;
+        scope 2 {
+        }
+    }
+    scope 3 {
+        debug val => _12;
+        scope 4 {
+        }
+    }
+    scope 5 {
+        debug residual => _19;
+        scope 6 {
+        }
+    }
+    scope 7 {
+        debug val => _22;
+        scope 8 {
+        }
+    }
+    scope 9 {
+        debug residual => _29;
+        scope 10 {
+        }
+    }
+    scope 11 {
+        debug val => _32;
+        scope 12 {
+        }
+    }
+    scope 13 {
+        debug residual => _39;
+        scope 14 {
+        }
+    }
+    scope 15 {
+        debug val => _42;
+        scope 16 {
+        }
+    }
+    scope 17 {
+        debug residual => _49;
+        scope 18 {
+        }
+    }
+    scope 19 {
+        debug val => _52;
+        scope 20 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = copy _1;
+        _6 = BitXor(move _7, const 0_u64);
+        StorageDead(_7);
+        _5 = make_one(move _6) -> [return: bb1, unwind: bb131];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        _4 = <Result<String, ()> as Try>::branch(move _5) -> [return: bb2, unwind: bb130];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        PlaceMention(_4);
+        _8 = discriminant(_4);
+        switchInt(move _8) -> [0: bb6, 1: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        FakeRead(ForMatchedPlace(None), _4);
+        unreachable;
+    }
+
+    bb4: {
+        falseEdge -> [real: bb8, imaginary: bb6];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        StorageLive(_12);
+        _12 = move ((_4 as Continue).0: std::string::String);
+        _3 = move _12;
+        drop(_12) -> [return: bb12, unwind: bb129];
+    }
+
+    bb7: {
+        goto -> bb3;
+    }
+
+    bb8: {
+        StorageLive(_9);
+        _9 = copy ((_4 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+        StorageLive(_11);
+        _11 = copy _9;
+        _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _11) -> [return: bb9, unwind: bb129];
+    }
+
+    bb9: {
+        StorageDead(_11);
+        goto -> bb98;
+    }
+
+    bb10: {
+        unreachable;
+    }
+
+    bb11: {
+        StorageDead(_9);
+        goto -> bb13;
+    }
+
+    bb12: {
+        StorageDead(_12);
+        goto -> bb13;
+    }
+
+    bb13: {
+        StorageLive(_13);
+        StorageLive(_14);
+        StorageLive(_15);
+        StorageLive(_16);
+        StorageLive(_17);
+        _17 = copy _1;
+        _16 = BitXor(move _17, const 1_u64);
+        StorageDead(_17);
+        _15 = make_one(move _16) -> [return: bb14, unwind: bb128];
+    }
+
+    bb14: {
+        StorageDead(_16);
+        _14 = <Result<String, ()> as Try>::branch(move _15) -> [return: bb15, unwind: bb127];
+    }
+
+    bb15: {
+        StorageDead(_15);
+        PlaceMention(_14);
+        _18 = discriminant(_14);
+        switchInt(move _18) -> [0: bb19, 1: bb17, otherwise: bb16];
+    }
+
+    bb16: {
+        FakeRead(ForMatchedPlace(None), _14);
+        unreachable;
+    }
+
+    bb17: {
+        falseEdge -> [real: bb21, imaginary: bb19];
+    }
+
+    bb18: {
+        goto -> bb16;
+    }
+
+    bb19: {
+        StorageLive(_22);
+        _22 = move ((_14 as Continue).0: std::string::String);
+        _13 = move _22;
+        drop(_22) -> [return: bb25, unwind: bb125];
+    }
+
+    bb20: {
+        goto -> bb16;
+    }
+
+    bb21: {
+        StorageLive(_19);
+        _19 = copy ((_14 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+        StorageLive(_21);
+        _21 = copy _19;
+        _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _21) -> [return: bb22, unwind: bb125];
+    }
+
+    bb22: {
+        StorageDead(_21);
+        goto -> bb94;
+    }
+
+    bb23: {
+        unreachable;
+    }
+
+    bb24: {
+        StorageDead(_19);
+        goto -> bb26;
+    }
+
+    bb25: {
+        StorageDead(_22);
+        goto -> bb26;
+    }
+
+    bb26: {
+        StorageLive(_23);
+        StorageLive(_24);
+        StorageLive(_25);
+        StorageLive(_26);
+        StorageLive(_27);
+        _27 = copy _1;
+        _26 = BitXor(move _27, const 2_u64);
+        StorageDead(_27);
+        _25 = make_one(move _26) -> [return: bb27, unwind: bb124];
+    }
+
+    bb27: {
+        StorageDead(_26);
+        _24 = <Result<String, ()> as Try>::branch(move _25) -> [return: bb28, unwind: bb123];
+    }
+
+    bb28: {
+        StorageDead(_25);
+        PlaceMention(_24);
+        _28 = discriminant(_24);
+        switchInt(move _28) -> [0: bb32, 1: bb30, otherwise: bb29];
+    }
+
+    bb29: {
+        FakeRead(ForMatchedPlace(None), _24);
+        unreachable;
+    }
+
+    bb30: {
+        falseEdge -> [real: bb34, imaginary: bb32];
+    }
+
+    bb31: {
+        goto -> bb29;
+    }
+
+    bb32: {
+        StorageLive(_32);
+        _32 = move ((_24 as Continue).0: std::string::String);
+        _23 = move _32;
+        drop(_32) -> [return: bb38, unwind: bb120];
+    }
+
+    bb33: {
+        goto -> bb29;
+    }
+
+    bb34: {
+        StorageLive(_29);
+        _29 = copy ((_24 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+        StorageLive(_31);
+        _31 = copy _29;
+        _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _31) -> [return: bb35, unwind: bb120];
+    }
+
+    bb35: {
+        StorageDead(_31);
+        goto -> bb89;
+    }
+
+    bb36: {
+        unreachable;
+    }
+
+    bb37: {
+        StorageDead(_29);
+        goto -> bb39;
+    }
+
+    bb38: {
+        StorageDead(_32);
+        goto -> bb39;
+    }
+
+    bb39: {
+        StorageLive(_33);
+        StorageLive(_34);
+        StorageLive(_35);
+        StorageLive(_36);
+        StorageLive(_37);
+        _37 = copy _1;
+        _36 = BitXor(move _37, const 3_u64);
+        StorageDead(_37);
+        _35 = make_one(move _36) -> [return: bb40, unwind: bb119];
+    }
+
+    bb40: {
+        StorageDead(_36);
+        _34 = <Result<String, ()> as Try>::branch(move _35) -> [return: bb41, unwind: bb118];
+    }
+
+    bb41: {
+        StorageDead(_35);
+        PlaceMention(_34);
+        _38 = discriminant(_34);
+        switchInt(move _38) -> [0: bb45, 1: bb43, otherwise: bb42];
+    }
+
+    bb42: {
+        FakeRead(ForMatchedPlace(None), _34);
+        unreachable;
+    }
+
+    bb43: {
+        falseEdge -> [real: bb47, imaginary: bb45];
+    }
+
+    bb44: {
+        goto -> bb42;
+    }
+
+    bb45: {
+        StorageLive(_42);
+        _42 = move ((_34 as Continue).0: std::string::String);
+        _33 = move _42;
+        drop(_42) -> [return: bb51, unwind: bb114];
+    }
+
+    bb46: {
+        goto -> bb42;
+    }
+
+    bb47: {
+        StorageLive(_39);
+        _39 = copy ((_34 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+        StorageLive(_41);
+        _41 = copy _39;
+        _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _41) -> [return: bb48, unwind: bb114];
+    }
+
+    bb48: {
+        StorageDead(_41);
+        goto -> bb83;
+    }
+
+    bb49: {
+        unreachable;
+    }
+
+    bb50: {
+        StorageDead(_39);
+        goto -> bb52;
+    }
+
+    bb51: {
+        StorageDead(_42);
+        goto -> bb52;
+    }
+
+    bb52: {
+        StorageLive(_43);
+        StorageLive(_44);
+        StorageLive(_45);
+        StorageLive(_46);
+        StorageLive(_47);
+        _47 = copy _1;
+        _46 = BitXor(move _47, const 4_u64);
+        StorageDead(_47);
+        _45 = make_one(move _46) -> [return: bb53, unwind: bb113];
+    }
+
+    bb53: {
+        StorageDead(_46);
+        _44 = <Result<String, ()> as Try>::branch(move _45) -> [return: bb54, unwind: bb112];
+    }
+
+    bb54: {
+        StorageDead(_45);
+        PlaceMention(_44);
+        _48 = discriminant(_44);
+        switchInt(move _48) -> [0: bb58, 1: bb56, otherwise: bb55];
+    }
+
+    bb55: {
+        FakeRead(ForMatchedPlace(None), _44);
+        unreachable;
+    }
+
+    bb56: {
+        falseEdge -> [real: bb60, imaginary: bb58];
+    }
+
+    bb57: {
+        goto -> bb55;
+    }
+
+    bb58: {
+        StorageLive(_52);
+        _52 = move ((_44 as Continue).0: std::string::String);
+        _43 = move _52;
+        drop(_52) -> [return: bb64, unwind: bb107];
+    }
+
+    bb59: {
+        goto -> bb55;
+    }
+
+    bb60: {
+        StorageLive(_49);
+        _49 = copy ((_44 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+        StorageLive(_51);
+        _51 = copy _49;
+        _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _51) -> [return: bb61, unwind: bb107];
+    }
+
+    bb61: {
+        StorageDead(_51);
+        goto -> bb77;
+    }
+
+    bb62: {
+        unreachable;
+    }
+
+    bb63: {
+        StorageDead(_49);
+        goto -> bb65;
+    }
+
+    bb64: {
+        StorageDead(_52);
+        goto -> bb65;
+    }
+
+    bb65: {
+        _2 = Big { f0: move _3, f1: move _13, f2: move _23, f3: move _33, f4: move _43 };
+        drop(_43) -> [return: bb66, unwind: bb102];
+    }
+
+    bb66: {
+        StorageDead(_43);
+        drop(_33) -> [return: bb67, unwind: bb103];
+    }
+
+    bb67: {
+        StorageDead(_33);
+        drop(_23) -> [return: bb68, unwind: bb104];
+    }
+
+    bb68: {
+        StorageDead(_23);
+        drop(_13) -> [return: bb69, unwind: bb105];
+    }
+
+    bb69: {
+        StorageDead(_13);
+        drop(_3) -> [return: bb70, unwind: bb106];
+    }
+
+    bb70: {
+        StorageDead(_3);
+        _0 = Result::<Big, ()>::Ok(move _2);
+        drop(_2) -> [return: bb71, unwind: bb111];
+    }
+
+    bb71: {
+        StorageDead(_2);
+        drop(_44) -> [return: bb72, unwind: bb117];
+    }
+
+    bb72: {
+        StorageDead(_44);
+        drop(_34) -> [return: bb73, unwind: bb122];
+    }
+
+    bb73: {
+        StorageDead(_34);
+        drop(_24) -> [return: bb74, unwind: bb126];
+    }
+
+    bb74: {
+        StorageDead(_24);
+        drop(_14) -> [return: bb75, unwind: bb129];
+    }
+
+    bb75: {
+        StorageDead(_14);
+        drop(_4) -> [return: bb76, unwind: bb131];
+    }
+
+    bb76: {
+        StorageDead(_4);
+        goto -> bb101;
+    }
+
+    bb77: {
+        StorageDead(_49);
+        StorageDead(_43);
+        drop(_33) -> [return: bb78, unwind: bb108];
+    }
+
+    bb78: {
+        StorageDead(_33);
+        drop(_23) -> [return: bb79, unwind: bb109];
+    }
+
+    bb79: {
+        StorageDead(_23);
+        drop(_13) -> [return: bb80, unwind: bb110];
+    }
+
+    bb80: {
+        StorageDead(_13);
+        drop(_3) -> [return: bb81, unwind: bb111];
+    }
+
+    bb81: {
+        StorageDead(_3);
+        StorageDead(_2);
+        drop(_44) -> [return: bb82, unwind: bb117];
+    }
+
+    bb82: {
+        StorageDead(_44);
+        goto -> bb87;
+    }
+
+    bb83: {
+        StorageDead(_39);
+        StorageDead(_33);
+        drop(_23) -> [return: bb84, unwind: bb115];
+    }
+
+    bb84: {
+        StorageDead(_23);
+        drop(_13) -> [return: bb85, unwind: bb116];
+    }
+
+    bb85: {
+        StorageDead(_13);
+        drop(_3) -> [return: bb86, unwind: bb117];
+    }
+
+    bb86: {
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb87;
+    }
+
+    bb87: {
+        drop(_34) -> [return: bb88, unwind: bb122];
+    }
+
+    bb88: {
+        StorageDead(_34);
+        goto -> bb92;
+    }
+
+    bb89: {
+        StorageDead(_29);
+        StorageDead(_23);
+        drop(_13) -> [return: bb90, unwind: bb121];
+    }
+
+    bb90: {
+        StorageDead(_13);
+        drop(_3) -> [return: bb91, unwind: bb122];
+    }
+
+    bb91: {
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb92;
+    }
+
+    bb92: {
+        drop(_24) -> [return: bb93, unwind: bb126];
+    }
+
+    bb93: {
+        StorageDead(_24);
+        goto -> bb96;
+    }
+
+    bb94: {
+        StorageDead(_19);
+        StorageDead(_13);
+        drop(_3) -> [return: bb95, unwind: bb126];
+    }
+
+    bb95: {
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb96;
+    }
+
+    bb96: {
+        drop(_14) -> [return: bb97, unwind: bb129];
+    }
+
+    bb97: {
+        StorageDead(_14);
+        goto -> bb99;
+    }
+
+    bb98: {
+        StorageDead(_9);
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb99;
+    }
+
+    bb99: {
+        drop(_4) -> [return: bb100, unwind: bb131];
+    }
+
+    bb100: {
+        StorageDead(_4);
+        goto -> bb101;
+    }
+
+    bb101: {
+        return;
+    }
+
+    bb102 (cleanup): {
+        drop(_33) -> [return: bb103, unwind terminate(cleanup)];
+    }
+
+    bb103 (cleanup): {
+        drop(_23) -> [return: bb104, unwind terminate(cleanup)];
+    }
+
+    bb104 (cleanup): {
+        drop(_13) -> [return: bb105, unwind terminate(cleanup)];
+    }
+
+    bb105 (cleanup): {
+        drop(_3) -> [return: bb106, unwind terminate(cleanup)];
+    }
+
+    bb106 (cleanup): {
+        drop(_2) -> [return: bb111, unwind terminate(cleanup)];
+    }
+
+    bb107 (cleanup): {
+        drop(_33) -> [return: bb108, unwind terminate(cleanup)];
+    }
+
+    bb108 (cleanup): {
+        drop(_23) -> [return: bb109, unwind terminate(cleanup)];
+    }
+
+    bb109 (cleanup): {
+        drop(_13) -> [return: bb110, unwind terminate(cleanup)];
+    }
+
+    bb110 (cleanup): {
+        drop(_3) -> [return: bb111, unwind terminate(cleanup)];
+    }
+
+    bb111 (cleanup): {
+        drop(_44) -> [return: bb117, unwind terminate(cleanup)];
+    }
+
+    bb112 (cleanup): {
+        drop(_45) -> [return: bb113, unwind terminate(cleanup)];
+    }
+
+    bb113 (cleanup): {
+        drop(_33) -> [return: bb114, unwind terminate(cleanup)];
+    }
+
+    bb114 (cleanup): {
+        drop(_23) -> [return: bb115, unwind terminate(cleanup)];
+    }
+
+    bb115 (cleanup): {
+        drop(_13) -> [return: bb116, unwind terminate(cleanup)];
+    }
+
+    bb116 (cleanup): {
+        drop(_3) -> [return: bb117, unwind terminate(cleanup)];
+    }
+
+    bb117 (cleanup): {
+        drop(_34) -> [return: bb122, unwind terminate(cleanup)];
+    }
+
+    bb118 (cleanup): {
+        drop(_35) -> [return: bb119, unwind terminate(cleanup)];
+    }
+
+    bb119 (cleanup): {
+        drop(_23) -> [return: bb120, unwind terminate(cleanup)];
+    }
+
+    bb120 (cleanup): {
+        drop(_13) -> [return: bb121, unwind terminate(cleanup)];
+    }
+
+    bb121 (cleanup): {
+        drop(_3) -> [return: bb122, unwind terminate(cleanup)];
+    }
+
+    bb122 (cleanup): {
+        drop(_24) -> [return: bb126, unwind terminate(cleanup)];
+    }
+
+    bb123 (cleanup): {
+        drop(_25) -> [return: bb124, unwind terminate(cleanup)];
+    }
+
+    bb124 (cleanup): {
+        drop(_13) -> [return: bb125, unwind terminate(cleanup)];
+    }
+
+    bb125 (cleanup): {
+        drop(_3) -> [return: bb126, unwind terminate(cleanup)];
+    }
+
+    bb126 (cleanup): {
+        drop(_14) -> [return: bb129, unwind terminate(cleanup)];
+    }
+
+    bb127 (cleanup): {
+        drop(_15) -> [return: bb128, unwind terminate(cleanup)];
+    }
+
+    bb128 (cleanup): {
+        drop(_3) -> [return: bb129, unwind terminate(cleanup)];
+    }
+
+    bb129 (cleanup): {
+        drop(_4) -> [return: bb131, unwind terminate(cleanup)];
+    }
+
+    bb130 (cleanup): {
+        drop(_5) -> [return: bb131, unwind terminate(cleanup)];
+    }
+
+    bb131 (cleanup): {
+        resume;
+    }
+}
