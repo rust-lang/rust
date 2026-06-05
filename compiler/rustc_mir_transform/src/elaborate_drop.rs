@@ -1160,14 +1160,20 @@ where
         if !have_otherwise {
             values.pop();
         } else if !have_otherwise_with_drop_glue {
-            normal_blocks.push(self.goto_block(succ, unwind));
+            normal_blocks.push(succ);
             if let Unwind::To(unwind) = unwind {
-                unwind_blocks.push(self.goto_block(unwind, Unwind::InCleanup));
+                unwind_blocks.push(unwind);
+            }
+            if let Some(dropline) = dropline {
+                dropline_blocks.push(dropline);
             }
         } else {
             normal_blocks.push(self.drop_block(succ, unwind));
             if let Unwind::To(unwind) = unwind {
                 unwind_blocks.push(self.drop_block(unwind, Unwind::InCleanup));
+            }
+            if let Some(dropline) = dropline {
+                dropline_blocks.push(self.drop_block(dropline, unwind));
             }
         }
 
@@ -1589,11 +1595,6 @@ where
                 },
             )
         }
-    }
-
-    fn goto_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block = TerminatorKind::Goto { target };
-        self.new_block(unwind, block)
     }
 
     /// Returns the block to jump to in order to test the drop flag and execute the drop.
