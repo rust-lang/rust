@@ -161,7 +161,7 @@ warning: `#[macro_use]` attribute cannot be used on macro calls
 LL |     #[macro_use]
    |     ^^^^^^^^^^^^
    |
-   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
+   = help: `#[macro_use]` can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[must_use]` attribute cannot be used on macro calls
