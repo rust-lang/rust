@@ -15,7 +15,7 @@ use rustc_span::edit_distance::edit_distance;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::{expr_to_string, get_exprs_from_tts, get_single_expr_from_tts};
 
 fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError> {
@@ -76,7 +76,7 @@ pub(crate) fn expand_option_env<'cx>(
                 unreachable!("`expr_to_string` ensures this is a string lit")
             };
 
-            let guar = cx.dcx().emit_err(errors::EnvNotUnicode { span: sp, var: *symbol });
+            let guar = cx.dcx().emit_err(diagnostics::EnvNotUnicode { span: sp, var: *symbol });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
         Ok(value) => cx.expr_call_global(
@@ -98,7 +98,7 @@ pub(crate) fn expand_env<'cx>(
     };
     let mut exprs = match mac {
         Ok(exprs) if exprs.is_empty() || exprs.len() > 2 => {
-            let guar = cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
+            let guar = cx.dcx().emit_err(diagnostics::EnvTakesArgs { span: sp });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
@@ -145,24 +145,26 @@ pub(crate) fn expand_env<'cx>(
             let guar = match err {
                 VarError::NotPresent => {
                     if let Some(msg_from_user) = custom_msg {
-                        cx.dcx()
-                            .emit_err(errors::EnvNotDefinedWithUserMessage { span, msg_from_user })
+                        cx.dcx().emit_err(diagnostics::EnvNotDefinedWithUserMessage {
+                            span,
+                            msg_from_user,
+                        })
                     } else if let Some(suggested_var) = find_similar_cargo_var(var)
                         && suggested_var != var
                     {
-                        cx.dcx().emit_err(errors::EnvNotDefined::CargoEnvVarTypo {
+                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVarTypo {
                             span,
                             var: *symbol,
                             suggested_var: Symbol::intern(suggested_var),
                         })
                     } else if is_cargo_env_var(var) {
-                        cx.dcx().emit_err(errors::EnvNotDefined::CargoEnvVar {
+                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVar {
                             span,
                             var: *symbol,
                             var_expr: pprust::expr_to_string(&var_expr),
                         })
                     } else {
-                        cx.dcx().emit_err(errors::EnvNotDefined::CustomEnvVar {
+                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CustomEnvVar {
                             span,
                             var: *symbol,
                             var_expr: pprust::expr_to_string(&var_expr),
@@ -170,7 +172,7 @@ pub(crate) fn expand_env<'cx>(
                     }
                 }
                 VarError::NotUnicode(_) => {
-                    cx.dcx().emit_err(errors::EnvNotUnicode { span, var: *symbol })
+                    cx.dcx().emit_err(diagnostics::EnvNotUnicode { span, var: *symbol })
                 }
             };
 
