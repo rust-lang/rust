@@ -42,7 +42,10 @@
 #![allow(x5300)] //~ WARN unknown lint: `x5300`
 #![forbid(x5200)] //~ WARN unknown lint: `x5200`
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
-#![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
+#![macro_use] //~ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
+//~| HELP remove the attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
 #![should_panic] //~ WARN attribute cannot be used on
