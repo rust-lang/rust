@@ -580,7 +580,6 @@ fn test_codegen_options_tracking_hash() {
     // tidy-alphabetical-start
     untracked!(codegen_units, Some(42));
     untracked!(default_linker_libraries, true);
-    untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(extra_filename, String::from("extra-filename"));
     untracked!(incremental, Some(String::from("abc")));
     // `link_arg` is omitted because it just forwards to `link_args`.

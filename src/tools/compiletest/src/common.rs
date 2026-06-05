@@ -804,16 +804,8 @@ impl Config {
             || (arch == "i586" && self.target.starts_with("i586-"))
     }
 
-    pub(crate) fn matches_os(&self, os: &str) -> bool {
-        self.target_cfg().os == os
-    }
-
     pub(crate) fn matches_env(&self, env: &str) -> bool {
         self.target_cfg().env == env
-    }
-
-    pub(crate) fn matches_abi(&self, abi: &str) -> bool {
-        self.target_cfg().abi == abi
     }
 
     #[cfg_attr(not(test), expect(dead_code, reason = "only used by tests for `ignore-{family}`"))]
