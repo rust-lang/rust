@@ -1,0 +1,10 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-mut-ref-field-validation.rs:39:5
+   |
+LL |     value: &'a mut &'static (),
+   |     -------------------------- source field `value` has type `&'a mut &'static ()`
+...
+LL |     value: &'a &'a (),
+   |     ^^^^^^^^^^^^^^^^^ target field `value` has type `&'a &'a ()`
+
+error: aborting due to 1 previous error

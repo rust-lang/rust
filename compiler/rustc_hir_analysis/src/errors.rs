@@ -1371,8 +1371,70 @@ pub(crate) struct CoerceSharedNotSingleLifetimeParam {
 }
 
 #[derive(Diagnostic)]
-#[diag("implementing `{$trait_name}` does not allow multiple lifetimes or fields to be coerced")]
+#[diag(
+    "implementing `{$trait_name}` requires exactly one lifetime argument in the reborrowed type"
+)]
 pub(crate) struct CoerceSharedMulti {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target to use the same reborrow lifetime \
+     argument"
+)]
+pub(crate) struct CoerceSharedLifetimeMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires corresponding fields to match, \
+     be reborrowable with `CoerceShared`, or coerce a mutable reference field \
+     to a shared reference field"
+)]
+pub(crate) struct CoerceSharedFieldMismatch<'tcx> {
+    #[primary_span]
+    #[label("target field `{$target_name}` has type `{$target_ty}`")]
+    pub span: Span,
+    #[label("source field `{$source_name}` has type `{$source_ty}`")]
+    pub source_span: Span,
+    pub source_name: Symbol,
+    pub source_ty: Ty<'tcx>,
+    pub target_name: Symbol,
+    pub target_ty: Ty<'tcx>,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires every target field to have a corresponding source field"
+)]
+pub(crate) struct CoerceSharedMissingField {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target structs to use the same field style"
+)]
+pub(crate) struct CoerceSharedFieldStyleMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires all source and target fields to be accessible from the impl"
+)]
+pub(crate) struct CoerceSharedInaccessibleField {
     #[primary_span]
     pub span: Span,
     pub trait_name: &'static str,
