@@ -117,6 +117,8 @@ pub struct Field {
     pub ty: TypeId,
     /// Offset in bytes from the parent type
     pub offset: usize,
+    /// Attributes applied to the field.
+    pub attributes: &'static [Attribute],
 }
 
 /// Compile-time type information about arrays.
@@ -180,6 +182,8 @@ pub struct Struct {
     pub fields: &'static [Field],
     /// Whether the struct field list is non-exhaustive.
     pub non_exhaustive: bool,
+    /// Attributes applied to the struct.
+    pub attributes: &'static [Attribute],
 }
 
 /// Compile-time type information about unions.
@@ -191,6 +195,10 @@ pub struct Union {
     pub generics: &'static [Generic],
     /// All fields of the union.
     pub fields: &'static [Field],
+    /// Whether the union field list is non-exhaustive.
+    pub non_exhaustive: bool,
+    /// Attributes applied to the union.
+    pub attributes: &'static [Attribute],
 }
 
 /// Compile-time type information about enums.
@@ -204,6 +212,8 @@ pub struct Enum {
     pub variants: &'static [Variant],
     /// Whether the enum variant list is non-exhaustive.
     pub non_exhaustive: bool,
+    /// Attributes applied to the enum.
+    pub attributes: &'static [Attribute],
 }
 
 /// Compile-time type information about variants of enums.
@@ -217,6 +227,8 @@ pub struct Variant {
     pub fields: &'static [Field],
     /// Whether the enum variant fields is non-exhaustive.
     pub non_exhaustive: bool,
+    /// Attributes applied to the variant.
+    pub attributes: &'static [Attribute],
 }
 
 /// Compile-time type information about instantiated generics of structs, enum and union variants.
@@ -256,6 +268,18 @@ pub struct GenericType {
 pub struct Const {
     /// The const's type.
     pub ty: TypeId,
+}
+
+/// Compile-time information about an attribute applied to a type, field, or variant.
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct Attribute {
+    /// The path of the attribute (e.g., `"allow"` or `"clippy::complexity"`).
+    pub path: &'static str,
+    /// The arguments of the attribute as a string (e.g., `"dead_code"`).
+    /// Empty string when the attribute has no arguments.
+    pub args: &'static str,
 }
 
 /// Compile-time type information about `bool`.

@@ -3837,6 +3837,7 @@ dependencies = [
  "rustc_abi",
  "rustc_apfloat",
  "rustc_ast",
+ "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

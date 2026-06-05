@@ -26,7 +26,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_struct_type_info(
                     place,
-                    (adt_ty, adt_def.variant(VariantIdx::ZERO)),
+                    (adt_ty, adt_def, adt_def.variant(VariantIdx::ZERO)),
                     generics,
                 )?;
                 variant
@@ -36,7 +36,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_union_type_info(
                     place,
-                    (adt_ty, adt_def.variant(VariantIdx::ZERO)),
+                    (adt_ty, adt_def, adt_def.variant(VariantIdx::ZERO)),
                     generics,
                 )?;
                 variant
@@ -54,10 +54,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     pub(crate) fn write_struct_type_info(
         &mut self,
         place: impl Writeable<'tcx, CtfeProvenance>,
-        struct_: (Ty<'tcx>, &'tcx VariantDef),
+        struct_: (Ty<'tcx>, AdtDef<'tcx>, &'tcx VariantDef),
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
-        let (struct_ty, struct_def) = struct_;
+        let (struct_ty, adt_def, struct_def) = struct_;
         let struct_layout = self.layout_of(struct_ty)?;
 
         for (field_idx, field) in
@@ -74,6 +74,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     let is_non_exhaustive = struct_def.is_field_list_non_exhaustive();
                     self.write_scalar(Scalar::from_bool(is_non_exhaustive), &field_place)?
                 }
+                sym::attributes => {
+                    self.write_attributes_type_info(field_place, Some(adt_def.did()))?
+                }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
         }
@@ -84,10 +87,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     pub(crate) fn write_union_type_info(
         &mut self,
         place: impl Writeable<'tcx, CtfeProvenance>,
-        union_: (Ty<'tcx>, &'tcx VariantDef),
+        union_: (Ty<'tcx>, AdtDef<'tcx>, &'tcx VariantDef),
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
-        let (union_ty, union_def) = union_;
+        let (union_ty, adt_def, union_def) = union_;
         let union_layout = self.layout_of(union_ty)?;
 
         for (field_idx, field) in
@@ -103,6 +106,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::non_exhaustive => {
                     let is_non_exhaustive = union_def.is_field_list_non_exhaustive();
                     self.write_scalar(Scalar::from_bool(is_non_exhaustive), &field_place)?
+                }
+                sym::attributes => {
+                    self.write_attributes_type_info(field_place, Some(adt_def.did()))?
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
@@ -133,15 +139,18 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         enum_def.variants().len() as u64,
                         |this, i, place| {
                             let variant_idx = VariantIdx::from_usize(i as usize);
-                            let variant_def = &enum_def.variants()[variant_idx];
+                            let variant_def = enum_def.variant(variant_idx);
                             let variant_layout = enum_layout.for_variant(this, variant_idx);
-                            this.write_enum_variant(place, (variant_layout, &variant_def), generics)
+                            this.write_enum_variant(place, (variant_layout, variant_def), generics)
                         },
                     )?;
                 }
                 sym::non_exhaustive => {
                     let is_non_exhaustive = enum_def.is_variant_list_non_exhaustive();
                     self.write_scalar(Scalar::from_bool(is_non_exhaustive), &field_place)?
+                }
+                sym::attributes => {
+                    self.write_attributes_type_info(field_place, Some(enum_def.did()))?
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
@@ -175,6 +184,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     let is_non_exhaustive = variant_def.is_field_list_non_exhaustive();
                     self.write_scalar(Scalar::from_bool(is_non_exhaustive), &field_place)?
                 }
+                sym::attributes => {
+                    self.write_attributes_type_info(field_place, Some(variant_def.def_id))?
+                }
                 other => span_bug!(self.tcx.def_span(field_def.did), "unimplemented field {other}"),
             }
         }
@@ -195,7 +207,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             |this, i, place| {
                 let field_def = &variant_def.fields[FieldIdx::from_usize(i as usize)];
                 let field_ty = field_def.ty(*this.tcx, generics).skip_norm_wip();
-                this.write_field(field_ty, place, variant_layout, Some(field_def.name), i)
+                this.write_field(field_ty, place, variant_layout, Some(field_def.name), i, Some(field_def.did))
             },
         )
     }

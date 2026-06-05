@@ -517,3 +517,318 @@ fn test_dynamic_traits() {
         assert!(sync.trait_ty.is_auto);
     }
 }
+
+#[test]
+fn test_attributes() {
+    use TypeKind::*;
+
+    const {
+        #[allow(dead_code)]
+        struct AttrStruct {
+            #[allow(dead_code)]
+            field_a: u8,
+            field_b: u16,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<AttrStruct>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+
+        assert!(ty.fields[0].attributes.len() == 1);
+        assert!(ty.fields[0].attributes[0].path == "allow");
+        assert!(ty.fields[0].attributes[0].args == "dead_code");
+
+        assert!(ty.fields[1].attributes.len() == 0);
+    }
+
+    const {
+        #[allow(dead_code)]
+        enum AttrEnum {
+            #[allow(unused)]
+            VariantA(u32),
+            VariantB,
+        }
+
+        let Type { kind: Enum(ty), .. } = Type::of::<AttrEnum>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "allow");
+
+        assert!(ty.variants[0].attributes.len() == 1);
+        assert!(ty.variants[0].attributes[0].path == "allow");
+        assert!(ty.variants[0].attributes[0].args == "unused");
+
+        assert!(ty.variants[1].attributes.len() == 0);
+    }
+
+    const {
+        struct NoAttrs {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<NoAttrs>() else { panic!() };
+        assert!(ty.attributes.len() == 0);
+        assert!(ty.fields[0].attributes.len() == 0);
+    }
+
+    const {
+        #[allow(dead_code)]
+        union AttrUnion {
+            #[allow(dead_code)]
+            a: u32,
+            b: f32,
+        }
+
+        let Type { kind: Union(ty), .. } = Type::of::<AttrUnion>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+
+        assert!(ty.fields[0].attributes.len() == 1);
+        assert!(ty.fields[0].attributes[0].path == "allow");
+        assert!(ty.fields[0].attributes[0].args == "dead_code");
+
+        assert!(ty.fields[1].attributes.len() == 0);
+    }
+
+    const {
+        #[allow(dead_code)]
+        #[allow(unused)]
+        struct MultiAttr {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<MultiAttr>() else { panic!() };
+        assert!(ty.attributes.len() == 2);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+        assert!(ty.attributes[1].path == "allow");
+        assert!(ty.attributes[1].args == "unused");
+    }
+
+    const {
+        #[non_exhaustive]
+        struct EmptyArgs {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<EmptyArgs>() else { panic!() };
+        // #[non_exhaustive] is a parsed built-in attribute, not reflected here.
+        assert!(ty.non_exhaustive);
+        assert!(ty.attributes.len() == 0);
+    }
+
+    const {
+        #[allow(dead_code)]
+        enum FieldAttrEnum {
+            Variant {
+                #[allow(unused)]
+                a: u32,
+                b: u8,
+            },
+        }
+
+        let Type { kind: Enum(ty), .. } = Type::of::<FieldAttrEnum>() else { panic!() };
+        assert!(ty.variants[0].fields[0].attributes.len() == 1);
+        assert!(ty.variants[0].fields[0].attributes[0].path == "allow");
+        assert!(ty.variants[0].fields[0].attributes[0].args == "unused");
+        assert!(ty.variants[0].fields[1].attributes.len() == 0);
+    }
+
+    const {
+        #[deny(missing_docs)]
+        #[allow(dead_code)]
+        #[warn(unused)]
+        struct LayeredAttrs {
+            #[allow(dead_code, unused_variables)]
+            #[deny(unused_imports)]
+            field_a: u32,
+
+            #[allow(dead_code)]
+            #[warn(unused_assignments)]
+            field_b: u8,
+
+            #[forbid(unsafe_code)]
+            #[allow(dead_code)]
+            field_c: u16,
+
+            #[allow(dead_code)]
+            field_d: u64,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<LayeredAttrs>() else { panic!() };
+        assert!(ty.attributes.len() == 3);
+        assert!(ty.attributes[0].path == "deny");
+        assert!(ty.attributes[0].args == "missing_docs");
+        assert!(ty.attributes[1].path == "allow");
+        assert!(ty.attributes[1].args == "dead_code");
+        assert!(ty.attributes[2].path == "warn");
+        assert!(ty.attributes[2].args == "unused");
+
+        assert!(ty.fields[0].attributes.len() == 2);
+        assert!(ty.fields[0].attributes[0].path == "allow");
+        assert!(ty.fields[0].attributes[0].args == "dead_code, unused_variables");
+        assert!(ty.fields[0].attributes[1].path == "deny");
+        assert!(ty.fields[0].attributes[1].args == "unused_imports");
+
+        assert!(ty.fields[1].attributes.len() == 2);
+        assert!(ty.fields[1].attributes[0].path == "allow");
+        assert!(ty.fields[1].attributes[0].args == "dead_code");
+        assert!(ty.fields[1].attributes[1].path == "warn");
+        assert!(ty.fields[1].attributes[1].args == "unused_assignments");
+
+        assert!(ty.fields[2].attributes.len() == 2);
+        assert!(ty.fields[2].attributes[0].path == "forbid");
+        assert!(ty.fields[2].attributes[0].args == "unsafe_code");
+        assert!(ty.fields[2].attributes[1].path == "allow");
+        assert!(ty.fields[2].attributes[1].args == "dead_code");
+
+        assert!(ty.fields[3].attributes.len() == 1);
+        assert!(ty.fields[3].attributes[0].path == "allow");
+        assert!(ty.fields[3].attributes[0].args == "dead_code");
+    }
+
+    const {
+        #[allow(dead_code)]
+        #[deny(unused)]
+        enum LayeredAttrsEnum {
+            #[allow(dead_code)]
+            #[warn(unused_variables)]
+            VariantA {
+                #[forbid(unsafe_code)]
+                x: u32,
+                y: u8,
+            },
+            #[allow(dead_code)]
+            VariantB,
+            #[allow(unused)]
+            VariantC(u8),
+        }
+
+        let Type { kind: Enum(ty), .. } = Type::of::<LayeredAttrsEnum>() else { panic!() };
+        assert!(ty.attributes.len() == 2);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+        assert!(ty.attributes[1].path == "deny");
+        assert!(ty.attributes[1].args == "unused");
+
+        assert!(ty.variants[0].attributes.len() == 2);
+        assert!(ty.variants[0].attributes[0].path == "allow");
+        assert!(ty.variants[0].attributes[0].args == "dead_code");
+        assert!(ty.variants[0].attributes[1].path == "warn");
+        assert!(ty.variants[0].attributes[1].args == "unused_variables");
+        assert!(ty.variants[0].fields[0].attributes.len() == 1);
+        assert!(ty.variants[0].fields[0].attributes[0].path == "forbid");
+        assert!(ty.variants[0].fields[0].attributes[0].args == "unsafe_code");
+        assert!(ty.variants[0].fields[1].attributes.len() == 0);
+
+        assert!(ty.variants[1].attributes.len() == 1);
+        assert!(ty.variants[1].attributes[0].path == "allow");
+        assert!(ty.variants[1].attributes[0].args == "dead_code");
+        assert!(ty.variants[1].fields.len() == 0);
+
+        assert!(ty.variants[2].attributes.len() == 1);
+        assert!(ty.variants[2].attributes[0].path == "allow");
+        assert!(ty.variants[2].attributes[0].args == "unused");
+        assert!(ty.variants[2].fields[0].attributes.len() == 0);
+    }
+
+    const {
+        #[non_exhaustive]
+        #[allow(dead_code)]
+        #[deny(unused)]
+        struct MixedAttrs {
+            #[allow(dead_code)]
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<MixedAttrs>() else { panic!() };
+        assert!(ty.non_exhaustive);
+        assert!(ty.attributes.len() == 2);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+        assert!(ty.attributes[1].path == "deny");
+        assert!(ty.attributes[1].args == "unused");
+    }
+
+    const {
+        #[rustfmt::skip]
+        struct NamespacedAttr {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<NamespacedAttr>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "rustfmt::skip");
+        assert!(ty.attributes[0].args == "");
+    }
+
+    const {
+        struct TupleFieldAttrs(#[allow(dead_code)] u8, u16);
+
+        let Type { kind: Struct(ty), .. } = Type::of::<TupleFieldAttrs>() else { panic!() };
+        assert!(ty.fields.len() == 2);
+        assert!(ty.fields[0].attributes.len() == 1);
+        assert!(ty.fields[0].attributes[0].path == "allow");
+        assert!(ty.fields[0].attributes[0].args == "dead_code");
+        assert!(ty.fields[1].attributes.len() == 0);
+    }
+
+    const {
+        let Type { kind: Enum(ty), .. } = Type::of::<Option<i32>>() else { panic!() };
+        let _ = ty.attributes;
+        let _ = ty.variants[0].attributes;
+        let _ = ty.variants[1].attributes;
+    }
+
+    const {
+        #[cfg_attr(test, allow(dead_code))]
+        struct CfgAttrTest {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<CfgAttrTest>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "dead_code");
+    }
+
+    const {
+        #[allow(unused_attributes)]
+        #[allow()]
+        struct EmptyDelim {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<EmptyDelim>() else { panic!() };
+        assert!(ty.attributes.len() == 2);
+        assert!(ty.attributes[0].path == "allow");
+        assert!(ty.attributes[0].args == "unused_attributes");
+        assert!(ty.attributes[1].path == "allow");
+        assert!(ty.attributes[1].args == "");
+    }
+
+    const {
+        #[rustfmt::skip(some::path)]
+        struct PathArg {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<PathArg>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "rustfmt::skip");
+        assert!(ty.attributes[0].args == "some::path");
+    }
+
+    const {
+        #[rustfmt::skip(a::b, c::d)]
+        struct MultiPathArg {
+            x: u8,
+        }
+
+        let Type { kind: Struct(ty), .. } = Type::of::<MultiPathArg>() else { panic!() };
+        assert!(ty.attributes.len() == 1);
+        assert!(ty.attributes[0].path == "rustfmt::skip");
+        assert!(ty.attributes[0].args == "a::b, c::d");
+    }
+}
