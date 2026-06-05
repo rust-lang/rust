@@ -16,6 +16,8 @@ pub struct AnonymousParamInfo<'tcx> {
     pub param: &'tcx hir::Param<'tcx>,
     /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
+    /// The original type before region replacement.
+    pub orig_param_ty: Ty<'tcx>,
     /// The `ty::LateParamRegionKind` corresponding to the anonymous region.
     pub kind: ty::LateParamRegionKind,
     /// The `Span` of the parameter type.
@@ -94,7 +96,14 @@ pub fn find_param_with_region<'tcx>(
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
                 let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
-                AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
+                AnonymousParamInfo {
+                    param,
+                    param_ty: new_param_ty,
+                    orig_param_ty: ty,
+                    param_ty_span,
+                    kind,
+                    is_first,
+                }
             })
         })
 }
