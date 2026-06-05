@@ -255,6 +255,9 @@ It is also perfectly fine
 (and even encouraged!) to use the CI to test your changes if it can help your productivity.
 In particular, we don't recommend running the full `./x test` suite locally,
 since it takes a very long time to execute.
+See the [Testing with CI] chapter for using Rust's CI to test your changes.
+
+[Testing with CI]: https://rustc-dev-guide.rust-lang.org/tests/ci.html#testing-with-ci
 
 ### r+
 

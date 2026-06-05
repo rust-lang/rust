@@ -60,6 +60,7 @@ use rustc_hir::{
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::hir::{self as mid_hir};
+use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{DelegationInfo, PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::errors::add_feature_diagnostics;
@@ -90,6 +91,12 @@ mod item;
 mod pat;
 mod path;
 pub mod stability;
+
+pub fn provide(providers: &mut Providers) {
+    providers.hir_crate = lower_to_hir;
+    providers.lower_delayed_owner = lower_delayed_owner;
+    providers.delegations_resolutions = delegation::delegations_resolutions;
+}
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
@@ -313,9 +320,8 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 /// Relaxed bounds should only be allowed in places where we later
 /// (namely during HIR ty lowering) perform *sized elaboration*.
 #[derive(Clone, Copy, Debug)]
-enum RelaxedBoundPolicy<'a> {
+enum RelaxedBoundPolicy {
     Allowed,
-    AllowedIfOnTyParam(NodeId, &'a [ast::GenericParam]),
     Forbidden(RelaxedBoundForbiddenReason),
 }
 
@@ -325,7 +331,9 @@ enum RelaxedBoundForbiddenReason {
     SuperTrait,
     TraitAlias,
     AssocTyBounds,
-    LateBoundVarsInScope,
+    /// We do not allow where bounds doing relaxed bounds,
+    /// except if it's for generic parameters of the current item.
+    WhereBound,
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -433,6 +441,16 @@ enum AstOwner<'a> {
     ForeignItem(&'a ast::ForeignItem),
 }
 
+impl AstOwner<'_> {
+    fn delegation(&self) -> Option<&ast::Delegation> {
+        match self {
+            AstOwner::Item(Item { kind: ItemKind::Delegation(d), .. })
+            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation(d), .. }, _) => Some(d),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 enum TryBlockScope {
     /// There isn't a `try` block, so a `?` will use `return`.
@@ -512,7 +530,7 @@ fn compute_hir_hash(
     })
 }
 
-pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
+fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -536,13 +554,11 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
 
     for def_id in ast_index.indices() {
-        match &ast_index[def_id] {
-            AstOwner::Item(Item { kind: ItemKind::Delegation { .. }, .. })
-            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation { .. }, .. }, _) => {
-                delayed_ids.insert(def_id);
-            }
-            _ => lowerer.lower_node(def_id),
-        };
+        if ast_index[def_id].delegation().is_some() {
+            delayed_ids.insert(def_id);
+        } else {
+            lowerer.lower_node(def_id);
+        }
     }
 
     // Don't hash unless necessary, because it's expensive.
@@ -554,7 +570,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 }
 
 /// Lowers an AST owner corresponding to `def_id`, now only delegations are lowered this way.
-pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let krate = tcx.hir_crate(());
 
     let (resolver, krate) = &*krate.delayed_resolver.borrow();
@@ -1950,7 +1966,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         match tpb {
@@ -2188,7 +2204,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_poly_trait_ref(
         &mut self,
         PolyTraitRef { bound_generic_params, modifiers, trait_ref, span, parens: _ }: &PolyTraitRef,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
@@ -2212,7 +2228,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         trait_ref: hir::TraitRef<'_>,
         span: Span,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
     ) {
         // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
         // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
@@ -2225,14 +2241,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
-            RelaxedBoundPolicy::AllowedIfOnTyParam(id, params) => {
-                if let Some(res) = self.get_partial_res(id).and_then(|r| r.full_res())
-                    && let Res::Def(DefKind::TyParam, def_id) = res
-                    && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
-                {
-                    return;
-                }
-            }
             RelaxedBoundPolicy::Forbidden(reason) => {
                 let gate = |context, subject| {
                     let extended = self.tcx.features().more_maybe_bounds();
@@ -2272,7 +2280,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         return;
                     }
                     RelaxedBoundForbiddenReason::AssocTyBounds
-                    | RelaxedBoundForbiddenReason::LateBoundVarsInScope => {}
+                    | RelaxedBoundForbiddenReason::WhereBound => {}
                 };
             }
         }
@@ -2294,7 +2302,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> hir::GenericBounds<'hir> {
         self.arena.alloc_from_iter(self.lower_param_bounds_mut(bounds, rbp, itctx))
@@ -2303,7 +2311,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds_mut(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
     ) -> impl Iterator<Item = hir::GenericBound<'hir>> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, rbp, itctx))

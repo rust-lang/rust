@@ -28,7 +28,7 @@ The actual numbers will depend on your code.
 To confirm that your previous step worked, we will use llvm's `opt` tool. Find your path to the opt binary, with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/ci-llvm/bin/opt`. If you build LLVM from source, you'll likely need to replace `ci-llvm` with `build`. Also find `llvmenzyme-21.<so/dll/dylib>` path, similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-21`. Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21, ...). Once you have both, run the following command:
 
 ```sh
-<path/to/opt> out.ll -load-pass-plugin=/path/to/build/<target-triple>/stage1/lib/libEnzyme-21.so -passes="enzyme" -enzyme-strict-aliasing=0  -s
+<path/to/opt> out.ll -load-pass-plugin=/path/to/build/<target-triple>/stage1/lib/libEnzyme-21.so -passes="enzyme" -enzyme-strict-aliasing=0  -S
 ```
 This command might fail for future versions or on your system, in which case you should replace libEnzyme-21.so with LLVMEnzyme-21.so. Look at the Enzyme docs for instructions on how to build it. You might need to also adjust how to build your LLVM version.
 
@@ -41,7 +41,7 @@ If you fail to get the same error, please open an issue in the rust repository. 
 First find your `llvm-extract` binary, it's in the same folder as your opt binary. then run:
 
 ```sh
-<path/to/llvm-extract> -s --func=<name> --recursive --rfunc="enzyme_autodiff*" --rfunc="enzyme_fwddiff*" --rfunc=<fnc_called_by_enzyme> out.ll -o mwe.ll 
+<path/to/llvm-extract> -S --func=<name> --recursive --rfunc="enzyme_autodiff*" --rfunc="enzyme_fwddiff*" --rfunc=<fnc_called_by_enzyme> out.ll -o mwe.ll
 ```
 
 This command creates `mwe.ll`, a minimal working example.

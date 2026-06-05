@@ -877,8 +877,6 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
-    providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.queries.lower_delayed_owner = rustc_ast_lowering::lower_delayed_owner;
     // `hir_delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
     // as if this query was not fed it means that `MaybeOwner` does not exist for provided LocalDefId.
     providers.queries.hir_delayed_owner = |_, _| MaybeOwner::Phantom;
@@ -887,6 +885,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
+    rustc_ast_lowering::provide(&mut providers.queries);
     limits::provide(&mut providers.queries);
     proc_macro_decls::provide(&mut providers.queries);
     rustc_expand::provide(&mut providers.queries);

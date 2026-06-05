@@ -857,6 +857,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
+        if v.ident.name == kw::Underscore && self.tcx.features().unnamed_enum_variants() {
+            // FIXME(#156628): lower unnamed enum variants to HIR.
+            self.dcx()
+                .struct_span_fatal(v.span, "unnamed enum variants are not yet implemented")
+                .emit()
+        }
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant);
         hir::Variant {
@@ -1986,7 +1992,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bounds: &[GenericBound],
         colon_span: Option<Span>,
         parent_span: Span,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -2061,10 +2067,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
-                let rbp = if bound_generic_params.is_empty() {
-                    RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params)
+                let rbp = if bound_generic_params.is_empty()
+                    && let Some(res) =
+                        self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
+                    && let Res::Def(DefKind::TyParam, def_id) = res
+                    && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
+                {
+                    RelaxedBoundPolicy::Allowed
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(

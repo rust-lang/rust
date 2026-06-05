@@ -474,6 +474,52 @@ pub trait Interner:
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 }
 
+macro_rules! declare_lift_into {
+    ($($assoc:ident),* $(,)?) => {
+        /// An interner whose associated types can be lifted into another interner `J`.
+        ///
+        /// These are associated type bounds rather than `where` clauses so a caller with
+        /// `I: LiftInto<J>` can rely on the individual associated type `Lift` bounds being
+        /// implied.
+        pub trait LiftInto<J>: Interner<$($assoc: crate::lift::Lift<J, Lifted = J::$assoc>,)*>
+        where
+            J: Interner,
+        {}
+
+        impl<I, J> LiftInto<J> for I
+        where
+            J: Interner,
+            I: Interner<$($assoc: crate::lift::Lift<J, Lifted = J::$assoc>,)*>,
+        {}
+    };
+}
+
+declare_lift_into! {
+    BoundVarKinds,
+    Const,
+    DefId,
+    FreeConstAliasId,
+    FreeTyAliasId,
+    GenericArg,
+    GenericArgs,
+    InherentAssocConstId,
+    InherentAssocTyId,
+    OpaqueTyId,
+    ParamEnv,
+    PatList,
+    Region,
+    RegionAssumptions,
+    Symbol,
+    Term,
+    TraitAssocConstId,
+    TraitAssocTermId,
+    TraitAssocTyId,
+    TraitId,
+    Ty,
+    Tys,
+    UnevaluatedConstId,
+}
+
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
 /// that produces `T` items. You could combine them with
 /// `f(&iter.collect::<Vec<_>>())`, but this requires allocating memory for the

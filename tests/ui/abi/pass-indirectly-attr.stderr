@@ -40,7 +40,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
                            arg_ext: None,
                            pointee_size: Size(1 bytes),
                            pointee_align: Some(
