@@ -80,7 +80,8 @@ use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
-    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, specialization_graph,
+    MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    specialization_graph,
 };
 
 mod note_and_explain;
@@ -113,6 +114,31 @@ fn escape_literal(s: &str) -> String {
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    fn normalize_fn_sig(
+        &self,
+        fn_sig: Unnormalized<'tcx, ty::PolyFnSig<'tcx>>,
+    ) -> ty::PolyFnSig<'tcx> {
+        let Some(param_env) = self.param_env else {
+            return fn_sig.skip_normalization();
+        };
+
+        if fn_sig.skip_normalization().has_escaping_bound_vars() {
+            return fn_sig.skip_normalization();
+        }
+
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+            let normalized_fn_sig = ocx.normalize(&ObligationCause::dummy(), param_env, fn_sig);
+            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
+                if !normalized_fn_sig.has_infer() {
+                    return normalized_fn_sig;
+                }
+            }
+            fn_sig.skip_normalization()
+        })
+    }
+
     // [Note-Type-error-reporting]
     // An invariant is that anytime the expected or actual type is Error (the special
     // error type, meaning that an error occurred when typechecking this expression),
@@ -758,18 +784,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Given two `fn` signatures highlight only sub-parts that are different.
     fn cmp_fn_sig(
         &self,
-        sig1: &ty::PolyFnSig<'tcx>,
+        sig1: ty::PolyFnSig<'tcx>,
         fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
-        sig2: &ty::PolyFnSig<'tcx>,
+        sig2: ty::PolyFnSig<'tcx>,
         fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
     ) -> (DiagStyledString, DiagStyledString) {
-        let sig1 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig1));
-        let sig2 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig2));
+        let sig1 = self.normalize_fn_sig(Unnormalized::new_wip(sig1));
+        let sig2 = self.normalize_fn_sig(Unnormalized::new_wip(sig2));
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
-                .name_all_regions(sig, WrapBinderMode::ForAll)
+                .name_all_regions(&sig, WrapBinderMode::ForAll)
                 .unwrap();
             let lts: Vec<String> =
                 reg.into_items().map(|(_, kind)| kind.to_string()).into_sorted_stable_ord();
@@ -1282,26 +1308,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(
-                    &sig1,
-                    Some((*did1, Some(args1))),
-                    &sig2,
-                    Some((*did2, Some(args2))),
-                )
+                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
-                self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
+                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig_tys2.with(*hdr2), None)
             }
 
             _ => {
@@ -2082,7 +2103,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     (None, None)
                 };
 
-                Some(self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2))
+                Some(self.cmp_fn_sig(exp_found.expected, fn_def1, exp_found.found, fn_def2))
             }
         }
     }
