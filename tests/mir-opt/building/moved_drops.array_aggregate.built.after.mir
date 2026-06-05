@@ -12,41 +12,33 @@ fn array_aggregate() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb7];
+        _2 = String::new() -> [return: bb1, unwind: bb5];
     }
 
     bb1: {
         StorageLive(_3);
-        _3 = String::new() -> [return: bb2, unwind: bb6];
+        _3 = String::new() -> [return: bb2, unwind: bb4];
     }
 
     bb2: {
         _1 = [move _2, move _3];
-        drop(_3) -> [return: bb3, unwind: bb6];
-    }
-
-    bb3: {
         StorageDead(_3);
-        drop(_2) -> [return: bb4, unwind: bb7];
-    }
-
-    bb4: {
         StorageDead(_2);
         FakeRead(ForLet(None), _1);
         _0 = const ();
-        drop(_1) -> [return: bb5, unwind: bb7];
+        drop(_1) -> [return: bb3, unwind: bb5];
     }
 
-    bb5: {
+    bb3: {
         StorageDead(_1);
         return;
     }
 
-    bb6 (cleanup): {
-        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+    bb4 (cleanup): {
+        drop(_2) -> [return: bb5, unwind terminate(cleanup)];
     }
 
-    bb7 (cleanup): {
+    bb5 (cleanup): {
         resume;
     }
 }

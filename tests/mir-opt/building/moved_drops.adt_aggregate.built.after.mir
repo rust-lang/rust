@@ -11,27 +11,23 @@ fn adt_aggregate() -> () {
     bb0: {
         StorageLive(_1);
         StorageLive(_2);
-        _2 = String::new() -> [return: bb1, unwind: bb4];
+        _2 = String::new() -> [return: bb1, unwind: bb3];
     }
 
     bb1: {
         _1 = S(move _2);
-        drop(_2) -> [return: bb2, unwind: bb4];
-    }
-
-    bb2: {
         StorageDead(_2);
         FakeRead(ForLet(None), _1);
         _0 = const ();
-        drop(_1) -> [return: bb3, unwind: bb4];
+        drop(_1) -> [return: bb2, unwind: bb3];
     }
 
-    bb3: {
+    bb2: {
         StorageDead(_1);
         return;
     }
 
-    bb4 (cleanup): {
+    bb3 (cleanup): {
         resume;
     }
 }
