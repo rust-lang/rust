@@ -148,6 +148,8 @@ pub(crate) struct InvalidAttrStyle {
     pub crate_root_path: String,
     #[help("the crate root is at `{$crate_root_path}`")]
     pub show_crate_root_help: bool,
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
