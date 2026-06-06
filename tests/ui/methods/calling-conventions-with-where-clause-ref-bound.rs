@@ -1,3 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/20414>.
+//!
+//! Test both UFCS and dot syntax should work for trait methods when the
+//! impl has a where-clause bound on a reference type.
+
 //@ check-pass
 #![allow(dead_code)]
 

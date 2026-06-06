@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/20225>.
+
 #![feature(fn_traits, unboxed_closures)]
 
 struct Foo;
