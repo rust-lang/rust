@@ -11,6 +11,11 @@ use crate::{
     token_stream::TokenStream,
 };
 
+fn make_ctx() -> SyntaxContext {
+    // SAFETY: Tests do not use a Database, so this won't ever be used within salsa.
+    unsafe { SyntaxContext::from_u32(0) }
+}
+
 fn parse_string(call_site: SpanId, src: &str) -> TokenStream<SpanId> {
     TokenStream::from_str(src, call_site).unwrap()
 }
@@ -86,7 +91,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::from_u32_safe(0),
+        ctx: make_ctx(),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -94,7 +99,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::from_u32_safe(0),
+        ctx: make_ctx(),
     };
     let mixed_site = call_site;
 
@@ -189,7 +194,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::from_u32_safe(0),
+        ctx: make_ctx(),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -197,7 +202,7 @@ pub fn assert_expand_with_callback(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContext::from_u32_safe(0),
+        ctx: make_ctx(),
     };
     let mixed_site = call_site;
 
