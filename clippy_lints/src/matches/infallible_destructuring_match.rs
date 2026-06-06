@@ -32,9 +32,8 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
             cx,
             INFALLIBLE_DESTRUCTURING_MATCH,
             local.span,
-            "you seem to be trying to use `match` to destructure a single infallible pattern. \
-            Consider using `let`",
-            "try",
+            "you seem to be trying to use `match` to destructure a single infallible pattern",
+            "consider using `let`",
             format!(
                 "let {}({}{}) = {};",
                 snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
