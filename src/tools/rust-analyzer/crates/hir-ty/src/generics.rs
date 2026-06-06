@@ -72,8 +72,12 @@ impl<'db> SingleGenerics<'db> {
         self.params.len_lifetimes()
     }
 
-    pub(crate) fn len(&self) -> usize {
-        self.params.len()
+    pub(crate) fn len(&self, consider_late_bound: bool) -> usize {
+        if consider_late_bound {
+            self.params.len()
+        } else {
+            self.params.len() - self.params.len_late_bound_lifetimes()
+        }
     }
 
     fn iter_lifetimes(&self) -> impl Iterator<Item = (LifetimeParamId, &'db LifetimeParamData)> {
@@ -243,17 +247,18 @@ impl<'db> Generics<'db> {
     }
 
     /// Returns total number of generic parameters in scope, including those from parent.
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) fn len(&self, consider_late_bound: bool) -> usize {
         match &*self.chain {
-            [parent, owner] => parent.len() + owner.len(),
-            [owner] => owner.len(),
+            [parent, owner] => parent.len(consider_late_bound) + owner.len(consider_late_bound),
+            [owner] => owner.len(consider_late_bound),
             _ => unreachable!(),
         }
     }
 
     #[inline]
     pub(crate) fn len_parent(&self) -> usize {
-        self.parent().map_or(0, SingleGenerics::len)
+        // add `consider_late_bound` arg if needed in future, currently it's not needed.
+        self.parent().map_or(0, |p| p.len(true))
     }
 
     pub(crate) fn len_lifetimes_self(&self) -> usize {

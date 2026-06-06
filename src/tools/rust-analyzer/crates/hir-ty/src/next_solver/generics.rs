@@ -100,6 +100,6 @@ impl<'db> Generics<'db> {
 
 impl<'db> rustc_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics<'db> {
     fn count(&self) -> usize {
-        self.generics.len() + usize::from(self.additional_param.is_some())
+        self.generics.len(self.consider_late_bound) + usize::from(self.additional_param.is_some())
     }
 }

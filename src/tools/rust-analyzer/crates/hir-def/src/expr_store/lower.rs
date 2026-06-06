@@ -3501,7 +3501,7 @@ impl ExprCollector<'_> {
 
         #[salsa::tracked(returns(deref), cycle_result = get_constrained_lifetimes_cycle_result)]
         fn get_constrained_lifetimes(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             type_alias_id: TypeAliasId,
         ) -> Box<[u32]> {
             let TypeAliasSignature { generic_params, store, ty, .. } =
@@ -3545,7 +3545,7 @@ impl ExprCollector<'_> {
         }
 
         fn get_constrained_lifetimes_cycle_result(
-            _db: &dyn DefDatabase,
+            _db: &dyn SourceDatabase,
             _: salsa::Id,
             _id: TypeAliasId,
         ) -> Box<[u32]> {
