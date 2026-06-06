@@ -77,14 +77,14 @@ pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
     num_explicit_args: usize,
-    names: FxHashMap<Symbol, usize>,
+    explicit_names: FxHashMap<Symbol, usize>,
 }
 
 impl FormatArguments {
     pub fn new() -> Self {
         Self {
             arguments: Vec::new(),
-            names: FxHashMap::default(),
+            explicit_names: FxHashMap::default(),
             num_unnamed_args: 0,
             num_explicit_args: 0,
         }
@@ -92,12 +92,20 @@ impl FormatArguments {
 
     pub fn add(&mut self, arg: FormatArgument) -> usize {
         let index = self.arguments.len();
-        if let Some(name) = arg.kind.ident() {
-            self.names.insert(name.name, index);
-        } else if self.names.is_empty() {
-            // Only count the unnamed args before the first named arg.
-            // (Any later ones are errors.)
-            self.num_unnamed_args += 1;
+        match arg.kind {
+            FormatArgumentKind::Normal => {
+                // Only count the unnamed args before the first named arg.
+                // (Any later ones are errors.)
+                if self.explicit_names.is_empty() {
+                    self.num_unnamed_args += 1;
+                }
+            }
+            FormatArgumentKind::Named(ident) => {
+                self.explicit_names.insert(ident.name, index);
+            }
+            FormatArgumentKind::Captured(_) => {
+                // Don't record the name yet, to keep duplicate captures until AST->HIR lowering.
+            }
         }
         if !matches!(arg.kind, FormatArgumentKind::Captured(..)) {
             // This is an explicit argument.
@@ -113,8 +121,8 @@ impl FormatArguments {
         index
     }
 
-    pub fn by_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
-        let i = *self.names.get(&name)?;
+    pub fn by_explicit_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
+        let i = *self.explicit_names.get(&name)?;
         Some((i, &self.arguments[i]))
     }
 
