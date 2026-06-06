@@ -273,18 +273,25 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// Todo: explain this.
+    /// The `repeated_reprs` lint detects when the same representation is
+    /// specified more than once in a `#[repr(..)]` attribute.
     ///
     /// ### Example
     ///
-    /// TODO
+    /// ```rust
+    /// #[repr(C)]
+    /// #[repr(C)]
+    /// enum Foo { A }
+    /// ```
     ///
     /// ### Explanation
     ///
-    /// TODO
+    /// While some representations may be specified more than once, the compiler
+    /// will reject repeated uses of some others. For consistency, prefer to
+    /// only specify the representation once.
     pub REPEATED_REPRS,
     Warn,
-    "repeated `#[repr(..)]` attributes were inconsistently rejected before",
+    "detects repeated representations in `#[repr(..)]` attributes",
 }
 
 declare_lint! {

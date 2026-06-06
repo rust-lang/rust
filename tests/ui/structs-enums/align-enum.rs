@@ -11,7 +11,7 @@ enum Align16 {
 }
 
 // Raise alignment by maximum
-#[repr(align(1), align(16))] //~ WARN attribute is specified more than once
+#[repr(align(1), align(16))] //~ WARN representation attribute is specified more than once
 #[repr(align(32))]
 #[repr(align(4))]
 enum Align32 {
