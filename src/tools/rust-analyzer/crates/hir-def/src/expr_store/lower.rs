@@ -3479,12 +3479,17 @@ impl ExprCollector<'_> {
             let res = constrained_lt_indices
                 .iter()
                 .filter_map(|&idx| {
-                    if let GenericArg::Lifetime(lt_ref) = generic_args.args[idx as usize]
-                        && let LifetimeRef::Named(name) = &self.store.lifetimes[lt_ref]
-                    {
-                        Some(name.clone())
-                    } else {
-                        None
+                    let lt_ref = generic_args
+                        .args
+                        .iter()
+                        .filter_map(|arg| match arg {
+                            &GenericArg::Lifetime(lt_ref) => Some(lt_ref),
+                            GenericArg::Type(_) | GenericArg::Const(_) => None,
+                        })
+                        .nth(idx as usize)?;
+                    match &self.store.lifetimes[lt_ref] {
+                        LifetimeRef::Named(name) => Some(name.clone()),
+                        _ => None,
                     }
                 })
                 .collect();
