@@ -18,9 +18,7 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_fs_util;
 extern crate rustc_hir;
-extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_log;
 extern crate rustc_session;
@@ -60,7 +58,6 @@ mod codegen_f16_f128;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
-mod concurrency_limiter;
 mod config;
 mod constant;
 mod debuginfo;
@@ -133,7 +130,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => {
-                sess.dcx().warn("LTO is not supported. You may get a linker error.")
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
             }
         }
 
@@ -150,6 +147,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
+    }
+
+    fn thin_lto_supported(&self) -> bool {
+        false
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
@@ -224,7 +225,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         } else {
-            driver::aot::run_aot(tcx)
+            Box::new(rustc_codegen_ssa::base::codegen_crate(driver::aot::AotDriver, tcx))
         }
     }
 
@@ -232,10 +233,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        outputs: &OutputFilenames,
-        _crate_info: &CrateInfo,
+        _outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
+        ongoing_codegen
+            .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
+            .unwrap()
+            .join(sess, crate_info)
     }
 
     fn fallback_intrinsics(&self) -> Vec<Symbol> {
