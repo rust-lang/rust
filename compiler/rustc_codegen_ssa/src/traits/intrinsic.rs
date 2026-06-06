@@ -5,7 +5,7 @@ use super::BackendTypes;
 use crate::RetagInfo;
 use crate::mir::IntrinsicResult;
 use crate::mir::operand::OperandRef;
-use crate::mir::place::{PlaceRef, PlaceValue};
+use crate::mir::place::PlaceValue;
 
 pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     /// Higher-level interface to emitting calls to intrinsics
