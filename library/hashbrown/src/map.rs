@@ -5615,7 +5615,7 @@ mod test_map {
         m2.insert(1, 2);
         m2.insert(2, 3);
 
-        assert!(m1 != m2);
+        assert_ne!(m1, m2);
 
         m2.insert(3, 4);
 
