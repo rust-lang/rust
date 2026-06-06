@@ -358,7 +358,7 @@ fn emit_mermaid_nll_regions<'tcx>(
         (min, max)
     };
     let mut ordered_edges: Vec<_> = regioncx.outlives_constraints().collect();
-    ordered_edges.sort_by_key(|c| constraint_key(c));
+    ordered_edges.sort_unstable_by_key(|c| constraint_key(c));
     ordered_edges.dedup_by_key(|c| constraint_key(c));
 
     for outlives in ordered_edges {

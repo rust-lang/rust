@@ -177,7 +177,7 @@ impl FileSetConfigBuilder {
                     entries.push((buf, i as u64));
                 }
             }
-            entries.sort();
+            entries.sort_unstable();
             entries.dedup_by(|(a, _), (b, _)| a == b);
             fst::Map::from_iter(entries).unwrap()
         };

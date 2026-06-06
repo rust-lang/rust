@@ -43,7 +43,7 @@ impl License {
     fn simplify(&mut self) {
         self.remove_copyright_prefixes();
         self.remove_trailing_dots();
-        self.copyright.sort();
+        self.copyright.sort_unstable();
         self.copyright.dedup();
     }
 

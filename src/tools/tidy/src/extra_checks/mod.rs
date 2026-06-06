@@ -601,7 +601,7 @@ fn create_venv_at_path(path: &Path) -> Result<(), Error> {
         let ret = if found.is_empty() {
             Error::MissingReq("python3", "python file checks", None)
         } else {
-            found.sort();
+            found.sort_unstable();
             found.dedup();
             Error::Version {
                 program: "python3",

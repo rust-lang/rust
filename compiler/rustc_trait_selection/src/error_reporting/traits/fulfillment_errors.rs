@@ -2107,7 +2107,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
                 .collect();
 
-            impl_candidates.sort_by_key(|(tr, _)| tr.to_string());
+            impl_candidates.sort_unstable_by_key(|(tr, _)| tr.to_string());
             impl_candidates.dedup();
             impl_candidates
         };
@@ -2340,14 +2340,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Check if the trait is the same in all cases. If so, we'll only show the type.
             let mut traits: Vec<_> =
                 candidates.iter().map(|(c, _)| c.print_only_trait_path().to_string()).collect();
-            traits.sort();
+            traits.sort_unstable();
             traits.dedup();
             // FIXME: this could use a better heuristic, like just checking
             // that args[1..] is the same.
             let all_traits_equal = traits.len() == 1;
             let mut types: Vec<_> =
                 candidates.iter().map(|(c, _)| c.self_ty().to_string()).collect();
-            types.sort();
+            types.sort_unstable();
             types.dedup();
             let all_types_equal = types.len() == 1;
 

@@ -1199,7 +1199,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
-                cgus.sort_by_key(|(name, _)| *name);
+                cgus.sort_unstable_by_key(|(name, _)| *name);
                 cgus.dedup();
                 for &(ref cgu_name, linkage) in cgus.iter() {
                     output.push(' ');

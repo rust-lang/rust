@@ -76,7 +76,7 @@ fn float_edge_cases<F: Float>(
     }
 
     // Some results may overlap so deduplicate the vector to save test cycles.
-    values.sort_by_key(|x| x.to_bits());
+    values.sort_unstable_by_key(|x| x.to_bits());
     values.dedup_by_key(|x| x.to_bits());
 
     let count = ret.len().try_into().unwrap();
@@ -185,7 +185,7 @@ where
         values.retain(|v| *v <= max);
     }
 
-    values.sort();
+    values.sort_unstable();
     values.dedup();
     let count = values.len().try_into().unwrap();
 

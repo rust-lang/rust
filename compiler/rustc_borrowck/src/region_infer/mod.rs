@@ -1170,7 +1170,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .iter()
             .flat_map(|(_location, subset_errors)| subset_errors.iter())
             .collect();
-        subset_errors.sort();
+        subset_errors.sort_unstable();
         subset_errors.dedup();
 
         for &(longer_fr, shorter_fr) in subset_errors.into_iter() {

@@ -765,8 +765,8 @@ fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, S
                 |f| if Utf8Path::new(&f).exists() { f.canonicalize_utf8().ok() } else { None },
             )
             .collect();
-        full_paths.dedup();
         full_paths.sort_unstable();
+        full_paths.dedup();
         full_paths
     };
     Ok(full_paths)

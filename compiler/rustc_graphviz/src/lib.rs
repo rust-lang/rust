@@ -69,7 +69,7 @@
 //!         for &(s,t) in v {
 //!             nodes.push(s); nodes.push(t);
 //!         }
-//!         nodes.sort();
+//!         nodes.sort_unstable();
 //!         nodes.dedup();
 //!         nodes.into()
 //!     }

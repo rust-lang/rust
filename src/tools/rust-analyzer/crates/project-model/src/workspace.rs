@@ -851,7 +851,7 @@ impl ProjectWorkspace {
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
                         }
-                        include.sort();
+                        include.sort_unstable();
                         include.dedup();
                         PackageRoot { is_local, include, exclude }
                     })
@@ -914,7 +914,7 @@ impl ProjectWorkspace {
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
                         }
-                        include.sort();
+                        include.sort_unstable();
                         include.dedup();
                         PackageRoot { is_local, include, exclude }
                     })
@@ -1738,7 +1738,7 @@ fn extend_crate_graph_with_sysroot(
         marker_set.extend(sysroot_crate_graph.transitive_deps(cid));
     }
 
-    marker_set.sort();
+    marker_set.sort_unstable();
     marker_set.dedup();
 
     // Remove all crates except the ones we are interested in to keep the sysroot graph small.

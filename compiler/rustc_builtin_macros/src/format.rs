@@ -1087,7 +1087,7 @@ fn report_invalid_references(
         let mut indexes: Vec<_> = invalid_refs.iter().map(|&(index, _, _, _)| index).collect();
         // Avoid `invalid reference to positional arguments 7 and 7 (there is 1 argument)`
         // for `println!("{7:7$}", 1);`
-        indexes.sort();
+        indexes.sort_unstable();
         indexes.dedup();
         let span: MultiSpan = if !parser.is_source_literal || parser.arg_places.is_empty() {
             MultiSpan::from_span(fmt_span)

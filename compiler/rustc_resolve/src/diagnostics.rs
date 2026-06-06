@@ -730,10 +730,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let BindingError { name, target, origin, could_be_path } = binding_error;
 
                 let mut target_sp = target.iter().map(|pat| pat.span).collect::<Vec<_>>();
-                target_sp.sort();
+                target_sp.sort_unstable();
                 target_sp.dedup();
                 let mut origin_sp = origin.iter().map(|(span, _)| *span).collect::<Vec<_>>();
-                origin_sp.sort();
+                origin_sp.sort_unstable();
                 origin_sp.dedup();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
@@ -756,13 +756,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     for pat in &target {
                         target_visitor.visit_pat(pat);
                     }
-                    target_visitor.identifiers.sort();
+                    target_visitor.identifiers.sort_unstable();
                     target_visitor.identifiers.dedup();
                     let mut origin_visitor = BindingVisitor::default();
                     for (_, pat) in &origin {
                         origin_visitor.visit_pat(pat);
                     }
-                    origin_visitor.identifiers.sort();
+                    origin_visitor.identifiers.sort_unstable();
                     origin_visitor.identifiers.dedup();
                     // Find if the binding could have been a typo
                     if let Some(typo) =
@@ -1878,7 +1878,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !derives.is_empty() {
             // We found an exact match for the missing attribute in a `derive` macro. Suggest it.
             let mut derives: Vec<String> = derives.into_iter().map(|d| d.to_string()).collect();
-            derives.sort();
+            derives.sort_unstable();
             derives.dedup();
             let msg = match &derives[..] {
                 [derive] => format!(" `{derive}`"),
@@ -1926,7 +1926,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && let Some(macros) = all_attrs.get(&best_match)
             {
                 let mut macros: Vec<String> = macros.into_iter().map(|d| d.to_string()).collect();
-                macros.sort();
+                macros.sort_unstable();
                 macros.dedup();
                 let msg = match &macros[..] {
                     [] => return,
@@ -2611,7 +2611,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             )
             .filter(|c| !c.to_string().is_empty())
             .collect::<Vec<_>>();
-        candidates.sort();
+        candidates.sort_unstable();
         candidates.dedup();
         find_best_match_for_name(&candidates, ident, None).filter(|sugg| *sugg != ident)
     }
@@ -3604,7 +3604,7 @@ fn show_candidates(
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
-        path_strings.sort_by(|a, b| a.0.cmp(&b.0));
+        path_strings.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         path_strings.dedup_by(|a, b| a.0 == b.0);
         let core_path_strings =
             path_strings.extract_if(.., |p| p.0.starts_with("core::")).collect::<Vec<_>>();

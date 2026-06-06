@@ -59,7 +59,7 @@ pub(crate) fn remap_paths(paths: &mut Vec<PathBuf>) {
             }
         }
     }
-    remove.sort();
+    remove.sort_unstable();
     remove.dedup();
     for idx in remove.into_iter().rev() {
         paths.remove(idx);

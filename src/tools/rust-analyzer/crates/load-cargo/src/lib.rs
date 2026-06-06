@@ -276,9 +276,9 @@ impl ProjectFolders {
                     roots[k].include.extend(r.include);
                     roots[k].exclude.extend(r.exclude);
                 }
-                roots[k].include.sort();
-                roots[k].exclude.sort();
+                roots[k].include.sort_unstable();
                 roots[k].include.dedup();
+                roots[k].exclude.sort_unstable();
                 roots[k].exclude.dedup();
             }
         }

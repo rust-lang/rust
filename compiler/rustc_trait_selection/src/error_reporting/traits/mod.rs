@@ -643,7 +643,7 @@ pub fn report_dyn_incompatibility<'tcx>(
     if trait_span.is_some() {
         let mut potential_solutions: Vec<_> =
             reported_violations.into_iter().map(|violation| violation.solution()).collect();
-        potential_solutions.sort();
+        potential_solutions.sort_unstable();
         // Allows us to skip suggesting that the same item should be moved to another trait multiple times.
         potential_solutions.dedup();
         for solution in potential_solutions {

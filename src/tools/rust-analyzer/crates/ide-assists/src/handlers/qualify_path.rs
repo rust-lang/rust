@@ -75,7 +75,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Op
     };
 
     // we aren't interested in different namespaces
-    proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
+    proposed_imports.sort_unstable_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let current_edition =

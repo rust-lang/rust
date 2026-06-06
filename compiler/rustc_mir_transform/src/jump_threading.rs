@@ -830,7 +830,7 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
             .iter()
             .flat_map(|&index| state.targets[index].iter().copied())
             .collect();
-        targets.sort();
+        targets.sort_unstable();
         targets.dedup();
         trace!(?targets);
 
@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
             .iter()
             .flat_map(|&index| std::mem::take(&mut state.targets[index]))
             .collect();
-        targets.sort();
+        targets.sort_unstable();
         targets.dedup();
         trace!(?targets);
 

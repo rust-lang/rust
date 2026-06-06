@@ -360,7 +360,7 @@ pub fn suggest_constraining_type_params<'a>(
         }
 
         let mut constraint = constraints.iter().map(|&(c, _, _)| c).collect::<Vec<_>>();
-        constraint.sort();
+        constraint.sort_unstable();
         constraint.dedup();
         let all_known = constraints.iter().all(|&(_, def_id, _)| def_id.is_some());
         let all_stable = constraints.iter().all(|&(_, _, stable)| stable.is_empty());
@@ -374,7 +374,7 @@ pub fn suggest_constraining_type_params<'a>(
                     Some(def_id) => format!("`{}`", tcx.item_name(def_id)),
                 })
                 .collect::<Vec<_>>();
-            trait_names.sort();
+            trait_names.sort_unstable();
             trait_names.dedup();
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
@@ -390,7 +390,7 @@ pub fn suggest_constraining_type_params<'a>(
                     Some(def_id) => format!("{stable}trait `{}`", tcx.item_name(def_id)),
                 })
                 .collect::<Vec<_>>();
-            trait_names.sort();
+            trait_names.sort_unstable();
             trait_names.dedup();
             match listify(&trait_names, |t| t.to_string()) {
                 Some(names) => names,

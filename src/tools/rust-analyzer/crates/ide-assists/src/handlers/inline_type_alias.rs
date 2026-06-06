@@ -375,7 +375,7 @@ fn create_replacement(
     }
 
     // Deduplicate removals to avoid intersecting changes
-    removals.sort_by_key(|n| n.text_range().start());
+    removals.sort_unstable_by_key(|n| n.text_range().start());
     removals.dedup();
 
     // Remove GenericArgList entirely if all its args are being removed (avoids empty angle brackets)

@@ -1014,7 +1014,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .filter_map(format_pred)
             .map(|(p, _)| format!("`{p}`"))
             .collect();
-        bounds.sort();
+        bounds.sort_unstable();
         bounds.dedup();
 
         let mut err = self.dcx().struct_span_err(
@@ -1036,7 +1036,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
-            bounds.sort();
+            bounds.sort_unstable();
             bounds.dedup();
             let msg = match &bounds[..] {
                 [bound] => format!("doesn't satisfy {bound}"),

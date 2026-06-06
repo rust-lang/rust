@@ -74,7 +74,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             spans.push(sup_origin.span());
         }
         // We dedup the spans *ignoring* expansion context.
-        spans.sort();
+        spans.sort_unstable();
         spans.dedup_by_key(|span| (span.lo(), span.hi()));
 
         // We try to make the output have fewer overlapping spans if possible.

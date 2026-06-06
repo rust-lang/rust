@@ -172,7 +172,7 @@ impl StableCrateId {
 
         // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:
-        metadata.sort();
+        metadata.sort_unstable();
         // Every distinct -C metadata value is only incorporated once:
         metadata.dedup();
 

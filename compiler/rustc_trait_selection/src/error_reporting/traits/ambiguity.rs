@@ -741,9 +741,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
         let mut crate_names: Vec<_> = crates.iter().map(|n| format!("`{n}`")).collect();
-        crate_names.sort();
+        crate_names.sort_unstable();
         crate_names.dedup();
-        post.sort();
+        post.sort_unstable();
         post.dedup();
 
         if self.tainted_by_errors().is_some()

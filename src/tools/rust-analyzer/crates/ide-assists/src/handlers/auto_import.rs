@@ -106,7 +106,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
     let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
 
     // we aren't interested in different namespaces
-    proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
+    proposed_imports.sort_unstable_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let current_module = ctx.sema.scope(scope.as_syntax_node()).map(|scope| scope.module());

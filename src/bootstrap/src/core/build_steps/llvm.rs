@@ -477,13 +477,13 @@ impl Step for Llvm {
         }
 
         if !enabled_llvm_projects.is_empty() {
-            enabled_llvm_projects.sort();
+            enabled_llvm_projects.sort_unstable();
             enabled_llvm_projects.dedup();
             cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
         }
 
         if !enabled_llvm_runtimes.is_empty() {
-            enabled_llvm_runtimes.sort();
+            enabled_llvm_runtimes.sort_unstable();
             enabled_llvm_runtimes.dedup();
             cfg.define("LLVM_ENABLE_RUNTIMES", enabled_llvm_runtimes.join(";"));
         }

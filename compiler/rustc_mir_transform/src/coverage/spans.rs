@@ -96,7 +96,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // Sort the holes, and merge overlapping/adjacent holes.
     let mut holes = node.hole_spans.iter().copied().map(|span| Hole { span }).collect::<Vec<_>>();
 
-    holes.sort_by(|a, b| compare_spans(a.span, b.span));
+    holes.sort_unstable_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
     // Discard any span that overlaps with a hole.

@@ -73,7 +73,7 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
         let mut intrinsics =
             get_xml_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
-        intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
+        intrinsics.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         intrinsics.dedup_by(|a, b| a.name == b.name);
 
         let sample_percentage: usize = cli_options.sample_percentage as usize;

@@ -1136,7 +1136,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// recursively.
     #[must_use]
     pub fn dump_allocs<'a>(&'a self, mut allocs: Vec<AllocId>) -> DumpAllocs<'a, 'tcx, M> {
-        allocs.sort();
+        allocs.sort_unstable();
         allocs.dedup();
         DumpAllocs { ecx: self, allocs }
     }

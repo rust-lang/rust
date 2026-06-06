@@ -1547,7 +1547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // Highlight each generic parameter in use.
                     for (param, uses) in hir_generics.params.iter().zip(&mut generic_uses) {
-                        uses.sort();
+                        uses.sort_unstable();
                         uses.dedup();
                         if let Some(param_list) = listify(uses, |&idx| {
                             params_with_generics[idx].1.display(idx.as_usize()).to_string()

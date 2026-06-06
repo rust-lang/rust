@@ -754,14 +754,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         span,
                     });
                 } else {
-                    binds_to.sort();
+                    binds_to.sort_unstable();
                     binds_to.dedup();
 
                     self.add_move_error_details(err, &binds_to, &[]);
                 }
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
-                binds_to.sort();
+                binds_to.sort_unstable();
                 binds_to.dedup();
                 let desugar_spans = self.add_move_error_suggestions(err, &binds_to);
                 self.add_move_error_details(err, &binds_to, &desugar_spans);

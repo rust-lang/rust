@@ -173,9 +173,9 @@ pub struct CfgDiff {
 impl CfgDiff {
     /// Create a new CfgDiff.
     pub fn new(mut enable: Vec<CfgAtom>, mut disable: Vec<CfgAtom>) -> CfgDiff {
-        enable.sort();
+        enable.sort_unstable();
         enable.dedup();
-        disable.sort();
+        disable.sort_unstable();
         disable.dedup();
         for i in (0..enable.len()).rev() {
             if let Some(j) = disable.iter().position(|atom| *atom == enable[i]) {

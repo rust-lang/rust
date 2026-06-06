@@ -802,7 +802,7 @@ impl SerializedSearchIndex {
             .iter()
             .filter_map(|entry_data| Some(names[entry_data.as_ref()?.krate].as_bytes()))
             .collect();
-        crates.sort();
+        crates.sort_unstable();
         crates.dedup();
         serialized_root.extend_from_slice(&perform_write_strings(
             doc_root,

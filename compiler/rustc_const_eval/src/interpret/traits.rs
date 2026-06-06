@@ -77,9 +77,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let mut sorted_vtable: Vec<_> = vtable_dyn_type.without_auto_traits().collect();
         let mut sorted_expected: Vec<_> = expected_dyn_type.without_auto_traits().collect();
         // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
-        sorted_vtable.sort_by(|a, b| a.skip_binder().stable_cmp(*self.tcx, &b.skip_binder()));
+        sorted_vtable
+            .sort_unstable_by(|a, b| a.skip_binder().stable_cmp(*self.tcx, &b.skip_binder()));
         sorted_vtable.dedup();
-        sorted_expected.sort_by(|a, b| a.skip_binder().stable_cmp(*self.tcx, &b.skip_binder()));
+        sorted_expected
+            .sort_unstable_by(|a, b| a.skip_binder().stable_cmp(*self.tcx, &b.skip_binder()));
         sorted_expected.dedup();
 
         if sorted_vtable.len() != sorted_expected.len() {

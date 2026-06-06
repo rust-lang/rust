@@ -205,12 +205,12 @@ pub(crate) fn generate_kind_src(
         panic!("Punctuation {punct:?} is not used in grammar");
     }
     keywords.extend(RESERVED.iter().copied());
-    keywords.sort();
+    keywords.sort_unstable();
     keywords.dedup();
-    contextual_keywords.sort();
+    contextual_keywords.sort_unstable();
     contextual_keywords.dedup();
     let mut edition_dependent_keywords: Vec<(&_, _)> = EDITION_DEPENDENT_KEYWORDS.to_vec();
-    edition_dependent_keywords.sort();
+    edition_dependent_keywords.sort_unstable();
     edition_dependent_keywords.dedup();
 
     keywords.retain(|&it| !contextual_keywords.contains(&it));

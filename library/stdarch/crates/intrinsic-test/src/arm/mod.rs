@@ -41,7 +41,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         let mut intrinsics =
             get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
 
-        intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
+        intrinsics.sort_unstable_by(|a, b| a.name.cmp(&b.name));
         intrinsics.dedup();
 
         let sample_percentage: usize = cli_options.sample_percentage as usize;

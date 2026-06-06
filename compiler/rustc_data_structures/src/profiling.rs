@@ -661,7 +661,7 @@ impl SelfProfiler {
 
             // Warn about any unknown event names
             if !unknown_events.is_empty() {
-                unknown_events.sort();
+                unknown_events.sort_unstable();
                 unknown_events.dedup();
 
                 warn!(

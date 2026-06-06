@@ -637,7 +637,7 @@ impl UseTree {
         // Recursively normalize elements of a list use (including sorting the list).
         if let UseSegmentKind::List(list) = last.kind {
             let mut list = list.into_iter().map(UseTree::normalize).collect::<Vec<_>>();
-            list.sort();
+            list.sort_unstable();
             list.dedup();
             last = UseSegment {
                 kind: UseSegmentKind::List(list),
@@ -832,7 +832,7 @@ fn merge_rest(
         UseTree::from_path(a[len..].to_vec(), DUMMY_SP),
         UseTree::from_path(b[len..].to_vec(), DUMMY_SP),
     ];
-    list.sort();
+    list.sort_unstable();
     list.dedup();
     let mut new_path = b[..len].to_vec();
     let kind = UseSegmentKind::List(list);
@@ -897,7 +897,7 @@ fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree, merge_by: 
         }
     }
     trees.push(use_tree);
-    trees.sort();
+    trees.sort_unstable();
     trees.dedup();
 }
 

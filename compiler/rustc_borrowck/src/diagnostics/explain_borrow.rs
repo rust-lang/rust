@@ -422,7 +422,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         _ => None,
                     })
                     .collect::<Vec<Span>>();
-                preds.sort();
+                preds.sort_unstable();
                 preds.dedup();
                 if !preds.is_empty() {
                     let s = if preds.len() == 1 { "" } else { "s" };

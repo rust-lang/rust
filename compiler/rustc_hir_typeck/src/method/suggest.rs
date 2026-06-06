@@ -1164,7 +1164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !self.tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
-            bounds.sort();
+            bounds.sort_unstable();
             bounds.dedup();
             let is_ty_span = Some(span) == ty_span;
             if is_ty_span && should_condense {
@@ -2036,7 +2036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .filter_map(|pred| format_pred(**pred))
                 .map(|(p, _)| format!("`{p}`"))
                 .collect();
-            preds.sort();
+            preds.sort_unstable();
             preds.dedup();
             let availability_note = if all_trait_bounds_for_rcvr
                 && has_ref_dupes
@@ -2132,7 +2132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        bound_list.sort_by(|(_, a), (_, b)| a.cmp(b)); // Sort alphabetically.
+        bound_list.sort_unstable_by(|(_, a), (_, b)| a.cmp(b)); // Sort alphabetically.
         bound_list.dedup_by(|(_, a), (_, b)| a == b); // #35677
         bound_list.sort_by_key(|(pos, _)| *pos); // Keep the original predicate order.
 
@@ -3632,7 +3632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits.push(trait_pred.def_id());
             }
         }
-        traits.sort_by_key(|&id| self.tcx.def_path_str(id));
+        traits.sort_unstable_by_key(|&id| self.tcx.def_path_str(id));
         traits.dedup();
 
         let len = traits.len();
@@ -3666,7 +3666,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) -> bool {
         let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
-        derives.sort();
+        derives.sort_unstable();
         derives.dedup();
 
         let mut derives_grouped = Vec::<(String, Span, String)>::new();
@@ -4038,7 +4038,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         valid_out_of_scope_traits.retain(|id| self.tcx.is_user_visible_dep(id.krate));
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
-            candidates.sort_by_key(|&id| self.tcx.def_path_str(id));
+            candidates.sort_unstable_by_key(|&id| self.tcx.def_path_str(id));
             candidates.dedup();
 
             // `TryFrom` and `FromIterator` have no methods
@@ -4489,8 +4489,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !candidates.is_empty() {
             // Sort local crate results before others
-            candidates
-                .sort_by_key(|&info| (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id)));
+            candidates.sort_unstable_by_key(|&info| {
+                (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id))
+            });
             candidates.dedup();
 
             let param_type = match *rcvr_ty.kind() {

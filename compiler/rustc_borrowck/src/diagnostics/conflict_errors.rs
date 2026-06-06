@@ -1107,7 +1107,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // same line) then we use the more verbose span output (`file.rs:col:ll`).
                 let mut lines: Vec<_> =
                     loop_spans.iter().map(|sp| sm.lookup_char_pos(sp.lo()).line).collect();
-                lines.sort();
+                lines.sort_unstable();
                 lines.dedup();
                 let fmt_span = |span: Span| {
                     if lines.len() == loop_spans.len() {

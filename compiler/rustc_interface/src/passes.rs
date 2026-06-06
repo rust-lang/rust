@@ -1450,7 +1450,7 @@ pub fn collect_crate_types(
         if base.is_empty() {
             base.push(default_output_for_target(session));
         } else {
-            base.sort();
+            base.sort_unstable();
             base.dedup();
         }
     }

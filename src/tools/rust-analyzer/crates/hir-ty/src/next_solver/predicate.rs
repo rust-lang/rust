@@ -142,11 +142,11 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
         // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
-        a_v.sort_by(|a, b| {
+        a_v.sort_unstable_by(|a, b| {
             stable_cmp_existential_predicate(a.as_ref().skip_binder(), b.as_ref().skip_binder())
         });
         a_v.dedup();
-        b_v.sort_by(|a, b| {
+        b_v.sort_unstable_by(|a, b| {
             stable_cmp_existential_predicate(a.as_ref().skip_binder(), b.as_ref().skip_binder())
         });
         b_v.dedup();

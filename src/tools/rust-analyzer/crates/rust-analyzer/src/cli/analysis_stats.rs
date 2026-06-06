@@ -366,7 +366,7 @@ impl flags::AnalysisStats {
             }
         });
 
-        file_ids.sort();
+        file_ids.sort_unstable();
         file_ids.dedup();
 
         if self.run_all_ide_things {
