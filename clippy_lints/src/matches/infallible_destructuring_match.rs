@@ -9,14 +9,23 @@ use rustc_lint::LateContext;
 use super::INFALLIBLE_DESTRUCTURING_MATCH;
 
 pub(crate) fn check(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
+    // turn this:
+    //
+    // let local = match target {
+    //     Variant(binding arg) => { arg }
+    // };
+    //
+    // into this:
+    //
+    // let Variant(binding local) = target;
     if !local.span.from_expansion()
         && let Some(expr) = local.init
         && let ExprKind::Match(target, [arm], MatchSource::Normal) = expr.kind
         && arm.guard.is_none()
-        && let PatKind::TupleStruct(QPath::Resolved(None, variant_name), [arg], _) = arm.pat.kind
-        && let PatKind::Binding(binding, arg, ..) = strip_pat_refs(arg).kind
-        && let body = peel_blocks(arm.body)
-        && body.res_local_id() == Some(arg)
+        && let PatKind::TupleStruct(QPath::Resolved(None, variant_name), [arg_lhs], _) = arm.pat.kind
+        && let PatKind::Binding(binding, arg_lhs, ..) = strip_pat_refs(arg_lhs).kind
+        && let arg_rhs = peel_blocks(arm.body)
+        && Some(arg_lhs) == arg_rhs.res_local_id()
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
