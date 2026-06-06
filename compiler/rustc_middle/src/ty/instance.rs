@@ -503,7 +503,7 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-        assert_matches!(
+        std::debug_assert_matches!(
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
