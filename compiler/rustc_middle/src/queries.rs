@@ -190,6 +190,8 @@ rustc_queries! {
     }
 
     query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, Steal<(
+        // There is only a single `ResolverAstLowering` for all owners, and we want to drop it
+        // once the whole HIR has been lowered.
         Arc<ty::ResolverAstLowering<'tcx>>,
         ast::AstOwner,
     )>> {
@@ -210,9 +212,9 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
-    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
+    query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { "lowering HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
     }
 
     query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {

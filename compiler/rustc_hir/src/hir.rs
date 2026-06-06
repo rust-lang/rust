@@ -1663,8 +1663,8 @@ impl<'tcx> AttributeMap<'tcx> {
 /// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
 /// The HIR tree, including bodies, is pre-hashed.
 pub struct OwnerNodes<'tcx> {
-    /// Pre-computed hash of the full HIR. Used in the crate hash. Only present
-    /// when incr. comp. is enabled.
+    /// Pre-computed hash of the full HIR, including bodies. Used in the crate hash.
+    /// Only present when incr. comp. is enabled.
     pub opt_hash: Option<Fingerprint>,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
