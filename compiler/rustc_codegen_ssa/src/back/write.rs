@@ -341,6 +341,7 @@ pub struct CodegenContext {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
     pub pointer_size: Size,
+    pub rust_eh_personality_symbol: String,
 
     /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
@@ -1279,6 +1280,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         target_is_like_darwin: tcx.sess.target.is_like_darwin,
         target_is_like_aix: tcx.sess.target.is_like_aix,
         target_is_like_gpu: tcx.sess.target.is_like_gpu,
+        rust_eh_personality_symbol: rustc_symbol_mangling::eh_personality_symbol(tcx),
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
