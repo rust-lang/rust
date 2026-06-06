@@ -728,6 +728,12 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
         CanonAbi::Swift => llvm::SwiftCallConv,
+        CanonAbi::WasmMultivalue => {
+            if crate::llvm_util::get_version() < (23, 0, 0) {
+                sess.dcx().emit_fatal(crate::errors::WasmMultivalueRequiresLlvm23);
+            }
+            llvm::WasmMultivalue
+        }
         CanonAbi::GpuKernel => match &sess.target.arch {
             Arch::AmdGpu => llvm::AmdgpuKernel,
             Arch::Nvptx64 => llvm::PtxKernel,

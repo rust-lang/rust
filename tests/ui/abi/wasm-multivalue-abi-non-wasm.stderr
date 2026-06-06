@@ -1,0 +1,45 @@
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:6:8
+   |
+LL | extern "wasm-multivalue" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:9:12
+   |
+LL |     extern "wasm-multivalue" fn m();
+   |            ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:11:12
+   |
+LL |     extern "wasm-multivalue" fn dm() {}
+   |            ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:16:12
+   |
+LL |     extern "wasm-multivalue" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:20:12
+   |
+LL |     extern "wasm-multivalue" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:23:18
+   |
+LL | type TA = extern "wasm-multivalue" fn();
+   |                  ^^^^^^^^^^^^^^^^^
+
+error[E0570]: "wasm-multivalue" is not a supported ABI for the current target
+  --> $DIR/wasm-multivalue-abi-non-wasm.rs:25:8
+   |
+LL | extern "wasm-multivalue" {}
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

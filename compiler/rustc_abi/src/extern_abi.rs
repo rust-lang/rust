@@ -120,6 +120,10 @@ pub enum ExternAbi {
     Win64 {
         unwind: bool,
     },
+
+    /// WebAssembly-specific ABI to support multiple returns using the
+    /// multivalue wasm proposal.
+    WasmMultivalue,
 }
 
 macro_rules! abi_impls {
@@ -210,6 +214,7 @@ abi_impls! {
             Unadjusted =><= "unadjusted",
             Vectorcall { unwind: false } =><= "vectorcall",
             Vectorcall { unwind: true } =><= "vectorcall-unwind",
+            WasmMultivalue =><= "wasm-multivalue",
             Win64 { unwind: false } =><= "win64",
             Win64 { unwind: true } =><= "win64-unwind",
             X86Interrupt =><= "x86-interrupt",
@@ -354,7 +359,8 @@ impl ExternAbi {
             | Self::SysV64 { .. }
             | Self::Win64 { .. }
             | Self::RustPreserveNone
-            | Self::Swift => true,
+            | Self::Swift
+            | Self::WasmMultivalue => true,
         }
     }
 }

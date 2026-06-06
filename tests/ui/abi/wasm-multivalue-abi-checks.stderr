@@ -1,0 +1,15 @@
+error: this function definition uses ABI "wasm-multivalue" which requires the `multivalue` target feature, which is not enabled
+   |
+LL | pub extern "wasm-multivalue" fn f() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: consider enabling it globally (`-C target-feature=+multivalue`) or locally (`#[target_feature(enable="multivalue")]`)
+
+error: this function call uses ABI "wasm-multivalue" which requires the `multivalue` target feature, which is not enabled in the caller
+   |
+LL |     f();
+   |     ^^^ function called here
+   |
+   = help: consider enabling it globally (`-C target-feature=+multivalue`) or locally (`#[target_feature(enable="multivalue")]`)
+
+error: aborting due to 2 previous errors

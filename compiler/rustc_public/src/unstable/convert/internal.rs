@@ -620,6 +620,7 @@ impl RustcInternal for Abi {
             Abi::RustPreserveNone => rustc_abi::ExternAbi::RustPreserveNone,
             Abi::Custom => rustc_abi::ExternAbi::Custom,
             Abi::Swift => rustc_abi::ExternAbi::Swift,
+            Abi::WasmMultivalue => rustc_abi::ExternAbi::WasmMultivalue,
         }
     }
 }

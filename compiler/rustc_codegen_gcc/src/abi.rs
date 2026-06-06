@@ -247,6 +247,10 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttri
         CanonAbi::Custom => return None,
         // gcc/gccjit does not have anything for Swift's calling convention.
         CanonAbi::Swift => panic!("gcc/gccjit backend does not support Swift calling convention"),
+        // gcc/gccjit does not target WebAssembly.
+        CanonAbi::WasmMultivalue => {
+            panic!("gcc/gccjit backend does not support the wasm-multivalue calling convention")
+        }
         CanonAbi::Arm(arm_call) => match arm_call {
             ArmCall::CCmseNonSecureCall => FnAttribute::ArmCmseNonsecureCall,
             ArmCall::CCmseNonSecureEntry => FnAttribute::ArmCmseNonsecureEntry,

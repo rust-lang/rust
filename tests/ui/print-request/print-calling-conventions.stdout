@@ -34,6 +34,7 @@ thiscall-unwind
 unadjusted
 vectorcall
 vectorcall-unwind
+wasm-multivalue
 win64
 win64-unwind
 x86-interrupt

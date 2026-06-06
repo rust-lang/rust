@@ -1304,6 +1304,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | RustInvalid
         | Swift
+        | WasmMultivalue
         | Unadjusted => false,
         Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
     }

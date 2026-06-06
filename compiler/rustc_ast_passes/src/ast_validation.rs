@@ -425,6 +425,7 @@ impl<'a> AstValidator<'a> {
                     | CanonAbi::RustCold
                     | CanonAbi::RustPreserveNone
                     | CanonAbi::Swift
+                    | CanonAbi::WasmMultivalue
                     | CanonAbi::Arm(_)
                     | CanonAbi::X86(_) => { /* nothing to check */ }
 

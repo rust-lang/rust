@@ -62,6 +62,7 @@ impl AbiMap {
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
+            Arch::Wasm32 | Arch::Wasm64 => ArchKind::Wasm,
             _ => ArchKind::Other,
         };
 
@@ -202,6 +203,10 @@ impl AbiMap {
                 | ExternAbi::X86Interrupt,
                 _,
             ) => return AbiMapping::Invalid,
+
+            /* wasm */
+            (ExternAbi::WasmMultivalue, ArchKind::Wasm) => CanonAbi::WasmMultivalue,
+            (ExternAbi::WasmMultivalue, _) => return AbiMapping::Invalid,
         };
 
         AbiMapping::Direct(canon_abi)
@@ -220,6 +225,7 @@ enum ArchKind {
     Riscv,
     X86,
     X86_64,
+    Wasm,
     /// Architectures which don't need other considerations for ABI lowering
     Other,
 }
