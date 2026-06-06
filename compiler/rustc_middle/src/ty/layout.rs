@@ -1305,7 +1305,9 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RustInvalid
         | Swift
         | Unadjusted => false,
-        Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
+        Rust | RustCall | RustCold | RustPreserveNone | RustTail => {
+            tcx.sess.panic_strategy().unwinds()
+        }
     }
 }
 
