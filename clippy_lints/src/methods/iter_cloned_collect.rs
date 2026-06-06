@@ -1,5 +1,5 @@
 use crate::methods::utils::derefs_to_slice;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::ty::get_iterator_item_ty;
 use rustc_errors::Applicability;
@@ -21,17 +21,19 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: Symbol, expr: &Ex
         && *iter_item_ty == args.type_at(0)
         && let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite())
     {
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             ITER_CLONED_COLLECT,
             to_replace,
-            format!(
-                "called `iter().{method_name}().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-            more readable"
-            ),
-            "try",
-            ".to_vec()".to_string(),
-            Applicability::MachineApplicable,
+            format!("called `.iter().{method_name}().collect()` on a slice to create a `Vec`"),
+            |diag| {
+                diag.span_suggestion_verbose(
+                    to_replace,
+                    "calling `.to_vec()` is both faster and more readable",
+                    ".to_vec()",
+                    Applicability::MachineApplicable,
+                );
+            },
         );
     }
 }
