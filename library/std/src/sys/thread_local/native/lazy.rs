@@ -1,6 +1,6 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
-use crate::ptr;
+use crate::ptr::{self, NonNull};
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 pub unsafe trait DestroyedState: Sized + Copy {
@@ -20,10 +20,11 @@ unsafe impl DestroyedState for () {
 }
 
 #[derive(Copy, Clone)]
+#[repr(u8)]
 enum State<D> {
-    Uninitialized,
-    Alive,
-    Destroyed(D),
+    Uninitialized = u8::MAX,
+    Alive = 0,
+    Destroyed(D) = 1,
 }
 
 #[allow(missing_debug_implementations)]
@@ -56,27 +57,27 @@ where
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        if let State::Alive = self.state.get() {
-            self.value.get().cast()
-        } else {
-            unsafe { self.get_or_init_slow(i, f) }
+        // `LocalKey::with` and `LocalKey::try_with` compare the returned pointer
+        // against null. Since this function is inlined, checking all of the
+        // possible states here (as opposed to differentiating between Destroyed
+        // and Uninitialized in `initialize`) allows the pointer comparison to
+        // be merged with the state check, and so does not add any comparisons
+        // to the fast path while removing one in the slow path. `initialize`
+        // returns `NonNull` so that the optimizer knows that the null pointer
+        // comparison against this function's return value is equivalent to
+        // comparing the state with `Destroyed`.
+        match self.state.get() {
+            State::Alive => self.value.get().cast(),
+            State::Destroyed(_) => ptr::null(),
+            State::Uninitialized => unsafe { self.initialize(i, f).as_ptr() },
         }
     }
 
     /// # Safety
-    /// The `self` reference must remain valid until the TLS destructor is run.
+    /// * `self.state` must be `Uninitialized`.
+    /// * The `self` reference must remain valid until the TLS destructor is run.
     #[cold]
-    unsafe fn get_or_init_slow(
-        &self,
-        i: Option<&mut Option<T>>,
-        f: impl FnOnce() -> T,
-    ) -> *const T {
-        match self.state.get() {
-            State::Uninitialized => {}
-            State::Alive => return self.value.get().cast(),
-            State::Destroyed(_) => return ptr::null(),
-        }
-
+    unsafe fn initialize(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> NonNull<T> {
         let v = i.and_then(Option::take).unwrap_or_else(f);
 
         // SAFETY: we cannot be inside a `LocalKey::with` scope, as the initializer
@@ -98,7 +99,7 @@ where
             State::Destroyed(_) => unreachable!(),
         }
 
-        self.value.get().cast()
+        unsafe { NonNull::new_unchecked(self.value.get()).cast() }
     }
 }
 

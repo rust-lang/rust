@@ -1,12 +1,13 @@
 use crate::cell::{Cell, UnsafeCell};
-use crate::ptr::{self, drop_in_place};
+use crate::ptr::{self, NonNull, drop_in_place};
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
 #[derive(Clone, Copy)]
+#[repr(u8)]
 enum State {
-    Initial,
-    Alive,
-    Destroyed,
+    Initial = u8::MAX,
+    Alive = 0,
+    Destroyed = 1,
 }
 
 #[allow(missing_debug_implementations)]
@@ -32,15 +33,24 @@ impl<T> Storage<T> {
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get(&self) -> *const T {
+        // `LocalKey::with` and `LocalKey::try_with` compare the returned pointer
+        // against null. Since this function is inlined, checking all of the
+        // possible states here (as opposed to differentiating between Destroyed
+        // and Uninitialized in `initialize`) allows the pointer comparison to
+        // be merged with the state check, and so does not add any comparisons
+        // to the fast path while removing one in the slow path. `initialize`
+        // returns `NonNull` so that the optimizer knows that the null pointer
+        // comparison against this function's return value is equivalent to
+        // comparing the state with `Destroyed`.
         match self.state.get() {
             State::Alive => self.val.get(),
             State::Destroyed => ptr::null(),
-            State::Initial => unsafe { self.initialize() },
+            State::Initial => unsafe { self.initialize().as_ptr() },
         }
     }
 
     #[cold]
-    unsafe fn initialize(&self) -> *const T {
+    unsafe fn initialize(&self) -> NonNull<T> {
         // Register the destructor
 
         // SAFETY:
@@ -50,7 +60,7 @@ impl<T> Storage<T> {
         }
 
         self.state.set(State::Alive);
-        self.val.get()
+        unsafe { NonNull::new_unchecked(self.val.get()) }
     }
 }
 
