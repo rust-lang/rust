@@ -95,7 +95,7 @@ LL |     pub struct Hi;
 help: import `Hi` directly
    |
 LL - use testing::Hi;
-LL + use super::public::Hi;
+LL + use public::Hi;
    |
 
 error[E0603]: struct import `Hi` is private
@@ -114,11 +114,6 @@ note: ...and refers to the struct `Hi` which is defined here
    |
 LL |             pub struct Hi;
    |             ^^^^^^^^^^^^^^ you could import this directly
-help: import `Hi` directly
-   |
-LL - use inaccessible_ancestor::testing::Hi;
-LL + use super::private::public::Hi;
-   |
 
 error[E0603]: module import `mem` is private
   --> $DIR/private-import-suggestion-path-156244.rs:77:21
