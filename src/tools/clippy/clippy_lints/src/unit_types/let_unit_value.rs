@@ -202,7 +202,7 @@ impl<'tcx> Visitor<'tcx> for UnitVariableCollector<'_, 'tcx> {
         {
             if let Some(macro_call) = self.macro_call
                 && macro_call.arguments.all_args().iter().any(|arg| {
-                    matches!(arg.kind, FormatArgumentKind::Captured(_)) && find_format_arg_expr(ex, arg).is_some()
+                    matches!(arg.kind, FormatArgumentKind::Captured) && find_format_arg_expr(ex, arg).is_some()
                 })
             {
                 self.spans.push(VariableUsage::FormatCapture);
