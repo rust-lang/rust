@@ -546,7 +546,7 @@ fn index_ast<'tcx>(
                 UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
                 UseTreeKind::Nested { items: ref nested_vec, span } => {
                     for &(ref nested, id) in nested_vec {
-                        self.insert(id, AstOwner::Synthetic(parent));
+                        self.insert(id, AstOwner::NestedUseTree(parent));
                         items.push(self.make_dummy(id, span, ItemKind::MacCall));
 
                         let def_id = self.owners[&id].def_id;
@@ -624,10 +624,17 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
-    let fallback_to_parent = |parent_id| {
-        // The item did not exist in the AST, it was created by its parent.
+    let fallback_to_ancestor = |parent_id| {
+        // The item did not exist in the AST, it was created while lowering another item.
+        // `parent_id` may be different from the direct parent of `def_id`,
+        // for instance use-trees are lowered by the first sibling.
         let mut parent_info = tcx.lower_to_hir(parent_id);
         if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+            // `parent_id` could also not be a owner either.
+            // For instance if `def_id` is an enum variant field,
+            // the direct parent is the enum variant.
+            // In that case `hir_id.owner` point to the actual HIR owner
+            // and skips all non-owner parents, so fetch the HIR associated to it.
             parent_info = tcx.lower_to_hir(hir_id.owner);
         }
 
@@ -642,7 +649,10 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     };
 
     let Some((resolver, node)) = resolver_and_node else {
-        return fallback_to_parent(tcx.local_parent(def_id));
+        // `ast_index` does not contain all definitions, only up-to the highest
+        // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
+        // other definitions, in particular those nested inside this highest definition.
+        return fallback_to_ancestor(tcx.local_parent(def_id));
     };
 
     let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
@@ -654,8 +664,10 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
         AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
         AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
-        AstOwner::Synthetic(parent_id) => fallback_to_parent(*parent_id),
-        AstOwner::NonOwner => fallback_to_parent(tcx.local_parent(def_id)),
+        AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
+        // The item existed in the AST, but is not a HIR owner.
+        // Fetch the correct information from its parent.
+        AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
     };
 
     tcx.sess.time("drop_ast", || std::mem::drop(node));
