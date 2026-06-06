@@ -1230,6 +1230,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_align = false;
         let mut is_packed = false;
         let mut repeated_repr = false;
+        let mut maybe_last_int_type = None;
 
         for (repr, _repr_span) in reprs {
             match repr {
@@ -1268,7 +1269,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // when checking for any other attribute together with transparent.
                     is_transparent = true;
                 }
-                ReprAttr::ReprInt(_) => {
+                ReprAttr::ReprInt(int_type) => {
+                    if let Some(last_int_type) = maybe_last_int_type && last_int_type == int_type {
+                        // We'll "miss" detecting repeated int reprs if the user specifies
+                        // #[repr(u8, u64, u8)] for example. But that's okay because we've got
+                        // conflicting reprs anyway so it's not worth the effort to do more precise
+                        // tracking.
+                        repeated_repr = true;
+                    }
+                    maybe_last_int_type = Some(int_type);
                     int_reprs += 1;
                 }
             };
