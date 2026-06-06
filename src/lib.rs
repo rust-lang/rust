@@ -133,7 +133,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => {
-                sess.dcx().warn("LTO is not supported. You may get a linker error.")
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
             }
         }
 
@@ -150,6 +150,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
+    }
+
+    fn thin_lto_supported(&self) -> bool {
+        false
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
