@@ -101,6 +101,15 @@ fn main() {
     let result = unsafe { extern_fn_2(2, 3) };
     println!("result of extern_fn_2(2, 3): {}", result);
 
+    println!("spawning thread");
+    std::thread::spawn(move || {
+        let result = unsafe { extern_fn_2(4, 5) };
+        println!("result of extern_fn_2(4, 5) in other thread: {}", result);
+    })
+    .join()
+    .expect("Thread panicked");
+    println!("thread joined");
+
     libloading::unload(foo);
     println!("unloaded library");
 }
