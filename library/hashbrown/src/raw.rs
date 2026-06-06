@@ -1285,9 +1285,10 @@ impl<T, A: Allocator> RawTable<T, A> {
             let ptrs = self.get_disjoint_mut_pointers(hashes, eq);
 
             for (i, cur) in ptrs.iter().enumerate() {
-                if cur.is_some() && ptrs[..i].contains(cur) {
-                    panic!("duplicate keys found");
-                }
+                assert!(
+                    !(cur.is_some() && ptrs[..i].contains(cur)),
+                    "duplicate keys found"
+                );
             }
             // All bucket are distinct from all previous buckets so we're clear to return the result
             // of the lookup.
@@ -4530,9 +4531,7 @@ mod test_map {
 
         impl Clone for CheckedCloneDrop {
             fn clone(&self) -> Self {
-                if self.panic_in_clone {
-                    panic!("panic in clone")
-                }
+                assert!(!self.panic_in_clone, "panic in clone");
                 Self {
                     panic_in_clone: self.panic_in_clone,
                     dropped: self.dropped,
@@ -4543,9 +4542,7 @@ mod test_map {
 
         impl Drop for CheckedCloneDrop {
             fn drop(&mut self) {
-                if self.dropped {
-                    panic!("double drop");
-                }
+                assert!(!self.dropped, "double drop");
                 self.dropped = true;
             }
         }

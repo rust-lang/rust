@@ -49,9 +49,10 @@ impl BuildHasher for PanicBuildHasher {
     type Hasher = ZeroHasher;
 
     fn build_hasher(&self) -> Self::Hasher {
-        if PANIC_COUNTER.fetch_sub(1, Ordering::SeqCst) == 0 {
-            panic!("panic in BuildHasher::build_hasher");
-        }
+        assert!(
+            PANIC_COUNTER.fetch_sub(1, Ordering::SeqCst) != 0,
+            "panic in BuildHasher::build_hasher"
+        );
         ZeroHasher
     }
 }

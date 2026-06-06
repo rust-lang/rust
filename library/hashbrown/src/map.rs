@@ -5615,7 +5615,7 @@ mod test_map {
         m2.insert(1, 2);
         m2.insert(2, 3);
 
-        assert!(m1 != m2);
+        assert_ne!(m1, m2);
 
         m2.insert(3, 4);
 
@@ -6418,9 +6418,7 @@ mod test_map {
                     self.dropped = true;
                     panic!("panic in drop");
                 }
-                if self.dropped {
-                    panic!("double drop");
-                }
+                assert!(!self.dropped, "double drop");
                 self.dropped = true;
             }
         }
@@ -6459,9 +6457,7 @@ mod test_map {
         }
         impl Clone for CheckedClone {
             fn clone(&self) -> Self {
-                if self.panic_in_clone {
-                    panic!("panic in clone")
-                }
+                assert!(!self.panic_in_clone, "panic in clone");
                 Self {
                     panic_in_clone: self.panic_in_clone,
                     need_drop: self.need_drop.clone(),
@@ -6571,9 +6567,7 @@ mod test_map {
 
     impl<T: Clone> Clone for CheckedCloneDrop<T> {
         fn clone(&self) -> Self {
-            if self.panic_in_clone {
-                panic!("panic in clone")
-            }
+            assert!(!self.panic_in_clone, "panic in clone");
             Self {
                 panic_in_clone: self.panic_in_clone,
                 panic_in_drop: self.panic_in_drop,
@@ -6589,9 +6583,7 @@ mod test_map {
                 self.dropped = true;
                 panic!("panic in drop");
             }
-            if self.dropped {
-                panic!("double drop");
-            }
+            assert!(!self.dropped, "double drop");
             self.dropped = true;
         }
     }

@@ -36,6 +36,8 @@ must_use_candidate = "allow"
 option_if_let_else = "allow"
 
 borrow_as_ptr = "warn"
+manual_assert = "warn"
+manual_assert_eq = "warn"
 manual_let_else = "warn"
 needless_continue = "warn"
 ptr_as_ptr = "warn"
