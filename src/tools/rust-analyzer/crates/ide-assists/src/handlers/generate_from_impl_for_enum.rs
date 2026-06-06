@@ -1,4 +1,3 @@
-use hir::next_solver::{DbInterner, TypingMode};
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName, edit::AstNodeEdit, syntax_factory::SyntaxFactory};
 use syntax::syntax_editor::Position;
@@ -159,16 +158,12 @@ fn existing_from_impl(
     let variant = sema.to_def(variant)?;
     let krate = variant.module(db).krate(db);
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
-    let interner = DbInterner::new_with(db, krate.base());
-    use hir::next_solver::infer::DbInternerInferExt;
-    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
-    let variant = variant.instantiate_infer(&infcx);
     let enum_ = variant.parent_enum(sema.db);
     let field_ty = variant.fields(sema.db).first()?.ty(sema.db);
     let enum_ty = enum_.ty(sema.db);
     tracing::debug!(?enum_, ?field_ty, ?enum_ty);
-    enum_ty.impls_trait(infcx, from_trait, &[field_ty]).then_some(())
+    enum_ty.has_any_impl(db, from_trait, &[field_ty]).then_some(())
 }
 
 #[cfg(test)]

@@ -330,6 +330,7 @@ unsafe impl Sync for DbInterner<'_> {}
 
 impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
+    #[doc(hidden)]
     pub fn conjure() -> DbInterner<'db> {
         // Here we can not reinit the cache since we do that when we attach the db.
         crate::with_attached_db(|db| DbInterner {
@@ -607,8 +608,8 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
             hir_def::AdtId::EnumId(id) => id
                 .enum_variants(db)
                 .variants
-                .iter()
-                .flat_map(|&(variant_id, _, _)| field_tys(variant_id.into()))
+                .values()
+                .flat_map(|&(variant_id, _)| field_tys(variant_id.into()))
                 .collect(),
         };
 
@@ -2581,6 +2582,7 @@ pub unsafe fn collect_ty_garbage() {
     gc.add_slice_storage::<super::predicate::BoundExistentialPredicatesStorage>();
     gc.add_slice_storage::<super::region::RegionAssumptionsStorage>();
     gc.add_slice_storage::<super::ty::TysStorage>();
+    gc.add_slice_storage::<crate::mir::ProjectionStorage>();
 
     // SAFETY:
     //  - By our precondition, there are no unrecorded types.
@@ -2645,4 +2647,5 @@ impl_gc_visit_slice!(
     super::region::RegionAssumptionsStorage,
     super::ty::TysStorage,
     super::consts::ConstsStorage,
+    crate::mir::ProjectionStorage,
 );

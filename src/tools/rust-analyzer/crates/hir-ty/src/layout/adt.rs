@@ -60,8 +60,8 @@ pub fn layout_of_adt_query(
             let variants = e.enum_variants(db);
             let r = variants
                 .variants
-                .iter()
-                .map(|&(v, _, _)| handle_variant(v.into(), v.fields(db)))
+                .values()
+                .map(|&(v, _)| handle_variant(v.into(), v.fields(db)))
                 .collect::<Result<SmallVec<_>, _>>()?;
             (r, AttrFlags::repr(db, e.into()).unwrap_or_default(), false)
         }

@@ -341,9 +341,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                             w!(
                                 this,
                                 " as {}).{}",
-                                loc.parent.enum_variants(this.db).variants[loc.index as usize]
-                                    .1
-                                    .display(this.db, this.display_target.edition),
+                                loc.name.display(this.db, this.display_target.edition),
                                 name.display(this.db, this.display_target.edition)
                             );
                         }
@@ -375,7 +373,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                 }
             }
         }
-        f(self, p.local, p.projection.lookup(&self.body.projection_store));
+        f(self, p.local, p.projection.lookup());
     }
 
     fn operand(&mut self, r: &Operand) {

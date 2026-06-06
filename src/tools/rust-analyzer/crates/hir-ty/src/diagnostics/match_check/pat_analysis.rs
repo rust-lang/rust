@@ -49,8 +49,7 @@ pub(crate) struct EnumVariantContiguousIndex(usize);
 impl EnumVariantContiguousIndex {
     fn from_enum_variant_id(db: &dyn HirDatabase, target_evid: EnumVariantId) -> Self {
         // Find the index of this variant in the list of variants.
-        use hir_def::Lookup;
-        let i = target_evid.lookup(db).index as usize;
+        let i = target_evid.index(db);
         EnumVariantContiguousIndex(i)
     }
 
@@ -438,7 +437,7 @@ impl<'a, 'db> PatCx for MatchCheckCtx<'a, 'db> {
                             ConstructorSet::NoConstructors
                         } else {
                             let mut variants = IndexVec::with_capacity(enum_data.variants.len());
-                            for &(variant, _, _) in enum_data.variants.iter() {
+                            for &(variant, _) in enum_data.variants.values() {
                                 let is_uninhabited = is_enum_variant_uninhabited_from(
                                     cx.infcx, variant, subst, cx.module, self.env,
                                 );
