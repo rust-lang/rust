@@ -188,7 +188,7 @@ impl<T: ?Sized + Sync> SyncView<T> {
     #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn as_pin(self: Pin<&Self>) -> Pin<&T> {
+    pub const fn as_pin_ref(self: Pin<&Self>) -> Pin<&T> {
         // SAFETY: `SyncView` can only produce `&T` if itself is unpinned
         // `Pin::map_unchecked` is not const, so we do this conversion manually
         unsafe { Pin::new_unchecked(&self.get_ref().inner) }
