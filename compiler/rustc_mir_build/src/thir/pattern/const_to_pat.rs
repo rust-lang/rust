@@ -184,7 +184,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        thir_pat.extra.get_or_insert_default().expanded_const = Some(uv.kind.def_id());
+        thir_pat.extra.get_or_insert_default().expanded_const = uv.kind.opt_def_id();
         thir_pat
     }
 

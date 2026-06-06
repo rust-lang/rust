@@ -449,7 +449,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if tcx.is_type_const(uv.kind.def_id()))
+            && !matches!(ct.kind(), ty::ConstKind::Unevaluated(uv) if uv.kind.is_type_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
