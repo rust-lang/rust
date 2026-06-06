@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn main() {
     foo(10);

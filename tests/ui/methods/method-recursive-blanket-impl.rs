@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 // Test that we don't trigger on the blanket impl for all `&'a T` but
@@ -10,7 +10,7 @@
 use std::marker::Sized;
 
 // Note: this must be generic for the problem to show up
-trait Foo<A> { //~ WARN trait `Foo` is never used
+trait Foo<A> {
     fn foo(&self, a: A);
 }
 

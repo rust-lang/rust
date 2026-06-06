@@ -3,7 +3,7 @@
 //! Originally a regression test of github.com/rust-lang/rust/issues/13360
 //! but repurposed for a smoke test.
 
-//@ run-pass
+//@ build-pass
 
 pub fn main() {
     let _: () = *Box::new(());

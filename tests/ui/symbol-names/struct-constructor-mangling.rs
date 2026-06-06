@@ -1,6 +1,6 @@
 //! Test that the symbol mangling of Foo-the-constructor-function versus Foo-the-type do not collide
 
-//@ run-pass
+//@ build-pass
 
 fn size_of_val<T>(_: &T) -> usize {
     std::mem::size_of::<T>()

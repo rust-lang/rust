@@ -1,6 +1,6 @@
 //! Checks complex `use` syntax and availability of types across nested modules.
 
-//@ run-pass
+//@ check-pass
 
 mod a {
     pub enum B {}

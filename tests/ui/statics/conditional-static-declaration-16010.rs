@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/16010
 
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 fn main() {

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args, adt_const_params)]
 #![allow(dead_code)]

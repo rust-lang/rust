@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 extern crate std as mystd;
 

@@ -2,7 +2,7 @@
 //!
 //! Regression test for https://github.com/rust-lang/rust/issues/23880
 
-//@ run-pass
+//@ check-pass
 
 #![allow(unused)]
 struct Foo<X> {

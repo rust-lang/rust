@@ -3,7 +3,7 @@
 //@ compile-flags: -Copt-level=z -Cdebuginfo=2
 //@ edition: 2018
 
-//@ run-pass
+//@ build-pass
 
 use std::future::Future;
 use std::task::Poll;

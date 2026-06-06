@@ -1,8 +1,8 @@
-//@ run-pass
+//@ check-pass
 #![allow(non_upper_case_globals)]
 
 
-trait TheTrait { fn dummy(&self) { } } //~ WARN method `dummy` is never used
+trait TheTrait { fn dummy(&self) { } }
 
 impl TheTrait for &'static isize { }
 

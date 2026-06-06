@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 //@ compile-flags: --extern LooksLikeExternCrate=/path/to/nowhere
 

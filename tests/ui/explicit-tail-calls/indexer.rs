@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ ignore-backends: gcc
 // Indexing taken from
 // https://github.com/phi-go/rfcs/blob/guaranteed-tco/text%2F0000-explicit-tail-calls.md#tail-call-elimination

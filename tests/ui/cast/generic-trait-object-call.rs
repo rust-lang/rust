@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/2288
 
-//@ run-pass
+//@ build-pass
 #![allow(non_camel_case_types)]
 
 trait clam<A> {

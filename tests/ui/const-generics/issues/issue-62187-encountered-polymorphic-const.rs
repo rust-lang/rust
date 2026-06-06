@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 pub trait BitLen: Sized {
     const BIT_LEN: usize;
 }

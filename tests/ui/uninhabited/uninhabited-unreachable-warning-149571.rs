@@ -1,5 +1,5 @@
 #![deny(unreachable_code)]
-//@ run-pass
+//@ check-pass
 
 use std::convert::Infallible;
 

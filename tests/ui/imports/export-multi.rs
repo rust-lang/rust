@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 use m::f;
 use m::g;

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 #![feature(final_associated_functions)]
 

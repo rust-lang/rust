@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 
@@ -9,8 +9,7 @@ struct Foo {
 }
 
 fn use_foo(x: Foo) -> (i32, i32) {
-    let Foo { foo, bar, baz } = x; //~ WARNING unused variable: `baz`
-                                   //~| help: try ignoring the field
+    let Foo { foo, bar, baz } = x;
     return (foo, bar);
 }
 

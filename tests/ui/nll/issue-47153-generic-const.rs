@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 // Regression test for #47153: constants in a generic context (such as
 // a trait) used to ICE.

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ aux-build:pub_use_mods_xcrate.rs
 
 

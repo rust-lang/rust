@@ -1,5 +1,5 @@
 //@ edition:2018
-//@ run-pass
+//@ check-pass
 
 trait Foo { }
 

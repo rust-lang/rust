@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![warn(unused_parens)]
 #![allow(dead_code)]

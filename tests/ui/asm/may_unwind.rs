@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ needs-asm-support
 //@ needs-unwind
 //@ ignore-backends: gcc

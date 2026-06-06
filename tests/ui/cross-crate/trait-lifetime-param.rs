@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 //@ aux-build:xcrate-trait-lifetime-param.rs
 

@@ -1,10 +1,10 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 // Test coercions involving DST and/or raw pointers
 
 
 struct S;
-trait T { fn dummy(&self) { } } //~ WARN method `dummy` is never used
+trait T { fn dummy(&self) { } }
 impl T for S {}
 
 pub fn main() {

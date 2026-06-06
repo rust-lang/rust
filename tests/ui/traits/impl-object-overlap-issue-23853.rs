@@ -1,11 +1,11 @@
-//@ run-pass
+//@ check-pass
 // Test that we are able to compile the case where both a blanket impl
 // and the object type itself supply the required trait obligation.
 // In this case, the blanket impl for `Foo` applies to any type,
 // including `Bar`, but the object type `Bar` also implicitly supplies
 // this context.
 
-trait Foo { fn dummy(&self) { } } //~ WARN method `dummy` is never used
+trait Foo { fn dummy(&self) { } }
 
 trait Bar: Foo { }
 

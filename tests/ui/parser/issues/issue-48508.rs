@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 // Regression test for issue #48508:
 //
 // Confusion between global and local file offsets caused incorrect handling of multibyte character

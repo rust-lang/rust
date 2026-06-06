@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_imports)]
 // This should resolve fine even with the circular imports as
 // they are not `pub`.

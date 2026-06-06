@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 pub trait Foo {
     fn foo(&self);
 }

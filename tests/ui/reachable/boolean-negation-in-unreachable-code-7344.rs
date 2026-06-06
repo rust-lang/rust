@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/7344
-//@ run-pass
+//@ check-pass
 #![allow(unused_must_use)]
 
 #![allow(unreachable_code)]

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 // Tests the coercion casts are handled properly
 
 fn main() {

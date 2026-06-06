@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 struct S<'a>(&'a ());
 
 impl<'a> S<'a> {

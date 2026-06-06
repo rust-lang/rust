@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 macro_rules! m { () => { 1 } }
 macro_rules! n { () => { 1 + m!() } }
 

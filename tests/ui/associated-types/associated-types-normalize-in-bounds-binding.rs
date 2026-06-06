@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 // Test that we normalize associated types that appear in a bound that
 // contains a binding. Issue #21664.

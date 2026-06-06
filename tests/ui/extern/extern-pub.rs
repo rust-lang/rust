@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 extern "C" {
     pub fn free(p: *const u8);

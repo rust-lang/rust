@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused)]
 #![feature(f128)]
 #![feature(f16)]

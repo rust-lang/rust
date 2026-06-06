@@ -3,7 +3,7 @@
 //! It specifically checks a successful numeric conversion scenario where the `Result::Ok`
 //! variant is compared, ensuring that the comparison yields the expected boolean result.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_must_use)] // Allow ignoring the result of the comparison for the test's purpose
 

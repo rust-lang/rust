@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/53728
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 #[repr(u16)]

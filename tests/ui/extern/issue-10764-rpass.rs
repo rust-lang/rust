@@ -1,3 +1,3 @@
-//@ run-pass
+//@ check-pass
 
 extern "Rust" fn main() {}

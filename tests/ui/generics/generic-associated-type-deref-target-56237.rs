@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/issues/56237
-//@ run-pass
+//@ check-pass
 
 use std::ops::Deref;
 

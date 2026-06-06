@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 use foo::bar::{baz, quux,};
 

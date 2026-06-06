@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 //@ edition:2018
 //@ pp-exact

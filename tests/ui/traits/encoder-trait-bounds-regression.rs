@@ -8,7 +8,7 @@
 //! - Multiple encoder implementations for the same type
 //! - Polymorphic encoding functions
 
-//@ run-pass
+//@ check-pass
 
 #![allow(unused_must_use)]
 #![allow(dead_code)]

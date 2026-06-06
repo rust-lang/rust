@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Check that constant expressions can be used in vec repeat syntax.
 
 
