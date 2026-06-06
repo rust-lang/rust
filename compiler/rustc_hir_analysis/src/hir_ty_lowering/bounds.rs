@@ -58,6 +58,26 @@ impl CollectedSizednessBounds {
     }
 }
 
+#[derive(Debug, Default)]
+pub enum MoveBound {
+    #[default]
+    Always,
+    IfFeature,
+}
+
+#[derive(Debug, Default)]
+pub enum SizedBound {
+    #[default]
+    Sized,
+    Nothing,
+}
+
+#[derive(Debug, Default)]
+pub struct IncludedBounds {
+    pub mov: MoveBound,
+    pub sized: SizedBound,
+}
+
 fn search_bounds_for<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     context: ImpliedBoundsContext<'tcx>,
@@ -159,18 +179,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_bounds: &[hir::GenericBound<'tcx>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
-        including_sized: bool,
+        included: IncludedBounds,
     ) {
         // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
         if find_attr!(self.tcx(), crate, RustcNoImplicitBounds) {
             return;
         }
 
-        //if self.tcx().features().move_trait() {
-        self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
-        //}
+        if matches!(included.mov, MoveBound::Always)
+            || (matches!(included.mov, MoveBound::IfFeature) && self.tcx().features().move_trait())
+        {
+            self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
+        }
         self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
-        if including_sized {
+        if matches!(included.sized, SizedBound::Sized) {
             self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
         }
     }

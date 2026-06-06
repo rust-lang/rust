@@ -13,7 +13,8 @@ use tracing::{debug, instrument};
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
 use crate::hir_ty_lowering::{
-    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
+    HirTyLowerer, ImpliedBoundsContext, IncludedBounds, MoveBound,
+    OverlappingAsssocItemConstraints, PredicateFilter,
 };
 
 /// For associated types we include both bounds written on the type
@@ -60,7 +61,8 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    true,
+                    IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    //IncludedBounds::default(),
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -380,7 +382,8 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    true,
+                    IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    //IncludedBounds::default(),
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

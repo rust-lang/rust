@@ -24,6 +24,7 @@ use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
 use crate::errors::DynTraitAssocItemBindingMentionsSelf;
+use crate::hir_ty_lowering::bounds::{IncludedBounds, SizedBound};
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -85,28 +86,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
-            false,
+            IncludedBounds { sized: SizedBound::Nothing, ..IncludedBounds::default() },
         );
-        // self.add_implicit_move_bound(
-        //     &mut user_written_bounds,
-        //     dummy_self,
-        //     &hir_bounds
-        //         .iter()
-        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
-        //         .collect::<Vec<_>>(),
-        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-        //     span,
-        // );
-        // self.add_default_traits(
-        //     &mut user_written_bounds,
-        //     dummy_self,
-        //     &hir_bounds
-        //         .iter()
-        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
-        //         .collect::<Vec<_>>(),
-        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-        //     span,
-        // );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());

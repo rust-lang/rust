@@ -18,8 +18,8 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{
-    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
-    RegionInferReason,
+    HirTyLowerer, ImpliedBoundsContext, IncludedBounds, MoveBound,
+    OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
 };
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
@@ -69,15 +69,15 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
                 .predicates
                 .iter()
                 .copied()
-                .filter(|p| {
-                    if !tcx.features().move_trait() {
-                        !p.0.as_trait_clause().is_some_and(|p| {
-                            matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
-                        })
-                    } else {
-                        true
-                    }
-                })
+                // .filter(|p| {
+                //     if !tcx.features().move_trait() {
+                //         !p.0.as_trait_clause().is_some_and(|p| {
+                //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+                //         })
+                //     } else {
+                //         true
+                //     }
+                // })
                 .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
         );
     }
@@ -211,7 +211,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-            true,
+            IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+            //IncludedBounds::default(),
         );
         predicates.extend(bounds);
     }
@@ -244,7 +245,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                    true,
+                    //IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    IncludedBounds::default(),
                 );
                 trace!(?bounds);
                 predicates.extend(bounds);
@@ -343,15 +345,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     let mut predicates: Vec<_> = predicates
         .into_iter()
-        .filter(|p| {
-            if !tcx.features().move_trait() {
-                !p.0.as_trait_clause().is_some_and(|p| {
-                    matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
-                })
-            } else {
-                true
-            }
-        })
+        // .filter(|p| {
+        //     if !tcx.features().move_trait() {
+        //         !p.0.as_trait_clause().is_some_and(|p| {
+        //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+        //         })
+        //     } else {
+        //         true
+        //     }
+        // })
         .collect();
 
     // Subtle: before we store the predicates into the tcx, we
@@ -557,15 +559,15 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 ty::ClauseKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })
-            .filter(|p| {
-                if !tcx.features().move_trait() {
-                    !p.0.as_trait_clause().is_some_and(|p| {
-                        matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
-                    })
-                } else {
-                    true
-                }
-            })
+            // .filter(|p| {
+            //     if !tcx.features().move_trait() {
+            //         !p.0.as_trait_clause().is_some_and(|p| {
+            //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+            //         })
+            //     } else {
+            //         true
+            //     }
+            // })
             .collect();
         if predicates.len() == predicates_and_bounds.predicates.len() {
             predicates_and_bounds
@@ -620,15 +622,15 @@ pub(super) fn explicit_predicates_of<'tcx>(
                         true
                     }
                 })
-                .filter(|p| {
-                    if !tcx.features().move_trait() {
-                        !p.0.as_trait_clause().is_some_and(|p| {
-                            matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
-                        })
-                    } else {
-                        true
-                    }
-                })
+                // .filter(|p| {
+                //     if !tcx.features().move_trait() {
+                //         !p.0.as_trait_clause().is_some_and(|p| {
+                //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+                //         })
+                //     } else {
+                //         true
+                //     }
+                // })
                 .cloned();
             return GenericPredicates {
                 parent: parent_preds.parent,
@@ -723,7 +725,8 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-                true,
+                IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                //IncludedBounds::default(),
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -1020,7 +1023,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                            true,
+                            IncludedBounds {
+                                mov: MoveBound::IfFeature,
+                                ..IncludedBounds::default()
+                            }, //IncludedBounds::default(),
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

@@ -88,7 +88,16 @@ where
     {
         Ok(Ok(()))
     } else {
+        // if !infcx.tcx.features().any(|_| true)
+        //     && infcx
+        //         .cx()
+        //         .as_trait_lang_item(trait_ref.def_id)
+        //         .is_some_and(|i| matches!(i, SolverTraitLangItem::Move))
+        // {
+        //     Ok(Ok(()))
+        // } else {
         Ok(Err(Conflict::Upstream))
+        // }
     }
 }
 
