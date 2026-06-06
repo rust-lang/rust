@@ -11,7 +11,6 @@ fn method_1(_1: Guard) -> () {
     let mut _7: isize;
     let _8: OtherDrop;
     let _9: ();
-    let mut _10: bool;
     scope 1 {
         debug other_drop => _8;
     }
@@ -20,7 +19,6 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb0: {
-        _10 = const false;
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
@@ -38,7 +36,6 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb2: {
-        _10 = const true;
         StorageDead(_3);
         PlaceMention(_2);
         _7 = discriminant(_2);
@@ -80,7 +77,6 @@ fn method_1(_1: Guard) -> () {
     bb9: {
         StorageDead(_5);
         StorageDead(_4);
-        _10 = const false;
         StorageDead(_2);
         drop(_1) -> [return: bb10, unwind: bb14];
     }

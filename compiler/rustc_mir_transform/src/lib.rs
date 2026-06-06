@@ -649,6 +649,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &post_analysis_normalize::PostAnalysisNormalize,
         // Calling this after `PostAnalysisNormalize` ensures that we don't deal with opaque types.
         &add_subtyping_projections::Subtyper,
+        &remove_uninit_drops::RemoveUninitDrops,
         &elaborate_drops::ElaborateDrops,
         // Needs to happen after drop elaboration.
         &Lint(check_call_recursion::CheckDropRecursion),

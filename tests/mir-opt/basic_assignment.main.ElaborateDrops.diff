@@ -35,20 +35,17 @@
           StorageLive(_5);
           StorageLive(_6);
           _6 = move _4;
--         drop(_5) -> [return: bb1, unwind: bb2];
-+         goto -> bb1;
+          goto -> bb1;
       }
   
       bb1: {
           _5 = move _6;
--         drop(_6) -> [return: bb3, unwind: bb6];
-+         goto -> bb3;
+          goto -> bb3;
       }
   
       bb2 (cleanup): {
           _5 = move _6;
--         drop(_6) -> [return: bb6, unwind terminate(cleanup)];
-+         goto -> bb6;
+          goto -> bb6;
       }
   
       bb3: {
@@ -59,8 +56,7 @@
   
       bb4: {
           StorageDead(_5);
--         drop(_4) -> [return: bb5, unwind continue];
-+         goto -> bb5;
+          goto -> bb5;
       }
   
       bb5: {
@@ -71,13 +67,11 @@
       }
   
       bb6 (cleanup): {
--         drop(_5) -> [return: bb7, unwind terminate(cleanup)];
-+         goto -> bb7;
+          drop(_5) -> [return: bb7, unwind terminate(cleanup)];
       }
   
       bb7 (cleanup): {
--         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
-+         goto -> bb8;
+          goto -> bb8;
       }
   
       bb8 (cleanup): {

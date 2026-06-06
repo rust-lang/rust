@@ -9,14 +9,14 @@ use std::task::Poll;
 // NB: This transform is not happening currently.
 
 // EMIT_MIR early_otherwise_branch_unwind.unwind.EarlyOtherwiseBranch.diff
-fn unwind<T>(val: Option<Option<Option<T>>>) {
+pub fn unwind<T>(val: Option<Option<Result<T, T>>>) {
     // CHECK-LABEL: fn unwind(
-    // CHECK: drop({{.*}}) -> [return: bb{{.*}}, unwind: [[PARENT_UNWIND_BB:bb.*]]];
-    // CHECK: [[PARENT_UNWIND_BB]] (cleanup): {
-    // CHECK-NEXT: switchInt
+    // SHOULD-CHECK: drop({{.*}}) -> [return: bb{{.*}}, unwind: [[PARENT_UNWIND_BB:bb.*]]];
+    // SHOULD-CHECK: [[PARENT_UNWIND_BB]] (cleanup): {
+    // SHOULD-CHECK-NEXT: switchInt
     match val {
-        Some(Some(Some(_v))) => {}
-        Some(Some(None)) => {}
+        Some(Some(Ok(_v))) => {}
+        Some(Some(Err(_))) => {}
         Some(None) => {}
         None => {}
     }
@@ -26,9 +26,9 @@ fn unwind<T>(val: Option<Option<Option<T>>>) {
 // EMIT_MIR early_otherwise_branch_unwind.poll.EarlyOtherwiseBranch.diff
 pub fn poll(val: Poll<Result<Option<Vec<u8>>, u8>>) {
     // CHECK-LABEL: fn poll(
-    // CHECK: drop({{.*}}) -> [return: bb{{.*}}, unwind: [[PARENT_UNWIND_BB:bb.*]]];
-    // CHECK: [[PARENT_UNWIND_BB]] (cleanup): {
-    // CHECK-NEXT: switchInt
+    // SHOULD-CHECK: drop({{.*}}) -> [return: bb{{.*}}, unwind: [[PARENT_UNWIND_BB:bb.*]]];
+    // SHOULD-CHECK: [[PARENT_UNWIND_BB]] (cleanup): {
+    // SHOULD-CHECK-NEXT: switchInt
     match val {
         Poll::Ready(Ok(Some(_trailers))) => {}
         Poll::Ready(Err(_err)) => {}

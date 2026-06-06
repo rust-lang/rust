@@ -59,8 +59,7 @@
   
       bb5: {
           StorageDead(_5);
--         drop(_4) -> [return: bb6, unwind: bb11];
-+         goto -> bb6;
+          goto -> bb6;
       }
   
       bb6: {
@@ -76,8 +75,7 @@
       }
   
       bb8 (cleanup): {
--         drop(_7) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb9;
+          goto -> bb9;
       }
   
       bb9 (cleanup): {

@@ -55,10 +55,6 @@
       let mut _50: !;
       let mut _51: std::result::Result<std::convert::Infallible, ()>;
       let _52: std::string::String;
-+     let mut _53: bool;
-+     let mut _54: bool;
-+     let mut _55: bool;
-+     let mut _56: bool;
       scope 1 {
           debug residual => _9;
           scope 2 {
@@ -111,10 +107,6 @@
       }
   
       bb0: {
-+         _56 = const false;
-+         _55 = const false;
-+         _54 = const false;
-+         _53 = const false;
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
@@ -133,7 +125,6 @@
       }
   
       bb2: {
-+         _56 = const true;
           StorageDead(_5);
           PlaceMention(_4);
           _8 = discriminant(_4);
@@ -148,8 +139,7 @@
           StorageLive(_12);
           _12 = move ((_4 as Continue).0: std::string::String);
           _3 = move _12;
--         drop(_12) -> [return: bb7, unwind: bb90];
-+         goto -> bb7;
+          goto -> bb7;
       }
   
       bb5: {
@@ -187,7 +177,6 @@
       }
   
       bb9: {
-+         _55 = const true;
           StorageDead(_15);
           PlaceMention(_14);
           _18 = discriminant(_14);
@@ -198,8 +187,7 @@
           StorageLive(_22);
           _22 = move ((_14 as Continue).0: std::string::String);
           _13 = move _22;
--         drop(_22) -> [return: bb13, unwind: bb86];
-+         goto -> bb13;
+          goto -> bb13;
       }
   
       bb11: {
@@ -236,7 +224,6 @@
       }
   
       bb15: {
-+         _54 = const true;
           StorageDead(_25);
           PlaceMention(_24);
           _28 = discriminant(_24);
@@ -247,8 +234,7 @@
           StorageLive(_32);
           _32 = move ((_24 as Continue).0: std::string::String);
           _23 = move _32;
--         drop(_32) -> [return: bb19, unwind: bb81];
-+         goto -> bb19;
+          goto -> bb19;
       }
   
       bb17: {
@@ -285,7 +271,6 @@
       }
   
       bb21: {
-+         _53 = const true;
           StorageDead(_35);
           PlaceMention(_34);
           _38 = discriminant(_34);
@@ -296,8 +281,7 @@
           StorageLive(_42);
           _42 = move ((_34 as Continue).0: std::string::String);
           _33 = move _42;
--         drop(_42) -> [return: bb25, unwind: bb75];
-+         goto -> bb25;
+          goto -> bb25;
       }
   
       bb23: {
@@ -344,8 +328,7 @@
           StorageLive(_52);
           _52 = move ((_44 as Continue).0: std::string::String);
           _43 = move _52;
--         drop(_52) -> [return: bb31, unwind: bb68];
-+         goto -> bb31;
+          goto -> bb31;
       }
   
       bb29: {
@@ -366,76 +349,61 @@
       bb31: {
           StorageDead(_52);
           _2 = Big { f0: move _3, f1: move _13, f2: move _23, f3: move _33, f4: move _43 };
--         drop(_43) -> [return: bb32, unwind: bb63];
-+         goto -> bb32;
+          goto -> bb32;
       }
   
       bb32: {
           StorageDead(_43);
--         drop(_33) -> [return: bb33, unwind: bb64];
-+         goto -> bb33;
+          goto -> bb33;
       }
   
       bb33: {
           StorageDead(_33);
--         drop(_23) -> [return: bb34, unwind: bb65];
-+         goto -> bb34;
+          goto -> bb34;
       }
   
       bb34: {
           StorageDead(_23);
--         drop(_13) -> [return: bb35, unwind: bb66];
-+         goto -> bb35;
+          goto -> bb35;
       }
   
       bb35: {
           StorageDead(_13);
--         drop(_3) -> [return: bb36, unwind: bb67];
-+         goto -> bb36;
+          goto -> bb36;
       }
   
       bb36: {
           StorageDead(_3);
           _0 = Result::<Big, ()>::Ok(move _2);
--         drop(_2) -> [return: bb37, unwind: bb72];
-+         goto -> bb37;
+          goto -> bb37;
       }
   
       bb37: {
           StorageDead(_2);
--         drop(_44) -> [return: bb38, unwind: bb78];
-+         goto -> bb38;
+          goto -> bb38;
       }
   
       bb38: {
           StorageDead(_44);
--         drop(_34) -> [return: bb39, unwind: bb83];
-+         goto -> bb39;
+          goto -> bb39;
       }
   
       bb39: {
-+         _53 = const false;
           StorageDead(_34);
--         drop(_24) -> [return: bb40, unwind: bb87];
-+         goto -> bb40;
+          goto -> bb40;
       }
   
       bb40: {
-+         _54 = const false;
           StorageDead(_24);
--         drop(_14) -> [return: bb41, unwind: bb90];
-+         goto -> bb41;
+          goto -> bb41;
       }
   
       bb41: {
-+         _55 = const false;
           StorageDead(_14);
--         drop(_4) -> [return: bb42, unwind continue];
-+         goto -> bb42;
+          goto -> bb42;
       }
   
       bb42: {
-+         _56 = const false;
           StorageDead(_4);
           goto -> bb62;
       }
@@ -458,8 +426,7 @@
       bb46: {
           StorageDead(_3);
           StorageDead(_2);
--         drop(_44) -> [return: bb47, unwind: bb78];
-+         goto -> bb47;
+          goto -> bb47;
       }
   
       bb47: {
@@ -484,12 +451,10 @@
       }
   
       bb51: {
--         drop(_34) -> [return: bb52, unwind: bb83];
-+         goto -> bb52;
+          goto -> bb52;
       }
   
       bb52: {
-+         _53 = const false;
           StorageDead(_34);
           goto -> bb55;
       }
@@ -506,12 +471,10 @@
       }
   
       bb55: {
--         drop(_24) -> [return: bb56, unwind: bb87];
-+         goto -> bb56;
+          goto -> bb56;
       }
   
       bb56: {
-+         _54 = const false;
           StorageDead(_24);
           goto -> bb58;
       }
@@ -523,23 +486,19 @@
       }
   
       bb58: {
--         drop(_14) -> [return: bb59, unwind: bb90];
-+         goto -> bb59;
+          goto -> bb59;
       }
   
       bb59: {
-+         _55 = const false;
           StorageDead(_14);
           goto -> bb60;
       }
   
       bb60: {
--         drop(_4) -> [return: bb61, unwind continue];
-+         goto -> bb61;
+          goto -> bb61;
       }
   
       bb61: {
-+         _56 = const false;
           StorageDead(_4);
           goto -> bb62;
       }
@@ -549,28 +508,23 @@
       }
   
       bb63 (cleanup): {
--         drop(_33) -> [return: bb64, unwind terminate(cleanup)];
-+         goto -> bb64;
+          goto -> bb64;
       }
   
       bb64 (cleanup): {
--         drop(_23) -> [return: bb65, unwind terminate(cleanup)];
-+         goto -> bb65;
+          goto -> bb65;
       }
   
       bb65 (cleanup): {
--         drop(_13) -> [return: bb66, unwind terminate(cleanup)];
-+         goto -> bb66;
+          goto -> bb66;
       }
   
       bb66 (cleanup): {
--         drop(_3) -> [return: bb67, unwind terminate(cleanup)];
-+         goto -> bb67;
+          goto -> bb67;
       }
   
       bb67 (cleanup): {
--         drop(_2) -> [return: bb72, unwind terminate(cleanup)];
-+         goto -> bb72;
+          drop(_2) -> [return: bb72, unwind terminate(cleanup)];
       }
   
       bb68 (cleanup): {
@@ -590,13 +544,11 @@
       }
   
       bb72 (cleanup): {
--         drop(_44) -> [return: bb78, unwind terminate(cleanup)];
-+         goto -> bb78;
+          goto -> bb78;
       }
   
       bb73 (cleanup): {
--         drop(_45) -> [return: bb74, unwind terminate(cleanup)];
-+         goto -> bb74;
+          goto -> bb74;
       }
   
       bb74 (cleanup): {
@@ -616,13 +568,11 @@
       }
   
       bb78 (cleanup): {
--         drop(_34) -> [return: bb83, unwind terminate(cleanup)];
-+         goto -> bb83;
+          goto -> bb83;
       }
   
       bb79 (cleanup): {
--         drop(_35) -> [return: bb80, unwind terminate(cleanup)];
-+         goto -> bb80;
+          goto -> bb80;
       }
   
       bb80 (cleanup): {
@@ -638,13 +588,11 @@
       }
   
       bb83 (cleanup): {
--         drop(_24) -> [return: bb87, unwind terminate(cleanup)];
-+         goto -> bb87;
+          goto -> bb87;
       }
   
       bb84 (cleanup): {
--         drop(_25) -> [return: bb85, unwind terminate(cleanup)];
-+         goto -> bb85;
+          goto -> bb85;
       }
   
       bb85 (cleanup): {
@@ -656,13 +604,11 @@
       }
   
       bb87 (cleanup): {
--         drop(_14) -> [return: bb90, unwind terminate(cleanup)];
-+         goto -> bb90;
+          goto -> bb90;
       }
   
       bb88 (cleanup): {
--         drop(_15) -> [return: bb89, unwind terminate(cleanup)];
-+         goto -> bb89;
+          goto -> bb89;
       }
   
       bb89 (cleanup): {
@@ -670,13 +616,11 @@
       }
   
       bb90 (cleanup): {
--         drop(_4) -> [return: bb92, unwind terminate(cleanup)];
-+         goto -> bb92;
+          goto -> bb92;
       }
   
       bb91 (cleanup): {
--         drop(_5) -> [return: bb92, unwind terminate(cleanup)];
-+         goto -> bb92;
+          goto -> bb92;
       }
   
       bb92 (cleanup): {

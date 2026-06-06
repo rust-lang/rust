@@ -73,8 +73,7 @@
   
       bb7: {
           StorageDead(_7);
--         drop(_6) -> [return: bb8, unwind: bb18];
-+         goto -> bb8;
+          goto -> bb8;
       }
   
       bb8: {
@@ -121,13 +120,11 @@
       }
   
       bb18 (cleanup): {
--         drop(_10) -> [return: bb19, unwind terminate(cleanup)];
-+         goto -> bb19;
+          drop(_10) -> [return: bb19, unwind terminate(cleanup)];
       }
   
       bb19 (cleanup): {
--         drop(_11) -> [return: bb26, unwind terminate(cleanup)];
-+         goto -> bb26;
+          drop(_11) -> [return: bb26, unwind terminate(cleanup)];
       }
   
       bb20 (cleanup): {
@@ -143,8 +140,7 @@
       }
   
       bb23 (cleanup): {
--         drop(_9) -> [return: bb24, unwind terminate(cleanup)];
-+         goto -> bb24;
+          goto -> bb24;
       }
   
       bb24 (cleanup): {

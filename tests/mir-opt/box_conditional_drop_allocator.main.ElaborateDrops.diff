@@ -85,13 +85,11 @@
       }
   
       bb8 (cleanup): {
--         drop(_8) -> [return: bb10, unwind terminate(cleanup)];
-+         goto -> bb10;
+          goto -> bb10;
       }
   
       bb9 (cleanup): {
--         drop(_6) -> [return: bb10, unwind terminate(cleanup)];
-+         goto -> bb10;
+          goto -> bb10;
       }
   
       bb10 (cleanup): {
@@ -100,13 +98,11 @@
       }
   
       bb11 (cleanup): {
--         drop(_3) -> [return: bb12, unwind terminate(cleanup)];
-+         goto -> bb12;
+          goto -> bb12;
       }
   
       bb12 (cleanup): {
--         drop(_2) -> [return: bb13, unwind terminate(cleanup)];
-+         goto -> bb13;
+          goto -> bb13;
       }
   
       bb13 (cleanup): {

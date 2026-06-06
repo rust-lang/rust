@@ -7,14 +7,11 @@
       let mut _2: isize;
       let _3: std::string::String;
       let mut _4: std::string::String;
-+     let mut _5: bool;
       scope 1 {
           debug s => _3;
       }
   
       bb0: {
-+         _5 = const false;
-+         _5 = const true;
           PlaceMention(_1);
           _2 = discriminant(_1);
           switchInt(move _2) -> [0: bb2, otherwise: bb1];
@@ -31,14 +28,12 @@
           StorageLive(_4);
           _4 = move _3;
           _0 = Option::<String>::Some(move _4);
--         drop(_4) -> [return: bb3, unwind: bb7];
-+         goto -> bb3;
+          goto -> bb3;
       }
   
       bb3: {
           StorageDead(_4);
--         drop(_3) -> [return: bb4, unwind: bb8];
-+         goto -> bb4;
+          goto -> bb4;
       }
   
       bb4: {
@@ -47,8 +42,7 @@
       }
   
       bb5: {
--         drop(_1) -> [return: bb6, unwind: bb9];
-+         goto -> bb6;
+          goto -> bb6;
       }
   
       bb6: {
@@ -56,13 +50,11 @@
       }
   
       bb7 (cleanup): {
--         drop(_3) -> [return: bb8, unwind terminate(cleanup)];
-+         goto -> bb8;
+          goto -> bb8;
       }
   
       bb8 (cleanup): {
--         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb9;
+          goto -> bb9;
       }
   
       bb9 (cleanup): {
