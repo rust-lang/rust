@@ -1,0 +1,25 @@
+error[E0603]: unit struct import `A` is private
+  --> $DIR/import-suggestion-duplicated-importing-same-item.rs:13:8
+   |
+LL |     B::A;
+   |        ^ private unit struct import
+   |
+note: the unit struct import `A` is defined here...
+  --> $DIR/import-suggestion-duplicated-importing-same-item.rs:8:9
+   |
+LL |     use crate::A::A;
+   |         ^^^^^^^^^^^
+note: ...and refers to the unit struct `A` which is defined here
+  --> $DIR/import-suggestion-duplicated-importing-same-item.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+help: consider importing this unit struct instead
+   |
+LL -     B::A;
+LL +     A::A;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.
