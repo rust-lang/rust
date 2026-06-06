@@ -8,6 +8,7 @@
 // I.e. we're using Linux as a proxy for "trad unix".
 #[cfg(target_os = "linux")]
 #[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn compare_with_linux() {
     use super::ExitStatus as Emulated;
     use crate::os::unix::process::ExitStatusExt as _;
