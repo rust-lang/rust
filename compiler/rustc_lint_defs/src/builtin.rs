@@ -283,6 +283,8 @@ declare_lint! {
     /// enum Foo { A }
     /// ```
     ///
+    /// {{produces}}
+    ///
     /// ### Explanation
     ///
     /// While some representations may be specified more than once, the compiler
