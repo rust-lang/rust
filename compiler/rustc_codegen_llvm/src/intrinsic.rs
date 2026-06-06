@@ -235,7 +235,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::offload_preload_end => {
-                codegen_offload_preload_drop(self, tcx, instance, args);
+                codegen_offload_preload_drop(self, tcx, instance, args, false);
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
@@ -1901,12 +1901,11 @@ fn codegen_autodiff<'ll, 'tcx>(
         fnc_tree,
     );
 }
-
 fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    preload_ty: Ty<'tcx>,
-    place: PlaceRef<'tcx, &'ll llvm::Value>,
+    _instance: ty::Instance<'tcx>,
+    args: &[OperandRef<'tcx, &'ll llvm::Value>],
     is_mut: bool,
 ) {
     let cx = bx.cx;
@@ -2002,6 +2001,7 @@ fn codegen_offload_preload<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     _instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
+    is_mut: bool,
 ) {
     dbg!("Starting the preload handling!");
     let cx = bx.cx;

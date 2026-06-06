@@ -27,22 +27,6 @@ use crate::mir::IntrinsicResult;
 use crate::traits::*;
 use crate::{MemFlags, meth};
 
-fn is_preload_mut_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ty::Adt(adt_def, _) = ty.kind() else {
-        return false;
-    };
-
-    Some(adt_def.did()) == tcx.lang_items().preload_mut_type()
-}
-
-fn is_preload_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ty::Adt(adt_def, _) = ty.kind() else {
-        return false;
-    };
-
-    Some(adt_def.did()) == tcx.lang_items().preload_type()
-}
-
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
 // other predecessors.
@@ -621,16 +605,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
 
-        if is_preload_mut_type(bx.tcx(), ty) {
-            let place = self.codegen_place(bx, location.as_ref());
-
-            bx.codegen_offload_preload_drop(ty, place, true);
-        }
-        if is_preload_type(bx.tcx(), ty) {
-            let place = self.codegen_place(bx, location.as_ref());
-
-            bx.codegen_offload_preload_drop(ty, place, false);
-        }
         let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 
         if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
@@ -945,24 +919,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     generic_args,
                     fn_span,
                 );
-
-                if Some(instance.def_id()) == bx.tcx().lang_items().preload_fn() {
-                    let cg_args: Vec<_> =
-                        args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
-
-                    bx.codegen_offload_preload_call(
-                        instance, &cg_args, false, // immutable preload
-                    );
-                }
-
-                if Some(instance.def_id()) == bx.tcx().lang_items().preload_mut_fn() {
-                    let cg_args: Vec<_> =
-                        args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
-
-                    bx.codegen_offload_preload_call(
-                        instance, &cg_args, true, // mutable preload
-                    );
-                }
 
                 match instance.def {
                     // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
