@@ -2035,3 +2035,16 @@ pub(crate) struct PinV2WithoutPinDrop {
     pub pin_v2_span: Option<Span>,
     pub adt_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[pin_v2]` types may not have `#[repr(packed)]`")]
+#[note(
+    "fields of a `#[repr(packed)]` type can be under-aligned, so a structurally pinned field may be moved to a properly aligned location, which `Pin` does not allow"
+)]
+pub(crate) struct PinV2OnPacked {
+    #[primary_span]
+    pub span: Span,
+    #[note("`{$adt_name}` is marked `#[pin_v2]` here")]
+    pub pin_v2_span: Span,
+    pub adt_name: Symbol,
+}
