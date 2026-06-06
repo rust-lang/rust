@@ -30,7 +30,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
             cx,
             BORROWED_BOX,
             hir_ty.span,
-            "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
+            "you seem to be trying to use `&Box<T>`",
             |diag| {
                 let ltopt = if lt.is_anonymous() {
                     String::new()
@@ -55,7 +55,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 };
                 diag.span_suggestion(
                     hir_ty.span,
-                    "try",
+                    "consider using just `&T`",
                     suggestion,
                     // To make this `MachineApplicable`, at least one needs to check if it isn't a trait item
                     // because the trait impls of it will break otherwise;
