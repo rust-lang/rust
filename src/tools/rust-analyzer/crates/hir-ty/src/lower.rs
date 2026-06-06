@@ -199,6 +199,33 @@ pub trait TyLoweringInferVarsCtx<'db> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweringMode {
+    Analysis,
+    Ide,
+}
+
+pub(crate) use self::tracked_struct_token::TrackedStructToken;
+mod tracked_struct_token {
+    use super::LoweringMode;
+
+    /// A token that is required to construct tracked structs.
+    /// This exists to prevent one from accidentally creating a tracked struct outside of a query which may happen for some codepaths.
+    pub(crate) struct TrackedStructToken {
+        // #[non_exhaustive] doesn't work for us here, we want it module focused.
+        _private: (),
+    }
+
+    impl LoweringMode {
+        pub(crate) fn allow_tracked_structs(self) -> Option<TrackedStructToken> {
+            match self {
+                LoweringMode::Analysis => Some(TrackedStructToken { _private: () }),
+                LoweringMode::Ide => None,
+            }
+        }
+    }
+}
+
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
     pub(crate) interner: DbInterner<'db>,
@@ -211,6 +238,7 @@ pub struct TyLoweringContext<'db, 'a> {
     generics: &'a OnceCell<Generics<'db>>,
     in_binders: DebruijnIndex,
     impl_trait_mode: ImplTraitLoweringState,
+    interning_mode: LoweringMode,
     /// Tracks types with explicit `?Sized` bounds.
     pub(crate) unsized_types: FxHashSet<Ty<'db>>,
     pub(crate) diagnostics: ThinVec<TyLoweringDiagnostic>,
@@ -247,6 +275,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             store,
             in_binders,
             impl_trait_mode,
+            interning_mode: LoweringMode::Analysis,
             unsized_types: FxHashSet::default(),
             diagnostics: ThinVec::new(),
             lifetime_elision,
@@ -259,6 +288,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     pub(crate) fn set_lifetime_elision(&mut self, lifetime_elision: LifetimeElisionKind<'db>) {
         self.lifetime_elision = lifetime_elision;
+    }
+
+    pub(crate) fn with_interning_mode(mut self, interning_mode: LoweringMode) -> Self {
+        self.interning_mode = interning_mode;
+        self
     }
 
     pub(crate) fn with_debruijn<T>(
@@ -390,6 +424,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             const_type,
             &|| self.generics.get_or_init(|| generics(self.db, self.generic_def)),
             create_var,
+            self.interning_mode,
             self.forbid_params_after,
         );
 

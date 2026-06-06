@@ -117,6 +117,38 @@ use triomphe::Arc;
 
 use crate::db::{DefDatabase, HirDatabase};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PredicateEvaluationStatus {
+    Holds,
+    NotProven,
+    Invalid,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredicateEvaluationResult {
+    pub status: PredicateEvaluationStatus,
+    pub message: String,
+}
+
+impl PredicateEvaluationResult {
+    pub fn holds(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Holds, message: message.into() }
+    }
+
+    pub fn not_proven(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::NotProven, message: message.into() }
+    }
+
+    pub fn invalid(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Invalid, message: message.into() }
+    }
+
+    pub fn unsupported(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Unsupported, message: message.into() }
+    }
+}
+
 pub use crate::{
     attrs::{AttrsWithOwner, HasAttrs, resolve_doc_path_on},
     diagnostics::*,
