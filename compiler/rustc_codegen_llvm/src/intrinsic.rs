@@ -1911,26 +1911,19 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
     let cx = bx.cx;
     dbg!("Starting the PreloadMut drop handling!");
     // PreloadMut<'a, T> -> extract T.
-    let arg = &args[0];
-    let arg_ty = arg.layout.ty;
+    let ptr_arg = &args[0];
 
-    let pointee_ty = match *arg_ty.kind() {
+    let pointee_ty = match *ptr_arg.layout.ty.kind() {
         ty::RawPtr(pointee_ty, _) => pointee_ty,
-        _ => bug!("expected raw pointer argument, got {arg_ty:?}"),
+        _ => bug!("expected raw pointer argument"),
     };
-    // Load field 0: `cpu_ptr: *mut T`.
-    let cpu_ptr_place = place.project_field(bx, 0);
-    dbg!(&cpu_ptr_place);
-    let cpu_ptr_operand = bx.load_operand(cpu_ptr_place);
-    dbg!(&cpu_ptr_operand);
 
-    let args: Vec<&'ll Value> = match cpu_ptr_operand.val {
-        OperandValue::Immediate(ptr) => vec![ptr],
-        OperandValue::Pair(_data, _meta) => {
-            bug!("unsized PreloadMut drop not handled yet")
-        }
-        _ => bug!("unexpected PreloadMut cpu_ptr operand"),
+    let ptr = match ptr_arg.val {
+        OperandValue::Immediate(ptr) => ptr,
+        _ => bug!("not handled"),
     };
+
+    let args = vec![ptr];
 
     let mut meta = OffloadMetadata::from_ty(tcx, pointee_ty);
     // We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we

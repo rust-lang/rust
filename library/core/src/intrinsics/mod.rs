@@ -3575,11 +3575,11 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn offload_preload<T: ?Sized>(ptr: *mut T, is_mut: bool);
+pub fn offload_preload<T: ?Sized>(ptr: *const T, is_mut: bool);
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn offload_preload_end<T: ?Sized>(ptr: *mut T, is_mut: bool);
+pub fn offload_preload_end<T: ?Sized>(ptr: *const T, is_mut: bool);
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
