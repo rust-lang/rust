@@ -2880,9 +2880,7 @@ mod test_set {
                 assert_eq!(last_i, 49);
             }
 
-            if !s.is_empty() {
-                panic!("s should be empty!");
-            }
+            assert!(s.is_empty(), "s should be empty!");
 
             // reset to try again.
             s.extend(1..100);
