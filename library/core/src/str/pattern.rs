@@ -1512,11 +1512,12 @@ impl TwoWaySearcher {
             // See if the left part of the needle matches
             let start = if long_period { 0 } else { self.memory };
             for i in (start..self.crit_pos).rev() {
-                // SAFETY: The same `self.position + i < haystack.len()` argument as the right-part
-                // loop applies: `haystack.get(self.position + needle_last)` at the
-                // top of `'search` established the bound for this iteration, and every mutation
-                // of `self.position` is followed by `continue 'search` (which re-runs the check)
-                // or a `return` on match.
+                // SAFETY: on every iteration of `'search`, the `haystack.get(self.position + needle_last)`
+                // check returned `Some`, so `self.position + needle_last < haystack.len()`.
+                // Since `i < self.crit_pos <= needle.len()`, we have `i <= needle_last`, and thus
+                // `self.position + i <= self.position + needle_last < haystack.len()`.
+                // Every path that mutates `self.position` below either returns or re-enters `'search`,
+                // which re-runs the check before reaching the loop again.
                 if needle[i] != unsafe { *haystack.get_unchecked(self.position + i) } {
                     self.position += self.period;
                     if !long_period {
