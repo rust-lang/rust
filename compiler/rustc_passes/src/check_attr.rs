@@ -1255,7 +1255,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     is_transparent = true;
                 }
                 ReprAttr::ReprInt(int_type) => {
-                    if let Some(last_int_type) = maybe_last_int_type && last_int_type == int_type {
+                    if let Some(last_int_type) = maybe_last_int_type
+                        && last_int_type == int_type
+                    {
                         // We'll "miss" detecting repeated int reprs if the user specifies
                         // #[repr(u8, u64, u8)] for example. But that's okay because we've got
                         // conflicting reprs anyway so it's not worth the effort to do more precise
