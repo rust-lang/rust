@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(f16)]
-
 use proc_macro::Literal;
 
 pub fn test() {
@@ -102,9 +100,15 @@ fn test_literal_value() {
 
     assert!(Literal::f32_suffixed(9.).u8_value().is_err());
     assert!(Literal::f32_suffixed(10.).f64_value().is_err());
-    assert!(Literal::f32_suffixed(11.).f16_value().is_err());
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert!(Literal::f32_suffixed(11.).f16_value().is_err());
+    }
     assert_eq!(Literal::f32_suffixed(12.).f32_value().map(|f| f.to_string()), Ok("12".to_string()));
     assert_eq!(Literal::f32_unsuffixed(13.).f32_value().map(|f| f.to_string()), Ok("13".to_string()));
     assert_eq!(Literal::f32_unsuffixed(14.).f64_value().map(|f| f.to_string()), Ok("14".to_string()));
-    assert_eq!(Literal::f32_unsuffixed(15.).f16_value().map(|f| f.to_string()), Ok("15".to_string()));
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert_eq!(Literal::f32_unsuffixed(15.).f16_value().map(|f| f.to_string()), Ok("15".to_string()));
+    }
 }
