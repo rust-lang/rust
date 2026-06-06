@@ -82,3 +82,10 @@ fn issue16044() {
     let input = (0..as_i32!(10)).collect::<std::vec::Vec<i32>>();
     //~^ single_range_in_vec_init
 }
+
+fn issue16508() {
+    (0..=10).collect::<std::vec::Vec<i32>>();
+    //~^ single_range_in_vec_init
+    (0..=10).collect::<std::vec::Vec<i32>>();
+    //~^ single_range_in_vec_init
+}
