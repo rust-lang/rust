@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{mem, slice};
@@ -552,24 +551,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     track: &mut T,
 ) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
-    // Every iteration needs a fresh copy of that parser. However, the parser
-    // is not mutated on many of the iterations, particularly when dealing with
-    // macros like this:
-    //
-    // macro_rules! foo {
-    //     ("a") => (A);
-    //     ("b") => (B);
-    //     ("c") => (C);
-    //     // ... etc. (maybe hundreds more)
-    // }
-    //
-    // as seen in the `html5ever` benchmark. We use a `Cow` so that the base
-    // parser is only cloned when necessary (upon mutation). Furthermore, we
-    // reinitialize the `Cow` with the base parser at the start of every
-    // iteration, so that any mutated parsers are not reused. This is all quite
-    // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
-    // 68836 suggests a more comprehensive but more complex change to deal with
-    // this situation.)
+    // Every iteration gets a reference to this and clones it as necessary.
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
@@ -583,7 +565,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
+        let result = tt_parser.parse_tt(&parser, lhs, track);
 
         track.after_arm(true, &result);
 
@@ -641,7 +623,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&args_parser), args, track);
+        let result = tt_parser.parse_tt(&args_parser, args, track);
         track.after_arm(false, &result);
 
         let mut named_matches = match result {
@@ -654,7 +636,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
             ErrorReported(guar) => return Err(CanRetry::No(guar)),
         };
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
+        let result = tt_parser.parse_tt(&body_parser, body, track);
         track.after_arm(true, &result);
 
         match result {
@@ -694,7 +676,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
 
         let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
-        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&body_parser), body, track);
+        let result = tt_parser.parse_tt(&body_parser, body, track);
         track.after_arm(true, &result);
 
         match result {

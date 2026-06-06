@@ -123,9 +123,7 @@ pub(super) fn failed_to_match_macro(
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
-            if let Success(_) =
-                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
-            {
+            if let Success(_) = tt_parser.parse_tt(&parser, lhs, &mut NoopTracker) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {

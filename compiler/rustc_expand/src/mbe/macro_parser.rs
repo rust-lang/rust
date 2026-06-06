@@ -70,7 +70,6 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Display;
 use std::rc::Rc;
@@ -623,10 +622,45 @@ impl TtParser {
     /// Match the token stream from `parser` against `matcher`.
     pub(super) fn parse_tt<'matcher, T: Tracker<'matcher>>(
         &mut self,
-        parser: &mut Cow<'_, Parser<'_>>,
+        parser: &Parser<'_>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> NamedParseResult<T::Failure> {
+        // `parser` needs to be cloned, which is expensive. In some cases, cloning is unnecessary;
+        // the first token of the input is already available (from `parser.token`), and we might be
+        // able to compute a result from it. This can occur with macros like
+        //
+        // macro_rules! foo {
+        //     ("a") => (A);
+        //     ("b") => (B);
+        //     ("c") => (C);
+        //     // ... etc. (maybe hundreds more)
+        // }
+        //
+        // as seen in the `html5ever` benchmark. This was previously handled by using `Cow`
+        // throughout this function; now, we simply do a manual fast-path test at the start. (Also
+        // see issue #68836, which suggests a more comprehensive but more complex change to deal
+        // with this situation.)
+
+        // Use single-token lookahead to quickly test whether matching is going to fail.
+        // NOTE: This could be limited to single-token arms (len-2 matchers).
+        if let MatcherLoc::Token { ref token } = matcher[0]
+            // TODO: Could this be eliminated without changing behavior?
+            && !matches!(token.kind, TokenKind::DocComment(..))
+            && !token_name_eq(token, &parser.token)
+        {
+            self.cur_mps.clear();
+            track.before_match_loc(self, &matcher[0]);
+            return Failure(T::build_failure(
+                parser.token,
+                parser.approx_token_stream_pos(),
+                "no rules expected this token in macro call",
+            ));
+        }
+
+        // Clone the parser so we can progress it.
+        let mut parser = parser.clone();
+
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
@@ -671,7 +705,7 @@ impl TtParser {
                     // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
                     // process the next token.
                     self.cur_mps.append(&mut self.next_mps);
-                    parser.to_mut().bump();
+                    parser.bump();
                 }
 
                 (0, 1) => {
@@ -684,7 +718,7 @@ impl TtParser {
                     {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
-                        let nt = match parser.to_mut().parse_nonterminal(kind) {
+                        let nt = match parser.parse_nonterminal(kind) {
                             Err(err) => {
                                 let guarantee = err.with_span_label(
                                     span,
