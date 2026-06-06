@@ -395,17 +395,22 @@ pub const unsafe trait Allocator {
     }
 }
 
-/// Internal trait for enabling dyn-compatible allocators. Do not manually call
-/// these methods; use their equivalents on `Allocator` instead.
+/// Marker trait for enabling dyn-compatible allocators.
+///
+/// # Usage
+///
+/// `dyn DynAllocator` objects implement [`Allocator`], thus enabling these to be
+/// used as dynamically-dispatched allocators. This also applies to `dyn` objects
+/// with autotrait bounds alongside `DynAllocator`, e.g. `dyn DynAllocator + Send`.
 ///
 /// # Safety
 ///
 /// Same as [`Allocator`].
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[rust_analyzer::skip]
-#[expect(missing_docs)]
-#[expect(clippy::missing_safety_doc)]
-pub impl(self) unsafe trait DynAllocator {
+#[expect(private_bounds)]
+pub impl(self) unsafe trait DynAllocator: DynAllocatorInternal {}
+
+unsafe trait DynAllocatorInternal {
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
     fn __dyn_allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
     unsafe fn __dyn_deallocate(&self, ptr: NonNull<u8>, layout: Layout);
@@ -595,8 +600,7 @@ where
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: Allocator + ?Sized> DynAllocator for A {
+unsafe impl<A: Allocator + ?Sized> DynAllocatorInternal for A {
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         self.allocate(layout)
     }
@@ -636,9 +640,13 @@ unsafe impl<A: Allocator + ?Sized> DynAllocator for A {
     }
 }
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A: DynAllocatorInternal + ?Sized> DynAllocator for A {}
+
 // FIXME(nia-e): See if it's possible to make this built-in to the typesystem,
 // e.g. by making the impl work on arbitrary `dyn DynAlloc + Foo + Bar`. Otherwise,
-// just expand this macro with other trait combinations for now.
+// just expand this macro with other trait combinations for now. Also needs to be
+// extendd for arbitrary `dyn DynAllocator + 'a`.
 // https://rust.tf/157506
 
 macro_rules! impl_dyn_allocator {
