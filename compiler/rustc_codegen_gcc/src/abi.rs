@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
-use rustc_session::config;
+use rustc_session::{Session, config};
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
@@ -230,32 +230,43 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     #[cfg(feature = "master")]
     fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>> {
-        conv_to_fn_attribute(self.conv, &cx.tcx.sess.target.arch)
+        conv_to_fn_attribute(cx.sess(), self.conv)
     }
 }
 
 #[cfg(feature = "master")]
-pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttribute<'gcc>> {
+pub fn conv_to_fn_attribute<'gcc>(sess: &Session, conv: CanonAbi) -> Option<FnAttribute<'gcc>> {
     let attribute = match conv {
         CanonAbi::C | CanonAbi::Rust => return None,
-        // gcc/gccjit does not have anything for this.
-        CanonAbi::RustPreserveNone => return None,
+        CanonAbi::RustPreserveNone => {
+            // This calling convention is LLVM-specific and unspecified.
+            sess.dcx()
+                .fatal("gcc/gccjit backend does not support RustPreserveNone calling convention")
+        }
+        CanonAbi::RustTail => {
+            // This calling convention is LLVM-specific and unspecified.
+            sess.dcx().fatal("gcc/gccjit backend does not support RustTail calling convention")
+        }
         CanonAbi::RustCold => FnAttribute::Cold,
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => return None,
-        // gcc/gccjit does not have anything for Swift's calling convention.
-        CanonAbi::Swift => panic!("gcc/gccjit backend does not support Swift calling convention"),
+        CanonAbi::Swift => {
+            // gcc/gccjit does not have anything for Swift's calling convention.
+            sess.dcx().fatal("gcc/gccjit backend does not support Swift calling convention")
+        }
         CanonAbi::Arm(arm_call) => match arm_call {
             ArmCall::CCmseNonSecureCall => FnAttribute::ArmCmseNonsecureCall,
             ArmCall::CCmseNonSecureEntry => FnAttribute::ArmCmseNonsecureEntry,
             ArmCall::Aapcs => FnAttribute::ArmPcs("aapcs"),
         },
-        CanonAbi::GpuKernel => match arch {
+        CanonAbi::GpuKernel => match &sess.target.arch {
             &Arch::AmdGpu => FnAttribute::GcnAmdGpuHsaKernel,
             &Arch::Nvptx64 => FnAttribute::NvptxKernel,
-            arch => panic!("Arch {arch} does not support GpuKernel calling convention"),
+            arch => sess
+                .dcx()
+                .fatal(format!("Arch {arch} does not support GpuKernel calling convention")),
         },
         // FIXME(antoyo): check if those AVR attributes are mapped correctly.
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
