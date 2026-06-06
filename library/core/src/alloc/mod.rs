@@ -395,34 +395,32 @@ pub const unsafe trait Allocator {
     }
 }
 
-/// Internal trait for enabling dyn-compatible allocators.
+/// Internal trait for enabling dyn-compatible allocators. Do not manually call
+/// these methods; use their equivalents on `Allocator` instead.
 ///
 /// # Safety
 ///
 /// Same as [`Allocator`].
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[rust_analyzer::skip]
+#[expect(missing_docs)]
+#[expect(clippy::missing_safety_doc)]
 pub impl(self) unsafe trait DynAllocator {
-    #[doc(hidden)]
     fn __dyn_allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
-    #[doc(hidden)]
     fn __dyn_allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
-    #[doc(hidden)]
     unsafe fn __dyn_deallocate(&self, ptr: NonNull<u8>, layout: Layout);
-    #[doc(hidden)]
     unsafe fn __dyn_grow(
         &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError>;
-    #[doc(hidden)]
     unsafe fn __dyn_grow_zeroed(
         &self,
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError>;
-    #[doc(hidden)]
     unsafe fn __dyn_shrink(
         &self,
         ptr: NonNull<u8>,
