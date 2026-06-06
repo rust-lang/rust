@@ -30,7 +30,7 @@ vfs.workspace = true
 intern.workspace = true
 
 [features]
-in-rust-tree = ["hir-expand/in-rust-tree"]
+in-rust-tree = ["hir-expand/in-rust-tree", "proc-macro-api/sysroot-abi"]
 
 [lints]
 workspace = true
