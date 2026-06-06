@@ -542,7 +542,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                     Region::new_late_param(
                         self.interner,
                         solver_def_id,
-                        BoundRegionKind::Named(solver_def_id),
+                        BoundRegion {
+                            var: BoundVar::from_u32(index),
+                            kind: BoundRegionKind::Named(solver_def_id),
+                        },
                     )
                 }
             } else {
@@ -665,7 +668,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                                         LifetimeLoweringMode::LateParam => Region::new_late_param(
                                             interner,
                                             self.generic_def.into(),
-                                            bound_region_kind,
+                                            BoundRegion {
+                                                var: BoundVar::from_u32(late_bound_index),
+                                                kind: bound_region_kind,
+                                            },
                                         ),
                                     };
                                     late_bound_index += 1;

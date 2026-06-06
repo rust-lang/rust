@@ -232,7 +232,7 @@ impl<'db> DbInterner<'db> {
         T: TypeFoldable<DbInterner<'db>>,
     {
         self.instantiate_bound_regions_uncached(value, |br| {
-            Region::new_late_param(self, all_outlive_scope, br.kind)
+            Region::new_late_param(self, all_outlive_scope, br)
         })
     }
 }
