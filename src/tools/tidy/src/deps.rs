@@ -597,6 +597,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "log",
     "mach2",
     "memchr",
+    "memmap2",
     "object",
     "proc-macro2",
     "quote",
