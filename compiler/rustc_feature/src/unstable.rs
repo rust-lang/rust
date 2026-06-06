@@ -709,6 +709,8 @@ declare_features! (
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows `extern "rust-preserve-none"`.
     (unstable, rust_preserve_none_cc, "1.95.0", Some(151401)),
+    /// Allows `extern "tail"`.
+    (unstable, rust_tail_cc, "CURRENT_RUSTC_VERSION", Some(157427)),
     /// Target features on s390x.
     (unstable, s390x_target_feature, "1.82.0", Some(150259)),
     /// Allows the use of the `sanitize` attribute.

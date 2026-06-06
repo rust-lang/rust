@@ -55,8 +55,9 @@ pub(crate) fn conv_to_call_conv(
     match c {
         CanonAbi::Rust | CanonAbi::RustCold | CanonAbi::C => default_call_conv,
 
-        // Cranelift doesn't currently have anything for this.
-        CanonAbi::RustPreserveNone => default_call_conv,
+        CanonAbi::RustPreserveNone | CanonAbi::RustTail => {
+            sess.dcx().fatal(format!("call conv {c:?} is LLVM-specific"))
+        }
 
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
@@ -71,7 +72,7 @@ pub(crate) fn conv_to_call_conv(
         },
 
         CanonAbi::Interrupt(_) | CanonAbi::Arm(_) | CanonAbi::Swift => {
-            sess.dcx().fatal("call conv {c:?} is not yet implemented")
+            sess.dcx().fatal(format!("call conv {c:?} is not yet implemented"))
         }
         CanonAbi::GpuKernel => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target")
