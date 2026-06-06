@@ -1,7 +1,6 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
-use std::env;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
@@ -29,10 +28,6 @@ use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::{GlobalAsmConfig, GlobalAsmContext};
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-
-fn disable_incr_cache() -> bool {
-    env::var("CG_CLIF_DISABLE_INCR_CACHE").as_deref() == Ok("1")
-}
 
 struct ModuleCodegenResult {
     module: CompiledModule,
@@ -64,8 +59,6 @@ impl OngoingCodegen {
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
         let mut modules = vec![];
-        let disable_incr_cache = disable_incr_cache();
-
         for module_codegen in self.modules {
             let module_codegen_result = match module_codegen {
                 OngoingModuleCodegen::Sync(module_codegen_result) => module_codegen_result,
@@ -84,7 +77,7 @@ impl OngoingCodegen {
             if let Some((work_product_id, work_product)) = existing_work_product {
                 work_products.insert(work_product_id, work_product);
             } else {
-                let work_product = if disable_incr_cache {
+                let work_product = if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
                     None
                 } else if let Some(global_asm_object) = &module.global_asm_object {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
@@ -458,10 +451,9 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
-    let disable_incr_cache = disable_incr_cache();
     let (todo_cgus, done_cgus) =
         cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
-            _ if disable_incr_cache => true,
+            _ if tcx.sess.opts.unstable_opts.disable_incr_comp_backend_caching => true,
             CguReuse::No => true,
             CguReuse::PreLto | CguReuse::PostLto => false,
         });
