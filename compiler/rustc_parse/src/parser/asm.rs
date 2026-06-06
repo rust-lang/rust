@@ -151,6 +151,9 @@ fn parse_asm_operand<'a>(
     } else if p.eat_keyword(exp!(Const)) {
         let anon_const = p.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
         ast::InlineAsmOperand::Const { anon_const }
+    } else if eat_operand_keyword(p, exp!(Interpolate), asm_macro)? {
+        let anon_const = p.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
+        ast::InlineAsmOperand::Interpolate { anon_const }
     } else if p.eat_keyword(exp!(Sym)) {
         let expr = p.parse_expr()?;
         let ast::ExprKind::Path(qself, path) = &expr.kind else {

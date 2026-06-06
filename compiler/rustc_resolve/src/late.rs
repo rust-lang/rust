@@ -1432,7 +1432,8 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         self.visit_expr(out_expr);
                     }
                 }
-                InlineAsmOperand::Const { anon_const, .. } => {
+                InlineAsmOperand::Const { anon_const, .. }
+                | InlineAsmOperand::Interpolate { anon_const, .. } => {
                     // Although this is `DefKind::AnonConst`, it is allowed to reference outer
                     // generic parameters like an inline const.
                     self.resolve_anon_const(anon_const, AnonConstKind::InlineConst);

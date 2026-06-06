@@ -535,6 +535,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         }
                         Out { expr: None, reg: _, late: _ }
                         | Const { value: _, span: _ }
+                        | Interpolate { value: _, span: _ }
                         | SymFn { value: _ }
                         | SymStatic { def_id: _ } => {}
                         Label { block } => {

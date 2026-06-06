@@ -508,6 +508,11 @@ fn collect_items_rec<'tcx>(
                             // are supported. Therefore the value should not
                             // depend on any other items.
                         }
+                        hir::InlineAsmOperand::Interpolate { .. } => {
+                            // Only constants which resolve to a string
+                            // are supported. Therefore the value should not
+                            // depend on any other items.
+                        }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
                             visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);

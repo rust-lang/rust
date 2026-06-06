@@ -1,0 +1,32 @@
+error: invalid type for `interpolate` operand
+  --> $DIR/interpolate-error.rs:9:27
+   |
+LL |         asm!("/* {0} */", interpolate 42);
+   |                           ^^^^^^^^^^^^--
+   |                                       |
+   |                                       is an `i32`
+   |
+   = help: `interpolate` operands must be of an `&str` type
+
+error: invalid type for `interpolate` operand
+  --> $DIR/interpolate-error.rs:11:27
+   |
+LL |         asm!("/* {0} */", interpolate String::new());
+   |                           ^^^^^^^^^^^^-------------
+   |                                       |
+   |                                       is a `String`
+   |
+   = help: `interpolate` operands must be of an `&str` type
+
+error: invalid type for `interpolate` operand
+  --> $DIR/interpolate-error.rs:13:27
+   |
+LL |         asm!("/* {0} */", interpolate &String::new());
+   |                           ^^^^^^^^^^^^--------------
+   |                                       |
+   |                                       is a `&String`
+   |
+   = help: `interpolate` operands must be of an `&str` type
+
+error: aborting due to 3 previous errors
+

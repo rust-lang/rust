@@ -438,6 +438,31 @@ where
                         }
                     }
                 }
+                rustc_hir::InlineAsmOperand::Interpolate { ref anon_const } => {
+                    match cx.tcx().const_eval_poly(anon_const.def_id.to_def_id()) {
+                        Ok(const_value) => {
+                            let ty =
+                                cx.tcx().typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let string = common::asm_interpolate_to_str(
+                                cx.tcx(),
+                                *op_sp,
+                                const_value,
+                                cx.layout_of(ty),
+                            );
+                            GlobalAsmOperandRef::Interpolate { string }
+                        }
+                        Err(ErrorHandled::Reported { .. }) => {
+                            // An error has already been reported and
+                            // compilation is guaranteed to fail if execution
+                            // hits this path. So an empty string instead of
+                            // a stringified constant value will suffice.
+                            GlobalAsmOperandRef::Interpolate { string: "" }
+                        }
+                        Err(ErrorHandled::TooGeneric(_)) => {
+                            span_bug!(*op_sp, "asm interpolate cannot be resolved; too generic")
+                        }
+                    }
+                }
                 rustc_hir::InlineAsmOperand::SymFn { expr } => {
                     let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
                     let instance = match ty.kind() {

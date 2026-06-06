@@ -208,6 +208,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             // Const operands get injected directly into the template
                             template_str.push_str(string);
                         }
+                        InlineAsmOperandRef::Interpolate { string } => {
+                            // Interpolate operands get injected directly into the template
+                            template_str.push_str(string);
+                        }
                         InlineAsmOperandRef::SymFn { .. }
                         | InlineAsmOperandRef::SymStatic { .. } => {
                             // Only emit the raw symbol name
@@ -405,6 +409,12 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                     match operands[operand_idx] {
                         GlobalAsmOperandRef::Const { ref string } => {
                             // Const operands get injected directly into the
+                            // template. Note that we don't need to escape $
+                            // here unlike normal inline assembly.
+                            template_str.push_str(string);
+                        }
+                        GlobalAsmOperandRef::Interpolate { string } => {
+                            // Interpolate operands get injected directly into the
                             // template. Note that we don't need to escape $
                             // here unlike normal inline assembly.
                             template_str.push_str(string);

@@ -176,17 +176,17 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
-error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `interpolate`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
   --> $DIR/parse-error.rs:83:29
    |
 LL |         asm!("", options(), "");
-   |                             ^^ expected one of 11 possible tokens
+   |                             ^^ expected one of 12 possible tokens
 
-error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `interpolate`, `label`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
   --> $DIR/parse-error.rs:85:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
-   |                                 ^^^^ expected one of 11 possible tokens
+   |                                 ^^^^ expected one of 12 possible tokens
 
 error: asm template must be a string literal
   --> $DIR/parse-error.rs:87:14

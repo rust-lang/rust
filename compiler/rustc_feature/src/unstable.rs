@@ -400,6 +400,8 @@ declare_features! (
     (unstable, asm_experimental_reg, "1.85.0", Some(133416)),
     /// Allows using `label` operands in inline assembly together with output operands.
     (unstable, asm_goto_with_outputs, "1.85.0", Some(119364)),
+    /// Enables experimental inline assembly support for the `interpolate` operator.
+    (unstable, asm_interpolate, "CURRENT_RUSTC_VERSION", Some(157043)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows associated type defaults.

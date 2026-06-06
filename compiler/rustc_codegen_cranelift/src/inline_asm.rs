@@ -33,6 +33,9 @@ pub(crate) enum CInlineAsmOperand<'tcx> {
     Const {
         value: String,
     },
+    Interpolate {
+        value: &'tcx str,
+    },
     Symbol {
         symbol: String,
     },
@@ -103,6 +106,16 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     fx.layout_of(ty),
                 );
                 CInlineAsmOperand::Const { value }
+            }
+            InlineAsmOperand::Interpolate { ref value } => {
+                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value);
+                let value = rustc_codegen_ssa::common::asm_interpolate_to_str(
+                    fx.tcx,
+                    span,
+                    const_value,
+                    fx.layout_of(ty),
+                );
+                CInlineAsmOperand::Interpolate { value }
             }
             InlineAsmOperand::SymFn { ref value } => {
                 if cfg!(not(feature = "inline_asm_sym")) {
@@ -227,7 +240,9 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
                     outputs.push((asm_gen.stack_slots_output[i].unwrap(), *out_place));
                 }
             }
-            CInlineAsmOperand::Const { value: _ } | CInlineAsmOperand::Symbol { symbol: _ } => {}
+            CInlineAsmOperand::Const { value: _ }
+            | CInlineAsmOperand::Interpolate { value: _ }
+            | CInlineAsmOperand::Symbol { symbol: _ } => {}
         }
     }
 
@@ -583,6 +598,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                             }
                         }
                         CInlineAsmOperand::Const { ref value } => {
+                            generated_asm.push_str(value);
+                        }
+                        CInlineAsmOperand::Interpolate { value } => {
                             generated_asm.push_str(value);
                         }
                         CInlineAsmOperand::Symbol { ref symbol } => {

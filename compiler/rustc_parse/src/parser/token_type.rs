@@ -134,6 +134,7 @@ pub enum TokenType {
     SymClobberAbi,
     SymInlateout,
     SymInout,
+    SymInterpolate,
     SymIs,
     SymLabel,
     SymLateout,
@@ -271,6 +272,7 @@ impl TokenType {
             SymClobberAbi,
             SymInlateout,
             SymInout,
+            SymInterpolate,
             SymIs,
             SymLabel,
             SymLateout,
@@ -348,6 +350,7 @@ impl TokenType {
             TokenType::SymClobberAbi => Some(sym::clobber_abi),
             TokenType::SymInlateout => Some(sym::inlateout),
             TokenType::SymInout => Some(sym::inout),
+            TokenType::SymInterpolate => Some(sym::interpolate),
             TokenType::SymIs => Some(sym::is),
             TokenType::SymLabel => Some(sym::label),
             TokenType::SymLateout => Some(sym::lateout),
@@ -565,6 +568,7 @@ macro_rules! exp {
     (ClobberAbi)     => { exp!(@sym, clobber_abi,     SymClobberAbi) };
     (Inlateout)      => { exp!(@sym, inlateout,       SymInlateout) };
     (Inout)          => { exp!(@sym, inout,           SymInout) };
+    (Interpolate)    => { exp!(@sym, interpolate,     SymInterpolate) };
     (Is)             => { exp!(@sym, is,              SymIs) };
     (Label)          => { exp!(@sym, label,           SymLabel) };
     (Lateout)        => { exp!(@sym, lateout,         SymLateout) };

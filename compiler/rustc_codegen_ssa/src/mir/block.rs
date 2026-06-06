@@ -1444,6 +1444,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     );
                     InlineAsmOperandRef::Const { string }
                 }
+                mir::InlineAsmOperand::Interpolate { ref value } => {
+                    let const_value = self.eval_mir_constant(value);
+                    let string = common::asm_interpolate_to_str(
+                        bx.tcx(),
+                        span,
+                        const_value,
+                        bx.layout_of(value.ty()),
+                    );
+                    InlineAsmOperandRef::Interpolate { string }
+                }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
                     if let ty::FnDef(def_id, args) = *const_.ty().kind() {

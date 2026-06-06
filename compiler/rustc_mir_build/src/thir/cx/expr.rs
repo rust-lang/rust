@@ -774,6 +774,21 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             let value = mir::Const::Unevaluated(uneval, ty);
                             InlineAsmOperand::Const { value, span: tcx.def_span(did) }
                         }
+                        hir::InlineAsmOperand::Interpolate { ref anon_const } => {
+                            let ty = self.typeck_results.node_type(anon_const.hir_id);
+                            let did = anon_const.def_id;
+                            let typeck_root_def_id = tcx.typeck_root_def_id_local(did);
+                            let parent_args = tcx.erase_and_anonymize_regions(
+                                GenericArgs::identity_for_item(tcx, typeck_root_def_id),
+                            );
+                            let args =
+                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
+                                    .args;
+
+                            let uneval = mir::UnevaluatedConst::new(did.to_def_id(), args);
+                            let value = mir::Const::Unevaluated(uneval, ty);
+                            InlineAsmOperand::Interpolate { value, span: tcx.def_span(did) }
+                        }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             InlineAsmOperand::SymFn { value: self.mirror_expr(expr) }
                         }

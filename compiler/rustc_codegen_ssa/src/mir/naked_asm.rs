@@ -87,6 +87,31 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
 
             GlobalAsmOperandRef::Const { string }
         }
+        InlineAsmOperand::Interpolate { value } => {
+            let const_value = instance
+                .instantiate_mir_and_normalize_erasing_regions(
+                    cx.tcx(),
+                    cx.typing_env(),
+                    ty::EarlyBinder::bind(value.const_),
+                )
+                .eval(cx.tcx(), cx.typing_env(), value.span)
+                .expect("erroneous constant missed by mono item collection");
+
+            let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
+                cx.tcx(),
+                cx.typing_env(),
+                ty::EarlyBinder::bind(value.ty()),
+            );
+
+            let string = common::asm_interpolate_to_str(
+                cx.tcx(),
+                value.span,
+                const_value,
+                cx.layout_of(mono_type),
+            );
+
+            GlobalAsmOperandRef::Interpolate { string }
+        }
         InlineAsmOperand::SymFn { value } => {
             let mono_type = instance.instantiate_mir_and_normalize_erasing_regions(
                 cx.tcx(),

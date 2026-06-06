@@ -527,6 +527,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             }
                         }
                         InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::Interpolate { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ }
                         | InlineAsmOperand::Label { target_index: _ } => {}

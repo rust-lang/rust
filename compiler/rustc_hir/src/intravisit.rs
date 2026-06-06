@@ -1552,6 +1552,9 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
             InlineAsmOperand::Const { anon_const, .. } => {
                 try_visit!(visitor.visit_inline_const(anon_const));
             }
+            InlineAsmOperand::Interpolate { anon_const, .. } => {
+                try_visit!(visitor.visit_inline_const(anon_const));
+            }
             InlineAsmOperand::SymFn { expr, .. } => {
                 try_visit!(visitor.visit_expr(expr));
             }

@@ -676,6 +676,7 @@ impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
                 (Some(in_value.stable(tables, cx)), out_place.map(|place| place.stable(tables, cx)))
             }
             InlineAsmOperand::Const { .. }
+            | InlineAsmOperand::Interpolate { .. }
             | InlineAsmOperand::SymFn { .. }
             | InlineAsmOperand::SymStatic { .. }
             | InlineAsmOperand::Label { .. } => (None, None),

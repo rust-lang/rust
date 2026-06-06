@@ -1500,6 +1500,12 @@ impl<'a> State<'a> {
                     // Not using `print_inline_const` to avoid additional `const { ... }`
                     s.ann.nested(s, Nested::Body(anon_const.body))
                 }
+                hir::InlineAsmOperand::Interpolate { ref anon_const } => {
+                    s.word("interpolate");
+                    s.space();
+                    // Not using `print_inline_const` to avoid additional `const { ... }`
+                    s.ann.nested(s, Nested::Body(anon_const.body))
+                }
                 hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");
                     s.space();
