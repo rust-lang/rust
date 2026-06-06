@@ -1449,6 +1449,8 @@ symbols! {
         of,
         off,
         offload,
+        offload_preload,
+        offload_preload_end,
         offload_kernel,
         offset,
         offset_of,
