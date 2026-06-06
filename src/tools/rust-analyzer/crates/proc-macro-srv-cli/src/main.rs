@@ -1,10 +1,10 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
-#![cfg_attr(feature = "sysroot-abi", feature(rustc_private))]
-#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(not(feature = "in-rust-tree"), allow(unused_crate_dependencies))]
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
 mod version;
@@ -12,7 +12,7 @@ mod version;
 use clap::{Command, ValueEnum};
 use proc_macro_api::ProtocolFormat;
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 use proc_macro_srv_cli::main_loop::run;
 
 fn main() -> std::io::Result<()> {
@@ -91,7 +91,7 @@ impl ValueEnum for ProtocolFormatArg {
     }
 }
 
-#[cfg(not(feature = "sysroot-abi"))]
+#[cfg(not(feature = "in-rust-tree"))]
 fn run(
     _: &mut std::io::BufReader<std::io::Stdin>,
     _: &mut std::io::Stdout,
@@ -99,7 +99,7 @@ fn run(
 ) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,
-        "proc-macro-srv-cli needs to be compiled with the `sysroot-abi` feature to function"
+        "proc-macro-srv-cli needs to be compiled with the `in-rust-tree` feature to function"
             .to_owned(),
     ))
 }

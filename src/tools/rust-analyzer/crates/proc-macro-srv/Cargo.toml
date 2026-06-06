@@ -36,8 +36,8 @@ proc-macro-test.path = "./proc-macro-test"
 
 [features]
 default = []
-# default = ["sysroot-abi"]
-sysroot-abi = []
+# default = ["in-rust-tree"]
+in-rust-tree = []
 
 [lints]
 workspace = true

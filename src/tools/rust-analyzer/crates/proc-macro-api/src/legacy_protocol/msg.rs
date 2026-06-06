@@ -384,7 +384,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "sysroot-abi")]
+    #[cfg(feature = "in-rust-tree")]
     fn test_proc_macro_rpc_works_ts() {
         for tt in [
             fixture_token_tree_top_many_none,
