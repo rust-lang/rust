@@ -1,5 +1,5 @@
 //@ run-pass
-// Issue #2005: Check that boxed fixed-size arrays are properly
+// Issue https://github.com/rust-lang/rust/issues/20055: Check that boxed fixed-size arrays are properly
 // accounted for (namely, only deallocated if they were actually
 // created) when they appear as temporaries in unused arms of a match
 // expression.
