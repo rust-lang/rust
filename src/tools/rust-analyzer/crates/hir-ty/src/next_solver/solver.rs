@@ -298,7 +298,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
             if trait_pred.polarity() == PredicatePolarity::Positive {
                 match self.0.interner.as_trait_lang_item(trait_pred.def_id()) {
-                    Some(SolverTraitLangItem::Sized) | Some(SolverTraitLangItem::MetaSized) => {
+                    Some(SolverTraitLangItem::Sized)
+                    | Some(SolverTraitLangItem::MetaSized)
+                    | Some(SolverTraitLangItem::Move) => {
                         let predicate = self.resolve_vars_if_possible(goal.predicate);
                         if implicit_fast_path(self.interner, predicate, goal.param_env) {
                             return Some(Certainty::Yes);

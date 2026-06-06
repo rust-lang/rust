@@ -659,6 +659,7 @@ pub fn implicit_fast_path<'db>(
             Some(SolverTraitLangItem::MetaSized) => SizedTraitKind::MetaSized,
             // TODO(nia-e): do more comprehensive fast-pathing when the feature is on
             Some(SolverTraitLangItem::Move) => return trait_pred.self_ty().has_trivial_move(tcx),
+
             _ => return false,
         };
 
