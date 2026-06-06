@@ -2935,23 +2935,24 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 pub(crate) struct EqInternalMethodImplemented;
 
 #[derive(Diagnostic)]
-#[diag("strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`")]
+#[diag("cast from `{$expr_ty}` to `{$cast_ty}` implicitly relies on exposed provenance")]
 #[help(
-    "if you can't comply with strict provenance and don't have a pointer with the correct provenance you can use `std::ptr::with_exposed_provenance()` instead"
+    "if conforming to strict provenance is not possible, use `std::ptr::with_exposed_provenance()`"
 )]
-pub(crate) struct LossyProvenanceInt2Ptr<'tcx> {
+#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+pub(crate) struct ImplicitProvenanceCastsInt2Ptr<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[subdiagnostic]
-    pub sugg: Option<LossyProvenanceInt2PtrSuggestion>,
+    pub sugg: Option<Int2PtrSuggestion>,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address",
+    "use `.with_addr()` to adjust the address of a valid pointer in the same allocation",
     applicability = "has-placeholders"
 )]
-pub(crate) struct LossyProvenanceInt2PtrSuggestion {
+pub(crate) struct Int2PtrSuggestion {
     #[suggestion_part(code = "(...).with_addr(")]
     pub lo: Span,
     #[suggestion_part(code = ")")]
@@ -2959,21 +2960,18 @@ pub(crate) struct LossyProvenanceInt2PtrSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "under strict provenance it is considered bad style to cast pointer `{$cast_from_ty}` to integer `{$cast_to_ty}`"
-)]
-#[help(
-    "if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead"
-)]
-pub(crate) struct LossyProvenancePtr2Int<'tcx> {
+#[diag("cast from `{$cast_from_ty}` to `{$cast_to_ty}` implicitly exposes pointer provenance")]
+#[help("if conforming to strict provenance is not possible, use `.expose_provenance()`")]
+#[note("for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>")]
+pub(crate) struct ImplicitProvenanceCastsPtr2Int<'tcx> {
     pub cast_from_ty: Ty<'tcx>,
     pub cast_to_ty: Ty<'tcx>,
     #[subdiagnostic]
-    pub sugg: Option<LossyProvenancePtr2IntSuggestion<'tcx>>,
+    pub sugg: Option<Ptr2IntSuggestion<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum LossyProvenancePtr2IntSuggestion<'tcx> {
+pub(crate) enum Ptr2IntSuggestion<'tcx> {
     #[multipart_suggestion(
         "use `.addr()` to obtain the address of a pointer",
         applicability = "maybe-incorrect"
