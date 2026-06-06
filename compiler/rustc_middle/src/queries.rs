@@ -180,6 +180,8 @@ rustc_queries! {
     }
 
     query resolver_for_lowering_raw(_: ()) -> (
+        // Those two fields are consumed by `index_ast`.
+        // We want them to be eventually dropped after lowering.
         &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
         &'tcx Steal<ast::Crate>,
         &'tcx ty::ResolverGlobalCtxt,
@@ -190,6 +192,9 @@ rustc_queries! {
     }
 
     query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, Steal<(
+        // There is only a single `ResolverAstLowering` for all owners.
+        // We want to drop it once the whole HIR has been lowered.
+        // We rely on reference counting to know when all definitions have been stolen.
         Arc<ty::ResolverAstLowering<'tcx>>,
         ast::AstOwner,
     )>> {
@@ -210,9 +215,9 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
-    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
+    query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { "lowering HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
     }
 
     query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
