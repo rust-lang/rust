@@ -544,7 +544,7 @@ fn index_ast<'tcx>(
                 UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
                 UseTreeKind::Nested { items: ref nested_vec, span } => {
                     for &(ref nested, id) in nested_vec {
-                        self.insert(id, AstOwner::Synthetic(parent));
+                        self.insert(id, AstOwner::NestedUseTree(parent));
                         items.push(self.make_dummy(id, span, ItemKind::MacCall));
 
                         let def_id = self.owners[&id].def_id;
@@ -648,7 +648,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
         AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
         AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
-        AstOwner::Synthetic(parent_id) => fallback_to_parent(*parent_id),
+        AstOwner::NestedUseTree(parent_id) => fallback_to_parent(*parent_id),
         AstOwner::NonOwner => fallback_to_parent(tcx.local_parent(def_id)),
     };
 
