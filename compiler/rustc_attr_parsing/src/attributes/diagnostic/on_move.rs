@@ -6,7 +6,7 @@ use rustc_span::sym;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
 use crate::context::AcceptContext;
-use crate::errors::DiagnosticOnMoveOnlyForAdt;
+use crate::diagnostics::DiagnosticOnMoveOnlyForAdt;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 

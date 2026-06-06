@@ -97,8 +97,8 @@
 mod attributes;
 mod check_cfg;
 mod context;
+mod diagnostics;
 mod early_parsed;
-mod errors;
 mod interface;
 pub mod parser;
 mod safety;

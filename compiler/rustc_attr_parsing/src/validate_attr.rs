@@ -215,7 +215,7 @@ pub fn emit_malformed_attribute(
             span,
             ast::CRATE_NODE_ID,
             move |dcx, level| {
-                crate::errors::IllFormedAttributeInput::new(&suggestions, template.docs, None)
+                crate::diagnostics::IllFormedAttributeInput::new(&suggestions, template.docs, None)
                     .into_diag(dcx, level)
             },
         );

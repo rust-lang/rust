@@ -4,7 +4,7 @@ use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::errors::DiagnosticOnUnmatchArgsOnlyForMacros;
+use crate::diagnostics::DiagnosticOnUnmatchArgsOnlyForMacros;
 
 #[derive(Default)]
 pub(crate) struct OnUnmatchArgsParser {

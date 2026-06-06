@@ -17,7 +17,7 @@ use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::AcceptContext;
-use crate::errors::{
+use crate::diagnostics::{
     FormatWarning, IgnoredDiagnosticOption, MalFormedDiagnosticAttributeLint,
     MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
 };

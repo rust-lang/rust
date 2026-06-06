@@ -4,7 +4,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ExpnKind, Ident, Span, Symbol, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
 
@@ -61,38 +61,47 @@ fn to_check_cfg_arg(name: Ident, value: Option<Symbol>, quotes: EscapeQuotes) ->
 fn cargo_help_sub(
     sess: &Session,
     inst: &impl Fn(EscapeQuotes) -> String,
-) -> errors::UnexpectedCfgCargoHelp {
+) -> diagnostics::UnexpectedCfgCargoHelp {
     // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
     // `build.rs`. We therefor do a best effort check (looking if the `--crate-name` is
     // `build_script_build`) to try to figure out if we are building a Cargo build script
 
     let unescaped = &inst(EscapeQuotes::No);
     if let Some("build_script_build") = sess.opts.crate_name.as_deref() {
-        errors::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
+        diagnostics::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
     } else {
-        errors::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
+        diagnostics::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(
+            unescaped,
+            &inst(EscapeQuotes::Yes),
+        )
     }
 }
 
-fn rustc_macro_help(span: Span) -> Option<errors::UnexpectedCfgRustcMacroHelp> {
+fn rustc_macro_help(span: Span) -> Option<diagnostics::UnexpectedCfgRustcMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
         && def_id.krate != LOCAL_CRATE
     {
-        Some(errors::UnexpectedCfgRustcMacroHelp { macro_kind: macro_kind.descr(), macro_name })
+        Some(diagnostics::UnexpectedCfgRustcMacroHelp {
+            macro_kind: macro_kind.descr(),
+            macro_name,
+        })
     } else {
         None
     }
 }
 
-fn cargo_macro_help(span: Span) -> Option<errors::UnexpectedCfgCargoMacroHelp> {
+fn cargo_macro_help(span: Span) -> Option<diagnostics::UnexpectedCfgCargoMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && def_id.krate != LOCAL_CRATE
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
     {
-        Some(errors::UnexpectedCfgCargoMacroHelp { macro_kind: macro_kind.descr(), macro_name })
+        Some(diagnostics::UnexpectedCfgCargoMacroHelp {
+            macro_kind: macro_kind.descr(),
+            macro_name,
+        })
     } else {
         None
     }
@@ -102,7 +111,7 @@ pub(crate) fn unexpected_cfg_name(
     sess: &Session,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) -> errors::UnexpectedCfgName {
+) -> diagnostics::UnexpectedCfgName {
     #[allow(rustc::potential_query_instability)]
     let possibilities: Vec<Symbol> = sess.check_config.expecteds.keys().copied().collect();
 
@@ -136,12 +145,12 @@ pub(crate) fn unexpected_cfg_name(
     }
 
     let code_sugg = if is_feature_cfg && is_from_cargo {
-        errors::unexpected_cfg_name::CodeSuggestion::DefineFeatures
+        diagnostics::unexpected_cfg_name::CodeSuggestion::DefineFeatures
     // Suggest correct `version("..")` predicate syntax
     } else if let Some((_value, value_span)) = value
         && name == sym::version
     {
-        errors::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
+        diagnostics::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
             between_name_and_value: name_span.between(value_span),
             after_value: value_span.shrink_to_hi(),
         }
@@ -156,7 +165,7 @@ pub(crate) fn unexpected_cfg_name(
             .span_to_snippet(name_span)
             .map_or(true, |snippet| !snippet.contains("r#"))
     {
-        errors::unexpected_cfg_name::CodeSuggestion::BooleanLiteral {
+        diagnostics::unexpected_cfg_name::CodeSuggestion::BooleanLiteral {
             span: name_span,
             literal: boolean,
         }
@@ -176,7 +185,10 @@ pub(crate) fn unexpected_cfg_name(
                 if !possibilities.is_empty() {
                     let possibilities =
                         possibilities.iter().copied().cloned().collect::<Vec<_>>().into();
-                    Some(errors::unexpected_cfg_name::ExpectedValues { best_match, possibilities })
+                    Some(diagnostics::unexpected_cfg_name::ExpectedValues {
+                        best_match,
+                        possibilities,
+                    })
                 } else {
                     None
                 }
@@ -185,37 +197,37 @@ pub(crate) fn unexpected_cfg_name(
             let best_match = Ident::new(best_match, name_span);
             if let Some((value, value_span)) = value {
                 if best_match_values.contains(&Some(value)) {
-                    errors::unexpected_cfg_name::CodeSuggestion::SimilarNameAndValue {
+                    diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarNameAndValue {
                         span: name_span,
                         code: best_match.to_string(),
                     }
                 } else if best_match_values.contains(&None) {
-                    errors::unexpected_cfg_name::CodeSuggestion::SimilarNameNoValue {
+                    diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarNameNoValue {
                         span: name_span.to(value_span),
                         code: best_match.to_string(),
                     }
                 } else if let Some(first_value) = possibilities.first() {
-                    errors::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                    diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
                         span: name_span.to(value_span),
                         code: format!("{best_match} = \"{first_value}\""),
                         expected: get_possibilities_sub(),
                     }
                 } else {
-                    errors::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                    diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
                         span: name_span.to(value_span),
                         code: best_match.to_string(),
                         expected: get_possibilities_sub(),
                     }
                 }
             } else {
-                errors::unexpected_cfg_name::CodeSuggestion::SimilarName {
+                diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarName {
                     span: name_span,
                     code: best_match.to_string(),
                     expected: get_possibilities_sub(),
                 }
             }
         } else {
-            errors::unexpected_cfg_name::CodeSuggestion::SimilarName {
+            diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarName {
                 span: name_span,
                 code: best_match.to_string(),
                 expected: None,
@@ -226,7 +238,7 @@ pub(crate) fn unexpected_cfg_name(
             names_possibilities.sort();
             names_possibilities
                 .iter()
-                .map(|cfg_name| errors::unexpected_cfg_name::FoundWithSimilarValue {
+                .map(|cfg_name| diagnostics::unexpected_cfg_name::FoundWithSimilarValue {
                     span: name_span,
                     code: format!("{cfg_name} = \"{name}\""),
                 })
@@ -240,14 +252,14 @@ pub(crate) fn unexpected_cfg_name(
         let expected_names = if !possibilities.is_empty() {
             let possibilities: Vec<_> =
                 possibilities.into_iter().map(|s| Ident::new(s, name_span)).collect();
-            Some(errors::unexpected_cfg_name::ExpectedNames {
+            Some(diagnostics::unexpected_cfg_name::ExpectedNames {
                 possibilities: possibilities.into(),
                 and_more,
             })
         } else {
             None
         };
-        errors::unexpected_cfg_name::CodeSuggestion::SimilarValues {
+        diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarValues {
             with_similar_values: similar_values,
             expected_names,
         }
@@ -263,26 +275,26 @@ pub(crate) fn unexpected_cfg_name(
         } else {
             None
         };
-        errors::unexpected_cfg_name::InvocationHelp::Cargo {
+        diagnostics::unexpected_cfg_name::InvocationHelp::Cargo {
             help,
             macro_help: cargo_macro_help(name_span),
         }
     } else {
-        let help = errors::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
-        errors::unexpected_cfg_name::InvocationHelp::Rustc {
+        let help = diagnostics::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
+        diagnostics::unexpected_cfg_name::InvocationHelp::Rustc {
             help,
             macro_help: rustc_macro_help(name_span),
         }
     };
 
-    errors::UnexpectedCfgName { code_sugg, invocation_help, name }
+    diagnostics::UnexpectedCfgName { code_sugg, invocation_help, name }
 }
 
 pub(crate) fn unexpected_cfg_value(
     sess: &Session,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) -> errors::UnexpectedCfgValue {
+) -> diagnostics::UnexpectedCfgValue {
     let Some(ExpectedValues::Some(values)) = &sess.check_config.expecteds.get(&name) else {
         panic!(
             "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -313,13 +325,13 @@ pub(crate) fn unexpected_cfg_value(
             .iter()
             .take(max_suggestions)
             .copied()
-            .map(|name| errors::unexpected_cfg_value::ChangeNameSuggestion {
+            .map(|name| diagnostics::unexpected_cfg_value::ChangeNameSuggestion {
                 span: name_span,
                 name,
                 value,
             })
             .collect::<Vec<_>>();
-        errors::unexpected_cfg_value::CodeSuggestion::ChangeName { suggestions }
+        diagnostics::unexpected_cfg_value::CodeSuggestion::ChangeName { suggestions }
     } else if !possibilities.is_empty() {
         // Show the full list if all possible values for a given name, but don't do it
         // for names as the possibilities could be very long
@@ -329,7 +341,7 @@ pub(crate) fn unexpected_cfg_value(
                 possibilities.clone(),
                 FilterWellKnownNames::No,
             );
-            errors::unexpected_cfg_value::ExpectedValues {
+            diagnostics::unexpected_cfg_value::ExpectedValues {
                 name,
                 have_none_possibility,
                 possibilities: possibilities.into(),
@@ -340,7 +352,7 @@ pub(crate) fn unexpected_cfg_value(
         let suggestion = if let Some((value, value_span)) = value {
             // Suggest the most probable if we found one
             if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                Some(errors::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
+                Some(diagnostics::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
                     span: value_span,
                     best_match,
                 })
@@ -348,7 +360,7 @@ pub(crate) fn unexpected_cfg_value(
                 None
             }
         } else if let &[first_possibility] = &possibilities[..] {
-            Some(errors::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
+            Some(diagnostics::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
                 span: name_span.shrink_to_hi(),
                 first_possibility,
             })
@@ -356,21 +368,25 @@ pub(crate) fn unexpected_cfg_value(
             None
         };
 
-        errors::unexpected_cfg_value::CodeSuggestion::ChangeValue { expected_values, suggestion }
+        diagnostics::unexpected_cfg_value::CodeSuggestion::ChangeValue {
+            expected_values,
+            suggestion,
+        }
     } else if have_none_possibility {
-        let suggestion =
-            value.map(|(_value, value_span)| errors::unexpected_cfg_value::RemoveValueSuggestion {
+        let suggestion = value.map(|(_value, value_span)| {
+            diagnostics::unexpected_cfg_value::RemoveValueSuggestion {
                 span: name_span.shrink_to_hi().to(value_span),
-            });
-        errors::unexpected_cfg_value::CodeSuggestion::RemoveValue { suggestion, name }
+            }
+        });
+        diagnostics::unexpected_cfg_value::CodeSuggestion::RemoveValue { suggestion, name }
     } else {
         let span = if let Some((_value, value_span)) = value {
             name_span.to(value_span)
         } else {
             name_span
         };
-        let suggestion = errors::unexpected_cfg_value::RemoveConditionSuggestion { span };
-        errors::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
+        let suggestion = diagnostics::unexpected_cfg_value::RemoveConditionSuggestion { span };
+        diagnostics::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
     };
 
     // We don't want to encourage people to add values to a well-known names, as these are
@@ -391,32 +407,32 @@ pub(crate) fn unexpected_cfg_value(
     let invocation_help = if is_from_cargo {
         let help = if name == sym::feature && !is_from_external_macro {
             if let Some((value, _value_span)) = value {
-                Some(errors::unexpected_cfg_value::CargoHelp::AddFeature { value })
+                Some(diagnostics::unexpected_cfg_value::CargoHelp::AddFeature { value })
             } else {
-                Some(errors::unexpected_cfg_value::CargoHelp::DefineFeatures)
+                Some(diagnostics::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
         } else if can_suggest_adding_value && !is_from_external_macro {
-            Some(errors::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
+            Some(diagnostics::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
         };
-        errors::unexpected_cfg_value::InvocationHelp::Cargo {
+        diagnostics::unexpected_cfg_value::InvocationHelp::Cargo {
             help,
             macro_help: cargo_macro_help(name_span),
         }
     } else {
         let help = if can_suggest_adding_value {
-            Some(errors::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
+            Some(diagnostics::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
         } else {
             None
         };
-        errors::unexpected_cfg_value::InvocationHelp::Rustc {
+        diagnostics::unexpected_cfg_value::InvocationHelp::Rustc {
             help,
             macro_help: rustc_macro_help(name_span),
         }
     };
 
-    errors::UnexpectedCfgValue {
+    diagnostics::UnexpectedCfgValue {
         code_sugg,
         invocation_help,
         has_value: value.is_some(),
