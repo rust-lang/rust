@@ -511,7 +511,7 @@ fn make_const_compl_syntax(
     let len = end - start;
     let range = TextRange::new(0.into(), len);
 
-    let syntax = const_.text().slice(range).to_string();
+    let syntax = const_.text().slice(range).to_smolstr();
 
     format_smolstr!("{} =", syntax.trim_end())
 }
@@ -537,9 +537,10 @@ fn function_declaration(
         .map_or(end, |f| f.text_range().start());
 
     let len = end - start;
-    let syntax = node.text().slice(..len).to_string();
+    let mut syntax = node.text().slice(..len).to_string();
+    syntax.truncate(syntax.trim_end().len());
 
-    syntax.trim_end().to_owned()
+    syntax
 }
 
 #[cfg(test)]
