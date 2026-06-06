@@ -794,18 +794,6 @@ pub(crate) struct WantedConstant {
 }
 
 #[derive(Diagnostic)]
-#[diag("unreachable {$descr}")]
-pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {
-    pub descr: &'desc str,
-    #[label("unreachable {$descr}")]
-    pub expr: Span,
-    #[label("any code following this expression is unreachable")]
-    #[note("this expression has type `{$ty}`, which is uninhabited")]
-    pub orig: Span,
-    pub ty: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
 #[diag("constant pattern cannot depend on generic parameters", code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
