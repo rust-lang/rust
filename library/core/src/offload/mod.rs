@@ -62,7 +62,7 @@ pub fn preload_mut<'a, T: ?Sized>(x: &'a mut T) -> PreloadMut<'a, T> {
 impl<T: ?Sized> Drop for PreloadMut<'_, T> {
     fn drop(&mut self) {
         unsafe {
-            core::intrinsics::offload_preload_mut_end(self.cpu_ptr, true);
+            core::intrinsics::offload_preload_end(self.cpu_ptr, true);
         }
     }
 }
@@ -70,7 +70,7 @@ impl<T: ?Sized> Drop for PreloadMut<'_, T> {
 impl<T: ?Sized> Drop for Preload<'_, T> {
     fn drop(&mut self) {
         unsafe {
-            core::intrinsics::offload_preload_mut_end(self.cpu_ptr, false);
+            core::intrinsics::offload_preload_end(self.cpu_ptr, false);
         }
     }
 }
