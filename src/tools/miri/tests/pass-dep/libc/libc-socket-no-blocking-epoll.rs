@@ -1,5 +1,6 @@
 //@only-target: linux android illumos
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #![feature(io_error_inprogress)]
 
