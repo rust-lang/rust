@@ -546,6 +546,7 @@ symbols! {
         builtin_syntax,
         bundle,
         c_dash_variadic,
+        c_size_t,
         c_str_literals,
         c_unwind,
         c_variadic,

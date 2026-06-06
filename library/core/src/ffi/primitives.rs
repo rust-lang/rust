@@ -3,6 +3,8 @@
 //! This module is intentionally standalone to facilitate parsing when retrieving
 //! core C types.
 
+use crate::mem::{self};
+
 macro_rules! type_alias {
     {
       $Docfile:tt, $Alias:ident = $Real:ty;
@@ -173,6 +175,129 @@ pub type c_ptrdiff_t = isize;
 /// platforms where this is not the case.
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub type c_ssize_t = isize;
+
+/// Equivalent to C's `intptr_t` type.
+///
+/// This type have the same size with a pointer. The C standard technically only
+/// requires that this type be a signed integer type just capable of holding a
+/// pointer.
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug)]
+pub struct c_intptr_t(*const ());
+
+/// Equivalent to C's `uintptr_t` type.
+///
+/// This type have the same size with a pointer. The C standard technically only
+/// requires that this type be an unsigned integer type just capable of holding
+/// a pointer.
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug)]
+pub struct c_uintptr_t(*const ());
+
+/// Trait for types that can be used to represent C's `intptr_t` and `uintptr_t` types.
+///
+/// For handle interchange of rust `pointer` type and C's `intptr_t` and `uintptr_t` types.
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[rustc_const_unstable(feature = "c_size_t", issue = "88345")]
+pub const trait TaggedPointer {
+    /// Creates a new instance of IntPtr from a pointer.
+    #[unstable(feature = "c_size_t", issue = "88345")]
+    fn new(ptr: *const ()) -> Self;
+    /// Returns the pointer contained in IntPtr.
+    #[unstable(feature = "c_size_t", issue = "88345")]
+    fn ptr(&self) -> *const ();
+}
+
+/// Trait for retrieving the integer representation of a TaggedPointer.
+///
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub trait IntPtr: TaggedPointer {
+    /// The integer type that can hold the tagged pointer value.
+    type Number;
+
+    /// Returns the integer representation of the pointer contained in IntPtr.
+    #[unstable(feature = "c_size_t", issue = "88345")]
+    fn integer(&self) -> Self::Number;
+}
+
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[rustc_const_unstable(feature = "c_size_t", issue = "88345")]
+impl const TaggedPointer for c_intptr_t {
+    fn new(ptr: *const ()) -> Self {
+        Self(ptr)
+    }
+
+    fn ptr(&self) -> *const () {
+        self.0
+    }
+}
+
+#[unstable(feature = "c_size_t", issue = "88345")]
+impl IntPtr for c_intptr_t {
+    type Number = c_intptr_definition::c_intptr_t;
+
+    fn integer(&self) -> Self::Number {
+        // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
+        // integer representing the pointer without exposing the provenance. Note that this is *not*
+        // a stable guarantee about transmute semantics, it relies on sysroot crates having special status.
+        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
+        // provenance).
+        unsafe { mem::transmute(self.0.cast::<()>()) }
+    }
+}
+
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[rustc_const_unstable(feature = "c_size_t", issue = "88345")]
+impl const TaggedPointer for c_uintptr_t {
+    fn new(ptr: *const ()) -> Self {
+        Self(ptr)
+    }
+
+    fn ptr(&self) -> *const () {
+        self.0
+    }
+}
+
+#[unstable(feature = "c_size_t", issue = "88345")]
+impl IntPtr for c_uintptr_t {
+    type Number = c_intptr_definition::c_uintptr_t;
+
+    fn integer(&self) -> Self::Number {
+        // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
+        // integer representing the pointer without exposing the provenance. Note that this is *not*
+        // a stable guarantee about transmute semantics, it relies on sysroot crates having special status.
+        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
+        // provenance).
+        unsafe { mem::transmute(self.0.cast::<()>()) }
+    }
+}
+
+mod c_intptr_definition {
+    crate::cfg_select! {
+        target_pointer_width = "16" => {
+            pub(super) type c_intptr_t = i16;
+            pub(super) type c_uintptr_t = u16;
+        }
+        target_pointer_width = "32" => {
+            pub(super) type c_intptr_t = i32;
+            pub(super) type c_uintptr_t = u32;
+        }
+        target_pointer_width = "64" => {
+            pub(super) type c_intptr_t = i64;
+            pub(super) type c_uintptr_t = u64;
+        }
+        _ => {
+            /// 128-bit width pointer.
+            ///
+            /// The C standard only requires that these types be large enough to hold a pointer,
+            /// so we'll use the i128/u128 integer types in Rust.
+            pub(super) type c_intptr_t = i128;
+            pub(super) type c_uintptr_t = u128;
+        }
+    }
+}
 
 mod c_int_definition {
     crate::cfg_select! {
