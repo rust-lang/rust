@@ -13,7 +13,8 @@ use std::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
-    FunctionId, GenericDefId, HasModule, LocalFieldId, ModuleDefId, StructId, VariantId,
+    FunctionId, GenericDefId, HasModule, LocalFieldId, LoweringMode, ModuleDefId, StructId,
+    VariantId,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, HygieneId,
         lower::{ExprCollector, lower_generic_params},
@@ -378,8 +379,15 @@ impl<'db> SourceAnalyzer<'db> {
         };
         let generic_def = owner.generic_def(db);
         let module = generic_def.module(db);
-        let (store, params, _) =
-            lower_generic_params(db, module, generic_def, self.file_id, None, Some(where_clause));
+        let (store, params, _) = lower_generic_params(
+            db,
+            module,
+            generic_def,
+            self.file_id,
+            None,
+            Some(where_clause),
+            LoweringMode::Ide,
+        );
         let predicates = params.where_predicates();
         if predicates.is_empty() {
             return PredicateEvaluationResult::holds("predicate does not impose any obligations");
@@ -1274,7 +1282,8 @@ impl<'db> SourceAnalyzer<'db> {
         }
 
         // FIXME: collectiong here shouldnt be necessary?
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector =
+            ExprCollector::new(db, self.resolver.module(), self.file_id, LoweringMode::Ide);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let parent_hir_path = path
@@ -1479,7 +1488,8 @@ impl<'db> SourceAnalyzer<'db> {
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolutionPerNs> {
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector =
+            ExprCollector::new(db, self.resolver.module(), self.file_id, LoweringMode::Ide);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let (store, _) = collector.store.finish();
