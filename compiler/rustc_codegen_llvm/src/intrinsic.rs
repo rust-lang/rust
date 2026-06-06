@@ -170,36 +170,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
 }
 
 impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
-    fn codegen_offload_preload_call(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OperandRef<'tcx, &'ll llvm::Value>],
-        is_mut: bool,
-    ) {
-        let tcx = self.tcx;
-        if tcx.sess.opts.unstable_opts.offload.is_empty() {
-            let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
-        }
-
-        if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-            let _ = tcx.dcx().emit_warn(OffloadWithoutFatLTO);
-        }
-
-        codegen_offload_preload(self, tcx, instance, args);
-    }
-
-    fn codegen_offload_preload_drop(
-        &mut self,
-        preload_ty: Ty<'tcx>,
-        place: PlaceRef<'tcx, &'ll llvm::Value>,
-        is_mut: bool,
-    ) {
-        let tcx = self.tcx;
-        dbg!("Dropping PreloadMut; emit offload end mapper");
-
-        codegen_offload_preload_drop(self, tcx, preload_ty, place, is_mut);
-    }
-
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -257,6 +227,15 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     layout: result_layout,
                 };
                 codegen_autodiff(self, tcx, instance, args, result);
+                return IntrinsicResult::WroteIntoPlace;
+            }
+            sym::offload_preload => {
+                codegen_offload_preload(self, tcx, instance, args, false);
+                return IntrinsicResult::WroteIntoPlace;
+            }
+
+            sym::offload_preload_end => {
+                codegen_offload_preload_drop(self, tcx, instance, args);
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
@@ -1933,16 +1912,13 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
     let cx = bx.cx;
     dbg!("Starting the PreloadMut drop handling!");
     // PreloadMut<'a, T> -> extract T.
-    let ty::Adt(_adt_def, generic_args) = preload_ty.kind() else {
-        bug!("expected PreloadMut ADT, got {preload_ty:?}");
+    let arg = &args[0];
+    let arg_ty = arg.layout.ty;
+
+    let pointee_ty = match *arg_ty.kind() {
+        ty::RawPtr(pointee_ty, _) => pointee_ty,
+        _ => bug!("expected raw pointer argument, got {arg_ty:?}"),
     };
-
-    // This should be the `T` parameter of PreloadMut<'a, T>.
-    // If this indexes the lifetime in your tree, use the correct type arg index
-    // or `generic_args.types().next().unwrap()`.
-    let pointee_ty: Ty<'tcx> =
-        generic_args.types().next().unwrap_or_else(|| bug!("PreloadMut without type parameter"));
-
     // Load field 0: `cpu_ptr: *mut T`.
     let cpu_ptr_place = place.project_field(bx, 0);
     dbg!(&cpu_ptr_place);
