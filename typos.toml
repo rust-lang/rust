@@ -13,6 +13,7 @@ extend-exclude = [
     # generated lorem ipsum texts
     "library/alloctests/benches/str.rs",
     "library/alloctests/tests/str.rs",
+    "library/coretests/benches/pattern.rs",
 ]
 
 [default.extend-words]
