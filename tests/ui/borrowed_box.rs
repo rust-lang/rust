@@ -16,17 +16,17 @@ pub fn test1(foo: &mut Box<bool>) {
 }
 
 pub fn test2() {
-    let foo: &bool;
+    let foo: &Box<bool>;
     //~^ borrowed_box
 }
 
 struct Test3<'a> {
-    foo: &'a bool,
+    foo: &'a Box<bool>,
     //~^ borrowed_box
 }
 
 trait Test4 {
-    fn test4(a: &bool);
+    fn test4(a: &Box<bool>);
     //~^ borrowed_box
 }
 
@@ -87,28 +87,28 @@ pub fn test13(boxed_slice: &mut Box<[i32]>) {
 }
 
 // The suggestion should include proper parentheses to avoid a syntax error.
-pub fn test14(_display: &dyn Display) {}
+pub fn test14(_display: &Box<dyn Display>) {}
 //~^ borrowed_box
 
-pub fn test15(_display: &(dyn Display + Send)) {}
+pub fn test15(_display: &Box<dyn Display + Send>) {}
 //~^ borrowed_box
 
-pub fn test16<'a>(_display: &'a (dyn Display + 'a)) {}
+pub fn test16<'a>(_display: &'a Box<dyn Display + 'a>) {}
 //~^ borrowed_box
 
-pub fn test17(_display: &impl Display) {}
+pub fn test17(_display: &Box<impl Display>) {}
 //~^ borrowed_box
 
-pub fn test18(_display: &(impl Display + Send)) {}
+pub fn test18(_display: &Box<impl Display + Send>) {}
 //~^ borrowed_box
 
-pub fn test19<'a>(_display: &'a (impl Display + 'a)) {}
+pub fn test19<'a>(_display: &'a Box<impl Display + 'a>) {}
 //~^ borrowed_box
 
 // This exists only to check what happens when parentheses are already present.
 // Even though the current implementation doesn't put extra parentheses,
 // it's fine that unnecessary parentheses appear in the future for some reason.
-pub fn test20(_display: &(dyn Display + Send)) {}
+pub fn test20(_display: &Box<(dyn Display + Send)>) {}
 //~^ borrowed_box
 
 #[allow(clippy::borrowed_box)]
@@ -121,11 +121,4 @@ impl Trait for () {
     fn f(_: &Box<bool>) {}
 }
 
-fn main() {
-    test1(&mut Box::new(false));
-    test2();
-    test5(&mut (Box::new(false) as Box<dyn Any>));
-    test6();
-    test9(&mut (Box::new(false) as Box<dyn Any + Send + Sync>));
-    test10();
-}
+fn main() {}
