@@ -1,8 +1,12 @@
+//@ revisions: aarch64 x32 x64
 //@ run-pass
+//@[aarch64] only-aarch64
+//@[x32] only-x86
+//@[x64] only-x86_64
 //@ needs-unwind
 //@ ignore-backends: gcc
 
-#![feature(rust_preserve_none_cc)]
+#![feature(rust_tail_cc)]
 
 struct CrateOf<'a> {
     mcintosh: f64,
@@ -12,7 +16,7 @@ struct CrateOf<'a> {
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn oven_explosion() {
+extern "tail" fn oven_explosion() {
     panic!("bad time");
 }
 
@@ -24,7 +28,7 @@ fn bite_into(yummy: u64) -> u64 {
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn lotsa_apples(
+extern "tail" fn lotsa_apples(
     honeycrisp: u64,
     gala: u32,
     fuji: f64,
