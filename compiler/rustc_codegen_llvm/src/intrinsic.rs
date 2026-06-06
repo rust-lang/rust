@@ -230,12 +230,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload_preload => {
-                codegen_offload_preload(self, tcx, instance, args, false);
+                codegen_offload_preload(self, tcx, instance, args);
                 return IntrinsicResult::WroteIntoPlace;
             }
 
             sym::offload_preload_end => {
-                codegen_offload_preload_drop(self, tcx, instance, args, false);
+                codegen_offload_preload_drop(self, tcx, instance, args);
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
@@ -1901,17 +1901,42 @@ fn codegen_autodiff<'ll, 'tcx>(
         fnc_tree,
     );
 }
+
+fn offload_bool_arg<'ll, 'tcx>(args: &[OperandRef<'tcx, &'ll llvm::Value>], idx: usize) -> bool {
+    let arg = &args[idx];
+
+    if !arg.layout.ty.is_bool() {
+        bug!("expected bool argument at index {idx}, got {:?}", arg.layout.ty);
+    }
+
+    let OperandValue::Immediate(v) = arg.val else {
+        bug!("expected immediate bool argument at index {idx}");
+    };
+
+    let Some(ci) = (unsafe { llvm::LLVMIsAConstantInt(v) }) else {
+        bug!("expected constant bool argument at index {idx}");
+    };
+
+    let mut raw = 0u64;
+    let ok = unsafe { llvm::LLVMRustConstIntGetZExtValue(ci, &mut raw) };
+
+    if !ok {
+        bug!("failed to extract constant bool argument at index {idx}");
+    }
+
+    raw != 0
+}
 fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
     _instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll llvm::Value>],
-    is_mut: bool,
 ) {
     let cx = bx.cx;
     dbg!("Starting the PreloadMut drop handling!");
     // PreloadMut<'a, T> -> extract T.
     let ptr_arg = &args[0];
+    let is_mut: bool = offload_bool_arg(args, 1);
 
     let pointee_ty = match *ptr_arg.layout.ty.kind() {
         ty::RawPtr(pointee_ty, _) => pointee_ty,
@@ -1994,7 +2019,6 @@ fn codegen_offload_preload<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     _instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
-    is_mut: bool,
 ) {
     dbg!("Starting the preload handling!");
     let cx = bx.cx;
@@ -2008,8 +2032,9 @@ fn codegen_offload_preload<'ll, 'tcx>(
 
     let arg_ty = arg.layout.ty;
 
-    let ty::Ref(_, pointee_ty, _) = *arg_ty.kind() else {
-        bug!("expected preload argument to be a reference, got {arg_ty:?}");
+    let pointee_ty: Ty<'tcx> = match *arg_ty.kind() {
+        ty::RawPtr(pointee_ty, _) => pointee_ty,
+        _ => bug!("expected preload argument to be a raw pointer, got {arg_ty:?}"),
     };
 
     let meta = OffloadMetadata::from_ty(tcx, pointee_ty);
