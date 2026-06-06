@@ -9,7 +9,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors::{
+use crate::diagnostics::{
     EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
     EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
     EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
