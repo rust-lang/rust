@@ -123,8 +123,25 @@ where
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
     ///
     /// Additionally, when `term` is a const, this registers a `ConstArgHasType`
-    /// goal to ensure that the const value's type matches the type of the
-    /// alias it was normalized from, preventing ICEs from type mismatches.
+    /// goal to ensure that the const value's type matches the declared type of
+    /// the alias it was normalized from.
+    ///
+    /// You may reasonably wonder: shouldn't `wfcheck::check_type_const` already
+    /// catch any such type mismatch at the definition site, so that the
+    /// definition is tainted and we never even attempt to normalize a reference
+    /// to it? In principle that's exactly what should happen. However, we cannot
+    /// simply force the defining item's wfcheck to run before all uses are
+    /// normalized: wfcheck itself may depend on typeck, trait solving, and
+    /// normalization, so enforcing such a strict ordering would easily create
+    /// query cycles.
+    ///
+    /// However, when CTFE runs on a MIR body, normalizing a type const within
+    /// that body can change the type of the resulting value, causing the MIR
+    /// to become ill-formed. If `check_type_const` for that alias has not yet
+    /// reported its error, no prior error has been recorded and MIR validation
+    /// fires a `span_bug!`. Registering the obligation here ensures the type
+    /// mismatch is reported during normalization itself, tainting the MIR
+    /// before validation runs.
     pub fn instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
