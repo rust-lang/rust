@@ -405,12 +405,14 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {{
-        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value)
+        {
+            let value = $value;
+            record!($self.$tables.$table[$def_id] <- value, $hcx, value)
+        }
     }};
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr) => {{
         {
-            let value = $value;
-            let lazy = $self.lazy(value);
+            let lazy = $self.lazy($value);
             $self.$tables.$table.set_some_hashed(
                 $def_id.index,
                 lazy,
