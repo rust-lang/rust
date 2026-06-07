@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::mem;
 use std::ops::Range;
 
@@ -641,41 +642,61 @@ pub fn source_span_for_markdown_range_inner(
     let mut start_bytes = 0;
     let mut end_bytes = 0;
 
+    let span = span_of_fragments(fragments)?;
+
+    let mut line_bytes = 0;
+    let mut sorted_fragments = fragments.to_vec();
+    sorted_fragments.sort_by_key(|fragment| fragment.span.lo().0);
     'outer: for (line_no, md_line) in md_lines.enumerate() {
         loop {
             let source_line = src_lines.next()?;
-            match source_line.find(md_line) {
-                Some(offset) => {
-                    if line_no == starting_line {
-                        start_bytes += offset;
+            // Since we're counting bytes, `source_line_len` includes the "\n".
+            let source_line_len = u32::try_from(source_line.len() + 1).unwrap();
+            let has_fragment = sorted_fragments
+                .binary_search_by(|fragment| {
+                    if fragment.span.hi().0 < span.lo().0 + line_bytes {
+                        Ordering::Less
+                    } else if fragment.span.lo().0 > span.lo().0 + line_bytes + source_line_len {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Equal
+                    }
+                })
+                .is_ok();
+            line_bytes += source_line_len;
+            if has_fragment && let Some(offset) = source_line.find(md_line) {
+                if line_no == starting_line {
+                    start_bytes += offset;
 
-                        if starting_line == ending_line {
-                            break 'outer;
-                        }
-                    } else if line_no == ending_line {
-                        end_bytes += offset;
+                    if starting_line == ending_line {
                         break 'outer;
-                    } else if line_no < starting_line {
-                        start_bytes += source_line.len() - md_line.len();
-                    } else {
-                        end_bytes += source_line.len() - md_line.len();
                     }
-                    break;
+                } else if line_no == ending_line {
+                    end_bytes += offset;
+                    break 'outer;
+                } else if line_no < starting_line {
+                    start_bytes += source_line.len() - md_line.len();
+                } else {
+                    end_bytes += source_line.len() - md_line.len();
                 }
-                None => {
-                    // Since this is a source line that doesn't include a markdown line,
-                    // we have to count the newline that we split from earlier.
-                    if line_no <= starting_line {
-                        start_bytes += source_line.len() + 1;
-                    } else {
-                        end_bytes += source_line.len() + 1;
-                    }
+                break;
+            } else {
+                // Since this is a source line that doesn't include a markdown line,
+                // we have to count the newline that we split from earlier.
+                if line_no <= starting_line {
+                    start_bytes += source_line.len() + 1;
+                } else if source_line.chars().any(|c| !c.is_whitespace()) {
+                    // If we're past the first line, but haven't found the last line,
+                    // we can only return a contiguous span if every line is either
+                    // part of the doc comment or blank.
+                    return None;
+                } else {
+                    end_bytes += source_line.len() + 1;
                 }
             }
         }
     }
 
-    let span = span_of_fragments(fragments)?;
     let src_span = span.from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,
