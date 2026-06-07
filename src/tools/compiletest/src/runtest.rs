@@ -1645,6 +1645,11 @@ impl<'test> TestCx<'test> {
             if self.config.mode == TestMode::CodegenUnits {
                 compiler.args(&["-Z", "human_readable_cgu_names"]);
             }
+
+            if self.config.mode == TestMode::DebugInfo && cfg!(target_os = "windows") {
+                // Prevent debugger processes from creating new console windows.
+                compiler.args(&["-Z", r#"crate-attr=windows_subsystem="windows""#]);
+            }
         }
 
         if self.config.optimize_tests && compiler_kind == CompilerKind::Rustc {
