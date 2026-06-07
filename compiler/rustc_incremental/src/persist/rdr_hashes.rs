@@ -8,6 +8,9 @@ use rustc_span::{Span, Symbol};
 use tracing::debug;
 
 pub(crate) fn check_rdr_test_attrs(tcx: TyCtxt<'_>) {
+    if !tcx.sess.opts.unstable_opts.query_dep_graph {
+        return;
+    }
     // can't add the attributes without opting into this feature
     if !tcx.features().rustc_attrs() {
         return;
