@@ -1,3 +1,8 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/19367>.
+//!
+//! Make sure we don't reuse the same alloca when matching
+//! on field of struct or tuple which we reassign in the match body.
+
 //@ run-pass
 
 #![allow(unused_assignments)]
@@ -5,9 +10,6 @@
 struct S {
     o: Option<String>
 }
-
-// Make sure we don't reuse the same alloca when matching
-// on field of struct or tuple which we reassign in the match body.
 
 fn main() {
     let mut a = (0, Some("right".to_string()));
