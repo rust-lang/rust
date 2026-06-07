@@ -83,7 +83,6 @@
 #![feature(iter_partition_in_place)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
-#![feature(layout_for_ptr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]

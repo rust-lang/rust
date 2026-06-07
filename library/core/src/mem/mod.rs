@@ -421,8 +421,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// This function is only safe to call if the following conditions hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
-/// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
+/// - If the *unsized tail* of `T` is:
+///     - a [slice] `[U]` or `str`, then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///       For the special case where the dynamic tail length is 0, this function
@@ -431,15 +431,23 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 //        then we would stop compilation as even the "statically known" part of the type would
 //        already be too big (or the call may be in dead code and optimized away, but then it
 //        doesn't matter).
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
+///     - a [trait object] `dyn Trait`, then the vtable part of the pointer must point
+///       to a valid vtable for `Trait`, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)
 ///       must fit in `isize`.
 ///     - an (unstable) [extern type], then this function is always safe to
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+///     - No other kind of unsized tail currently exists. If more kinds of unsized tails get
+///       introduced in the future, the documentation of this function will have to be extended
+///       before it can be used for such types.
+///
+/// Here, *unsized tail* refers to the type obtained by recursively descending through the last
+/// field of a tuple or struct until we arrived at a built-in unsized type.
+///
+/// As a consequence of these rules, it is the case that whenever it is allowed to convert `val`
+/// into a shared reference, then it is also allowed to invoke this function.
 ///
 /// [`size_of::<T>()`]: size_of
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -448,7 +456,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
 /// assert_eq!(4, size_of_val(&5i32));
@@ -459,7 +466,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "layout_for_ptr", issue = "69835")]
+#[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -595,20 +603,32 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
+///     - a [slice] `[U]` or `str`, then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///       For the special case where the dynamic tail length is 0, this function
 ///       is safe to call.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
+//        NOTE: the reason this is safe is that if an overflow were to occur already with size 0,
+//        then we would stop compilation as even the "statically known" part of the type would
+//        already be too big (or the call may be in dead code and optimized away, but then it
+//        doesn't matter).
+///     - a [trait object] `dyn Trait`, then the vtable part of the pointer must point
+///       to a valid vtable for `Trait`, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)
 ///       must fit in `isize`.
 ///     - an (unstable) [extern type], then this function is always safe to
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`align_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+///     - No other kind of unsized tail currently exists. If more kinds of unsized tails get
+///       introduced in the future, the documentation of this function will have to be extended
+///       before it can be used for such types.
+///
+/// Here, *unsized tail* refers to the type obtained by recursively descending through the last
+/// field of a tuple or struct until we arrived at a built-in unsized type.
+///
+/// As a consequence of these rules, it is the case that whenever it is allowed to convert `val`
+/// into a shared reference, then it is also allowed to invoke this function.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
@@ -616,7 +636,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
@@ -628,7 +647,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
-#[unstable(feature = "layout_for_ptr", issue = "69835")]
+#[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::align_of_val(val) }
