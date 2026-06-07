@@ -1,25 +1,20 @@
 # Installation
 
-In the near future, `std::autodiff` should become available for users via rustup.
-As a rustc/enzyme/autodiff contributor however, you will still need to build rustc from source.
-For the meantime, you can download up-to-date builds to enable `std::autodiff` on your latest nightly toolchain, if you are using either of:
-**Linux**, with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`
-**Windows**, with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`
+Most users can enable `std::autodiff` on their latest nightly toolchain by installing the `enzyme` component with rustup, if they are using one of these platforms:
 
-In the past you could also download builds for **Apple** (aarch64-apple), however they are not usable at the moment.
+- **Linux**: with `x86_64-unknown-linux-gnu` or `aarch64-unknown-linux-gnu`
+- **macOS**: with `aarch64-apple-darwin`
+- **Windows**: with `x86_64-llvm-mingw` or `aarch64-llvm-mingw`
 
-If you need any other platform, you can build rustc including autodiff from source.
-Please open an issue if you want to help enabling automatic builds for your prefered target.
+As a rustc/enzyme/autodiff contributor, or if you need any other platform, you can build rustc including autodiff from source. Please open an issue if you want help enabling automatic builds for your preferred target.
 
 ## Installation guide
 
-If you want to use `std::autodiff` on Linux or Windows and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component. Please run:
+If you want to use `std::autodiff` on Linux, macOS, or Windows and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component. Please run:
 
 ```console
 rustup +nightly component add enzyme
 ```
-
-Apple support was temporarily reverted, due to downstream breakages. Please build it from source till we can re-enable it.
 
 ## Installation guide for Nix user.
 
