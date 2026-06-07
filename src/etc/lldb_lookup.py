@@ -114,6 +114,8 @@ def __lldb_init_module(debugger: lldb.SBDebugger, _dict: LLDBOpaque):
         FEATURE_FLAGS |= LLDBFeature.StaticFields
     if getattr(lldb, "eFormatterMatchCallback", None) is not None:
         FEATURE_FLAGS |= LLDBFeature.TypeRecognizers
+    if getattr(lldb, "eBasicTypeFloat128", None) is not None:
+        FEATURE_FLAGS |= LLDBFeature.Float128
 
     register_providers_compatibility()
 
