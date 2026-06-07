@@ -1,32 +1,5 @@
 use crate::num::{IntErrorKind, TryFromIntError};
 
-mod private {
-    /// This trait being unreachable from outside the crate prevents other
-    /// implementations of the integer cast traits.
-    #[unstable(feature = "integer_casts", issue = "157388")]
-    pub trait Sealed {}
-
-    /// This trait being unreachable from outside the crate prevents other
-    /// implementations of the integer cast traits.
-    ///
-    /// `Cast<T> : SealedCast<T>` avoids the orphan rule, which would otherwise
-    /// allow e.g. implementing `Cast<Foo>` for `u8`.
-    #[unstable(feature = "integer_casts", issue = "157388")]
-    pub trait SealedCast<T>: Sealed {}
-
-    #[unstable(feature = "integer_casts", issue = "157388")]
-    impl<T: Sealed, U: Sealed> SealedCast<T> for U {}
-
-    macro_rules! impl_sealed_int {
-        ([$($T:ty),*]) => {$(
-            #[unstable(feature = "integer_casts", issue = "157388")]
-            impl Sealed for $T { }
-        )*};
-    }
-
-    impl_sealed_int!([u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize]);
-}
-
 /// Supporting trait for inherent methods of `f32` and `f64` such as `to_int_unchecked`.
 /// Typically doesn’t need to be used directly.
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
@@ -661,7 +634,7 @@ impl_nonzero_int_try_from_nonzero_int!(isize => u8, u16, u32, u64, u128, usize);
 /// Conversion between integers, wrapping around or saturating at the target type's boundaries.
 #[unstable(feature = "integer_casts", issue = "157388")]
 #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
-pub const trait BoundedCastFromInt<T>: private::SealedCast<T> + Sized {
+pub impl(self) const trait BoundedCastFromInt<T>: Sized {
     /// Converts `value` to this type, wrapping around at the boundary of the type.
     #[unstable(feature = "integer_casts", issue = "157388")]
     fn wrapping_cast_from(value: T) -> Self;
@@ -674,7 +647,7 @@ pub const trait BoundedCastFromInt<T>: private::SealedCast<T> + Sized {
 /// Fallible conversion between integers.
 #[unstable(feature = "integer_casts", issue = "157388")]
 #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
-pub const trait CheckedCastFromInt<T>: private::SealedCast<T> + Sized {
+pub impl(self) const trait CheckedCastFromInt<T>: Sized {
     /// Converts `value` to this type, returning `None` if overflow would have occurred.
     #[unstable(feature = "integer_casts", issue = "157388")]
     fn checked_cast_from(value: T) -> Option<Self>;
