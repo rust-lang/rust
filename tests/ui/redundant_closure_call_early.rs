@@ -2,7 +2,6 @@
 
 #![expect(incomplete_features)]
 #![feature(ergonomic_clones)]
-#![warn(clippy::redundant_closure_call)]
 
 fn main() {
     let mut i = 1;
@@ -16,10 +15,10 @@ fn main() {
     //~^ redundant_closure_call
 
     // don't lint these
-    #[allow(clippy::needless_return)]
+    #[expect(clippy::needless_return)]
     (|| return 2)();
     (|| -> Option<i32> { None? })();
-    #[allow(clippy::try_err)]
+    #[expect(clippy::try_err)]
     (|| -> Result<i32, i32> { Err(2)? })();
 
     // don't lint async equivalents either

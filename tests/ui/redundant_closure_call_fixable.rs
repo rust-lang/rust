@@ -1,9 +1,6 @@
+#![expect(unused)]
 #![expect(incomplete_features)]
 #![feature(ergonomic_clones)]
-#![warn(clippy::redundant_closure_call)]
-#![allow(clippy::redundant_async_block)]
-#![allow(clippy::type_complexity)]
-#![allow(unused)]
 
 async fn something() -> u32 {
     21
@@ -69,6 +66,7 @@ fn issue9956() {
     // nested async closures
     let a = (|| || || || async || 1)()()()()();
     //~^ redundant_closure_call
+    #[expect(clippy::redundant_async_block)]
     let h = async { a.await };
 
     // macro expansion tests
@@ -85,6 +83,7 @@ fn issue9956() {
     assert_eq!(a, 123);
 
     // chaining calls, but not closures
+    #[expect(clippy::type_complexity)]
     fn x() -> fn() -> fn() -> fn() -> i32 {
         || || || 42
     }
