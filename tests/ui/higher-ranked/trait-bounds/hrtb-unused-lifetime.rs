@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/19098>.
+//! Tests that we don't ICE from unused lifetime in HRTB.
+
 //@ check-pass
 pub trait Handler {
     fn handle(&self, _: &mut String);
