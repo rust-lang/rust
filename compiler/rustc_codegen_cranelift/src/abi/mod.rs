@@ -31,6 +31,11 @@ use crate::base::codegen_unwind_terminate;
 use crate::debuginfo::EXCEPTION_HANDLER_CLEANUP;
 use crate::prelude::*;
 
+struct ArgValue<'tcx> {
+    value: CValue<'tcx>,
+    is_underaligned_pointee: bool,
+}
+
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     default_call_conv: CallConv,
@@ -245,8 +250,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
 
     // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
-        Normal(Option<CValue<'tcx>>),
-        Spread(Vec<Option<CValue<'tcx>>>),
+        Normal(Option<ArgValue<'tcx>>),
+        Spread(Vec<Option<ArgValue<'tcx>>>),
     }
 
     // FIXME implement variadics in cranelift
@@ -299,8 +304,12 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
         let arg_abi = arg_abis_iter.next().unwrap();
-        fx.caller_location =
-            Some(cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap());
+        let param = cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap();
+        assert!(
+            !param.is_underaligned_pointee,
+            "caller location argument should not be underaligned",
+        );
+        fx.caller_location = Some(param.value);
     }
 
     assert_eq!(arg_abis_iter.next(), None, "ArgAbi left behind for {:?}", fx.fn_abi);
@@ -311,23 +320,24 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     for (local, arg_kind, ty) in func_params {
         // While this is normally an optimization to prevent an unnecessary copy when an argument is
         // not mutated by the current function, this is necessary to support unsized arguments.
-        if let ArgKind::Normal(Some(val)) = arg_kind {
-            if let Some((addr, meta)) = val.try_to_ptr() {
-                // Ownership of the value at the backing storage for an argument is passed to the
-                // callee per the ABI, so it is fine to borrow the backing storage of this argument
-                // to prevent a copy.
+        if let ArgKind::Normal(Some(ArgValue { value: val, is_underaligned_pointee: false })) =
+            arg_kind
+            && let Some((addr, meta)) = val.try_to_ptr()
+        {
+            // Ownership of the value at the backing storage for an argument is passed to the
+            // callee per the ABI, so it is fine to borrow the backing storage of this argument
+            // to prevent a copy.
 
-                let place = if let Some(meta) = meta {
-                    CPlace::for_ptr_with_extra(addr, meta, val.layout())
-                } else {
-                    CPlace::for_ptr(addr, val.layout())
-                };
+            let place = if let Some(meta) = meta {
+                CPlace::for_ptr_with_extra(addr, meta, val.layout())
+            } else {
+                CPlace::for_ptr(addr, val.layout())
+            };
 
-                self::comments::add_local_place_comments(fx, place, local);
+            self::comments::add_local_place_comments(fx, place, local);
 
-                assert_eq!(fx.local_map.push(place), local);
-                continue;
-            }
+            assert_eq!(fx.local_map.push(place), local);
+            continue;
         }
 
         let layout = fx.layout_of(ty);
@@ -338,13 +348,22 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         match arg_kind {
             ArgKind::Normal(param) => {
                 if let Some(param) = param {
-                    place.write_cvalue(fx, param);
+                    if param.is_underaligned_pointee {
+                        place.write_cvalue_transmute(fx, param.value);
+                    } else {
+                        place.write_cvalue(fx, param.value);
+                    }
                 }
             }
             ArgKind::Spread(params) => {
                 for (i, param) in params.into_iter().enumerate() {
                     if let Some(param) = param {
-                        place.place_field(fx, FieldIdx::new(i)).write_cvalue(fx, param);
+                        let field_place = place.place_field(fx, FieldIdx::new(i));
+                        if param.is_underaligned_pointee {
+                            field_place.write_cvalue_transmute(fx, param.value);
+                        } else {
+                            field_place.write_cvalue(fx, param.value);
+                        }
                     }
                 }
             }
