@@ -1,0 +1,4 @@
+break ../tests/pass/empty_main.rs:3
+continue
+continue
+quit

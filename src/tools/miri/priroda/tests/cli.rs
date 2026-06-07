@@ -116,3 +116,17 @@ fn continue_finishes_program() -> Result<(), Box<dyn std::error::Error>> {
 fn continue_hits_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
     run_cli_test("../tests/pass/empty_main.rs", "tests/cli/continue_hits_breakpoint")
 }
+
+/// Verifies every current spelling of MIR-instruction stepping advances
+/// execution and reports a location.
+#[test]
+fn step_aliases() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/step_aliases")
+}
+
+/// Documents the current repeated-stop behavior when multiple MIR locations map
+/// to the same source breakpoint line.
+#[test]
+fn repeated_same_line_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/repeated_same_line_breakpoint")
+}
