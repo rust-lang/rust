@@ -1,11 +1,6 @@
 #![warn(clippy::match_single_binding)]
-#![allow(
-    unused,
-    clippy::let_unit_value,
-    clippy::no_effect,
-    clippy::toplevel_ref_arg,
-    clippy::useless_vec
-)]
+#![allow(clippy::no_effect, clippy::toplevel_ref_arg)]
+#![expect(clippy::let_unit_value, clippy::useless_vec)]
 
 struct Point {
     x: i32,

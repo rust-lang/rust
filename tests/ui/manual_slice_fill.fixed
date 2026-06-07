@@ -1,5 +1,5 @@
 #![warn(clippy::manual_slice_fill)]
-#![allow(clippy::needless_range_loop, clippy::useless_vec)]
+#![expect(clippy::needless_range_loop, clippy::useless_vec)]
 
 macro_rules! assign_element {
     ($slice:ident, $index:expr) => {

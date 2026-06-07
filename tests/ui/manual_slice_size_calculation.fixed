@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![allow(unused)]
 #![warn(clippy::manual_slice_size_calculation)]
 
 extern crate proc_macros;

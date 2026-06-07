@@ -1,5 +1,5 @@
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:14:14
+  --> tests/ui/match_like_matches_macro.rs:9:14
    |
 LL |       let _y = match x {
    |  ______________^
@@ -20,7 +20,7 @@ LL +     let _y = matches!(x, Some(0));
    |
 
 error: redundant pattern matching
-  --> tests/ui/match_like_matches_macro.rs:21:14
+  --> tests/ui/match_like_matches_macro.rs:16:14
    |
 LL |       let _w = match x {
    |  ______________^
@@ -41,7 +41,7 @@ LL +     let _w = x.is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/match_like_matches_macro.rs:28:14
+  --> tests/ui/match_like_matches_macro.rs:23:14
    |
 LL |       let _z = match x {
    |  ______________^
@@ -60,7 +60,7 @@ LL +     let _z = x.is_none();
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:35:15
+  --> tests/ui/match_like_matches_macro.rs:30:15
    |
 LL |       let _zz = match x {
    |  _______________^
@@ -79,7 +79,7 @@ LL +     let _zz = !matches!(x, Some(r) if r == 0);
    |
 
 error: `if let .. else` expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:42:16
+  --> tests/ui/match_like_matches_macro.rs:37:16
    |
 LL |     let _zzz = if let Some(5) = x { true } else { false };
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -91,7 +91,7 @@ LL +     let _zzz = matches!(x, Some(5));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:67:20
+  --> tests/ui/match_like_matches_macro.rs:62:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -112,7 +112,7 @@ LL +         let _ans = matches!(x, E::A(_) | E::B(_));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:78:20
+  --> tests/ui/match_like_matches_macro.rs:73:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -136,7 +136,7 @@ LL +         let _ans = matches!(x, E::A(_) | E::B(_));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:89:20
+  --> tests/ui/match_like_matches_macro.rs:84:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -157,7 +157,7 @@ LL +         let _ans = !matches!(x, E::B(_) | E::C);
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:150:18
+  --> tests/ui/match_like_matches_macro.rs:145:18
    |
 LL |           let _z = match &z {
    |  __________________^
@@ -176,7 +176,7 @@ LL +         let _z = matches!(z, Some(3));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:160:18
+  --> tests/ui/match_like_matches_macro.rs:155:18
    |
 LL |           let _z = match &z {
    |  __________________^
@@ -195,7 +195,7 @@ LL +         let _z = matches!(&z, Some(3));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:178:21
+  --> tests/ui/match_like_matches_macro.rs:173:21
    |
 LL |               let _ = match &z {
    |  _____________________^
@@ -214,7 +214,7 @@ LL +             let _ = matches!(&z, AnEnum::X);
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:193:20
+  --> tests/ui/match_like_matches_macro.rs:188:20
    |
 LL |           let _res = match &val {
    |  ____________________^
@@ -233,7 +233,7 @@ LL +         let _res = matches!(&val, &Some(ref _a));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:206:20
+  --> tests/ui/match_like_matches_macro.rs:201:20
    |
 LL |           let _res = match &val {
    |  ____________________^
@@ -252,7 +252,7 @@ LL +         let _res = matches!(&val, &Some(ref _a));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:265:14
+  --> tests/ui/match_like_matches_macro.rs:260:14
    |
 LL |       let _y = match Some(5) {
    |  ______________^
@@ -271,7 +271,7 @@ LL +     let _y = matches!(Some(5), Some(0));
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:275:13
+  --> tests/ui/match_like_matches_macro.rs:270:13
    |
 LL |       let _ = match opt {
    |  _____________^
@@ -290,7 +290,7 @@ LL +     let _ = matches!(opt, Some(first) if (if let Some(second) = first { tru
    |
 
 error: match expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:296:5
+  --> tests/ui/match_like_matches_macro.rs:291:5
    |
 LL | /     match typeid!(T) {
 LL | |         _ => true,
@@ -308,7 +308,7 @@ LL +     matches!(typeid!(T), _);
    |
 
 error: `if let .. else` expression looks like `matches!` macro
-  --> tests/ui/match_like_matches_macro.rs:302:5
+  --> tests/ui/match_like_matches_macro.rs:297:5
    |
 LL |     if let _ = typeid!(U) { true } else { false }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

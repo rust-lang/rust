@@ -1,13 +1,11 @@
 #![warn(clippy::map_clone)]
-#![allow(
+#![allow(clippy::iter_cloned_collect)]
+#![expect(
     clippy::clone_on_copy,
-    clippy::iter_cloned_collect,
-    clippy::many_single_char_names,
-    clippy::redundant_clone,
+    clippy::empty_loop,
     clippy::redundant_closure,
     clippy::useless_asref,
-    clippy::useless_vec,
-    clippy::empty_loop
+    clippy::useless_vec
 )]
 
 fn main() {
