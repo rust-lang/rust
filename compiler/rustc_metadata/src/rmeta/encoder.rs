@@ -610,7 +610,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // an ordered hash of all local defids encapsulates all information contained in a reverse
         // mapping as well.
         let mut hasher = PublicApiHasher::default();
-        hasher.digest_iter(self.tcx.iter_local_def_id(), hcx);
+        if hcx.enabled() {
+            hasher.digest_iter(self.tcx.iter_local_def_id(), hcx);
+        }
         Hashed { hash: hasher.finish(hcx), value }
     }
 
@@ -793,7 +795,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     let id = self.interpret_allocs[idx];
                     let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
-                    hasher.digest(tcx.global_alloc(id), hcx);
+                    if hcx.enabled() {
+                        hasher.digest(tcx.global_alloc(id), hcx);
+                    }
                     interpret::specialized_encode_alloc_id(self, tcx, id);
                 }
                 n = new_n;
