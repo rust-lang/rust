@@ -210,6 +210,9 @@ macro_rules! int_impl {
         /// Returns the index of the highest bit set to one in `self`, or `None`
         /// if `self` is `0`.
         ///
+        /// Note that for non-negative numbers, this is equivalent to
+        /// [`checked_ilog2`](Self::checked_ilog2).
+        ///
         /// # Examples
         ///
         /// ```
@@ -3548,6 +3551,9 @@ macro_rules! int_impl {
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is negative or zero.
+        ///
+        /// Note that for non-negative numbers, this is equivalent to
+        /// [`highest_one`](Self::highest_one).
         ///
         /// # Examples
         ///
