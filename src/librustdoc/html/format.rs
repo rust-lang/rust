@@ -13,7 +13,7 @@ use std::{iter, slice};
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -35,9 +35,197 @@ use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
+#[derive(Clone, Copy, Default)]
+struct TypePrintOpts<'a> {
+    use_absolute: bool,
+    disambiguator: Option<&'a ImplPathDisambiguator>,
+}
+
+impl<'a> TypePrintOpts<'a> {
+    fn nested(self) -> Self {
+        Self { use_absolute: false, ..self }
+    }
+
+    fn use_absolute_for_path(self, path: &clean::Path) -> bool {
+        self.use_absolute
+            || self
+                .disambiguator
+                .is_some_and(|disambiguator| disambiguator.should_disambiguate(path))
+    }
+}
+
+#[derive(Default)]
+struct ImplPathDisambiguator {
+    paths: FxHashMap<Symbol, Vec<DefId>>,
+    has_ambiguity: bool,
+}
+
+impl ImplPathDisambiguator {
+    fn new(impl_: &clean::Impl) -> Option<Self> {
+        let mut disambiguator = Self::default();
+
+        if let Some(trait_) = &impl_.trait_ {
+            disambiguator.add_path(trait_);
+        }
+        if let Some(ty) = impl_.kind.as_blanket_ty() {
+            disambiguator.add_type(ty);
+        } else {
+            disambiguator.add_type(&impl_.for_);
+        }
+
+        disambiguator.has_ambiguity.then_some(disambiguator)
+    }
+
+    fn should_disambiguate(&self, path: &clean::Path) -> bool {
+        !path.is_assoc_ty()
+            && path.last_opt().is_some_and(|last| {
+                self.paths
+                    .get(&last)
+                    .is_some_and(|def_ids| def_ids.len() > 1 && def_ids.contains(&path.def_id()))
+            })
+    }
+
+    fn add_path(&mut self, path: &clean::Path) {
+        if !path.is_assoc_ty()
+            && let Some(last) = path.last_opt()
+        {
+            let did = path.def_id();
+            let def_ids = self.paths.entry(last).or_default();
+            if !def_ids.contains(&did) {
+                def_ids.push(did);
+                self.has_ambiguity |= def_ids.len() > 1;
+            }
+        }
+
+        for segment in &path.segments {
+            self.add_generic_args(&segment.args);
+        }
+    }
+
+    fn add_poly_trait(&mut self, poly_trait: &clean::PolyTrait) {
+        self.add_generic_param_defs(&poly_trait.generic_params);
+        self.add_path(&poly_trait.trait_);
+    }
+
+    fn add_type(&mut self, ty: &clean::Type) {
+        match ty {
+            clean::Type::Path { path } => self.add_path(path),
+            clean::Type::DynTrait(bounds, _) => {
+                for bound in bounds {
+                    self.add_poly_trait(bound);
+                }
+            }
+            clean::Type::BareFunction(decl) => {
+                self.add_generic_param_defs(&decl.generic_params);
+                self.add_fn_decl(&decl.decl);
+            }
+            clean::Type::Tuple(types) => {
+                for ty in types {
+                    self.add_type(ty);
+                }
+            }
+            clean::Type::Slice(ty)
+            | clean::Type::Array(ty, _)
+            | clean::Type::Pat(ty, _)
+            | clean::Type::FieldOf(ty, _)
+            | clean::Type::RawPointer(_, ty)
+            | clean::Type::BorrowedRef { type_: ty, .. } => self.add_type(ty),
+            clean::Type::QPath(qpath) => {
+                self.add_type(&qpath.self_type);
+                if let Some(trait_) = &qpath.trait_ {
+                    self.add_path(trait_);
+                }
+                self.add_generic_args(&qpath.assoc.args);
+            }
+            clean::Type::ImplTrait(bounds) => self.add_generic_bounds(bounds),
+            clean::Type::UnsafeBinder(binder) => {
+                self.add_generic_param_defs(&binder.generic_params);
+                self.add_type(&binder.ty);
+            }
+            _ => {}
+        }
+    }
+
+    fn add_generic_args(&mut self, generic_args: &clean::GenericArgs) {
+        match generic_args {
+            clean::GenericArgs::AngleBracketed { args, constraints } => {
+                for arg in args {
+                    if let clean::GenericArg::Type(ty) = arg {
+                        self.add_type(ty);
+                    }
+                }
+                for constraint in constraints {
+                    self.add_assoc_item_constraint(constraint);
+                }
+            }
+            clean::GenericArgs::Parenthesized { inputs, output } => {
+                for ty in inputs {
+                    self.add_type(ty);
+                }
+                if let Some(ty) = output {
+                    self.add_type(ty);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn add_assoc_item_constraint(&mut self, constraint: &clean::AssocItemConstraint) {
+        self.add_generic_args(&constraint.assoc.args);
+        match &constraint.kind {
+            clean::AssocItemConstraintKind::Equality { term } => self.add_term(term),
+            clean::AssocItemConstraintKind::Bound { bounds } => self.add_generic_bounds(bounds),
+        }
+    }
+
+    fn add_term(&mut self, term: &clean::Term) {
+        if let clean::Term::Type(ty) = term {
+            self.add_type(ty);
+        }
+    }
+
+    fn add_generic_bounds(&mut self, bounds: &[clean::GenericBound]) {
+        for bound in bounds {
+            if let clean::GenericBound::TraitBound(poly_trait, _) = bound {
+                self.add_poly_trait(poly_trait);
+            }
+        }
+    }
+
+    fn add_generic_param_defs(&mut self, params: &[clean::GenericParamDef]) {
+        for param in params {
+            match &param.kind {
+                clean::GenericParamDefKind::Lifetime { .. } => {}
+                clean::GenericParamDefKind::Type { bounds, default, .. } => {
+                    self.add_generic_bounds(bounds);
+                    if let Some(ty) = default {
+                        self.add_type(ty);
+                    }
+                }
+                clean::GenericParamDefKind::Const { ty, .. } => self.add_type(ty),
+            }
+        }
+    }
+
+    fn add_fn_decl(&mut self, decl: &clean::FnDecl) {
+        for input in &decl.inputs {
+            self.add_type(&input.type_);
+        }
+        self.add_type(&decl.output);
+    }
+}
+
 pub(crate) fn print_generic_bounds(
     bounds: &[clean::GenericBound],
     cx: &Context<'_>,
+) -> impl Display {
+    print_generic_bounds_with_opts(bounds, cx, TypePrintOpts::default())
+}
+
+fn print_generic_bounds_with_opts(
+    bounds: &[clean::GenericBound],
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
@@ -45,14 +233,15 @@ pub(crate) fn print_generic_bounds(
         bounds
             .iter()
             .filter(move |b| bounds_dup.insert(*b))
-            .map(|bound| print_generic_bound(bound, cx))
+            .map(|bound| print_generic_bound_with_opts(bound, cx, opts))
             .joined(" + ", f)
     })
 }
 
-pub(crate) fn print_generic_param_def(
+fn print_generic_param_def_with_opts(
     generic_param: &clean::GenericParamDef,
     cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| match &generic_param.kind {
         clean::GenericParamDefKind::Lifetime { outlives } => {
@@ -70,19 +259,19 @@ pub(crate) fn print_generic_param_def(
 
             if !bounds.is_empty() {
                 f.write_str(": ")?;
-                print_generic_bounds(bounds, cx).fmt(f)?;
+                print_generic_bounds_with_opts(bounds, cx, opts).fmt(f)?;
             }
 
             if let Some(ty) = default {
                 f.write_str(" = ")?;
-                print_type(ty, cx).fmt(f)?;
+                fmt_type(ty, f, opts.nested(), cx)?;
             }
 
             Ok(())
         }
         clean::GenericParamDefKind::Const { ty, default, .. } => {
             write!(f, "const {}: ", generic_param.name)?;
-            print_type(ty, cx).fmt(f)?;
+            fmt_type(ty, f, opts.nested(), cx)?;
 
             if let Some(default) = default {
                 f.write_str(" = ")?;
@@ -99,12 +288,23 @@ pub(crate) fn print_generic_param_def(
 }
 
 pub(crate) fn print_generics(generics: &clean::Generics, cx: &Context<'_>) -> impl Display {
+    print_generics_with_opts(generics, cx, TypePrintOpts::default())
+}
+
+fn print_generics_with_opts(
+    generics: &clean::Generics,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     let mut real_params = generics.params.iter().filter(|p| !p.is_synthetic_param()).peekable();
     if real_params.peek().is_none() {
         None
     } else {
         Some(Wrapped::with_angle_brackets().wrap_fn(move |f| {
-            real_params.clone().map(|g| print_generic_param_def(g, cx)).joined(", ", f)
+            real_params
+                .clone()
+                .map(|g| print_generic_param_def_with_opts(g, cx, opts))
+                .joined(", ", f)
         }))
     }
     .maybe_display()
@@ -116,16 +316,20 @@ pub(crate) enum Ending {
     NoNewline,
 }
 
-fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) -> impl Display {
+fn print_where_predicate_with_opts(
+    predicate: &clean::WherePredicate,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         match predicate {
             clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                print_higher_ranked_params_with_space(bound_params, cx, "for").fmt(f)?;
-                print_type(ty, cx).fmt(f)?;
+                print_higher_ranked_params_with_space(bound_params, cx, "for", opts).fmt(f)?;
+                fmt_type(ty, f, opts.nested(), cx)?;
                 f.write_str(":")?;
                 if !bounds.is_empty() {
                     f.write_str(" ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds_with_opts(bounds, cx, opts).fmt(f)?;
                 }
                 Ok(())
             }
@@ -134,17 +338,17 @@ fn print_where_predicate(predicate: &clean::WherePredicate, cx: &Context<'_>) ->
                 // the lifetime nor the bounds contain any characters which need escaping.
                 write!(f, "{}:", print_lifetime(lifetime))?;
                 if !bounds.is_empty() {
-                    write!(f, " {}", print_generic_bounds(bounds, cx))?;
+                    write!(f, " {}", print_generic_bounds_with_opts(bounds, cx, opts))?;
                 }
                 Ok(())
             }
             clean::WherePredicate::EqPredicate { lhs, rhs } => {
-                let opts = WithOpts::from(f);
+                let fmt_opts = WithOpts::from(f);
                 write!(
                     f,
                     "{} == {}",
-                    opts.display(print_qpath_data(lhs, cx)),
-                    opts.display(print_term(rhs, cx)),
+                    fmt_opts.display(print_qpath_data_with_opts(lhs, cx, opts)),
+                    fmt_opts.display(print_term_with_opts(rhs, cx, opts)),
                 )
             }
         }
@@ -159,6 +363,16 @@ pub(crate) fn print_where_clause(
     cx: &Context<'_>,
     indent: usize,
     ending: Ending,
+) -> Option<impl Display> {
+    print_where_clause_with_opts(gens, cx, indent, ending, TypePrintOpts::default())
+}
+
+fn print_where_clause_with_opts(
+    gens: &clean::Generics,
+    cx: &Context<'_>,
+    indent: usize,
+    ending: Ending,
+    opts: TypePrintOpts<'_>,
 ) -> Option<impl Display> {
     if gens.where_predicates.is_empty() {
         return None;
@@ -175,7 +389,7 @@ pub(crate) fn print_where_clause(
                         } else {
                             f.write_str("\n")?;
                         }
-                        print_where_predicate(predicate, cx).fmt(f)
+                        print_where_predicate_with_opts(predicate, cx, opts).fmt(f)
                     })
                 })
                 .joined(",", f)
@@ -247,16 +461,29 @@ pub(crate) fn print_constant_kind(
     )
 }
 
-fn print_poly_trait(poly_trait: &clean::PolyTrait, cx: &Context<'_>) -> impl Display {
+fn print_poly_trait_with_opts(
+    poly_trait: &clean::PolyTrait,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
-        print_higher_ranked_params_with_space(&poly_trait.generic_params, cx, "for").fmt(f)?;
-        print_path(&poly_trait.trait_, cx).fmt(f)
+        print_higher_ranked_params_with_space(&poly_trait.generic_params, cx, "for", opts)
+            .fmt(f)?;
+        print_path_with_opts(&poly_trait.trait_, cx, opts.nested()).fmt(f)
     })
 }
 
 pub(crate) fn print_generic_bound(
     generic_bound: &clean::GenericBound,
     cx: &Context<'_>,
+) -> impl Display {
+    print_generic_bound_with_opts(generic_bound, cx, TypePrintOpts::default())
+}
+
+fn print_generic_bound_with_opts(
+    generic_bound: &clean::GenericBound,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| match generic_bound {
         clean::GenericBound::Outlives(lt) => f.write_str(print_lifetime(lt)),
@@ -268,7 +495,7 @@ pub(crate) fn print_generic_bound(
                 hir::BoundPolarity::Maybe(_) => "?",
                 hir::BoundPolarity::Negative(_) => "!",
             })?;
-            print_poly_trait(ty, cx).fmt(f)
+            print_poly_trait_with_opts(ty, cx, opts).fmt(f)
         }
         clean::GenericBound::Use(args) => {
             f.write_str("use")?;
@@ -279,7 +506,11 @@ pub(crate) fn print_generic_bound(
     })
 }
 
-fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> impl Display {
+fn print_generic_args_with_opts(
+    generic_args: &clean::GenericArgs,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         match generic_args {
             clean::GenericArgs::AngleBracketed { args, constraints } => {
@@ -291,8 +522,14 @@ fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> im
                                 .flat_map(Either::factor_into_iter)
                                 .map(|either| {
                                     either.map_either(
-                                        |arg| print_generic_arg(arg, cx),
-                                        |constraint| print_assoc_item_constraint(constraint, cx),
+                                        |arg| print_generic_arg_with_opts(arg, cx, opts.nested()),
+                                        |constraint| {
+                                            print_assoc_item_constraint_with_opts(
+                                                constraint,
+                                                cx,
+                                                opts.nested(),
+                                            )
+                                        },
                                     )
                                 })
                                 .joined(", ", f)
@@ -302,11 +539,16 @@ fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> im
             }
             clean::GenericArgs::Parenthesized { inputs, output } => {
                 Wrapped::with_parens()
-                    .wrap_fn(|f| inputs.iter().map(|ty| print_type(ty, cx)).joined(", ", f))
+                    .wrap_fn(|f| {
+                        inputs
+                            .iter()
+                            .map(|ty| fmt::from_fn(move |f| fmt_type(ty, f, opts.nested(), cx)))
+                            .joined(", ", f)
+                    })
                     .fmt(f)?;
                 if let Some(ref ty) = *output {
                     f.write_str(if f.alternate() { " -> " } else { " -&gt; " })?;
-                    print_type(ty, cx).fmt(f)?;
+                    fmt_type(ty, f, opts.nested(), cx)?;
                 }
             }
             clean::GenericArgs::ReturnTypeNotation => {
@@ -703,7 +945,7 @@ fn resolved_path(
     did: DefId,
     path: &clean::Path,
     print_all: bool,
-    use_absolute: bool,
+    opts: TypePrintOpts<'_>,
     cx: &Context<'_>,
 ) -> fmt::Result {
     let last = path.segments.last().unwrap();
@@ -714,8 +956,14 @@ fn resolved_path(
         }
     }
     if w.alternate() {
-        write!(w, "{}{:#}", last.name, print_generic_args(&last.args, cx))?;
+        write!(
+            w,
+            "{}{:#}",
+            last.name,
+            print_generic_args_with_opts(&last.args, cx, opts.nested())
+        )?;
     } else {
+        let use_absolute = opts.use_absolute_for_path(path);
         let path = fmt::from_fn(|f| {
             if use_absolute {
                 if let Ok(HrefInfo { rust_path, .. }) = href(did, cx) {
@@ -732,7 +980,11 @@ fn resolved_path(
                 write!(f, "{}", print_anchor(did, last.name, cx))
             }
         });
-        write!(w, "{path}{args}", args = print_generic_args(&last.args, cx))?;
+        write!(
+            w,
+            "{path}{args}",
+            args = print_generic_args_with_opts(&last.args, cx, opts.nested())
+        )?;
     }
     Ok(())
 }
@@ -817,9 +1069,10 @@ fn print_tybounds(
     bounds: &[clean::PolyTrait],
     lt: &Option<clean::Lifetime>,
     cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
-        bounds.iter().map(|bound| print_poly_trait(bound, cx)).joined(" + ", f)?;
+        bounds.iter().map(|bound| print_poly_trait_with_opts(bound, cx, opts)).joined(" + ", f)?;
         if let Some(lt) = lt {
             // We don't need to check `alternate` since we can be certain that
             // the lifetime doesn't contain any characters which need escaping.
@@ -833,13 +1086,17 @@ fn print_higher_ranked_params_with_space(
     params: &[clean::GenericParamDef],
     cx: &Context<'_>,
     keyword: &'static str,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         if !params.is_empty() {
             f.write_str(keyword)?;
             Wrapped::with_angle_brackets()
                 .wrap_fn(|f| {
-                    params.iter().map(|lt| print_generic_param_def(lt, cx)).joined(", ", f)
+                    params
+                        .iter()
+                        .map(|lt| print_generic_param_def_with_opts(lt, cx, opts))
+                        .joined(", ", f)
                 })
                 .fmt(f)?;
             f.write_char(' ')?;
@@ -890,7 +1147,7 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
 fn fmt_type(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
-    use_absolute: bool,
+    opts: TypePrintOpts<'_>,
     cx: &Context<'_>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
@@ -901,11 +1158,11 @@ fn fmt_type(
         clean::Type::Path { path } => {
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             let did = path.def_id();
-            resolved_path(f, did, path, path.is_assoc_ty(), use_absolute, cx)
+            resolved_path(f, did, path, path.is_assoc_ty(), opts, cx)
         }
         clean::DynTrait(bounds, lt) => {
             f.write_str("dyn ")?;
-            print_tybounds(bounds, lt, cx).fmt(f)
+            print_tybounds(bounds, lt, cx, opts.nested()).fmt(f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(clean::PrimitiveType::Never) => {
@@ -913,7 +1170,7 @@ fn fmt_type(
         }
         &clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
         clean::BareFunction(decl) => {
-            print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
+            print_higher_ranked_params_with_space(&decl.generic_params, cx, "for", opts).fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
@@ -921,11 +1178,12 @@ fn fmt_type(
             } else {
                 primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
             }
-            print_fn_decl(&decl.decl, cx).fmt(f)
+            print_fn_decl_with_opts(&decl.decl, cx, opts.nested()).fmt(f)
         }
         clean::UnsafeBinder(binder) => {
-            print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
-            print_type(&binder.ty, cx).fmt(f)
+            print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe", opts)
+                .fmt(f)?;
+            fmt_type(&binder.ty, f, opts.nested(), cx)
         }
         clean::Tuple(typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
@@ -934,7 +1192,7 @@ fn fmt_type(
                     primitive_link(f, PrimitiveType::Tuple, format_args!("({name},)"), cx)
                 } else {
                     write!(f, "(")?;
-                    print_type(one, cx).fmt(f)?;
+                    fmt_type(one, f, opts.nested(), cx)?;
                     write!(f, ",)")
                 }
             }
@@ -960,7 +1218,13 @@ fn fmt_type(
                     )
                 } else {
                     Wrapped::with_parens()
-                        .wrap_fn(|f| many.iter().map(|item| print_type(item, cx)).joined(", ", f))
+                        .wrap_fn(|f| {
+                            many.iter()
+                                .map(|item| {
+                                    fmt::from_fn(move |f| fmt_type(item, f, opts.nested(), cx))
+                                })
+                                .joined(", ", f)
+                        })
                         .fmt(f)
                 }
             }
@@ -968,14 +1232,16 @@ fn fmt_type(
         clean::Slice(clean::Generic(name)) => {
             primitive_link(f, PrimitiveType::Slice, format_args!("[{name}]"), cx)
         }
-        clean::Slice(t) => Wrapped::with_square_brackets().wrap(print_type(t, cx)).fmt(f),
+        clean::Slice(t) => Wrapped::with_square_brackets()
+            .wrap(fmt::from_fn(|f| fmt_type(t, f, opts.nested(), cx)))
+            .fmt(f),
         clean::Type::Pat(t, pat) => {
-            fmt::Display::fmt(&print_type(t, cx), f)?;
+            fmt_type(t, f, opts.nested(), cx)?;
             write!(f, " is {pat}")
         }
         clean::Type::FieldOf(t, field) => {
             write!(f, "field_of!(")?;
-            fmt::Display::fmt(&print_type(t, cx), f)?;
+            fmt_type(t, f, opts.nested(), cx)?;
             write!(f, ", {field})")
         }
         clean::Array(clean::Generic(name), n) if !f.alternate() => primitive_link(
@@ -986,7 +1252,7 @@ fn fmt_type(
         ),
         clean::Array(t, n) => Wrapped::with_square_brackets()
             .wrap(fmt::from_fn(|f| {
-                print_type(t, cx).fmt(f)?;
+                fmt_type(t, f, opts.nested(), cx)?;
                 f.write_str("; ")?;
                 if f.alternate() {
                     f.write_str(n)
@@ -1002,12 +1268,20 @@ fn fmt_type(
                 primitive_link(
                     f,
                     clean::PrimitiveType::RawPointer,
-                    format_args!("*{m} {ty}", ty = WithOpts::from(f).display(print_type(t, cx))),
+                    format_args!(
+                        "*{m} {ty}",
+                        ty = WithOpts::from(f).display(fmt::from_fn(|f| fmt_type(
+                            t,
+                            f,
+                            opts.nested(),
+                            cx
+                        )))
+                    ),
                     cx,
                 )
             } else {
                 primitive_link(f, clean::PrimitiveType::RawPointer, format_args!("*{m} "), cx)?;
-                print_type(t, cx).fmt(f)
+                fmt_type(t, f, opts.nested(), cx)
             }
         }
         clean::BorrowedRef { lifetime: l, mutability, type_: ty } => {
@@ -1038,28 +1312,37 @@ fn fmt_type(
                 clean::ImplTrait(ref bounds) if bounds.len() > 1 => true,
                 _ => false,
             };
-            Wrapped::with_parens()
-                .when(needs_parens)
-                .wrap_fn(|f| fmt_type(ty, f, use_absolute, cx))
-                .fmt(f)
+            Wrapped::with_parens().when(needs_parens).wrap_fn(|f| fmt_type(ty, f, opts, cx)).fmt(f)
         }
         clean::ImplTrait(bounds) => {
             f.write_str("impl ")?;
-            print_generic_bounds(bounds, cx).fmt(f)
+            print_generic_bounds_with_opts(bounds, cx, opts.nested()).fmt(f)
         }
-        clean::QPath(qpath) => print_qpath_data(qpath, cx).fmt(f),
+        clean::QPath(qpath) => print_qpath_data_with_opts(qpath, cx, opts.nested()).fmt(f),
     }
 }
 
 pub(crate) fn print_type(type_: &clean::Type, cx: &Context<'_>) -> impl Display {
-    fmt::from_fn(move |f| fmt_type(type_, f, false, cx))
+    fmt::from_fn(move |f| fmt_type(type_, f, TypePrintOpts::default(), cx))
 }
 
 pub(crate) fn print_path(path: &clean::Path, cx: &Context<'_>) -> impl Display {
-    fmt::from_fn(move |f| resolved_path(f, path.def_id(), path, false, false, cx))
+    print_path_with_opts(path, cx, TypePrintOpts::default())
 }
 
-fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Display {
+fn print_path_with_opts(
+    path: &clean::Path,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
+    fmt::from_fn(move |f| resolved_path(f, path.def_id(), path, false, opts, cx))
+}
+
+fn print_qpath_data_with_opts(
+    qpath_data: &clean::QPathData,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     let clean::QPathData { ref assoc, ref self_type, should_fully_qualify, ref trait_ } =
         *qpath_data;
 
@@ -1070,16 +1353,16 @@ fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Dis
         if let Some(trait_) = trait_
             && should_fully_qualify
         {
-            let opts = WithOpts::from(f);
+            let fmt_opts = WithOpts::from(f);
             Wrapped::with_angle_brackets()
                 .wrap(format_args!(
                     "{} as {}",
-                    opts.display(print_type(self_type, cx)),
-                    opts.display(print_path(trait_, cx))
+                    fmt_opts.display(fmt::from_fn(|f| fmt_type(self_type, f, opts.nested(), cx))),
+                    fmt_opts.display(print_path_with_opts(trait_, cx, opts.nested()))
                 ))
                 .fmt(f)?
         } else {
-            print_type(self_type, cx).fmt(f)?;
+            fmt_type(self_type, f, opts.nested(), cx)?;
         }
         f.write_str("::")?;
         // It's pretty unsightly to look at `<A as B>::C` in output, and
@@ -1141,7 +1424,7 @@ fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Dis
             write!(f, "{}", assoc.name)
         }?;
 
-        print_generic_args(&assoc.args, cx).fmt(f)
+        print_generic_args_with_opts(&assoc.args, cx, opts.nested()).fmt(f)
     })
 }
 
@@ -1151,41 +1434,69 @@ pub(crate) fn print_impl(
     cx: &Context<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
-        f.write_str("impl")?;
-        print_generics(&impl_.generics, cx).fmt(f)?;
-        f.write_str(" ")?;
-
-        if let Some(ref ty) = impl_.trait_ {
-            if impl_.is_negative_trait_impl() {
-                f.write_char('!')?;
-            }
-            if impl_.kind.is_fake_variadic()
-                && let Some(generics) = ty.generics()
-                && let Ok(inner_type) = generics.exactly_one()
-            {
-                let last = ty.last();
-                if f.alternate() {
-                    write!(f, "{last}")?;
-                } else {
-                    write!(f, "{}", print_anchor(ty.def_id(), last, cx))?;
-                };
-                Wrapped::with_angle_brackets()
-                    .wrap_fn(|f| impl_.print_type(inner_type, f, use_absolute, cx))
-                    .fmt(f)?;
-            } else {
-                print_path(ty, cx).fmt(f)?;
-            }
-            f.write_str(" for ")?;
-        }
-
-        if let Some(ty) = impl_.kind.as_blanket_ty() {
-            fmt_type(ty, f, use_absolute, cx)?;
-        } else {
-            impl_.print_type(&impl_.for_, f, use_absolute, cx)?;
-        }
-
-        print_where_clause(&impl_.generics, cx, 0, Ending::Newline).maybe_display().fmt(f)
+        fmt_impl(impl_, f, TypePrintOpts { use_absolute, disambiguator: None }, cx)
     })
+}
+
+pub(crate) fn print_impl_with_disambiguation(
+    impl_: &clean::Impl,
+    use_absolute: bool,
+    cx: &Context<'_>,
+) -> impl Display {
+    let disambiguator = ImplPathDisambiguator::new(impl_);
+
+    fmt::from_fn(move |f| {
+        fmt_impl(
+            impl_,
+            f,
+            TypePrintOpts { use_absolute, disambiguator: disambiguator.as_ref() },
+            cx,
+        )
+    })
+}
+
+fn fmt_impl(
+    impl_: &clean::Impl,
+    f: &mut fmt::Formatter<'_>,
+    opts: TypePrintOpts<'_>,
+    cx: &Context<'_>,
+) -> fmt::Result {
+    f.write_str("impl")?;
+    print_generics_with_opts(&impl_.generics, cx, opts.nested()).fmt(f)?;
+    f.write_str(" ")?;
+
+    if let Some(ref ty) = impl_.trait_ {
+        if impl_.is_negative_trait_impl() {
+            f.write_char('!')?;
+        }
+        if impl_.kind.is_fake_variadic()
+            && let Some(generics) = ty.generics()
+            && let Ok(inner_type) = generics.exactly_one()
+        {
+            let last = ty.last();
+            if f.alternate() {
+                write!(f, "{last}")?;
+            } else {
+                write!(f, "{}", print_anchor(ty.def_id(), last, cx))?;
+            };
+            Wrapped::with_angle_brackets()
+                .wrap_fn(|f| impl_.print_type(inner_type, f, opts.nested(), cx))
+                .fmt(f)?;
+        } else {
+            print_path_with_opts(ty, cx, opts.nested()).fmt(f)?;
+        }
+        f.write_str(" for ")?;
+    }
+
+    if let Some(ty) = impl_.kind.as_blanket_ty() {
+        fmt_type(ty, f, opts, cx)?;
+    } else {
+        impl_.print_type(&impl_.for_, f, opts, cx)?;
+    }
+
+    print_where_clause_with_opts(&impl_.generics, cx, 0, Ending::Newline, opts.nested())
+        .maybe_display()
+        .fmt(f)
 }
 
 impl clean::Impl {
@@ -1193,7 +1504,7 @@ impl clean::Impl {
         &self,
         type_: &clean::Type,
         f: &mut fmt::Formatter<'_>,
-        use_absolute: bool,
+        opts: TypePrintOpts<'_>,
         cx: &Context<'_>,
     ) -> Result<(), fmt::Error> {
         if let clean::Type::Tuple(types) = type_
@@ -1223,7 +1534,8 @@ impl clean::Impl {
             // Hardcoded anchor library/core/src/primitive_docs.rs
             // Link should match `# Trait implementations`
 
-            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx, "for").fmt(f)?;
+            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx, "for", opts)
+                .fmt(f)?;
             bare_fn.safety.print_with_space().fmt(f)?;
             print_abi_with_space(bare_fn.abi).fmt(f)?;
             let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
@@ -1237,7 +1549,7 @@ impl clean::Impl {
             // Write output.
             if !bare_fn.decl.output.is_unit() {
                 write!(f, " -> ")?;
-                fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
+                fmt_type(&bare_fn.decl.output, f, opts.nested(), cx)?;
             }
         } else if let clean::Type::Path { path } = type_
             && let Some(generics) = path.generics()
@@ -1246,16 +1558,20 @@ impl clean::Impl {
         {
             print_anchor(path.def_id(), path.last(), cx).fmt(f)?;
             Wrapped::with_angle_brackets()
-                .wrap_fn(|f| self.print_type(ty, f, use_absolute, cx))
+                .wrap_fn(|f| self.print_type(ty, f, opts.nested(), cx))
                 .fmt(f)?;
         } else {
-            fmt_type(type_, f, use_absolute, cx)?;
+            fmt_type(type_, f, opts, cx)?;
         }
         Ok(())
     }
 }
 
-pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> impl Display {
+fn print_params_with_opts(
+    params: &[clean::Parameter],
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         params
             .iter()
@@ -1264,7 +1580,7 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
                     if let Some(name) = param.name {
                         write!(f, "{name}: ")?;
                     }
-                    print_type(&param.type_, cx).fmt(f)
+                    fmt_type(&param.type_, f, opts.nested(), cx)
                 })
             })
             .joined(", ", f)
@@ -1295,6 +1611,14 @@ impl Display for Indent {
 }
 
 fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::Display {
+    print_parameter_with_opts(parameter, cx, TypePrintOpts::default())
+}
+
+fn print_parameter_with_opts(
+    parameter: &clean::Parameter,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if let Some(self_ty) = parameter.to_receiver() {
             match self_ty {
@@ -1308,7 +1632,7 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
                 }
                 _ => {
                     f.write_str("self: ")?;
-                    print_type(self_ty, cx).fmt(f)
+                    fmt_type(self_ty, f, opts.nested(), cx)
                 }
             }
         } else {
@@ -1318,21 +1642,25 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
             if let Some(name) = parameter.name {
                 write!(f, "{name}: ")?;
             }
-            print_type(&parameter.type_, cx).fmt(f)
+            fmt_type(&parameter.type_, f, opts.nested(), cx)
         }
     })
 }
 
-fn print_fn_decl(fn_decl: &clean::FnDecl, cx: &Context<'_>) -> impl Display {
+fn print_fn_decl_with_opts(
+    fn_decl: &clean::FnDecl,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| {
         let ellipsis = if fn_decl.c_variadic { ", ..." } else { "" };
         Wrapped::with_parens()
             .wrap_fn(|f| {
-                print_params(&fn_decl.inputs, cx).fmt(f)?;
+                print_params_with_opts(&fn_decl.inputs, cx, opts).fmt(f)?;
                 f.write_str(ellipsis)
             })
             .fmt(f)?;
-        fn_decl.print_output(cx).fmt(f)
+        fn_decl.print_output_with_opts(cx, opts).fmt(f)
     })
 }
 
@@ -1412,13 +1740,17 @@ impl clean::FnDecl {
     }
 
     fn print_output(&self, cx: &Context<'_>) -> impl Display {
+        self.print_output_with_opts(cx, TypePrintOpts::default())
+    }
+
+    fn print_output_with_opts(&self, cx: &Context<'_>, opts: TypePrintOpts<'_>) -> impl Display {
         fmt::from_fn(move |f| {
             if self.output.is_unit() {
                 return Ok(());
             }
 
             f.write_str(if f.alternate() { " -> " } else { " -&gt; " })?;
-            print_type(&self.output, cx).fmt(f)
+            fmt_type(&self.output, f, opts.nested(), cx)
         })
     }
 }
@@ -1552,7 +1884,7 @@ pub(crate) fn print_import(import: &clean::Import, cx: &Context<'_>) -> impl Dis
 
 fn print_import_source(import_source: &clean::ImportSource, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| match import_source.did {
-        Some(did) => resolved_path(f, did, &import_source.path, true, false, cx),
+        Some(did) => resolved_path(f, did, &import_source.path, true, TypePrintOpts::default(), cx),
         _ => {
             for seg in &import_source.path.segments[..import_source.path.segments.len() - 1] {
                 write!(f, "{}::", seg.name)?;
@@ -1568,22 +1900,24 @@ fn print_import_source(import_source: &clean::ImportSource, cx: &Context<'_>) ->
     })
 }
 
-fn print_assoc_item_constraint(
+fn print_assoc_item_constraint_with_opts(
     assoc_item_constraint: &clean::AssocItemConstraint,
     cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         f.write_str(assoc_item_constraint.assoc.name.as_str())?;
-        print_generic_args(&assoc_item_constraint.assoc.args, cx).fmt(f)?;
+        print_generic_args_with_opts(&assoc_item_constraint.assoc.args, cx, opts.nested())
+            .fmt(f)?;
         match assoc_item_constraint.kind {
             clean::AssocItemConstraintKind::Equality { ref term } => {
                 f.write_str(" = ")?;
-                print_term(term, cx).fmt(f)?;
+                print_term_with_opts(term, cx, opts.nested()).fmt(f)?;
             }
             clean::AssocItemConstraintKind::Bound { ref bounds } => {
                 if !bounds.is_empty() {
                     f.write_str(": ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds_with_opts(bounds, cx, opts).fmt(f)?;
                 }
             }
         }
@@ -1601,18 +1935,26 @@ pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
     })
 }
 
-fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl Display {
+fn print_generic_arg_with_opts(
+    generic_arg: &clean::GenericArg,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| match generic_arg {
         clean::GenericArg::Lifetime(lt) => f.write_str(print_lifetime(lt)),
-        clean::GenericArg::Type(ty) => print_type(ty, cx).fmt(f),
+        clean::GenericArg::Type(ty) => fmt_type(ty, f, opts.nested(), cx),
         clean::GenericArg::Const(ct) => print_constant_kind(ct, cx.tcx()).fmt(f),
         clean::GenericArg::Infer => f.write_char('_'),
     })
 }
 
-fn print_term(term: &clean::Term, cx: &Context<'_>) -> impl Display {
+fn print_term_with_opts(
+    term: &clean::Term,
+    cx: &Context<'_>,
+    opts: TypePrintOpts<'_>,
+) -> impl Display {
     fmt::from_fn(move |f| match term {
-        clean::Term::Type(ty) => print_type(ty, cx).fmt(f),
+        clean::Term::Type(ty) => fmt_type(ty, f, opts.nested(), cx),
         clean::Term::Constant(ct) => print_constant_kind(ct, cx.tcx()).fmt(f),
     })
 }
