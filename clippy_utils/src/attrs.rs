@@ -12,51 +12,51 @@ use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use std::str::FromStr;
 
+/// Validates a single clippy attribute and emits errors for unknown or deprecated ones.
+pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
+    if let [clippy, segment2] = &*attr.path()
+        && *clippy == sym::clippy
+    {
+        let path_span = attr
+            .path_span()
+            .expect("Clippy attributes are unparsed and have a span");
+
+        match *segment2 {
+            sym::cyclomatic_complexity => {
+                sess.dcx()
+                    .struct_span_err(path_span, "usage of deprecated attribute")
+                    .with_span_suggestion(
+                        path_span,
+                        "consider using",
+                        "clippy::cognitive_complexity",
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            },
+            sym::author
+            | sym::version
+            | sym::cognitive_complexity
+            | sym::dump
+            | sym::msrv
+            | sym::has_significant_drop
+            | sym::format_args => {},
+            _ => {
+                sess.dcx().span_err(path_span, "usage of unknown attribute");
+            },
+        }
+    }
+}
+
 /// Given `attrs`, extract all the instances of a built-in Clippy attribute called `name`
-pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
-    sess: &'a Session,
-    attrs: &'a [A],
-    name: Symbol,
-) -> impl Iterator<Item = &'a A> {
+pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(attrs: &'a [A], name: Symbol) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
         if let [clippy, segment2] = &*attr.path()
             && *clippy == sym::clippy
         {
-            let path_span = attr
-                .path_span()
-                .expect("Clippy attributes are unparsed and have a span");
-            let new_name = match *segment2 {
-                sym::cyclomatic_complexity => Some("cognitive_complexity"),
-                sym::author
-                | sym::version
-                | sym::cognitive_complexity
-                | sym::dump
-                | sym::msrv
-                // The following attributes are for the 3rd party crate authors.
-                // See book/src/attribs.md
-                | sym::has_significant_drop
-                | sym::format_args => None,
-                _ => {
-                    sess.dcx().span_err(path_span, "usage of unknown attribute");
-                    return false;
-                },
-            };
-
-            match new_name {
-                Some(new_name) => {
-                    sess.dcx()
-                        .struct_span_err(path_span, "usage of deprecated attribute")
-                        .with_span_suggestion(
-                            path_span,
-                            "consider using",
-                            format!("clippy::{new_name}"),
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                    false
-                },
-                None => *segment2 == name,
+            if *segment2 == sym::cyclomatic_complexity {
+                return false;
             }
+            *segment2 == name
         } else {
             false
         }
@@ -67,7 +67,7 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
 /// returns that attribute, and `None` otherwise
 pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
     let mut unique_attr: Option<&A> = None;
-    for attr in get_builtin_attr(sess, attrs, name) {
+    for attr in get_builtin_attr(attrs, name) {
         if let Some(duplicate) = unique_attr {
             sess.dcx()
                 .struct_span_err(attr.span(), format!("`{name}` is defined multiple times"))
@@ -165,7 +165,7 @@ impl LimitStack {
 }
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
-    for attr in get_builtin_attr(sess, attrs, name) {
+    for attr in get_builtin_attr(attrs, name) {
         let Some(value) = attr.value_str() else {
             sess.dcx().span_err(attr.span(), "bad clippy attribute");
             continue;

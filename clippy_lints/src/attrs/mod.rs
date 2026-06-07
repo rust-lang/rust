@@ -14,11 +14,12 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
+use clippy_utils::check_clippy_attr;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, AttrArgs, AttrItemKind, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use utils::is_lint_level;
@@ -582,6 +583,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+        check_clippy_attr(cx.sess(), attr);
         if let Some(items) = &attr.meta_item_list()
             && let Some(name) = attr.name()
         {
