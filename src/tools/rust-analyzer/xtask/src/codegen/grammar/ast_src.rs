@@ -123,6 +123,7 @@ const CONTEXTUAL_KEYWORDS: &[&str] = &[
     "bikeshed",
     "cfg_attr",
     "cfg",
+    "null",
 ];
 // keywords we use for special macro expansions
 const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
@@ -151,6 +152,8 @@ const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     "readonly",
     "sym",
     "deref",
+    "pattern_type",
+    "is",
 ];
 
 // keywords that are keywords depending on the edition

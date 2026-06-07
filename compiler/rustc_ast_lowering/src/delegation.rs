@@ -56,7 +56,7 @@ use rustc_span::symbol::kw;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
-use crate::errors::{
+use crate::diagnostics::{
     CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
     DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };

@@ -202,7 +202,7 @@ impl ChildBySource for EnumId {
 
         let ast_id_map = db.ast_id_map(loc.id.file_id);
 
-        self.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
+        self.enum_variants(db).variants.values().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT].insert(ast_id_map.get(variant.lookup(db).id.value), variant);
         });
         let (_, source_map) = EnumSignature::with_source_map(db, *self);

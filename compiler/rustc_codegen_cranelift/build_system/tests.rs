@@ -125,6 +125,7 @@ pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
     "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
+    &[],
     "981f8bf489338978",
     "rand",
 );
@@ -135,11 +136,23 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "regex",
     "061ee815ef2c44101dba7b0b124600fcb03c1912",
+    &[],
     "dc26aefbeeac03ca",
     "regex",
 );
 
 static REGEX: CargoProject = CargoProject::new(REGEX_REPO.source_dir(), "regex_target");
+
+pub(crate) static GRAVIOLA_REPO: GitRepo = GitRepo::github(
+    "ctz",
+    "graviola",
+    "c779b83cfd7114c4802293700c92cfb5e05cb4b7",
+    &["thirdparty/cavp", "thirdparty/wycheproof"],
+    "e0925ceb21a56101",
+    "graviola",
+);
+
+static GRAVIOLA: CargoProject = CargoProject::new(GRAVIOLA_REPO.source_dir(), "graviola_target");
 
 static PORTABLE_SIMD_SRC: RelPath = RelPath::build("portable-simd");
 
@@ -196,6 +209,43 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = REGEX.build(&runner.target_compiler, &runner.dirs);
             build_cmd.arg("--tests");
+            spawn_and_wait(build_cmd);
+        }
+    }),
+    TestCase::custom("test.graviola", &|runner| {
+        let (arch, _) = runner.target_compiler.triple.split_once('-').unwrap();
+
+        if !["aarch64", "x86_64"].contains(&arch) {
+            eprintln!("Skipping `graviola` tests: unsupported target");
+            return;
+        }
+
+        GRAVIOLA_REPO.patch(&runner.dirs);
+        GRAVIOLA.clean(&runner.dirs);
+
+        if runner.is_native {
+            let mut test_cmd = GRAVIOLA.test(&runner.target_compiler, &runner.dirs);
+
+            // FIXME: Disable AVX-512 until intrinsics are supported.
+            test_cmd.env("GRAVIOLA_CPU_DISABLE_avx512f", "1");
+            test_cmd.env("GRAVIOLA_CPU_DISABLE_avx512bw", "1");
+            test_cmd.env("GRAVIOLA_CPU_DISABLE_avx512vl", "1");
+
+            test_cmd.args([
+                "-p",
+                "graviola",
+                "--lib",
+                "--",
+                "-q",
+                // FIXME: Disable AVX-512 until intrinsics are supported.
+                "--skip",
+                "check_counter512",
+            ]);
+            spawn_and_wait(test_cmd);
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = GRAVIOLA.build(&runner.target_compiler, &runner.dirs);
+            build_cmd.args(["-p", "graviola", "--lib"]);
             spawn_and_wait(build_cmd);
         }
     }),

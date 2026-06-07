@@ -641,13 +641,23 @@ fn expected_type_and_name<'db>(
             }
             for _ in refs_level..0 {
                 cov_mark::hit!(expected_type_fn_param_deref);
-                ty = ty.add_reference(hir::Mutability::Shared);
+                ty = ty.add_reference(sema.db, hir::Mutability::Shared);
             }
             ty
         }
         _ => ty,
     };
 
+    let mut generic_def = None;
+    let mut rebase_ty = {
+        let node = node.clone();
+        move |ty: hir::Type<'db>| {
+            let def = *generic_def
+                .get_or_insert_with(|| sema.scope(&node).and_then(|scope| scope.generic_def()));
+            def.and_then(|def| ty.try_rebase_into_owner(sema.db, def))
+                .unwrap_or_else(|| ty.instantiate_with_errors())
+        }
+    };
     let (ty, name) = loop {
         break match_ast! {
             match node {
@@ -791,26 +801,22 @@ fn expected_type_and_name<'db>(
                     (ty, None)
                 },
                 ast::TupleStructPat(it) => {
-                    let fields = it.path().and_then(|path| match sema.resolve_path(&path)? {
-                        hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) => Some(adt.as_struct()?.fields(sema.db)),
-                        hir::PathResolution::Def(hir::ModuleDef::EnumVariant(variant)) => Some(variant.fields(sema.db)),
-                        _ => None,
-                    });
+                    let fields = sema.resolve_tuple_struct_pat_fields(&it);
                     let nr = it.fields().take_while(|it| it.syntax().text_range().end() <= token.text_range().start()).count();
-                    let ty = fields.and_then(|fields| Some(fields.get(nr)?.ty(sema.db).to_type(sema.db)));
+                    let ty = fields.and_then(|fields| Some(rebase_ty(fields.get(nr)?.1.clone())));
                     (ty, None)
                 },
                 ast::Fn(it) => {
                     cov_mark::hit!(expected_type_fn_ret_with_leading_char);
                     cov_mark::hit!(expected_type_fn_ret_without_leading_char);
                     let def = sema.to_def(&it);
-                    (def.map(|def| def.ret_type(sema.db)), None)
+                    (def.map(|def| rebase_ty(def.ret_type(sema.db))), None)
                 },
                 ast::ReturnExpr(it) => {
                     let fn_ = sema.ancestors_with_macros(it.syntax().clone())
                         .find_map(Either::<ast::Fn, ast::ClosureExpr>::cast);
                     let ty = fn_.and_then(|f| match f {
-                        Either::Left(f) => Some(sema.to_def(&f)?.ret_type(sema.db)),
+                        Either::Left(f) => Some(rebase_ty(sema.to_def(&f)?.ret_type(sema.db))),
                         Either::Right(f) => {
                             let ty = sema.type_of_expr(&f.into())?.original.as_callable(sema.db)?;
                             Some(ty.return_type())

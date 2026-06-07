@@ -1662,7 +1662,10 @@ pub(crate) fn handle_code_lens(
                 .map(|spec| {
                     matches!(
                         spec.target_kind(),
-                        TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                        TargetKind::Bin
+                            | TargetKind::Example
+                            | TargetKind::Test
+                            | TargetKind::Bench
                     )
                 })
                 .unwrap_or(false),
@@ -2345,7 +2348,7 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&TargetSpec>) -> b
             match &cargo_spec {
                 Some(spec) => !matches!(
                     spec.target_kind(),
-                    TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                    TargetKind::Bin | TargetKind::Example | TargetKind::Test | TargetKind::Bench
                 ),
                 None => true,
             }

@@ -70,7 +70,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
+use crate::diagnostics::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 use crate::item::Owners;
 
 macro_rules! arena_vec {
@@ -83,7 +83,7 @@ mod asm;
 mod block;
 mod contract;
 mod delegation;
-mod errors;
+mod diagnostics;
 mod expr;
 mod format;
 mod index;
@@ -1145,17 +1145,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     {
                         let err = match (&data.inputs[..], &data.output) {
                             ([_, ..], FnRetTy::Default(_)) => {
-                                errors::BadReturnTypeNotation::Inputs { span: data.inputs_span }
+                                diagnostics::BadReturnTypeNotation::Inputs {
+                                    span: data.inputs_span,
+                                }
                             }
                             ([], FnRetTy::Default(_)) => {
-                                errors::BadReturnTypeNotation::NeedsDots { span: data.inputs_span }
+                                diagnostics::BadReturnTypeNotation::NeedsDots {
+                                    span: data.inputs_span,
+                                }
                             }
                             // The case `T: Trait<method(..) -> Ret>` is handled in the parser.
                             (_, FnRetTy::Ty(ty)) => {
                                 let span = data.inputs_span.shrink_to_hi().to(ty.span);
-                                errors::BadReturnTypeNotation::Output {
+                                diagnostics::BadReturnTypeNotation::Output {
                                     span,
-                                    suggestion: errors::RTNSuggestion {
+                                    suggestion: diagnostics::RTNSuggestion {
                                         output: span,
                                         input: data.inputs_span,
                                     },
@@ -1226,7 +1230,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         _ => None,
                     };
 
-                    let guar = self.dcx().emit_err(errors::MisplacedAssocTyBinding {
+                    let guar = self.dcx().emit_err(diagnostics::MisplacedAssocTyBinding {
                         span: constraint.span,
                         suggestion,
                     });
@@ -1529,7 +1533,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ast::GenericBound::Use(_, span) => Some(span),
                             _ => None,
                         }) {
-                            self.tcx.dcx().emit_err(errors::NoPreciseCapturesOnApit { span });
+                            self.tcx.dcx().emit_err(diagnostics::NoPreciseCapturesOnApit { span });
                         }
 
                         let def_id = self.local_def_id(*def_node_id);
@@ -2123,7 +2127,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .filter(|_| match source {
                         hir::GenericParamSource::Generics => true,
                         hir::GenericParamSource::Binder => {
-                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                            self.dcx().emit_err(diagnostics::GenericParamDefaultInBinder {
                                 span: param.span(),
                             });
 
@@ -2154,7 +2158,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .filter(|anon_const| match source {
                         hir::GenericParamSource::Generics => true,
                         hir::GenericParamSource::Binder => {
-                            let err = errors::GenericParamDefaultInBinder { span: param.span() };
+                            let err =
+                                diagnostics::GenericParamDefaultInBinder { span: param.span() };
                             if expr::WillCreateDefIdsVisitor
                                 .visit_expr(&anon_const.value)
                                 .is_break()

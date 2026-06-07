@@ -106,6 +106,7 @@ impl Drop for EnableGuard {
     }
 }
 
+/// Set up the current thread to invoke `cleanup` when it finishes.
 pub fn enable() {
     let registered = if cfg!(target_thread_local) {
         #[thread_local]
