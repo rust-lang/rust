@@ -31,5 +31,5 @@ impl Trait for S {
 // Regression test for https://github.com/rust-lang/rust/issues/151454.
 //@ has foo/fn.hidden_projection.html
 //@ has - '//pre[@class="rust item-decl"]' 'T::Foo'
-//@ !has - '//pre[@class="rust item-decl"]//a[@href="trait.Trait.html#associatedtype.Foo"]' 'Foo'
+//@ count - '//pre[@class="rust item-decl"]//a' 'Foo' 0
 pub fn hidden_projection<T: Trait>(_: T::Foo) {}
