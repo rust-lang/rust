@@ -912,8 +912,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_map_or_default)]
-    ///
     /// let x: Result<_, &str> = Ok("foo");
     /// let y: Result<&str, _> = Err("bar");
     ///
@@ -923,7 +921,7 @@ impl<T, E> Result<T, E> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
+    #[stable(feature = "result_option_map_or_default", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
