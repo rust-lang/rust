@@ -7,7 +7,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span, SpanData};
+use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
@@ -78,9 +78,28 @@ impl<'a> StableHashState<'a> {
     pub fn stable_hash_controls(&self) -> StableHashControls {
         self.stable_hash_controls
     }
+}
 
-    #[inline(always)]
-    fn stable_hash_span_data(&mut self, mut span: SpanData, hasher: &mut StableHasher) {
+impl<'a> StableHashCtxt for StableHashState<'a> {
+    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
+    /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
+    /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
+    /// containing `SourceFile` has moved within the `SourceMap`.
+    ///
+    /// Also note that we are hashing byte offsets for the column, not unicode codepoint offsets.
+    /// For the purpose of the hash that's sufficient. Also, hashing filenames is expensive so we
+    /// avoid doing it twice when the span starts and ends in the same file, which is almost always
+    /// the case.
+    ///
+    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
+    #[inline]
+    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+        if !self.stable_hash_controls().hash_spans {
+            return;
+        }
+
+        let span = Span::from_raw_span(raw_span);
+        let mut span = span.data_untracked();
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
@@ -150,30 +169,6 @@ impl<'a> StableHashState<'a> {
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
-    }
-}
-
-impl<'a> StableHashCtxt for StableHashState<'a> {
-    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
-    /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
-    /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
-    /// containing `SourceFile` has moved within the `SourceMap`.
-    ///
-    /// Also note that we are hashing byte offsets for the column, not unicode codepoint offsets.
-    /// For the purpose of the hash that's sufficient. Also, hashing filenames is expensive so we
-    /// avoid doing it twice when the span starts and ends in the same file, which is almost always
-    /// the case.
-    ///
-    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
-    #[inline]
-    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
-        if !self.stable_hash_controls().hash_spans {
-            return;
-        }
-
-        let span = Span::from_raw_span(raw_span);
-        let span = span.data_untracked();
-        self.stable_hash_span_data(span, hasher);
     }
 
     #[inline]
