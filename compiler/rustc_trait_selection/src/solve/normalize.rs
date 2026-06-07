@@ -48,8 +48,8 @@ where
             let delegate = <&SolverDelegate<'tcx>>::from(infcx);
             let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
             let predicate = ty::PredicateKind::AliasRelate(
-                alias_term.into(),
-                infer_term.into(),
+                alias_term,
+                infer_term,
                 ty::AliasRelationDirection::Equate,
             );
             let goal = Goal::new(infcx.tcx, at.param_env, predicate);
@@ -92,8 +92,8 @@ impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
             self.at.cause.clone(),
             self.at.param_env,
             ty::PredicateKind::AliasRelate(
-                alias_term.into(),
-                infer_term.into(),
+                alias_term,
+                infer_term,
                 ty::AliasRelationDirection::Equate,
             ),
         );

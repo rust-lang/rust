@@ -15,6 +15,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::Visitor;
 use crate::mir::*;
+use crate::ty::CoroutineArgsExt;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -185,9 +186,6 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
             Some(promoted) => write!(w, "::{promoted:?}`")?,
         }
         writeln!(w, " {} {}", self.disambiguator, self.pass_name)?;
-        if let Some(ref layout) = body.coroutine_layout_raw() {
-            writeln!(w, "/* coroutine_layout = {layout:#?} */")?;
-        }
         writeln!(w)?;
         (self.writer.extra_data)(PassWhere::BeforeCFG, w)?;
         write_user_type_annotations(self.tcx(), body, w)?;
@@ -429,6 +427,31 @@ fn write_scope_tree(
         }
     }
 
+    // Coroutine debuginfo.
+    if let Some(layout) = body.coroutine_layout_raw() {
+        for (field, field_decl) in layout.field_tys.iter_enumerated() {
+            let source_info = field_decl.source_info;
+            if let Some(name) = field_decl.debuginfo_name
+                && source_info.scope == parent
+            {
+                let indented_debug_info =
+                    format!("{0:1$}coroutine debug {2} => {3:?};", INDENT, indent, name, field);
+
+                if options.include_extra_comments {
+                    writeln!(
+                        w,
+                        "{0:1$} // in {2}",
+                        indented_debug_info,
+                        ALIGN,
+                        comment(tcx, source_info),
+                    )?;
+                } else {
+                    writeln!(w, "{indented_debug_info}")?;
+                }
+            }
+        }
+    }
+
     // Local variable types.
     for (local, local_decl) in body.local_decls.iter_enumerated() {
         if (1..body.arg_count + 1).contains(&local.index()) {
@@ -530,6 +553,45 @@ impl Debug for VarDebugInfo<'_> {
     }
 }
 
+fn write_coroutine_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    layout: &CoroutineLayout<'_>,
+    w: &mut dyn io::Write,
+    options: PrettyPrintMirOptions,
+) -> io::Result<()> {
+    let CoroutineLayout { field_tys, variant_fields, variant_source_info, storage_conflicts } =
+        layout;
+
+    writeln!(w, "{INDENT}coroutine layout {{")?;
+
+    for (field, CoroutineSavedTy { ty, source_info, ignore_for_traits, debuginfo_name: _ }) in
+        field_tys.iter_enumerated()
+    {
+        let ignore_for_traits = if *ignore_for_traits { " (ignored for traits)" } else { "" };
+        let indented_body = format!("{INDENT}{INDENT}field {field:?}: {ty}{ignore_for_traits};",);
+        if options.include_extra_comments {
+            writeln!(w, "{0:ALIGN$} // in {1}", indented_body, comment(tcx, *source_info))?;
+        } else {
+            writeln!(w, "{}", indented_body)?;
+        }
+    }
+
+    writeln!(w, "{INDENT}{INDENT}variant_fields = {{")?;
+    for (variant, fields) in variant_fields.iter_enumerated() {
+        let variant_name = ty::CoroutineArgs::variant_name(variant);
+        let header = format!("{INDENT}{INDENT}{INDENT}{variant_name:9}({variant:?}): {fields:?},");
+        if options.include_extra_comments {
+            let source_info = variant_source_info[variant];
+            writeln!(w, "{0:ALIGN$} // in {1}", header, comment(tcx, source_info))?;
+        } else {
+            writeln!(w, "{}", header)?;
+        }
+    }
+    writeln!(w, "{INDENT}{INDENT}}}")?;
+    writeln!(w, "{INDENT}{INDENT}storage_conflicts = {storage_conflicts:?}")?;
+    writeln!(w, "{INDENT}}}")
+}
+
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
 fn write_mir_intro<'tcx>(
@@ -540,6 +602,10 @@ fn write_mir_intro<'tcx>(
 ) -> io::Result<()> {
     write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
+
+    if let Some(ref layout) = body.coroutine_layout_raw() {
+        write_coroutine_layout(tcx, layout, w, options)?;
+    }
 
     // construct a scope tree and write it out
     let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
@@ -920,10 +986,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, async_fut: None, .. } => write!(fmt, "drop({place:?})"),
-            Drop { place, async_fut: Some(async_fut), .. } => {
-                write!(fmt, "async drop({place:?}; poll={async_fut:?})")
-            }
+            Drop { place, .. } => write!(fmt, "drop({place:?})"),
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
@@ -1429,7 +1492,11 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("ty::Param({p})"),
                     ty::ConstKind::Unevaluated(uv) => {
-                        format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
+                        format!(
+                            "ty::Unevaluated({}, {:?})",
+                            self.tcx.def_path_str(uv.kind.def_id()),
+                            uv.args,
+                        )
                     }
                     ty::ConstKind::Value(cv) => {
                         format!("ty::Valtree({})", fmt_valtree(&cv))

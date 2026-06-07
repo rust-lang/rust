@@ -19,7 +19,9 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault};
+use super::diagnostics::{
+    InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault,
+};
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
@@ -857,6 +859,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
+        if v.ident.name == kw::Underscore && self.tcx.features().unnamed_enum_variants() {
+            // FIXME(#156628): lower unnamed enum variants to HIR.
+            self.dcx()
+                .struct_span_fatal(v.span, "unnamed enum variants are not yet implemented")
+                .emit()
+        }
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant);
         hir::Variant {
@@ -1192,50 +1200,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    fn resolve_pin_drop_sugar_impl_item(
+    fn check_pin_drop_sugar_impl_item(
         &self,
         i: &AssocItem,
         ident: Ident,
-        span: Span,
-    ) -> (Ident, Result<DefId, ErrorGuaranteed>) {
-        let trait_item_def_id = self
-            .get_partial_res(i.id)
-            .and_then(|r| r.expect_full_res().opt_def_id())
-            .ok_or_else(|| {
-                self.dcx().span_delayed_bug(span, "could not resolve trait item being implemented")
-            });
-
-        let is_pin_drop_sugar = match &i.kind {
-            AssocItemKind::Fn(fn_kind) => fn_kind.is_pin_drop_sugar(),
-            _ => false,
-        };
-        let def_id = match trait_item_def_id {
-            Ok(def_id) => def_id,
-            Err(guar) => return (ident, Err(guar)),
-        };
-        if !is_pin_drop_sugar {
-            return (ident, Ok(def_id));
+        trait_item: Result<DefId, ErrorGuaranteed>,
+    ) -> Ident {
+        if let AssocItemKind::Fn(fn_kind) = &i.kind
+            && fn_kind.is_pin_drop_sugar()
+        {
+            if let Ok(trait_item) = trait_item
+                && self
+                    .tcx
+                    .lang_items()
+                    .drop_trait()
+                    .is_none_or(|drop_trait| self.tcx.parent(trait_item) != drop_trait)
+            {
+                self.dcx()
+                    .struct_span_err(
+                        i.span,
+                        "method `drop` with `&pin mut self` is only supported for the `Drop` trait",
+                    )
+                    .with_span_label(i.span, "not a `Drop::pin_drop` implementation")
+                    .emit();
+            }
+            return Ident::new(sym::pin_drop, ident.span);
         }
 
-        let is_drop_pin_drop = self
-            .tcx
-            .lang_items()
-            .drop_trait()
-            .is_some_and(|drop_trait| self.tcx.parent(def_id) == drop_trait);
-        if is_drop_pin_drop {
-            // Associated item collection still derives the impl item's name from HIR.
-            return (Ident::new(sym::pin_drop, ident.span), Ok(def_id));
-        }
-
-        let guar = self
-            .dcx()
-            .struct_span_err(
-                i.span,
-                "method `drop` with `&pin mut self` is only supported for the `Drop` trait",
-            )
-            .with_span_label(i.span, "not a `Drop::pin_drop` implementation")
-            .emit();
-        (ident, Err(guar))
+        ident
     }
 
     fn lower_impl_item(
@@ -1356,8 +1348,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let span = self.lower_span(i.span);
         let (effective_ident, impl_kind) = if is_in_trait_impl {
-            let (effective_ident, trait_item_def_id) =
-                self.resolve_pin_drop_sugar_impl_item(i, ident, span);
+            let trait_item_def_id = self
+                .get_partial_res(i.id)
+                .and_then(|r| r.expect_full_res().opt_def_id())
+                .ok_or_else(|| {
+                    self.dcx()
+                        .span_delayed_bug(span, "could not resolve trait item being implemented")
+                });
+            let effective_ident = self.check_pin_drop_sugar_impl_item(i, ident, trait_item_def_id);
             (effective_ident, ImplItemImplKind::Trait { defaultness, trait_item_def_id })
         } else {
             (ident, ImplItemImplKind::Inherent { vis_span: self.lower_span(i.vis.span) })
@@ -1928,11 +1926,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
-        params.extend(extra_lifetimes.into_iter().filter_map(|&(ident, node_id, res)| {
+        params.extend(extra_lifetimes.into_iter().map(|&(ident, node_id, kind)| {
             self.lifetime_res_to_generic_param(
                 ident,
                 node_id,
-                res,
+                kind,
                 hir::GenericParamSource::Generics,
             )
         }));
@@ -1996,7 +1994,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bounds: &[GenericBound],
         colon_span: Option<Span>,
         parent_span: Span,
-        rbp: RelaxedBoundPolicy<'_>,
+        rbp: RelaxedBoundPolicy,
         itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -2071,10 +2069,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
-                let rbp = if bound_generic_params.is_empty() {
-                    RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params)
+                let rbp = if bound_generic_params.is_empty()
+                    && let Some(res) =
+                        self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
+                    && let Res::Def(DefKind::TyParam, def_id) = res
+                    && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
+                {
+                    RelaxedBoundPolicy::Allowed
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(

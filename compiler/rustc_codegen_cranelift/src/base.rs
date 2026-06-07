@@ -147,7 +147,7 @@ pub(crate) fn codegen_fn<'tcx>(
 }
 
 pub(crate) fn compile_fn(
-    profiler: &SelfProfilerRef,
+    prof: &SelfProfilerRef,
     output_filenames: &OutputFilenames,
     should_write_ir: bool,
     cached_context: &mut Context,
@@ -156,8 +156,7 @@ pub(crate) fn compile_fn(
     global_asm: &mut String,
     codegened_func: CodegenedFunction,
 ) {
-    let _timer =
-        profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
+    let _timer = prof.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
 
     let clif_comments = codegened_func.clif_comments;
     global_asm.push_str(&codegened_func.inline_asm);
@@ -196,7 +195,7 @@ pub(crate) fn compile_fn(
     };
 
     // Define function
-    profiler.generic_activity("define function").run(|| {
+    prof.generic_activity("define function").run(|| {
         context.want_disasm = should_write_ir;
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
@@ -248,7 +247,7 @@ pub(crate) fn compile_fn(
     }
 
     // Define debuginfo for function
-    profiler.generic_activity("generate debug info").run(|| {
+    prof.generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
@@ -582,9 +581,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             | TerminatorKind::CoroutineDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } => {
+            TerminatorKind::Drop { place, target, unwind, replace: _, drop } => {
                 assert!(
-                    async_fut.is_none() && drop.is_none(),
+                    drop.is_none(),
                     "Async Drop must be expanded or reset to sync before codegen"
                 );
                 let drop_place = codegen_place(fx, *place);
@@ -1052,7 +1051,7 @@ pub(crate) fn codegen_operand<'tcx>(
         Operand::RuntimeChecks(checks) => {
             let val = checks.value(fx.tcx.sess);
             let layout = fx.layout_of(fx.tcx.types.bool);
-            return CValue::const_val(fx, layout, val.into());
+            CValue::const_val(fx, layout, val.into())
         }
     }
 }

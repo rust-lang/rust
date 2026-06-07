@@ -174,6 +174,11 @@ target | std | notes
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Bare Armv8-R, hardfloat
+[`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * | Thumb-mode Bare Armv7-A
+[`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * | Thumb-mode Bare Armv7-A, hardfloat
+[`thumbv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Thumb-mode Bare Armv7-R
+[`thumbv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Thumb-mode Bare Armv7-R, hardfloat
+[`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Thumb-mode Bare Armv8-R, hardfloat
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
@@ -419,8 +424,6 @@ target | std | host | notes
 [`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare Armv5TE
 [`thumbv6-none-eabi`](platform-support/armv6-none-eabi.md) | * | | Thumb-mode Bare Armv6
 [`thumbv6m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv6M with NuttX
-[`thumbv7a-none-eabi`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A
-[`thumbv7a-none-eabihf`](platform-support/armv7a-none-eabi.md) | * |  | Thumb-mode Bare Armv7-A, hardfloat
 [`thumbv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 `thumbv7a-pc-windows-msvc` |  |  |
@@ -429,12 +432,9 @@ target | std | host | notes
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7M with NuttX
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode Armv7-A Linux with NEON, musl 1.2.5
-[`thumbv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R
-[`thumbv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * |  | Thumb-mode Bare Armv7-R, hardfloat
 [`thumbv8m.base-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Baseline with NuttX
 [`thumbv8m.main-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
-[`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Thumb-mode Bare Armv8-R, hardfloat
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
 [`wasm32-wasip3`](platform-support/wasm32-wasip3.md) | ✓ |  | WebAssembly with WASIp3

@@ -4,13 +4,7 @@
 use super::generic;
 use crate::support::Round;
 
-// Placeholder so we can have `fmaf16` in the `Float` trait.
-#[allow(unused)]
-#[cfg(f16_enabled)]
-#[cfg_attr(assert_no_panic, no_panic::no_panic)]
-pub(crate) fn fmaf16(_x: f16, _y: f16, _z: f16) -> f16 {
-    unimplemented!()
-}
+/* See `fmaf16.rs` for that implementation */
 
 /// Floating multiply add (f32)
 ///
@@ -58,42 +52,83 @@ pub fn fmaf128(x: f128, y: f128, z: f128) -> f128 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::{CastFrom, CastInto, Float, FpResult, HInt, MinInt, Round, Status};
+    use crate::support::{Float, FpResult, Hex, Round, Status};
 
-    /// Test the generic `fma_round` algorithm for a given float.
-    fn spec_test<F>(f: impl Fn(F, F, F) -> F)
-    where
-        F: Float,
-        F: CastFrom<F::SignedInt>,
-        F: CastFrom<i8>,
-        F::Int: HInt,
-        u32: CastInto<F::Int>,
-    {
-        let x = F::from_bits(F::Int::ONE);
-        let y = F::from_bits(F::Int::ONE);
-        let z = F::ZERO;
+    macro_rules! cases {
+        ($f:ty) => {
+            [
+                // Simple
+                (0.0, 0.0, 0.0, 0.0),
+                (1.0, 1.0, 0.0, 1.0),
+                (1.0, 0.0, 1.0, 1.0),
+                // Sign checks
+                (1.0, 1.0, 1.0, 2.0),
+                (1.0, 1.0, -1.0, 0.0),
+                (1.0, -1.0, 1.0, 0.0),
+                (1.0, -1.0, -1.0, -2.0),
+                (-1.0, 1.0, 1.0, 0.0),
+                (-1.0, 1.0, -1.0, -2.0),
+                (-1.0, -1.0, 1.0, 2.0),
+                (-1.0, -1.0, -1.0, 0.0),
 
-        // 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result of
-        // fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
-        // exact result"
-        assert_biteq!(f(x, y, z), F::ZERO);
-        assert_biteq!(f(x, -y, z), F::NEG_ZERO);
-        assert_biteq!(f(-x, y, z), F::NEG_ZERO);
-        assert_biteq!(f(-x, -y, z), F::ZERO);
+                // Roundtrip
+                (<$f>::MAX, 1.0, 0.0, <$f>::MAX),
+                (<$f>::MAX, <$f>::MAX, 1.0, <$f>::INFINITY),
+                (<$f>::MAX, 1.0, -<$f>::MAX, 0.0),
+                (-<$f>::MAX, 1.0, <$f>::MAX, 0.0),
+                (<$f>::MIN_POSITIVE_NORMAL, 1.0, -<$f>::MIN_POSITIVE_NORMAL, 0.0),
+                (-<$f>::MIN_POSITIVE_NORMAL, 1.0, <$f>::MIN_POSITIVE_NORMAL, 0.0),
+                (<$f>::MIN_POSITIVE_SUBNORMAL, 1.0, -<$f>::MIN_POSITIVE_SUBNORMAL, 0.0),
+                (-<$f>::MIN_POSITIVE_SUBNORMAL, 1.0, <$f>::MIN_POSITIVE_SUBNORMAL, 0.0),
+                (<$f>::MAX, 1.0, -<$f>::MAX, 0.0),
+
+                // 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result of
+                // fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
+                // exact result"
+                (<$f>::MIN_POSITIVE_SUBNORMAL, <$f>::MIN_POSITIVE_SUBNORMAL, 0.0, 0.0),
+                (<$f>::MIN_POSITIVE_SUBNORMAL, -<$f>::MIN_POSITIVE_SUBNORMAL, 0.0, -0.0),
+                (-<$f>::MIN_POSITIVE_SUBNORMAL, <$f>::MIN_POSITIVE_SUBNORMAL, 0.0, -0.0),
+                (-<$f>::MIN_POSITIVE_SUBNORMAL, -<$f>::MIN_POSITIVE_SUBNORMAL, 0.0, 0.0),
+            ]
+        };
+    }
+
+    #[track_caller]
+    fn check<F: Float>(f: fn(F, F, F) -> F, cases: &[(F, F, F, F)]) {
+        for &(x, y, z, exp_res) in cases {
+            let val = f(x, y, z);
+            assert_biteq!(
+                val,
+                exp_res,
+                "fma({x:?}, {y:?}, {z:?}) ({} {} {})",
+                Hex(x),
+                Hex(y),
+                Hex(z)
+            );
+        }
     }
 
     #[test]
-    fn spec_test_f32() {
-        spec_test::<f32>(fmaf);
+    #[cfg(f16_enabled)]
+    fn check_f16() {
+        check::<f16>(super::super::fmaf16, &cases!(f16));
+    }
+
+    #[test]
+    fn check_f32() {
+        check::<f32>(fmaf, &cases!(f32));
 
         // Also do a small check that the non-widening version works for f32 (this should ideally
         // get tested some more).
-        spec_test::<f32>(|x, y, z| generic::fma_round(x, y, z, Round::Nearest).val);
+        check::<f32>(
+            |x, y, z| generic::fma_round(x, y, z, Round::Nearest).val,
+            &cases!(f32),
+        );
     }
 
     #[test]
-    fn spec_test_f64() {
-        spec_test::<f64>(fma);
+    fn check_f64() {
+        check::<f64>(fma, &cases!(f64));
 
         let expect_underflow = [
             (
@@ -121,8 +156,8 @@ mod tests {
 
     #[test]
     #[cfg(f128_enabled)]
-    fn spec_test_f128() {
-        spec_test::<f128>(fmaf128);
+    fn check_f128() {
+        check::<f128>(fmaf128, &cases!(f128));
     }
 
     #[test]

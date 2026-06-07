@@ -525,11 +525,6 @@ impl Builder<'_> {
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", &out_dir);
 
-        // Set this unconditionally. Cargo silently ignores `CARGO_BUILD_WARNINGS` when `-Z
-        // warnings` isn't present, which is hard to debug, and it's not worth the effort to keep
-        // them in sync.
-        cargo.arg("-Zwarnings");
-
         // Bootstrap makes a lot of assumptions about the artifacts produced in the target
         // directory. If users override the "build directory" using `build-dir`
         // (https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-dir), then

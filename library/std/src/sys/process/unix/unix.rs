@@ -318,7 +318,7 @@ impl Command {
                         // An alternative would be to require CAP_SETGID (in
                         // addition to CAP_SETUID) for setting the UID.
                         if e.raw_os_error() != Some(libc::EPERM) {
-                            return Err(e.into());
+                            return Err(e);
                         }
                     }
                 }

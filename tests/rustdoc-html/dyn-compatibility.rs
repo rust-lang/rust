@@ -15,8 +15,8 @@ pub trait DynIncompatible2<T> {
 }
 
 //@ has 'foo/trait.DynCompatible.html'
-//@ !has - '//*[@class="dyn-compatibility-info"]' ''
-//@ !has - '//*[@id="dyn-compatibility"]' ''
+//@ has - '//*[@class="dyn-compatibility-info"]' 'This trait is dyn compatible.'
+//@ has - '//*[@id="dyn-compatibility"]' 'Dyn Compatibility'
 pub trait DynCompatible {
     fn foo(&self);
 }

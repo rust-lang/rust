@@ -350,7 +350,8 @@ impl<'tcx> Drop for InferCtxt<'tcx> {
             TypingMode::Coherence
             | TypingMode::Analysis { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => {}
             // In erased mode, the opaque type storage is always empty
             TypingMode::ErasedNotCoherence(..) => {}
             TypingMode::Borrowck { .. } => {
@@ -1156,7 +1157,8 @@ impl<'tcx> InferCtxt<'tcx> {
             // to support PostBorrowckAnalysis in the old solver as well.
             TypingMode::Coherence
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => false,
         }
     }
 
@@ -1486,7 +1488,8 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             mode @ (ty::TypingMode::Coherence
             | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis) => mode,
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen) => mode,
             ty::TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
         };
         ty::TypingEnv::new(param_env, typing_mode)

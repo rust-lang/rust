@@ -250,7 +250,7 @@ impl<T> RefUnwindSafe for crate::sync::atomic::AtomicPtr<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const Deref for AssertUnwindSafe<T> {
+const impl<T> Deref for AssertUnwindSafe<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -260,7 +260,7 @@ impl<T> const Deref for AssertUnwindSafe<T> {
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const DerefMut for AssertUnwindSafe<T> {
+const impl<T> DerefMut for AssertUnwindSafe<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }

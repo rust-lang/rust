@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
@@ -11,8 +13,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    LevelSpec, LintExpectation, LintLevelSource, ShallowLintLevelMap, emit_lint_base,
-    reveal_actual_level_spec,
+    LevelSpec, LintExpectation, LintLevelSource, ShallowLintLevelMap, StableLevelSpec,
+    UnstableLevelSpec, emit_lint_base, reveal_actual_level_spec,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
@@ -21,8 +23,10 @@ use rustc_session::lint::builtin::{
     self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
-use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_session::lint::{
+    Level, Lint, LintExpectationId, LintId, StableLintExpectationId, UnstableLintExpectationId,
+};
+use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
@@ -64,9 +68,7 @@ rustc_index::newtype_index! {
 /// to find the specifications for a given lint.
 #[derive(Debug)]
 struct LintSet {
-    // -A,-W,-D flags, a `Symbol` for the flag itself and `LevelSpec` for which
-    // flag.
-    specs: FxIndexMap<LintId, LevelSpec>,
+    specs: FxIndexMap<LintId, UnstableLevelSpec>,
     parent: LintStackIndex,
 }
 
@@ -79,9 +81,9 @@ impl LintLevelSets {
         &self,
         lint: &'static Lint,
         idx: LintStackIndex,
-        aux: Option<&FxIndexMap<LintId, LevelSpec>>,
+        aux: Option<&FxIndexMap<LintId, UnstableLevelSpec>>,
         sess: &Session,
-    ) -> LevelSpec {
+    ) -> UnstableLevelSpec {
         reveal_actual_level_spec(sess, LintId::of(lint), |id| {
             self.raw_lint_level_spec(id, idx, aux)
         })
@@ -91,8 +93,8 @@ impl LintLevelSets {
         &self,
         id: LintId,
         mut idx: LintStackIndex,
-        aux: Option<&FxIndexMap<LintId, LevelSpec>>,
-    ) -> Option<LevelSpec> {
+        aux: Option<&FxIndexMap<LintId, UnstableLevelSpec>>,
+    ) -> Option<UnstableLevelSpec> {
         if let Some(specs) = aux
             && let Some(level_spec) = specs.get(&id)
         {
@@ -213,26 +215,53 @@ pub struct TopDown {
 }
 
 pub trait LintLevelsProvider {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelSpec>;
-    fn insert(&mut self, id: LintId, level_spec: LevelSpec);
-    fn get_lint_level_spec(&self, lint: &'static Lint, sess: &Session) -> LevelSpec;
-    fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation);
+    type LintExpectationId: Copy + Debug + Into<LintExpectationId>;
+
+    fn current_specs(&self) -> &FxIndexMap<LintId, LevelSpec<Self::LintExpectationId>>;
+
+    fn insert(&mut self, id: LintId, level_spec: LevelSpec<Self::LintExpectationId>);
+
+    fn get_lint_level_spec(
+        &self,
+        lint: &'static Lint,
+        sess: &Session,
+    ) -> LevelSpec<Self::LintExpectationId>;
+
+    fn push_expectation(&mut self, id: Self::LintExpectationId, expectation: LintExpectation);
+
+    fn mk_lint_expectation_id(
+        &self,
+        attr_id: AttrId,
+        attr_index: usize,
+        lint_index: u16,
+    ) -> Self::LintExpectationId;
 }
 
 impl LintLevelsProvider for TopDown {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelSpec> {
+    type LintExpectationId = UnstableLintExpectationId;
+
+    fn current_specs(&self) -> &FxIndexMap<LintId, UnstableLevelSpec> {
         &self.sets.list[self.cur].specs
     }
 
-    fn insert(&mut self, id: LintId, level_spec: LevelSpec) {
+    fn insert(&mut self, id: LintId, level_spec: UnstableLevelSpec) {
         self.sets.list[self.cur].specs.insert(id, level_spec);
     }
 
-    fn get_lint_level_spec(&self, lint: &'static Lint, sess: &Session) -> LevelSpec {
+    fn get_lint_level_spec(&self, lint: &'static Lint, sess: &Session) -> UnstableLevelSpec {
         self.sets.get_lint_level_spec(lint, self.cur, Some(self.current_specs()), sess)
     }
 
-    fn push_expectation(&mut self, _: LintExpectationId, _: LintExpectation) {}
+    fn push_expectation(&mut self, _: Self::LintExpectationId, _: LintExpectation) {}
+
+    fn mk_lint_expectation_id(
+        &self,
+        attr_id: AttrId,
+        _attr_index: usize,
+        lint_index: u16,
+    ) -> Self::LintExpectationId {
+        UnstableLintExpectationId { attr_id, lint_index }
+    }
 }
 
 struct LintLevelQueryMap<'tcx> {
@@ -240,33 +269,44 @@ struct LintLevelQueryMap<'tcx> {
     cur: HirId,
     specs: ShallowLintLevelMap,
     /// Empty hash map to simplify code.
-    empty: FxIndexMap<LintId, LevelSpec>,
+    empty: FxIndexMap<LintId, StableLevelSpec>,
     attrs: &'tcx hir::AttributeMap<'tcx>,
 }
 
 impl LintLevelsProvider for LintLevelQueryMap<'_> {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelSpec> {
+    type LintExpectationId = StableLintExpectationId;
+
+    fn current_specs(&self) -> &FxIndexMap<LintId, StableLevelSpec> {
         self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
     }
-    fn insert(&mut self, id: LintId, level_spec: LevelSpec) {
+
+    fn insert(&mut self, id: LintId, level_spec: StableLevelSpec) {
         self.specs.specs.get_mut_or_insert_default(self.cur.local_id).insert(id, level_spec);
     }
-    fn get_lint_level_spec(&self, lint: &'static Lint, _: &Session) -> LevelSpec {
+
+    fn get_lint_level_spec(&self, lint: &'static Lint, _: &Session) -> StableLevelSpec {
         self.specs.lint_level_spec_at_node(self.tcx, LintId::of(lint), self.cur)
     }
-    fn push_expectation(&mut self, id: LintExpectationId, expectation: LintExpectation) {
+
+    fn push_expectation(&mut self, id: Self::LintExpectationId, expectation: LintExpectation) {
         self.specs.expectations.push((id, expectation))
+    }
+
+    fn mk_lint_expectation_id(
+        &self,
+        _attr_id: AttrId,
+        attr_index: usize,
+        lint_index: u16,
+    ) -> Self::LintExpectationId {
+        let attr_index = attr_index.try_into().unwrap();
+        StableLintExpectationId { hir_id: self.cur, attr_index, lint_index }
     }
 }
 
 impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
-        self.add(
-            self.provider.attrs.get(hir_id.local_id),
-            hir_id == hir::CRATE_HIR_ID,
-            Some(hir_id),
-        );
+        self.add(self.provider.attrs.get(hir_id.local_id), hir_id == hir::CRATE_HIR_ID);
     }
 }
 
@@ -386,7 +426,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         crate_attrs: &[ast::Attribute],
     ) -> Self {
         let mut builder = Self::new(sess, features, lint_added_lints, store, registered_tools);
-        builder.add(crate_attrs, true, None);
+        builder.add(crate_attrs, true);
         builder
     }
 
@@ -413,17 +453,12 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub(crate) fn push(
-        &mut self,
-        attrs: &[ast::Attribute],
-        is_crate_node: bool,
-        source_hir_id: Option<HirId>,
-    ) -> BuilderPush {
+    pub(crate) fn push(&mut self, attrs: &[ast::Attribute], is_crate_node: bool) -> BuilderPush {
         let prev = self.provider.cur;
         self.provider.cur =
             self.provider.sets.list.push(LintSet { specs: FxIndexMap::default(), parent: prev });
 
-        self.add(attrs, is_crate_node, source_hir_id);
+        self.add(attrs, is_crate_node);
 
         if self.provider.current_specs().is_empty() {
             self.provider.sets.list.pop();
@@ -447,21 +482,16 @@ impl Drop for BuilderPush {
     }
 }
 
-impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
+impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P>
+where
+    LevelSpec<P::LintExpectationId>: Into<LevelSpec>,
+{
     pub(crate) fn sess(&self) -> &Session {
         self.sess
     }
 
     pub(crate) fn features(&self) -> &Features {
         self.features
-    }
-
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelSpec> {
-        self.provider.current_specs()
-    }
-
-    fn insert(&mut self, id: LintId, level_spec: LevelSpec) {
-        self.provider.insert(id, level_spec)
     }
 
     fn add_command_line(&mut self) {
@@ -520,7 +550,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             };
             for &id in ids {
                 // ForceWarn and Forbid cannot be overridden
-                if let Some(level_spec) = self.current_specs().get(&id)
+                if let Some(level_spec) = self.provider.current_specs().get(&id)
                     && matches!(level_spec.level(), Level::ForceWarn | Level::Forbid)
                 {
                     continue;
@@ -528,7 +558,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 if self.check_gated_lint(id, DUMMY_SP, true) {
                     let src = LintLevelSource::CommandLine(lint_flag_val, level);
-                    self.insert(id, LevelSpec::new(level, None, src));
+                    self.provider.insert(id, LevelSpec::new(level, None, src));
                 }
             }
         }
@@ -537,7 +567,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Attempts to insert the `id` to `LevelSpec` map entry. If unsuccessful
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
-    fn insert_spec(&mut self, id: LintId, level_spec: LevelSpec) {
+    fn insert_spec(&mut self, id: LintId, level_spec: LevelSpec<P::LintExpectationId>) {
         let level = level_spec.level();
         let lint_id = level_spec.lint_id();
         let src = level_spec.src;
@@ -562,7 +592,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             // as preventing `allow(lint)` for some lint `lint` in
             // `lint_group`. For now, issue a future-compatibility
             // warning for this case.
-            let id_name = id.lint.name_lower();
             let fcw_warning = match old_src {
                 LintLevelSource::Default => false,
                 LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
@@ -571,9 +600,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             debug!(
                 "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
                 fcw_warning,
-                self.current_specs(),
+                self.provider.current_specs(),
                 old_src,
-                id_name
+                id.lint.name_lower(),
             );
             let sub = match old_src {
                 LintLevelSource::Default => {
@@ -627,27 +656,22 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         match (old_level, level) {
             // If the new level is an expectation store it in `ForceWarn`
             (Level::ForceWarn, Level::Expect) => {
-                self.insert(id, LevelSpec::new(Level::ForceWarn, lint_id, old_src))
+                self.provider.insert(id, LevelSpec::new(Level::ForceWarn, lint_id, old_src))
             }
             // Keep `ForceWarn` level but drop the expectation
             (Level::ForceWarn, _) => {
-                self.insert(id, LevelSpec::new(Level::ForceWarn, None, old_src))
+                self.provider.insert(id, LevelSpec::new(Level::ForceWarn, None, old_src))
             }
             // Set the lint level as normal
-            _ => self.insert(id, LevelSpec::new(level, lint_id, src)),
+            _ => self.provider.insert(id, LevelSpec::new(level, lint_id, src)),
         };
     }
 
-    fn add(
-        &mut self,
-        attrs: &[impl AttributeExt],
-        is_crate_node: bool,
-        source_hir_id: Option<HirId>,
-    ) {
+    fn add(&mut self, attrs: &[impl AttributeExt], is_crate_node: bool) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.is_automatically_derived_attr() {
-                self.insert(
+                self.provider.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),
                     LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
                 );
@@ -656,30 +680,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
             // `#[doc(hidden)]` disables missing_docs check.
             if attr.is_doc_hidden() {
-                self.insert(
+                self.provider.insert(
                     LintId::of(MISSING_DOCS),
                     LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
                 );
                 continue;
             }
 
-            let (level, lint_id) = match Level::from_opt_symbol(attr.name()) {
+            let level = match Level::from_opt_symbol(attr.name()) {
                 None => continue,
-                // `Expect` is the only lint level with a `LintExpectationId` that can be created
-                // from an attribute.
-                Some(Level::Expect) => {
-                    let id = if let Some(hir_id) = source_hir_id {
-                        LintExpectationId::Stable {
-                            hir_id,
-                            attr_index: attr_index.try_into().unwrap(),
-                            lint_index: None,
-                        }
-                    } else {
-                        LintExpectationId::Unstable { attr_id: attr.id(), lint_index: None }
-                    };
-                    (Level::Expect, Some(id))
-                }
-                Some(level) => (level, None),
+                Some(level) => level,
             };
 
             let Some(mut metas) = attr.meta_item_list() else { continue };
@@ -727,10 +737,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             }
 
             for (lint_index, li) in metas.iter_mut().enumerate() {
-                let mut lint_id = lint_id;
-                if let Some(id) = &mut lint_id {
-                    id.set_lint_index(Some(lint_index as u16));
-                }
+                // `Expect` is the only lint level with a `LintExpectationId` that can be created
+                // from an attribute.
+                let lint_id = (level == Level::Expect).then(|| {
+                    self.provider.mk_lint_expectation_id(attr.id(), attr_index, lint_index as u16)
+                });
 
                 let sp = li.span();
                 let meta_item = match li {
@@ -902,7 +913,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         }
 
         if self.lint_added_lints && !is_crate_node {
-            for (id, level_spec) in self.current_specs().iter() {
+            for (id, level_spec) in self.provider.current_specs().iter() {
                 if !id.lint.crate_level_only {
                     continue;
                 }
@@ -988,7 +999,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     }
 
     /// Find the lint level for a lint.
-    pub fn lint_level_spec(&self, lint: &'static Lint) -> LevelSpec {
+    pub fn lint_level_spec(&self, lint: &'static Lint) -> LevelSpec<P::LintExpectationId> {
         self.provider.get_lint_level_spec(lint, self.sess)
     }
 

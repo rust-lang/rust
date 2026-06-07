@@ -920,22 +920,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         };
 
-        let (clock, anchor) = if macos_relative_np {
+        let (clock, style) = if macos_relative_np {
             // `pthread_cond_timedwait_relative_np` always measures time against the
             // monotonic clock, regardless of the condvar clock.
-            (TimeoutClock::Monotonic, TimeoutAnchor::Relative)
+            (TimeoutClock::Monotonic, TimeoutStyle::Relative)
         } else {
             if data.clock == TimeoutClock::RealTime {
                 this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             }
 
-            (data.clock, TimeoutAnchor::Absolute)
+            (data.clock, TimeoutStyle::Absolute)
         };
 
         this.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some((clock, anchor, duration)),
+            Some(this.machine.timeout(clock, style, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),

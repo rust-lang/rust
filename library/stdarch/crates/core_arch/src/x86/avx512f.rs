@@ -15529,17 +15529,17 @@ pub fn _mm512_maskz_cvt_roundps_ph<const ROUNDING: i32>(k: __mmask16, a: __m512)
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).\
 /// Rounding is done according to the imm8\[2:0\] parameter, which can be one of:
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_TO_NEAREST_INT`] : round to nearest
+/// * [`_MM_FROUND_TO_NEG_INF`] : round down
+/// * [`_MM_FROUND_TO_POS_INF`] : round up
+/// * [`_MM_FROUND_TO_ZERO`] : truncate
 /// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_cvt_roundps_ph&expand=1352)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_cvt_roundps_ph<const IMM8: i32>(
     src: __m128i,
@@ -15547,7 +15547,7 @@ pub fn _mm256_mask_cvt_roundps_ph<const IMM8: i32>(
     a: __m256,
 ) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x8();
         let src = src.as_i16x8();
         let r = vcvtps2ph256(a, IMM8, src, k);
@@ -15557,21 +15557,21 @@ pub fn _mm256_mask_cvt_roundps_ph<const IMM8: i32>(
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
 /// Rounding is done according to the imm8\[2:0\] parameter, which can be one of:\
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_TO_NEAREST_INT`] : round to nearest
+/// * [`_MM_FROUND_TO_NEG_INF`] : round down
+/// * [`_MM_FROUND_TO_POS_INF`] : round up
+/// * [`_MM_FROUND_TO_ZERO`] : truncate
 /// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_cvt_roundps_ph&expand=1353)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_cvt_roundps_ph<const IMM8: i32>(k: __mmask8, a: __m256) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x8();
         let r = vcvtps2ph256(a, IMM8, i16x8::ZERO, k);
         transmute(r)
@@ -15580,21 +15580,21 @@ pub fn _mm256_maskz_cvt_roundps_ph<const IMM8: i32>(k: __mmask8, a: __m256) -> _
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).\
 /// Rounding is done according to the imm8\[2:0\] parameter, which can be one of:\
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_TO_NEAREST_INT`] : round to nearest
+/// * [`_MM_FROUND_TO_NEG_INF`] : round down
+/// * [`_MM_FROUND_TO_POS_INF`] : round up
+/// * [`_MM_FROUND_TO_ZERO`] : truncate
 /// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_cvt_roundps_ph&expand=1350)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_cvt_roundps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x4();
         let src = src.as_i16x8();
         let r = vcvtps2ph128(a, IMM8, src, k);
@@ -15604,21 +15604,21 @@ pub fn _mm_mask_cvt_roundps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
 /// Rounding is done according to the imm8\[2:0\] parameter, which can be one of:\
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
+/// * [`_MM_FROUND_TO_NEAREST_INT`] : round to nearest
+/// * [`_MM_FROUND_TO_NEG_INF`] : round down
+/// * [`_MM_FROUND_TO_POS_INF`] : round up
+/// * [`_MM_FROUND_TO_ZERO`] : truncate
 /// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_cvt_roundps_ph&expand=1351)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_cvt_roundps_ph<const IMM8: i32>(k: __mmask8, a: __m128) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x4();
         let r = vcvtps2ph128(a, IMM8, i16x8::ZERO, k);
         transmute(r)
@@ -15722,11 +15722,11 @@ pub fn _mm512_maskz_cvtps_ph<const ROUNDING: i32>(k: __mmask16, a: __m512) -> __
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_cvtps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m256) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x8();
         let src = src.as_i16x8();
         let r = vcvtps2ph256(a, IMM8, src, k);
@@ -15746,11 +15746,11 @@ pub fn _mm256_mask_cvtps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m25
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_cvtps_ph<const IMM8: i32>(k: __mmask8, a: __m256) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x8();
         let r = vcvtps2ph256(a, IMM8, i16x8::ZERO, k);
         transmute(r)
@@ -15769,11 +15769,11 @@ pub fn _mm256_maskz_cvtps_ph<const IMM8: i32>(k: __mmask8, a: __m256) -> __m128i
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_cvtps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x4();
         let src = src.as_i16x8();
         let r = vcvtps2ph128(a, IMM8, src, k);
@@ -15793,11 +15793,11 @@ pub fn _mm_mask_cvtps_ph<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128) 
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 8))]
+#[cfg_attr(test, assert_instr(vcvtps2ph, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_cvtps_ph<const IMM8: i32>(k: __mmask8, a: __m128) -> __m128i {
     unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
+        static_assert_round_mode!(IMM8);
         let a = a.as_f32x4();
         let r = vcvtps2ph128(a, IMM8, i16x8::ZERO, k);
         transmute(r)
@@ -50942,9 +50942,9 @@ mod tests {
     fn test_mm256_mask_cvt_roundps_ph() {
         let a = _mm256_set1_ps(1.);
         let src = _mm_set1_epi16(0);
-        let r = _mm256_mask_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(src, 0, a);
+        let r = _mm256_mask_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0, a);
         assert_eq_m128i(r, src);
-        let r = _mm256_mask_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(src, 0b11111111, a);
+        let r = _mm256_mask_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0b11111111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 4323521613979991040);
         assert_eq_m128i(r, e);
     }
@@ -50952,9 +50952,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     fn test_mm256_maskz_cvt_roundps_ph() {
         let a = _mm256_set1_ps(1.);
-        let r = _mm256_maskz_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(0, a);
+        let r = _mm256_maskz_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(0, a);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm256_maskz_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(0b11111111, a);
+        let r = _mm256_maskz_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(0b11111111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 4323521613979991040);
         assert_eq_m128i(r, e);
     }
@@ -50963,9 +50963,9 @@ mod tests {
     fn test_mm_mask_cvt_roundps_ph() {
         let a = _mm_set1_ps(1.);
         let src = _mm_set1_epi16(0);
-        let r = _mm_mask_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(src, 0, a);
+        let r = _mm_mask_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0, a);
         assert_eq_m128i(r, src);
-        let r = _mm_mask_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(src, 0b00001111, a);
+        let r = _mm_mask_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0b00001111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 0);
         assert_eq_m128i(r, e);
     }
@@ -50973,9 +50973,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     fn test_mm_maskz_cvt_roundps_ph() {
         let a = _mm_set1_ps(1.);
-        let r = _mm_maskz_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(0, a);
+        let r = _mm_maskz_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(0, a);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_cvt_roundps_ph::<_MM_FROUND_NO_EXC>(0b00001111, a);
+        let r = _mm_maskz_cvt_roundps_ph::<_MM_FROUND_CUR_DIRECTION>(0b00001111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 0);
         assert_eq_m128i(r, e);
     }
@@ -51018,9 +51018,9 @@ mod tests {
     fn test_mm256_mask_cvtps_ph() {
         let a = _mm256_set1_ps(1.);
         let src = _mm_set1_epi16(0);
-        let r = _mm256_mask_cvtps_ph::<_MM_FROUND_NO_EXC>(src, 0, a);
+        let r = _mm256_mask_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0, a);
         assert_eq_m128i(r, src);
-        let r = _mm256_mask_cvtps_ph::<_MM_FROUND_NO_EXC>(src, 0b11111111, a);
+        let r = _mm256_mask_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0b11111111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 4323521613979991040);
         assert_eq_m128i(r, e);
     }
@@ -51028,9 +51028,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     fn test_mm256_maskz_cvtps_ph() {
         let a = _mm256_set1_ps(1.);
-        let r = _mm256_maskz_cvtps_ph::<_MM_FROUND_NO_EXC>(0, a);
+        let r = _mm256_maskz_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(0, a);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm256_maskz_cvtps_ph::<_MM_FROUND_NO_EXC>(0b11111111, a);
+        let r = _mm256_maskz_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(0b11111111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 4323521613979991040);
         assert_eq_m128i(r, e);
     }
@@ -51039,9 +51039,9 @@ mod tests {
     fn test_mm_mask_cvtps_ph() {
         let a = _mm_set1_ps(1.);
         let src = _mm_set1_epi16(0);
-        let r = _mm_mask_cvtps_ph::<_MM_FROUND_NO_EXC>(src, 0, a);
+        let r = _mm_mask_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0, a);
         assert_eq_m128i(r, src);
-        let r = _mm_mask_cvtps_ph::<_MM_FROUND_NO_EXC>(src, 0b00001111, a);
+        let r = _mm_mask_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(src, 0b00001111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 0);
         assert_eq_m128i(r, e);
     }
@@ -51049,9 +51049,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     fn test_mm_maskz_cvtps_ph() {
         let a = _mm_set1_ps(1.);
-        let r = _mm_maskz_cvtps_ph::<_MM_FROUND_NO_EXC>(0, a);
+        let r = _mm_maskz_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(0, a);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_cvtps_ph::<_MM_FROUND_NO_EXC>(0b00001111, a);
+        let r = _mm_maskz_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(0b00001111, a);
         let e = _mm_setr_epi64x(4323521613979991040, 0);
         assert_eq_m128i(r, e);
     }
@@ -58246,7 +58246,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_ps() {
         #[repr(align(64))]
         struct Memory {
@@ -58265,7 +58265,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_pd() {
         #[repr(align(64))]
         struct Memory {
@@ -58284,7 +58284,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_si512() {
         #[repr(align(64))]
         struct Memory {

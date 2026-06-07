@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct NoLinkParser;
@@ -10,5 +12,6 @@ impl NoArgsAttributeParser for NoLinkParser {
         Warn(Target::Arm),
         Warn(Target::MacroDef),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoLink;
 }

@@ -1,5 +1,7 @@
 use std::iter;
 
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 use crate::session_diagnostics;
 
@@ -16,6 +18,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
         Warn(Target::Arm),
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
+    const STABILITY: AttributeStability = unstable!(allow_internal_unstable);
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -32,6 +35,7 @@ impl CombineAttributeParser for UnstableFeatureBoundParser {
     const PATH: &[rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
+    const STABILITY: AttributeStability = unstable!(staged_api);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Impl { of_trait: true }),
@@ -43,9 +47,6 @@ impl CombineAttributeParser for UnstableFeatureBoundParser {
         cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        if !cx.features().staged_api() {
-            cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
-        }
         parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
@@ -65,6 +66,10 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
+    );
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -91,7 +96,7 @@ fn parse_unstable(
 
     for param in list.mixed() {
         let param_span = param.span();
-        if let Some(ident) = param.meta_item().and_then(|i| i.path().word()) {
+        if let Some(ident) = param.meta_item_no_args().and_then(|i| i.path().word()) {
             res.push(ident.name);
         } else {
             cx.emit_err(session_diagnostics::ExpectsFeatures {

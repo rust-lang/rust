@@ -16,17 +16,17 @@ LL | #[diagnostic::on_unimplemented(message = "Test {}")]
    |
    = help: you can print empty braces by escaping them
 
-warning: format specifiers are not permitted in diagnostic attributes
-  --> $DIR/broken_format.rs:10:50
-   |
-LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
-   |                                                  ^ remove this format specifier
-
 warning: indexed format arguments are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:10:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
    |                                                 ^ remove this format argument
+
+warning: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/broken_format.rs:10:50
+   |
+LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
+   |                                                  ^ remove this format specifier
 
 warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:15:53

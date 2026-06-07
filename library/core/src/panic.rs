@@ -1,4 +1,4 @@
-//! Panic support in the standard library.
+//! Panic support in core.
 
 #![stable(feature = "core_panic_info", since = "1.41.0")]
 

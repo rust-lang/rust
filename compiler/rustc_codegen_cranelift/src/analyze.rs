@@ -23,14 +23,10 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, '_>) -> IndexVec<Local, SsaKind> {
 
     for bb in fx.mir.basic_blocks.iter() {
         for stmt in bb.statements.iter() {
-            match &stmt.kind {
-                Assign(place_and_rval) => match &place_and_rval.1 {
-                    Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
-                        flag_map[place.local] = SsaKind::NotSsa;
-                    }
-                    _ => {}
-                },
-                _ => {}
+            if let Assign(place_and_rval) = &stmt.kind
+                && let Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) = &place_and_rval.1
+            {
+                flag_map[place.local] = SsaKind::NotSsa;
             }
         }
     }

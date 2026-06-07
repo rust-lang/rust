@@ -1,11 +1,14 @@
+//! API for other crates to parse attributes themselves.
 use std::convert::identity;
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_lint_defs::RegisteredTools;
@@ -228,13 +231,18 @@ impl<'sess> AttributeParser<'sess> {
                 target_span,
                 target,
                 emit_lint: &mut emit_lint,
+                #[cfg(debug_assertions)]
+                has_lint_been_emitted: AtomicBool::new(false),
             },
             attr_span,
             inner_span,
             attr_style,
             parsed_description,
             template,
+            attr_safety: attr_safety.unwrap_or(Safety::Default),
             attr_path,
+            #[cfg(debug_assertions)]
+            has_target_been_checked: false,
         };
         parse_fn(&mut cx, args)
     }
@@ -284,11 +292,6 @@ impl<'sess> AttributeParser<'sess> {
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
-        // We store the attributes we intend to discard at the end of this function in order to
-        // check they are applied to the right target and error out if necessary. In practice, we
-        // end up dropping only derive attributes and derive helpers, both being fully processed
-        // at macro expansion.
-        let mut dropped_attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
@@ -341,15 +344,20 @@ impl<'sess> AttributeParser<'sess> {
 
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let inner_span = lower_span(n.item.span());
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             accept.safety,
                             &mut emit_lint,
                         );
+                        self.check_attribute_stability(&attr_path, attr_span, accept.stability);
+                        if let [part] = parts.as_slice() {
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                        }
 
                         let Some(args) = ArgParser::from_attr_args(
                             args,
@@ -398,20 +406,27 @@ impl<'sess> AttributeParser<'sess> {
                                 target_span,
                                 target,
                                 emit_lint: &mut emit_lint,
+                                #[cfg(debug_assertions)]
+                                has_lint_been_emitted: AtomicBool::new(false),
                             },
                             attr_span,
-                            inner_span: lower_span(n.item.span()),
+                            inner_span,
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
+                            attr_safety: n.item.unsafety,
                             attr_path: attr_path.clone(),
+                            #[cfg(debug_assertions)]
+                            has_target_been_checked: false,
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(accept.finalizer);
 
-                        if !matches!(cx.should_emit, ShouldEmit::Nothing) {
-                            Self::check_target(&accept.allowed_targets, target, &mut cx);
+                        Self::check_target(&accept.allowed_targets, "", &mut cx);
+                        #[cfg(debug_assertions)]
+                        if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
+                            cx.shared.cx.check_args_used(&attr, &args)
                         }
                     } else {
                         let attr = AttrItem {
@@ -425,7 +440,7 @@ impl<'sess> AttributeParser<'sess> {
 
                         self.check_attribute_safety(
                             &attr_path,
-                            lower_span(n.item.span()),
+                            inner_span,
                             n.item.unsafety,
                             AttributeSafety::Normal,
                             &mut emit_lint,
@@ -434,23 +449,11 @@ impl<'sess> AttributeParser<'sess> {
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
                             && target == Target::Crate
                         {
-                            self.check_invalid_crate_level_attr_item(&attr, n.item.span());
+                            self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
 
-                        let attr = Attribute::Unparsed(Box::new(attr));
-
-                        if self.tools.is_some_and(|tools| {
-                            tools.iter().any(|tool| tool.name == parts[0])
-                            // FIXME: this can be removed once #152369 has been merged.
-                            // https://github.com/rust-lang/rust/pull/152369
-                            || [sym::allow, sym::deny, sym::expect, sym::forbid, sym::warn]
-                                .contains(&parts[0])
-                        }) {
-                            attributes.push(attr);
-                        } else {
-                            dropped_attributes.push(attr);
-                        }
-                    }
+                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                    };
                 }
             }
         }
@@ -458,7 +461,14 @@ impl<'sess> AttributeParser<'sess> {
         early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
         for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
-                shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
+                shared: SharedContext {
+                    cx: self,
+                    target_span,
+                    target,
+                    emit_lint: &mut emit_lint,
+                    #[cfg(debug_assertions)]
+                    has_lint_been_emitted: AtomicBool::new(false),
+                },
                 all_attrs: &attr_paths,
             }) {
                 attributes.push(Attribute::Parsed(attr));
@@ -466,10 +476,30 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
-            self.check_invalid_where_predicate_attrs(attributes.iter().chain(&dropped_attributes));
+            self.check_invalid_where_predicate_attrs(attributes.iter());
         }
 
         attributes
+    }
+
+    #[cfg(debug_assertions)]
+    /// Checks whether all `ArgParser`s were observed by an attribute parser at least once
+    /// This check exists because otherwise it is too easy to accidentally ignore the arguments of an attribute
+    fn check_args_used(&self, attr: &ast::Attribute, args: &ArgParser) {
+        if let ArgParser::List(items) = args {
+            for item in items.mixed() {
+                if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
+                    if !item.are_args_checked() {
+                        self.dcx().span_delayed_bug(
+                            item.span(),
+                            "attribute args were not properly checked",
+                        );
+                        return;
+                    }
+                    self.check_args_used(attr, item.args());
+                }
+            }
+        }
     }
 
     /// Returns whether there is a parser for an attribute with this name

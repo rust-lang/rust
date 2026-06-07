@@ -283,7 +283,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         .map(|obligation| obligation.as_goal()),
                 );
             }
-            mode @ (ty::TypingMode::PostBorrowckAnalysis { .. } | ty::TypingMode::PostAnalysis) => {
+            mode @ (ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen) => {
                 bug!("insert hidden type in {mode:?}")
             }
         }

@@ -1,0 +1,217 @@
+// MIR for `build_aggregate::{closure#0}` 0 coroutine_drop
+
+fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -> () {
+    debug _task_context => _2;
+    debug a => ((*_1).0: u32);
+    debug b => ((*_1).1: u32);
+    debug c => ((*_1).2: u32);
+    debug d => ((*_1).3: u32);
+    let mut _0: ();
+    let mut _2: &mut std::task::Context<'_>;
+    let _3: u32;
+    let mut _8: u32;
+    let mut _9: {async fn body of add()};
+    let mut _10: {async fn body of add()};
+    let mut _11: u32;
+    let mut _12: u32;
+    let mut _14: ();
+    let _15: ();
+    let mut _16: std::task::Poll<u32>;
+    let mut _17: std::pin::Pin<&mut {async fn body of add()}>;
+    let mut _18: &mut {async fn body of add()};
+    let mut _19: &mut {async fn body of add()};
+    let mut _20: &mut std::task::Context<'_>;
+    let mut _21: &mut std::task::Context<'_>;
+    let mut _22: &mut std::task::Context<'_>;
+    let mut _23: isize;
+    let mut _25: !;
+    let mut _26: &mut std::task::Context<'_>;
+    let mut _27: ();
+    let mut _28: u32;
+    let mut _29: {async fn body of add()};
+    let mut _30: {async fn body of add()};
+    let mut _31: u32;
+    let mut _32: u32;
+    let _34: ();
+    let mut _35: std::task::Poll<u32>;
+    let mut _36: std::pin::Pin<&mut {async fn body of add()}>;
+    let mut _37: &mut {async fn body of add()};
+    let mut _38: &mut {async fn body of add()};
+    let mut _39: &mut std::task::Context<'_>;
+    let mut _40: &mut std::task::Context<'_>;
+    let mut _41: &mut std::task::Context<'_>;
+    let mut _42: isize;
+    let mut _44: !;
+    let mut _45: &mut std::task::Context<'_>;
+    let mut _46: ();
+    let mut _47: u32;
+    let mut _48: u32;
+    let mut _49: u32;
+    let mut _50: u32;
+    scope 1 {
+        debug a => _3;
+        let _4: u32;
+        scope 2 {
+            debug b => _4;
+            let _5: u32;
+            scope 3 {
+                debug c => (((*_1) as variant#3).0: u32);
+                let _6: u32;
+                scope 4 {
+                    debug d => (((*_1) as variant#3).1: u32);
+                    let _7: (u32, u32);
+                    let mut _13: {async fn body of add()};
+                    let mut _33: {async fn body of add()};
+                    scope 5 {
+                        debug x => _7;
+                    }
+                    scope 6 {
+                        debug __awaitee => (((*_1) as variant#3).2: {async fn body of add()});
+                        let _24: u32;
+                        scope 7 {
+                            debug result => _24;
+                        }
+                    }
+                    scope 8 {
+                        debug __awaitee => (((*_1) as variant#4).1: {async fn body of add()});
+                        let _43: u32;
+                        scope 9 {
+                            debug result => _43;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _50 = discriminant((*_1));
+        switchInt(move _50) -> [0: bb16, 3: bb19, 4: bb20, otherwise: bb21];
+    }
+
+    bb1: {
+        StorageDead(_46);
+        StorageDead(_45);
+        drop((((*_1) as variant#4).1: {async fn body of add()})) -> [return: bb2, unwind: bb10];
+    }
+
+    bb2: {
+        nop;
+        StorageDead(_28);
+        nop;
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_29);
+        goto -> bb6;
+    }
+
+    bb4: {
+        StorageDead(_27);
+        StorageDead(_26);
+        drop((((*_1) as variant#3).2: {async fn body of add()})) -> [return: bb5, unwind: bb12];
+    }
+
+    bb5: {
+        nop;
+        nop;
+        goto -> bb6;
+    }
+
+    bb6: {
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_9);
+        StorageDead(_7);
+        nop;
+        nop;
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb17;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+
+    bb10 (cleanup): {
+        nop;
+        StorageDead(_28);
+        nop;
+        goto -> bb11;
+    }
+
+    bb11 (cleanup): {
+        StorageDead(_29);
+        goto -> bb13;
+    }
+
+    bb12 (cleanup): {
+        nop;
+        nop;
+        goto -> bb13;
+    }
+
+    bb13 (cleanup): {
+        goto -> bb14;
+    }
+
+    bb14 (cleanup): {
+        StorageDead(_9);
+        StorageDead(_7);
+        nop;
+        nop;
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb9;
+    }
+
+    bb15: {
+        return;
+    }
+
+    bb16: {
+        goto -> bb18;
+    }
+
+    bb17: {
+        goto -> bb8;
+    }
+
+    bb18: {
+        goto -> bb15;
+    }
+
+    bb19: {
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_7);
+        StorageLive(_9);
+        StorageLive(_26);
+        StorageLive(_27);
+        goto -> bb4;
+    }
+
+    bb20: {
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_7);
+        StorageLive(_9);
+        StorageLive(_28);
+        StorageLive(_29);
+        StorageLive(_45);
+        StorageLive(_46);
+        goto -> bb1;
+    }
+
+    bb21: {
+        return;
+    }
+}

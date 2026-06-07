@@ -5,6 +5,8 @@
 
 #![macro_use(my_macro)]
 //~^ ERROR arguments to `macro_use` are not allowed here
+//~| WARN cannot be used on
+//~| WARN previously accepted
 
 #[macro_use(my_macro)]
 //~^ ERROR arguments to `macro_use` are not allowed here

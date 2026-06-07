@@ -250,7 +250,7 @@ impl VaList<'_> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Clone for VaList<'f> {
+const impl<'f> Clone for VaList<'f> {
     /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
     ///
     /// Corresponds to `va_copy` in C.
@@ -265,7 +265,7 @@ impl<'f> const Clone for VaList<'f> {
 }
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-impl<'f> const Drop for VaList<'f> {
+const impl<'f> Drop for VaList<'f> {
     /// Drop the [`VaList`].
     ///
     /// Corresponds to `va_end` in C.
@@ -277,26 +277,6 @@ impl<'f> const Drop for VaList<'f> {
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
     }
-}
-
-mod sealed {
-    pub trait Sealed {}
-
-    impl Sealed for i16 {}
-    impl Sealed for i32 {}
-    impl Sealed for i64 {}
-    impl Sealed for isize {}
-
-    impl Sealed for u16 {}
-    impl Sealed for u32 {}
-    impl Sealed for u64 {}
-    impl Sealed for usize {}
-
-    impl Sealed for f32 {}
-    impl Sealed for f64 {}
-
-    impl<T> Sealed for *mut T {}
-    impl<T> Sealed for *const T {}
 }
 
 /// Types that are valid to read using [`VaList::next_arg`].
@@ -333,7 +313,7 @@ mod sealed {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe: Copy + sealed::Sealed {}
+pub impl(self) unsafe trait VaArgSafe: Copy {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {

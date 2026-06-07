@@ -561,7 +561,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
+            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
         } else {
             false
         }
@@ -774,7 +774,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
                                 self.tcx.dcx().emit_err(UnableToConstructConstantValue {
-                                    span: self.tcx.def_span(unevaluated.def),
+                                    span: self.tcx.def_span(unevaluated.kind.def_id()),
                                     unevaluated,
                                 });
                             }

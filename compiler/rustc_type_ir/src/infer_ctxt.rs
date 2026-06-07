@@ -63,6 +63,7 @@ impl TypingModeErasedStatus for MayBeErased {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
+#[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
 pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
@@ -119,15 +120,18 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
     PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
-    /// After analysis, mostly during codegen and MIR optimizations, we're able to
+    /// After analysis, mostly during MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
     /// such details to the user.
     ///
-    /// There are some exceptions to this as for example `layout_of` and const-evaluation
-    /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
-    /// some information about the underlying type to users, but not the type itself.
+    /// However, we restrict `layout_of` and const-evaluation from exposing some information like
+    /// coroutine layout which requires optimized MIR.
     PostAnalysis,
+
+    /// During codegen and MIR optimizations, we're able to reveal all opaque types and compute all
+    /// layouts.
+    Codegen,
 
     /// The typing modes above (except coherence) only differ in how they handle
     ///
@@ -179,6 +183,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types: r },
             ) => l == r,
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
+            (TypingMode::Codegen, TypingMode::Codegen) => true,
             (
                 TypingMode::ErasedNotCoherence(MayBeErased),
                 TypingMode::ErasedNotCoherence(MayBeErased),
@@ -189,6 +194,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis
+                | TypingMode::Codegen
                 | TypingMode::ErasedNotCoherence(MayBeErased),
                 _,
             ) => false,
@@ -211,6 +217,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis
+            | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_) => false,
         }
     }
@@ -227,7 +234,8 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => false,
         }
     }
 }
@@ -250,6 +258,7 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types }
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+            TypingMode::Codegen => TypingMode::Codegen,
             TypingMode::ErasedNotCoherence(MayBeErased) => panic!(
                 "Called `assert_not_erased` from a place that can be called by the trait solver in `TypingMode::ErasedNotCoherence`. `TypingMode` is `ErasedNotCoherence` in a place where that should be impossible"
             ),
@@ -314,6 +323,7 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types }
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+            TypingMode::Codegen => TypingMode::Codegen,
         }
     }
 }
@@ -535,9 +545,8 @@ where
         TypingMode::Coherence
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }
-        | TypingMode::PostBorrowckAnalysis { .. } => {
-            infcx.cx().features().feature_bound_holds_in_crate(symbol)
-        }
-        TypingMode::PostAnalysis => true,
+        | TypingMode::PostBorrowckAnalysis { .. }
+        | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
+        TypingMode::Codegen => true,
     }
 }

@@ -881,13 +881,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             c1, c2
                         );
 
-                        use rustc_hir::def::DefKind;
                         match (c1.kind(), c2.kind()) {
                             (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
-                                if a.def == b.def
+                                if a.kind == b.kind
                                     && matches!(
-                                        tcx.def_kind(a.def),
-                                        DefKind::AssocConst { .. }
+                                        a.kind,
+                                        ty::UnevaluatedConstKind::Projection { .. }
+                                            | ty::UnevaluatedConstKind::Inherent { .. }
                                     ) =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
@@ -897,8 +897,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
-                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
+                                        ty::AliasTerm::from(a),
+                                        ty::AliasTerm::from(b),
                                     )
                                 {
                                     return self.evaluate_predicates_recursively(
@@ -989,7 +989,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         ty::ConstKind::Value(cv) => cv.ty,
                         ty::ConstKind::Unevaluated(uv) => self
                             .tcx()
-                            .type_of(uv.def)
+                            .type_of(uv.kind.def_id())
                             .instantiate(self.tcx(), uv.args)
                             .skip_norm_wip(),
                         // FIXME(generic_const_exprs): See comment in `fulfill.rs`
@@ -1488,7 +1488,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => return Ok(()),
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Ok(()),
         }
 
         debug!("is_knowable()");
@@ -1547,7 +1548,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             //
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
-            TypingMode::PostAnalysis => true,
+            TypingMode::PostAnalysis | TypingMode::Codegen => true,
         }
     }
 
@@ -2914,6 +2915,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             TypingMode::Coherence
             | TypingMode::PostAnalysis
+            | TypingMode::Codegen
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
         }

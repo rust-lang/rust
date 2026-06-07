@@ -2,14 +2,13 @@
 #![unstable(feature = "motor_ext", issue = "147456")]
 
 use crate::ffi::{OsStr, OsString};
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, IntoInner};
 
 /// Motor OS–specific extensions to [`OsString`].
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
-pub trait OsStringExt: Sealed {
+pub impl(self) trait OsStringExt {
     /// Yields the underlying UTF-8 string of this [`OsString`].
     ///
     /// OS strings on Motor OS are guaranteed to be UTF-8, so are just strings.
@@ -27,7 +26,7 @@ impl OsStringExt for OsString {
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
-pub trait OsStrExt: Sealed {
+pub impl(self) trait OsStrExt {
     /// Gets the underlying UTF-8 string view of the [`OsStr`] slice.
     ///
     /// OS strings on Motor OS are guaranteed to be UTF-8, so are just strings.

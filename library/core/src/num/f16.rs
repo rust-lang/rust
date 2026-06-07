@@ -35,6 +35,7 @@ pub mod consts {
     pub const TAU: f16 = 6.28318530717958647692528676655900577_f16;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f16", issue = "116909")]
     pub const GOLDEN_RATIO: f16 = 1.618033988749894848204586834365638118_f16;
 
@@ -973,7 +974,7 @@ impl f16 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f16) -> f16 {
-        const HI: f16 = f16::MAX / 2.;
+        const HI: f16 = f16::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -981,9 +982,9 @@ impl f16 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 

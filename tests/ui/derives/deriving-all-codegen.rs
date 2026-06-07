@@ -235,3 +235,21 @@ struct FooCopyAndClone(i32);
 #[derive(Clone)]
 #[derive(Copy)]
 struct FooCloneAndCopy(i32);
+
+#[derive(PartialOrd, Ord)]
+struct FooPartialOrdOrd(i32);
+
+#[derive(Ord, PartialOrd)]
+struct FooOrdPartialOrd(i32);
+
+#[derive(Ord)]
+#[derive(PartialOrd)]
+struct FooOrdBeforePartialOrd(i32);
+
+// FIXME: this case should also have a trivial `PartialOrd` impl.
+#[derive(PartialOrd)]
+#[derive(Ord)]
+struct FooPartialOrdBeforeOrd(i32);
+
+#[derive(PartialOrd, Ord)]
+struct UnitStruct;

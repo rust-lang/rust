@@ -2,7 +2,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
+use rustc_feature::Features;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
@@ -10,7 +10,7 @@ use rustc_session::errors::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
-use crate::errors;
+use crate::diagnostics;
 
 /// The common case.
 macro_rules! gate {
@@ -133,7 +133,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 .collect();
 
             if !const_param_spans.is_empty() {
-                self.sess.dcx().emit_err(errors::ForbiddenConstParam { const_param_spans });
+                self.sess.dcx().emit_err(diagnostics::ForbiddenConstParam { const_param_spans });
             }
         }
 
@@ -144,9 +144,9 @@ impl<'a> PostExpansionVisitor<'a> {
                     // Issue #149695
                     // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
                     // which will cause ICEs when errors of the items visit unlowered parents.
-                    self.sess.dcx().emit_fatal(errors::ForbiddenBound { spans });
+                    self.sess.dcx().emit_fatal(diagnostics::ForbiddenBound { spans });
                 } else {
-                    self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                    self.sess.dcx().emit_err(diagnostics::ForbiddenBound { spans });
                 }
             }
         }
@@ -155,15 +155,6 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
-        // Check feature gates for built-in attributes.
-        if let Some(BuiltinAttribute {
-            gate: AttributeGate::Gated { feature, message, check, notes, .. },
-            ..
-        }) = attr_info
-        {
-            gate_alt!(self, check(self.features), *feature, attr.span, *message, *notes);
-        }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
             for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
@@ -505,11 +496,13 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(move_expr, "`move(expr)` syntax is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
+    gate_all!(mut_restriction, "`mut` restrictions are experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
+    gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
     gate_all!(view_types, "view types are experimental");
@@ -560,7 +553,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     // Under no circumstances do we want to advertise the feature name to users!
     if !visitor.features.negative_bounds() {
         for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
-            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
+            sess.dcx().emit_err(diagnostics::NegativeBoundUnsupported { span });
         }
     }
 
@@ -577,7 +570,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                     .emit();
             } else {
                 let suggestion = span.shrink_to_hi();
-                sess.dcx().emit_err(errors::MatchArmWithNoBody { span, suggestion });
+                sess.dcx().emit_err(diagnostics::MatchArmWithNoBody { span, suggestion });
             }
         }
     }
@@ -652,7 +645,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
         AttributeParser::parse_limited(sess, &krate.attrs, &[sym::feature])
     {
         // `feature(...)` used on non-nightly. This is definitely an error.
-        let mut err = errors::FeatureOnNonNightly {
+        let mut err = diagnostics::FeatureOnNonNightly {
             span: first_span,
             channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
             stable_features: vec![],
@@ -669,7 +662,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
                 .map(|feat| feat.stable_since)
                 .flatten();
             if let Some(since) = stable_since {
-                err.stable_features.push(errors::StableFeature { name, since });
+                err.stable_features.push(diagnostics::StableFeature { name, since });
             } else {
                 all_stable = false;
             }
@@ -695,7 +688,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
             && let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
         {
             let spans = vec![f1_span, f2_span];
-            sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
+            sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
+                spans,
+                f1: f1_name,
+                f2: f2_name,
+            });
         }
     }
 }
@@ -716,7 +713,11 @@ fn check_dependent_features(sess: &Session, features: &Features) {
                 .map(|s| format!("`{}`", s.as_str()))
                 .intersperse(String::from(", "))
                 .collect();
-            sess.dcx().emit_err(errors::MissingDependentFeatures { parent_span, parent, missing });
+            sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
+                parent_span,
+                parent,
+                missing,
+            });
         }
     }
 }
@@ -734,7 +735,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(errors::IncompatibleFeatures {
+        sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),
             f2: sym::generic_const_exprs,
@@ -756,7 +757,7 @@ fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(errors::MissingDependentFeatures {
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
             parent_span: gca_span,
             parent: sym::generic_const_args,
             missing: String::from("-Znext-solver=globally"),

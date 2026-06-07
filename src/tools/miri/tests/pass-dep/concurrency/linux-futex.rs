@@ -78,7 +78,7 @@ fn wait_timeout() {
 
     let futex: i32 = 123;
 
-    // Wait for 200ms, with nobody waking us up early.
+    // Wait for 100ms, with nobody waking us up early.
     unsafe {
         assert_eq!(
             libc::syscall(
@@ -86,17 +86,19 @@ fn wait_timeout() {
                 addr_of!(futex),
                 libc::FUTEX_WAIT,
                 123,
-                &libc::timespec { tv_sec: 0, tv_nsec: 200_000_000 },
+                &libc::timespec { tv_sec: 0, tv_nsec: 100_000_000 },
             ),
             -1,
         );
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn wait_absolute_timeout() {
+    static mut FUTEX: i32 = 123;
+
     let start = Instant::now();
 
     // Get the current monotonic timestamp as timespec.
@@ -106,21 +108,19 @@ fn wait_absolute_timeout() {
         now.assume_init()
     };
 
-    // Add 200ms.
-    timeout.tv_nsec += 200_000_000;
+    // Add 100ms.
+    timeout.tv_nsec += 100_000_000;
     if timeout.tv_nsec > 1_000_000_000 {
         timeout.tv_nsec -= 1_000_000_000;
         timeout.tv_sec += 1;
     }
 
-    let futex: i32 = 123;
-
-    // Wait for 200ms from now, with nobody waking us up early.
+    // Wait for 100ms from now, with nobody waking us up early.
     unsafe {
         assert_eq!(
             libc::syscall(
                 libc::SYS_futex,
-                addr_of!(futex),
+                addr_of!(FUTEX),
                 libc::FUTEX_WAIT_BITSET,
                 123,
                 &timeout,
@@ -132,16 +132,14 @@ fn wait_absolute_timeout() {
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn wait_wake() {
-    let start = Instant::now();
-
     static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(200));
+        thread::sleep(Duration::from_millis(100));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -154,6 +152,8 @@ fn wait_wake() {
             );
         }
     });
+
+    let start = Instant::now();
 
     unsafe {
         assert_eq!(
@@ -168,19 +168,15 @@ fn wait_wake() {
         );
     }
 
-    // When running this in stress-gc mode, things can take quite long.
-    // So the timeout is 3000 ms.
-    assert!((200..3000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 
 fn wait_wake_bitset() {
-    let start = Instant::now();
-
     static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(200));
+        thread::sleep(Duration::from_millis(100));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -195,7 +191,7 @@ fn wait_wake_bitset() {
                 0, // Didn't match any thread.
             );
         }
-        thread::sleep(Duration::from_millis(200));
+        thread::sleep(Duration::from_millis(100));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -212,6 +208,8 @@ fn wait_wake_bitset() {
         }
     });
 
+    let start = Instant::now();
+
     unsafe {
         assert_eq!(
             libc::syscall(
@@ -227,7 +225,7 @@ fn wait_wake_bitset() {
         );
     }
 
-    assert!((400..1000).contains(&start.elapsed().as_millis()));
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 

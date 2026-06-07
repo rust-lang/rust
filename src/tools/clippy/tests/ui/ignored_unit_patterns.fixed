@@ -13,8 +13,8 @@ fn foo() -> Result<(), ()> {
 
 fn main() {
     match foo() {
-        Ok(()) => {},  //~ ERROR: matching over `()` is more explicit
-        Err(()) => {}, //~ ERROR: matching over `()` is more explicit
+        Ok(()) => {},  //~ ignored_unit_patterns
+        Err(()) => {}, //~ ignored_unit_patterns
     }
     if let Ok(()) = foo() {}
     //~^ ERROR: matching over `()` is more explicit

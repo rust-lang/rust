@@ -7,15 +7,16 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
+use rustc_hir_analysis::delegation::opt_get_delegation_info;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -27,6 +28,8 @@ use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::errors;
 use crate::method::TreatNotYetDefinedOpaques;
+use crate::method::confirm::ConfirmContext;
+use crate::method::probe::{IsSuggestion, Mode};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -202,6 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | CanonAbi::Rust
             | CanonAbi::RustCold
             | CanonAbi::RustPreserveNone
+            | CanonAbi::RustTail
             | CanonAbi::Swift
             | CanonAbi::Arm(_)
             | CanonAbi::X86(_) => {}
@@ -591,16 +595,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
 
-        self.check_argument_types(
-            call_expr.span,
-            call_expr,
-            fn_sig.inputs(),
-            fn_sig.output(),
-            expected,
-            arg_exprs,
-            fn_sig.c_variadic(),
-            TupleArgumentsFlag::DontTupleArguments,
-            def_id,
+        self.check_argument_types_maybe_method_like(
+            &fn_sig, call_expr, arg_exprs, expected, def_id,
         );
 
         if fn_sig.abi() == rustc_abi::ExternAbi::RustCall {
@@ -618,6 +614,110 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         fn_sig.output()
+    }
+
+    /// Performs arguments check with an additional routine of adjusting the first argument,
+    /// so it corresponds to the first parameter of the function. We reuse adjustments
+    /// that are obtained from `probe_for_name`, where the first argument pretends to be
+    /// a receiver like in a method call. At this point this routine is used for delegations,
+    /// as from this moment we always generate a call (earlier method calls were generated),
+    /// so we can both propagate parent generics and get benefits from adjustments from method call.
+    fn check_argument_types_maybe_method_like(
+        &self,
+        fn_sig: &FnSig<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+        expected: Expectation<'tcx>,
+        def_id: Option<DefId>,
+    ) {
+        let do_check = || {
+            self.check_argument_types(
+                call_expr.span,
+                call_expr,
+                fn_sig.inputs(),
+                fn_sig.output(),
+                expected,
+                arg_exprs,
+                fn_sig.c_variadic(),
+                TupleArgumentsFlag::DontTupleArguments,
+                def_id,
+            );
+        };
+
+        let Some(scope) = self.get_scope_for_method_call_adjustments(call_expr, arg_exprs) else {
+            return do_check();
+        };
+
+        let first_expr = &arg_exprs[0];
+        let first_arg_type = self.check_expr(first_expr);
+
+        // Reuse method probing that is used during method call, as all this code pretends that
+        // we generated method call.
+        let pick = self.probe_for_name(
+            Mode::MethodCall,
+            Ident::dummy(),
+            None,
+            IsSuggestion(false),
+            first_arg_type,
+            call_expr.hir_id,
+            scope,
+        );
+
+        let Ok(ref pick) = pick else { return do_check() };
+
+        // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
+        // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
+        let first_arg_type = self
+            .typeck_results
+            .borrow_mut()
+            .node_types_mut()
+            .insert(first_expr.hir_id, pick.self_ty)
+            .expect("must be set");
+
+        do_check();
+
+        let mut results = self.typeck_results.borrow_mut();
+
+        // Remove any added adjustments for `first_expr` during `do_check` and replace them with ours.
+        let mut adjustments = results.adjustments_mut();
+        let adjustments = adjustments.entry(first_expr.hir_id).or_default();
+
+        let mut ctx = ConfirmContext::new(self, first_expr.span, first_expr, first_expr);
+        *adjustments = ctx.create_ty_adjustments_from_pick(first_arg_type, pick).1;
+
+        // Restore original first provided arg type.
+        results.node_types_mut().insert(first_expr.hir_id, first_arg_type);
+    }
+
+    /// Gets scope for method-call like adjustments for the first argument of the call.
+    /// Now only delegations are processed this way.
+    fn get_scope_for_method_call_adjustments(
+        &self,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        arg_exprs: &'tcx [hir::Expr<'tcx>],
+    ) -> Option<ProbeScope> {
+        // Check that we are inside delegation and processing its call. First, we check that
+        // the parent of call expr. is delegation and then make sure that it is compiler-generated
+        // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
+        // see tests\ui\delegation\impl-reuse-pass.rs:237).
+        let parent_def = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
+        let Some(info) = opt_get_delegation_info(self.tcx, parent_def) else { return None };
+
+        if call_expr.hir_id != info.call_expr_id {
+            return None;
+        };
+
+        let Some(path_res_id) = info.call_path_res else { return None };
+
+        // Check that delegation has first provided arg and that the call path
+        // resolves to a trait method (inherent methods are not yet supported).
+        if arg_exprs.is_empty()
+            || !self.tcx.opt_associated_item(path_res_id).is_some_and(|i| i.is_method())
+        {
+            return None;
+        }
+
+        Some(ProbeScope::Single(path_res_id))
     }
 
     /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
@@ -746,7 +846,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut path = None;
         let mut err = self.dcx().create_err(errors::InvalidCallee {
             span: callee_expr.span,
-            ty: callee_ty,
             found: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
                 None => format!("`{}`", self.tcx.short_string(callee_ty, &mut path)),
@@ -850,7 +949,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(span) = self.tcx.hir_res_span(def) {
-            let callee_ty = callee_ty.to_string();
             let label = match (unit_variant, inner_callee_path) {
                 (Some((_, kind, path)), _) => {
                     err.arg("kind", kind);
@@ -860,6 +958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (_, Some(hir::QPath::Resolved(_, path))) => {
                     self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(|p| {
                         err.arg("func", p);
+                        err.arg("ty", callee_ty);
                         msg!("`{$func}` defined here returns `{$ty}`")
                     })
                 }
@@ -869,6 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
                             err.arg("local_name", self.tcx.hir_name(hir_id));
+                            err.arg("ty", callee_ty);
                             Some(msg!("`{$local_name}` has type `{$ty}`"))
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
@@ -876,7 +976,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Some(msg!("`{$path}` defined here"))
                         }
                         _ => {
-                            err.arg("path", callee_ty);
+                            err.arg("path", callee_ty.to_string());
                             Some(msg!("`{$path}` defined here"))
                         }
                     }

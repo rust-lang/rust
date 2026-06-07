@@ -8,7 +8,7 @@
 //! * We use `tt` for proc-macro `TokenStream` server, it is easier to manipulate and interact with
 //!   RA than `proc-macro2` token stream.
 
-#![cfg(feature = "sysroot-abi")]
+#![cfg(feature = "in-rust-tree")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
 #![expect(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
 #![allow(unused_features, unused_crate_dependencies)]

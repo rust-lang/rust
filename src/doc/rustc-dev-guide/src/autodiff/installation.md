@@ -13,18 +13,13 @@ Please open an issue if you want to help enabling automatic builds for your pref
 
 ## Installation guide
 
-If you want to use `std::autodiff` and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component.
-In the future, rustup will be able to do it for you.
-For now, you'll have to manually download and copy it.
+If you want to use `std::autodiff` on Linux or Windows and don't plan to contribute PR's to the project, then we recommend to just use your existing nightly installation and download the missing component. Please run:
 
-1) On our github repository, find the last merged PR: [`Repo`]
-2) Scroll down to the lower end of the PR, where you'll find a rust-bors message saying `Test successful` with a `CI` link.
-3) Click on the `CI` link, and grep for your target. E.g. `dist-x86_64-linux` or `dist-aarch64-llvm-mingw` and click `Load summary`.
-4) Under the `CI artifacts` section, find the `enzyme-nightly` artifact, download, and unpack it.
-5) Copy the artifact (libEnzyme-22.so for linux, libEnzyme-22.dylib for apple, etc.), which should be in a folder named `enzyme-preview`, to your rust toolchain directory. E.g. for linux: `cp  ~/Downloads/enzyme-nightly-x86_64-unknown-linux-gnu/enzyme-preview/lib/rustlib/x86_64-unknown-linux-gnu/lib/libEnzyme-22.so ~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/lib`
+```console
+rustup +nightly component add enzyme
+```
 
-Apple support was temporarily reverted, due to downstream breakages.
-Please (currently) build it from source.
+Apple support was temporarily reverted, due to downstream breakages. Please build it from source till we can re-enable it.
 
 ## Installation guide for Nix user.
 

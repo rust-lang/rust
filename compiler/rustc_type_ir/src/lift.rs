@@ -19,3 +19,9 @@ pub trait Lift<I>: std::fmt::Debug {
     type Lifted: std::fmt::Debug;
     fn lift_to_interner(self, cx: I) -> Self::Lifted;
 }
+
+impl<I> Lift<I> for () {
+    type Lifted = ();
+
+    fn lift_to_interner(self, _: I) -> Self::Lifted {}
+}

@@ -178,7 +178,7 @@ static Error writeFile(StringRef Filename, StringRef Data) {
 
 // This is the first of many steps in creating a binary using llvm offload,
 // to run code on the gpu. Concrete, it replaces the following binary use:
-// clang-offload-packager -o host.out
+// clang-offload-packager -o device.bin
 //  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
 // The input module is the rust code compiled for a gpu target like amdgpu.
 // Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
@@ -388,6 +388,7 @@ enum class LLVMRustAttributeKind {
   SanitizeRealtimeNonblocking = 47,
   SanitizeRealtimeBlocking = 48,
   Convergent = 49,
+  NoFree = 50,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -486,6 +487,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::SanitizeRealtimeBlocking;
   case LLVMRustAttributeKind::Convergent:
     return Attribute::Convergent;
+  case LLVMRustAttributeKind::NoFree:
+    return Attribute::NoFree;
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
@@ -1196,15 +1199,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
       fromRust(Flags), unwrapDI<DIType>(Ty)));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateEnumerator(LLVMDIBuilderRef Builder, const char *Name,
-                                  size_t NameLen, const uint64_t Value[2],
-                                  unsigned SizeInBits, bool IsUnsigned) {
-  return wrap(unwrap(Builder)->createEnumerator(
-      StringRef(Name, NameLen),
-      APSInt(APInt(SizeInBits, ArrayRef<uint64_t>(Value, 2)), IsUnsigned)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(

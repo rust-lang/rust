@@ -1142,7 +1142,9 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
-    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    /// # Errors
+    ///
+    /// Returns the original `Box<[T]>` in the `Err` variant if `self.len()` does not equal `N`.
     ///
     /// # Examples
     ///
@@ -1155,16 +1157,16 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
-    pub fn into_array<const N: usize>(self) -> Option<Box<[T; N], A>> {
+    pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);
             let ptr = ptr as *mut [T; N];
 
             // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
             let me = unsafe { Box::from_raw_in(ptr, alloc) };
-            Some(me)
+            Ok(me)
         } else {
-            None
+            Err(self)
         }
     }
 }

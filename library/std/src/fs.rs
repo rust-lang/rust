@@ -44,7 +44,6 @@ mod tests;
 use crate::ffi::OsString;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
@@ -815,17 +814,16 @@ impl File {
 
     /// Acquire an exclusive lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires an exclusive lock; no other file handle to this file, in this or any other
+    /// This acquires an exclusive lock. No *other* file handle to this file, in this or any other
     /// process, may acquire another lock.
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
+    /// is unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
-    ///
-    /// If this file handle/descriptor, or a clone of it, already holds a lock the exact behavior
-    /// is unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then an exclusive lock is held.
     ///
     /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
@@ -869,17 +867,17 @@ impl File {
 
     /// Acquire a shared (non-exclusive) lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires a shared lock; more than one file handle, in this or any other process, may
-    /// hold a shared lock, but none may hold an exclusive lock at the same time.
+    /// This acquires a shared lock. More than one file handle to this file, in this or any other
+    /// process, may hold a shared lock, but no *other* file handle may hold an exclusive lock at
+    /// the same time.
+    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns, then a shared lock is held.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
-    ///
-    /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
-    /// is unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -1265,6 +1263,7 @@ impl File {
     #[doc(alias = "futimens")]
     #[doc(alias = "futimes")]
     #[doc(alias = "SetFileTime")]
+    #[doc(alias = "filetime")]
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         self.inner.set_times(times.0)
     }
@@ -1597,6 +1596,25 @@ impl Dir {
         self.inner
             .open_file(path.as_ref(), &OpenOptions::new().read(true).0)
             .map(|f| File { inner: f })
+    }
+
+    /// Queries metadata about the underlying directory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.inner.metadata().map(Metadata)
     }
 }
 
@@ -2147,6 +2165,12 @@ impl fmt::Debug for Metadata {
     }
 }
 
+impl IntoInner<fs_imp::FileAttr> for Metadata {
+    fn into_inner(self) -> fs_imp::FileAttr {
+        self.0
+    }
+}
+
 impl AsInner<fs_imp::FileAttr> for Metadata {
     #[inline]
     fn as_inner(&self) -> &fs_imp::FileAttr {
@@ -2189,10 +2213,6 @@ impl AsInnerMut<fs_imp::FileTimes> for FileTimes {
         &mut self.0
     }
 }
-
-// For implementing OS extension traits in `std::os`
-#[stable(feature = "file_set_times", since = "1.75.0")]
-impl Sealed for FileTimes {}
 
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
@@ -3145,8 +3165,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// not be used in security-sensitive contexts:
 /// - **Miri**: Even when emulating targets where the underlying implementation will protect against
 ///   TOCTOU races, Miri will not do so.
-/// - **Redox OS**: This function does not protect against TOCTOU races, as Redox does not implement
-///   the required platform support to do so.
+/// - **QNX**, **Redox OS**, **VxWorks**: This function does not protect against TOCTOU races, as
+///   the underlying platform does not implement the required platform support to do so.
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior

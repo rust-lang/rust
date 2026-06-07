@@ -1,7 +1,7 @@
-error[E0152]: found duplicate lang item `panic_impl`
-  --> $DIR/E0152-duplicate-lang-items.rs:16:1
+error[E0152]: found duplicate lang item `eh_personality`
+  --> $DIR/E0152-duplicate-lang-items.rs:12:1
    |
-LL | / fn panic_impl(info: &PanicInfo) -> ! {
+LL | / fn personality() {
 LL | |
 LL | |
 LL | |     loop {}
