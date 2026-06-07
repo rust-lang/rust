@@ -83,3 +83,23 @@ fn run_cli_test(program_path: &str, test_path: &str) -> Result<(), Box<dyn std::
 fn empty_main() -> Result<(), Box<dyn std::error::Error>> {
     run_cli_test("../tests/pass/empty_main.rs", "tests/cli/empty_main")
 }
+
+/// Verifies EOF exits the debugger loop cleanly without requiring an explicit
+/// quit command.
+#[test]
+fn eof_exits_cleanly() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/eof_exits_cleanly")
+}
+
+/// Verifies unknown commands and malformed breakpoints are rejected without
+/// mutating debugger state.
+#[test]
+fn invalid_commands() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/invalid_commands")
+}
+
+/// Verifies breakpoint aliases and duplicate detection before execution starts.
+#[test]
+fn duplicate_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/duplicate_breakpoint")
+}
