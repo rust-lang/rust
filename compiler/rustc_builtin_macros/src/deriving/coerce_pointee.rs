@@ -396,8 +396,7 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
                     self.visit_param_bound(bound, BoundKind::Bound)
                 }
             }
-            rustc_ast::WherePredicateKind::RegionPredicate(_)
-            | rustc_ast::WherePredicateKind::EqPredicate(_) => {}
+            rustc_ast::WherePredicateKind::RegionPredicate(_) => {}
         }
     }
 }
