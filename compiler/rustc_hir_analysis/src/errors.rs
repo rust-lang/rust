@@ -2045,6 +2045,6 @@ pub(crate) struct PinV2OnPacked {
     #[primary_span]
     pub span: Span,
     #[note("`{$adt_name}` is marked `#[pin_v2]` here")]
-    pub pin_v2_span: Span,
+    pub pin_v2_span: Option<Span>,
     pub adt_name: Symbol,
 }

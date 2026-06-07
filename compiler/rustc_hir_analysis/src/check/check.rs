@@ -1636,12 +1636,10 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
         // `#[pin_v2]` on a packed type is unsound: drop glue for a packed type moves an
         // over-aligned field to an aligned location before running its destructor, which would
         // move a structurally pinned field out from under a `Pin<&mut _>` that was handed out.
-        if def.is_pin_project()
-            && let Some(pin_v2_span) = find_attr!(tcx, def.did(), PinV2(span) => *span)
-        {
+        if def.is_pin_project() {
             tcx.dcx().emit_err(errors::PinV2OnPacked {
                 span: sp,
-                pin_v2_span,
+                pin_v2_span: find_attr!(tcx, def.did(), PinV2(span) => *span),
                 adt_name: tcx.item_name(def.did()),
             });
         }
