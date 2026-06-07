@@ -818,7 +818,9 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
                     let id = self.encoder.interpret_allocs[idx];
                     let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
-                    hasher.digest(tcx.global_alloc(id), self.hcx);
+                    if self.hcx.enabled() {
+                        hasher.digest(tcx.global_alloc(id), self.hcx);
+                    }
                     interpret::specialized_encode_alloc_id(self.encoder, tcx, id);
                 }
                 n = new_n;
