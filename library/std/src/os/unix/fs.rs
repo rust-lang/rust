@@ -1008,7 +1008,7 @@ impl DirEntryExt for fs::DirEntry {
     }
 }
 
-/// Sealed Unix-specific extension methods for [`fs::DirEntry`].
+/// Unix-specific extension methods for [`fs::DirEntry`].
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
 pub impl(self) trait DirEntryExt2 {
     /// Returns a reference to the underlying `OsStr` of this entry's filename.
