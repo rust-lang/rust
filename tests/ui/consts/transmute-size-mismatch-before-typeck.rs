@@ -14,5 +14,4 @@ fn main() {
 }
 
 const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
-//~^ ERROR transmuting from
-//~| ERROR cannot transmute between types of different sizes
+//~^ ERROR cannot transmute between types of different sizes

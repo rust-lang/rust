@@ -1881,7 +1881,7 @@ impl<'tcx> CoerceMany<'tcx> {
 
                 if let Some(expr) = expression {
                     if let hir::ExprKind::Loop(
-                        _,
+                        block,
                         _,
                         loop_src @ (hir::LoopSource::While | hir::LoopSource::ForLoop),
                         _,
@@ -1894,6 +1894,14 @@ impl<'tcx> CoerceMany<'tcx> {
                         };
 
                         err.note(format!("{loop_type} evaluate to unit type `()`"));
+                        if loop_src == hir::LoopSource::While
+                            && let Some(pat) = irrefutable_if_let_expr(block)
+                        {
+                            err.span_label(
+                                pat.span,
+                                "this pattern always matches, consider using `loop` instead",
+                            );
+                        }
                     }
 
                     fcx.emit_coerce_suggestions(
@@ -2043,7 +2051,10 @@ impl<'tcx> CoerceMany<'tcx> {
                     err.span_label(cond_expr.span, "expected this to be `()`");
                 }
                 if expr.can_have_side_effects() {
-                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    // Don't suggest semicolon after if expressions as it does not fix the issue
+                    if !matches!(cond_expr.kind, hir::ExprKind::If(..)) {
+                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    }
                 }
             }
         }
@@ -2123,6 +2134,24 @@ impl<'tcx> CoerceMany<'tcx> {
             assert!(self.expressions.is_empty());
             fcx.tcx.types.never
         }
+    }
+}
+
+fn irrefutable_if_let_expr<'hir>(block: &hir::Block<'hir>) -> Option<&'hir hir::Pat<'hir>> {
+    let hir::ExprKind::If(cond, _, _) = block.expr?.kind else {
+        return None;
+    };
+    let hir::ExprKind::Let(let_expr) = cond.kind else {
+        return None;
+    };
+    simple_irrefutable_pattern(let_expr.pat).then_some(let_expr.pat)
+}
+
+fn simple_irrefutable_pattern(pat: &hir::Pat<'_>) -> bool {
+    match pat.kind {
+        hir::PatKind::Wild | hir::PatKind::Binding(_, _, _, None) => true,
+        hir::PatKind::Tuple(pats, _) => pats.iter().all(simple_irrefutable_pattern),
+        _ => false,
     }
 }
 

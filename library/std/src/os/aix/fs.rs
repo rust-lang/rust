@@ -322,22 +322,22 @@ impl MetadataExt for Metadata {
         self.as_inner().as_inner().st_size as u64
     }
     fn st_atime(&self) -> i64 {
-        self.as_inner().as_inner().st_atime.tv_sec as i64
+        self.as_inner().as_inner().st_atim.tv_sec as i64
     }
     fn st_atime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_atime.tv_nsec as i64
+        self.as_inner().as_inner().st_atim.tv_nsec as i64
     }
     fn st_mtime(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime.tv_sec as i64
+        self.as_inner().as_inner().st_mtim.tv_sec as i64
     }
     fn st_mtime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime.tv_nsec as i64
+        self.as_inner().as_inner().st_mtim.tv_nsec as i64
     }
     fn st_ctime(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime.tv_sec as i64
+        self.as_inner().as_inner().st_ctim.tv_sec as i64
     }
     fn st_ctime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime.tv_nsec as i64
+        self.as_inner().as_inner().st_ctim.tv_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64

@@ -1,6 +1,8 @@
-//@ check-pass
+//@ check-fail
 // Regression test for https://github.com/rust-lang/rust/issues/145779
 #![warn(unused_attributes)]
+#![feature(register_tool)]
+#![feature(sanitize)]
 
 fn main() {
     #[export_name = "x"]
@@ -69,5 +71,43 @@ fn main() {
     #[should_panic]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
+    #[link_name = "x"]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    #[sanitize(address = "off")]
+    //~^ ERROR attribute cannot be used on macro calls
+    unreachable!();
+
+    #[repr()]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    //~| WARN unused attribute
+    unreachable!();
+    #[repr(u8)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(align(8))]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(packed)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(C)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(Rust)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[repr(simd)]
+    //~^ WARN attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    unreachable!();
+    #[register_tool(xyz)]
+    //~^ ERROR crate-level attribute should be an inner attribute
     unreachable!();
 }

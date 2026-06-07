@@ -36,7 +36,6 @@ mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
 mod sorted_template;
-pub(crate) mod span_map;
 mod type_layout;
 mod write_shared;
 
@@ -64,7 +63,6 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 pub(crate) use self::context::*;
-pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
@@ -81,6 +79,7 @@ use crate::html::format::{
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
 };
+use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
@@ -943,6 +942,16 @@ fn short_item_info(
     extra_info
 }
 
+// Prints the polarity and path of an impl's trait, if it has one, e.g. `Send`, `!Sync`.
+fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
+    let trait_ = i.inner_impl().trait_.as_ref()?;
+    let prefix = match i.inner_impl().polarity {
+        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Negative => "!",
+    };
+    Some(format!("{prefix}{:#}", print_path(trait_, cx)))
+}
+
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
 fn render_impls(
@@ -952,7 +961,9 @@ fn render_impls(
     containing_item: &clean::Item,
     toggle_open_by_default: bool,
 ) -> fmt::Result {
-    let mut rendered_impls = impls
+    // Render each impl alongside its `impl_trait_key`, which is used as the primary sorting key
+    // to match the impl order in the sidebar.
+    let mut keyed_rendered_impls = impls
         .iter()
         .map(|i| {
             let did = i.trait_did().unwrap();
@@ -973,11 +984,16 @@ fn render_impls(
                     toggle_open_by_default,
                 },
             );
-            imp.to_string()
+            (impl_trait_key(cx, i).unwrap(), imp.to_string())
         })
         .collect::<Vec<_>>();
-    rendered_impls.sort();
-    w.write_str(&rendered_impls.join(""))
+
+    // Sort and then remove the `impl_trait_key`s, which are no longer needed after sorting.
+    keyed_rendered_impls
+        .sort_by(|(k1, h1), (k2, h2)| compare_names(k1, k2).then_with(|| h1.cmp(h2)));
+    let joined: String = keyed_rendered_impls.into_iter().map(|a| a.1).collect();
+
+    w.write_str(&joined)
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
@@ -1399,13 +1415,13 @@ fn render_all_impls(
     mut w: impl Write,
     cx: &Context<'_>,
     containing_item: &clean::Item,
-    concrete: &[&Impl],
-    synthetic: &[&Impl],
-    blanket_impl: &[&Impl],
+    concrete_impls: &[&Impl],
+    auto_trait_impls: &[&Impl],
+    blanket_impls: &[&Impl],
 ) -> fmt::Result {
     let impls = {
         let mut buf = String::new();
-        render_impls(cx, &mut buf, concrete, containing_item, true)?;
+        render_impls(cx, &mut buf, concrete_impls, containing_item, true)?;
         buf
     };
     if !impls.is_empty() {
@@ -1416,23 +1432,24 @@ fn render_all_impls(
         )?;
     }
 
-    if !synthetic.is_empty() {
+    if !auto_trait_impls.is_empty() {
+        // FIXME: Change the ID to `auto-trait-implementations-list`!
         write!(
             w,
             "{}<div id=\"synthetic-implementations-list\">",
             write_impl_section_heading("Auto Trait Implementations", "synthetic-implementations",)
         )?;
-        render_impls(cx, &mut w, synthetic, containing_item, false)?;
+        render_impls(cx, &mut w, auto_trait_impls, containing_item, false)?;
         w.write_str("</div>")?;
     }
 
-    if !blanket_impl.is_empty() {
+    if !blanket_impls.is_empty() {
         write!(
             w,
             "{}<div id=\"blanket-implementations-list\">",
             write_impl_section_heading("Blanket Implementations", "blanket-implementations")
         )?;
-        render_impls(cx, &mut w, blanket_impl, containing_item, false)?;
+        render_impls(cx, &mut w, blanket_impls, containing_item, false)?;
         w.write_str("</div>")?;
     }
     Ok(())
@@ -1461,10 +1478,10 @@ fn render_assoc_items_inner(
 ) -> fmt::Result {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
-    let Some(v) = cache.impls.get(&it) else { return Ok(()) };
-    let (mut non_trait, traits): (Vec<_>, _) =
-        v.iter().partition(|i| i.inner_impl().trait_.is_none());
-    if !non_trait.is_empty() {
+    let Some(impls) = cache.impls.get(&it) else { return Ok(()) };
+    let (mut inherent_impls, trait_impls): (Vec<_>, _) =
+        impls.iter().partition(|i| i.inner_impl().trait_.is_none());
+    if !inherent_impls.is_empty() {
         let render_mode = what.render_mode();
         let class_html = what
             .class()
@@ -1487,7 +1504,7 @@ fn render_assoc_items_inner(
                 // we should not show methods from `[MaybeUninit<u8>]`.
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
-                non_trait.retain(|impl_| {
+                inherent_impls.retain(|impl_| {
                     type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
                 });
                 let derived_id = cx.derive_id(&id);
@@ -1514,8 +1531,8 @@ fn render_assoc_items_inner(
                 )
             }
         };
-        let impls_buf = fmt::from_fn(|f| {
-            non_trait
+        let inherent_impls_buf = fmt::from_fn(|f| {
+            inherent_impls
                 .iter()
                 .map(|i| {
                     render_impl(
@@ -1538,10 +1555,10 @@ fn render_assoc_items_inner(
         })
         .to_string();
 
-        if !impls_buf.is_empty() {
+        if !inherent_impls_buf.is_empty() {
             write!(
                 w,
-                "{section_heading}<div id=\"{id}\"{class_html}>{impls_buf}</div>{}",
+                "{section_heading}<div id=\"{id}\"{class_html}>{inherent_impls_buf}</div>{}",
                 matches!(what, AssocItemRender::DerefFor { .. })
                     .then_some("</details>")
                     .maybe_display(),
@@ -1549,13 +1566,14 @@ fn render_assoc_items_inner(
         }
     }
 
-    if !traits.is_empty() {
-        let deref_impl = traits.iter().find(|t| {
+    if !trait_impls.is_empty() {
+        let deref_impl = trait_impls.iter().find(|t| {
             t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
         });
         if let Some(impl_) = deref_impl {
-            let has_deref_mut =
-                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+            let has_deref_mut = trait_impls
+                .iter()
+                .any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
             render_deref_methods(&mut w, cx, impl_, containing_item, has_deref_mut, derefs)?;
         }
 
@@ -1565,12 +1583,19 @@ fn render_assoc_items_inner(
             return Ok(());
         }
 
-        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-            traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (auto_trait_impls, trait_impls): (Vec<&Impl>, Vec<&Impl>) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        let (blanket_impls, concrete_impls): (Vec<&Impl>, _) =
+            trait_impls.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl)?;
+        render_all_impls(
+            w,
+            cx,
+            containing_item,
+            &concrete_impls,
+            &auto_trait_impls,
+            &blanket_impls,
+        )?;
     }
     Ok(())
 }

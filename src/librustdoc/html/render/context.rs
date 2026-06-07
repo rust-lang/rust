@@ -20,7 +20,7 @@ use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path, print_ty_path};
 use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
-use super::{AllTypes, LinkFromSrc, StylePath, collect_spans_and_sources, scrape_examples_help};
+use super::{AllTypes, StylePath, scrape_examples_help};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
@@ -33,8 +33,8 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
-use crate::html::render::span_map::Span;
 use crate::html::render::write_shared::write_shared;
+use crate::html::span_map::{LinkFromSrc, Span, collect_spans_and_sources};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;

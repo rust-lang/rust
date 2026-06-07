@@ -2,13 +2,16 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![cfg_attr(unix, feature(unix_file_vectored_at))]
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{
     self, File, OpenOptions, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
-use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
+use std::io::{
+    Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
+};
 use std::path::Path;
 
 #[path = "../../utils/mod.rs"]
@@ -35,10 +38,16 @@ fn main() {
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
+        #[cfg(not(target_os = "solaris"))]
+        test_flock();
+        #[cfg(not(target_os = "android"))]
+        test_hard_link();
+
+        test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(not(any(target_os = "solaris", target_os = "android")))]
-        test_flock();
+        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        test_preadv_pwritev();
     }
 }
 
@@ -215,9 +224,10 @@ fn test_file_set_len() {
     let file = OpenOptions::new().read(true).open(&path).unwrap();
     // Due to https://github.com/rust-lang/miri/issues/4457, we have to assume the failure could
     // be either of the Windows or Unix kind, no matter which platform we're on.
+    let err = file.set_len(14).unwrap_err();
     assert!(
-        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput]
-            .contains(&file.set_len(14).unwrap_err().kind())
+        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput].contains(&err.kind()),
+        "unexpected error: {err}"
     );
 
     remove_file(&path).unwrap();
@@ -400,27 +410,138 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// The standard library does not support this operation on Solaris, Android
-#[cfg(not(any(target_os = "solaris", target_os = "android")))]
+// Solaris does not support per-handle file locking.
+#[cfg(not(target_os = "solaris"))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);
     let file1 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
     let file2 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
 
-    // Test that we can apply many shared locks
+    // Test that we can apply many shared locks.
     file1.lock_shared().unwrap();
     file2.lock_shared().unwrap();
-    // Test that shared lock prevents exclusive lock
+    // Test that shared lock prevents exclusive lock.
     assert!(matches!(file1.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
-    // Unlock shared lock
+    // Unlock both files.
     file1.unlock().unwrap();
     file2.unlock().unwrap();
-    // Take exclusive lock
+
+    // Take exclusive lock.
     file1.lock().unwrap();
-    // Test that shared lock prevents exclusive and shared locks
+    // Test that shared lock prevents exclusive and shared locks.
     assert!(matches!(file2.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
     assert!(matches!(file2.try_lock_shared().unwrap_err(), fs::TryLockError::WouldBlock));
-    // Unlock exclusive lock
+    // Unlock exclusive lock.
     file1.unlock().unwrap();
+}
+
+/// Test vectored reads and vectored writes.
+fn test_readv_writev() {
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_readv_writev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read =
+        f.read_vectored(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)]).unwrap();
+
+    // Vectored read should read at least a byte.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[0..bytes_read]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f.write_vectored(&[IoSlice::new(buffer1), IoSlice::new(buffer2)]).unwrap();
+
+    // Vectored write should write at least a byte.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes.
+    f.seek(SeekFrom::Start(bytes_read as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+/// Test vectored reads and vectored writes with byte offsets.
+///
+/// **Note**: We skip this test on Solaris and Android targets. This is
+/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
+/// standard library uses `syscall(...)` for vectored reads/writes with
+/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
+#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+fn test_preadv_pwritev() {
+    use std::os::unix::fs::FileExt;
+
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_preadv_pwritev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    const OFFSET: usize = 2;
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read = f
+        .read_vectored_at(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)], OFFSET as u64)
+        .unwrap();
+
+    // Vectored read should read at least a byte at the provided offset.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[OFFSET..(bytes_read + OFFSET)]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f
+        .write_vectored_at(
+            &[IoSlice::new(buffer1), IoSlice::new(buffer2)],
+            (bytes.len() + OFFSET) as u64,
+        )
+        .unwrap();
+
+    // Vectored write should write at least a byte at the provided offset.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes. We move the cursor
+    // to include the offset.
+    f.seek(SeekFrom::Start((bytes.len() + OFFSET) as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+// std uses `libc::link` on Android which we do not support.
+#[cfg(not(target_os = "android"))]
+fn test_hard_link() {
+    let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
+    let link = utils::prepare("miri_test_fs_hard_link_link.txt");
+
+    fs::hard_link(&source, &link).unwrap();
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Only on Unix: verify both files have same inode
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let source_meta = std::fs::metadata(&source).unwrap();
+        let link_meta = std::fs::metadata(&link).unwrap();
+        assert_eq!(source_meta.ino(), link_meta.ino());
+    }
+
+    // Test error: link already exists
+    assert_eq!(ErrorKind::AlreadyExists, fs::hard_link(&source, &link).unwrap_err().kind());
+
+    // Cleanup after test
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }

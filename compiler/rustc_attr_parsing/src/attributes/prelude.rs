@@ -6,7 +6,7 @@ pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]
 pub(super) use rustc_hir::{MethodKind, Target};
 #[doc(hidden)]
-pub(super) use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+pub(super) use rustc_span::{Ident, Span, Symbol, sym};
 #[doc(hidden)]
 pub(super) use thin_vec::ThinVec;
 
@@ -25,3 +25,5 @@ pub(super) use crate::parser::*;
 pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
 #[doc(hidden)]
 pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+#[doc(hidden)]
+pub(super) use crate::unstable;

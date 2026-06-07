@@ -134,12 +134,10 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         match item.kind {
             ast::UseTreeKind::Simple(Some(ident)) => {
                 if ident.name == kw::Underscore
-                    && !self.r.import_res_map.get(&id).is_some_and(|per_ns| {
-                        matches!(
-                            per_ns.type_ns,
-                            Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
-                        )
-                    })
+                    && !matches!(
+                        self.r.owners[&id].import_res.type_ns,
+                        Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+                    )
                 {
                     self.unused_import(self.base_id).add(id);
                 }
@@ -438,7 +436,10 @@ impl Resolver<'_, '_> {
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)
                             && !tcx.has_panic_handler(cnum)
-                            && tcx.externally_implementable_items(cnum).is_empty()
+                            && tcx
+                                .externally_implementable_items(cnum)
+                                .values()
+                                .all(|(_, defs)| defs.is_empty())
                     }) {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }
@@ -487,6 +488,9 @@ impl Resolver<'_, '_> {
 
             let remove_whole_use = remove_spans.len() == 1 && remove_spans[0] == unused.item_span;
             let num_to_remove = ms.primary_spans().len();
+            // Only offer rustfix suggestions for spans that point at directly editable code.
+            let can_suggest_removal =
+                remove_spans.iter().all(|span| span.can_be_used_for_suggestions());
 
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
@@ -517,11 +521,13 @@ impl Resolver<'_, '_> {
                 unused.use_tree_id,
                 ms,
                 move |dcx, level, sess| {
-                    let sugg = if remove_whole_use {
-                        errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
-                    } else {
-                        errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
-                    };
+                    let sugg = can_suggest_removal.then(|| {
+                        if remove_whole_use {
+                            errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
+                        } else {
+                            errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
+                        }
+                    });
                     let test_module_span = test_module_span.map(|span| {
                         sess.downcast_ref::<rustc_session::Session>()
                             .expect("expected a `Session`")

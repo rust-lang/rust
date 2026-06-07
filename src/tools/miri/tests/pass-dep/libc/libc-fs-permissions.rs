@@ -2,9 +2,6 @@
 //@ignore-host: windows # needs unix PermissionExt
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(io_error_more)]
-#![feature(io_error_uncategorized)]
-
 use std::ffi::{CStr, CString};
 use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;

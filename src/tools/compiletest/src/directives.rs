@@ -16,7 +16,7 @@ use crate::directives::directive_names::{
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
 use crate::directives::line::DirectiveLine;
-use crate::directives::needs::CachedNeedsConditions;
+use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldFail};
@@ -40,14 +40,14 @@ pub(crate) struct DirectivesCache {
     /// "Conditions" used by `ignore-*` and `only-*` directives, prepared in
     /// advance so that they don't have to be evaluated repeatedly.
     cfg_conditions: cfg::PreparedConditions,
-    needs: CachedNeedsConditions,
+    needs: PreparedNeedsConditions,
 }
 
 impl DirectivesCache {
     pub(crate) fn load(config: &Config) -> Self {
         Self {
             cfg_conditions: cfg::prepare_conditions(config),
-            needs: CachedNeedsConditions::load(config),
+            needs: needs::prepare_needs_conditions(config),
         }
     }
 }

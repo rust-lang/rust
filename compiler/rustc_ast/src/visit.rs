@@ -431,6 +431,7 @@ macro_rules! common_visitor_and_walkers {
             Delegation,
             DelegationMac,
             DelegationSuffixes,
+            DelegationSource,
             DelimArgs,
             DelimSpan,
             EnumDef,
@@ -582,12 +583,14 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_generics(Generics);
                 fn visit_inline_asm(InlineAsm);
                 fn visit_inline_asm_sym(InlineAsmSym);
+                fn visit_impl_restriction(ImplRestriction);
                 //fn visit_item(Item);
                 fn visit_label(Label);
                 fn visit_lifetime(Lifetime, _ctxt: LifetimeCtxt);
                 fn visit_local(Local);
                 fn visit_mac_call(MacCall);
                 fn visit_macro_def(MacroDef);
+                fn visit_mut_restriction(MutRestriction);
                 fn visit_param_bound(GenericBound, _ctxt: BoundKind);
                 fn visit_param(Param);
                 fn visit_pat_field(PatField);
@@ -597,7 +600,6 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_poly_trait_ref(PolyTraitRef);
                 fn visit_precise_capturing_arg(PreciseCapturingArg);
                 fn visit_qself(QSelf);
-                fn visit_impl_restriction(ImplRestriction);
                 fn visit_trait_ref(TraitRef);
                 fn visit_ty_pat(TyPat);
                 fn visit_ty(Ty);
@@ -1106,12 +1108,14 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_generics(Generics);
             pub fn walk_inline_asm(InlineAsm);
             pub fn walk_inline_asm_sym(InlineAsmSym);
+            pub fn walk_impl_restriction(ImplRestriction);
             //pub fn walk_item(Item);
             pub fn walk_label(Label);
             pub fn walk_lifetime(Lifetime);
             pub fn walk_local(Local);
             pub fn walk_mac(MacCall);
             pub fn walk_macro_def(MacroDef);
+            pub fn walk_mut_restriction(MutRestriction);
             pub fn walk_param_bound(GenericBound);
             pub fn walk_param(Param);
             pub fn walk_pat_field(PatField);
@@ -1121,7 +1125,6 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_poly_trait_ref(PolyTraitRef);
             pub fn walk_precise_capturing_arg(PreciseCapturingArg);
             pub fn walk_qself(QSelf);
-            pub fn walk_impl_restriction(ImplRestriction);
             pub fn walk_trait_ref(TraitRef);
             pub fn walk_ty_pat(TyPat);
             pub fn walk_ty(Ty);

@@ -17,6 +17,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
@@ -26,7 +27,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LevelSpec;
+use rustc_middle::lint::StableLevelSpec;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -108,6 +109,7 @@ impl<M> ModuleCodegen<M> {
             name: self.name,
             kind: self.kind,
             object,
+            global_asm_object: None,
             dwarf_object,
             bytecode,
             assembly,
@@ -122,6 +124,7 @@ pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
+    pub global_asm_object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm
@@ -164,6 +167,37 @@ bitflags::bitflags! {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
         const UNALIGNED = 1 << 2;
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RetagInfo<V> {
+    /// The size of the initial range within the allocation that is
+    /// associated with the permission created by the retag.
+    pub size: Size,
+    /// Encoded type information used to determine the kind of permission
+    /// created by the retag.
+    pub flags: RetagFlags,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafeCell` within the pointee type.
+    pub im_layout: V,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafePinned` within the pointee type.
+    pub pin_layout: V,
+}
+
+bitflags::bitflags! {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub struct RetagFlags: u8 {
+        /// If this is a function-entry retag.
+        const IS_PROTECTED = 1 << 0;
+        /// If this is a mutable reference or a `Box`.
+        const IS_MUTABLE = 1 << 1;
+        /// If this is a `Box`.
+        const IS_BOX = 1 << 2;
+        /// If the pointee type is `Freeze`
+        const IS_FREEZE = 1 << 3;
     }
 }
 
@@ -342,8 +376,8 @@ impl CompiledModules {
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
 pub struct CodegenLintLevelSpecs {
-    linker_messages: LevelSpec,
-    linker_info: LevelSpec,
+    linker_messages: StableLevelSpec,
+    linker_info: StableLevelSpec,
 }
 
 impl CodegenLintLevelSpecs {

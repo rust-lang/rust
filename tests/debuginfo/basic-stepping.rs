@@ -58,10 +58,10 @@
 //@ lldb-command: settings set stop-line-count-after 0
 
 //@ lldb-command: run
-// In `breakpoint_callback()` in `./src/etc/lldb_batchmode.py` we do
+// In `breakpoint_callback()` in `./src/etc/lldb_batchmode/runner.py` we do
 // `SetSelectedFrame()`, which causes LLDB to show the current line and one line
 // before (since we changed `stop-line-count-before`). Note that
-// `normalize_whitespace()` in `lldb_batchmode.py` removes the newlines of the
+// `normalize_whitespace()` in `lldb_batchmode/runner.py` removes the newlines of the
 // output. So the current line and the line before actually ends up on the same
 // output line. That's fine.
 //@ lldb-check:   [...]let mut c = 27;[...]

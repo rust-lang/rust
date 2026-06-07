@@ -45,7 +45,6 @@
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-//~| ERROR is not supported on functions
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
@@ -54,6 +53,10 @@
 #[rustc_align]
 //~^ ERROR malformed
 #[optimize]
+//~^ ERROR malformed
+#[optimize(none, none)]
+//~^ ERROR malformed
+#[optimize(none, speed)]
 //~^ ERROR malformed
 #[cold = 1]
 //~^ ERROR malformed
@@ -81,7 +84,7 @@
 //~^ ERROR malformed
 #[link]
 //~^ ERROR malformed
-//~| WARN attribute should be applied to an `extern` block with non-Rust ABI
+//~| WARN attribute cannot be used on
 //~| WARN previously accepted
 #[link_name]
 //~^ ERROR malformed

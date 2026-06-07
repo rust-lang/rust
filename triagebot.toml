@@ -9,6 +9,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*",
+    "B-*",
     "C-*",
     "D-*",
     "E-*",
@@ -776,6 +777,10 @@ message_on_add = [
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
 {recipients}, what do you think about it?
 This topic will help T-compiler getting context about it.
+
+Tip: to approve or decline from this Zulip thread, use:
+@_**triagebot** backport approve beta #{number}
+@_**triagebot** backport decline beta #{number}
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -801,6 +806,11 @@ message_on_add = [
     """\
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
 {recipients}, what do you think about it?
+This topic will help T-compiler getting context about it.
+
+Tip: to approve or decline from this Zulip thread, use:
+@_**triagebot** backport approve stable #{number}
+@_**triagebot** backport decline stable #{number}
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1049,7 +1059,7 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic/check_cfg.rs"]
+[mentions."compiler/rustc_attr_parsing/src/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
@@ -1125,10 +1135,6 @@ cc = [
 [mentions."tests/rustdoc-gui/"]
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
-
-[mentions."tests/auxiliary/minicore.rs"]
-message = "This PR modifies `tests/auxiliary/minicore.rs`."
-cc = ["@jieyouxu"]
 
 [mentions."src/rustdoc-json-types"]
 message = """
@@ -1490,6 +1496,9 @@ libs = [
     "@thomcc",
     "@joboet",
     "@nia-e",
+    "@LawnGnome",
+    "@clarfonthey",
+    "@aapoalas",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1608,7 +1617,7 @@ dep-bumps = [
 "/compiler/rustc_public" =                               ["project-stable-mir"]
 "/library/alloc" =                                       ["libs"]
 "/library/alloctests" =                                  ["libs"]
-"/library/core" =                                        ["libs", "@scottmcm"]
+"/library/core" =                                        ["libs"]
 "/library/coretests" =                                   ["libs"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]

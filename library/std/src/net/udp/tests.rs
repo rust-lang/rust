@@ -1,14 +1,9 @@
 use crate::io::ErrorKind;
-use crate::net::test::{compare_ignore_zoneid, next_test_ip4, next_test_ip6};
+use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::thread;
 use crate::time::{Duration, Instant};
-
-fn each_ip(f: &mut dyn FnMut(SocketAddr, SocketAddr)) {
-    f(next_test_ip4(), next_test_ip4());
-    f(next_test_ip6(), next_test_ip6());
-}
 
 macro_rules! t {
     ($e:expr) => {
@@ -17,6 +12,11 @@ macro_rules! t {
             Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
         }
     };
+}
+
+fn each_ip(f: &mut dyn FnMut(UdpSocket, UdpSocket)) {
+    f(t!(UdpSocket::bind(LOCALHOST_IP4)), t!(UdpSocket::bind(LOCALHOST_IP4)));
+    f(t!(UdpSocket::bind(LOCALHOST_IP6)), t!(UdpSocket::bind(LOCALHOST_IP6)));
 }
 
 #[test]
@@ -30,18 +30,19 @@ fn bind_error() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn socket_smoke_test_ip4() {
-    each_ip(&mut |server_ip, client_ip| {
+    each_ip(&mut |server, client| {
+        let server_ip = t!(server.local_addr());
+        let client_ip = t!(client.local_addr());
+
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
         let _t = thread::spawn(move || {
-            let client = t!(UdpSocket::bind(&client_ip));
             rx1.recv().unwrap();
             t!(client.send_to(&[99], &server_ip));
             tx2.send(()).unwrap();
         });
 
-        let server = t!(UdpSocket::bind(&server_ip));
         tx1.send(()).unwrap();
         let mut buf = [0];
         let (nread, src) = t!(server.recv_from(&mut buf));
@@ -53,29 +54,28 @@ fn socket_smoke_test_ip4() {
 }
 
 #[test]
-fn socket_name() {
-    each_ip(&mut |addr, _| {
-        let server = t!(UdpSocket::bind(&addr));
-        assert_eq!(addr, t!(server.local_addr()));
-    })
-}
+fn socket_and_peer_name() {
+    each_ip(&mut |sock1, sock2| {
+        let addr1 = t!(sock1.local_addr());
+        let addr2 = t!(sock2.local_addr());
 
-#[test]
-fn socket_peer() {
-    each_ip(&mut |addr1, addr2| {
-        let server = t!(UdpSocket::bind(&addr1));
-        assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
-        t!(server.connect(&addr2));
-        assert_eq!(addr2, t!(server.peer_addr()));
+        assert_eq!(sock1.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
+        assert!(addr1.ip() == LOCALHOST_IP4.ip() || addr1.ip() == LOCALHOST_IP6.ip());
+
+        t!(sock1.connect(addr2));
+        t!(sock2.connect(addr1));
+
+        assert_eq!(addr2, t!(sock1.peer_addr()));
+        assert_eq!(addr1, t!(sock2.peer_addr()));
     })
 }
 
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_smoke() {
-    each_ip(&mut |addr1, addr2| {
-        let sock1 = t!(UdpSocket::bind(&addr1));
-        let sock2 = t!(UdpSocket::bind(&addr2));
+    each_ip(&mut |sock1, sock2| {
+        let addr1 = t!(sock1.local_addr());
+        let addr2 = t!(sock2.local_addr());
 
         let _t = thread::spawn(move || {
             let mut buf = [0, 0];
@@ -107,9 +107,9 @@ fn udp_clone_smoke() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_two_read() {
-    each_ip(&mut |addr1, addr2| {
-        let sock1 = t!(UdpSocket::bind(&addr1));
-        let sock2 = t!(UdpSocket::bind(&addr2));
+    each_ip(&mut |sock1, sock2| {
+        let addr1 = t!(sock1.local_addr());
+
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
@@ -140,9 +140,8 @@ fn udp_clone_two_read() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn udp_clone_two_write() {
-    each_ip(&mut |addr1, addr2| {
-        let sock1 = t!(UdpSocket::bind(&addr1));
-        let sock2 = t!(UdpSocket::bind(&addr2));
+    each_ip(&mut |sock1, sock2| {
+        let addr2 = t!(sock2.local_addr());
 
         let (tx, rx) = channel();
         let (serv_tx, serv_rx) = channel();
@@ -177,9 +176,9 @@ fn udp_clone_two_write() {
 #[test]
 fn debug() {
     let name = if cfg!(windows) { "socket" } else { "fd" };
-    let socket_addr = next_test_ip4();
 
-    let udpsock = t!(UdpSocket::bind(&socket_addr));
+    let udpsock = t!(UdpSocket::bind(LOCALHOST_IP4));
+    let socket_addr = t!(udpsock.local_addr());
     let udpsock_inner = udpsock.0.socket().as_raw();
     let compare = format!("UdpSocket {{ addr: {socket_addr:?}, {name}: {udpsock_inner:?} }}");
     assert_eq!(format!("{udpsock:?}"), compare);
@@ -195,9 +194,7 @@ fn debug() {
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 #[test]
 fn timeouts() {
-    let addr = next_test_ip4();
-
-    let stream = t!(UdpSocket::bind(&addr));
+    let stream = t!(UdpSocket::bind(LOCALHOST_IP4));
     let dur = Duration::new(15410, 0);
 
     assert_eq!(None, t!(stream.read_timeout()));
@@ -220,9 +217,7 @@ fn timeouts() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_timeout() {
-    let addr = next_test_ip4();
-
-    let stream = t!(UdpSocket::bind(&addr));
+    let stream = t!(UdpSocket::bind(LOCALHOST_IP4));
     t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
     let mut buf = [0; 10];
@@ -245,9 +240,8 @@ fn test_read_timeout() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_with_timeout() {
-    let addr = next_test_ip4();
-
-    let stream = t!(UdpSocket::bind(&addr));
+    let stream = t!(UdpSocket::bind(LOCALHOST_IP4));
+    let addr = t!(stream.local_addr());
     t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
     t!(stream.send_to(b"hello world", &addr));
@@ -275,9 +269,7 @@ fn test_read_with_timeout() {
 // when passed zero Durations
 #[test]
 fn test_timeout_zero_duration() {
-    let addr = next_test_ip4();
-
-    let socket = t!(UdpSocket::bind(&addr));
+    let socket = t!(UdpSocket::bind(LOCALHOST_IP4));
 
     let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     let err = result.unwrap_err();
@@ -290,9 +282,8 @@ fn test_timeout_zero_duration() {
 
 #[test]
 fn connect_send_recv() {
-    let addr = next_test_ip4();
-
-    let socket = t!(UdpSocket::bind(&addr));
+    let socket = t!(UdpSocket::bind(LOCALHOST_IP4));
+    let addr = t!(socket.local_addr());
     t!(socket.connect(addr));
 
     t!(socket.send(b"hello world"));
@@ -305,8 +296,8 @@ fn connect_send_recv() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // peek not supported
 fn connect_send_peek_recv() {
-    each_ip(&mut |addr, _| {
-        let socket = t!(UdpSocket::bind(&addr));
+    each_ip(&mut |socket, _| {
+        let addr = t!(socket.local_addr());
         t!(socket.connect(addr));
 
         t!(socket.send(b"hello world"));
@@ -328,8 +319,8 @@ fn connect_send_peek_recv() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // peek_from not supported
 fn peek_from() {
-    each_ip(&mut |addr, _| {
-        let socket = t!(UdpSocket::bind(&addr));
+    each_ip(&mut |socket, _| {
+        let addr = t!(socket.local_addr());
         t!(socket.send_to(b"hello world", &addr));
 
         for _ in 1..3 {
@@ -350,9 +341,7 @@ fn peek_from() {
 fn ttl() {
     let ttl = 100;
 
-    let addr = next_test_ip4();
-
-    let stream = t!(UdpSocket::bind(&addr));
+    let stream = t!(UdpSocket::bind(LOCALHOST_IP4));
 
     t!(stream.set_ttl(ttl));
     assert_eq!(ttl, t!(stream.ttl()));
@@ -360,8 +349,8 @@ fn ttl() {
 
 #[test]
 fn set_nonblocking() {
-    each_ip(&mut |addr, _| {
-        let socket = t!(UdpSocket::bind(&addr));
+    each_ip(&mut |socket, _| {
+        let addr = t!(socket.local_addr());
 
         t!(socket.set_nonblocking(true));
         t!(socket.set_nonblocking(false));

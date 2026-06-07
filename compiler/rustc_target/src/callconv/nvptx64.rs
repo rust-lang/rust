@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use rustc_abi::{HasDataLayout, Reg, Size, TyAbiInterface};
 
 use super::CastTarget;
@@ -41,10 +42,9 @@ fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     };
 
     if align_bytes == size.bytes() {
-        arg.cast_to(CastTarget::prefixed(
-            [Some(reg), None, None, None, None, None, None, None],
-            Uniform::new(Reg::i8(), Size::ZERO),
-        ));
+        let mut prefix = ArrayVec::new();
+        prefix.push(reg);
+        arg.cast_to(CastTarget::prefixed(prefix, Uniform::new(Reg::i8(), Size::ZERO)));
     } else {
         arg.cast_to(Uniform::new(reg, size));
     }
@@ -79,10 +79,9 @@ where
     };
     if arg.layout.size.bytes() / align_bytes == 1 {
         // Make sure we pass the struct as array at the LLVM IR level and not as a single integer.
-        arg.cast_to(CastTarget::prefixed(
-            [Some(unit), None, None, None, None, None, None, None],
-            Uniform::new(unit, Size::ZERO),
-        ));
+        let mut prefix = ArrayVec::new();
+        prefix.push(unit);
+        arg.cast_to(CastTarget::prefixed(prefix, Uniform::new(unit, Size::ZERO)));
     } else {
         arg.cast_to(Uniform::new(unit, arg.layout.size));
     }

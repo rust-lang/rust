@@ -745,6 +745,11 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        unexpected.sort_by_key(|e| (e.line_num, e.column_num));
+        unimportant.sort_by_key(|e| (e.line_num, e.column_num));
+
+        // `not_found` are sorted because `expected_errors` are sorted as they are read from file
+        // line by line.
         let mut not_found = Vec::new();
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
@@ -1639,6 +1644,11 @@ impl<'test> TestCx<'test> {
 
             if self.config.mode == TestMode::CodegenUnits {
                 compiler.args(&["-Z", "human_readable_cgu_names"]);
+            }
+
+            if self.config.mode == TestMode::DebugInfo && cfg!(target_os = "windows") {
+                // Prevent debugger processes from creating new console windows.
+                compiler.args(&["-Z", r#"crate-attr=windows_subsystem="windows""#]);
             }
         }
 

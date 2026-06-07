@@ -219,6 +219,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
     }
 
+    fn unevaluated_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::UnevaluatedConstKind<'tcx> {
+        match self.def_kind(def_id) {
+            DefKind::AssocConst { .. } => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    ty::UnevaluatedConstKind::Inherent { def_id }
+                } else {
+                    ty::UnevaluatedConstKind::Projection { def_id }
+                }
+            }
+            DefKind::Const { .. } => ty::UnevaluatedConstKind::Free { def_id },
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
+                ty::UnevaluatedConstKind::Anon { def_id }
+            }
+            kind => bug!("unexpected DefKind in UnevaluatedConst: {kind:?}"),
+        }
+    }
+
     fn alias_term_kind_from_def_id(self, def_id: DefId) -> ty::AliasTermKind<'tcx> {
         match self.def_kind(def_id) {
             DefKind::AssocTy => {
@@ -239,7 +259,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
             DefKind::Const { .. } => ty::AliasTermKind::FreeConst { def_id },
             DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::AliasTermKind::UnevaluatedConst { def_id }
+                ty::AliasTermKind::AnonConst { def_id }
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }

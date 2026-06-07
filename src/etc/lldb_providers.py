@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sys
 from typing import Generator, List, TYPE_CHECKING, Optional
+from enum import Flag, auto
 
 from lldb import (
     SBData,
@@ -15,7 +16,7 @@ from lldb import (
 from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
-    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget
+    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget, SBProcess
 
 # from lldb.formatters import Logger
 
@@ -53,6 +54,24 @@ if TYPE_CHECKING:
 PY3 = sys.version_info[0] == 3
 
 
+class LLDBFeature(Flag):
+    """Used to track which features we rely on and whether or not we can access them. The global
+    `lldb_providers.FEATURE_FLAGS` is initialized in `lldb_lookup.__lldb_init_module` and is
+    expected not to change after that point.
+
+    This is used rather than `debugger.GetVersionString` because Apple's fork of LLDB (used for
+    xcode) uses a non-standard versioning scheme that has no relation to LLVM's.
+    """
+
+    StaticFields = auto()
+    """Added in LLDB 18. Adds functions to `SBType` the inspection of a struct's static fields."""
+    TypeRecognizers = auto()
+    """Added in LLDB 19. Callback-based type matching for synthetic/summary providers."""
+
+
+FEATURE_FLAGS: LLDBFeature = LLDBFeature(0)
+
+
 class LLDBOpaque:
     """
     An marker type for use in type hints to denote LLDB bookkeeping variables. Values marked with
@@ -70,14 +89,18 @@ class ValueBuilder:
     def from_int(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeLong)
         data = SBData.CreateDataFromSInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
     def from_uint(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeUnsignedLong)
         data = SBData.CreateDataFromUInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
@@ -118,37 +141,6 @@ class DefaultSyntheticProvider:
 
     def has_children(self) -> bool:
         return self.valobj.MightHaveChildren()
-
-    def get_value(self):
-        return self.valobj.value
-
-
-class IndirectionSyntheticProvider:
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
-        self.valobj = valobj
-
-    def num_children(self) -> int:
-        return 1
-
-    def get_child_index(self, name: str) -> int:
-        if name == "$$dereference$$":
-            return 0
-        return -1
-
-    def get_child_at_index(self, index: int) -> Optional[SBValue]:
-        if index == 0:
-            value = self.valobj.Dereference()
-            if (synth := value.GetSyntheticValue()).IsValid():
-                return synth
-            else:
-                return value
-        return None
-
-    def update(self):
-        pass
-
-    def has_children(self) -> bool:
-        return True
 
     def get_value(self):
         return self.valobj.value
@@ -289,6 +281,28 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
+def read_string(
+    process: SBProcess, address: int, length: int, error: Optional[SBError] = None
+) -> str:
+    """Reads a string from running process's memory. If `error` is passed in, it will be passed
+    to the `SBProcess.ReadMemory` call, and will reflect any errors after the function is called.
+
+    If any error or exception occurs, a placeholder byte array of the form "<error: [reason]>" will
+    be returned instead."""
+
+    if error is None:
+        error = SBError()
+    try:
+        data = process.ReadMemory(address, length, error)
+        if error.Success():
+            return '"' + data.decode("utf-8", "replace") + '"'
+        else:
+            return f"<error: {error.GetCString()}>"
+    except Exception as e:
+        print(f"Unable to generate String summary: {e.__cause__}")
+        return "<error: Unable to read memory>"
+
+
 def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     inner_vec = (
         valobj.GetNonSyntheticValue()
@@ -305,16 +319,25 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+    capacity = (
+        inner_vec.GetChildMemberWithName("buf")
+        .GetChildMemberWithName("cap")
+        .GetValueAsUnsigned()
+    )
 
     if length <= 0:
         return '""'
-    error = SBError()
+
+    no_hi_bit_max: int = 1 << ((pointer.GetByteSize() * 8) - 1)
+    # technically length isn't a NoHighBit<usize>, but length should always be <= capacity
+    if length >= no_hi_bit_max or capacity >= no_hi_bit_max:
+        return "<error: invalid len/capacity>"
+    if pointer.GetValueAsUnsigned() == 0:
+        return "<error: String pointer is null>"
+
     process = pointer.GetProcess()
-    data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
-    if error.Success():
-        return '"' + data.decode("utf8", "replace") + '"'
-    else:
-        raise Exception("ReadMemory error: %s", error.GetCString())
+
+    return read_string(process, pointer.GetValueAsAddress(), length)
 
 
 def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -363,15 +386,9 @@ def StdPathSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     data_ptr = valobj.GetChildMemberWithName("data_ptr")
 
     start = data_ptr.GetValueAsUnsigned()
-    error = SBError()
     process = data_ptr.GetProcess()
-    data = process.ReadMemory(start, length, error)
-    if PY3:
-        try:
-            data = data.decode(encoding="UTF-8")
-        except UnicodeDecodeError:
-            return "%r" % data
-    return '"%s"' % data
+
+    return read_string(process, start, length)
 
 
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
@@ -443,6 +460,9 @@ class StructSyntheticProvider:
 class StdStringSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
+        self.no_hi_bit_max = 1 << (ptr_size - 1)
+
         self.update()
 
     def update(self):
@@ -454,7 +474,25 @@ class StdStringSyntheticProvider:
             .GetChildMemberWithName("pointer")
             .GetChildMemberWithName("pointer")
         )
-        self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+
+        self.capacity = (
+            inner_vec.GetChildMemberWithName("buf")
+            .GetChildMemberWithName("cap")
+            .GetValueAsUnsigned()
+        )
+
+        # As of 4/18/2026, LLDB cannot accurately determine the difference between Some("") and None
+        # this just makes sure we're not trying to access data when the string is clearly in an
+        # invalid state.
+        if (
+            self.capacity >= self.no_hi_bit_max
+            or self.data_ptr.GetValueAsUnsigned() == 0
+        ):
+            self.capacity = 0
+            self.length = 0
+        else:
+            self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+
         self.element_type = self.data_ptr.GetType().GetPointeeType()
 
     def has_children(self) -> bool:
@@ -592,6 +630,8 @@ class ClangEncodedEnumProvider:
 
 
 def ClangEncodedEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    if valobj.TypeIsPointerType():
+        valobj = valobj.Dereference()
     enum_synth = ClangEncodedEnumProvider(valobj.GetNonSyntheticValue(), _dict)
     variant = enum_synth.variant
     name = _getVariantName(variant)
@@ -624,6 +664,10 @@ class MSVCEnumSyntheticProvider:
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        # This allows the summary provider to still print something
+        # even if we can't find the variant for whatever reason
+        self.variant = valobj
+        self.value = valobj
         self.update()
 
     def update(self):
@@ -928,6 +972,8 @@ class StdVecSyntheticProvider:
         # logger >> "[StdVecSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
         self.element_type = None
+        ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
+        self.no_hi_bit_max = 1 << (ptr_size - 1)
         self.update()
 
     def num_children(self) -> int:
@@ -949,14 +995,18 @@ class StdVecSyntheticProvider:
         return element
 
     def update(self):
-        self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
-        self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName(
-            "inner"
+        buf: SBValue = self.valobj.GetChildMemberWithName("buf")
+        self.data_ptr = unwrap_unique_or_non_null(
+            buf.GetChildMemberWithName("inner").GetChildMemberWithName("ptr")
         )
 
-        self.data_ptr = unwrap_unique_or_non_null(
-            self.buf.GetChildMemberWithName("ptr")
-        )
+        capacity: int = buf.GetChildMemberWithName("cap").GetValueAsUnsigned()
+
+        if capacity >= self.no_hi_bit_max or self.data_ptr.GetValueAsUnsigned() == 0:
+            self.capacity = 0
+            self.length = 0
+        else:
+            self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
 
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
@@ -1032,7 +1082,7 @@ def StdSliceSummaryProvider(valobj, dict):
 class StdVecDequeSyntheticProvider:
     """Pretty-printer for alloc::collections::vec_deque::VecDeque<T>
 
-    struct VecDeque<T> { head: usize, len: usize, buf: RawVec<T> }
+    struct VecDeque<T> { head: WrappedIndex, len: usize, buf: RawVec<T> }
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
@@ -1061,7 +1111,11 @@ class StdVecDequeSyntheticProvider:
         return element
 
     def update(self):
-        self.head = self.valobj.GetChildMemberWithName("head").GetValueAsUnsigned()
+        head = self.valobj.GetChildMemberWithName("head")
+        # BACKCOMPAT: rust 1.95
+        if head.GetType().num_fields == 1:
+            head = head.GetChildAtIndex(0)
+        self.head = head.GetValueAsUnsigned()
         self.size = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
         self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName(
             "inner"

@@ -28,8 +28,6 @@ impl Stderr {
     }
 }
 
-impl crate::sealed::Sealed for Stdin {}
-
 impl crate::io::IsTerminal for Stdin {
     fn is_terminal(&self) -> bool {
         moto_rt::fs::is_terminal(moto_rt::FD_STDIN)

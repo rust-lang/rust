@@ -421,12 +421,12 @@ pub(crate) mod rustc {
                 )
             };
 
-            match layout.variants() {
+            match *layout.variants() {
                 Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
-                    layout_of_variant(*index, None)
+                    layout_of_variant(index, None)
                 }
                 Variants::Multiple { tag: _, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
@@ -435,12 +435,12 @@ pub(crate) mod rustc {
 
                     // For enums (but not coroutines), the tag field is
                     // currently always the first field of the layout.
-                    assert_eq!(*tag_field, FieldIdx::ZERO);
+                    assert_eq!(tag_field, FieldIdx::ZERO);
 
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
                         |variants, (idx, _discriminant)| {
-                            let variant = layout_of_variant(idx, Some(tag_encoding.clone()))?;
+                            let variant = layout_of_variant(idx, Some(tag_encoding))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
                         },
                     )?;

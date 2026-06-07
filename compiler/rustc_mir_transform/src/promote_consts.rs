@@ -580,11 +580,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_ref(*kind, place)?;
             }
 
-            Rvalue::Reborrow(_, _, place) => {
-                // FIXME(reborrow): should probably have a place_simplified like above.
-                let op = &Operand::Copy(*place);
-                self.validate_operand(op)?
-            }
+            Rvalue::Reborrow(..) => return Err(Unpromotable),
 
             Rvalue::Aggregate(_, operands) => {
                 for o in operands {

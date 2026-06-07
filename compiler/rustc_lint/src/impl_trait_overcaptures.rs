@@ -361,9 +361,9 @@ where
             // have no uncaptured args, then we should warn to the user that
             // it's redundant to capture all args explicitly.
             if new_capture_rules
-                && let Some((captured_args, capturing_span)) =
-                    opaque.bounds.iter().find_map(|bound| match *bound {
-                        hir::GenericBound::Use(a, s) => Some((a, s)),
+                && let Some((use_idx, captured_args, capturing_span)) =
+                    opaque.bounds.iter().enumerate().find_map(|(i, bound)| match *bound {
+                        hir::GenericBound::Use(a, s) => Some((i, a, s)),
                         _ => None,
                     })
             {
@@ -400,11 +400,25 @@ where
                     .iter()
                     .all(|(def_id, _)| explicitly_captured.contains(def_id))
                 {
+                    // Extend the removal span to include the `+` joiner adjacent
+                    // to `use<...>`, so applying the suggestion does not leave
+                    // behind a stray `+` that fails to parse.
+                    let suggestion_span = if let Some(next) = opaque.bounds.get(use_idx + 1) {
+                        capturing_span.with_hi(next.span().lo())
+                    } else if let Some(prev_idx) = use_idx.checked_sub(1) {
+                        let prev = opaque.bounds[prev_idx];
+                        capturing_span.with_lo(prev.span().hi())
+                    } else {
+                        // `impl use<...>` with no other bound is not valid
+                        // syntax, so this branch is unreachable in practice.
+                        capturing_span
+                    };
+
                     self.tcx.emit_node_span_lint(
                         IMPL_TRAIT_REDUNDANT_CAPTURES,
                         self.tcx.local_def_id_to_hir_id(opaque_def_id),
                         opaque_span,
-                        ImplTraitRedundantCapturesLint { capturing_span },
+                        ImplTraitRedundantCapturesLint { capturing_span: suggestion_span },
                     );
                 }
             }

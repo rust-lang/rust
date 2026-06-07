@@ -346,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Cow::Owned(OsString::from_wide(&path))
         };
-        #[cfg(unix)]
+        #[cfg(not(windows))]
         return if *target_os == Os::Windows {
             // Windows target, Unix host.
             let mut path: Vec<u8> = os_str.into_owned().into_encoded_bytes();

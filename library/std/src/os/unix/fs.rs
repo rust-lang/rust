@@ -14,7 +14,6 @@ use crate::fs::{self, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner};
 use crate::{io, sys};
 
@@ -1011,7 +1010,7 @@ impl DirEntryExt for fs::DirEntry {
 
 /// Sealed Unix-specific extension methods for [`fs::DirEntry`].
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
-pub trait DirEntryExt2: Sealed {
+pub impl(self) trait DirEntryExt2 {
     /// Returns a reference to the underlying `OsStr` of this entry's filename.
     ///
     /// # Examples
@@ -1034,10 +1033,6 @@ pub trait DirEntryExt2: Sealed {
     /// ```
     fn file_name_ref(&self) -> &OsStr;
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for fs::DirEntry {}
 
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
 impl DirEntryExt2 for fs::DirEntry {

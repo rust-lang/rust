@@ -5,10 +5,13 @@
 #![allow(unused, clippy::useless_format)]
 
 fn main() {
-    let s: &str = "hello";
+    let mut s: &str = "hello";
     println!("{}", &s); //~ useless_borrows_in_formatting
     println!("{:?}", &s); //~ useless_borrows_in_formatting
     println!("{}", &&s); //~ useless_borrows_in_formatting
+    println!("{}", &&mut s); //~ useless_borrows_in_formatting
+    println!("{}", &mut &s); //~ useless_borrows_in_formatting
+    println!("{}", &mut s); //~ useless_borrows_in_formatting
 
     let string = String::from("world");
     println!("{}", &string); //~ useless_borrows_in_formatting

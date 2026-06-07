@@ -14,7 +14,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/ice-issue-124347.rs:4:18
    |
 LL |     reuse Trait::foo { &self.0 }
-   |                  ^^^   ------- unexpected argument
+   |                  ^^^ ----------- unexpected argument
    |
 note: associated function defined here
   --> $DIR/ice-issue-124347.rs:4:18
@@ -24,7 +24,7 @@ LL |     reuse Trait::foo { &self.0 }
 help: remove the extra argument
    |
 LL -     reuse Trait::foo { &self.0 }
-LL +     reuse Trait::fo&self.0 }
+LL +     reuse Trait::fo{ &self.0 }
    |
 
 warning: function cannot return without recursing

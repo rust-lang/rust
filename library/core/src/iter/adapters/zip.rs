@@ -1,8 +1,6 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
-use crate::iter::{
-    FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
-};
+use crate::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use crate::num::NonZero;
 
 /// An iterator that iterates two other iterators simultaneously.
@@ -453,13 +451,6 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 where
     A: TrustedLen,
     B: TrustedLen,
-{
-}
-
-impl<A, B> UncheckedIterator for Zip<A, B>
-where
-    A: UncheckedIterator,
-    B: UncheckedIterator,
 {
 }
 

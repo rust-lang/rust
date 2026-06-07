@@ -3,7 +3,7 @@
 //! These tests exercise the full client-server RPC procedure using in-memory
 //! channels without needing to spawn the actual server and client processes.
 
-#![cfg(feature = "sysroot-abi")]
+#![cfg(feature = "in-rust-tree")]
 #![feature(rustc_private)]
 
 extern crate rustc_driver as _;

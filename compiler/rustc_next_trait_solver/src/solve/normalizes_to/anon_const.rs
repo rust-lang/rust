@@ -16,7 +16,7 @@ where
         goal: Goal<I, ty::NormalizesTo<I>>,
         def_id: I::UnevaluatedConstId,
     ) -> QueryResultOrRerunNonErased<I> {
-        let uv = goal.predicate.alias.expect_ct(self.cx());
+        let uv = goal.predicate.alias.expect_ct();
         self.evaluate_const_and_instantiate_normalizes_to_term(goal, uv)
     }
 }

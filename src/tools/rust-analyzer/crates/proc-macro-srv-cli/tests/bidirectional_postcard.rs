@@ -1,4 +1,4 @@
-#![cfg(feature = "sysroot-abi")]
+#![cfg(feature = "in-rust-tree")]
 #![feature(rustc_private)]
 
 extern crate rustc_driver as _;

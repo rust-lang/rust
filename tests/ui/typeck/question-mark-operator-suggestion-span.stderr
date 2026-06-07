@@ -12,10 +12,6 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `Result<(), std::fmt::Error>`
-help: consider using a semicolon here
-   |
-LL |     };
-   |      +
 help: you might have meant to return this value
    |
 LL |         return writeln!(w, "but not here");

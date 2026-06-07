@@ -155,6 +155,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
+            target_os = "redox",
             target_os = "wasi",
         ) => {
             #[allow(unused_assignments)]
@@ -316,7 +317,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
         }
         _ => {
-            // FIXME: implement on Redox, l4re
+            // FIXME: implement on l4re
             Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }
     }

@@ -34,7 +34,7 @@ semver.workspace = true
 rayon.workspace = true
 
 [features]
-sysroot-abi = ["proc-macro-srv", "proc-macro-srv/sysroot-abi"]
+in-rust-tree = ["proc-macro-srv", "proc-macro-srv/in-rust-tree"]
 default = []
 
 [lints]

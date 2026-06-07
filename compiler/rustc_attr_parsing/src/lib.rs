@@ -2,9 +2,9 @@
 //!
 //! ## Architecture
 //! This crate is part of a series of crates and modules that handle attribute processing.
-//! - [rustc_hir::attrs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html): Defines the data structures that store parsed attributes
-//! - [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html): This crate, handles the parsing of attributes
-//! - (planned) rustc_attr_validation: Will handle attribute validation, logic currently handled in `rustc_passes`
+//! - [`rustc_hir::attrs`]: Defines the data structures that store parsed attributes
+//! - `rustc_attr_parsing`: This crate, handles the parsing of attributes
+//! - [`rustc_passes::check_attr`] handles attribute validation that cannot be done in this crate
 //!
 //! The separation between data structures and parsing follows the principle of separation of concerns.
 //! Data structures (`rustc_hir::attrs`) define what attributes look like after parsing.
@@ -13,7 +13,7 @@
 //! the parsing logic, making the codebase more modular and maintainable.
 //!
 //! ## Background
-//! Previously, the compiler had a single attribute definition (`ast::Attribute`) with parsing and
+//! Previously, the compiler had a single attribute definition ([`ast::Attribute`]) with parsing and
 //! validation scattered throughout the codebase. This was reorganized for better maintainability
 //! (see [#131229](https://github.com/rust-lang/rust/issues/131229)).
 //!
@@ -61,7 +61,7 @@
 //! `#[stable(...)]` and `#[unstable()]` cannot occur together, and both semantically define
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
-//! and `#[unstable()]` syntactic attributes, and at the end produce a single
+//! and `#[unstable()]` syntactic attributes, and at the end produces a single
 //! [`AttributeKind::Stability`](rustc_hir::attrs::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
@@ -82,6 +82,9 @@
 //! However, sometimes an attributes' parsed form is needed before the HIR is constructed.
 //! This is referred to as "early" attribute parsing,
 //! and is performed using the `parse_limited_*` family of functions on `AttributeParser`.
+//!
+//! [`ast::Attribute`]: rustc_ast::ast::Attribute
+//! [`rustc_passes::check_attr`]: ../rustc_passes/check_attr/index.html
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
@@ -91,25 +94,16 @@
 // tidy-alphabetical-end
 
 #[macro_use]
-/// All the individual attribute parsers for each of rustc's built-in attributes.
 mod attributes;
-
-/// All the important types given to attribute parsers when parsing
-pub(crate) mod context;
-
-/// Code that other crates interact with, to actually parse a list (or sometimes single)
-/// attribute.
-mod interface;
-
-/// Despite this entire module called attribute parsing and the term being a little overloaded,
-/// in this module the code lives that actually breaks up tokenstreams into semantic pieces of attributes,
-/// like lists or name-value pairs.
-pub mod parser;
-
+mod check_cfg;
+mod context;
 mod early_parsed;
 mod errors;
+mod interface;
+pub mod parser;
 mod safety;
 mod session_diagnostics;
+mod stability;
 mod target_checking;
 pub mod validate_attr;
 

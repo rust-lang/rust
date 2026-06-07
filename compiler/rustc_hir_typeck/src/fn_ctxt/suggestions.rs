@@ -18,7 +18,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
@@ -248,6 +248,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    /// Suggests calling `.collect()` on an `Iterator` it can be collected in the return type
+    /// ```compile_fail
+    /// let x: String = "foo".chars().map(|c| c); // with a .collect() here the code compiles
+    /// ```
+    pub(crate) fn suggest_collect(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expected_type: Ty<'tcx>,
+        found_type: Ty<'tcx>,
+    ) -> bool {
+        let tcx = self.tcx;
+        let expected = self.resolve_vars_if_possible(expected_type);
+        let found = self.resolve_vars_if_possible(found_type);
+
+        if expected.references_error() || found.references_error() || expected.is_unit() {
+            return false;
+        }
+
+        let Some(iterator_trait_id) = tcx.get_diagnostic_item(sym::Iterator) else {
+            return false;
+        };
+
+        if !self
+            .infcx
+            .type_implements_trait(iterator_trait_id, [found], self.param_env)
+            .must_apply_modulo_regions()
+        {
+            return false;
+        }
+
+        let Some(from_iterator_trait_id) = tcx.get_diagnostic_item(sym::FromIterator) else {
+            return false;
+        };
+
+        let Some(iterator_item_id) = tcx
+            .associated_items(iterator_trait_id)
+            .in_definition_order()
+            .find(|item| item.name() == sym::Item)
+            .map(|item| item.def_id)
+        else {
+            return false;
+        };
+
+        let item_type = Ty::new_projection(tcx, iterator_item_id, [found]);
+        let item_type =
+            self.normalize(expr.span, rustc_middle::ty::Unnormalized::new_wip(item_type));
+
+        let can_collect = self
+            .infcx
+            .type_implements_trait(from_iterator_trait_id, [expected, item_type], self.param_env)
+            .may_apply();
+
+        if can_collect {
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                format!(
+                    "consider using `.collect()` to convert the `Iterator` into a `{expected}`"
+                ),
+                ".collect()",
+                rustc_errors::Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+
+        false
     }
 
     pub(crate) fn suggest_remove_last_method_call(
@@ -2611,8 +2679,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
-                        let variant_path =
-                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                        let variant_path = with_types_for_suggestion!(with_no_trimmed_paths!(
+                            self.tcx.def_path_str(variant.def_id)
+                        ));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
@@ -2639,12 +2708,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
-                // Suggest constructor as deep into the block tree as possible.
-                // This fixes https://github.com/rust-lang/rust/issues/101065,
-                // and also just helps make the most minimal suggestions.
+                // Suggest constructor as deep into the block tree as possible,
+                // but don't cross macro contexts. This fixes #101065 while
+                // keeping suggestions out of macro definitions (#142359).
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
+                    && expr_.span.eq_ctxt(expr.span)
                 {
                     expr = expr_
                 }

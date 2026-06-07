@@ -1886,7 +1886,13 @@ fn to_lowercase() {
 #[test]
 fn to_uppercase() {
     assert_eq!("".to_uppercase(), "");
-    assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
+    assert_eq!("aéǅßẞﬁᾀ".to_uppercase(), "AÉǄSSẞFIἈΙ");
+}
+
+#[test]
+fn to_casefold_unnormalized() {
+    assert_eq!("".to_casefold_unnormalized(), "");
+    assert_eq!("ꮿﬁῲὼ\u{0345}ßẞΣς".to_casefold_unnormalized(), "Ꮿfiὼιὼιssssσσ");
 }
 
 #[test]
@@ -2348,6 +2354,7 @@ fn utf8_char_counts() {
         .flat_map(|n| n - spread..=n + spread)
         .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
+        // Miri is too slow
         reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };

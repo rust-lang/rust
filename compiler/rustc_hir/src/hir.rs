@@ -2327,6 +2327,13 @@ impl CoroutineKind {
         matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
     }
 
+    pub fn is_async_desugaring(self) -> bool {
+        matches!(
+            self,
+            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+        )
+    }
+
     pub fn to_plural_string(&self) -> String {
         match self {
             CoroutineKind::Desugared(d, CoroutineSource::Fn) => format!("{d:#}fn bodies"),
@@ -3864,9 +3871,10 @@ pub enum OpaqueTyOrigin<D> {
     },
 }
 
-// Ids of parent (or child) path segment that contains user-specified args
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
-pub struct DelegationGenerics {
+pub struct DelegationInfo {
+    pub call_expr_id: HirId,
+    pub call_path_res: Option<DefId>,
     pub parent_args_segment_id: Option<HirId>,
     pub child_args_segment_id: Option<HirId>,
     pub self_ty_id: Option<HirId>,
@@ -3876,8 +3884,8 @@ pub struct DelegationGenerics {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
 pub enum InferDelegationSig<'hir> {
     Input(usize),
-    // Place generics info here, as we always specify output type for delegations.
-    Output(&'hir DelegationGenerics),
+    // Place delegation info here, as we always specify output type for delegations.
+    Output(&'hir DelegationInfo),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StableHash)]
@@ -4164,7 +4172,7 @@ impl<'hir> FnDecl<'hir> {
         None
     }
 
-    pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
+    pub fn opt_delegation_info(&self) -> Option<&'hir DelegationInfo> {
         if let FnRetTy::Return(ty) = self.output
             && let TyKind::InferDelegation(InferDelegation::Sig(_, kind)) = ty.kind
             && let InferDelegationSig::Output(generics) = kind
@@ -5245,6 +5253,7 @@ impl<'hir> Node<'hir> {
                 GenericParamKind::Type { default, .. } => default,
                 GenericParamKind::Const { ty, .. } => Some(ty),
             },
+            Node::Field(f) => Some(f.ty),
             _ => None,
         }
     }

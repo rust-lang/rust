@@ -75,16 +75,62 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub struct UnevaluatedConst<I: Interner> {
-    pub def: I::UnevaluatedConstId,
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub kind: UnevaluatedConstKind<I>,
     pub args: I::GenericArgs,
+
+    /// This field exists to prevent the creation of `UnevaluatedConst` without using [`UnevaluatedConst::new`].
+    #[derive_where(skip(Debug))]
+    pub(crate) _use_unevaluated_const_new_instead: (),
 }
 
 impl<I: Interner> Eq for UnevaluatedConst<I> {}
 
 impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
-    pub fn new(def: I::UnevaluatedConstId, args: I::GenericArgs) -> UnevaluatedConst<I> {
-        UnevaluatedConst { def, args }
+    pub fn new(
+        interner: I,
+        kind: UnevaluatedConstKind<I>,
+        args: I::GenericArgs,
+    ) -> UnevaluatedConst<I> {
+        interner.debug_assert_args_compatible(kind.def_id(), args);
+        UnevaluatedConst { kind, args, _use_unevaluated_const_new_instead: () }
+    }
+}
+
+/// UnevaluatedConstKind is extremely similar to AliasTyKind, and likely should be reasoned about
+/// and handled in very similar ways. The documentation for AliasTyKind/etc. may be helpful when
+/// learning about UnevaluatedConstKind.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub enum UnevaluatedConstKind<I: Interner> {
+    /// A projection `<Type as Trait>::AssocConst`
+    Projection { def_id: I::TraitAssocConstId },
+    /// An associated constant in an inherent `impl`
+    Inherent { def_id: I::InherentAssocConstId },
+    /// A free constant, outside an impl block.
+    Free { def_id: I::FreeConstAliasId },
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    Anon { def_id: I::UnevaluatedConstId },
+}
+
+impl<I: Interner> UnevaluatedConstKind<I> {
+    pub fn new_from_def_id(interner: I, def_id: I::DefId) -> Self {
+        interner.unevaluated_const_kind_from_def_id(def_id)
+    }
+
+    pub fn def_id(self) -> I::DefId {
+        match self {
+            UnevaluatedConstKind::Projection { def_id } => def_id.into(),
+            UnevaluatedConstKind::Inherent { def_id } => def_id.into(),
+            UnevaluatedConstKind::Free { def_id } => def_id.into(),
+            UnevaluatedConstKind::Anon { def_id } => def_id.into(),
+        }
     }
 }
 

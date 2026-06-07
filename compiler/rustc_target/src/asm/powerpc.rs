@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::Symbol;
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{CfgAbi, RelocModel, Target};
+use crate::spec::{CfgAbi, RelocModel, RustcAbi, Target};
 
 def_reg_class! {
     PowerPC PowerPCInlineAsmRegClass {
@@ -115,6 +115,10 @@ fn reserved_v20to31(
     }
 }
 
+pub(crate) fn is_spe(target: &Target) -> bool {
+    target.rustc_abi == Some(RustcAbi::PowerPcSpe)
+}
+
 fn spe_acc_target_check(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
@@ -122,11 +126,7 @@ fn spe_acc_target_check(
     target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target.cfg_abi == CfgAbi::Spe {
-        Ok(())
-    } else {
-        Err("spe_acc is only available on spe targets")
-    }
+    if is_spe(target) { Ok(()) } else { Err("spe_acc is only available on spe targets") }
 }
 
 def_regs! {

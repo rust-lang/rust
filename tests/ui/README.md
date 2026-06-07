@@ -943,6 +943,9 @@ Tests on moves (destructive moves).
 
 Broad category of tests on mutability, such as the `mut` keyword, borrowing a value as both immutable and mutable (and the associated error), or adding mutable references to `const` declarations.
 
+## `tests/ui/mut-restriction/`
+Tests for `#![feature(mut_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
+
 ## `tests/ui/namespace/`
 
 Contains a single test. It imports a massive amount of very similar types from a crate, then attempts various permutations of their namespace paths, checking for errors or the lackthereof.
@@ -1244,6 +1247,10 @@ In this directory, multiple crates are compiled, but some of them have `inline` 
 
 Tests on name shadowing.
 
+## `tests/ui/share-trait`
+
+Tests for the unstable `Share` trait.
+
 ## `tests/ui/shell-argfiles/`: `-Z shell-argfiles` command line flag
 
 The `-Zshell-argfiles` compiler flag allows argfiles to be parsed using POSIX "shell-style" quoting. When enabled, the compiler will use shlex to parse the arguments from argfiles specified with `@shell:<path>`.
@@ -1493,6 +1500,10 @@ See [Uninhabited | Reference](https://doc.rust-lang.org/reference/glossary.html?
 ## `tests/ui/union/`
 
 See [Unions | Reference](https://doc.rust-lang.org/reference/items/unions.html).
+
+## `tests/ui/unnamed-enum-variants`: `_ = <range-or-int>` in an `enum`
+
+See [Tracking Issue for Unnamed Enum Variants (Open Enums) #156628](https://github.com/rust-lang/rust/issues/156628)
 
 ## `tests/ui/unop/`: Unary operators `-`, `*` and `!`
 

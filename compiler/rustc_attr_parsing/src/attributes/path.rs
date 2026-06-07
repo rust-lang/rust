@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct PathParser;
@@ -11,6 +13,7 @@ impl SingleAttributeParser for PathParser {
         NameValueStr: "file",
         "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;

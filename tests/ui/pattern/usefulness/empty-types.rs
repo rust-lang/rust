@@ -1,5 +1,6 @@
 //@ revisions: normal exhaustive_patterns never_pats
 //@ edition: 2024
+//@ ignore-parallel-frontend pattern matching error message mismatch
 //
 // This tests correct handling of empty types in exhaustiveness checking.
 //

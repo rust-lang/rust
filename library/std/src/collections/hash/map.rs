@@ -493,15 +493,16 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// for key in map.keys() {
-    ///     println!("{key}");
-    /// }
+    /// let mut values: Vec<_> = map.keys().copied().collect();
+    /// values.sort();
+    ///
+    /// assert_eq!(values, vec!["a", "b", "c"]);
     /// ```
     ///
     /// # Performance
@@ -555,15 +556,16 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// for val in map.values() {
-    ///     println!("{val}");
-    /// }
+    /// let mut values: Vec<_> = map.values().copied().collect();
+    /// values.sort();
+    ///
+    /// assert_eq!(values, vec![1, 2, 3]);
     /// ```
     ///
     /// # Performance
@@ -591,12 +593,12 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// ]);
     ///
     /// for val in map.values_mut() {
-    ///     *val = *val + 10;
+    ///     *val += 10;
     /// }
     ///
-    /// for val in map.values() {
-    ///     println!("{val}");
-    /// }
+    /// assert_eq!(map.get("a"), Some(&11));
+    /// assert_eq!(map.get("b"), Some(&12));
+    /// assert_eq!(map.get("c"), Some(&13));
     /// ```
     ///
     /// # Performance
@@ -656,9 +658,13 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///     ("c", 3),
     /// ]);
     ///
-    /// for (key, val) in map.iter() {
-    ///     println!("key: {key} val: {val}");
+    /// let mut count = 0;
+    ///
+    /// for (_key, _val) in map.iter() {
+    ///     count += 1;
     /// }
+    ///
+    /// assert_eq!(count, 3);
     /// ```
     ///
     /// # Performance
@@ -691,9 +697,9 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///     *val *= 2;
     /// }
     ///
-    /// for (key, val) in &map {
-    ///     println!("key: {key} val: {val}");
-    /// }
+    /// assert_eq!(map.get("a"), Some(&2));
+    /// assert_eq!(map.get("b"), Some(&4));
+    /// assert_eq!(map.get("c"), Some(&6));
     /// ```
     ///
     /// # Performance
@@ -1480,7 +1486,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<K, V, S> const Default for HashMap<K, V, S>
+const impl<K, V, S> Default for HashMap<K, V, S>
 where
     S: [const] Default,
 {

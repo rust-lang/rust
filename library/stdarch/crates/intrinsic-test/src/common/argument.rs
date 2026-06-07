@@ -1,6 +1,10 @@
-use super::cli::Language;
+use itertools::Itertools;
+
+use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::values::test_values_array_name;
+
+use super::PASSES;
 use super::constraint::Constraint;
-use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
@@ -49,35 +53,15 @@ where
         self.constraint.is_some()
     }
 
-    /// The binding keyword (e.g. "const" or "let") for the array of possible test inputs.
-    fn rust_vals_array_binding(&self) -> impl std::fmt::Display {
-        if self.ty.is_rust_vals_array_const() {
-            "const"
-        } else {
-            "let"
-        }
-    }
-
-    /// The name (e.g. "A_VALS" or "a_vals") for the array of possible test inputs.
-    pub(crate) fn rust_vals_array_name(&self) -> impl std::fmt::Display {
-        if self.ty.is_rust_vals_array_const() {
-            let loads = crate::common::gen_rust::PASSES;
-            format!(
-                "{}_{ty}_{load_size}",
-                self.name.to_uppercase(),
-                ty = self.ty.rust_scalar_type(),
-                load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
-            )
-        } else {
-            format!("{}_vals", self.name.to_lowercase())
-        }
-    }
-
-    fn as_call_param_c(&self) -> String {
-        self.ty.as_call_param_c(&self.generate_name())
+    /// Should this argument be passed by reference in C wrapper function declarations?
+    ///
+    /// SIMD types and `f16` are currently passed by reference.
+    pub(crate) fn pass_by_ref(&self) -> bool {
+        self.is_simd() || (self.ty.kind() == TypeKind::Float && self.ty.inner_size() == 16)
     }
 }
 
+/// Arguments of an intrinsic - including parameters that end up being const generics.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ArgumentList<T: IntrinsicTypeDefinition> {
     pub args: Vec<Argument<T>>,
@@ -87,133 +71,131 @@ impl<T> ArgumentList<T>
 where
     T: IntrinsicTypeDefinition,
 {
-    /// Converts the argument list into the call parameters for a C function call.
-    /// e.g. this would generate something like `a, &b, c`
-    pub fn as_call_param_c(&self) -> String {
+    /// Returns a string with the arguments in `self` as a parameter list for a wrapper fn
+    /// definition in C (e.g. `$ty1 $arg1, $ty2 $arg2`).
+    ///
+    /// Skips arguments with constraints - which correspond to arguments that must take immediates -
+    /// as a different C definition will be generated for each value of these being tested.
+    pub fn as_non_imm_arglist_c(&self) -> String {
         self.iter()
-            .map(|arg| arg.as_call_param_c())
-            .collect::<Vec<String>>()
-            .join(", ")
+            .filter(|arg| !arg.has_constraint())
+            .format_with("", |arg, fmt| {
+                if arg.pass_by_ref() {
+                    fmt(&format_args!(", const {}* {}", arg.to_c_type(), arg.name))
+                } else {
+                    fmt(&format_args!(", {} {}", arg.to_c_type(), arg.name))
+                }
+            })
+            .to_string()
     }
 
-    /// Converts the argument list into the call parameters for a Rust function.
-    /// e.g. this would generate something like `a, b, c`
+    /// Returns a string with the arguments in `self` as a parameter list for a Rust declaration of
+    /// a C wrapper fn (e.g. `$arg1: $ty1, $arg2: $ty2`).
+    ///
+    /// Skips arguments with constraints - which correspond to arguments that must take immediates -
+    /// as a different C definition will be generated for each value of these being tested.
+    pub fn as_non_imm_arglist_rust(&self) -> String {
+        self.iter()
+            .filter(|arg| !arg.has_constraint())
+            .format_with("", |arg, fmt| {
+                if arg.pass_by_ref() {
+                    fmt(&format_args!(
+                        ", {}: *const {}",
+                        arg.name,
+                        arg.ty.rust_type()
+                    ))
+                } else {
+                    fmt(&format_args!(", {}: {}", arg.name, arg.ty.rust_type()))
+                }
+            })
+            .to_string()
+    }
+
+    /// Returns a string with the arguments in `self` being passed to an intrinsic call in C
+    /// (e.g. `$arg1, 2 /* imm_args[0] */, $arg3` where `$arg2` has a constraint).
+    pub fn as_call_params_c(&self, imm_args: &[i64]) -> String {
+        let mut imm_args = imm_args.iter();
+        self.iter()
+            .format_with(", ", |arg, fmt| {
+                if arg.has_constraint() {
+                    fmt(&imm_args.next().unwrap())
+                } else {
+                    if arg.pass_by_ref() {
+                        fmt(&"*")?;
+                    }
+                    fmt(&arg.name)
+                }
+            })
+            .to_string()
+    }
+
+    /// Returns a string with the arguments in `self` being passed to an intrinsic call in Rust.
+    /// (e.g. `$arg1, $arg3` where `$arg2` has a constraint and so corresponds to a const generic
+    /// parameter).
     pub fn as_call_param_rust(&self) -> String {
         self.iter()
             .filter(|a| !a.has_constraint())
-            .map(|arg| arg.generate_name() + " as _")
-            .collect::<Vec<String>>()
+            .map(|arg| arg.generate_name())
             .join(", ")
     }
 
-    /// Creates a line for each argument that initializes an array for C from which `loads` argument
-    /// values can be loaded  as a sliding window.
-    /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
-    pub fn gen_arglists_c(
-        &self,
-        w: &mut impl std::io::Write,
-        indentation: Indentation,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
-            // Setting the variables on an aligned boundary to make it easier to pick
-            // functions (of a specific architecture) that would help load the values.
-            writeln!(
-                w,
-                "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",
-                ty = arg.ty.c_scalar_type(),
-                name = arg.generate_name(),
-                values = arg.ty.populate_random(indentation, loads, &Language::C)
-            )?
-        }
-
-        Ok(())
-    }
-
-    /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
-    /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
-    pub fn gen_arglists_rust(
-        &self,
-        w: &mut impl std::io::Write,
-        indentation: Indentation,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
-            // Constants are defined globally.
-            if arg.ty.is_rust_vals_array_const() {
-                continue;
-            }
-
-            Self::gen_arg_rust(arg, w, indentation, loads)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn gen_arg_rust(
-        arg: &Argument<T>,
-        w: &mut impl std::io::Write,
-        indentation: Indentation,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};\n",
-            bind = arg.rust_vals_array_binding(),
-            name = arg.rust_vals_array_name(),
-            ty = arg.ty.rust_scalar_type(),
-            load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-            values = arg.ty.populate_random(indentation, loads, &Language::Rust)
-        )
-    }
-
-    /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
-    /// an offset `i` using a load intrinsic, in C.
-    /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
-    ///
-    /// ARM-specific
-    pub fn load_values_c(&self, indentation: Indentation) -> String {
+    /// Returns a string with the arguments in `self` being passed to the declaration of a C wrapper
+    /// fn from Rust (e.g. `$arg1, $arg3` (where `$arg2` has a constraint and so corresponds to a
+    /// const generic parameter).
+    pub fn as_c_call_param_rust(&self) -> String {
         self.iter()
-            .filter(|&arg| !arg.has_constraint())
-            .enumerate()
-            .map(|(idx, arg)| {
-                format!(
-                    "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i+{idx}]));\n",
-                    ty = arg.to_c_type(),
-                    name = arg.generate_name(),
-                    load = if arg.is_simd() {
-                        arg.ty.get_load_function(Language::C)
-                    } else {
-                        "*".to_string()
-                    }
-                )
-            })
-            .collect()
-    }
-
-    /// Creates a line for each argument that initializes the argument from array `[ARG]_VALS` at
-    /// an offset `i` using a load intrinsic, in Rust.
-    /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
-    pub fn load_values_rust(&self, indentation: Indentation) -> String {
-        self.iter()
-            .filter(|&arg| !arg.has_constraint())
-            .enumerate()
-            .map(|(idx, arg)| {
-                let load = if arg.is_simd() {
-                    arg.ty.get_load_function(Language::Rust)
+            .filter(|a| !a.has_constraint())
+            .map(|arg| {
+                if arg.pass_by_ref() {
+                    format!(", &raw const {}", arg.generate_name())
                 } else {
-                    "*".to_string()
-                };
-                let typecast = if load.len() > 2 { "as _" } else { "" };
-                format!(
-                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i+{idx}){typecast});\n",
-                    name = arg.generate_name(),
-                    vals_name = arg.rust_vals_array_name(),
-                )
+                    format!(", {}", arg.generate_name())
+                }
+            })
+            .join("")
+    }
+
+    /// Returns a string defining a local variable for each argument and loading a value into each
+    /// using a load intrinsic.
+    ///
+    /// e.g.
+    /// ```rust,ignore
+    /// let a = vld1_u8(I16_23.as_ptr().offset((i + 0 /* idx */) % 20 /* PASSES */));
+    /// ````
+    ///
+    /// The generator will have already generated arrays of appropriate length with values that can
+    /// be used for testing (see the `gen_args_rust` function).
+    ///
+    /// Each load is assumed to have a variable `i` in scope which comes from a loop which repeats
+    /// the testing of the intrinsic for different values - each subsequent `i` shifts the window
+    /// of values being loaded along the pre-prepared array.
+    ///
+    /// Each subsequent argument's first window is started one element further into the array
+    /// then the previous.
+    pub fn load_values_rust(&self) -> String {
+        self.iter()
+            .filter(|&arg| !arg.has_constraint())
+            .enumerate()
+            .map(|(idx, arg)| {
+                if arg.is_simd() {
+                    format!(
+                        "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
+                        name = arg.generate_name(),
+                        vals_name = test_values_array_name(&arg.ty),
+                        load = arg.ty.get_load_function(),
+                    )
+                } else {
+                    format!(
+                        "let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
+                        name = arg.generate_name(),
+                        vals_name = test_values_array_name(&arg.ty),
+                    )
+                }
             })
             .collect()
     }
 
+    /// Returns an iterator over the contained arguments
     pub fn iter(&self) -> std::slice::Iter<'_, Argument<T>> {
         self.args.iter()
     }

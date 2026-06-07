@@ -14,7 +14,6 @@ use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
-use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
@@ -76,6 +75,12 @@ pub trait CodegenBackend {
     /// Returns a list of all intrinsics that this backend definitely
     /// replaces, which means their fallback bodies do not need to be monomorphized.
     fn replaced_intrinsics(&self) -> Vec<Symbol> {
+        vec![]
+    }
+
+    /// Returns a list of all intrinsics that this backend definitely
+    /// does *not* replace, which means their fallback bodies can be MIR-inlined.
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
         vec![]
     }
 
@@ -156,9 +161,9 @@ pub trait CodegenBackend {
     }
 }
 
-pub trait ExtraBackendMethods:
-    WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
-{
+pub trait ExtraBackendMethods: Send + Sync + DynSend + DynSync {
+    type Module;
+
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -173,11 +178,4 @@ pub trait ExtraBackendMethods:
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-
-    /// Returns `true` if this backend can be safely called from multiple threads.
-    ///
-    /// Defaults to `true`.
-    fn supports_parallel(&self) -> bool {
-        true
-    }
 }
