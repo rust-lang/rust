@@ -1,5 +1,5 @@
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:8:27
+  --> tests/ui/iter_cloned_collect.rs:7:27
    |
 LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     let v2: Vec<isize> = v.to_vec();
    |
 
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:14:38
+  --> tests/ui/iter_cloned_collect.rs:13:38
    |
 LL |     let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     let _: Vec<isize> = vec![1, 2, 3].to_vec();
    |
 
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:20:24
+  --> tests/ui/iter_cloned_collect.rs:19:24
    |
 LL |               .to_bytes()
    |  ________________________^
@@ -46,7 +46,7 @@ LL +             .to_bytes().to_vec();
    |
 
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:29:24
+  --> tests/ui/iter_cloned_collect.rs:28:24
    |
 LL |     let _: Vec<_> = arr.iter().cloned().collect();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL +     let _: Vec<_> = arr.to_vec();
    |
 
 error: called `.iter().copied().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:33:26
+  --> tests/ui/iter_cloned_collect.rs:32:26
    |
 LL |     let _: Vec<isize> = v.iter().copied().collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL +     let _: Vec<isize> = v.to_vec();
    |
 
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
-  --> tests/ui/iter_cloned_collect.rs:59:33
+  --> tests/ui/iter_cloned_collect.rs:58:33
    |
 LL |         let v: Vec<&&String> = a.iter().cloned().collect();
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^

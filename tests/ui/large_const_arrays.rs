@@ -1,5 +1,4 @@
 #![warn(clippy::large_const_arrays)]
-#![allow(dead_code)]
 
 #[derive(Clone, Copy)]
 pub struct S {

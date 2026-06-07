@@ -1,5 +1,5 @@
 #![warn(clippy::iter_next_slice)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 fn main() {
     // test code goes here

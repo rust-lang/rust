@@ -1,5 +1,5 @@
 #![warn(clippy::let_underscore_must_use)]
-#![allow(clippy::unnecessary_wraps)]
+#![expect(clippy::unnecessary_wraps)]
 
 // Debug implementations can fire this lint,
 // so we shouldn't lint external macros

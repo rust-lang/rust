@@ -1,5 +1,4 @@
-#![allow(unused)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 use std::collections::{HashSet, VecDeque};
 
