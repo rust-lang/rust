@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21332>.
+//! Ensure multi-line error formatting for "method has incompatible type for trait" diagnostics.
+
 struct S;
 
 impl Iterator for S {

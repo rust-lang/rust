@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/19380>.
+
 trait Qiz {
   fn qiz();
 }
