@@ -287,6 +287,9 @@ fn floating_point_casts() {
     check_number(r#"const GOAL: i8 = (0./0.) as i8"#, 0);
     check_number(r#"const GOAL: i8 = (1./0.) as i8"#, 127);
     check_number(r#"const GOAL: i8 = (-1./0.) as i8"#, -128);
+    check_number(r#"const GOAL: u8 = (1./0.) as u8"#, 255);
+    check_number(r#"const GOAL: u8 = 256.0f32 as u8"#, 255);
+    check_number(r#"const GOAL: u16 = 1e10f32 as u16"#, 65535);
     check_number(r#"const GOAL: i64 = 1e18f64 as f32 as i64"#, 999999984306749440);
 }
 

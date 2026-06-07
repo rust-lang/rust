@@ -474,6 +474,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/nocontentexpr_after_item.rs");
     }
     #[test]
+    fn not_null_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/not_null_pat.rs"); }
+    #[test]
     fn offset_of_parens() {
         run_and_expect_no_errors("test_data/parser/inline/ok/offset_of_parens.rs");
     }
@@ -505,6 +507,8 @@ mod ok {
     fn path_type_with_bounds() {
         run_and_expect_no_errors("test_data/parser/inline/ok/path_type_with_bounds.rs");
     }
+    #[test]
+    fn pattern_type() { run_and_expect_no_errors("test_data/parser/inline/ok/pattern_type.rs"); }
     #[test]
     fn placeholder_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/placeholder_pat.rs");

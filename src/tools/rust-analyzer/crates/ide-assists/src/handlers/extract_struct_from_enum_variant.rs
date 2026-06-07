@@ -249,10 +249,6 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
                     }
                 }
                 param if matches!(token.kind(), T![ident]) => {
-                    #[expect(
-                        clippy::collapsible_match,
-                        reason = "it won't compile since in the guard, `param` is immutable"
-                    )]
                     if match param {
                         ast::GenericParam::ConstParam(konst) => konst
                             .name()

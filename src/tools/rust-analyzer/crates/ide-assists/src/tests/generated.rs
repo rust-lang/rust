@@ -204,8 +204,8 @@ fn main() {
 "#####,
         r#####"
 fn main() {
-    ${1:'l}: loop {
-        break ${2:'l};
+    ${0:'l}: loop {
+        break ${0:'l};
         continue ${0:'l};
     }
 }

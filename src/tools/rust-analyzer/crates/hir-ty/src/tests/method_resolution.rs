@@ -1715,8 +1715,8 @@ fn f<S: Sized, T, U: ?Sized>() {
             95..103 'u32::foo': fn foo<u32>() -> u8
             109..115 'S::foo': fn foo<S>() -> u8
             121..127 'T::foo': fn foo<T>() -> u8
-            133..139 'U::foo': fn foo<U>() -> u8
-            145..157 '<[u32]>::foo': fn foo<[u32]>() -> u8
+            133..139 'U::foo': {unknown}
+            145..157 '<[u32]>::foo': {unknown}
         "#]],
     );
 }
