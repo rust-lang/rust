@@ -926,6 +926,21 @@ class RustBuild(object):
         >>> rb.get_toml('key', 'c') is None
         True
 
+        A dotted key names a table relative to its enclosing section, so the
+        full table path must match for the key to be found:
+
+        >>> rb.config_toml = 'build.cargo = "/path/to/cargo"'
+        >>> rb.get_toml('cargo', 'build')
+        '/path/to/cargo'
+        >>> rb.get_toml('cargo', 'other') is None
+        True
+
+        A dotted key inside a section composes with that section's name:
+
+        >>> rb.config_toml = '[target]\\nx86_64-unknown-linux-gnu.cc = "gcc"'
+        >>> rb.get_toml('cc', 'target.x86_64-unknown-linux-gnu')
+        'gcc'
+
         >>> rb.config_toml = 'key1 = true'
         >>> rb.get_toml("key1")
         'true'
@@ -940,10 +955,24 @@ class RustBuild(object):
             if section_match is not None:
                 cur_section = section_match.group(1)
 
-            match = re.match(r"^{}\s*=(.*)$".format(key), line)
+            # Match the key, optionally preceded by a dotted-table prefix (the
+            # `build.` in `build.cargo`), which names a table relative to the
+            # current `[section]` and is appended to `cur_section`. This is a
+            # subset parser, not full TOML: quoted names (e.g. the `'a.b'` that
+            # configure.py emits for dotted targets) are not matched here.
+            match = re.match(
+                r"^\s*(?:([\w.-]+)\.)?{}\s*=(.*)$".format(re.escape(key)), line
+            )
             if match is not None:
-                value = match.group(1)
-                if section is None or section == cur_section:
+                prefix = match.group(1)
+                if prefix is None:
+                    line_section = cur_section
+                elif cur_section is None:
+                    line_section = prefix
+                else:
+                    line_section = "{}.{}".format(cur_section, prefix)
+                value = match.group(2)
+                if section is None or section == line_section:
                     return RustBuild.get_string(value) or value.strip()
         return None
 
@@ -959,7 +988,10 @@ class RustBuild(object):
         """Return config path for the given program at the given stage
 
         >>> rb = RustBuild()
-        >>> rb.config_toml = 'rustc = "rustc"\\n'
+        >>> rb.config_toml = 'build.rustc = "rustc"\\n'
+        >>> rb.program_config('rustc')
+        'rustc'
+        >>> rb.config_toml = '[build]\\nrustc = "rustc"\\n'
         >>> rb.program_config('rustc')
         'rustc'
         >>> rb.config_toml = ''
@@ -968,7 +1000,7 @@ class RustBuild(object):
         ... "bin", "cargo")
         True
         """
-        config = self.get_toml(program)
+        config = self.get_toml(program, "build")
         if config:
             return os.path.expanduser(config)
         return os.path.join(self.bin_root(), "bin", "{}{}".format(program, EXE_SUFFIX))
