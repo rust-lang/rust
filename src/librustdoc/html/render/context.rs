@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
 use askama::Template;
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
@@ -31,6 +30,7 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
+use crate::html::format::join_path_syms_lazy;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
@@ -253,7 +253,7 @@ impl<'tcx> Context<'tcx> {
                     title.push_str(" in ");
                 }
                 // No need to include the namespace for primitive types and keywords
-                title.push_str(&join_path_syms(&self.current));
+                write!(title, "{}", join_path_syms_lazy(&self.current)).unwrap();
             };
             title.push_str(" - Rust");
             let tyname = it.type_();
