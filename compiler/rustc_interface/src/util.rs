@@ -14,11 +14,10 @@ use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
@@ -418,8 +417,8 @@ impl CodegenBackend for DummyCodegenBackend {
         _sess: &Session,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
-        (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
+    ) -> (CompiledModules, WorkProductMap) {
+        (*ongoing_codegen.downcast().unwrap(), WorkProductMap::default())
     }
 
     fn link(
