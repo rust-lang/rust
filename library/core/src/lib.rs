@@ -317,8 +317,6 @@ pub mod pat;
 pub mod pin;
 #[unstable(feature = "abort_immediate", issue = "154601")]
 pub mod process;
-#[unstable(feature = "random", issue = "130703")]
-pub mod random;
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 pub mod range;
 pub mod result;
