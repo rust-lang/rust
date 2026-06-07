@@ -410,8 +410,7 @@ fn test_pread_pwrite() {
     assert_eq!(&buf1, b"  m");
 }
 
-// Miri does not support the way this is implemented on Solaris
-// (https://github.com/rust-lang/miri/issues/5038).
+// Solaris does not support per-handle file locking.
 #[cfg(not(target_os = "solaris"))]
 fn test_flock() {
     let bytes = b"Hello, World!\n";
