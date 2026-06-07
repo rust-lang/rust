@@ -1540,6 +1540,8 @@ impl Seek for File {
         (&*self).stream_position()
     }
 }
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl crate::io::IoHandle for File {}
 
 impl Dir {

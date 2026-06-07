@@ -544,6 +544,8 @@ impl Read for StdinLock<'_> {
     }
 }
 
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl SpecReadByte for StdinLock<'_> {
     #[inline]
     fn spec_read_byte(&mut self) -> Option<io::Result<u8>> {

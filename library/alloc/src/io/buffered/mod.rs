@@ -5,17 +5,14 @@ mod bufwriter;
 mod linewriter;
 mod linewritershim;
 
-#[cfg(test)]
-mod tests;
+use core::{error, fmt};
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
-pub use bufwriter::WriterPanicked;
-use linewritershim::LineWriterShim;
-
+pub use self::bufwriter::WriterPanicked;
+use self::linewritershim::LineWriterShim;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{bufreader::BufReader, bufwriter::BufWriter, linewriter::LineWriter};
 use crate::io::Error;
-use crate::{error, fmt};
 
 /// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
@@ -27,6 +24,7 @@ use crate::{error, fmt};
 /// use std::io::BufWriter;
 /// use std::net::TcpStream;
 ///
+/// # #[expect(unused_mut)]
 /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
 ///
 /// // do stuff with the stream
@@ -69,6 +67,7 @@ impl<W> IntoInnerError<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
+    /// # #[expect(unused_mut)]
     /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
     ///
     /// // do stuff with the stream
@@ -103,6 +102,7 @@ impl<W> IntoInnerError<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
+    /// # #[expect(unused_mut)]
     /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
     ///
     /// // do stuff with the stream

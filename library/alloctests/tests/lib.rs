@@ -43,6 +43,18 @@
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
 #![feature(ptr_cast_slice)]
+#![feature(alloc_io)]
+#![feature(borrowed_buf_init)]
+#![feature(buf_read_has_data_left)]
+#![feature(can_vector)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
+#![feature(cursor_split)]
+#![feature(io_const_error)]
+#![feature(read_buf)]
+#![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
+#![feature(write_all_vectored)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(lossy_provenance_casts)]
@@ -65,6 +77,7 @@ mod const_fns;
 mod cow_str;
 mod fmt;
 mod heap;
+mod io;
 mod linked_list;
 mod misc_tests;
 mod num;

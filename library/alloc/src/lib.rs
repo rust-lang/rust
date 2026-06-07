@@ -92,8 +92,10 @@
 #![feature(ascii_char)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
+#![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(can_vector)]
 #![feature(case_ignorable)]
 #![feature(cast_maybe_uninit)]
 #![feature(cell_get_cloned)]
@@ -113,6 +115,10 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
+#![feature(cursor_split)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(diagnostic_on_move)]
@@ -130,12 +136,17 @@
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
+#![feature(io_const_error_internals)]
+#![feature(io_slice_as_bytes)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
 #![feature(legacy_receiver_trait)]
 #![feature(likely_unlikely)]
 #![feature(local_waker)]
+#![feature(maybe_uninit_array_assume_init)]
+#![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
 #![feature(pattern)]
@@ -144,7 +155,9 @@
 #![feature(ptr_cast_slice)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(raw_os_error_ty)]
 #![feature(rev_into_inner)]
+#![feature(seek_stream_len)]
 #![feature(set_ptr_value)]
 #![feature(share_trait)]
 #![feature(sized_type_properties)]
@@ -169,6 +182,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
+#![feature(write_all_vectored)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
@@ -204,6 +218,7 @@
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
+#![feature(doc_notable_trait)]
 // Technically, this is a bug in rustdoc: rustdoc sees the documentation on `#[lang = slice_alloc]`
 // blocks is for `&[T]`, which also has documentation using this feature in `core`, and gets mad
 // that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs
@@ -233,6 +248,8 @@ pub mod collections;
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

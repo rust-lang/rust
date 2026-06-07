@@ -320,6 +320,7 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -374,6 +375,7 @@
 #![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
 #![feature(share_trait)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
@@ -386,14 +388,18 @@
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(used_with_arg)]
+#![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
 // tidy-alphabetical-start
+#![feature(alloc_io)]
 #![feature(allocator_api)]
+#![feature(buf_read_has_data_left)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
+#![feature(read_buf)]
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]

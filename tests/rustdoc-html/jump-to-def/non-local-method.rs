@@ -6,7 +6,7 @@
 
 //@ has - '//a[@href="{{channel}}/alloc/boxed/struct.Box.html"]' 'std::boxed::Box'
 use std::boxed::Box;
-//@ has - '//a[@href="{{channel}}/std/io/trait.Read.html"]' 'std::io::Read'
+//@ has - '//a[@href="{{channel}}/alloc/io/read/trait.Read.html"]' 'std::io::Read'
 use std::io::Read;
 //@ has - '//a[@href="{{channel}}/std/io/index.html"]' 'std::io'
 use std::io;
@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 
 pub fn bar2<T: Read>(readable: T) {
-    //@ has - '//a[@href="{{channel}}/std/io/trait.Read.html#tymethod.read"]' 'read'
+    //@ has - '//a[@href="{{channel}}/alloc/io/read/trait.Read.html#tymethod.read"]' 'read'
     let _ = readable.read(&mut []);
 }
 
