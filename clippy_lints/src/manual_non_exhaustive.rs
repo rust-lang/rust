@@ -125,6 +125,21 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
+                            // FIXME: Ideally this would be a suggestion, but the span for that is annoying to get.
+                            // Consider cases like:
+                            // ```
+                            // _non_exhaustive: (),
+                            //
+                            // _non_exhaustive: ()
+                            // , pub another field: u32
+                            //
+                            // _non_exhaustive: () // some random comment
+                            // , pub another field: u32
+                            //
+                            // _non_exhaustive: (), // a comment that we wouldn't want to
+                            //                      // stick to the next field after the fix
+                            // pub another field: u32
+                            // ```
                             diag.span_help(field.span, "remove this field");
                         },
                     );
@@ -164,6 +179,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         format!("#[non_exhaustive]\n{indent}"),
                         Applicability::MaybeIncorrect,
                     );
+                    // FIXME: Ideally this would be a suggestion, but the span for that is annoying to get.
+                    // See the comment above for examples.
                     diag.span_help(variant_span, "remove this variant");
                 },
             );
