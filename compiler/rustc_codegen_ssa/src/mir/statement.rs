@@ -86,7 +86,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .layout_of(bx.typing_env().as_query_input(pointee))
                     .expect("expected pointee to have a layout");
                 let elem_size = pointee_layout.layout.size().bytes();
-                let bytes = bx.mul(count, bx.const_usize(elem_size));
+                let bytes = bx.unchecked_sumul(count, bx.const_usize(elem_size));
 
                 let align = pointee_layout.layout.align.abi;
                 let dst = dst_val.immediate();
