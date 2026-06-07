@@ -1,8 +1,7 @@
 use std::fs;
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::par_join;
-use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
@@ -93,7 +92,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
-    new_work_products: FxIndexMap<WorkProductId, WorkProduct>,
+    new_work_products: WorkProductMap,
 ) {
     if sess.opts.incremental.is_none() {
         return;
@@ -126,18 +125,16 @@ pub fn save_work_product_index(
 
     // Check that we did not delete one of the current work-products:
     debug_assert!({
-        new_work_products.iter().all(|(_, wp)| {
+        new_work_products.items().all(|(_, wp)| {
             wp.saved_files.items().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
         })
     });
 }
 
-fn encode_work_product_index(
-    work_products: &FxIndexMap<WorkProductId, WorkProduct>,
-    encoder: &mut FileEncoder,
-) {
+fn encode_work_product_index(work_products: &WorkProductMap, encoder: &mut FileEncoder) {
     let serialized_products: Vec<_> = work_products
-        .iter()
+        .to_sorted_stable_ord()
+        .into_iter()
         .map(|(id, work_product)| SerializedWorkProduct {
             id: *id,
             work_product: work_product.clone(),
