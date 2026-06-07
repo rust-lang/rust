@@ -490,31 +490,33 @@ pub(crate) fn gen_define_handling<'ll>(
     let initializer = cx.get_const_i8(0);
     let region_id = add_global(&cx, &name, initializer, WeakAnyLinkage);
 
-    let c_entry_name = CString::new(symbol.clone()).unwrap();
-    let c_val = c_entry_name.as_bytes_with_nul();
-    let offload_entry_name = format!(".offloading.entry_name.{symbol}");
+    if gen_kernel {
+        let c_entry_name = CString::new(symbol.clone()).unwrap();
+        let c_val = c_entry_name.as_bytes_with_nul();
+        let offload_entry_name = format!(".offloading.entry_name.{symbol}");
 
-    let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
-    let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
-    llvm::set_alignment(llglobal, Align::ONE);
-    llvm::set_section(llglobal, c".llvm.rodata.offloading");
+        let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+        let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
+        llvm::set_alignment(llglobal, Align::ONE);
+        llvm::set_section(llglobal, c".llvm.rodata.offloading");
 
-    let name = format!(".offloading.entry.{symbol}");
+        let name = format!(".offloading.entry.{symbol}");
 
-    // See the __tgt_offload_entry documentation above.
-    let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
+        // See the __tgt_offload_entry documentation above.
+        let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
 
-    let initializer = crate::common::named_struct(offload_entry_ty, &elems);
-    let c_name = CString::new(name).unwrap();
-    let offload_entry = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
-    llvm::set_global_constant(offload_entry, true);
-    llvm::set_linkage(offload_entry, WeakAnyLinkage);
-    llvm::set_initializer(offload_entry, initializer);
-    llvm::set_alignment(offload_entry, Align::EIGHT);
-    let c_section_name = CString::new("llvm_offload_entries").unwrap();
-    llvm::set_section(offload_entry, &c_section_name);
+        let initializer = crate::common::named_struct(offload_entry_ty, &elems);
+        let c_name = CString::new(name).unwrap();
+        let offload_entry = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
+        llvm::set_global_constant(offload_entry, true);
+        llvm::set_linkage(offload_entry, WeakAnyLinkage);
+        llvm::set_initializer(offload_entry, initializer);
+        llvm::set_alignment(offload_entry, Align::EIGHT);
+        let c_section_name = CString::new("llvm_offload_entries").unwrap();
+        llvm::set_section(offload_entry, &c_section_name);
 
-    cx.add_compiler_used_global(offload_entry);
+        cx.add_compiler_used_global(offload_entry);
+    }
 
     let result = OffloadKernelGlobals {
         offload_sizes,
