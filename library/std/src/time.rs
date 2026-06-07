@@ -112,17 +112,16 @@ use crate::sys::{FromInner, IntoInner, time};
 /// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime] with `CLOCK_MONOTONIC`                               |
+/// | WASI      | [clock_gettime] with `CLOCK_MONOTONIC`                               |
 /// | Darwin    | [clock_gettime] with `CLOCK_UPTIME_RAW`                              |
 /// | VXWorks   | [clock_gettime] with `CLOCK_MONOTONIC`                               |
 /// | SOLID     | `get_tim`                                                            |
-/// | WASI      | [__wasi_clock_time_get] with `monotonic`                             |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
-/// [__wasi_clock_time_get]: https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md#clock_time_get
 /// [clock_gettime]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/clock_getres.html
 ///
 /// **Disclaimer:** These system calls might change over time.
@@ -224,17 +223,16 @@ pub struct Instant(time::Instant);
 /// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
+/// | WASI      | [clock_gettime (Realtime Clock)]                                     |
 /// | Darwin    | [clock_gettime (Realtime Clock)]                                     |
 /// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
 /// | SOLID     | `SOLID_RTC_ReadTime`                                                 |
-/// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [clock_gettime (Realtime Clock)]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/clock_getres.html
-/// [__wasi_clock_time_get (Realtime Clock)]: https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md#clock_time_get
 /// [GetSystemTimePreciseAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
 /// [GetSystemTimeAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
 ///
