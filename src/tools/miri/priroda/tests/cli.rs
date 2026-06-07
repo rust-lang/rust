@@ -103,3 +103,16 @@ fn invalid_commands() -> Result<(), Box<dyn std::error::Error>> {
 fn duplicate_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
     run_cli_test("../tests/pass/empty_main.rs", "tests/cli/duplicate_breakpoint")
 }
+
+/// Verifies continue can drive the interpreted program to normal completion.
+#[test]
+fn continue_finishes_program() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/continue_finishes_program")
+}
+
+/// Verifies continue stops when execution reaches a registered source-location
+/// breakpoint.
+#[test]
+fn continue_hits_breakpoint() -> Result<(), Box<dyn std::error::Error>> {
+    run_cli_test("../tests/pass/empty_main.rs", "tests/cli/continue_hits_breakpoint")
+}
