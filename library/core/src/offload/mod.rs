@@ -17,7 +17,7 @@ use crate::marker::PhantomData;
 #[lang = "preload_type"]
 #[unstable(feature = "offload", issue = "124509")]
 pub struct Preload<'a, T: ?Sized> {
-    cpu_ptr: *const T,
+    pub cpu_ptr: *const T,
     _marker: PhantomData<&'a T>,
 }
 
@@ -31,7 +31,7 @@ pub struct Preload<'a, T: ?Sized> {
 #[lang = "preload_mut_type"]
 #[unstable(feature = "offload", issue = "124509")]
 pub struct PreloadMut<'a, T: ?Sized> {
-    cpu_ptr: *mut T,
+    pub cpu_ptr: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
 

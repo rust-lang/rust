@@ -243,9 +243,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
                 }
 
-                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
-                }
+                //if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                //    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                //}
 
                 codegen_offload(self, tcx, instance, args);
                 // offload *has* a return type, but somehow works without mentioning the place
@@ -1976,7 +1976,7 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
 
     let target_symbol = cx.generate_local_symbol_name("");
     dbg!("done for now");
-    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals);
+    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals, false);
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -2053,7 +2053,7 @@ fn codegen_offload_preload<'ll, 'tcx>(
     dbg!("asdf");
     //let target_symbol = "asdf_I_ll_nameclash".to_owned();
     let target_symbol = cx.generate_local_symbol_name("");
-    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals);
+    let offload_data = gen_define_handling(&cx, metadata, target_symbol, offload_globals, false);
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -2143,7 +2143,7 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+    let offload_data = gen_define_handling(&cx, &metadata, target_symbol, offload_globals, true);
     gen_call_handling(
         bx,
         &offload_data,

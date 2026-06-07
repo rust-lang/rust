@@ -347,7 +347,7 @@ impl KernelArgsTy {
 pub(crate) struct OffloadKernelGlobals<'ll> {
     pub offload_sizes: &'ll llvm::Value,
     pub memtransfer_begin: &'ll llvm::Value,
-    pub memtransfer_kernel: &'ll llvm::Value,
+    pub memtransfer_kernel: Option<&'ll llvm::Value>,
     pub memtransfer_end: &'ll llvm::Value,
     pub region_id: &'ll llvm::Value,
 }
@@ -419,6 +419,7 @@ pub(crate) fn gen_define_handling<'ll>(
     metadata: &[OffloadMetadata],
     symbol: String,
     offload_globals: &OffloadGlobals<'ll>,
+    gen_kernel: bool,
 ) -> OffloadKernelGlobals<'ll> {
     if let Some(entry) = cx.offload_kernel_cache.borrow().get(&symbol) {
         return *entry;
@@ -446,7 +447,7 @@ pub(crate) fn gen_define_handling<'ll>(
     let valid_begin_mappings = MappingFlags::TO | MappingFlags::LITERAL | MappingFlags::IMPLICIT;
     let transfer_to: Vec<u64> =
         transfer.iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
-    dbg!(&transfer);
+    //dbg!(&transfer);
     let transfer_from: Vec<u64> =
         transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
     let valid_kernel_mappings = MappingFlags::LITERAL | MappingFlags::IMPLICIT;
@@ -468,9 +469,17 @@ pub(crate) fn gen_define_handling<'ll>(
         add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &actual_sizes);
     let memtransfer_begin =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
-    let memtransfer_kernel =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.kernel"), &transfer_kernel);
-    dbg!(&transfer_from);
+
+    let memtransfer_kernel = if gen_kernel {
+        Some(add_priv_unnamed_arr(
+            &cx,
+            &format!(".offload_maptypes.{symbol}.kernel"),
+            &transfer_kernel,
+        ))
+    } else {
+        None
+    };
+    //dbg!(&transfer_from);
     let memtransfer_end =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
 
@@ -571,6 +580,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         memtransfer_end,
         region_id,
     } = offload_data;
+    let memtransfer_kernel = memtransfer_kernel.unwrap();
     let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
 
