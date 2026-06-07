@@ -305,7 +305,7 @@ VariantList =
 
 Variant =
   Attr* Visibility?
-  Name FieldList? ('=' ConstArg)?
+  (Name | '_') FieldList? ('=' ConstArg)?
 
 Union =
   Attr* Visibility?

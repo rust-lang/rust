@@ -2072,6 +2072,8 @@ impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
