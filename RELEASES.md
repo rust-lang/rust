@@ -77,6 +77,7 @@ Compatibility Notes
 - [For `export_name`, `link_name`, and `link_section` attributes, if multiple of the same attribute is present, the first one now takes precedence.](https://github.com/rust-lang/rust/pull/153041)
 - [Update the minimum external LLVM to 21](https://github.com/rust-lang/rust/pull/153684)
 - On `avr` targets, C's `double` type is 32-bit by default, so [change `c_double` to `f32` on `avr` targets to match](https://github.com/rust-lang/rust/pull/154647). This is a breaking change, but necessary to make `c_double` match C's double.
+- [`BTreeMap::append()` was optimized, which may now cause panics for types with incorrect `Ord` impls](https://github.com/rust-lang/rust/pull/153107)
 
 <a id="1.96.0-Internal-Changes"></a>
 
