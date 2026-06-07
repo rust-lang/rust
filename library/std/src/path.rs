@@ -1803,14 +1803,13 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// #![feature(pathbuf_into_string)]
     /// use std::path::PathBuf;
     ///
     /// let path_buf = PathBuf::from("foo");
     /// let string = path_buf.into_string();
     /// assert_eq!(string, Ok(String::from("foo")));
     /// ```
-    #[unstable(feature = "pathbuf_into_string", issue = "156203")]
+    #[stable(feature = "pathbuf_into_string", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_string(self) -> Result<String, PathBuf> {
         self.into_os_string().into_string().map_err(PathBuf::from)
     }
