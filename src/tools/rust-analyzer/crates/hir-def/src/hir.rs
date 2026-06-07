@@ -224,6 +224,7 @@ pub enum Expr {
     Loop {
         body: ExprId,
         label: Option<LabelId>,
+        source: LoopSource,
     },
     Call {
         callee: ExprId,
@@ -387,6 +388,17 @@ impl Expr {
             Expr::Range { .. } => ExprPrecedence::Range,
         }
     }
+}
+
+/// The loop type that yielded an `Expr::Loop`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoopSource {
+    /// A `loop { .. }` loop.
+    Loop,
+    /// A `while _ { .. }` loop.
+    While,
+    /// A `for _ in _ { .. }` loop.
+    ForLoop,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -717,6 +729,7 @@ pub enum Pat {
     Deref {
         inner: PatId,
     },
+    NotNull,
     ConstBlock(ExprId),
     /// An expression inside a pattern. That can only occur inside assignments.
     ///
@@ -734,7 +747,8 @@ impl Pat {
             | Pat::Wild
             | Pat::Missing
             | Pat::Rest
-            | Pat::Expr(_) => {}
+            | Pat::Expr(_)
+            | Pat::NotNull => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }

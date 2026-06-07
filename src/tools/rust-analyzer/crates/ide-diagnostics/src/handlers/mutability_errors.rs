@@ -1313,7 +1313,7 @@ fn main() {
     fn regression_20662() {
         check_diagnostics(
             r#"
-//- minicore: index
+//- minicore: index, slice
 pub trait A: core::ops::IndexMut<usize> {
     type T: A;
 }
