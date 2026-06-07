@@ -1,15 +1,12 @@
 #![feature(try_blocks)]
-#![allow(unused_braces, unused_variables, dead_code)]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::unused_unit,
+#![expect(
+    clippy::diverging_sub_expression,
     clippy::let_unit_value,
     clippy::match_single_binding,
-    clippy::never_loop,
     clippy::needless_ifs,
-    clippy::diverging_sub_expression,
+    clippy::never_loop,
     clippy::single_match,
-    clippy::manual_unwrap_or_default
+    clippy::unused_unit
 )]
 #![warn(clippy::manual_let_else)]
 //@no-rustfix

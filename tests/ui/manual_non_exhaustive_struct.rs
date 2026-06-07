@@ -1,5 +1,4 @@
 #![warn(clippy::manual_non_exhaustive)]
-#![allow(unused)]
 //@no-rustfix
 pub mod structs {
     pub struct S {
