@@ -4,24 +4,17 @@
 #![deny(warnings)]
 
 extern crate rustc_codegen_ssa;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
+extern crate rustc_driver as _;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_symbol_mangling;
-extern crate rustc_target;
 
 use std::any::Any;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
@@ -47,11 +40,11 @@ impl CodegenBackend for TheBackend {
         _sess: &Session,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, WorkProductMap) {
         let codegen_results = ongoing_codegen
             .downcast::<CompiledModules>()
             .expect("in join_codegen: ongoing_codegen is not a CompiledModules");
-        (*codegen_results, FxIndexMap::default())
+        (*codegen_results, WorkProductMap::default())
     }
 
     fn link(
