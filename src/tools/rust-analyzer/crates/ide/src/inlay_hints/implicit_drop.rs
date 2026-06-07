@@ -43,7 +43,7 @@ pub(super) fn hints(
 
     for (_, bb) in mir.basic_blocks.iter() {
         let terminator = bb.terminator.as_ref()?;
-        if let TerminatorKind::Drop { place, .. } = terminator.kind {
+        if let TerminatorKind::Drop { place, .. } = &terminator.kind {
             if !place.projection.is_empty() {
                 continue; // Ignore complex cases for now
             }

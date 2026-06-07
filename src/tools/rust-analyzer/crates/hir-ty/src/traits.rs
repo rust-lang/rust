@@ -121,7 +121,7 @@ pub fn implements_trait_unique<'db>(
     env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
 ) -> bool {
-    implements_trait_unique_impl(db, env, trait_, &mut |infcx| {
+    implements_trait_unique_with_infcx(db, env, trait_, &mut |infcx| {
         infcx.fill_rest_fresh_args(Span::Dummy, trait_.into(), [ty.into()])
     })
 }
@@ -133,10 +133,10 @@ pub fn implements_trait_unique_with_args<'db>(
     trait_: TraitId,
     args: GenericArgs<'db>,
 ) -> bool {
-    implements_trait_unique_impl(db, env, trait_, &mut |_| args)
+    implements_trait_unique_with_infcx(db, env, trait_, &mut |_| args)
 }
 
-fn implements_trait_unique_impl<'db>(
+pub fn implements_trait_unique_with_infcx<'db>(
     db: &'db dyn HirDatabase,
     env: ParamEnvAndCrate<'db>,
     trait_: TraitId,

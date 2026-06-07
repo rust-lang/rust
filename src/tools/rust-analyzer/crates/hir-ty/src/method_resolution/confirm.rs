@@ -18,7 +18,7 @@ use crate::{
     Adjust, Adjustment, AutoBorrow, IncorrectGenericsLenKind, InferenceDiagnostic,
     LifetimeElisionKind, PointerCast, Span,
     db::HirDatabase,
-    infer::{AllowTwoPhase, AutoBorrowMutability, InferenceContext},
+    infer::{AllowTwoPhase, AutoBorrowMutability, ExplicitDropMethodUseKind, InferenceContext},
     lower::{
         GenericPredicates,
         path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
@@ -582,7 +582,9 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
     fn check_for_illegal_method_calls(&self) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         if self.ctx.lang_items.Drop_drop.is_some_and(|drop_fn| drop_fn == self.candidate) {
-            // FIXME: Report an error.
+            self.ctx.push_diagnostic(InferenceDiagnostic::ExplicitDropMethodUse {
+                kind: ExplicitDropMethodUseKind::MethodCall(self.call_expr),
+            });
         }
     }
 

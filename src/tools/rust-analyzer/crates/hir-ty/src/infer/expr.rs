@@ -8,7 +8,8 @@ use hir_def::{
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        InlineAsmKind, LabelId, Pat, PatId, RecordLitField, RecordSpread, Statement, UnaryOp,
+        InlineAsmKind, LabelId, LoopSource, Pat, PatId, RecordLitField, RecordSpread, Statement,
+        UnaryOp,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -201,6 +202,7 @@ impl<'db> InferenceContext<'_, 'db> {
             | Pat::Slice { .. }
             | Pat::ConstBlock(_)
             | Pat::Record { .. }
+            | Pat::NotNull
             | Pat::Missing => true,
             Pat::Expr(_) => unreachable!(
                 "we don't call pat_guaranteed_to_constitute_read_for_never() with assignments"
@@ -305,7 +307,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
         } else {
             if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
-                _ = self.demand_eqtype(expr.into(), ty, expected_ty);
+                _ = self.demand_eqtype(expr.into(), expected_ty, ty);
             }
             ty
         }
@@ -400,24 +402,29 @@ impl<'db> InferenceContext<'_, 'db> {
                 })
                 .1
             }
-            &Expr::Loop { body, label } => {
-                let ty = expected.coercion_target_type(&mut self.table, tgt_expr.into());
+            &Expr::Loop { body, label, source } => {
+                let coerce = match source {
+                    // you can only use break with a value from a normal `loop { }`
+                    LoopSource::Loop => {
+                        Some(expected.coercion_target_type(&mut self.table, body.into()))
+                    }
+                    LoopSource::While | LoopSource::ForLoop => None,
+                };
                 let (breaks, ()) =
-                    self.with_breakable_ctx(BreakableKind::Loop, Some(ty), label, |this| {
-                        this.infer_expr(
+                    self.with_breakable_ctx(BreakableKind::Loop, coerce, label, |this| {
+                        this.infer_expr_suptype_coerce_never(
                             body,
                             &Expectation::HasType(this.types.types.unit),
                             ExprIsRead::Yes,
                         );
                     });
 
-                match breaks {
-                    Some(breaks) => {
-                        self.diverges = Diverges::Maybe;
-                        breaks
-                    }
-                    None => self.types.types.never,
+                if breaks.may_break {
+                    self.diverges = Diverges::Maybe;
+                } else {
+                    self.diverges = Diverges::Always;
                 }
+                breaks.coerce.map(|c| c.complete(self)).unwrap_or(self.types.types.unit)
             }
             Expr::Closure { body, args, ret_type, arg_types, closure_kind, capture_by: _ } => self
                 .infer_closure(
@@ -728,8 +735,13 @@ impl<'db> InferenceContext<'_, 'db> {
                         self.table.select_obligations_where_possible();
                         trait_element_ty
                     }
-                    // FIXME: Report an error.
-                    None => self.types.types.error,
+                    None => {
+                        self.push_diagnostic(InferenceDiagnostic::CannotIndexInto {
+                            expr: tgt_expr,
+                            found: base_t.store(),
+                        });
+                        self.types.types.error
+                    }
                 }
             }
             Expr::Tuple { exprs, .. } => {
@@ -1294,7 +1306,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                     oprnd_t = ty;
                 } else {
-                    // FIXME: Report an error.
+                    self.push_diagnostic(InferenceDiagnostic::CannotBeDereferenced {
+                        expr,
+                        found: oprnd_t.store(),
+                    });
                     oprnd_t = self.types.types.error;
                 }
             }
@@ -1490,10 +1505,11 @@ impl<'db> InferenceContext<'_, 'db> {
         label: Option<LabelId>,
         expected: &Expectation<'db>,
     ) -> Ty<'db> {
+        let prev_diverges = self.diverges;
         let coerce_ty = expected.coercion_target_type(&mut self.table, expr.into());
         let g = self.resolver.update_to_inner_scope(self.db, self.store_owner, expr);
 
-        let (break_ty, ty) =
+        let (ctxt, tail_expr_ty) =
             self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty), label, |this| {
                 for stmt in statements {
                     match stmt {
@@ -1561,42 +1577,54 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
                 }
 
-                // FIXME: This should make use of the breakable CoerceMany
-                if let Some(expr) = tail {
-                    this.infer_expr_coerce(expr, expected, ExprIsRead::Yes)
-                } else {
-                    // Citing rustc: if there is no explicit tail expression,
-                    // that is typically equivalent to a tail expression
-                    // of `()` -- except if the block diverges. In that
-                    // case, there is no value supplied from the tail
-                    // expression (assuming there are no other breaks,
-                    // this implies that the type of the block will be
-                    // `!`).
-                    if this.diverges.is_always() {
-                        // we don't even make an attempt at coercion
-                        this.table.new_maybe_never_var(expr.into())
-                    } else if let Some(t) = expected.only_has_type(&mut this.table) {
-                        if this
-                            .coerce(
-                                expr,
-                                this.types.types.unit,
-                                t,
-                                AllowTwoPhase::No,
-                                ExprIsRead::Yes,
-                            )
-                            .is_err()
-                        {
-                            this.emit_type_mismatch(expr.into(), t, this.types.types.unit);
-                        }
-                        t
-                    } else {
-                        this.types.types.unit
-                    }
-                }
+                // check the tail expression **without** holding the
+                // `enclosing_breakables` lock below.
+                tail.map(|expr| (expr, this.infer_expr_inner(expr, expected, ExprIsRead::Yes)))
             });
+
+        let mut coerce = ctxt.coerce.unwrap();
+        if let Some((tail_expr, tail_expr_ty)) = tail_expr_ty {
+            let cause = ObligationCause::new(tail_expr);
+            coerce.coerce_inner(
+                self,
+                &cause,
+                tail_expr,
+                tail_expr_ty,
+                false,
+                false,
+                ExprIsRead::Yes,
+            );
+        } else {
+            // Subtle: if there is no explicit tail expression,
+            // that is typically equivalent to a tail expression
+            // of `()` -- except if the block diverges. In that
+            // case, there is no value supplied from the tail
+            // expression (assuming there are no other breaks,
+            // this implies that the type of the block will be
+            // `!`).
+            //
+            // #41425 -- label the implicit `()` as being the
+            // "found type" here, rather than the "expected type".
+            if !self.diverges.is_always() {
+                coerce.coerce_forced_unit(
+                    self,
+                    expr,
+                    &ObligationCause::new(expr),
+                    false,
+                    ExprIsRead::Yes,
+                );
+            }
+        }
+
+        if ctxt.may_break {
+            // If we can break from the block, then the block's exit is always reachable
+            // (... as long as the entry is reachable) - regardless of the tail of the block.
+            self.diverges = prev_diverges;
+        }
+
         self.resolver.reset_to_guard(g);
 
-        break_ty.unwrap_or(ty)
+        coerce.complete(self)
     }
 
     fn lookup_field(
@@ -2169,13 +2197,13 @@ impl<'db> InferenceContext<'_, 'db> {
         ty: Option<Ty<'db>>,
         label: Option<LabelId>,
         cb: impl FnOnce(&mut Self) -> T,
-    ) -> (Option<Ty<'db>>, T) {
+    ) -> (BreakableContext<'db>, T) {
         self.breakables.push({
             BreakableContext { kind, may_break: false, coerce: ty.map(CoerceMany::new), label }
         });
         let res = cb(self);
         let ctx = self.breakables.pop().expect("breakable stack broken");
-        (if ctx.may_break { ctx.coerce.map(|ctx| ctx.complete(self)) } else { None }, res)
+        (ctx, res)
     }
 }
 

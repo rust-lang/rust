@@ -56,7 +56,7 @@ jobs:
       - name: Install Rust toolchain
         run: |
           RUSTC_VERSION=$(cat rust-version)
-          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt
+          rustup-toolchain-install-master ${RUSTC_VERSION} -c cargo -c rust-src -c rustfmt -c rustc-dev -c llvm-tools
           rustup default ${RUSTC_VERSION}
 
       # Emulate a nightly toolchain, because the toolchain installed above does not have "nightly"
@@ -69,10 +69,10 @@ jobs:
         run: echo "::add-matcher::.github/rust.json"
 
       - name: Test
-        run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
+        run: cargo test --features in-rust-tree -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
 
       - name: Check salsa dependency
-        run: "! (cargo tree -p proc-macro-srv-cli | grep -q salsa)"
+        run: "! (cargo tree -p proc-macro-srv-cli -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -i salsa)"
 
   rust:
     if: github.repository == 'rust-lang/rust-analyzer'

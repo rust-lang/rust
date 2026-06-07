@@ -16,7 +16,7 @@ use std::fmt::Write;
 use stdx::{always, format_to, never};
 use syntax::{
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
-    ast::{self, HasArgList, make, prec::ExprPrecedence},
+    ast::{self, HasArgList, prec::ExprPrecedence},
 };
 
 use ide_db::text_edit::TextEdit;
@@ -522,11 +522,11 @@ fn rename_to_self(
     };
     let first_param_ty = first_param.ty();
     let impl_ty = impl_.self_ty(sema.db);
-    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+    let (ty, self_param) = if impl_ty.is_reference() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")
     } else {
-        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+        first_param_ty.as_reference_inner().map_or((first_param_ty.clone(), "self"), |ty| {
             (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
         })
     };
@@ -818,11 +818,12 @@ fn rename_elided_lifetime(
     let mut builder = SourceChangeBuilder::new(position.file_id);
 
     let editor = builder.make_editor(&root);
+    let make = editor.make();
 
-    editor.replace(lifetime_token, make::lifetime(new_name).syntax().clone());
+    editor.replace(lifetime_token, make.lifetime(new_name).syntax().clone());
 
     if let Some(has_generic_params) = parent.ancestors().find_map(ast::AnyHasGenericParams::cast) {
-        let lifetime_param = make::lifetime_param(make::lifetime(new_name));
+        let lifetime_param = make.lifetime_param(make.lifetime(new_name));
         editor.add_generic_param(&has_generic_params, lifetime_param.into());
     }
 
