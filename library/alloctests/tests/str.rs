@@ -2431,6 +2431,16 @@ fn floor_char_boundary() {
     check_many("🇯🇵", 0..4, 0);
     check_many("🇯🇵", 4..8, 4);
     check_many("🇯🇵", 8..10, 8);
+
+    // anticipate length- and index-based specializations
+    let s = "jpĵƥ日本🇯🇵jpĵƥ日本🇯🇵";
+    let expected = [
+        0, 1, 2, 2, 4, 4, 6, 6, 6, 9, 9, 9, 12, 12, 12, 12, 16, 16, 16, 16, 20, 21, 22, 22, 24, 24,
+        26, 26, 26, 29, 29, 29, 32, 32, 32, 32, 36, 36, 36, 36, 40, 40, 40, 40,
+    ];
+    for (idx, &ret) in expected.iter().enumerate() {
+        check_many(s, [idx], ret);
+    }
 }
 
 #[test]
@@ -2477,4 +2487,14 @@ fn ceil_char_boundary() {
 
     // above len
     check_many("hello", 5..=10, 5);
+
+    // anticipate length- and index-based specializations
+    let s = "jpĵƥ日本🇯🇵jpĵƥ日本🇯🇵";
+    let expected = [
+        0, 1, 2, 4, 4, 6, 6, 9, 9, 9, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 20, 21, 22, 24, 24,
+        26, 26, 29, 29, 29, 32, 32, 32, 36, 36, 36, 36, 40, 40, 40, 40, 40, 40, 40,
+    ];
+    for (idx, &ret) in expected.iter().enumerate() {
+        check_many(s, [idx], ret);
+    }
 }
