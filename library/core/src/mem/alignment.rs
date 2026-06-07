@@ -58,7 +58,13 @@ impl Alignment {
 
     /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
     ///
-    /// Every reference to a value of the type `T` must be a multiple of this number.
+    /// This function is identical to [`Alignment::of::<T>()`][Self::of] whenever
+    /// <code>T: [Sized]</code>,
+    /// but also supports determining the alignment required by a `dyn Trait` value, which is the
+    /// alignment of the underlying concrete type.
+    ///
+    /// This provides the same numerical value as [`align_of_val`],
+    /// but in an `Alignment` instead of a `usize`.
     ///
     /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
     ///
@@ -70,6 +76,25 @@ impl Alignment {
     ///
     /// assert_eq!(Alignment::of_val(&5i32).as_usize(), 4);
     /// ```
+    ///
+    /// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+    /// that is, the above assertion does not pass on all platforms.)
+    ///
+    /// `dyn` types may have different alignments for different values;
+    /// `Alignment::of_val()` can be used to learn those alignments:
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// use std::mem::Alignment;
+    ///
+    /// let a: &dyn ToString = &1234u16;
+    /// let b: &dyn ToString = &String::from("abcd");
+    ///
+    /// assert_eq!(Alignment::of_val(a), Alignment::of::<u16>());
+    /// assert_eq!(Alignment::of_val(b), Alignment::of::<String>());
+    /// ```
+    ///
+    /// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -81,7 +106,9 @@ impl Alignment {
 
     /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
     ///
-    /// Every reference to a value of the type `T` must be a multiple of this number.
+    /// This function is identical to [`Alignment::of_val()`], except that it can be used with raw
+    /// pointers in situations where it would be unsound or undesirable to convert them to
+    /// [`&` references][primitive@reference] and impose the aliasing rules that come with that.
     ///
     /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
     ///
@@ -117,6 +144,11 @@ impl Alignment {
     ///
     /// assert_eq!(unsafe { Alignment::of_val_raw(&5i32) }.as_usize(), 4);
     /// ```
+    ///
+    /// (Caution: [it is not guaranteed][type-layout] that the alignment of `i32` is `4`;
+    /// that is, the above assertion does not pass on all platforms.)
+    ///
+    /// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
