@@ -12,6 +12,7 @@ use stdarch_test::assert_instr;
 
 use super::*;
 use crate::core_arch::arch::aarch64::*;
+use super::{AsSigned, AsUnsigned};
 
 #[doc = "Absolute difference"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabd[_f32]_m)"]
