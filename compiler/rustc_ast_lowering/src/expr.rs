@@ -19,17 +19,17 @@ use visit::{Visitor, walk_expr};
 
 mod closure;
 
-use super::errors::{
+use crate::diagnostics::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    MoveExprOnlyInPlainClosures, NeverPatternWithBody, NeverPatternWithGuard,
-    UnderscoreExprLhsAssign,
+    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
+    InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInPlainClosures,
+    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign, UseConstGenericArg,
+    YieldInClosure,
 };
-use super::{
-    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
+use crate::{
+    AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
+    ParamMode, ResolverAstLoweringExt, TryBlockScope,
 };
-use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
-use crate::{AllowReturnTypeNotation, ImplTraitPosition, TryBlockScope};
 
 pub(super) struct WillCreateDefIdsVisitor;
 

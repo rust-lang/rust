@@ -6,7 +6,7 @@ use rustc_session::config::Offload;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
-use crate::errors;
+use crate::diagnostics;
 
 fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
     ecx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
@@ -74,7 +74,7 @@ pub(crate) fn expand_kernel(
     let dcx = ecx.sess.dcx();
 
     let Some((vis, sig, ident, generics, body)) = extract_fn(&item) else {
-        dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+        dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
         return vec![item];
     };
 

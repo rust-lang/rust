@@ -22,7 +22,7 @@ use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[derive(Clone)]
 struct Test {
@@ -71,7 +71,7 @@ pub fn inject(
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    dcx.emit_err(errors::TestsNotSupport {});
+                    dcx.emit_err(diagnostics::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }
@@ -166,7 +166,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                errors::UnnameableTestItems,
+                diagnostics::UnnameableTestItems,
             );
         }
     }
