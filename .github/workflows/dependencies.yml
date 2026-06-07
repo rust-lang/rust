@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           submodules: recursive
       - name: install the bootstrap toolchain
@@ -66,7 +66,7 @@ jobs:
         run: ./src/tools/update-lockfile.sh
 
       - name: upload Cargo.lock artifact for use in PR
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           name: Cargo-lock
           path: |
@@ -75,7 +75,7 @@ jobs:
             src/tools/rustbook/Cargo.lock
           retention-days: 1
       - name: upload cargo-update log artifact for use in PR
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           name: cargo-updates
           path: cargo_update.log
@@ -91,14 +91,14 @@ jobs:
       pull-requests: write
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: download Cargo.lock from update job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: Cargo-lock
       - name: download cargo-update log from update job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: cargo-updates
 
