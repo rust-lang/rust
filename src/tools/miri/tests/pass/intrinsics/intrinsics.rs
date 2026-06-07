@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(core_intrinsics, layout_for_ptr, ptr_metadata)]
+#![feature(core_intrinsics, ptr_metadata)]
 //! Tests for various intrinsics that do not fit anywhere else.
 
 use std::intrinsics;
