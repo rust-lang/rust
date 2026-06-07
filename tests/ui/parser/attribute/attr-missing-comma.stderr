@@ -1,0 +1,8 @@
+error: attribute items not separated with `,`
+  --> $DIR/attr-missing-comma.rs:4:20
+   |
+LL |     since = "since"
+   |                    ^ help: try adding `,` here
+
+error: aborting due to 1 previous error
+
