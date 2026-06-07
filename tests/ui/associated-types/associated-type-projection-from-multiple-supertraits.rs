@@ -29,12 +29,7 @@ fn paint<C:BoxCar>(c: C, d: C::Color) {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
 }
 
-fn dent_object_2<COLOR>(c: &dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
-    //~^ ERROR the value of the associated types
-    //~| ERROR equality constraints are not yet supported in `where` clauses
-}
-
-fn dent_object_3<X, COLOR>(c: X)
+fn dent_object_2<X, COLOR>(c: X)
 where X: BoxCar,
     X: Vehicle<Color = COLOR>,
     X: Box<Color = COLOR>

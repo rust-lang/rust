@@ -101,11 +101,21 @@ impl<A: Clone> Iterator for Repeat<A> {
         Some(self.element.clone())
     }
 
+    /// Consumes the iterator and panics.
+    ///
+    /// # Panics
+    ///
+    /// This method always panics because `Repeat` is infinite.
     #[track_caller]
     fn last(self) -> Option<A> {
         panic!("iterator is infinite");
     }
 
+    /// Consumes the iterator and panics.
+    ///
+    /// # Panics
+    ///
+    /// This method always panics because `Repeat` is infinite.
     #[track_caller]
     fn count(self) -> usize {
         panic!("iterator is infinite");

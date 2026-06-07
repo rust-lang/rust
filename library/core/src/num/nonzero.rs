@@ -692,6 +692,16 @@ macro_rules! nonzero_integer {
 
             /// Returns the index of the highest bit set to one in `self`.
             ///
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    ""
+                }
+                if unsigned {
+                    "Note that this is equivalent to [`ilog2`](Self::ilog2)."
+                }
+            }]
+            ///
             /// # Examples
             ///
             /// ```
@@ -1757,6 +1767,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[doc = concat!("[`", stringify!($Int), "::ilog2`],")]
         /// except that it has no failure cases to worry about
         /// since this value can never be zero.
+        ///
+        /// Note that this is equivalent to [`highest_one`](Self::highest_one).
         ///
         /// # Examples
         ///

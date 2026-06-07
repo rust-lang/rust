@@ -2307,7 +2307,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.mention_default_field_values(source, ident, &mut err);
 
-        if let Some((this_res, outer_ident)) = outermost_res {
+        let shown_candidates = if let Some((this_res, outer_ident)) = outermost_res {
             let mut import_suggestions = self.lookup_import_candidates(
                 outer_ident,
                 this_res.ns().unwrap_or(Namespace::TypeNS),
@@ -2338,7 +2338,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 err.subdiagnostic(label);
             }
-        }
+            !point_to_def
+        } else {
+            false
+        };
 
         let mut non_exhaustive = None;
         // If an ADT is foreign and marked as `non_exhaustive`, then that's
@@ -2476,8 +2479,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 2) the use isn't nested, otherwise `dedup_span` is one ident in `{...}`.
         //
         // See issue #156060.
-        let can_replace_use =
-            !single_nested && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
+        let can_replace_use = !shown_candidates
+            && !single_nested
+            && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
         if can_replace_use {
             // We prioritize shorter paths, non-core imports and direct imports over the
             // alternatives.
