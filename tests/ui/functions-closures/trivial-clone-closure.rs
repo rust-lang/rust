@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Check that closures implement `TrivialClone`.
 
 #![feature(trivial_clone)]

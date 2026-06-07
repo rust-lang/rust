@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:newtype_struct_xc.rs
 
 

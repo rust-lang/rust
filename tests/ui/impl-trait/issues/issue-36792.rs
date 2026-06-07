@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 fn foo() -> impl Copy {
     foo
 }

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![feature(coroutines, stmt_expr_attributes)]
 

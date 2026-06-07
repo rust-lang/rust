@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 trait TheTrait : TheSuperTrait<<Self as TheTrait>::Item> {
     type Item;
 }

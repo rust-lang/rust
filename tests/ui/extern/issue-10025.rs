@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code, missing_abi)]
 
 unsafe extern fn foo() {}

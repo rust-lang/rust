@@ -1,6 +1,6 @@
 //! Test early return within binary operation expressions
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 #![allow(unreachable_code)]

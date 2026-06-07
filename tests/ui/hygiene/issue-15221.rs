@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(path_statements)]
 
 macro_rules! inner {

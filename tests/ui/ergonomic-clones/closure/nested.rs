@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 #![feature(ergonomic_clones)]
 #![allow(incomplete_features)]

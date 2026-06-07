@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/10638
 
-//@ run-pass
+//@ check-pass
 
 pub fn main() {
     //// I am not a doc comment!

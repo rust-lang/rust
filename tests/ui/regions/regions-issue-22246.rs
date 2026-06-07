@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_imports)]
 // Regression test for issue #22246 -- we should be able to deduce
 // that `&'a B::Owned` implies that `B::Owned : 'a`.

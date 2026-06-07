@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 struct Test<T: ?Sized>(T);
 

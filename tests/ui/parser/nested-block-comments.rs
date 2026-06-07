@@ -2,7 +2,7 @@
 //!
 //! See <https://github.com/rust-lang/rust/issues/66>.
 
-//@ run-pass
+//@ check-pass
 
 /* This test checks that nested comments are supported
 

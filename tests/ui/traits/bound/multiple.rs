@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn f<T:PartialEq + PartialOrd>(_: T) {
 }

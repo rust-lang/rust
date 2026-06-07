@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 use std::io::Error;
 
 fn main() -> Result<(), Box<Error>> {

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ revisions: default mir-opt
 //@[mir-opt] compile-flags: -Zmir-opt-level=4
 

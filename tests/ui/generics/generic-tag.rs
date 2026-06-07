@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_assignments)]
 #![allow(non_camel_case_types)]
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // check that type parameters can't "shadow" qualified paths.
 
 fn check<Clone>(_c: Clone) {

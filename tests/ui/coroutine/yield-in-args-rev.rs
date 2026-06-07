@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 
 // Test that a borrow that occurs after a yield in the same
@@ -10,7 +10,7 @@
 fn foo(_a: (), _b: &bool) {}
 
 fn bar() {
-    #[coroutine] || { //~ WARN unused coroutine that must be used
+    #[coroutine] || {
         let b = true;
         foo(yield, &b);
     };

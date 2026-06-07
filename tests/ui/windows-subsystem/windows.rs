@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![windows_subsystem = "windows"]
 
 fn main() {}

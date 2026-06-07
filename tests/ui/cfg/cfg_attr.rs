@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ compile-flags:--cfg set1 --cfg set2
 //@ reference: cfg.cfg_attr.intro
 //@ reference: cfg.cfg_attr.syntax

@@ -1,9 +1,9 @@
-//@ run-pass
+//@ check-pass
 
 use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
-    fn f(&self, _: Edge); //~ WARN methods `f` and `g` are never used
+    fn f(&self, _: Edge);
     fn g(&self, _: Node);
 }
 

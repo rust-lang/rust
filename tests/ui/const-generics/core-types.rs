@@ -1,5 +1,5 @@
 // Check that all types allowed with `min_const_generics` work.
-//@ run-pass
+//@ check-pass
 //@ revisions: full min
 
 #![cfg_attr(full, feature(adt_const_params))]

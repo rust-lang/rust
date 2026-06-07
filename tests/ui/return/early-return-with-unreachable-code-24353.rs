@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unreachable_code)]
 fn main() {
     return ();

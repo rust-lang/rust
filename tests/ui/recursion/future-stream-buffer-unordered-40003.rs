@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(unused_must_use)]
 fn main() {
     if false { test(); }

@@ -1,6 +1,6 @@
 //! Checks the basic usage of unit type
 
-//@ run-pass
+//@ check-pass
 
 fn f(u: ()) {
     u

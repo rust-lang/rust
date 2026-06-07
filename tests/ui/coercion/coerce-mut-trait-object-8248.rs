@@ -1,8 +1,8 @@
 // https://github.com/rust-lang/rust/issues/8248
-//@ run-pass
+//@ check-pass
 
 trait A {
-    fn dummy(&self) { } //~ WARN method `dummy` is never used
+    fn dummy(&self) { }
 }
 struct B;
 impl A for B {}

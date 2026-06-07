@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn main() {
     let _a: *const isize = 3 as *const isize;

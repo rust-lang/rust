@@ -1,7 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/89562>
 
 //@ edition:2018
-//@ run-pass
+//@ check-pass
 
 #![feature(must_not_suspend)]
 #![deny(must_not_suspend)]

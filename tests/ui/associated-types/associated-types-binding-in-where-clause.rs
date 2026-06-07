@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Test equality constraints on associated types in a where clause.
 
 

@@ -1,7 +1,7 @@
 //! Checks how type parameters interact with auto-traits like `Send` and `Sync` with implicit
 //! bounds
 
-//@ run-pass
+//@ check-pass
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]

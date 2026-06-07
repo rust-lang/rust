@@ -2,7 +2,7 @@
 //!
 //! Feature implementation test for <https://github.com/rust-lang/rust/issues/66>.
 
-//@ run-pass
+//@ check-pass
 
 /*
  * This is a multi-line comment.

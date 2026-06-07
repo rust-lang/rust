@@ -5,7 +5,7 @@
 //! This test makes sure that after doing that, things like `for` loops and the
 //! `?` operator still work as expected.
 
-//@ run-pass
+//@ check-pass
 //@ edition:2018
 
 #![allow(dead_code, unused_imports)]

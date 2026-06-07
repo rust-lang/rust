@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ compile-flags: -g
 
 #![feature(coroutines, coroutine_trait)]

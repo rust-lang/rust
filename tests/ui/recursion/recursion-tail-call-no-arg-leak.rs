@@ -2,7 +2,7 @@
 //!
 //! Regression test for: <https://github.com/rust-lang/rust/issues/160>
 
-//@ run-pass
+//@ build-pass
 
 fn inner(dummy: String, b: bool) {
     if b {

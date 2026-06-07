@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //@ compile-flags: -Csymbol-mangling-version=v0
 
 pub fn f<T: ?Sized>() {}

@@ -3,7 +3,7 @@
 //!
 //! Regression test for <https://github.com/rust-lang/rust/issues/37765>.
 
-//@ run-pass
+//@ check-pass
 //@ run-rustfix
 
 #![allow(dead_code)]

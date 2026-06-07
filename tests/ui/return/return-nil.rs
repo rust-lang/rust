@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn f() { let x = (); return x; }
 

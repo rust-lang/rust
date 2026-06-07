@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/2445
 
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 

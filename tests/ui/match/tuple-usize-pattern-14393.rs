@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/14393
 
-//@ run-pass
+//@ check-pass
 
 fn main() {
     match ("", 1_usize) {

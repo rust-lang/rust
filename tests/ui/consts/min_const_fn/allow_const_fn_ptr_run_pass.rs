@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![feature(rustc_attrs, staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

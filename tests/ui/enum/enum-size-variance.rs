@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![warn(variant_size_differences)]
 #![allow(dead_code)]

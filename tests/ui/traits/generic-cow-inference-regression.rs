@@ -1,6 +1,6 @@
 //@[new] compile-flags: -Znext-solver
 //@ revisions: old new
-//@ run-pass
+//@ check-pass
 
 // regression test for #147964:
 //   constification of these traits resulted in inference errors due to additional where clauses

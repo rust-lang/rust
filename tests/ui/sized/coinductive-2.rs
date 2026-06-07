@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 struct Node<C: CollectionFactory<Self>> {
     _children: C::Collection,
 }
@@ -11,7 +11,7 @@ impl<T> CollectionFactory<T> for Vec<()> {
     type Collection = Vec<T>;
 }
 
-trait Collection<T>: Sized { //~ WARN trait `Collection` is never used
+trait Collection<T>: Sized {
     fn push(&mut self, v: T);
 }
 

@@ -1,7 +1,7 @@
 //! Make sure the module level constants are still there and accessible even after
 //! the corresponding associated constants have been added, and later stabilized.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(deprecated, deprecated_in_future)]
 use std::{f32, u16};
