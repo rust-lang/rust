@@ -29,7 +29,7 @@ pub static VAR2: E = E::A(666);
 #[link_section = "__TEST,three"]
 pub static VAR3: E = E::B(1.);
 
-// CHECK: define {{(dso_local )?}}void @fn1() {{.*}} section "__TEST,four"
+// CHECK: define {{(dso_local )?}}void @fn1() {{.*}} section "__TEST,four" {
 #[no_mangle]
 #[link_section = "__TEST,four"]
 pub fn fn1() {}
