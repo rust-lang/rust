@@ -4269,7 +4269,7 @@ macro_rules! uint_impl {
         }
 
         /// Converts `self` to the target integer type, returning `None` if the value
-        /// does not lie in the target type's domain.
+        /// is not representable by the target type.
         ///
         /// # Examples
         ///
@@ -4287,11 +4287,11 @@ macro_rules! uint_impl {
         }
 
         /// Converts `self` to the target integer type, panicking if the value
-        /// does not lie in the target type's domain.
+        /// is not representable by the target type.
         ///
         /// # Panics
         ///
-        /// This function will panic if the value does not lie in the target type's domain.
+        /// This function will panic if the value is not representable by the target type.
         ///
         /// # Examples
         ///
@@ -4315,7 +4315,8 @@ macro_rules! uint_impl {
             T::strict_cast_from(self)
         }
 
-        /// Converts `self` to the target integer type, assuming the value lies in the target type's domain.
+        /// Converts `self` to the target integer type, assuming the value is
+        /// representable by the target type.
         ///
         /// # Safety
         ///
