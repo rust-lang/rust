@@ -352,7 +352,10 @@ macro_rules! int_impl {
         pub const fn strict_cast_unsigned(self) -> $UnsignedT {
             match self.checked_cast_unsigned() {
                 Some(n) => n,
-                None => imp::overflow_panic::cast_integer(),
+                None => {
+                    imp::overflow_panic::cast_integer();
+                    0
+                }
             }
         }
 
@@ -621,7 +624,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_add(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_add(rhs);
-            if b { imp::overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add() }
+            a
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
@@ -711,7 +715,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_add_unsigned(self, rhs: $UnsignedT) -> Self {
             let (a, b) = self.overflowing_add_unsigned(rhs);
-            if b { imp::overflow_panic::add() } else { a }
+            if b { imp::overflow_panic::add() }
+            a
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning `None` if
@@ -761,7 +766,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_sub(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_sub(rhs);
-            if b { imp::overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() }
+            a
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
@@ -851,7 +857,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_sub_unsigned(self, rhs: $UnsignedT) -> Self {
             let (a, b) = self.overflowing_sub_unsigned(rhs);
-            if b { imp::overflow_panic::sub() } else { a }
+            if b { imp::overflow_panic::sub() }
+            a
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning `None` if
@@ -901,7 +908,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_mul(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_mul(rhs);
-            if b { imp::overflow_panic::mul() } else { a }
+            if b { imp::overflow_panic::mul() }
+            a
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
@@ -1008,7 +1016,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_div(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_div(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            if b { imp::overflow_panic::div() }
+            a
         }
 
         /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
@@ -1075,7 +1084,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_div_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_div_euclid(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            if b { imp::overflow_panic::div() }
+            a
         }
 
         /// Checked integer division without remainder. Computes `self / rhs`,
@@ -1247,7 +1257,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_rem(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_rem(rhs);
-            if b { imp::overflow_panic::rem() } else { a }
+            if b { imp::overflow_panic::rem() }
+            a
         }
 
         /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None`
@@ -1313,7 +1324,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_rem_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_rem_euclid(rhs);
-            if b { imp::overflow_panic::rem() } else { a }
+            if b { imp::overflow_panic::rem() }
+            a
         }
 
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
@@ -1391,7 +1403,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_neg(self) -> Self {
             let (a, b) = self.overflowing_neg();
-            if b { imp::overflow_panic::neg() } else { a }
+            if b { imp::overflow_panic::neg() }
+            a
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None` if `rhs` is larger
@@ -1447,7 +1460,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_shl(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shl(rhs);
-            if b { imp::overflow_panic::shl() } else { a }
+            if b { imp::overflow_panic::shl() }
+            a
         }
 
         /// Unchecked shift left. Computes `self << rhs`, assuming that
@@ -1626,7 +1640,8 @@ macro_rules! int_impl {
         #[track_caller]
         pub const fn strict_shr(self, rhs: u32) -> Self {
             let (a, b) = self.overflowing_shr(rhs);
-            if b { imp::overflow_panic::shr() } else { a }
+            if b { imp::overflow_panic::shr() }
+            a
         }
 
         /// Unchecked shift right. Computes `self >> rhs`, assuming that

@@ -1775,7 +1775,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unwind: UnwindAction::Continue,
             },
         );
-        self.diverge_from(block);
+        if false {
+            self.diverge_from(block);
+        }
 
         success_block
     }
