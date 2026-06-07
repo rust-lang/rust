@@ -52,6 +52,6 @@ pub(in crate::num) const fn shl() -> ! {
 
 #[cold]
 #[track_caller]
-pub(in crate::num) const fn cast_integer() -> ! {
+pub(crate) const fn cast_integer() -> ! {
     panic!("attempt to cast integer with overflow")
 }
