@@ -1,5 +1,5 @@
 //@ run-pass
-// See Issues #20055 and #21695.
+// See Issues https://github.com/rust-lang/rust/issues/20055 and https://github.com/rust-lang/rust/issues/21695.
 
 // We are checking here that the temporaries `Box<[i8, k]>`, for `k`
 // in 1, 2, 3, 4, that are induced by the match expression are
