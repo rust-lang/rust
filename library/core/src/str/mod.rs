@@ -15,6 +15,7 @@ mod validations;
 
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
+use crate::hint::assert_unchecked;
 use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
@@ -421,21 +422,35 @@ impl str {
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
-            self.len()
-        } else {
-            let mut i = index;
-            while i > 0 {
-                if self.as_bytes()[i].is_utf8_char_boundary() {
-                    break;
-                }
-                i -= 1;
-            }
-
-            //  The character boundary will be within four bytes of the index
-            debug_assert!(i >= index.saturating_sub(3));
-
-            i
+            return self.len();
         }
+        if self.as_bytes()[index].is_utf8_char_boundary() {
+            return index;
+        }
+        // Unlike `ceil_char_boundary`, the loop is unrolled manually to prevent the compiler from
+        // generating excessive unrolled loop bodies when `index` is statically known.
+
+        // The first byte of `&str` must always be a char boundary, so we can assume `i > 0` below
+        // for any `i` where `self.as_bytes()[i]` is not a char boundary.
+        debug_assert!(self.as_bytes()[0].is_utf8_char_boundary());
+
+        // SAFETY: `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        unsafe { assert_unchecked(index >= 1) };
+        if self.as_bytes()[index - 1].is_utf8_char_boundary() {
+            return index - 1;
+        }
+
+        // SAFETY: `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        unsafe { assert_unchecked(index >= 2) };
+        if self.as_bytes()[index - 2].is_utf8_char_boundary() {
+            return index - 2;
+        }
+
+        // `self.as_bytes()[0]` is always a char boundary with valid `&str`
+        debug_assert!(index >= 3);
+        // The character boundary will be within four bytes of the index
+        debug_assert!(self.as_bytes()[index - 3].is_utf8_char_boundary());
+        index - 3
     }
 
     /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
@@ -467,14 +482,14 @@ impl str {
             self.len()
         } else {
             let mut i = index;
-            while i < self.len() {
-                if self.as_bytes()[i].is_utf8_char_boundary() {
+            while !self.as_bytes()[i].is_utf8_char_boundary() {
+                i += 1;
+                if i >= self.len() {
                     break;
                 }
-                i += 1;
             }
 
-            //  The character boundary will be within four bytes of the index
+            // The character boundary will be within four bytes of the index
             debug_assert!(i <= index + 3);
 
             i
