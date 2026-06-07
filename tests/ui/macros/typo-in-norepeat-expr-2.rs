@@ -3,9 +3,9 @@ macro_rules! err {
         [$arg]
     };
     (begin1 $arg1:ident end $agr2:expr) => {
-        [$follow] //~ ERROR: expected expression, found `$`
-        //~^ NOTE: there is an macro metavariable with this name in another macro matcher
-        //~| NOTE: expected expression
+        [$follow] //~ ERROR: cannot find macro parameter `$follow` in this scope
+        //~^ NOTE: not found in this scope
+        //~| NOTE: there is an macro metavariable with this name in another macro matcher
     };
 }
 
@@ -14,8 +14,8 @@ macro_rules! err1 {
         [$arg]
     };
     (begin1 $arg1:ident end) => {
-        [$follo] //~ ERROR: expected expression, found `$`
-        //~| NOTE: expected expression
+        [$follo] //~ ERROR: cannot find macro parameter `$follo` in this scope
+        //~^ NOTE: not found in this scope
         //~| HELP: there is a macro metavariable with a similar name in another macro matcher
     };
 }
@@ -25,10 +25,9 @@ macro_rules! err2 {
         [$arg]
     };
     (begin1 $arg1:ident end) => {
-        [$xyz] //~ ERROR: expected expression, found `$`
-        //~^ NOTE: expected expression
+        [$xyz] //~ ERROR: cannot find macro parameter `$xyz` in this scope
+        //~^ NOTE: not found in this scope
         //~| NOTE available metavariable names are: $arg1
-        //~| NOTE: macro metavariable not found
     };
 }
 
