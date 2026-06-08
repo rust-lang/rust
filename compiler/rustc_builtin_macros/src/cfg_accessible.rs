@@ -1,9 +1,8 @@
 //! Implementation of the `#[cfg_accessible(path)]` attribute macro.
 
 use rustc_ast as ast;
-use rustc_attr_parsing::validate_attr;
+use rustc_attr_parsing::{AttributeTemplate, validate_attr};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
-use rustc_feature::AttributeTemplate;
 use rustc_span::{Span, sym};
 
 use crate::diagnostics;

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttrSuggestionStyle, AttributeStability, AttributeTemplate};
+use rustc_feature::AttributeStability;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
 use rustc_parse::parser::Recovery;
@@ -71,7 +71,7 @@ use crate::session_diagnostics::{
     ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
-use crate::{AttributeParser, EmitAttribute};
+use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 

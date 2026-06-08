@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use rustc_ast::LitKind;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
-use rustc_feature::{AttributeStability, AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{AttributeKind, RustcAutodiff};
 use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
@@ -13,7 +13,7 @@ use crate::attributes::prelude::Allow;
 use crate::context::AcceptContext;
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
-use crate::unstable;
+use crate::{AttributeTemplate, template, unstable};
 
 pub(crate) struct RustcAutodiffParser;
 

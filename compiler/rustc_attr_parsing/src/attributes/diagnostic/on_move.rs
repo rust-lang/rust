@@ -1,4 +1,4 @@
-use rustc_feature::{AttributeStability, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
@@ -9,6 +9,7 @@ use crate::context::AcceptContext;
 use crate::diagnostics::DiagnosticOnMoveOnlyForAdt;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::template;
 
 #[derive(Default)]
 pub(crate) struct OnMoveParser {

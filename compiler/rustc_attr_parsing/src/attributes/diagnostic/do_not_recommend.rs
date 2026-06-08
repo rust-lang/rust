@@ -1,4 +1,4 @@
-use rustc_feature::{AttributeStability, AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::lint::builtin::{
@@ -11,6 +11,7 @@ use crate::context::AcceptContext;
 use crate::diagnostics::IncorrectDoNotRecommendLocation;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use crate::{AttributeTemplate, template};
 
 pub(crate) struct DoNotRecommendParser;
 impl SingleAttributeParser for DoNotRecommendParser {
