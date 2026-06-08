@@ -809,6 +809,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::volatile_composites::VOLATILE_COMPOSITES_INFO,
     crate::wildcard_imports::ENUM_GLOB_USE_INFO,
     crate::wildcard_imports::WILDCARD_IMPORTS_INFO,
+    crate::with_capacity_zero::WITH_CAPACITY_ZERO_INFO,
     crate::write::PRINT_LITERAL_INFO,
     crate::write::PRINT_STDERR_INFO,
     crate::write::PRINT_STDOUT_INFO,
