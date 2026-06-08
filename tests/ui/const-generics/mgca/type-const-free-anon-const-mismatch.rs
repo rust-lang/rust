@@ -1,7 +1,6 @@
 //@ compile-flags: -Zvalidate-mir -Znext-solver
 
 #![feature(min_generic_const_args)]
-#![expect(incomplete_features)]
 
 type const X: usize = const { N };
 //~^ ERROR type annotations needed

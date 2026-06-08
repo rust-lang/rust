@@ -6,7 +6,6 @@
 //@ compile-flags: -Zvalidate-mir
 
 #![feature(min_generic_const_args)]
-#![expect(incomplete_features)]
 
 pub struct A;
 

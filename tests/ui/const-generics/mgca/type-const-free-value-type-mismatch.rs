@@ -1,5 +1,4 @@
 #![feature(min_generic_const_args)]
-#![expect(incomplete_features)]
 
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
