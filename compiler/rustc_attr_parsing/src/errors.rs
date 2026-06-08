@@ -312,6 +312,18 @@ pub(crate) struct IncorrectDoNotRecommendLocation {
 }
 
 #[derive(Diagnostic)]
+#[diag("target-based cfg should be avoided in build scripts")]
+pub(crate) struct UnexpectedCfg {
+    #[suggestion(
+        "use cargo environment variables if possible",
+        code = "{suggestion_message}",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Option<Span>,
+    pub suggestion_message: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
