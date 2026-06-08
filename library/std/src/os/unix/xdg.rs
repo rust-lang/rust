@@ -23,7 +23,7 @@
 
 use crate::env::{home_dir, split_paths, var_os};
 use crate::ffi::{OsStr, OsString};
-use crate::path::{Path, PathBuf};
+use crate::path::PathBuf;
 
 fn xdg_home_dir() -> PathBuf {
     // Note: home_dir can return `Some("")` in some cases. We assume that in
