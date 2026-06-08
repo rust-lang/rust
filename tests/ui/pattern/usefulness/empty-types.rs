@@ -1,17 +1,17 @@
 //@ revisions: normal exhaustive_patterns never_pats
 //@ edition: 2024
-//@ ignore-parallel-frontend pattern matching error message mismatch
-//
-// This tests correct handling of empty types in exhaustiveness checking.
-//
-// Most of the subtlety of this file happens in scrutinee places which are not required to hold
-// valid data, namely dereferences and union field accesses. In these cases, empty arms can
-// generally not be omitted, except with `exhaustive_patterns` which ignores this..
+
 #![feature(never_type)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(never_pats, feature(never_patterns))]
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
+
+// This tests correct handling of empty types in exhaustiveness checking.
+//
+// Most of the subtlety of this file happens in scrutinee places which are not required to hold
+// valid data, namely dereferences and union field accesses. In these cases, empty arms can
+// generally not be omitted, except with `exhaustive_patterns` which ignores this..
 
 #[derive(Copy, Clone)]
 enum Void {}
