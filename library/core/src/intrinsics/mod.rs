@@ -2874,11 +2874,12 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 #[rustc_intrinsic]
+#[rustc_comptime]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 /// Check if a type represented by a `TypeId` implements a trait represented by a `TypeId`.
 /// It can only be called at compile time, the backends do
 /// not implement it. If it implements the trait the dyn metadata gets returned for vtable access.
-pub const fn type_id_vtable(
+pub fn type_id_vtable(
     _id: crate::any::TypeId,
     _trait: crate::any::TypeId,
 ) -> Option<ptr::DynMetadata<*const ()>> {
