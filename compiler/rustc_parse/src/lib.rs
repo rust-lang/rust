@@ -261,7 +261,6 @@ pub fn fake_token_stream_for_out_of_line_module(
     item: &ast::Item,
 ) -> TokenStream {
     let ItemKind::Mod(_, _, mod_kind) = &item.kind else { panic!() };
-    // FIXME: Perhaps we should load the module if it is unloaded, instead of panicking?
     let ModKind::Loaded(_, _, mod_spans) = mod_kind else { panic!() };
 
     let inner_span = mod_spans.inner_span;
