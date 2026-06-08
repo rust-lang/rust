@@ -1,6 +1,7 @@
+use std::fmt::Debug;
+
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{Goal, NoSolution};
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -21,12 +22,17 @@ where
 {
     infcx: &'a Infcx,
     universes: Vec<Option<UniverseIndex>>,
-    stalled_goals: Vec<Goal<I, I::Predicate>>,
     normalize: F,
 }
 
 #[derive(PartialEq, Eq)]
 enum HasEscapingBoundVars {
+    Yes,
+    No,
+}
+
+#[derive(PartialEq, Eq)]
+pub enum NormalizationWasAmbiguous {
     Yes,
     No,
 }
@@ -97,34 +103,25 @@ where
     }
 }
 
-impl<'a, Infcx, I, F> NormalizationFolder<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> NormalizationFolder<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolution>,
+    F: FnMut(I::Term) -> Result<(I::Term, NormalizationWasAmbiguous), E>,
 {
-    pub fn new(
-        infcx: &'a Infcx,
-        universes: Vec<Option<UniverseIndex>>,
-        stalled_goals: Vec<Goal<I, I::Predicate>>,
-        normalize: F,
-    ) -> Self {
-        Self { infcx, universes, stalled_goals, normalize }
-    }
-
-    pub fn stalled_goals(self) -> Vec<Goal<I, I::Predicate>> {
-        self.stalled_goals
+    pub fn new(infcx: &'a Infcx, universes: Vec<Option<UniverseIndex>>, normalize: F) -> Self {
+        Self { infcx, universes, normalize }
     }
 
     fn normalize_alias_term(
         &mut self,
         alias_term: I::Term,
         has_escaping: HasEscapingBoundVars,
-    ) -> Result<I::Term, NoSolution> {
+    ) -> Result<I::Term, E> {
         let current_universe = self.infcx.universe();
         self.infcx.create_next_universe();
 
-        let (normalized, ambig_goal) = (self.normalize)(alias_term)?;
+        let (normalized, normalization_was_ambiguous) = (self.normalize)(alias_term)?;
 
         // Return ambiguous higher ranked alias as is, if
         //   - it contains escaping vars, and
@@ -134,7 +131,9 @@ where
         // referencing the temporary placeholders.
         //
         // We can normalize the ambiguous alias again after the binder is instantiated.
-        if ambig_goal.is_some() && has_escaping == HasEscapingBoundVars::Yes {
+        if normalization_was_ambiguous == NormalizationWasAmbiguous::Yes
+            && has_escaping == HasEscapingBoundVars::Yes
+        {
             let mut visitor = MaxUniverse::new(self.infcx);
             normalized.visit_with(&mut visitor);
             let max_universe = visitor.max_universe();
@@ -143,18 +142,18 @@ where
             }
         }
 
-        self.stalled_goals.extend(ambig_goal);
         Ok(normalized)
     }
 }
 
-impl<'a, Infcx, I, F> FallibleTypeFolder<I> for NormalizationFolder<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> FallibleTypeFolder<I> for NormalizationFolder<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolution>,
+    F: FnMut(I::Term) -> Result<(I::Term, NormalizationWasAmbiguous), E>,
+    E: Debug,
 {
-    type Error = NoSolution;
+    type Error = E;
 
     fn cx(&self) -> I {
         self.infcx.cx()
@@ -238,5 +237,8 @@ where
             })?
             .expect_const())
         }
+
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+        if p.allow_normalization() { p.try_super_fold_with(self) } else { Ok(p) }
     }
 }
