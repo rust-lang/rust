@@ -293,21 +293,36 @@ pub macro Clone($item:item) {
 /// A trait for types whose [`Clone`] operation creates another alias to the same
 /// logical resource or shared state.
 ///
-/// `Share` marks types where cloning creates another handle, reference, or alias
-/// to the same logical resource or shared state, rather than an independent owned
-/// value. The distinction is semantic, not cost-based: implementing `Share` does
-/// not merely mean that cloning is cheap, constant-time, allocation-free, or
-/// convenient.
+/// `Share` refines the meaning of [`Clone`] for types where cloning a value
+/// creates another handle, reference, or alias to the same logical resource or
+/// shared state, rather than an independent owned value. The distinction is
+/// semantic, not operational: `Share` does not mean merely that cloning is
+/// cheap, constant-time, allocation-free, or convenient.
 ///
-/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone)
-/// for implementors, but communicates that the resulting value aliases the same
-/// underlying resource.
+/// `Share` is a third way to think about creating another usable value:
+///
+/// * [`Copy`] may duplicate a value implicitly.
+/// * [`Clone`] explicitly creates another value.
+/// * `Share` explicitly creates another value that aliases the same underlying
+///   logical resource or shared state.
+///
+/// `Share` is not a replacement for either [`Copy`] or [`Clone`], and neither
+/// trait implies it. For example, integers are [`Copy`] but not `Share`, because
+/// copying an integer creates an independent value. Likewise, not every cheap
+/// [`Clone`] implementation is `Share`.
 ///
 /// Shared references, `Rc<T>`, `Arc<T>`, `Sender<T>`, and `SyncSender<T>` are
 /// examples of types that can be shared this way. Types such as `Vec<T>`,
-/// `String`, and `Box<T>` are not `Share` even though they implement `Clone`,
-/// because cloning them creates another owned value rather than another handle
-/// to the same logical resource.
+/// `String`, `Box<T>`, owned collections, and similar owned values are not
+/// `Share`, even though they implement [`Clone`], because cloning them creates
+/// independent owned storage or value ownership. Mutable references (`&mut T`)
+/// are not `Share`.
+///
+/// Calling [`share`](Share::share) is equivalent to calling [`clone`](Clone::clone)
+/// for implementors, but communicates that the resulting value aliases the same
+/// underlying resource. The `share` method is final, so implementors should
+/// define the operation through [`Clone::clone`] and implement `Share` only when
+/// those cloning semantics are clone-as-alias semantics.
 ///
 /// # Examples
 ///
@@ -367,9 +382,11 @@ pub macro Clone($item:item) {
 pub trait Share: Clone {
     /// Creates another alias to the same underlying resource or shared state.
     ///
-    /// This is equivalent to calling [`Clone::clone`].
+    /// This is equivalent to calling [`Clone::clone`]. Use `share` at call
+    /// sites to make aliasing intent explicit; implementors define this
+    /// operation through [`Clone::clone`], not by overriding this method.
     #[unstable(feature = "share_trait", issue = "156756")]
-    fn share(&self) -> Self {
+    final fn share(&self) -> Self {
         Clone::clone(self)
     }
 }
