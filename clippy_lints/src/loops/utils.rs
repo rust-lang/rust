@@ -46,6 +46,17 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IncrementVisitor<'_, 'tcx> {
+    fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
+        if let Some(init) = l.init {
+            self.visit_expr(init);
+            if let Some(els) = l.els {
+                self.depth += 1;
+                self.visit_block(els);
+                self.depth -= 1;
+            }
+        }
+    }
+
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // If node is a variable
         if let Some(def_id) = expr.res_local_id() {
