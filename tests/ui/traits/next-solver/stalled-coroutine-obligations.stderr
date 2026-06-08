@@ -1,33 +1,20 @@
-error[E0277]: the trait bound `{async block@$DIR/stalled-coroutine-obligations.rs:18:18: 18:23}: Copy` is not satisfied
+error[E0271]: type mismatch resolving `T normalizes-to _`
   --> $DIR/stalled-coroutine-obligations.rs:18:14
    |
 LL |     let foo: T = async {};
-   |              ^ the trait `Copy` is not implemented for `{async block@$DIR/stalled-coroutine-obligations.rs:18:18: 18:23}`
+   |              ^ types differ
 
-error[E0277]: the trait bound `{async block@$DIR/stalled-coroutine-obligations.rs:22:18: 22:23}: Clone` is not satisfied
+error[E0271]: type mismatch resolving `U normalizes-to _`
   --> $DIR/stalled-coroutine-obligations.rs:22:14
    |
 LL |     let bar: U = async {};
-   |              ^ the trait `Clone` is not implemented for `{async block@$DIR/stalled-coroutine-obligations.rs:22:18: 22:23}`
+   |              ^ types differ
 
-error[E0277]: the trait bound `False: Valid` is not satisfied in `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`
+error[E0271]: type mismatch resolving `T normalizes-to _`
   --> $DIR/stalled-coroutine-obligations.rs:33:14
    |
 LL |     let foo: T = async { a };
-   |              ^   ----- within this `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`
-   |              |
-   |              unsatisfied trait bound
-   |
-help: within `{async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`, the trait `Valid` is not implemented for `False`
-  --> $DIR/stalled-coroutine-obligations.rs:27:1
-   |
-LL | struct False;
-   | ^^^^^^^^^^^^
-note: captured value does not implement `Valid`
-  --> $DIR/stalled-coroutine-obligations.rs:33:26
-   |
-LL |     let foo: T = async { a };
-   |                          ^ has type `False` which does not implement `Valid`
+   |              ^ types differ
 
 error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:41:9: 41:19}`
   --> $DIR/stalled-coroutine-obligations.rs:39:43
@@ -37,5 +24,4 @@ LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

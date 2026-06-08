@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `<() as Trait>::A normalizes-to _`
+error[E0275]: overflow evaluating the requirement `<() as Trait>::A == _`
   --> $DIR/projection-const-recursive.rs:12:5
    |
 LL |     type const A: () = <() as Trait>::A;
-   |     ^^^^^^^^^^^^^^^^ types differ
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `<() as Trait>::A == _`
   --> $DIR/projection-const-recursive.rs:12:5

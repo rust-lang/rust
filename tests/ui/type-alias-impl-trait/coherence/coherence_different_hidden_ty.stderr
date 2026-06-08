@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
-  --> $DIR/coherence_different_hidden_ty.rs:20:1
+  --> $DIR/coherence_different_hidden_ty.rs:21:1
    |
 LL | impl Trait for (TAIT, TAIT) {}
    | --------------------------- first implementation here

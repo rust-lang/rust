@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `A normalizes-to _`
+error[E0275]: overflow evaluating the requirement `A == _`
   --> $DIR/free-const-recursive.rs:7:1
    |
 LL | type const A: () = A;
-   | ^^^^^^^^^^^^^^^^ types differ
+   | ^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `A == _`
   --> $DIR/free-const-recursive.rs:7:1
