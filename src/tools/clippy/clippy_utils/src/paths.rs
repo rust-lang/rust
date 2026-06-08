@@ -86,7 +86,7 @@ impl PathLookup {
     /// stdlib crates to avoid the issue of multiple [`DefId`]s being returned
     ///
     /// May return [`None`] in `no_std`/`no_core` environments
-    pub fn only(&self, cx: &LateContext<'_>) -> Option<DefId> {
+    pub fn r#only(&self, cx: &LateContext<'_>) -> Option<DefId> {
         let ids = self.get(cx);
         debug_assert!(STDLIB_STABLE_CRATES.contains(&self.path[0]));
         debug_assert!(ids.len() <= 1, "{ids:?}");
