@@ -1117,13 +1117,13 @@ impl FnSig {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Constness {
-    Const,
+    Const { always: bool },
     NotConst,
 }
 
 impl Constness {
     pub fn is_const(self) -> bool {
-        matches!(self, Constness::Const)
+        matches!(self, Constness::Const { always: false })
     }
 }
 

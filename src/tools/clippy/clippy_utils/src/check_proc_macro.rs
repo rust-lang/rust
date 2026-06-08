@@ -242,7 +242,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
 fn fn_header_search_pat(header: FnHeader) -> Pat {
     if header.is_async() {
         Pat::Str("async")
-    } else if header.is_const() {
+    } else if matches!(header.constness, rustc_hir::Constness::Const { always: false }) {
         Pat::Str("const")
     } else if header.is_unsafe() {
         Pat::Str("unsafe")

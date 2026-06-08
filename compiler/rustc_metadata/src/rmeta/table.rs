@@ -225,8 +225,9 @@ defaulted_enum! {
 
 defaulted_enum! {
     hir::Constness {
-        ( Const    )
+        ( Const { always: false } )
         ( NotConst )
+        ( Const { always: true } )
     }
 }
 

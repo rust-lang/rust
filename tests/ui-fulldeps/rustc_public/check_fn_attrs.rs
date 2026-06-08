@@ -14,20 +14,26 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_public;
 
-use rustc_public::crate_def::CrateDef;
-use rustc_public::ty::{Asyncness, Constness, FnDef};
 use std::io::Write;
 use std::ops::ControlFlow;
+
+use rustc_public::crate_def::CrateDef;
+use rustc_public::ty::{Asyncness, Constness, FnDef};
 
 const CRATE_NAME: &str = "input";
 
 fn test_stable_mir() -> ControlFlow<()> {
     let fns = rustc_public::local_crate().fn_defs();
 
-    check_fn(&fns, "input::const_sync", Constness::Const, Asyncness::NotAsync);
+    check_fn(&fns, "input::const_sync", Constness::Const { always: false }, Asyncness::NotAsync);
     check_fn(&fns, "input::async_fn", Constness::NotConst, Asyncness::Async);
     check_fn(&fns, "input::plain", Constness::NotConst, Asyncness::NotAsync);
-    check_fn(&fns, "input::Widget::assoc_const", Constness::Const, Asyncness::NotAsync);
+    check_fn(
+        &fns,
+        "input::Widget::assoc_const",
+        Constness::Const { always: false },
+        Asyncness::NotAsync,
+    );
     check_fn(&fns, "input::Widget::assoc_async", Constness::NotConst, Asyncness::Async);
     check_fn(&fns, "input::Widget::assoc_plain", Constness::NotConst, Asyncness::NotAsync);
 

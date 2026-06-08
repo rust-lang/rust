@@ -112,6 +112,7 @@ impl AttributeKind {
             RustcClean { .. } => No,
             RustcCoherenceIsCore => No,
             RustcCoinductive => No,
+            RustcComptime(..) => No, // Encoded directly in signature
             RustcConfusables { .. } => Yes,
             RustcConstStability { .. } => Yes,
             RustcConstStableIndirect => No,
