@@ -859,6 +859,39 @@ pub struct ClientCommandOptions {
     pub commands: Vec<String>,
 }
 
+pub enum EvaluatePredicate {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct EvaluatePredicateParams {
+    pub text: String,
+    pub text_document: TextDocumentIdentifier,
+    pub position: Position,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct EvaluatePredicateResult {
+    pub status: PredicateEvaluationStatus,
+    pub message: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PredicateEvaluationStatus {
+    Holds,
+    #[default]
+    NotProven,
+    Invalid,
+    Unsupported,
+}
+
+impl Request for EvaluatePredicate {
+    type Params = EvaluatePredicateParams;
+    type Result = EvaluatePredicateResult;
+    const METHOD: &'static str = "rust-analyzer/evaluatePredicate";
+}
+
 pub enum GetFailedObligations {}
 
 #[derive(Deserialize, Serialize, Debug)]

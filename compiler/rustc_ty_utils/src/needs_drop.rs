@@ -10,7 +10,7 @@ use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
 use tracing::{debug, instrument};
 
-use crate::errors::NeedsDropOverflow;
+use crate::diagnostics::NeedsDropOverflow;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 

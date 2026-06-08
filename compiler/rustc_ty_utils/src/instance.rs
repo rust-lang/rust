@@ -14,7 +14,7 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 use traits::translate_args;
 
-use crate::errors::UnexpectedFnPtrAssociatedItem;
+use crate::diagnostics::UnexpectedFnPtrAssociatedItem;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,

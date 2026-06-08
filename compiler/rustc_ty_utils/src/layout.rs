@@ -26,7 +26,7 @@ use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::errors::NonPrimitiveSimdType;
+use crate::diagnostics::NonPrimitiveSimdType;
 
 mod invariant;
 

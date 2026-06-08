@@ -934,8 +934,8 @@ pub(crate) fn folding_range(
         | FoldKind::ExternCrates
         | FoldKind::MatchArm
         | FoldKind::Function
-        | FoldKind::Stmt(_)
-        | FoldKind::TailExpr(_) => None,
+        | FoldKind::Stmt
+        | FoldKind::TailExpr => None,
     };
 
     let range = range(line_index, text_range);

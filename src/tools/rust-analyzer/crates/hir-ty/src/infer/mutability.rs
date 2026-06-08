@@ -197,7 +197,8 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Literal(_)
             | Expr::Path(_)
             | Expr::Continue { .. }
-            | Expr::Underscore => (),
+            | Expr::Underscore
+            | Expr::IncludeBytes => (),
         }
     }
 

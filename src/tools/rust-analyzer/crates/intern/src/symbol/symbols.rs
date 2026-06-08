@@ -295,6 +295,7 @@ define_symbols! {
     doc,
     drop_in_place,
     drop,
+    pin_drop,
     dyn_metadata,
     efiapi,
     eh_catch_typeinfo,

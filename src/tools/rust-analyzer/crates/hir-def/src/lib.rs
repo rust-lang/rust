@@ -1017,6 +1017,14 @@ pub enum VariantId {
 impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
+    pub fn from_non_enum(adt_id: AdtId) -> Option<Self> {
+        Some(match adt_id {
+            AdtId::StructId(struct_id) => struct_id.into(),
+            AdtId::UnionId(union_id) => union_id.into(),
+            AdtId::EnumId(_) => return None,
+        })
+    }
+
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
         VariantFields::of(db, self)
     }

@@ -56,8 +56,8 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
-    Operand, OperandKind, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, StatementKind,
-    TerminatorKind, UnOp, return_slot,
+    Operand, OperandKind, Place, PlaceElem, PlaceRef, PlaceTy, ProjectionElem, Rvalue,
+    StatementKind, TerminatorKind, UnOp, return_slot,
 };
 
 mod shim;
@@ -187,7 +187,7 @@ pub struct Evaluator<'a, 'db> {
     stdout: Vec<u8>,
     stderr: Vec<u8>,
     layout_cache: RefCell<FxHashMap<Ty<'db>, Arc<Layout>>>,
-    projected_ty_cache: RefCell<FxHashMap<(Ty<'db>, PlaceElem), Ty<'db>>>,
+    projected_ty_cache: RefCell<FxHashMap<(PlaceTy<'db>, PlaceElem), PlaceTy<'db>>>,
     not_special_fn_cache: RefCell<FxHashSet<FunctionId>>,
     mir_or_dyn_index_cache: RefCell<FxHashMap<(FunctionId, GenericArgs<'db>), MirOrDynIndex<'a>>>,
     /// Constantly dropping and creating `Locals` is very costly. We store
@@ -738,13 +738,13 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         self.cached_ptr_size
     }
 
-    fn projected_ty(&self, ty: Ty<'db>, proj: PlaceElem) -> Ty<'db> {
+    fn projected_ty(&self, ty: PlaceTy<'db>, proj: PlaceElem) -> PlaceTy<'db> {
         let pair = (ty, proj);
         if let Some(r) = self.projected_ty_cache.borrow().get(&pair) {
             return *r;
         }
         let (ty, proj) = pair;
-        let r = proj.projected_ty(&self.infcx, self.param_env.param_env, ty, self.crate_id);
+        let r = ty.projection_ty(&self.infcx, &proj, self.param_env.param_env);
         self.projected_ty_cache.borrow_mut().insert((ty, proj), r);
         r
     }
@@ -755,14 +755,14 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         locals: &'b Locals<'a>,
     ) -> Result<'db, (Address, Ty<'db>, Option<IntervalOrOwned>)> {
         let mut addr = locals.ptr[p.local].addr;
-        let mut ty: Ty<'db> = locals.body.locals[p.local].ty.as_ref();
+        let mut ty = PlaceTy::from_ty(locals.body.locals[p.local].ty.as_ref());
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
         for proj in p.projection.lookup() {
             let prev_ty = ty;
             ty = self.projected_ty(ty, *proj);
             match proj {
                 ProjectionElem::Deref => {
-                    metadata = if self.size_align_of(ty, locals)?.is_none() {
+                    metadata = if self.size_align_of(ty.ty, locals)?.is_none() {
                         Some(
                             Interval { addr: addr.offset(self.ptr_size()), size: self.ptr_size() }
                                 .into(),
@@ -780,12 +780,12 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     );
                     metadata = None; // Result of index is always sized
                     let ty_size =
-                        self.size_of_sized(ty, locals, "array inner type should be sized")?;
+                        self.size_of_sized(ty.ty, locals, "array inner type should be sized")?;
                     addr = addr.offset(ty_size * offset);
                 }
                 &ProjectionElem::ConstantIndex { from_end, offset } => {
                     let offset = if from_end {
-                        let len = match prev_ty.kind() {
+                        let len = match prev_ty.ty.kind() {
                             TyKind::Array(_, c) => match try_const_usize(self.db, c) {
                                 Some(it) => it as u64,
                                 None => {
@@ -804,11 +804,11 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     };
                     metadata = None; // Result of index is always sized
                     let ty_size =
-                        self.size_of_sized(ty, locals, "array inner type should be sized")?;
+                        self.size_of_sized(ty.ty, locals, "array inner type should be sized")?;
                     addr = addr.offset(ty_size * offset);
                 }
                 &ProjectionElem::Subslice { from, to } => {
-                    let inner_ty = match ty.kind() {
+                    let inner_ty = match ty.ty.kind() {
                         TyKind::Array(inner, _) | TyKind::Slice(inner) => inner,
                         _ => Ty::new_error(self.interner(), ErrorGuaranteed),
                     };
@@ -825,25 +825,13 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         self.size_of_sized(inner_ty, locals, "array inner type should be sized")?;
                     addr = addr.offset(ty_size * (from as usize));
                 }
-                &ProjectionElem::ClosureField(f) => {
-                    let layout = self.layout(prev_ty)?;
-                    let offset = layout.fields.offset(f).bytes_usize();
-                    addr = addr.offset(offset);
-                    metadata = None;
-                }
-                ProjectionElem::Field(Either::Right(f)) => {
-                    let layout = self.layout(prev_ty)?;
-                    let offset = layout.fields.offset(f.index as usize).bytes_usize();
-                    addr = addr.offset(offset);
-                    metadata = None; // tuple field is always sized FIXME: This is wrong, the tail can be unsized
-                }
-                ProjectionElem::Field(Either::Left(f)) => {
-                    let layout = self.layout(prev_ty)?;
+                ProjectionElem::Field(f) => {
+                    let layout = self.layout(prev_ty.ty)?;
                     let variant_layout = match &layout.variants {
                         Variants::Single { .. } | Variants::Empty => &layout,
                         Variants::Multiple { variants, .. } => {
-                            &variants[match f.parent {
-                                hir_def::VariantId::EnumVariantId(it) => {
+                            &variants[match prev_ty.variant_id {
+                                Some(hir_def::VariantId::EnumVariantId(it)) => {
                                     RustcEnumVariantIdx(it.index(self.db))
                                 }
                                 _ => {
@@ -854,20 +842,19 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                             }]
                         }
                     };
-                    let offset = variant_layout
-                        .fields
-                        .offset(u32::from(f.local_id.into_raw()) as usize)
-                        .bytes_usize();
+                    let offset = variant_layout.fields.offset(f.0 as usize).bytes_usize();
                     addr = addr.offset(offset);
                     // Unsized field metadata is equal to the metadata of the struct
-                    if self.size_align_of(ty, locals)?.is_some() {
+                    if self.size_align_of(ty.ty, locals)?.is_some() {
                         metadata = None;
                     }
                 }
-                ProjectionElem::OpaqueCast(_) => not_supported!("opaque cast"),
+                ProjectionElem::Downcast(_) => {
+                    // no runtime effect
+                }
             }
         }
-        Ok((addr, ty, metadata))
+        Ok((addr, ty.ty, metadata))
     }
 
     fn layout(&self, ty: Ty<'db>) -> Result<'db, Arc<Layout>> {
@@ -1713,7 +1700,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                 if let Some(ty) = field_types
                     .iter()
                     .last()
-                    .map(|it| it.1.get().instantiate(self.interner(), subst))
+                    .map(|it| it.1.ty().instantiate(self.interner(), subst))
                 {
                     return self.coerce_unsized_look_through_fields(ty.skip_norm_wip(), goal);
                 }
@@ -1794,11 +1781,11 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         not_supported!("unsizing struct without field");
                     };
                     let target_last_field = self.db.field_types(id.into())[last_field]
-                        .get()
+                        .ty()
                         .instantiate(self.interner(), target_subst)
                         .skip_norm_wip();
                     let current_last_field = self.db.field_types(id.into())[last_field]
-                        .get()
+                        .ty()
                         .instantiate(self.interner(), current_subst)
                         .skip_norm_wip();
                     return self.unsizing_ptr_from_addr(
@@ -2440,7 +2427,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 .offset(u32::from(f.into_raw()) as usize)
                                 .bytes_usize();
                             let ty = field_types[f]
-                                .get()
+                                .ty()
                                 .instantiate(this.interner(), subst)
                                 .skip_norm_wip();
                             let size = this.layout(ty)?.size.bytes_usize();
@@ -2469,7 +2456,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
                                 let ty = field_types[f]
-                                    .get()
+                                    .ty()
                                     .instantiate(this.interner(), subst)
                                     .skip_norm_wip();
                                 let size = this.layout(ty)?.size.bytes_usize();
@@ -2555,9 +2542,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
             }
             TyKind::Adt(id, args) => match id.def_id() {
                 AdtId::StructId(s) => {
-                    for (i, (_, ty)) in self.db.field_types(s.into()).iter().enumerate() {
+                    for (i, (_, field)) in self.db.field_types(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
-                        let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
+                        let ty = field.ty().instantiate(self.interner(), args).skip_norm_wip();
                         self.patch_addresses(
                             patch_map,
                             ty_of_bytes,
@@ -2576,9 +2563,9 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
-                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
+                        for (i, (_, field)) in self.db.field_types(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
-                            let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
+                            let ty = field.ty().instantiate(self.interner(), args).skip_norm_wip();
                             self.patch_addresses(
                                 patch_map,
                                 ty_of_bytes,
@@ -3093,7 +3080,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                                         .bytes_usize();
                                     let addr = addr.offset(offset);
                                     let ty = field_types[field]
-                                        .get()
+                                        .ty()
                                         .instantiate(self.interner(), subst)
                                         .skip_norm_wip();
                                     self.run_drop_glue_deep(ty, locals, addr, &[], span)?;

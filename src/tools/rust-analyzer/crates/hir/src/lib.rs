@@ -117,6 +117,38 @@ use triomphe::Arc;
 
 use crate::db::{DefDatabase, HirDatabase};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PredicateEvaluationStatus {
+    Holds,
+    NotProven,
+    Invalid,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PredicateEvaluationResult {
+    pub status: PredicateEvaluationStatus,
+    pub message: String,
+}
+
+impl PredicateEvaluationResult {
+    pub fn holds(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Holds, message: message.into() }
+    }
+
+    pub fn not_proven(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::NotProven, message: message.into() }
+    }
+
+    pub fn invalid(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Invalid, message: message.into() }
+    }
+
+    pub fn unsupported(message: impl Into<String>) -> Self {
+        Self { status: PredicateEvaluationStatus::Unsupported, message: message.into() }
+    }
+}
+
 pub use crate::{
     attrs::{AttrsWithOwner, HasAttrs, resolve_doc_path_on},
     diagnostics::*,
@@ -164,7 +196,7 @@ pub use {
         },
         inert_attr_macro::AttributeTemplate,
         mod_path::{ModPath, PathKind, tool_path},
-        name::Name,
+        name::{self, Name},
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
         tt,
@@ -1406,7 +1438,7 @@ impl Field {
     /// context of the field definition.
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
         let var_id = self.parent.into();
-        let ty = db.field_types(var_id)[self.id].get().instantiate_identity().skip_norm_wip();
+        let ty = db.field_types(var_id)[self.id].ty().instantiate_identity().skip_norm_wip();
         Type::new(var_id.adt_id(db).into(), ty)
     }
 
@@ -2283,6 +2315,14 @@ impl fmt::Debug for Function {
 }
 
 impl Function {
+    pub fn lang(db: &dyn HirDatabase, krate: Crate, lang_item: LangItem) -> Option<Function> {
+        let lang_items = hir_def::lang_item::lang_items(db, krate.id);
+        match lang_item.from_lang_items(lang_items)? {
+            LangItemTarget::FunctionId(it) => Some(it.into()),
+            _ => None,
+        }
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self.id {
             AnyFunctionId::FunctionId(id) => id.module(db).into(),
@@ -5549,7 +5589,7 @@ impl<'db> Type<'db> {
                                     .iter()
                                     .map(|(idx, _)| {
                                         field_types[idx]
-                                            .get()
+                                            .ty()
                                             .instantiate(self.interner, args)
                                             .skip_norm_wip()
                                     })
@@ -5970,9 +6010,9 @@ impl<'db> Type<'db> {
 
         db.field_types(variant_id)
             .iter()
-            .map(|(local_id, ty)| {
+            .map(|(local_id, field)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
-                let ty = ty.get().instantiate(interner, substs).skip_norm_wip();
+                let ty = field.ty().instantiate(interner, substs).skip_norm_wip();
                 (def, self.derived(ty))
             })
             .collect()
@@ -7446,7 +7486,7 @@ pub fn struct_tail_raw<'db>(
                 let last_field = db.field_types(def_id.into()).iter().next_back();
                 match last_field {
                     Some((_, field)) => {
-                        ty = normalize(field.get().instantiate(interner, args).skip_norm_wip())
+                        ty = normalize(field.ty().instantiate(interner, args).skip_norm_wip())
                     }
                     None => break,
                 }

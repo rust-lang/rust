@@ -1044,4 +1044,13 @@ pub(crate) struct ExpectedComma {
         style = "short"
     )]
     pub span: Span,
+    #[subdiagnostic]
+    pub additional: Vec<AdditionalCommaSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("try adding `,` here", code = ",", applicability = "maybe-incorrect", style = "short")]
+pub(crate) struct AdditionalCommaSuggestion {
+    #[primary_span]
+    pub span: Span,
 }

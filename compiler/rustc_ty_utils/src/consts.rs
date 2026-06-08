@@ -10,7 +10,7 @@ use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use tracing::instrument;
 
-use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
+use crate::diagnostics::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 
 /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
 fn check_binop(op: mir::BinOp) -> bool {

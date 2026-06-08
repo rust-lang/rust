@@ -1074,7 +1074,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             for (i, &subpat) in subpats.iter().enumerate_and_adjust(variant_fields.len(), ddpos) {
                 let field_id = LocalFieldId::from_raw(la_arena::RawIdx::from_u32(i as u32));
                 let field_ty =
-                    variant_field_tys[field_id].get().instantiate(interner, args).skip_norm_wip();
+                    variant_field_tys[field_id].ty().instantiate(interner, args).skip_norm_wip();
                 self.infer_pat(subpat, field_ty, pat_info);
             }
             if let Err(()) = had_err {
@@ -1093,7 +1093,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             for (i, &pat) in subpats.iter().enumerate() {
                 let field_id = LocalFieldId::from_raw(la_arena::RawIdx::from_u32(i as u32));
                 let expected = match variant_field_tys.get(field_id) {
-                    Some(field_ty) => field_ty.get().instantiate(interner, args).skip_norm_wip(),
+                    Some(field_ty) => field_ty.ty().instantiate(interner, args).skip_norm_wip(),
                     None => self.types.types.error,
                 };
                 self.infer_pat(pat, expected, pat_info);
@@ -1208,7 +1208,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                         });
                     }
 
-                    variant_field_tys[field_idx].get().instantiate(interner, args).skip_norm_wip()
+                    variant_field_tys[field_idx].ty().instantiate(interner, args).skip_norm_wip()
                 }
                 None => {
                     inexistent_fields.push(field);

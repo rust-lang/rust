@@ -13,10 +13,10 @@ use std::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
-    FunctionId, GenericDefId, LocalFieldId, ModuleDefId, StructId, VariantId,
+    FunctionId, GenericDefId, HasModule, LocalFieldId, ModuleDefId, StructId, VariantId,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, HygieneId,
-        lower::ExprCollector,
+        lower::{ExprCollector, lower_generic_params},
         path::Path,
         scope::{ExprScopes, ScopeId},
     },
@@ -44,7 +44,7 @@ use hir_ty::{
         AliasTy, DbInterner, DefaultAny, EarlyBinder, ErrorGuaranteed, GenericArgs, ParamEnv,
         Region, Ty, TyKind, TypingMode, infer::DbInternerInferExt,
     },
-    traits::structurally_normalize_ty,
+    traits::{WherePredicateEvaluation, structurally_normalize_ty, where_predicate_must_hold},
 };
 use intern::sym;
 use itertools::Itertools;
@@ -63,7 +63,8 @@ use syntax::{
 use crate::{
     Adt, AnyFunctionId, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const,
     DeriveHelper, EnumVariant, Field, Function, GenericSubstitution, Local, Macro, ModuleDef,
-    SemanticsImpl, Static, Struct, ToolModule, Trait, TupleField, Type, TypeAlias, TypeOwnerId,
+    PredicateEvaluationResult, SemanticsImpl, Static, Struct, ToolModule, Trait, TupleField, Type,
+    TypeAlias, TypeOwnerId,
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
@@ -362,6 +363,52 @@ impl<'db> SourceAnalyzer<'db> {
                 db.trait_environment(def)
             },
         ))
+    }
+
+    pub(crate) fn evaluate_where_clause(
+        &self,
+        db: &'db dyn HirDatabase,
+        where_clause: ast::WhereClause,
+    ) -> PredicateEvaluationResult {
+        let Some(owner) = self.owner() else {
+            // FIXME
+            return PredicateEvaluationResult::unsupported(
+                "predicate evaluation is only supported inside an item",
+            );
+        };
+        let generic_def = owner.generic_def(db);
+        let module = generic_def.module(db);
+        let (store, params, _) =
+            lower_generic_params(db, module, generic_def, self.file_id, None, Some(where_clause));
+        let predicates = params.where_predicates();
+        if predicates.is_empty() {
+            return PredicateEvaluationResult::holds("predicate does not impose any obligations");
+        }
+
+        let env = self.trait_environment(db);
+        for predicate in predicates {
+            match where_predicate_must_hold(
+                db,
+                &self.resolver,
+                &store,
+                owner,
+                generic_def,
+                env,
+                predicate,
+            ) {
+                WherePredicateEvaluation::Holds | WherePredicateEvaluation::NoObligations => {}
+                WherePredicateEvaluation::HasErrors => {
+                    return PredicateEvaluationResult::invalid(
+                        "predicate contains unresolved names or invalid type syntax",
+                    );
+                }
+                WherePredicateEvaluation::NotProven => {
+                    return PredicateEvaluationResult::not_proven("predicate is not known to hold");
+                }
+            }
+        }
+
+        PredicateEvaluationResult::holds("predicate holds")
     }
 
     pub(crate) fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {
@@ -927,7 +974,7 @@ impl<'db> SourceAnalyzer<'db> {
         let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty = (*db.field_types(variant).get(field.local_id)?)
-            .get()
+            .ty()
             .instantiate(interner, subst)
             .skip_norm_wip();
         Some((
@@ -952,7 +999,7 @@ impl<'db> SourceAnalyzer<'db> {
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
         let (adt, subst) = self.infer()?.pat_ty(pat_id.as_pat()?).as_adt()?;
         let field_ty = (*db.field_types(variant).get(field.local_id)?)
-            .get()
+            .ty()
             .instantiate(interner, subst)
             .skip_norm_wip();
         Some((
@@ -975,9 +1022,9 @@ impl<'db> SourceAnalyzer<'db> {
         Some(
             db.field_types(variant_id)
                 .iter()
-                .map(|(local_id, ty)| {
+                .map(|(local_id, field)| {
                     let def = Field { parent: variant_id.into(), id: local_id };
-                    let ty = ty.get().instantiate(interner, substs).skip_norm_wip();
+                    let ty = field.ty().instantiate(interner, substs).skip_norm_wip();
                     (def, self.ty(ty))
                 })
                 .collect(),
@@ -1051,7 +1098,7 @@ impl<'db> SourceAnalyzer<'db> {
                     let field = fields.field(&field_name.as_name())?;
                     let field_types = db.field_types(variant);
                     *container = Either::Right(
-                        field_types[field].get().instantiate(interner, subst).skip_norm_wip(),
+                        field_types[field].ty().instantiate(interner, subst).skip_norm_wip(),
                     );
                     let generic_def = match variant {
                         VariantId::EnumVariantId(it) => it.loc(db).parent.into(),
@@ -1530,7 +1577,7 @@ impl<'db> SourceAnalyzer<'db> {
             .into_iter()
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
-                let ty = field_types[local_id].get().instantiate(interner, substs).skip_norm_wip();
+                let ty = field_types[local_id].ty().instantiate(interner, substs).skip_norm_wip();
                 (field.into(), self.ty(ty))
             })
             .collect()

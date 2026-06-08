@@ -347,6 +347,11 @@
                 "command": "rust-analyzer.getFailedObligations",
                 "title": "Get Failed Obligations",
                 "category": "rust-analyzer (debug command)"
+            },
+            {
+                "command": "rust-analyzer.evaluatePredicate",
+                "title": "Evaluate Predicate",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -3863,6 +3868,10 @@
                 },
                 {
                     "command": "rust-analyzer.getFailedObligations",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.evaluatePredicate",
                     "when": "inRustProject"
                 }
             ],

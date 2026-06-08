@@ -6,7 +6,7 @@ use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::Span;
 
 use crate::attributes::AttributeSafety;
-use crate::{AttributeParser, EmitAttribute, ShouldEmit, errors};
+use crate::{AttributeParser, EmitAttribute, ShouldEmit, diagnostics};
 
 impl<'sess> AttributeParser<'sess> {
     pub fn check_attribute_safety(
@@ -76,7 +76,7 @@ impl<'sess> AttributeParser<'sess> {
                         LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
                         path_span.into(),
                         EmitAttribute(Box::new(move |dcx, level, _| {
-                            errors::UnsafeAttrOutsideUnsafeLint {
+                            diagnostics::UnsafeAttrOutsideUnsafeLint {
                                 span: path_span,
                                 suggestion: not_from_proc_macro
                                     .then(|| (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()))

@@ -23,6 +23,7 @@ use crate::{
     db::{AnonConstId, AnonConstLoc, GeneralConstId, HirDatabase},
     display::DisplayTarget,
     generics::Generics,
+    lower::LoweringMode,
     mir::{MirEvalError, MirLowerError, pad16},
     next_solver::{
         Allocation, Const, ConstKind, Consts, DbInterner, DefaultAny, GenericArgs, ParamConst,
@@ -305,6 +306,7 @@ pub(crate) enum CreateConstError<'db> {
     DoesNotResolve,
     ConstHasGenerics,
     UnderscoreExpr,
+    AnonConstInterningDisabled,
     TypeMismatch {
         #[expect(unused, reason = "will need this for diagnostics")]
         actual: Ty<'db>,
@@ -355,6 +357,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
     expected_ty: Ty<'db>,
     generics: &dyn Fn() -> &'a Generics<'db>,
     create_var: Option<&mut dyn FnMut(Span) -> Const<'db>>,
+    lowering_mode: LoweringMode,
     forbid_params_after: Option<u32>,
 ) -> Result<Const<'db>, CreateConstError<'db>> {
     match &store[expr] {
@@ -374,6 +377,10 @@ pub(crate) fn create_anon_const<'a, 'db>(
             konst
         }
         _ => {
+            let Some(token) = lowering_mode.allow_tracked_structs() else {
+                return Err(CreateConstError::AnonConstInterningDisabled);
+            };
+
             let allow_using_generic_params = forbid_params_after.is_none();
             let konst = AnonConstId::new(
                 interner.db,
@@ -383,6 +390,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
                     ty: StoredEarlyBinder::bind(expected_ty.store()),
                     allow_using_generic_params,
                 },
+                token,
             );
             let args = if allow_using_generic_params {
                 GenericArgs::identity_for_item(interner, owner.generic_def(interner.db).into())

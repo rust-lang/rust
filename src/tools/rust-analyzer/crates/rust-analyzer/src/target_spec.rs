@@ -99,7 +99,7 @@ impl ProjectJsonTargetSpec {
                     arg.replace("{label}", &this.label)
                 }),
             RunnableKind::Test { test_id, .. } => {
-                self.find_replace_runnable(project_json::RunnableKind::Run, &|this, arg| {
+                self.find_replace_runnable(project_json::RunnableKind::TestOne, &|this, arg| {
                     arg.replace("{label}", &this.label).replace("{test_id}", &test_id.to_string())
                 })
             }
