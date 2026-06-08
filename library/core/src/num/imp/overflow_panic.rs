@@ -58,6 +58,6 @@ pub(in crate::num) const fn pow() -> ! {
 
 #[cold]
 #[track_caller]
-pub(in crate::num) const fn cast_integer() -> ! {
+pub(crate) const fn cast_integer() -> ! {
     panic!("attempt to cast integer with overflow")
 }
