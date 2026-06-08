@@ -9,7 +9,7 @@ note: candidate #1 is defined in the trait `Trait1`
    |
 LL |     fn method(&self) {
    |     ^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `Trait2`
+note: candidate #2 is defined in an impl of the trait `Trait2` for the type `T`
   --> $DIR/rigid-alias-bound-is-not-inherent.rs:27:5
    |
 LL |     fn method(&self) {
