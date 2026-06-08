@@ -36,7 +36,7 @@ fn xdg_home_dir() -> PathBuf {
     }
 }
 
-fn xdg_dir(env: &str, fallback_home_subdir: impl AsRef<Path>) -> PathBuf {
+fn xdg_dir(env: &str, fallback_home_subdir: impl AsRef<OsStr>) -> PathBuf {
     var_os(env)
         .filter(|s| !s.is_empty())
         .map(PathBuf::from)
@@ -72,7 +72,7 @@ pub fn state_home_dir() -> PathBuf {
     xdg_dir("XDG_STATE_HOME", ".local/state")
 }
 
-/// A base directory relative to which user-specific non-essential caches should be written.
+/// A base directory relative to which user-specific non-essential (cached) data should be written.
 ///
 /// An application `appid` would typically be expected to write its cache data to
 /// `{cache_home_dir}/{appid}/**/*`.
