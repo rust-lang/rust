@@ -199,7 +199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let is_method = self.is_method(sig_id, span);
 
-        let (param_count, c_variadic) = self.param_count(sig_id);
+        let (param_count, c_variadic, splatted) = self.param_count(sig_id);
 
         if !self.check_block_soundness(delegation, sig_id, is_method, param_count) {
             return self.generate_delegation_error(span, delegation);
@@ -215,6 +215,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             sig_id,
             param_count,
             c_variadic,
+            splatted,
             span,
             &generics,
             delegation.id,
@@ -367,10 +368,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    // Function parameter count, including C variadic `...` if present.
-    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
+    // Function parameter count, including C variadic `...` and `#[splat]` if present.
+    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/, Option<u16> /*splatted*/) {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
-        (sig.inputs().len() + usize::from(sig.c_variadic()), sig.c_variadic())
+        // FIXME(splat): use `sig.splatted()` once FnSig has it
+        (sig.inputs().len() + usize::from(sig.c_variadic()), sig.c_variadic(), None)
     }
 
     fn lower_delegation_decl(
@@ -379,6 +381,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig_id: DefId,
         param_count: usize,
         c_variadic: bool,
+        splatted: Option<u16>,
         span: Span,
         generics: &GenericsGenerationResults<'hir>,
         call_path_node_id: NodeId,
@@ -429,7 +432,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             output: hir::FnRetTy::Return(output),
             fn_decl_kind: FnDeclFlags::default()
                 .set_lifetime_elision_allowed(true)
-                .set_c_variadic(c_variadic),
+                .set_c_variadic(c_variadic)
+                .set_splatted(splatted, inputs.len())
+                .unwrap(),
         })
     }
 
