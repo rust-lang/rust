@@ -147,8 +147,9 @@ fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaques and
-    // leak `OpaqueTypeStorage` state on `InferCtxt` drop (issue #156352).
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+    // `InferCtxt` would ICE (see #156352).
     let typing_env = if let Some(body_id) = cx.enclosing_body {
         let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
         ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
