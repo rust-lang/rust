@@ -4,7 +4,7 @@
 //! "preview2". This target in rustc uses the previous version of the proposal.
 //!
 //! This target uses the syscalls defined at
-//! <https://github.com/WebAssembly/WASI/tree/main/legacy/preview1>.
+//! <https://github.com/WebAssembly/WASI/tree/wasi-0.1/preview1>.
 //!
 //! Note that this target was historically called `wasm32-wasi` originally and
 //! was since renamed to `wasm32-wasip1` after the preview2 target was
