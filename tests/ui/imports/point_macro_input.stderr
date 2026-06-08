@@ -1,0 +1,28 @@
+error[E0432]: unresolved import `things::what2`
+  --> $DIR/point_macro_input.rs:15:17
+   |
+LL |               use things::$thing;
+   |                   ^^^^^^^^^^^^^^ no `what2` in `things`
+...
+LL | /     mac2!(
+LL | |
+LL | |         what2
+LL | |
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `what1` in module `things`
+  --> $DIR/point_macro_input.rs:27:9
+   |
+LL |         const _x: u32 = things::$thing;
+   |                                 ------ due to this macro variable
+...
+LL |         what1
+   |         ^^^^^ not found in `things`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
