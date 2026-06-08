@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::mem;
 
-fn replace_with_default() {
+fn main() {
     let mut s = String::from("foo");
     let _ = std::mem::replace(&mut s, String::default());
     //~^ mem_replace_with_default
@@ -86,8 +86,6 @@ fn dont_lint_not_used() {
     let mut s = String::from("foo");
     std::mem::replace(&mut s, String::default());
 }
-
-fn main() {}
 
 #[clippy::msrv = "1.39"]
 fn msrv_1_39() {

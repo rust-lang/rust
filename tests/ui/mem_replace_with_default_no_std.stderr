@@ -1,5 +1,5 @@
 error: replacing a value of type `T` with `T::default()`
-  --> tests/ui/mem_replace_no_std.rs:8:13
+  --> tests/ui/mem_replace_with_default_no_std.rs:8:13
    |
 LL |     let _ = mem::replace(&mut refstr, "");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `core::mem::take` instead: `core::mem::take(&mut refstr)`
@@ -8,7 +8,7 @@ LL |     let _ = mem::replace(&mut refstr, "");
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
 
 error: replacing a value of type `T` with `T::default()`
-  --> tests/ui/mem_replace_no_std.rs:12:13
+  --> tests/ui/mem_replace_with_default_no_std.rs:12:13
    |
 LL |     let _ = mem::replace(&mut slice, &[]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `core::mem::take` instead: `core::mem::take(&mut slice)`
