@@ -235,7 +235,7 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, is_rigid, .. }) =
             goal.predicate.self_ty().kind()
         {
             if ecx.opaque_accesses.might_rerun() {
@@ -243,7 +243,7 @@ where
                 return Err(NoSolution.into());
             }
 
-            debug_assert!(ecx.opaque_type_is_rigid(def_id));
+            debug_assert!(is_rigid == ty::IsRigid::Yes);
             for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
                 if item_bound
                     .as_trait_clause()
