@@ -1238,7 +1238,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if let End(TagEnd::Item) = event {
                     containers.pop();
                 }
-                if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
+                if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone())
+                .or_else(|| span_of_fragments(fragments.fragments)) {
                     span_lint_and_help(
                         cx,
                         DOC_MARKDOWN,
