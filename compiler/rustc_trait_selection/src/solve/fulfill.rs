@@ -89,9 +89,14 @@ impl<'tcx> ObligationStorage<'tcx> {
             .iter()
             .filter(|(_, stalled_on)| {
                 let Some(stalled_on) = stalled_on else { return true };
-                // Conservative here: if any of its stalled vars are not infer var anymore,
-                // some unification happened, so this goal is no longer stalled.
-                // So include it to re-evaluate in the downstream.
+                // Don't reuse the sub-unification roots cached on `stalled_on`:
+                // a later sub-unification merge can have changed which root
+                // each stalled var belongs to, so the cached info can be stale.
+                // Walk `stalled_vars` and recompute the current root instead.
+                //
+                // Conservative here: if a stalled var no longer resolves to an
+                // infer var, some unification happened, so the goal is no longer
+                // stalled. Include it to be re-evaluated downstream.
                 stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(
                     |ty| match *infcx.shallow_resolve(ty).kind() {
                         ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
@@ -303,6 +308,10 @@ where
         infcx: &InferCtxt<'tcx>,
         vid: ty::TyVid,
     ) -> PredicateObligations<'tcx> {
+        // `-Zdisable-fast-paths`: same gate as the other new-solver fast paths.
+        if infcx.tcx.disable_trait_solver_fast_paths() {
+            return self.obligations.clone_pending();
+        }
         self.obligations.clone_pending_potentially_referencing_sub_root(infcx, vid)
     }
 

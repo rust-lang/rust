@@ -108,8 +108,10 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
-    /// Returning all pending obligations which reference an inference
-    /// variable with `_sub_root`.
+    /// Pending obligations potentially referencing an inference variable whose
+    /// sub-unification root is `_sub_root`. May be conservative: implementations
+    /// can return obligations that don't actually reference `_sub_root` (the
+    /// default just returns everything).
     fn pending_obligations_potentially_referencing_sub_root(
         &self,
         _infcx: &InferCtxt<'tcx>,
