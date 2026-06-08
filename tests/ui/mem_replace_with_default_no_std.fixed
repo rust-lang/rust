@@ -1,5 +1,9 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::mem_replace_with_default)]
 #![no_std]
+
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 use core::mem;
 
@@ -11,4 +15,11 @@ fn it_works() {
     let mut slice: &[i32] = &[1, 2, 3];
     let _ = core::mem::take(&mut slice);
     //~^ mem_replace_with_default
+}
+
+#[inline_macros]
+fn macros(mut refstr: &str) {
+    let _ = inline!(core::mem::take(&mut $refstr));
+    //~^ mem_replace_with_default
+    let _ = external!(mem::replace(&mut $refstr, ""));
 }
