@@ -22,6 +22,8 @@ pub(crate) struct FieldIsPrivate {
     #[subdiagnostic]
     pub labels: Vec<FieldIsPrivateLabel>,
     pub len: usize,
+    #[help("initializer expressions cannot construct {$variant_descr}s with private fields")]
+    pub expr_span: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]

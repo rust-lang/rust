@@ -958,6 +958,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         update_syntax: Option<Span>,
         struct_span: Span,
+        expr: Option<&'tcx hir::Expr<'_>>,
     ) {
         if def.is_enum() || fields.is_empty() {
             return;
@@ -1012,6 +1013,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
             def_path_str: self.tcx.def_path_str(def.did()),
             labels,
             len: fields.len(),
+            expr_span: expr.map(|e| e.span),
         });
     }
 
@@ -1021,6 +1023,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         variant: &'tcx ty::VariantDef,
         fields: &[hir::ExprField<'tcx>],
         hir_id: hir::HirId,
+        expr: &'tcx hir::Expr<'_>,
         span: Span,
         struct_span: Span,
     ) {
@@ -1040,7 +1043,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
                 failed_fields.push((name, span, field.is_some()));
             }
         }
-        self.emit_unreachable_field_error(failed_fields, adt, Some(span), struct_span);
+        self.emit_unreachable_field_error(failed_fields, adt, Some(span), struct_span, Some(expr));
     }
 }
 
@@ -1071,6 +1074,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                         variant,
                         fields,
                         base.hir_id,
+                        expr,
                         base.span,
                         qpath.span(),
                     );
@@ -1081,6 +1085,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                         variant,
                         fields,
                         expr.hir_id,
+                        expr,
                         span,
                         qpath.span(),
                     );
@@ -1094,7 +1099,13 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                             failed_fields.push((field.ident.name, field.ident.span, true));
                         }
                     }
-                    self.emit_unreachable_field_error(failed_fields, adt, None, qpath.span());
+                    self.emit_unreachable_field_error(
+                        failed_fields,
+                        adt,
+                        None,
+                        qpath.span(),
+                        Some(expr),
+                    );
                 }
             }
         }
@@ -1115,7 +1126,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     failed_fields.push((field.ident.name, field.ident.span, true));
                 }
             }
-            self.emit_unreachable_field_error(failed_fields, adt, None, qpath.span());
+            self.emit_unreachable_field_error(failed_fields, adt, None, qpath.span(), None);
         }
 
         intravisit::walk_pat(self, pat);

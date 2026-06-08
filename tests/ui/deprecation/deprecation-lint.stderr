@@ -744,6 +744,17 @@ LL |         let _ = nested::DeprecatedStruct {
 LL |
 LL |             i: 0
    |             ^ private field
+   |
+help: initializer expressions cannot construct structs with private fields
+  --> $DIR/deprecation-lint.rs:278:17
+   |
+LL |           let _ = nested::DeprecatedStruct {
+   |  _________________^
+LL | |
+LL | |             i: 0
+LL | |
+LL | |         };
+   | |_________^
 
 error: aborting due to 123 previous errors
 

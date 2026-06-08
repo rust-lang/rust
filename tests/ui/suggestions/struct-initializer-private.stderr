@@ -1,0 +1,15 @@
+error[E0560]: struct `foo::Foo` has no field named `quux`
+  --> $DIR/struct-initializer-private.rs:11:28
+   |
+LL |     let _f = Foo { bar: 0, quux: 0 };
+   |                            ^^^^
+   |
+help: initializer expressions cannot construct structs with private fields
+  --> $DIR/struct-initializer-private.rs:11:14
+   |
+LL |     let _f = Foo { bar: 0, quux: 0 };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.
