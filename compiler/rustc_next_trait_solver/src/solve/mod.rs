@@ -246,9 +246,7 @@ where
                     .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into);
             }
-            ty::ConstKind::Unevaluated(uv) => {
-                self.cx().type_of(uv.kind.def_id()).instantiate(self.cx(), uv.args).skip_norm_wip()
-            }
+            ty::ConstKind::Unevaluated(uv) => uv.type_of(self.cx()).skip_norm_wip(),
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
             ),

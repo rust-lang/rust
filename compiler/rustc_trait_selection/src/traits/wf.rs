@@ -1064,8 +1064,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !tcx.is_type_const(uv.kind.def_id()) && !tcx.features().generic_const_args()
-                    {
+                    if !uv.kind.is_type_const(tcx) && !tcx.features().generic_const_args() {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),
                         ));
@@ -1079,12 +1078,17 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ));
                     }
 
-                    if matches!(uv.kind, ty::UnevaluatedConstKind::Inherent { .. }) {
-                        self.add_wf_preds_for_inherent_projection(uv.into());
-                        return; // Subtree is handled by above function
-                    } else {
-                        let obligations = self.nominal_obligations(uv.kind.def_id(), uv.args);
-                        self.out.extend(obligations);
+                    match uv.kind {
+                        ty::UnevaluatedConstKind::Inherent { .. } => {
+                            self.add_wf_preds_for_inherent_projection(uv.into());
+                            return; // Subtree is handled by above function
+                        }
+                        ty::UnevaluatedConstKind::Projection { def_id }
+                        | ty::UnevaluatedConstKind::Free { def_id }
+                        | ty::UnevaluatedConstKind::Anon { def_id } => {
+                            let obligations = self.nominal_obligations(def_id, uv.args);
+                            self.out.extend(obligations);
+                        }
                     }
                 }
             }
