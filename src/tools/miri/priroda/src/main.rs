@@ -133,6 +133,10 @@ struct PrirodaContext<'tcx> {
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
     MirInstruction,
+    /// Stop at the next source line
+    ///
+    /// Take `Option` because some cases current state has no mapped to source code location
+    SourceLine(Option<(PathBuf, usize)>),
     /// Continue until reaching a breakpoint.
     Continue,
 }
@@ -159,9 +163,25 @@ impl<'tcx> PrirodaContext<'tcx> {
         Self { ecx, breakpoints: HashMap::new(), current_location: None, last_location: None }
     }
 
+    fn local_path(&self, location: &SourceLocation) -> Option<PathBuf> {
+        let source_map = self.ecx.tcx.sess.source_map();
+        location.local_path(source_map)
+    }
+
     /// Step to the next visible MIR instruction.
     fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::MirInstruction)
+    }
+    fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+        let Some(location) = &self.current_location else {
+            return self.resume(ResumeMode::SourceLine(None));
+        };
+
+        let Some(path) = self.local_path(location) else {
+            return self.resume(ResumeMode::SourceLine(None));
+        };
+
+        self.resume(ResumeMode::SourceLine(Some((path, location.line))))
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
@@ -202,6 +222,26 @@ impl<'tcx> PrirodaContext<'tcx> {
                 {
                     return interp_ok(StepResult::Step);
                 }
+
+                ResumeMode::SourceLine(ref prev_location) => {
+                    match (prev_location, &self.current_location) {
+                        // We started from an unmapped source location. Stop at the first mapped source location we can show to the user.
+                        (None, Some(_)) => return interp_ok(StepResult::Step),
+
+                        (Some((prev_path, prev_line)), Some(current_location)) => {
+                            if let Some(current_path) = self.local_path(current_location) {
+                                // A source step stops when the visible source position changes to a different file or line.
+                                if *prev_path != current_path || *prev_line != current_location.line
+                                {
+                                    return interp_ok(StepResult::Step);
+                                }
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+
                 ResumeMode::MirInstruction | ResumeMode::Continue => {}
             }
         }
@@ -253,8 +293,7 @@ impl<'tcx> PrirodaContext<'tcx> {
             return false;
         };
 
-        let source_map = self.ecx.tcx.sess.source_map();
-        let Some(path) = &location.local_path(source_map) else {
+        let Some(path) = &self.local_path(location) else {
             return false;
         };
 
@@ -282,6 +321,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     fn run_command(&mut self, command: DebuggerCommand) -> InterpResult<'tcx, CommandResult> {
         match command {
             DebuggerCommand::StepI => self.stepi().map(CommandResult::ExecutionStopped),
+            DebuggerCommand::Step => self.step().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Continue =>
                 self.continue_execution().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Breakpoint(path, line) =>
@@ -293,6 +333,7 @@ impl<'tcx> PrirodaContext<'tcx> {
 
 enum DebuggerCommand {
     StepI,
+    Step,
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),
@@ -367,7 +408,9 @@ impl CLI {
         let args = parts.next().unwrap_or("").trim();
 
         match command {
+            // FIXME: empty line should repats last command user typed not exeute specific command.
             "" | "si" | "stepi" => Some(DebuggerCommand::StepI),
+            "s" | "step" => Some(DebuggerCommand::Step),
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
@@ -376,12 +419,12 @@ impl CLI {
     }
 
     fn print_location(&self, session: &PrirodaContext) {
-        let source_map = session.ecx.tcx.sess.source_map();
         match &session.current_location {
             Some(location) =>
-                if let Some(path) = location.local_path(source_map) {
+                if let Some(path) = session.local_path(location) {
                     println!("{}:{}", path.display(), location.line);
                 } else {
+                    let source_map = session.ecx.tcx.sess.source_map();
                     println!("{}", source_map.span_to_diagnostic_string(location.span));
                 },
             None => println!("no-location"),

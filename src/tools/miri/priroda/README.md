@@ -60,6 +60,7 @@ RUSTC_BLESS=1 cargo test
 | Command | Description |
 |---|---|
 | Enter, `si`, `stepi` | Execute one Miri interpreter step. |
+| `s`, `step` | Step until the displayed source location changes. |
 | `c`, `continue` | Continue until the program finishes or reaches a breakpoint. |
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
 | `q`, `quit` | Exit Priroda. |
