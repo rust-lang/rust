@@ -130,7 +130,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         }
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
-        ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceKind::FnPtrAsPtrShim(def_id, ty) => build_fn_ptr_as_ptr_shim(tcx, def_id, ty),
+        ty::InstanceKind::FnPtrFromPtrShim(def_id, ty) => {
+            build_fn_ptr_from_ptr_shim(tcx, def_id, ty)
+        }
+
         ty::InstanceKind::FutureDropPollShim(def_id, proxy_ty, impl_ty) => {
             let mut body =
                 async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
@@ -1076,40 +1080,94 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
 /// ```ignore (pseudo-impl)
 /// impl FnPtr for fn(u32) {
-///     fn addr(self) -> usize {
-///         self as usize
+///     fn addr(self) -> NonNull<Code> {
+///         unsafe { transmute(self as *const Code)}
 ///     }
 /// }
 /// ```
-fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
+fn build_fn_ptr_as_ptr_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
     assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+
     let span = tcx.def_span(def_id);
+    let nonnull_did = tcx.require_lang_item(LangItem::NonNull, span);
+    let nonnull_ty = tcx
+        .type_of(nonnull_did)
+        .instantiate(tcx, &[ty::GenericArg::from(tcx.types.unit)])
+        .skip_norm_wip();
+
     let Some(sig) =
         tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
     else {
-        span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");
+        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
     };
-    let locals = local_decls_for_sig(&sig, span);
+    let mut locals = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo::outermost(span);
+
+    let mut statements = vec![];
     // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
     // provenance.
-    let rvalue = Rvalue::Cast(
-        CastKind::FnPtrToPtr,
-        Operand::Move(Place::from(Local::arg(0))),
-        Ty::new_imm_ptr(tcx, tcx.types.unit),
-    );
-    let stmt = Statement::new(
+    let raw_unit_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
+    let cast_to_raw_rvalue =
+        Rvalue::Cast(CastKind::FnPtrToPtr, Operand::Move(Place::from(Local::arg(0))), raw_unit_ptr);
+    let raw_ptr = locals.push(LocalDecl::with_source_info(raw_unit_ptr, source_info)).into();
+    statements.push(Statement::new(
         source_info,
-        StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
-    );
-    let statements = vec![stmt];
+        StatementKind::Assign(Box::new((raw_ptr, cast_to_raw_rvalue))),
+    ));
+
+    let transmute_to_nonnull =
+        Rvalue::Cast(CastKind::Transmute, Operand::Move(Place::from(raw_ptr)), nonnull_ty);
+    statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((Place::return_place(), transmute_to_nonnull))),
+    ));
+
     let start_block = BasicBlockData::new_stmts(
         statements,
         Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     );
-    let source = MirSource::from_instance(ty::InstanceKind::FnPtrAddrShim(def_id, self_ty));
+    let source = MirSource::from_instance(ty::InstanceKind::FnPtrAsPtrShim(def_id, self_ty));
+    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_fn_ptr_from_ptr_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+
+    let span = tcx.def_span(def_id);
+
+    let Some(sig) =
+        tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
+    else {
+        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
+    };
+    let locals = local_decls_for_sig(&sig, span);
+
+    let source_info = SourceInfo::outermost(span);
+
+    let mut statements = vec![];
+    let transmute_to_self =
+        Rvalue::Cast(CastKind::Transmute, Operand::Move(Place::from(Local::arg(0))), self_ty);
+    statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((Place::return_place(), transmute_to_self))),
+    ));
+
+    let start_block = BasicBlockData::new_stmts(
+        statements,
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    );
+    let source = MirSource::from_instance(ty::InstanceKind::FnPtrFromPtrShim(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 

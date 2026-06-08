@@ -1805,7 +1805,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::ThreadLocalShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::FnPtrAsPtrShim(..)
+            | ty::InstanceKind::FnPtrFromPtrShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
             | ty::InstanceKind::AsyncDropGlue(..) => self.mir_shims(instance),
         }

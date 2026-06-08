@@ -556,6 +556,8 @@ declare_features! (
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    /// Traits for function pointers and items
+    (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.

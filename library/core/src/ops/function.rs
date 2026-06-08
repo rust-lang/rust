@@ -1,5 +1,5 @@
 use crate::marker::Tuple;
-
+use crate::ptr::NonNull;
 /// The version of the call operator that takes an immutable receiver.
 ///
 /// Instances of `Fn` can be called repeatedly without mutating state.
@@ -310,4 +310,38 @@ mod impls {
             (*self).call_mut(args)
         }
     }
+}
+
+/// A type representing a pointer to a function pointer.
+// FIXME: Make this a proper extern type.
+#[unstable(feature = "fn_static", issue = "148768")]
+pub type Code = ();
+
+/// A common trait implemented by all function pointers.
+#[unstable(feature = "fn_static", issue = "148768")]
+#[lang = "fn_ptr_trait"]
+#[rustc_deny_explicit_impl]
+#[rustc_dyn_incompatible_trait]
+pub trait FnPtr: Copy {
+    /// Returns the address of the function pointer.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    fn addr(self) -> usize {
+        self.as_ptr().addr().get()
+    }
+
+    /// Returns the function pointer as a [`NonNull<Code>`].
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_ptr_as_ptr"]
+    fn as_ptr(self) -> NonNull<Code>;
+
+    /// Constructs a function pointer from a `NonNull` pointer.
+    ///
+    /// # Safety
+    ///
+    /// The function pointer must have been obtained
+    /// from an [`FnPtr::as_ptr`] call from a function
+    /// pointer type that is ABI compatible.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_ptr_from_ptr"]
+    unsafe fn from_ptr(ptr: NonNull<Code>) -> Self;
 }

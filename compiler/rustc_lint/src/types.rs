@@ -312,7 +312,7 @@ fn lint_wide_pointer<'tcx>(
         let mut modifiers = String::new();
         ty = match ty.kind() {
             ty::RawPtr(ty, _) => *ty,
-            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+            ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::NonNull) => {
                 modifiers.push_str(".as_ptr()");
                 args.type_at(0)
             }

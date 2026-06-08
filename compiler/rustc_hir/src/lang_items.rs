@@ -175,11 +175,14 @@ language_item_table! {
     Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy,        GenericRequirement::None;
     DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
 
+    NonNull,                 sym::non_null,            non_null_trait,             Target::Struct,         GenericRequirement::Exact(1);
+
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
     UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
 
     FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    FnPtrAddr,               sym::fn_ptr_addr,         fn_ptr_addr,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnPtrAsPtr,              sym::fn_ptr_as_ptr,       fn_ptr_as_ptr,              Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnPtrFromPtr,            sym::fn_ptr_from_ptr,     fn_ptr_from_ptr,            Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
@@ -235,6 +238,7 @@ language_item_table! {
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    FnStatic,                sym::fn_static,           fn_static_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);

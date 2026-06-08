@@ -14,8 +14,6 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 use traits::translate_args;
 
-use crate::errors::UnexpectedFnPtrAssociatedItem;
-
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>,
@@ -290,19 +288,22 @@ fn resolve_associated_item<'tcx>(
                     Some(ty::Instance::new_raw(trait_item_id, args))
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
-                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAddr) {
-                    let self_ty = trait_ref.self_ty();
-                    if !matches!(self_ty.kind(), ty::FnPtr(..)) {
-                        return Ok(None);
-                    }
+                let self_ty = trait_ref.self_ty();
+                if !matches!(self_ty.kind(), ty::FnPtr(..)) {
+                    return Ok(None);
+                }
+                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAsPtr) {
                     Some(Instance {
-                        def: ty::InstanceKind::FnPtrAddrShim(trait_item_id, self_ty),
+                        def: ty::InstanceKind::FnPtrAsPtrShim(trait_item_id, self_ty),
+                        args: rcvr_args,
+                    })
+                } else if tcx.is_lang_item(trait_item_id, LangItem::FnPtrFromPtr) {
+                    Some(Instance {
+                        def: ty::InstanceKind::FnPtrFromPtrShim(trait_item_id, self_ty),
                         args: rcvr_args,
                     })
                 } else {
-                    tcx.dcx().emit_fatal(UnexpectedFnPtrAssociatedItem {
-                        span: tcx.def_span(trait_item_id),
-                    })
+                    Some(Instance { def: ty::InstanceKind::Item(trait_item_id), args: rcvr_args })
                 }
             } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
                 // FIXME: This doesn't check for malformed libcore that defines, e.g.,

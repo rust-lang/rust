@@ -448,8 +448,11 @@ language_item_table! { LangItems =>
 
     Freeze,                  sym::freeze,              TraitId;
 
+    NonNull,                 sym::non_null,            StructId;
+
     FnPtrTrait,              sym::fn_ptr_trait,        TraitId;
-    FnPtrAddr,               sym::fn_ptr_addr,         FunctionId;
+    FnPtrAsPtr,              sym::fn_ptr_as_ptr,       FunctionId;
+    FnPtrFromPtr,            sym::fn_ptr_from_ptr,     FunctionId;
 
     Drop,                    sym::drop,                TraitId;
     Destruct,                sym::destruct,            TraitId;

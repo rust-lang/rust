@@ -976,7 +976,8 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             }
             ty::InstanceKind::VTableShim(..)
             | ty::InstanceKind::ReifyShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
+            | ty::InstanceKind::FnPtrAsPtrShim(..)
+            | ty::InstanceKind::FnPtrFromPtrShim(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
             | ty::InstanceKind::ThreadLocalShim(..)
