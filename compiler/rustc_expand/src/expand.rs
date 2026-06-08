@@ -793,7 +793,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_out_of_line_module(
+                                &self.cx.sess.psess,
+                                item_inner,
+                            )
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
