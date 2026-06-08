@@ -24,7 +24,7 @@ use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
 use crate::rmeta::table::TableIdx;
 use crate::rmeta::{
     DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, EncodeFrom, ExpnDataTable,
-    ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue,
+    ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue, MetadataEncoder,
     OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable, TraitImpls,
 };
 
@@ -50,16 +50,16 @@ impl PublicApiHasher {
 }
 
 pub(crate) trait TablePublicApiHasher<I>: Default {
-    fn digest<'a, 'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
         &mut self,
         index: I,
         value: V,
-        encoder: &mut EncodeContext<'_, 'tcx>,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
         hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
-        T: EncodeFrom<'tcx, V>;
+        T: EncodeFrom<'tcx, V, M>;
     fn finish<'a>(&self, hcx: &mut impl PublicApiHashState<'a>) -> Option<Fingerprint>;
 }
 
@@ -104,16 +104,16 @@ impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
 
 impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
     #[inline(always)]
-    fn digest<'a, 'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
         &mut self,
         index: I,
         value: V,
-        encoder: &mut EncodeContext<'_, 'tcx>,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
         hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
-        T: EncodeFrom<'tcx, V>,
+        T: EncodeFrom<'tcx, V, M>,
     {
         if !hcx.enabled() {
             (index.to_encoded(encoder), T::encode_from(encoder, value))
@@ -146,16 +146,16 @@ impl<I> Default for RDRHashNone<I> {
 
 impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
     #[inline(always)]
-    fn digest<'a, 'tcx, T, V>(
+    fn digest<'a, 'tcx, T, V, M: MetadataEncoder>(
         &mut self,
         index: I,
         value: V,
-        encoder: &mut EncodeContext<'_, 'tcx>,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
         _hcx: &mut impl PublicApiHashState<'a>,
     ) -> (I::Encoded, T)
     where
         I: TableIdx,
-        T: EncodeFrom<'tcx, V>,
+        T: EncodeFrom<'tcx, V, M>,
     {
         (index.to_encoded(encoder), T::encode_from(encoder, value))
     }

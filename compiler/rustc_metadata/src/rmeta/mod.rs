@@ -47,6 +47,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
+use rustc_serialize::{Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_span::edition::Edition;
@@ -58,6 +59,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::MetadataEncoder;
 use crate::rmeta::encoder::public_api_hasher::{
     Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
 };
@@ -352,7 +354,7 @@ impl TableIdx for OnDiskSourceFileIdx {
     type Encoded = Self;
 
     #[inline(always)]
-    fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+    fn to_encoded<M: MetadataEncoder>(self, _encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
         self
     }
 }
@@ -375,7 +377,7 @@ impl TableIdx for ProcMacroQuotedSpansIdx {
     type Encoded = Self;
 
     #[inline(always)]
-    fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+    fn to_encoded<M: MetadataEncoder>(self, _encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
         self
     }
 }
@@ -452,6 +454,12 @@ pub(crate) struct LocalDefsRemapping {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) struct RemappedLocalDefId {
     pub index: DefIndex,
+}
+
+impl<E: Encoder> Encodable<E> for RemappedLocalDefId {
+    fn encode(&self, e: &mut E) {
+        self.index.as_u32().encode(e)
+    }
 }
 
 impl Idx for RemappedLocalDefId {
@@ -684,13 +692,17 @@ macro_rules! define_tables {
             }
         }
 
-        impl<'a, 'tcx, 'h, 'b, 'c, 'd, H: PublicApiHashState<'h>> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H> {
+        impl<'a, 'tcx, 'h, 'b, 'c, 'd, H, M> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H, M>
+        where
+            H: PublicApiHashState<'h>,
+            M: MetadataEncoder,
+        {
             $(
                 /// Records a value into the corresponding `TableBuilders` field, encoding it in
                 /// the process when necessary
                 fn $name1<T>(&mut self, i: LocalDefId, v: T)
                 where
-                    $T1: EncodeFrom<'tcx, T>,
+                    $T1: EncodeFrom<'tcx, T, M>,
                 {
                     self.tables.$name1.set_hashed(i, v, self.encoder, self.hcx);
                 }
@@ -700,7 +712,7 @@ macro_rules! define_tables {
                 /// the process when necessary
                 fn $name2<T>(&mut self, i: LocalDefId, v: T)
                 where
-                    $T2: EncodeFrom<'tcx, T>
+                    $T2: EncodeFrom<'tcx, T, M>
                 {
                     self.tables.$name2.set_some_hashed(i, v, self.encoder, self.hcx);
                 }
@@ -711,8 +723,12 @@ macro_rules! define_tables {
 
 /// Helper struct for writing values into [`TableBuilders`].
 #[must_use]
-struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H: PublicApiHashState<'h>> {
-    encoder: &'b mut EncodeContext<'a, 'tcx>,
+struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder,
+{
+    encoder: &'b mut EncodeContext<'a, 'tcx, M>,
     hcx: &'c mut H,
     tables: &'d mut TableBuilders,
     _marker: PhantomData<&'h ()>,

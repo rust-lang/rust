@@ -439,13 +439,13 @@ pub(crate) trait TableIdx: Copy {
     type Encoded: Idx;
     type Decoded: Idx;
 
-    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded;
+    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded;
 }
 
 impl TableIdx for LocalDefId {
     type Encoded = RemappedLocalDefId;
     type Decoded = DefIndex;
-    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
         encoder.local_defs_remapping.map_local_def_id(self)
     }
 }
@@ -454,7 +454,7 @@ impl TableIdx for SyntaxContext {
     type Encoded = RemappedSyntaxContext;
     type Decoded = DecodedSyntaxContext;
 
-    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
         encoder.syntax_context_remapping.map_id(self)
     }
 }
@@ -463,7 +463,7 @@ impl TableIdx for LocalExpnId {
     type Encoded = RemappedLocalExpnIndex;
     type Decoded = ExpnIndex;
 
-    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+    fn to_encoded<M: MetadataEncoder>(self, encoder: &EncodeContext<'_, '_, M>) -> Self::Encoded {
         encoder.local_expn_id_remapping.map_id(self)
     }
 }
@@ -505,14 +505,15 @@ impl<
 > TableBuilder<H, I, T>
 {
     #[inline(always)]
-    pub(super) fn set_hashed<'a, 'tcx, V>(
+    pub(super) fn set_hashed<'a, 'tcx, V, M>(
         &mut self,
         i: I,
         value: V,
-        encoder: &mut EncodeContext<'_, 'tcx>,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
         hcx: &mut impl PublicApiHashState<'a>,
     ) where
-        T: EncodeFrom<'tcx, V>,
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder,
     {
         let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
         self.set(encoded_i, encoded_value);
@@ -525,14 +526,15 @@ where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     #[inline(always)]
-    pub(super) fn set_some_hashed<'a, 'tcx, V>(
+    pub(super) fn set_some_hashed<'a, 'tcx, V, M>(
         &mut self,
         i: I,
         value: V,
-        encoder: &mut EncodeContext<'_, 'tcx>,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
         hcx: &mut impl PublicApiHashState<'a>,
     ) where
-        T: EncodeFrom<'tcx, V>,
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder,
     {
         let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
         self.set_some(encoded_i, encoded_value);

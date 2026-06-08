@@ -17,6 +17,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
+use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
@@ -24,6 +25,7 @@ use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::hir::map::compute_hir_hash;
+use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
@@ -60,14 +62,91 @@ use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
 
-pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> {
-    encoder: &'b mut EncodeContext<'a, 'tcx>,
+pub(super) trait MetadataEncoder {
+    type EncodedDefId: for<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    type EncodedLocalDefId: for<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    fn encoded_def_id(
+        tcx: TyCtxt<'_>,
+        _remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId;
+    fn encoded_local_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId;
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
+}
+
+struct DefPathHashDefIdEncoder;
+impl MetadataEncoder for DefPathHashDefIdEncoder {
+    type EncodedDefId = (u32, Hash64);
+    type EncodedLocalDefId = RemappedLocalDefId;
+    fn encoded_def_id(
+        tcx: TyCtxt<'_>,
+        _remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId {
+        (def_id.krate.as_u32(), tcx.def_path_hash(def_id).local_hash())
+    }
+    /// We don't have to convert `LocalDefId` into a hash, since the index can only change when
+    /// this crate is recompiled. However, for dependencies, we need the stable hash. The exact index
+    /// can change without the public api changing, which would skip the recompile of this crate,
+    /// leaving it with bad indices.
+    fn encoded_local_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId {
+        remapping.map_local_def_id(def_id)
+    }
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
+        PublicApiHashingContext::<true>::new(hcx)
+    }
+}
+
+struct DefIndexDefIdEncoder;
+impl MetadataEncoder for DefIndexDefIdEncoder {
+    type EncodedDefId = RemappedRawDefId;
+    type EncodedLocalDefId = RemappedLocalDefId;
+    fn encoded_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId {
+        RemappedRawDefId::create(def_id, remapping)
+    }
+    /// We don't have to convert `LocalDefId` into a hash, since the index can only change when
+    /// this crate is recompiled. However, for dependencies, we need the stable hash. The exact index
+    /// can change without the public api changing, which would skip the recompile of this crate,
+    /// leaving it with bad indices.
+    fn encoded_local_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId {
+        remapping.map_local_def_id(def_id)
+    }
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
+        PublicApiHashingContext::<false>::new(hcx)
+    }
+}
+pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder,
+{
+    encoder: &'b mut EncodeContext<'a, 'tcx, M>,
     pub(super) tables: TableBuilders,
     hcx: &'c mut H,
     _marker: PhantomData<&'h ()>,
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder,
+{
     fn is_proc_macro(&self) -> bool {
         self.encoder.is_proc_macro()
     }
@@ -77,7 +156,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
     }
 }
 
-pub(super) struct EncodeContext<'a, 'tcx> {
+pub(super) struct EncodeContext<'a, 'tcx, M: MetadataEncoder> {
     opaque: FileEncoder<'a>,
     metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
@@ -110,6 +189,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
         HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
     pub(super) local_expn_id_remapping:
         HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
+    _marker: std::marker::PhantomData<M>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -131,9 +211,8 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder> Encoder for EncodeContext<'a, 'tcx, M> {
     const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
-
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
@@ -152,14 +231,14 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, T, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>> for LazyValue<T> {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, T, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>> for LazyArray<T> {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_usize(self.num_elems);
         if self.num_elems > 0 {
             e.emit_lazy_distance(self.position)
@@ -167,21 +246,23 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     }
 }
 
-impl<'a, 'tcx, I: TableIdx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, I: TableIdx, T, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>>
+    for LazyTable<I, T>
+{
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>> for ExpnIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx, M>) {
         s.emit_u32(self.as_u32());
     }
 }
 
-impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder> SpanEncoder for EncodeContext<'a, 'tcx, M> {
     fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
         self.tcx().prelocked_def_path_hasher()
     }
@@ -202,10 +283,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
-        let def_id = self.local_defs_remapping.map_def_id(def_id);
-
-        def_id.krate.encode(self);
-        self.emit_u32(def_id.index.as_u32());
+        M::encoded_def_id(self.tcx, &self.local_defs_remapping, def_id).encode(self);
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
@@ -281,7 +359,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     /// `LocalDefId` as a wrapper around def index we want to encode
     /// def index only, so we override the encode implementation.
     fn encode_local_def_id(&mut self, def_id: LocalDefId) {
-        self.emit_u32(self.local_defs_remapping.map_local_def_id(def_id).index.as_u32());
+        M::encoded_local_def_id(self.tcx, &self.local_defs_remapping, def_id).encode(self);
     }
 
     /// We override encoding logic for `DefKey` during metadata encoding,
@@ -301,8 +379,8 @@ fn bytes_needed(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()).div_ceil(u8::BITS) as usize
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>> for SpanData {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx, M>) {
         // Don't serialize any `SyntaxContext`s from a proc-macro crate,
         // since we don't load proc-macro dependencies during serialization.
         // This means that any hygiene information from macros used *within*
@@ -447,14 +525,14 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder> Encodable<EncodeContext<'a, 'tcx, M>> for [u8] {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder> TyEncoder<'tcx> for EncodeContext<'a, 'tcx, M> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {
@@ -476,7 +554,10 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M> EncodeContext<'a, 'tcx, M>
+where
+    M: MetadataEncoder,
+{
     fn is_proc_macro(&self) -> bool {
         self.is_proc_macro
     }
@@ -512,7 +593,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         value: B,
     ) -> LazyValue<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<Self>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -535,7 +616,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         values: I,
     ) -> LazyArray<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<Self>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -577,7 +658,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder,
+{
     fn position(&self) -> usize {
         self.encoder.position()
     }
@@ -587,7 +672,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
         value: B,
     ) -> LazyValue<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>>,
     {
         self.encoder.lazy(value)
     }
@@ -601,7 +686,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
         values: I,
     ) -> LazyArray<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>>,
     {
         self.encoder.lazy_array(values)
     }
@@ -615,7 +700,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
         values: I,
     ) -> Hashed<LazyArray<T>>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>> + StableHash,
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>> + StableHash,
     {
         let mut hasher = PublicApiHasher::default();
         let array = self.encoder.lazy_array(values.into_iter().map(|v| {
@@ -1554,7 +1639,11 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H> {
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder,
+{
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
         let mut state = AnalyzeAttrState {
@@ -1581,7 +1670,7 @@ impl<'a, 'tcx, 'h, 'b, 'c, H: PublicApiHashState<'h>> MetadataBuilder<'a, 'tcx, 
     /// Writing to a field of `tables` should be as simple as
     /// `self.table_writer().field(index, tcx.get_field_value(index))`, even for complex structs
     /// that require encoding as `LazyValue`/`LazyArray` first.
-    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_, H> {
+    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_, H, M> {
         super::TableWriter {
             encoder: self.encoder,
             hcx: self.hcx,
@@ -2737,6 +2826,29 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
+fn encode_crate_root<'tcx, 'h, M: MetadataEncoder>(
+    tcx: TyCtxt<'tcx>,
+    path: &Path,
+    hcx: StableHashState<'h>,
+    public_hash: &mut Option<Svh>,
+) {
+    with_encode_metadata_header::<M>(tcx, path, |ecx| {
+        // Encode all the entries and extra information in the crate,
+        // culminating in the `CrateRoot` which points to all of it.
+        let mut hcx = M::public_api_hasher(hcx);
+        let mut builder = MetadataBuilder {
+            encoder: ecx,
+            hcx: &mut hcx,
+            tables: Default::default(),
+            _marker: Default::default(),
+        };
+        let (root, unhashed, public_crate_hash) = builder.encode_crate_root();
+        *public_hash = public_crate_hash;
+
+        (root.position.get(), unhashed.position.get(), *public_hash)
+    });
+}
+
 #[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2779,7 +2891,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         if let Some(ref_path) = ref_path {
             let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-            with_encode_metadata_header(tcx, ref_path, |ecx| {
+            with_encode_metadata_header::<DefIndexDefIdEncoder>(tcx, ref_path, |ecx| {
                 let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
                     triple: tcx.sess.opts.target_triple.clone(),
@@ -2818,32 +2930,11 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
                     & !is_proc_macro
                     & tcx.sess.opts.incremental.is_some();
-                with_encode_metadata_header(tcx, path, |ecx| {
-                    // Encode all the entries and extra information in the crate,
-                    // culminating in the `CrateRoot` which points to all of it.
-                    let (root, unhashed, public_crate_hash) = if hash_public_api {
-                        let mut hcx = PublicApiHashingContext::<true>::new(hcx);
-                        let mut builder = MetadataBuilder {
-                            encoder: ecx,
-                            hcx: &mut hcx,
-                            tables: Default::default(),
-                            _marker: Default::default(),
-                        };
-                        builder.encode_crate_root()
-                    } else {
-                        let mut hcx = PublicApiHashingContext::<false>::new(hcx);
-                        let mut builder = MetadataBuilder {
-                            encoder: ecx,
-                            hcx: &mut hcx,
-                            tables: Default::default(),
-                            _marker: Default::default(),
-                        };
-                        builder.encode_crate_root()
-                    };
-                    public_hash = public_crate_hash;
-
-                    (root.position.get(), unhashed.position.get(), public_hash)
-                })
+                if hash_public_api {
+                    encode_crate_root::<DefPathHashDefIdEncoder>(tcx, path, hcx, &mut public_hash);
+                } else {
+                    encode_crate_root::<DefIndexDefIdEncoder>(tcx, path, hcx, &mut public_hash);
+                }
             })
         },
         None,
@@ -2853,7 +2944,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
+        with_encode_metadata_header::<DefIndexDefIdEncoder>(tcx, ref_path, |ecx| {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
@@ -2865,10 +2956,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     }
 }
 
-fn with_encode_metadata_header(
+fn with_encode_metadata_header<M: MetadataEncoder>(
     tcx: TyCtxt<'_>,
     path: &Path,
-    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize, Option<Svh>),
+    f: impl FnOnce(&mut EncodeContext<'_, '_, M>) -> (usize, usize, Option<Svh>),
 ) {
     // By default the crate hash (SVH) is computed from the bytes of the encoded metadata,
     // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
@@ -2941,6 +3032,7 @@ fn with_encode_metadata_header(
         local_defs_remapping: Default::default(),
         syntax_context_remapping: Default::default(),
         local_expn_id_remapping: Default::default(),
+        _marker: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.
