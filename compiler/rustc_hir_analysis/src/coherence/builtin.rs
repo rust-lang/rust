@@ -506,7 +506,6 @@ pub(crate) fn reborrow_info<'tcx>(
     impl_did: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     debug!("compute_reborrow_info(impl_did={:?})", impl_did);
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let span = tcx.def_span(impl_did);
     let trait_name = "Reborrow";
 
@@ -536,7 +535,7 @@ pub(crate) fn reborrow_info<'tcx>(
     };
 
     let lifetimes_count = generic_lifetime_params_count(args);
-    let data_fields = wf_data_fields(tcx, def, args);
+    let data_fields = collect_reborrow_data_fields(tcx, def, args);
 
     if lifetimes_count != 1 {
         let item = tcx.hir_expect_item(impl_did);
@@ -557,7 +556,6 @@ pub(crate) fn reborrow_info<'tcx>(
     for field in data_fields {
         if assert_field_type_is_reborrow(
             tcx,
-            &infcx,
             reborrow_trait,
             impl_did,
             param_env,
@@ -579,7 +577,6 @@ pub(crate) fn reborrow_info<'tcx>(
 
 fn assert_field_type_is_reborrow<'tcx>(
     tcx: TyCtxt<'tcx>,
-    infcx: &InferCtxt<'tcx>,
     reborrow_trait: DefId,
     impl_did: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
@@ -590,7 +587,8 @@ fn assert_field_type_is_reborrow<'tcx>(
         // Mutable references are Reborrow but not really.
         return Ok(());
     }
-    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation =
         Obligation::new(tcx, cause, param_env, ty::TraitRef::new(tcx, reborrow_trait, [ty]));
@@ -707,24 +705,24 @@ fn generic_lifetime_params_count(args: &[ty::GenericArg<'_>]) -> usize {
     args.iter().filter(|arg| arg.as_region().is_some()).count()
 }
 
-#[derive(Clone, Copy, Debug)]
-struct WfField<'tcx> {
+#[derive(Clone, Copy)]
+struct ReborrowDataField<'tcx> {
     ident: Ident,
     name: Symbol,
     ty: Ty<'tcx>,
     span: Span,
 }
 
-#[derive(Clone, Copy, Debug)]
-struct WfFieldPair<'tcx> {
-    source: WfField<'tcx>,
-    target: WfField<'tcx>,
+#[derive(Clone, Copy)]
+struct CoerceSharedFieldPair<'tcx> {
+    source: ReborrowDataField<'tcx>,
+    target: ReborrowDataField<'tcx>,
 }
 
-#[derive(Clone, Copy, Debug)]
-enum WfFieldPairError<'tcx> {
+#[derive(Clone, Copy)]
+enum CoerceSharedFieldPairError<'tcx> {
     FieldStyleMismatch,
-    MissingSourceField { target: WfField<'tcx> },
+    MissingSourceField { target: ReborrowDataField<'tcx> },
 }
 
 fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<'tcx>> {
@@ -733,17 +731,17 @@ fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<
     lifetimes.next().is_none().then_some(lifetime)
 }
 
-fn wf_data_fields<'tcx>(
+fn collect_reborrow_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
     args: ty::GenericArgsRef<'tcx>,
-) -> Vec<WfField<'tcx>> {
+) -> Vec<ReborrowDataField<'tcx>> {
     def.non_enum_variant()
         .fields
         .iter()
         .filter_map(|field| {
             let ty = field.ty(tcx, args).skip_norm_wip();
-            (!ty.is_phantom_data()).then_some(WfField {
+            (!ty.is_phantom_data()).then_some(ReborrowDataField {
                 ident: field.ident(tcx),
                 name: field.name,
                 ty,
@@ -753,33 +751,34 @@ fn wf_data_fields<'tcx>(
         .collect()
 }
 
-// This is a coherence/WF check only. It verifies that the impl describes a
-// structurally valid field relation; later runtime lowering still starts from
-// the single reborrow adjustment and is not modeled here.
-fn coerce_shared_wf_field_pairs<'tcx>(
+// This is a coherence/WF check only. It verifies that the CoerceShared impl
+// describes a structurally valid field-wise relation. Runtime lowering of the
+// operation is not modeled here.
+fn collect_coerce_shared_field_pairs<'tcx>(
     tcx: TyCtxt<'tcx>,
     source_def: ty::AdtDef<'tcx>,
     source_args: ty::GenericArgsRef<'tcx>,
     target_def: ty::AdtDef<'tcx>,
     target_args: ty::GenericArgsRef<'tcx>,
-) -> Result<Vec<WfFieldPair<'tcx>>, WfFieldPairError<'tcx>> {
+) -> Result<Vec<CoerceSharedFieldPair<'tcx>>, CoerceSharedFieldPairError<'tcx>> {
     let source_variant = source_def.non_enum_variant();
     let target_variant = target_def.non_enum_variant();
     if source_variant.ctor_kind() != target_variant.ctor_kind() {
-        return Err(WfFieldPairError::FieldStyleMismatch);
+        return Err(CoerceSharedFieldPairError::FieldStyleMismatch);
     }
 
     let by_position = matches!(target_variant.ctor_kind(), Some(CtorKind::Fn));
-    let source_fields = wf_data_fields(tcx, source_def, source_args);
-    let target_fields = wf_data_fields(tcx, target_def, target_args);
+    let source_fields = collect_reborrow_data_fields(tcx, source_def, source_args);
+    let target_fields = collect_reborrow_data_fields(tcx, target_def, target_args);
 
     if by_position {
         target_fields
             .into_iter()
             .zip(source_fields.into_iter().map(Some).chain(std::iter::repeat(None)))
             .map(|(target, source)| {
-                let source = source.ok_or(WfFieldPairError::MissingSourceField { target })?;
-                Ok(WfFieldPair { source, target })
+                let source =
+                    source.ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
+                Ok(CoerceSharedFieldPair { source, target })
             })
             .collect()
     } else {
@@ -792,9 +791,9 @@ fn coerce_shared_wf_field_pairs<'tcx>(
                     .find(|source| {
                         tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id)
                     })
-                    .ok_or(WfFieldPairError::MissingSourceField { target })?;
+                    .ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
 
-                Ok(WfFieldPair { source, target })
+                Ok(CoerceSharedFieldPair { source, target })
             })
             .collect()
     }
@@ -838,21 +837,26 @@ fn validate_coerce_shared_fields<'tcx>(
     target_def: ty::AdtDef<'tcx>,
     target_args: ty::GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let field_pairs =
-        match coerce_shared_wf_field_pairs(tcx, source_def, source_args, target_def, target_args) {
-            Ok(field_pairs) => field_pairs,
-            Err(WfFieldPairError::FieldStyleMismatch) => {
-                return Err(tcx
-                    .dcx()
-                    .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
-            }
-            Err(WfFieldPairError::MissingSourceField { target }) => {
-                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMissingField {
-                    span: target.span,
-                    trait_name,
-                }));
-            }
-        };
+    let field_pairs = match collect_coerce_shared_field_pairs(
+        tcx,
+        source_def,
+        source_args,
+        target_def,
+        target_args,
+    ) {
+        Ok(field_pairs) => field_pairs,
+        Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
+        }
+        Err(CoerceSharedFieldPairError::MissingSourceField { target }) => {
+            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMissingField {
+                span: target.span,
+                trait_name,
+            }));
+        }
+    };
 
     for field_pair in field_pairs {
         validate_coerce_shared_field(
@@ -877,8 +881,8 @@ fn validate_coerce_shared_field<'tcx>(
     coerce_shared_trait: DefId,
     trait_name: &'static str,
     span: Span,
-    source: WfField<'tcx>,
-    target: WfField<'tcx>,
+    source: ReborrowDataField<'tcx>,
+    target: ReborrowDataField<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     if matches!(
         (source.ty.kind(), target.ty.kind()),
