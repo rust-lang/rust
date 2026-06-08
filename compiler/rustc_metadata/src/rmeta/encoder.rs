@@ -2771,8 +2771,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         dep_node,
         tcx,
         || {
-            tcx.with_stable_hashing_context(|mut hcx| {
-                hcx.set_hash_spans_as_parentless(true);
+            tcx.with_stable_hashing_context(|hcx| {
                 let is_proc_macro = tcx.crate_types().contains(&CrateType::ProcMacro);
                 let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
                     & !is_proc_macro

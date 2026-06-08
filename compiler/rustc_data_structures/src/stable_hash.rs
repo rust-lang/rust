@@ -620,5 +620,4 @@ where
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
 pub struct StableHashControls {
     pub hash_spans: bool,
-    pub hash_spans_as_parentless: bool,
 }

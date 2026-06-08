@@ -20,7 +20,7 @@ enum CachingSourceMap<'a> {
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
 /// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
-pub struct StableHashState<'a> {
+pub struct StableHashState<'a, const HASH_SPANS_AS_PARENTLESS: bool = false> {
     untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
@@ -29,7 +29,20 @@ pub struct StableHashState<'a> {
     stable_hash_controls: StableHashControls,
 }
 
-impl<'a> StableHashState<'a> {
+impl<'a> StableHashState<'a, false> {
+    pub fn hash_spans_as_parentless(self) -> StableHashState<'a, true> {
+        let Self { untracked, incremental_ignore_spans, caching_source_map, stable_hash_controls } =
+            self;
+        StableHashState {
+            untracked,
+            incremental_ignore_spans,
+            caching_source_map,
+            stable_hash_controls,
+        }
+    }
+}
+
+impl<'a, const HASH_SPANS_AS_PARENTLESS: bool> StableHashState<'a, HASH_SPANS_AS_PARENTLESS> {
     #[inline]
     pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
         let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
@@ -38,16 +51,8 @@ impl<'a> StableHashState<'a> {
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: CachingSourceMap::Unused(sess.source_map()),
-            stable_hash_controls: StableHashControls {
-                hash_spans: hash_spans_initial,
-                hash_spans_as_parentless: false,
-            },
+            stable_hash_controls: StableHashControls { hash_spans: hash_spans_initial },
         }
-    }
-
-    #[inline]
-    pub fn set_hash_spans_as_parentless(&mut self, hash_spans_as_parentless: bool) {
-        self.stable_hash_controls.hash_spans_as_parentless = hash_spans_as_parentless;
     }
 
     #[inline]
@@ -80,7 +85,9 @@ impl<'a> StableHashState<'a> {
     }
 }
 
-impl<'a> StableHashCtxt for StableHashState<'a> {
+impl<'a, const HASH_SPANS_AS_PARENTLESS: bool> StableHashCtxt
+    for StableHashState<'a, HASH_SPANS_AS_PARENTLESS>
+{
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
     /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
     /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
@@ -104,7 +111,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
-        if self.stable_hash_controls().hash_spans_as_parentless {
+        if HASH_SPANS_AS_PARENTLESS {
             span.parent = None
         }
         span.ctxt.stable_hash(self, hasher);
@@ -189,15 +196,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
     #[inline]
     fn assert_default_stable_hash_controls(&self, msg: &str) {
         let stable_hash_controls = self.stable_hash_controls;
-        let StableHashControls {
-            hash_spans,
-            // This is only used for public api hashing of rmeta.
-            //
-            // The expn hashes are encoded in the rmeta and all spans are encoded without their
-            // parent in rmeta. If it is ok to give the information like this to dependent crates
-            // it should be ok to ignore this setting here.
-            hash_spans_as_parentless: _,
-        } = stable_hash_controls;
+        let StableHashControls { hash_spans } = stable_hash_controls;
 
         // Note that we require that `hash_spans` be the inverse of the global `-Z
         // incremental-ignore-spans` option. Normally, this option is disabled, in which case

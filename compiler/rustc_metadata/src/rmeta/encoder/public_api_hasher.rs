@@ -87,7 +87,7 @@ impl<I: Idx> Default for RDRHashAll<I> {
 pub(crate) trait PublicApiHashState<'a> {
     fn enabled(&self) -> bool;
 
-    fn hcx_mut(&mut self) -> &mut StableHashState<'a>;
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a, true>;
 }
 
 impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext<'a, ENABLED> {
@@ -97,18 +97,18 @@ impl<'a, const ENABLED: bool> PublicApiHashState<'a> for PublicApiHashingContext
     }
 
     #[inline(always)]
-    fn hcx_mut(&mut self) -> &mut StableHashState<'a> {
+    fn hcx_mut(&mut self) -> &mut StableHashState<'a, true> {
         &mut self.hcx
     }
 }
 
 pub(crate) struct PublicApiHashingContext<'a, const ENABLED: bool> {
-    pub(crate) hcx: StableHashState<'a>,
+    pub(crate) hcx: StableHashState<'a, true>,
 }
 
 impl<'a, const ENABLED: bool> PublicApiHashingContext<'a, ENABLED> {
-    pub(crate) fn new(hcx: StableHashState<'a>) -> Self {
-        Self { hcx }
+    pub(crate) fn new(hcx: StableHashState<'a, false>) -> Self {
+        Self { hcx: hcx.hash_spans_as_parentless() }
     }
 }
 
