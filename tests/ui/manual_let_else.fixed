@@ -21,23 +21,14 @@ fn g() -> Option<()> {
 fn main() {}
 
 fn fire() {
-    let v = if let Some(v_some) = g() { v_some } else { return };
+    let Some(v) = g() else { return };
     //~^ manual_let_else
 
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         return;
     };
 
-    let v = if let Some(v) = g() {
-        //~^ manual_let_else
-
-        // Blocks around the identity should have no impact
-        { { v } }
-    } else {
+    let Some(v) = g() else {
         // Some computation should still make it fire
         g();
         return;
@@ -45,51 +36,35 @@ fn fire() {
 
     // continue and break diverge
     loop {
-        let v = if let Some(v_some) = g() { v_some } else { continue };
+        let Some(v) = g() else { continue };
         //~^ manual_let_else
 
-        let v = if let Some(v_some) = g() { v_some } else { break };
+        let Some(v) = g() else { break };
         //~^ manual_let_else
     }
 
     // panic also diverges
-    let v = if let Some(v_some) = g() { v_some } else { panic!() };
+    let Some(v) = g() else { panic!() };
     //~^ manual_let_else
 
     // abort also diverges
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         std::process::abort()
     };
 
     // If whose two branches diverge also diverges
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         if true { return } else { panic!() }
     };
 
     // Diverging after an if still makes the block diverge:
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         if true {}
         panic!();
     };
 
     // A match diverges if all branches diverge:
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         match 0 {
             0 if true => panic!(),
             _ => panic!(),
@@ -97,42 +72,26 @@ fn fire() {
     };
 
     // An if's expression can cause divergence:
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         if panic!() {};
     };
 
     // An expression of a match can cause divergence:
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         match panic!() {
             _ => {},
         };
     };
 
     // Top level else if
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else if true {
+    let Some(v) = g() else { if true {
         return;
     } else {
         panic!("diverge");
-    };
+    } };
 
     // All match arms diverge
-    let v = if let Some(v_some) = g() {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some(v) = g() else {
         match (g(), g()) {
             (Some(_), None) => return,
             (None, Some(_)) => {
@@ -147,27 +106,19 @@ fn fire() {
     };
 
     // Tuples supported for the declared variables
-    let (v, w) = if let Some(v_some) = g().map(|v| (v, 42)) {
-        //~^ manual_let_else
-
-        v_some
-    } else {
+    let Some((v, w)) = g().map(|v| (v, 42)) else {
         return;
     };
 
     // Tuples supported with multiple bindings
-    let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
-        //~^ manual_let_else
-
-        (w_some, v_some)
-    } else {
+    let (Some(S { v }), w) = (g().map(|_| S { v: 0 }), 0) else {
         return;
     };
 
     // entirely inside macro lints
     macro_rules! create_binding_if_some {
         ($n:ident, $e:expr) => {
-            let $n = if let Some(v) = $e { v } else { return };
+            let Some($n) = g() else { return };
             //~^ manual_let_else
         };
     }
@@ -177,54 +128,38 @@ fn fire() {
         Variant::A(0, 0)
     }
 
-    let v = if let Variant::A(a, 0) = e() { a } else { return };
+    let Variant::A(v, 0) = e() else { return };
     //~^ manual_let_else
 
     // `mut v` is inserted into the pattern
-    let mut v = if let Variant::B(b) = e() { b } else { return };
+    let Variant::B(mut v) = e() else { return };
     //~^ manual_let_else
 
     // Nesting works
     let nested = Ok(Some(e()));
-    let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
-        //~^ manual_let_else
-
-        b
-    } else {
+    let (Ok(Some(Variant::B(v))) | Err(Some(Variant::A(v, _)))) = nested else {
         return;
     };
     // dot dot works
-    let v = if let Variant::A(.., a) = e() { a } else { return };
+    let Variant::A(.., v) = e() else { return };
     //~^ manual_let_else
 
     // () is preserved: a bit of an edge case but make sure it stays around
-    let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
+    let (Some(w), ()) = (g(), ()) else { return };
     //~^ manual_let_else
 
     // Tuple structs work
-    let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
-        //~^ manual_let_else
-
-        x
-    } else {
+    let Some(S { v: w }) = Some(S { v: 0 }) else {
         return;
     };
 
     // Field init shorthand is suggested
-    let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
-        //~^ manual_let_else
-
-        x
-    } else {
+    let Some(S { v }) = Some(S { v: 0 }) else {
         return;
     };
 
     // Multi-field structs also work
-    let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
-        //~^ manual_let_else
-
-        (x, v, w)
-    } else {
+    let Some(U { v: S { v }, w, x }) = None::<U<S<()>>> else {
         return;
     };
 }
@@ -338,11 +273,7 @@ fn not_fire() {
     }
 
     let ff = Some(1);
-    let _ = match ff {
-        //~^ manual_let_else
-        Some(value) => value,
-        _ => macro_call!(),
-    };
+    let Some(_) = ff else { macro_call!() };
 
     // Issue 10296
     // The let/else block in the else part is not divergent despite the presence of return
@@ -415,7 +346,7 @@ fn issue12337() {
     // behavior to `return`, and question_mark calls into manual_let_else logic, so make sure that
     // we still emit a lint for manual_let_else
     let _: Option<()> = try {
-        let v = if let Some(v_some) = g() { v_some } else { return };
+        let Some(v) = g() else { return };
         //~^ manual_let_else
     };
 }
@@ -427,14 +358,10 @@ mod issue13768 {
     }
 
     fn foo(value: Foo) {
-        let signature = match value {
-            //~^ manual_let_else
-            Foo::Str(ref val) => val,
-            _ => {
+        let Foo::Str(ref signature) = value else {
                 println!("No signature found");
                 return;
-            },
-        };
+            };
     }
 
     enum Bar {
@@ -443,31 +370,19 @@ mod issue13768 {
     }
 
     fn bar(mut value: Bar) {
-        let signature = match value {
-            //~^ manual_let_else
-            Bar::Str { ref mut inner } => inner,
-            _ => {
+        let Bar::Str { inner: ref mut signature } = value else {
                 println!("No signature found");
                 return;
-            },
-        };
+            };
     }
 }
 
 mod issue14598 {
     fn bar() -> Result<bool, &'static str> {
-        let value = match foo() {
-            //~^ manual_let_else
-            Err(_) => return Err("abc"),
-            Ok(value) => value,
-        };
+        let Ok(value) = foo() else { return Err("abc") };
 
         let w = Some(0);
-        let v = match w {
-            //~^ manual_let_else
-            None => return Err("abc"),
-            Some(x) => x,
-        };
+        let Some(v) = w else { return Err("abc") };
 
         enum Foo<T> {
             Foo(T),
@@ -493,19 +408,13 @@ mod issue15914 {
     }
 
     fn foo() {
-        let value = if let Some(value) = unsafe { something_unsafe() } {
-            //~^ manual_let_else
-            value
-        } else {
+        let Some(value) = (unsafe { something_unsafe() }) else {
             return;
         };
 
         let some_flag = true;
 
-        let value = if let Some(value) = if some_flag { None } else { Some(3) } {
-            //~^ manual_let_else
-            value
-        } else {
+        let Some(value) = (if some_flag { None } else { Some(3) }) else {
             return;
         };
     }
@@ -513,18 +422,12 @@ mod issue15914 {
 
 fn issue16602(i: Result<i32, i32>) {
     //~v manual_let_else
-    _ = match i {
-        Ok(i) => i,
-        Err(_) => unsafe {
+    let Ok(_) = i else { unsafe {
             core::hint::unreachable_unchecked();
-        },
-    };
+        } };;
 
     //~v manual_let_else
-    _ = match i {
-        Ok(i) => i,
-        Err(_) => 'useless_label: {
+    let Ok(_) = i else { 'useless_label: {
             panic!();
-        },
-    };
+        } };;
 }
