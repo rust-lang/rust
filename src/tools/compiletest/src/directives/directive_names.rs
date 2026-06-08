@@ -61,6 +61,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-avr",
     "ignore-backends",
     "ignore-beta",
+    "ignore-bpf",
     "ignore-cdb",
     "ignore-compare-mode-next-solver",
     "ignore-compare-mode-polonius",

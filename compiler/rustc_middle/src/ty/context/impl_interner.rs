@@ -459,7 +459,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn closure_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Closure);
-        self.constness(def_id) == hir::Constness::Const
+        matches!(self.constness(def_id), hir::Constness::Const { always: false })
     }
 
     fn alias_has_const_conditions(self, def_id: DefId) -> bool {

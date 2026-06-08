@@ -112,10 +112,11 @@ pub(crate) fn diff_by_lines(expected: &str, actual: &str) -> String {
     let mut expected_counts: HashMap<&str, usize> = HashMap::new();
     let mut actual_counts: HashMap<&str, usize> = HashMap::new();
 
-    for line in expected.lines() {
+    // Filter out padded empty code lines
+    for line in expected.lines().filter(|l| l.trim() != "|") {
         *expected_counts.entry(line).or_insert(0) += 1;
     }
-    for line in actual.lines() {
+    for line in actual.lines().filter(|l| l.trim() != "|") {
         *actual_counts.entry(line).or_insert(0) += 1;
     }
 

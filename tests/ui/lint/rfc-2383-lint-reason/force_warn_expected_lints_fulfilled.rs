@@ -2,12 +2,11 @@
 //@ compile-flags: --force-warn unused_variables
 //@ compile-flags: --force-warn unused_mut
 //@ check-pass
-//@ ignore-parallel-frontend `note`s on different source lines
+
 fn expect_early_pass_lint() {
     #[expect(while_true)]
     while true {
         //~^ WARNING denote infinite loops with `loop { ... }` [while_true]
-        //~| NOTE requested on the command line with `--force-warn while-true`
         //~| HELP use `loop`
         println!("I never stop")
     }
@@ -17,7 +16,6 @@ fn expect_early_pass_lint() {
 fn check_specific_lint() {
     let x = 2;
     //~^ WARNING unused variable: `x` [unused_variables]
-    //~| NOTE requested on the command line with `--force-warn unused-variables`
     //~| HELP if this is intentional, prefix it with an underscore
 }
 
@@ -29,7 +27,6 @@ fn check_multiple_lints_with_lint_group() {
 
     let mut what_does_the_fox_say = "*ding* *deng* *dung*";
     //~^ WARNING variable does not need to be mutable [unused_mut]
-    //~| NOTE requested on the command line with `--force-warn unused-mut`
     //~| HELP remove this `mut`
 
     println!("The fox says: {what_does_the_fox_say}");
