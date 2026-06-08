@@ -67,6 +67,21 @@ export const interpretFunction = new lc.RequestType<lc.TextDocumentPositionParam
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>(
     "rust-analyzer/viewItemTree",
 );
+export type EvaluatePredicateParams = {
+    text: string;
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Position;
+};
+export type PredicateEvaluationStatus = "holds" | "notProven" | "invalid" | "unsupported";
+export type EvaluatePredicateResult = {
+    status: PredicateEvaluationStatus;
+    message: string;
+};
+export const evaluatePredicate = new lc.RequestType<
+    EvaluatePredicateParams,
+    EvaluatePredicateResult,
+    void
+>("rust-analyzer/evaluatePredicate");
 export const getFailedObligations = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
     "rust-analyzer/getFailedObligations",
 );

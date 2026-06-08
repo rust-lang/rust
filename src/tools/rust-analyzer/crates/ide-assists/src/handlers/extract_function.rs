@@ -1197,7 +1197,7 @@ fn reference_is_exclusive(reference: &FileReference, ctx: &AssistContext<'_, '_>
     expr_require_exclusive_access(ctx, &path).unwrap_or(false)
 }
 
-/// checks if this expr requires `&mut` access, recurses on field access
+/// checks if this expr requires `&mut` access, recurses on field/index access
 fn expr_require_exclusive_access(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> Option<bool> {
     let parent = expr.syntax().parent()?;
 
@@ -1220,8 +1220,15 @@ fn expr_require_exclusive_access(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) 
         return Some(matches!(access, hir::Access::Exclusive));
     }
 
-    if let Some(field) = ast::FieldExpr::cast(parent) {
+    if let Some(field) = ast::FieldExpr::cast(parent.clone()) {
         return expr_require_exclusive_access(ctx, &field.into());
+    }
+
+    // `container[i].mut_method()` needs `&mut container` but WRITE is not set (no direct assignment).
+    if let Some(index_expr) = ast::IndexExpr::cast(parent)
+        && index_expr.base().is_some_and(|base| base.syntax() == expr.syntax())
+    {
+        return expr_require_exclusive_access(ctx, &index_expr.into());
     }
 
     Some(false)
@@ -3245,6 +3252,54 @@ fn foo() {
 
 fn $0fun_name(arr: &mut [i32; 1]) {
     arr[0] = 3;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn mut_index_element_method_call() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: index
+use core::ops::{Index, IndexMut};
+struct Container([S; 2]);
+struct S;
+impl S { fn mutate(&mut self) {} }
+impl Index<usize> for Container {
+    type Output = S;
+    fn index(&self, i: usize) -> &S { &self.0[i] }
+}
+impl IndexMut<usize> for Container {
+    fn index_mut(&mut self, i: usize) -> &mut S { &mut self.0[i] }
+}
+fn foo() {
+    let mut c = Container([S, S]);
+    $0c[0].mutate();$0
+    let _ = c;
+}
+"#,
+            r#"
+use core::ops::{Index, IndexMut};
+struct Container([S; 2]);
+struct S;
+impl S { fn mutate(&mut self) {} }
+impl Index<usize> for Container {
+    type Output = S;
+    fn index(&self, i: usize) -> &S { &self.0[i] }
+}
+impl IndexMut<usize> for Container {
+    fn index_mut(&mut self, i: usize) -> &mut S { &mut self.0[i] }
+}
+fn foo() {
+    let mut c = Container([S, S]);
+    fun_name(&mut c);
+    let _ = c;
+}
+
+fn $0fun_name(c: &mut Container) {
+    c[0].mutate();
 }
 "#,
         );

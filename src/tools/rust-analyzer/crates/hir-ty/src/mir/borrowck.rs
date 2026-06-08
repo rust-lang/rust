@@ -16,9 +16,9 @@ use crate::{
     closure_analysis::ProjectionKind as HirProjectionKind,
     db::{HirDatabase, InternedClosureId},
     display::DisplayTarget,
-    mir::OperandKind,
+    mir::{OperandKind, PlaceTy},
     next_solver::{
-        DbInterner, ParamEnv, StoredTy, Ty, TypingMode,
+        DbInterner, ParamEnv, StoredTy, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -197,19 +197,19 @@ fn moved_out_of_ref<'db>(
     let mut result = vec![];
     let mut for_operand = |op: &Operand, span: MirSpan| match &op.kind {
         OperandKind::Copy(p) | OperandKind::Move(p) => {
-            let mut ty: Ty<'db> = body.locals[p.local].ty.as_ref();
+            let mut ty = PlaceTy::from_ty(body.locals[p.local].ty.as_ref());
             let mut is_dereference_of_ref = false;
             for proj in p.projection.lookup() {
-                if *proj == ProjectionElem::Deref && ty.as_reference().is_some() {
+                if *proj == ProjectionElem::Deref && ty.ty.as_reference().is_some() {
                     is_dereference_of_ref = true;
                 }
-                ty = proj.projected_ty(infcx, env, ty, body.owner.module(db).krate(db));
+                ty = ty.projection_ty(infcx, proj, env);
             }
             if is_dereference_of_ref
-                && !infcx.type_is_copy_modulo_regions(env, ty)
-                && !ty.references_non_lt_error()
+                && !infcx.type_is_copy_modulo_regions(env, ty.ty)
+                && !ty.ty.references_non_lt_error()
             {
-                result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty: ty.store() });
+                result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty: ty.ty.store() });
             }
         }
         OperandKind::Constant { .. } | OperandKind::Static(_) | OperandKind::Allocation { .. } => {}
@@ -292,10 +292,7 @@ fn partially_moved<'db>(
     let mut result = vec![];
     let mut for_operand = |op: &Operand, span: MirSpan| match &op.kind {
         OperandKind::Copy(p) | OperandKind::Move(p) => {
-            let mut ty: Ty<'db> = body.locals[p.local].ty.as_ref();
-            for proj in p.projection.lookup() {
-                ty = proj.projected_ty(infcx, env, ty, body.owner.module(db).krate(db));
-            }
+            let ty = p.as_ref().ty(body, infcx, env).ty;
             if !infcx.type_is_copy_modulo_regions(env, ty) && !ty.references_non_lt_error() {
                 result.push(PartiallyMoved { span, ty: ty.store(), local: p.local });
             }
@@ -427,23 +424,21 @@ fn place_case<'db>(
     body: &MirBody,
     lvalue: &Place,
 ) -> ProjectionCase {
-    let db = infcx.interner.db;
     let mut is_part_of = false;
-    let mut ty = body.locals[lvalue.local].ty.as_ref();
+    let mut ty = PlaceTy::from_ty(body.locals[lvalue.local].ty.as_ref());
     for proj in lvalue.projection.lookup().iter() {
         match proj {
-            ProjectionElem::Deref if ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
+            ProjectionElem::Deref if ty.ty.as_adt().is_none() => return ProjectionCase::Indirect, // It's indirect in case of reference and raw
             ProjectionElem::Deref // It's direct in case of `Box<T>`
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(_)
-            | ProjectionElem::ClosureField(_)
             | ProjectionElem::Index(_) => {
                 is_part_of = true;
             }
-            ProjectionElem::OpaqueCast(_) => (),
+            ProjectionElem::Downcast(_) => (),
         }
-        ty = proj.projected_ty(infcx, env, ty, body.owner.module(db).krate(db));
+        ty = ty.projection_ty(infcx, proj, env);
     }
     if is_part_of { ProjectionCase::DirectPart } else { ProjectionCase::Direct }
 }

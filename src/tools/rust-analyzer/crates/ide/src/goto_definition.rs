@@ -4180,4 +4180,21 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn ide_features_work_in_field_default() {
+        check(
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+    // ^^^
+}
+
+struct Struct {
+    field: () = S.foo$0(),
+}
+        "#,
+        );
+    }
 }
