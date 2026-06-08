@@ -789,7 +789,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                         _,
                                         _,
                                         ModKind::Unloaded
-                                            | ModKind::Loaded(_, Inline::No { .. }, _),
+                                            | ModKind::Loaded(_, Inline::No { .. }, _), // Only for out of line modules, as inline modules don't need a fake token stream, as they have already been parsed before.
                                     )
                                 ) =>
                         {
