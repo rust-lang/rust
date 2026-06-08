@@ -1,22 +1,11 @@
-#![allow(unused, clippy::needless_lifetimes)]
 #![warn(
-    clippy::style,
     clippy::mem_replace_option_with_none,
+    clippy::mem_replace_option_with_some,
     clippy::mem_replace_with_default
 )]
-#![feature(lang_items)]
 #![no_std]
 
 use core::mem;
-use core::panic::PanicInfo;
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
-
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    loop {}
-}
 
 fn replace_option_with_none() {
     let mut an_option = Some(1);
@@ -46,8 +35,6 @@ fn dont_lint_primitive() {
     let mut pint = 5;
     let _ = mem::replace(&mut pint, 0);
 }
-
-fn main() {}
 
 fn issue9824() {
     struct Foo<'a>(Option<&'a str>);

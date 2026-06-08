@@ -1,7 +1,6 @@
-#![allow(unused, clippy::needless_lifetimes)]
 #![warn(
-    clippy::style,
     clippy::mem_replace_option_with_none,
+    clippy::mem_replace_option_with_some,
     clippy::mem_replace_with_default
 )]
 
@@ -142,14 +141,13 @@ fn issue9824() {
         val: String::from("bar"),
     };
 
-    // replace option with none
     let _ = std::mem::replace(&mut f.0, None);
     //~^ mem_replace_option_with_none
     let _ = std::mem::replace(&mut *f, None);
     //~^ mem_replace_option_with_none
     let _ = std::mem::replace(&mut b.opt, None);
     //~^ mem_replace_option_with_none
-    // replace with default
+
     let _ = std::mem::replace(&mut b.val, String::default());
     //~^ mem_replace_with_default
 }
@@ -158,16 +156,16 @@ fn issue9824() {
 fn mem_replace_option_with_some() {
     let mut an_option = Some(0);
     let replaced = mem::replace(&mut an_option, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
+    //~^ mem_replace_option_with_some
 
     let mut an_option = &mut Some(0);
     let replaced = mem::replace(an_option, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
+    //~^ mem_replace_option_with_some
 
     let (mut opt1, mut opt2) = (Some(0), Some(0));
     let b = true;
     let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
+    //~^ mem_replace_option_with_some
 }
 
 #[clippy::msrv = "1.30"]
