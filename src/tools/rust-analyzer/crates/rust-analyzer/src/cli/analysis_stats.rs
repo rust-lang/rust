@@ -836,7 +836,7 @@ impl flags::AnalysisStats {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate(db).to_display_target(db);
-            if let Some(only_name) = self.solely.as_deref()
+            if let Some(only_name) = self.r#only.as_deref()
                 && name.display(db, Edition::LATEST).to_string() != only_name
                 && full_name(db, || body_id.name(db), module) != only_name
             {
@@ -951,7 +951,7 @@ impl flags::AnalysisStats {
                     }
                     is_partially_unknown
                 };
-                if self.solely.is_some() && verbosity.is_spammy() {
+                if self.r#only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
                     if let Some((_, start, end)) = expr_syntax_range(db, vfs, sm(), expr_id) {
                         bar.println(format!(
@@ -1056,7 +1056,7 @@ impl flags::AnalysisStats {
                     }
                     is_partially_unknown
                 };
-                if self.solely.is_some() && verbosity.is_spammy() {
+                if self.r#only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single pattern
                     if let Some((_, start, end)) = pat_syntax_range(db, vfs, sm(), pat_id) {
                         bar.println(format!(
@@ -1461,7 +1461,7 @@ impl flags::AnalysisStats {
         name_fn: impl Fn() -> Option<Name>,
         module: hir::Module,
     ) -> bool {
-        if let Some(only_name) = self.solely.as_deref() {
+        if let Some(only_name) = self.r#only.as_deref() {
             let name = name_fn().unwrap_or_else(Name::missing);
 
             if name.display(db, Edition::LATEST).to_string() != only_name
