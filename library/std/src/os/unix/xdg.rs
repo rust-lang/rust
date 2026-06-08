@@ -89,16 +89,24 @@ pub fn cache_home_dir() -> PathBuf {
 ///
 /// [`xdg::data_dirs`]: data_dirs
 /// [`xdg::config_dirs`]: config_dirs
-//
-// This stores Option so we can track when we have a trailing empty component.
-// None is an exhausted iterator, Some("") is a trailing empty component.
 #[derive(Debug, Clone)]
-pub struct XdgDirsIter(Option<OsString>);
+pub struct XdgDirsIter {
+    list: OsString,
+    off: usize,
+}
 
 impl XdgDirsIter {
     fn new(env: &str, default: &str) -> Self {
         let dirs = var_os(env).filter(|s| !s.is_empty()).unwrap_or_else(|| default.into());
-        Self(Some(dirs))
+        Self { list: dirs, off: 0 }
+    }
+
+    fn remaining(&self) -> Option<&OsStr> {
+        self.list.as_encoded_bytes().get(self.off..).map(|bytes| {
+            // SAFETY: `self.off` is the index after a path separator (or the
+            //     start of the string), so is a valid OsStr boundary.
+            unsafe { OsStr::from_encoded_bytes_unchecked(bytes) }
+        })
     }
 }
 
@@ -106,22 +114,15 @@ impl Iterator for XdgDirsIter {
     type Item = PathBuf;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let dirs = self.0.take()?;
-        let next = split_paths(&dirs).next()?;
+        let rest = self.remaining()?;
+        let next = split_paths(rest).next()?;
         let len = next.as_os_str().len();
-        let mut bytes = dirs.into_encoded_bytes();
-        if len < bytes.len() {
-            // Remove the path about to be returned and the separator after it.
-            bytes.drain(..len + 1);
-            // SAFETY: UNIX guarantees that the path separator is b':'. As `bytes`
-            //     now holds the suffix after the separator, it's a valid OsStr.
-            self.0 = Some(unsafe { OsString::from_encoded_bytes_unchecked(bytes) });
-        }
+        self.off += len + 1; // Offset after this path and the separator after it.
         Some(next)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let Some(dirs) = &self.0 else { return (0, Some(0)) };
+        let Some(dirs) = self.remaining() else { return (0, Some(0)) };
         split_paths(dirs).size_hint()
     }
 }
