@@ -259,8 +259,12 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
-                let func =
-                    if context == hir::Constness::Const { called_in_const } else { called_at_rt };
+                let func = match context {
+                    // Using `const_eval_select` in always-const code is useful when used in macros
+                    // that you don't know whether they are going to be used in `const fn` or in `const` items.
+                    hir::Constness::Const { .. } => called_in_const,
+                    hir::Constness::NotConst => called_at_rt,
+                };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
                         Operand::Constant(_) | Operand::RuntimeChecks(_) => {
@@ -432,7 +436,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const =>
+            if matches!(tcx.constness(def), hir::Constness::Const { .. }) =>
         {
             tcx.mir_const_qualif(def)
         }
@@ -496,15 +500,17 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     }
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def);
-    let body = match tcx.hir_body_const_context(def) {
+    let (body, always) = match tcx.hir_body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
-        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
-        Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
+        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
+            (body.steal(), true)
+        }
+        Some(hir::ConstContext::ConstFn) => (body.borrow().clone(), false),
         None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
     };
 
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const { always });
     pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
 
     body
