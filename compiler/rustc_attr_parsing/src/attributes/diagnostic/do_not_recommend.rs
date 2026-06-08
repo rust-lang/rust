@@ -8,7 +8,7 @@ use rustc_span::{Symbol, sym};
 
 use crate::attributes::{OnDuplicate, SingleAttributeParser};
 use crate::context::AcceptContext;
-use crate::errors::IncorrectDoNotRecommendLocation;
+use crate::diagnostics::IncorrectDoNotRecommendLocation;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 
@@ -26,7 +26,7 @@ impl SingleAttributeParser for DoNotRecommendParser {
         if !matches!(args, ArgParser::NoArgs) {
             cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                crate::errors::DoNotRecommendDoesNotExpectArgs,
+                crate::diagnostics::DoNotRecommendDoesNotExpectArgs,
                 attr_span,
             );
         }
