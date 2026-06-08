@@ -1,7 +1,0 @@
-error: implementing `CoerceShared` requires all source and target fields to be accessible from the impl
-  --> $DIR/coerce-shared-foreign-private-field.rs:18:1
-   |
-LL | impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
