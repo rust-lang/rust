@@ -14,7 +14,6 @@ macro_rules! mac2 {
         const _x: u32 = {
             use things::$thing;
             //~^ ERROR unresolved import `things::what2` [E0432]
-            //~| NOTE no `what2` in `things`
             $thing
         };
     }}
@@ -32,6 +31,6 @@ fn foo(){
     mac2!(//~ NOTE in this expansion of mac2!
 
         what2
-
+        //~^ NOTE no `what2` in `things`
     );
 }

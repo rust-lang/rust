@@ -1144,10 +1144,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         const MAX_LABEL_COUNT: usize = 10;
 
         for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+            let label_span = match err.segment {
+                Some(segment) => segment.span,
+                None => err.span,
+            };
             if let Some(label) = &label {
-                diag.span_label(err.span, label.clone());
+                diag.span_label(label_span, label.clone());
             } else if let Some(label) = &err.label {
-                diag.span_label(err.span, label.clone());
+                diag.span_label(label_span, label.clone());
             }
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
