@@ -1,22 +1,22 @@
 //! Random value generation.
 
-#[unstable(feature = "random", issue = "130703")]
-pub use core::random::*;
-
+use crate::ops::RangeFull;
 use crate::sys::random as sys;
 
-/// The default random source.
+mod private {
+    pub trait Sealed<T> {}
+}
+
+/// Fills the provided buffer with random bytes.
 ///
 /// This asks the system for random data suitable for cryptographic purposes
 /// such as key generation. If security is a concern, consult the platform
 /// documentation below for the specific guarantees your target provides.
 ///
-/// The high quality of randomness provided by this source means it can be quite
-/// slow on some targets. If you need a large quantity of random numbers and
-/// security is not a concern,  consider using an alternative random number
+/// The high quality of randomness provided by this functions means it can be
+/// quite slow on some targets. If you need a large quantity of random numbers
+/// and security is not a concern,  consider using an alternative random number
 /// generator (potentially seeded from this one).
-///
-/// If you need to fill a buffer with random bytes, use `DefaultRandomSource.fill_bytes(&mut buf)`.
 ///
 /// # Underlying sources
 ///
@@ -56,23 +56,22 @@ use crate::sys::random as sys;
 ///
 /// [`getrandom`]: https://www.man7.org/linux/man-pages/man2/getrandom.2.html
 /// [`/dev/urandom`]: https://www.man7.org/linux/man-pages/man4/random.4.html
+///
+/// # Panics
+///
+/// This function panics if the system cannot generate random data of sufficient
+/// quality. Random data generation is infallible on most modern systems, so this
+/// is only a concern on certain niche targets.
 #[doc(alias = "getrandom", alias = "getentropy", alias = "arc4random")]
-#[derive(Default, Debug, Clone, Copy)]
 #[unstable(feature = "random", issue = "130703")]
-pub struct DefaultRandomSource;
-
-#[unstable(feature = "random", issue = "130703")]
-impl RandomSource for DefaultRandomSource {
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        sys::fill_bytes(bytes)
-    }
+pub fn fill(bytes: &mut [u8]) {
+    sys::fill_bytes(bytes)
 }
 
-/// Generates a random value from a distribution, using the default random source.
+/// Generates a random value from a distribution.
 ///
-/// This is a convenience function for `dist.sample(&mut DefaultRandomSource)` and will sample
-/// according to the same distribution as the underlying [`Distribution`] trait implementation. See
-/// [`DefaultRandomSource`] for more information about how randomness is sourced.
+/// This function returns a random value sampled according to the given
+/// distribution using the same entropy source as [`fill`].
 ///
 /// # Examples
 ///
@@ -95,5 +94,48 @@ impl RandomSource for DefaultRandomSource {
 /// [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
 #[unstable(feature = "random", issue = "130703")]
 pub fn random<T>(dist: impl Distribution<T>) -> T {
-    dist.sample(&mut DefaultRandomSource)
+    dist.sample()
 }
+
+/// A trait representing a distribution of random values for a type.
+#[unstable(feature = "random", issue = "130703", reason = "outstanding API concerns")]
+pub trait Distribution<T>: private::Sealed<T> {
+    /// Samples a random value from the distribution.
+    fn sample(&self) -> T;
+}
+
+impl Distribution<bool> for RangeFull {
+    fn sample(&self) -> bool {
+        let byte = random::<u8>(..);
+        byte & 1 == 1
+    }
+}
+
+impl private::Sealed<bool> for RangeFull {}
+
+macro_rules! impl_primitive {
+    ($t:ty) => {
+        impl Distribution<$t> for RangeFull {
+            fn sample(&self) -> $t {
+                let mut bytes = (0 as $t).to_ne_bytes();
+                fill(&mut bytes);
+                <$t>::from_ne_bytes(bytes)
+            }
+        }
+
+        impl private::Sealed<$t> for RangeFull {}
+    };
+}
+
+impl_primitive!(u8);
+impl_primitive!(i8);
+impl_primitive!(u16);
+impl_primitive!(i16);
+impl_primitive!(u32);
+impl_primitive!(i32);
+impl_primitive!(u64);
+impl_primitive!(i64);
+impl_primitive!(u128);
+impl_primitive!(i128);
+impl_primitive!(usize);
+impl_primitive!(isize);
