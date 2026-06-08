@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.98.0"]
     pub WITH_CAPACITY_ZERO,
-    complexity,
+    pedantic,
     "calling `with_capacity(0)` which is equivalent to `new()`"
 }
 
