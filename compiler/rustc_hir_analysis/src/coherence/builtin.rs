@@ -783,13 +783,12 @@ fn collect_coerce_shared_field_pairs<'tcx>(
             .map(|target| {
                 let source = source_fields
                     .iter()
-                    .copied()
                     .find(|source| {
                         tcx.hygienic_eq(target.ident, source.ident, source_variant.def_id)
                     })
                     .ok_or(CoerceSharedFieldPairError::MissingSourceField { target })?;
 
-                Ok(CoerceSharedFieldPair { source, target })
+                Ok(CoerceSharedFieldPair { source: *source, target })
             })
             .collect()
     }
