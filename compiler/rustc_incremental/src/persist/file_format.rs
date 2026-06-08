@@ -28,7 +28,7 @@ const FILE_MAGIC: &[u8] = b"RSIC";
 /// Change this if the header format changes.
 const HEADER_FORMAT_VERSION: u16 = 0;
 
-pub(crate) fn write_file_header(stream: &mut FileEncoder, sess: &Session) {
+pub(crate) fn write_file_header(stream: &mut FileEncoder<'_>, sess: &Session) {
     stream.emit_raw_bytes(FILE_MAGIC);
     stream.emit_raw_bytes(&u16::to_le_bytes(HEADER_FORMAT_VERSION));
 
@@ -41,7 +41,7 @@ pub(crate) fn write_file_header(stream: &mut FileEncoder, sess: &Session) {
 
 pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
 where
-    F: FnOnce(FileEncoder) -> FileEncodeResult,
+    F: FnOnce(FileEncoder<'static>) -> FileEncodeResult,
 {
     debug!("save: storing data in {}", path_buf.display());
 

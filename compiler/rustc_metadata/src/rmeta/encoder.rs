@@ -40,7 +40,7 @@ use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::FileEncoder,
+    opaque: opaque::FileEncoder<'a>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,

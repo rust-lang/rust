@@ -1362,7 +1362,7 @@ pub trait SpanEncoder: Encoder {
     fn encode_def_id(&mut self, def_id: DefId);
 }
 
-impl SpanEncoder for FileEncoder {
+impl SpanEncoder for FileEncoder<'_> {
     fn encode_span(&mut self, span: Span) {
         let span = span.data();
         span.lo.encode(self);
