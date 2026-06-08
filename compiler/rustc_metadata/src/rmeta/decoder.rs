@@ -15,6 +15,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
+use rustc_hashes::Hash64;
 use rustc_hir::Safety;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -363,6 +364,18 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
 }
 
 impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
+    fn hash_to_def_index(&self, cnum: CrateNum, hash: Hash64) -> DefIndex {
+        assert!(cnum != LOCAL_CRATE, "Deserialized LOCAL_CRATE from a crate metadata!");
+        if cnum == self.cdata.cnum {
+            self.cdata.local_def_path_hash_to_def_index(hash).unwrap()
+        } else {
+            CStore::from_tcx(self.tcx)
+                .get_crate_data(cnum)
+                .local_def_path_hash_to_def_index(hash)
+                .unwrap()
+        }
+    }
+
     #[inline]
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
         self.cdata.map_encoded_cnum_to_current(cnum)
@@ -460,7 +473,14 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     }
 
     fn decode_def_id(&mut self) -> DefId {
-        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+        let krate = CrateNum::decode(self);
+        let index = if self.cdata.root.public_api_hash_opt_enabled {
+            let hash = Hash64::decode(self);
+            self.hash_to_def_index(krate, hash)
+        } else {
+            DefIndex::decode(self)
+        };
+        DefId { krate, index }
     }
 
     fn decode_syntax_context(&mut self) -> SyntaxContext {
@@ -1571,7 +1591,12 @@ impl CrateMetadata {
 
     #[inline]
     fn def_path_hash_to_def_index(&self, hash: DefPathHash) -> Option<DefIndex> {
-        self.def_path_hash_map.def_path_hash_to_def_index(&hash)
+        self.def_path_hash_map.local_def_path_hash_to_def_index(&hash.local_hash())
+    }
+
+    #[inline]
+    fn local_def_path_hash_to_def_index(&self, hash: Hash64) -> Option<DefIndex> {
+        self.def_path_hash_map.local_def_path_hash_to_def_index(&hash)
     }
 
     fn expn_hash_to_expn_id(&self, tcx: TyCtxt<'_>, index_guess: u32, hash: ExpnHash) -> ExpnId {
