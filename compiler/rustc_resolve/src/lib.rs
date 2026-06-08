@@ -48,7 +48,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
-use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{DeriveResolution, SpecialDerives, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
@@ -1311,10 +1311,7 @@ impl ExternPreludeEntry<'_> {
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, IdentKey, Span)>,
-    // if this list keeps getting extended, we could use `bitflags`,
-    // something like what [`rustc_type_ir::flags::TypeFlags`] is doing.
-    has_derive_copy: bool,
-    has_derive_ord: bool,
+    has_derives: SpecialDerives,
 }
 
 pub struct ResolverOutputs<'tcx> {
@@ -1450,11 +1447,10 @@ pub struct Resolver<'ra, 'tcx> {
     multi_segment_macro_resolutions:
         CmRefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>>,
     builtin_attrs: Vec<(Ident, ParentScope<'ra>)> = Vec::new(),
-    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
+    /// Some built-in derives marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    containers_deriving_copy: FxHashSet<LocalExpnId> = default::fx_hash_set(),
-    containers_deriving_ord: FxHashSet<LocalExpnId> = default::fx_hash_set(),
+    containers_special_derives: FxHashMap<LocalExpnId, SpecialDerives> = default::fx_hash_map(),
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'ra>> = default::fx_hash_map(),

@@ -1,6 +1,6 @@
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -37,7 +37,7 @@ pub(crate) fn expand_deriving_clone(
             ItemKind::Struct(_, Generics { params, .. }, _)
             | ItemKind::Enum(_, Generics { params, .. }, _) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+                let has_derive_copy = cx.resolver.has_derives(container_id, SpecialDerives::COPY);
                 if has_derive_copy
                     && !params
                         .iter()

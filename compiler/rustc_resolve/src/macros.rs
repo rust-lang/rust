@@ -9,7 +9,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
-    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
+    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SpecialDerives, SyntaxExtension,
     SyntaxExtensionKind,
 };
 use rustc_expand::compile_declarative_macro;
@@ -375,12 +375,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
     }
 
-    fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool {
-        self.containers_deriving_copy.contains(&expn_id)
-    }
-
-    fn has_derive_ord(&self, expn_id: LocalExpnId) -> bool {
-        self.containers_deriving_ord.contains(&expn_id)
+    fn has_derives(&self, expn_id: LocalExpnId, derives: SpecialDerives) -> bool {
+        self.containers_special_derives.get(&expn_id).map_or(false, |d| d.contains(derives))
     }
 
     fn resolve_derives(
@@ -401,8 +397,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let entry = derive_data.entry(expn_id).or_insert_with(|| DeriveData {
             resolutions: derive_paths(),
             helper_attrs: Vec::new(),
-            has_derive_copy: false,
-            has_derive_ord: false,
+            has_derives: SpecialDerives::empty(),
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
@@ -424,8 +419,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                                         .map(|&name| (i, IdentKey { name, ctxt }, span)),
                                 );
                             }
-                            entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
-                            entry.has_derive_ord |= ext.builtin_name == Some(sym::Ord);
+                            if ext.builtin_name == Some(sym::Copy) {
+                                entry.has_derives |= SpecialDerives::COPY
+                            }
+                            if ext.builtin_name == Some(sym::Ord) {
+                                entry.has_derives |= SpecialDerives::ORD
+                            }
                             ext
                         }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
@@ -450,22 +449,22 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             })
             .collect();
         self.helper_attrs.insert(expn_id, helper_attrs);
-        // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
-        // has `Copy`, to support `#[derive(Copy, Clone)]`, `#[derive(Clone, Copy)]`, or
-        // `#[derive(Copy)] #[derive(Clone)]`. We do this because the code generated for
-        // `derive(Clone)` changes if `derive(Copy)` is also present.
+        // Mark this derive container as having special built-in derives either if it
+        // has them itself or if its parent derive container has them, to support
+        // e.g. `#[derive(Copy, Clone)]`, `#[derive(Clone, Copy)]`, or
+        // `#[derive(Copy)] #[derive(Clone)]`. This is needed because the code
+        // generated for certain derives (e.g. `Clone`, `PartialOrd`) changes if
+        // other derives (e.g. `Copy`, `Ord`) are also present.
         //
         // FIXME(#124794): unfortunately this doesn't work with `#[derive(Clone)] #[derive(Copy)]`.
         // When the `Clone` impl is generated the `#[derive(Copy)]` hasn't been processed and
-        // `has_derive_copy` hasn't been set yet.
-        if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
-            self.containers_deriving_copy.insert(expn_id);
+        // the derive markers haven't been set yet.
+        let mut all_derives = entry.has_derives;
+        if let Some(parent_derives) = self.containers_special_derives.get(&parent_scope.expansion) {
+            all_derives |= *parent_derives;
         }
-        // Similar to the above `Copy` and `Clone` case, the code generated for
-        // `derive(PartialOrd)` changes if `derive(Ord)` is also present.
-        // FIXME(makai410): this also doesn't work with `#[derive(PartialOrd)] #[derive(Ord)]`.
-        if entry.has_derive_ord || self.has_derive_ord(parent_scope.expansion) {
-            self.containers_deriving_ord.insert(expn_id);
+        if !all_derives.is_empty() {
+            self.containers_special_derives.insert(expn_id, all_derives);
         }
         assert!(self.derive_data.is_empty());
         self.derive_data = derive_data;
