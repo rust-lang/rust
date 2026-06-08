@@ -128,6 +128,10 @@ impl<I: Interner> UnevaluatedConst<I> {
         };
         interner.type_of(def_id).instantiate(interner, self.args)
     }
+
+    pub fn to_non_rigid(self) -> UnevaluatedConst<I> {
+        UnevaluatedConst { is_rigid: ty::IsRigid::No, ..self }
+    }
 }
 
 /// UnevaluatedConstKind is extremely similar to AliasTyKind, and likely should be reasoned about

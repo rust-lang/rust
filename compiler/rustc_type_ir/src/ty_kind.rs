@@ -524,10 +524,6 @@ impl<I: Interner> AliasTy<I> {
         Ty::new_alias(interner, self)
     }
 
-    pub fn to_rigid(self) -> AliasTy<I> {
-        AliasTy { is_rigid: IsRigid::Yes, ..self }
-    }
-
     pub fn to_non_rigid(self) -> AliasTy<I> {
         AliasTy { is_rigid: IsRigid::No, ..self }
     }
