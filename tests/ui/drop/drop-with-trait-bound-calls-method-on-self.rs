@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/4252
 //@ run-pass
 trait X {
     fn call<T: std::fmt::Debug>(&self, x: &T);
