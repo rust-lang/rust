@@ -16,14 +16,16 @@ use crate::persist::fs::*;
 
 /// Copies a CGU work product to the incremental compilation directory, so next compilation can
 /// find and reuse it.
+///
+/// Panics when incr comp is disabled.
 pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
     cgu_name: &str,
     files: &[(&'static str, &Path)],
     known_links: &[PathBuf],
-) -> Option<(WorkProductId, WorkProduct)> {
+) -> (WorkProductId, WorkProduct) {
     debug!(?cgu_name, ?files);
-    sess.opts.incremental.as_ref()?;
+    assert!(sess.opts.incremental.is_some());
 
     let mut saved_files = UnordMap::default();
     for (ext, path) in files {
@@ -50,7 +52,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     let work_product = WorkProduct { cgu_name: cgu_name.to_string(), saved_files };
     debug!(?work_product);
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
-    Some((work_product_id, work_product))
+    (work_product_id, work_product)
 }
 
 /// Removes files for a given work product.

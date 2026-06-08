@@ -34,18 +34,6 @@ note: the module `baz` is defined here
 LL |     mod baz {
    |     ^^^^^^^
 
-error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:148:18
-   |
-LL |         use bar::baz;
-   |                  ^^^ private module
-   |
-note: the module `baz` is defined here
-  --> $DIR/privacy1.rs:57:5
-   |
-LL |     mod baz {
-   |     ^^^^^^^
-
 error[E0603]: module `i` is private
   --> $DIR/privacy1.rs:172:20
    |
@@ -59,6 +47,18 @@ note: the module `i` is defined here
    |
 LL |         mod i {
    |         ^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:148:18
+   |
+LL |         use bar::baz;
+   |                  ^^^ private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:111:21

@@ -1193,8 +1193,6 @@ pub enum WherePredicateKind<'hir> {
     BoundPredicate(WhereBoundPredicate<'hir>),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate<'hir>),
-    /// An equality predicate (unsupported).
-    EqPredicate(WhereEqPredicate<'hir>),
 }
 
 impl<'hir> WherePredicateKind<'hir> {
@@ -1202,7 +1200,6 @@ impl<'hir> WherePredicateKind<'hir> {
         match self {
             WherePredicateKind::BoundPredicate(p) => p.origin == PredicateOrigin::WhereClause,
             WherePredicateKind::RegionPredicate(p) => p.in_where_clause,
-            WherePredicateKind::EqPredicate(_) => false,
         }
     }
 
@@ -1210,7 +1207,6 @@ impl<'hir> WherePredicateKind<'hir> {
         match self {
             WherePredicateKind::BoundPredicate(p) => p.bounds,
             WherePredicateKind::RegionPredicate(p) => p.bounds,
-            WherePredicateKind::EqPredicate(_) => &[],
         }
     }
 }
