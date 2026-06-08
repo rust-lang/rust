@@ -871,8 +871,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(thir))
     }
 
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
-        self.arena.alloc(Steal::new(mir))
+    pub fn alloc_steal_mir(self, mir: Box<Body<'tcx>>) -> &'tcx Steal<Body<'tcx>> {
+        self.arena.alloc(Steal::new_from_box(mir))
     }
 
     pub fn alloc_steal_promoted(

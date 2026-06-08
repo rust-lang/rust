@@ -472,7 +472,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         false,
         lint_store,
         tcx.registered_tools(()),
-        Some(lint_buffer),
+        Some(*lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
     )
@@ -784,7 +784,7 @@ fn resolver_for_lowering_raw<'tcx>(
 ) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
-    let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let (krate, pre_configured_attrs) = *tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(
         tcx,
         &pre_configured_attrs,
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> Diagnostic<'a, ()> for DiagCallback<'tcx> {
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-            for lint in delayed_lints.steal() {
+            for lint in delayed_lints.steal().into_iter() {
                 tcx.emit_node_span_lint(
                     lint.lint_id.lint,
                     lint.id,

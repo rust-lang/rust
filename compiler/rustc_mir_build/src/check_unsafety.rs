@@ -183,10 +183,10 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // Run all other queries that depend on THIR.
             self.tcx.ensure_done().mir_built(def);
             let inner_thir = if self.tcx.sess.opts.unstable_opts.no_steal_thir {
-                &inner_thir.borrow()
+                &*inner_thir.borrow()
             } else {
                 // We don't have other use for the THIR. Steal it to reduce memory usage.
-                &inner_thir.steal()
+                &*inner_thir.steal()
             };
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
@@ -1064,10 +1064,10 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Runs all other queries that depend on THIR.
     tcx.ensure_done().mir_built(def);
     let thir = if tcx.sess.opts.unstable_opts.no_steal_thir {
-        &thir.borrow()
+        &*thir.borrow()
     } else {
         // We don't have other use for the THIR. Steal it to reduce memory usage.
-        &thir.steal()
+        &*thir.steal()
     };
 
     let hir_id = tcx.local_def_id_to_hir_id(def);

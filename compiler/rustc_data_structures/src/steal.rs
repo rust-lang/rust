@@ -1,5 +1,5 @@
 use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
-use crate::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, RwLock, WriteGuard};
+use crate::sync::{MappedReadGuard, ReadGuard, RwLock};
 
 /// The `Steal` struct is intended to used as the value for a query.
 /// Specifically, we sometimes have queries (*cough* MIR *cough*)
@@ -23,11 +23,15 @@ use crate::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, RwLock, WriteGua
 // FIXME(#41710): what is the best way to model linear queries?
 #[derive(Debug)]
 pub struct Steal<T> {
-    value: RwLock<Option<T>>,
+    value: RwLock<Option<Box<T>>>,
 }
 
 impl<T> Steal<T> {
     pub fn new(value: T) -> Self {
+        Steal { value: RwLock::new(Some(Box::new(value))) }
+    }
+
+    pub fn new_from_box(value: Box<T>) -> Self {
         Steal { value: RwLock::new(Some(value)) }
     }
 
@@ -37,24 +41,11 @@ impl<T> Steal<T> {
         if borrow.is_none() {
             panic!("attempted to read from stolen value: {}", std::any::type_name::<T>());
         }
-        ReadGuard::map(borrow, |opt| opt.as_ref().unwrap())
-    }
-
-    /// An escape hatch for rustc drivers to mutate `Steal` caches.
-    ///
-    /// Use at your own risk. This can badly break incremental compilation
-    /// and anything else that relies on the immutability of query caches.
-    #[track_caller]
-    pub fn risky_hack_borrow_mut(&self) -> MappedWriteGuard<'_, T> {
-        let borrow = self.value.borrow_mut();
-        if borrow.is_none() {
-            panic!("attempted to read from stolen value: {}", std::any::type_name::<T>());
-        }
-        WriteGuard::map(borrow, |opt| opt.as_mut().unwrap())
+        ReadGuard::map(borrow, |opt| opt.as_deref().unwrap())
     }
 
     #[track_caller]
-    pub fn steal(&self) -> T {
+    pub fn steal(&self) -> Box<T> {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = value_ref.take();
         value.expect("attempt to steal from stolen value")
