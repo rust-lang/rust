@@ -525,13 +525,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, bx: &mut Bx) {
-        // Call `va_end` if this is the definition of a C-variadic function.
+        // Explicitly end the lifetime of the VaList if this function is c-variadic. We explicitly
+        // start the lifetime when desugaring `...`. Ending the lifetime meaningfully improves
+        // codegen.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
             let va_list_arg_idx = self.fn_abi.args.len();
             match self.locals[mir::Local::arg(va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
-                    bx.va_end(va_list.val.llval);
+                    // NOTE: we don't actually call LLVM's va_end here. We know it's a no-op and
+                    // hence don't bother.
 
                     // Explicitly end the lifetime of the `va_list`, improves LLVM codegen.
                     bx.lifetime_end(va_list.val.llval, va_list.layout.size);
