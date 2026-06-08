@@ -2,11 +2,12 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxBuildHasher;
+use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
@@ -2744,7 +2745,8 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // between `Interner`s.
 struct InternerInner {
     arena: DroplessArena,
-    byte_strs: FxIndexSet<&'static [u8]>,
+    indices: HashTable<(&'static [u8], u32)>,
+    byte_strs: Vec<&'static [u8]>,
 }
 
 impl Interner {
@@ -2752,24 +2754,34 @@ impl Interner {
     // effectively pre-interning all these strings for both `Symbol` and
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
-        let byte_strs = FxIndexSet::from_iter(
-            init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes()),
-        );
+        let values = init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes());
+        let (size_hint, _) = values.size_hint();
+        let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
-        // The order in which duplicates are reported is irrelevant.
-        #[expect(rustc::potential_query_instability)]
-        if byte_strs.len() != init.len() + extra.len() {
+        let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
+        let hasher = FxBuildHasher::default();
+
+        let mut byte_strs: Vec<&'static [u8]> = Vec::with_capacity(size_hint);
+
+        for v in values {
+            match indices.entry(hasher.hash_one(&v), |&(s, _)| s == v, |&(s, _)| hasher.hash_one(s))
+            {
+                Entry::Occupied(v) => conflicting_values.push(v.get().0),
+                Entry::Vacant(view) => {
+                    view.insert((v, byte_strs.len() as u32));
+                    byte_strs.push(v);
+                }
+            }
+        }
+
+        if conflicting_values.len() != 0 {
             panic!(
                 "duplicate symbols in the rustc symbol list and the extra symbols added by the driver: {:?}",
-                FxHashSet::intersection(
-                    &init.iter().copied().collect(),
-                    &extra.iter().copied().collect(),
-                )
-                .collect::<Vec<_>>()
+                conflicting_values
             )
         }
 
-        Interner(Lock::new(InternerInner { arena: Default::default(), byte_strs }))
+        Interner(Lock::new(InternerInner { arena: Default::default(), indices, byte_strs }))
     }
 
     fn intern_str(&self, str: &str) -> Symbol {
@@ -2782,24 +2794,29 @@ impl Interner {
 
     #[inline]
     fn intern_inner(&self, byte_str: &[u8]) -> u32 {
-        let mut inner = self.0.lock();
-        if let Some(idx) = inner.byte_strs.get_index_of(byte_str) {
-            return idx as u32;
-        }
+        let hasher = FxBuildHasher::default();
+        let hash_of_byte_str = hasher.hash_one(byte_str);
 
-        let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
+        self.0.with_lock(|inner| {
+            match inner.indices.entry(
+                hash_of_byte_str,
+                |&(s, _)| s == byte_str,
+                |&(s, _)| hasher.hash_one(s),
+            ) {
+                Entry::Occupied(v) => v.get().1,
+                Entry::Vacant(view) => {
+                    let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
-        // SAFETY: we can extend the arena allocation to `'static` because we
-        // only access these while the arena is still alive.
-        let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
-
-        // This second hash table lookup can be avoided by using `RawEntryMut`,
-        // but this code path isn't hot enough for it to be worth it. See
-        // #91445 for details.
-        let (idx, is_new) = inner.byte_strs.insert_full(byte_str);
-        debug_assert!(is_new); // due to the get_index_of check above
-
-        idx as u32
+                    // SAFETY: we can extend the arena allocation to `'static` because we
+                    // only access these while the arena is still alive.
+                    let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
+                    let idx = inner.byte_strs.len() as u32;
+                    view.insert((byte_str, idx));
+                    inner.byte_strs.push(byte_str);
+                    idx
+                }
+            }
+        })
     }
 
     /// Get the symbol as a string.
@@ -2819,7 +2836,7 @@ impl Interner {
     }
 
     fn get_inner(&self, index: usize) -> &[u8] {
-        self.0.lock().byte_strs.get_index(index).unwrap()
+        self.0.with_lock(|inner| inner.byte_strs[index])
     }
 }
 
