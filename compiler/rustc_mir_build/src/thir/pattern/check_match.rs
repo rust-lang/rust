@@ -60,7 +60,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
 
     for param in thir.params.iter() {
         if let Some(ref pattern) = param.pat {
-            visitor.check_binding_is_irrefutable(pattern, origin, None, None);
+            visitor.check_binding_is_irrefutable(pattern, origin, None, None, None);
         }
     }
     visitor.error
@@ -436,7 +436,29 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
-            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
+            // `lhs = rhs` destructuring assignments are lowered to a `let` tagged
+            // `AssignDesugar`; report them as assignments, not `let` bindings (#157553).
+            if let hir::Node::LetStmt(&hir::LetStmt {
+                source: hir::LocalSource::AssignDesugar,
+                ..
+            }) = self.tcx.hir_node(self.hir_source)
+            {
+                self.check_binding_is_irrefutable(
+                    pat,
+                    "assignment",
+                    Some(Inform { descr: "destructuring assignments" }),
+                    scrut,
+                    None,
+                );
+            } else {
+                self.check_binding_is_irrefutable(
+                    pat,
+                    "local binding",
+                    Some(Inform { descr: "`let` bindings" }),
+                    scrut,
+                    Some(span),
+                );
+            }
         } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
             if span.from_expansion() {
                 self.lint_single_let(span, None, None);
@@ -539,6 +561,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 self.check_binding_is_irrefutable(
                     &pat_field.pattern,
                     "`for` loop binding",
+                    None,
                     None,
                     None,
                 );
@@ -645,6 +668,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         &mut self,
         pat: &'p Pat<'tcx>,
         origin: &str,
+        inform: Option<Inform>,
         scrut: Option<&Expr<'tcx>>,
         sp: Option<Span>,
     ) {
@@ -657,7 +681,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             return;
         }
 
-        let inform = sp.is_some().then_some(Inform);
         let mut let_suggestion = None;
         let mut misc_suggestion = None;
         let mut interpreted_as_const = None;
