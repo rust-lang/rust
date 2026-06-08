@@ -19,6 +19,39 @@ fn used_lt<'a>(x: &'a u8) {}
 fn unused_lt<'a>(x: u8) {}
 //~^ extra_unused_lifetimes
 
+struct BoxedFoo(Box<dyn for<'a> Fn()>);
+//~^ extra_unused_lifetimes
+
+struct BoxedFooFine(Box<dyn for<'a> Fn(&'a u32)>);
+
+fn unused_for_return() -> impl for<'a> Fn()
+//~^ extra_unused_lifetimes
+{
+    || unimplemented!()
+}
+
+trait SimpleTrait<'a> {}
+
+trait SimplerTrait {}
+
+impl dyn for<'a> SimpleTrait<'a> {}
+
+impl dyn for<'a> SimplerTrait {}
+//~^ extra_unused_lifetimes
+
+impl<T: for<'a> SimpleTrait<'a>> SimplerTrait for T {}
+
+impl<T: for<'a> SimplerTrait> SimpleTrait<'_> for T {}
+//~^ extra_unused_lifetimes
+
+async fn unused_impl_for<F>(body: impl for<'a> FnOnce(u32) -> F)
+//~^ extra_unused_lifetimes
+where
+    F: Future<Output = ()>,
+{
+    unimplemented!()
+}
+
 fn unused_lt_transitive<'a, 'b: 'a>(x: &'b u8) {
     // 'a is useless here since it's not directly bound
 }
