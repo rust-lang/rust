@@ -401,6 +401,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
+    const SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES: bool = true;
+
     #[inline(always)]
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool {
         matches!(ecx.machine.check_alignment, CheckAlignment::Error)

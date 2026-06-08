@@ -1,6 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{Constness, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -18,9 +18,9 @@ use crate::errors::UnexpectedFnPtrAssociatedItem;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>,
+    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>, Constness)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
+    let PseudoCanonicalInput { typing_env, value: (def_id, args, constness) } = key;
 
     let result = if let Some(trait_def_id) = tcx.trait_of_assoc(def_id) {
         debug!(" => associated item, attempting to find impl in typing_env {:#?}", typing_env);
@@ -30,6 +30,7 @@ fn resolve_instance_raw<'tcx>(
             typing_env,
             trait_def_id,
             tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(args)),
+            constness,
         )
     } else {
         let def = if tcx.intrinsic(def_id).is_some() {
@@ -101,20 +102,26 @@ fn resolve_instance_raw<'tcx>(
     result
 }
 
+#[tracing::instrument(level = "debug", skip(tcx))]
 fn resolve_associated_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_item_id: DefId,
     typing_env: ty::TypingEnv<'tcx>,
     trait_id: DefId,
     rcvr_args: GenericArgsRef<'tcx>,
+    constness: Constness,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
-    debug!(?trait_item_id, ?typing_env, ?trait_id, ?rcvr_args, "resolve_associated_item");
-
     let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
     let input = typing_env.as_query_input(trait_ref);
-    let vtbl = match tcx.codegen_select_candidate(input) {
-        Ok(vtbl) => vtbl,
+    let candidate = if constness == Constness::Const {
+        tcx.codegen_select_candidate_for_ctfe(input)
+    } else {
+        tcx.codegen_select_candidate(input)
+    };
+
+    let impl_src = match candidate {
+        Ok(impl_src) => impl_src,
         Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
             return Ok(None);
         }
@@ -123,7 +130,7 @@ fn resolve_associated_item<'tcx>(
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
-    Ok(match vtbl {
+    Ok(match impl_src {
         traits::ImplSource::UserDefined(impl_data) => {
             debug!(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",

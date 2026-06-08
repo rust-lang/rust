@@ -7,6 +7,7 @@ use std::hash::Hash;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::StableHash;
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
@@ -230,6 +231,12 @@ impl<'tcx> QueryKey for GenericArgsRef<'tcx> {
 }
 
 impl<'tcx> QueryKey for (DefId, GenericArgsRef<'tcx>) {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
+impl<'tcx> QueryKey for (DefId, GenericArgsRef<'tcx>, hir::Constness) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }

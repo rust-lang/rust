@@ -377,7 +377,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("resolve: {:?}, {:#?}", def, args);
         trace!("typing_env: {:#?}", self.typing_env);
         trace!("args: {:#?}", args);
-        match ty::Instance::try_resolve(*self.tcx, self.typing_env, def, args) {
+
+        let resolve = if M::SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES
+            && !self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you
+        {
+            ty::Instance::try_resolve_for_ctfe
+        } else {
+            ty::Instance::try_resolve
+        };
+        match resolve(*self.tcx, self.typing_env, def, args) {
             Ok(Some(instance)) => interp_ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
