@@ -1823,6 +1823,12 @@ supported_targets! {
     ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
     ("x86_64-unknown-linux-gnumsan", x86_64_unknown_linux_gnumsan),
     ("x86_64-unknown-linux-gnutsan", x86_64_unknown_linux_gnutsan),
+
+    ("aarch64-oe-linux-gnu", aarch64_oe_linux_gnu),
+    ("armv7-oe-linux-gnueabihf", armv7_oe_linux_gnueabihf),
+    ("i686-oe-linux-gnu", i686_oe_linux_gnu),
+    ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
+    ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
