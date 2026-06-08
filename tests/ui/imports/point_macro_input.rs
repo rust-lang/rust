@@ -5,7 +5,7 @@ mod things { }
 macro_rules! mac1 {
     ($thing: ident) => {{
         const _x: u32 = things::$thing;
-        //~^NOTE due to this macro variable
+        //~^ NOTE due to this macro variable
     }}
 }
 
