@@ -32,8 +32,8 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
     Ending, PrintWithSpace, full_print_fn_decl, print_abi_with_space, print_constness_with_space,
-    print_generic_bound, print_generics, print_impl, print_import, print_type, print_where_clause,
-    visibility_print_with_space,
+    print_generic_bound, print_generics, print_impl, print_import, print_path, print_type,
+    print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::sidebar::filters;
@@ -1016,9 +1016,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
                 local.iter().partition(|i| i.inner_impl().kind.is_auto());
 
-            synthetic.sort_by_cached_key(|i| ImplString::new(i, cx));
-            concrete.sort_by_cached_key(|i| ImplString::new(i, cx));
-            foreign.sort_by_cached_key(|i| ImplString::new(i, cx));
+            synthetic.sort_by_cached_key(|i| ImplString::new_impl(i, cx));
+            concrete.sort_by_cached_key(|i| ImplString::new_impl(i, cx));
+            foreign.sort_by_cached_key(|i| ImplString::new_impl(i, cx));
 
             if !foreign.is_empty() {
                 write!(
@@ -1969,7 +1969,7 @@ fn item_primitive(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
             let (concrete, synthetic, blanket_impl) =
                 get_filtered_impls_for_reference(&cx.shared, it);
 
-            render_all_impls(w, cx, it, &concrete, &synthetic, &blanket_impl)
+            render_all_impls(w, cx, it, concrete, synthetic, blanket_impl)
         }
     })
 }
@@ -2346,16 +2346,21 @@ where
 }
 
 #[derive(PartialEq, Eq)]
-struct ImplString {
+pub(super) struct ImplString {
     // Plain text (not HTML text) because this is only used for sorting purposes, and the plain
     // text is much shorter and thus faster to compare.
     cmp_text: String,
 }
 
 impl ImplString {
-    fn new(i: &Impl, cx: &Context<'_>) -> ImplString {
+    fn new_impl(i: &Impl, cx: &Context<'_>) -> Self {
         let impl_ = i.inner_impl();
-        ImplString { cmp_text: format!("{:#}", print_impl(impl_, false, cx)) }
+        Self { cmp_text: format!("{:#}", print_impl(impl_, false, cx)) }
+    }
+
+    pub(super) fn new_path(i: &Impl, cx: &Context<'_>) -> Option<Self> {
+        let path = i.inner_impl().trait_.as_ref()?;
+        Some(Self { cmp_text: format!("{:#}", print_path(path, cx)) })
     }
 }
 

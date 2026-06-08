@@ -1023,6 +1023,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                 | Pat::Tuple { .. }
                 | Pat::Wild
                 | Pat::Missing
+                | Pat::NotNull
                 | Pat::Rest => {
                     // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
                     // are made later as these patterns contains subpatterns.
@@ -1473,7 +1474,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     fn variant_index_for_adt(&self, pat_id: PatId) -> Result<(u32, VariantId)> {
         let variant = self.cx.result.variant_resolution_for_pat(pat_id).ok_or(ErrorGuaranteed)?;
         let variant_idx = match variant {
-            VariantId::EnumVariantId(variant) => variant.loc(self.cx.db).index,
+            VariantId::EnumVariantId(variant) => variant.index(self.cx.db) as u32,
             VariantId::StructId(_) | VariantId::UnionId(_) => 0,
         };
         Ok((variant_idx, variant))
@@ -1696,6 +1697,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
             | Pat::Range { .. }
             | Pat::Missing
             | Pat::Rest
+            | Pat::NotNull
             | Pat::Wild => {
                 // always ok
             }

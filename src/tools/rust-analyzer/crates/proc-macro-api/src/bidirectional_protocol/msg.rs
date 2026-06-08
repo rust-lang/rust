@@ -1,6 +1,8 @@
 //! Bidirectional protocol messages
+#![expect(clippy::disallowed_types)]
 
 use std::{
+    collections::{HashMap, HashSet},
     io::{self, BufRead, Write},
     ops::Range,
 };
@@ -16,13 +18,54 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubRequest {
-    FilePath { file_id: u32 },
-    SourceText { file_id: u32, ast_id: u32, start: u32, end: u32 },
-    LocalFilePath { file_id: u32 },
-    LineColumn { file_id: u32, ast_id: u32, offset: u32 },
-    ByteRange { file_id: u32, ast_id: u32, start: u32, end: u32 },
-    SpanSource { file_id: u32, ast_id: u32, start: u32, end: u32, ctx: u32 },
-    SpanParent { file_id: u32, ast_id: u32, start: u32, end: u32, ctx: u32 },
+    FilePath {
+        file_id: u32,
+    },
+    SourceText {
+        file_id: u32,
+        ast_id: u32,
+        start: u32,
+        end: u32,
+    },
+    LocalFilePath {
+        file_id: u32,
+    },
+    LineColumn {
+        file_id: u32,
+        ast_id: u32,
+        offset: u32,
+    },
+    ByteRange {
+        file_id: u32,
+        ast_id: u32,
+        start: u32,
+        end: u32,
+    },
+    SpanSource {
+        file_id: u32,
+        ast_id: u32,
+        start: u32,
+        end: u32,
+        ctx: u32,
+    },
+    SpanParent {
+        file_id: u32,
+        ast_id: u32,
+        start: u32,
+        end: u32,
+        ctx: u32,
+    },
+    SpanJoin {
+        file_id: u32,
+        ast_id_first: u32,
+        start_first: u32,
+        end_first: u32,
+        ctx_first: u32,
+        ast_id_second: u32,
+        start_second: u32,
+        end_second: u32,
+        ctx_second: u32,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +97,9 @@ pub enum SubResponse {
     SpanParentResult {
         parent_span: Option<ParentSpan>,
     },
+    SpanJoinResult {
+        span: Option<SpanJoin>,
+    },
     Cancel {
         reason: String,
     },
@@ -69,6 +115,15 @@ pub struct ParentSpan {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SpanJoin {
+    pub ast_id: u32,
+    pub start: u32,
+    pub end: u32,
+    pub ctx: u32,
+}
+
+#[expect(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum BidirectionalMessage {
     Request(Request),
     Response(Response),
@@ -78,20 +133,28 @@ pub enum BidirectionalMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
-    ListMacros { dylib_path: Utf8PathBuf },
+    ListMacros(ListMacros),
     ExpandMacro(Box<ExpandMacro>),
-    ApiVersionCheck {},
+    ApiVersionCheck(ApiVersionCheck),
     SetConfig(ServerConfig),
 }
 
+#[expect(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
-    ExpandMacro(Result<FlatTree, PanicMessage>),
     ApiVersionCheck(u32),
     SetConfig(ServerConfig),
-    ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
+    ExpandMacro(Result<ExpandMacroResponse, PanicMessage>),
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListMacros {
+    pub dylib_path: Utf8PathBuf,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApiVersionCheck {}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpandMacro {
@@ -102,9 +165,11 @@ pub struct ExpandMacro {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ExpandMacroExtended {
+pub struct ExpandMacroResponse {
     pub tree: FlatTree,
     pub span_data_table: Vec<u32>,
+    pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
+    pub tracked_paths: HashSet<Box<str>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

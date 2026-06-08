@@ -297,10 +297,18 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         has_rest: bool,
     },
+    ArrayPatternWithoutFixedLength {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     ExpectedArrayOrSlicePat {
         #[type_visitable(ignore)]
         pat: PatId,
         found: StoredTy,
+    },
+    InvalidRangePatType {
+        #[type_visitable(ignore)]
+        pat: PatId,
     },
     DuplicateField {
         #[type_visitable(ignore)]
@@ -361,6 +369,12 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
     },
+    NonExhaustiveRecordPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        #[type_visitable(ignore)]
+        variant: VariantId,
+    },
     FunctionalRecordUpdateOnNonStruct {
         #[type_visitable(ignore)]
         base_expr: ExprId,
@@ -384,6 +398,21 @@ pub enum InferenceDiagnostic {
     ExpectedFunction {
         #[type_visitable(ignore)]
         call_expr: ExprId,
+        found: StoredTy,
+    },
+    CannotBeDereferenced {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        found: StoredTy,
+    },
+    CannotImplicitlyDerefTraitObject {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        found: StoredTy,
+    },
+    CannotIndexInto {
+        #[type_visitable(ignore)]
+        expr: ExprId,
         found: StoredTy,
     },
     TypedHole {
@@ -428,6 +457,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         def: GenericDefId,
     },
+    MethodCallIllegalSizedBound {
+        #[type_visitable(ignore)]
+        call_expr: ExprId,
+    },
     MethodCallIncorrectGenericsOrder {
         #[type_visitable(ignore)]
         expr: ExprId,
@@ -459,6 +492,20 @@ pub enum InferenceDiagnostic {
         found: StoredTy,
     },
     SolverDiagnostic(SolverDiagnostic),
+    ExplicitDropMethodUse {
+        #[type_visitable(ignore)]
+        kind: ExplicitDropMethodUseKind,
+    },
+    MutableRefBinding {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ExplicitDropMethodUseKind {
+    MethodCall(ExprId),
+    Path(ExprOrPatId),
 }
 
 /// Represents coercing a value to a different type of value.
@@ -1289,7 +1336,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         resolver: Resolver<'db>,
         allow_using_generic_params: bool,
     ) -> Self {
-        let trait_env = db.trait_environment(store_owner);
+        let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
         let types = crate::next_solver::default_types(db);
         InferenceContext {
@@ -2438,8 +2485,8 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 };
                 let args =
                     path_ctx.substs_from_path_segment(it.into(), true, None, false, node.into());
+                let interner = path_ctx.interner();
                 drop(ctx);
-                let interner = DbInterner::conjure();
                 let ty = self.db.ty(it.into()).instantiate(interner, args).skip_norm_wip();
                 let ty = self.insert_type_vars(ty);
 

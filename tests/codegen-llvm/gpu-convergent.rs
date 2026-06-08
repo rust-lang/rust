@@ -17,7 +17,7 @@ extern "C" {
     fn ext();
 }
 
-// CHECK: define {{.*}}_kernel void @fun(i32{{.*}}) unnamed_addr #[[ATTR:[0-9]+]]
+// CHECK: define {{.*}}_kernel void @fun(i32{{.*}}) unnamed_addr #[[ATTR:[0-9]+]] {
 // CHECK: declare void @ext() unnamed_addr #[[ATTR]]
 // CHECK: attributes #[[ATTR]] = {{.*}} convergent
 #[no_mangle]

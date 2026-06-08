@@ -29,7 +29,7 @@ pub(crate) fn representability(db: &dyn HirDatabase, id: AdtId) -> Representabil
         AdtId::StructId(id) => variant_representability(db, id.into()),
         AdtId::UnionId(id) => variant_representability(db, id.into()),
         AdtId::EnumId(id) => {
-            for &(variant, ..) in &id.enum_variants(db).variants {
+            for &(variant, ..) in id.enum_variants(db).variants.values() {
                 rtry!(variant_representability(db, variant.into()));
             }
             Representability::Representable
@@ -105,7 +105,7 @@ fn params_in_repr(db: &dyn HirDatabase, def_id: AdtId) -> Box<[bool]> {
         AdtId::StructId(def_id) => handle_variant(def_id.into()),
         AdtId::UnionId(def_id) => handle_variant(def_id.into()),
         AdtId::EnumId(def_id) => {
-            for &(variant, ..) in &def_id.enum_variants(db).variants {
+            for &(variant, ..) in def_id.enum_variants(db).variants.values() {
                 handle_variant(variant.into());
             }
         }

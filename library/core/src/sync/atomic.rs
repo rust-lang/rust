@@ -4223,8 +4223,9 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// An atomic fence.
 ///
 /// Fences create synchronization between themselves and atomic operations or fences in other
-/// threads. To achieve this, a fence prevents the compiler and CPU from reordering certain types of
-/// memory operations around it.
+/// threads. It can be helpful to think of a fence as preventing the compiler and CPU from
+/// reordering certain types of memory operations around it, but that is a simplified model which
+/// fails to capture some of the nuances.
 ///
 /// There are 3 different ways to use an atomic fence:
 ///
@@ -4374,6 +4375,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "fence"]
+#[doc(alias = "atomic_thread_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
@@ -4388,15 +4390,15 @@ pub fn fence(order: Ordering) {
     }
 }
 
-/// A "compiler-only" atomic fence.
+/// An atomic fence for synchronization within a single thread.
 ///
 /// Like [`fence`], this function establishes synchronization with other atomic operations and
 /// fences. However, unlike [`fence`], `compiler_fence` only establishes synchronization with
 /// operations *in the same thread*. This may at first sound rather useless, since code within a
 /// thread is typically already totally ordered and does not need any further synchronization.
-/// However, there are cases where code can run on the same thread without being ordered:
+/// However, there are cases where code can run on the same thread without being synchronized:
 /// - The most common case is that of a *signal handler*: a signal handler runs in the same thread
-///   as the code it interrupted, but it is not ordered with respect to that code. `compiler_fence`
+///   as the code it interrupted, but it is not synchronized with that code. `compiler_fence`
 ///   can be used to establish synchronization between a thread and its signal handler, the same way
 ///   that `fence` can be used to establish synchronization across threads.
 /// - Similar situations can arise in embedded programming with interrupt handlers, or in custom
@@ -4407,9 +4409,14 @@ pub fn fence(order: Ordering) {
 /// [`fence`], synchronization still requires atomic operations to be used in both threads -- it is
 /// not possible to perform synchronization entirely with fences and non-atomic operations.
 ///
-/// `compiler_fence` does not emit any machine code, but restricts the kinds of memory re-ordering
-/// the compiler is allowed to do. `compiler_fence` corresponds to [`atomic_signal_fence`] in C and
-/// C++.
+/// `compiler_fence` does not emit any machine code. However, note that `compiler_fence` is also
+/// *not* a "compiler barrier". It can be helpful to think of a `compiler_fence` as preventing the
+/// compiler from reordering certain types of memory operations around it, but that is a simplified
+/// model which fails to capture some of the nuances. The only actual guarantee made by
+/// `compiler_fence` is establishing synchronization with signal handlers and similar kinds of code,
+/// under the rules described in the [`fence`] documentation.
+///
+/// `compiler_fence` corresponds to [`atomic_signal_fence`] in C and C++.
 ///
 /// [`atomic_signal_fence`]: https://en.cppreference.com/w/cpp/atomic/atomic_signal_fence
 ///
@@ -4452,6 +4459,7 @@ pub fn fence(order: Ordering) {
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 #[rustc_diagnostic_item = "compiler_fence"]
+#[doc(alias = "atomic_signal_fence")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.

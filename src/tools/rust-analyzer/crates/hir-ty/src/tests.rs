@@ -460,7 +460,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                         AdtId::EnumId(id) => variants.extend(
                             id.enum_variants(&db)
                                 .variants
-                                .iter()
+                                .values()
                                 .map(|&(variant, ..)| (variant.into(), krate)),
                         ),
                     }
@@ -600,7 +600,7 @@ pub(crate) fn visit_module(
                     visit_body(db, body, cb);
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(it)) => {
-                    it.enum_variants(db).variants.iter().for_each(|&(it, _, _)| {
+                    it.enum_variants(db).variants.values().for_each(|&(it, _)| {
                         let body = Body::of(db, it.into());
                         cb(it.into());
                         visit_body(db, body, cb);

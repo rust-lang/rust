@@ -1,6 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write};
 use std::ops::Range;
+
+use rustc_hash::FxHashMap;
 
 use crate::fmt_list;
 
@@ -126,8 +128,11 @@ impl RawEmitter {
         for chunk in compressed_words.chunks(chunk_length) {
             chunks.insert(chunk);
         }
-        let chunk_map =
-            chunks.iter().enumerate().map(|(idx, &chunk)| (chunk, idx)).collect::<HashMap<_, _>>();
+        let chunk_map = chunks
+            .iter()
+            .enumerate()
+            .map(|(idx, &chunk)| (chunk, idx))
+            .collect::<FxHashMap<_, _>>();
         let mut chunk_indices = Vec::new();
         for chunk in compressed_words.chunks(chunk_length) {
             chunk_indices.push(chunk_map[chunk]);
@@ -186,7 +191,7 @@ struct Canonicalized {
 
     /// Maps an input unique word to the associated index (u8) which is into
     /// canonical_words or canonicalized_words (in order).
-    unique_mapping: HashMap<u64, u8>,
+    unique_mapping: FxHashMap<u64, u8>,
 }
 
 impl Canonicalized {
@@ -253,7 +258,7 @@ impl Canonicalized {
         // These are mapped words, which will be represented by an index into
         // the canonical_words and a Mapping; u16 when encoded.
         let mut canonicalized_words = Vec::new();
-        let mut unique_mapping = HashMap::new();
+        let mut unique_mapping = FxHashMap::default();
 
         #[derive(Debug, PartialEq, Eq)]
         enum UniqueMapping {
@@ -361,7 +366,7 @@ impl Canonicalized {
                     },
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
 
         let mut distinct_indices = BTreeSet::new();
         for &w in unique_words {

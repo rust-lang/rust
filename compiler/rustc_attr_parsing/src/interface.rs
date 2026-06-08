@@ -8,7 +8,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_lint_defs::RegisteredTools;
@@ -355,6 +355,9 @@ impl<'sess> AttributeParser<'sess> {
                             &mut emit_lint,
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
+                        if let [part] = parts.as_slice() {
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                        }
 
                         let Some(args) = ArgParser::from_attr_args(
                             args,

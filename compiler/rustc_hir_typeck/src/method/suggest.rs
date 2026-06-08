@@ -4796,7 +4796,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Expr(rcvr) = self.tcx.hir_node(hir_id) else {
             return false;
         };
-        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, rcvr_ty.into_iter());
+        // The trait may have generic parameters beyond `Self` (e.g. `Borrow<Borrowed>`), and
+        // `rcvr_ty` may even be unknown. We only ever know the receiver type (the `Self` arg),
+        // so fill `Self` from `rcvr_ty` when available and the remaining parameters with fresh
+        // inference variables; building a `TraitRef` with a partial arg list would otherwise trip
+        // `debug_assert_args_compatible` and ICE. See #157189.
+        let trait_ref = ty::TraitRef::new_from_args(
+            self.tcx,
+            trait_def_id,
+            ty::GenericArgs::for_item(self.tcx, trait_def_id, |param, _| {
+                if param.index == 0
+                    && let Some(rcvr_ty) = rcvr_ty
+                {
+                    rcvr_ty.into()
+                } else {
+                    self.var_for_def(rcvr.span, param)
+                }
+            }),
+        );
         let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
             trait_ref,
             polarity: ty::PredicatePolarity::Positive,

@@ -12,7 +12,7 @@ use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
-    PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan,
+    PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv,
     dylib::proc_macros::ProcMacros, token_stream::TokenStream,
 };
 
@@ -45,14 +45,22 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle<'_>>,
+        tracked_env: &'a mut TrackedEnv,
+        callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Result<TokenStream<S>, PanicMessage>
     where
         <S::Server<'a> as bridge::server::Server>::TokenStream: Default,
     {
-        self.inner
-            .proc_macros
-            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site, callback)
+        self.inner.proc_macros.expand(
+            macro_name,
+            macro_body,
+            attribute,
+            def_site,
+            call_site,
+            mixed_site,
+            tracked_env,
+            callback,
+        )
     }
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {

@@ -12,8 +12,8 @@ use span::Span;
 use crate::{
     ProcMacro, ProcMacroKind, ServerError,
     bidirectional_protocol::msg::{
-        BidirectionalMessage, ExpandMacro, ExpandMacroData, ExpnGlobals, Request, Response,
-        SubRequest, SubResponse,
+        ApiVersionCheck, BidirectionalMessage, ExpandMacro, ExpandMacroData, ExpnGlobals,
+        ListMacros, Request, Response, SubRequest, SubResponse,
     },
     legacy_protocol::{
         SpanMode,
@@ -98,7 +98,7 @@ pub(crate) fn version_check(
     srv: &ProcMacroServerProcess,
     callback: SubCallback<'_>,
 ) -> Result<u32, ServerError> {
-    let request = BidirectionalMessage::Request(Request::ApiVersionCheck {});
+    let request = BidirectionalMessage::Request(Request::ApiVersionCheck(ApiVersionCheck {}));
 
     let response_payload = run_request(srv, request, callback)?;
 
@@ -135,9 +135,9 @@ pub(crate) fn find_proc_macros(
     dylib_path: &AbsPath,
     callback: SubCallback<'_>,
 ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
-    let request = BidirectionalMessage::Request(Request::ListMacros {
+    let request = BidirectionalMessage::Request(Request::ListMacros(ListMacros {
         dylib_path: dylib_path.to_path_buf().into(),
-    });
+    }));
 
     let response_payload = run_request(srv, request, callback)?;
 
@@ -186,25 +186,12 @@ pub(crate) fn expand(
 
     match response_payload {
         BidirectionalMessage::Response(Response::ExpandMacro(it)) => Ok(it
-            .map(|tree| {
-                let mut expanded = FlatTree::to_subtree_resolved(tree, version, &span_data_table);
-                if proc_macro.needs_fixup_change() {
-                    proc_macro.change_fixup_to_match_old_server(&mut expanded);
-                }
-                expanded
-            })
-            .map_err(|msg| msg.0)),
-        BidirectionalMessage::Response(Response::ExpandMacroExtended(it)) => Ok(it
             .map(|resp| {
-                let mut expanded = FlatTree::to_subtree_resolved(
+                FlatTree::to_subtree_resolved(
                     resp.tree,
                     version,
                     &deserialize_span_data_index_map(&resp.span_data_table),
-                );
-                if proc_macro.needs_fixup_change() {
-                    proc_macro.change_fixup_to_match_old_server(&mut expanded);
-                }
-                expanded
+                )
             })
             .map_err(|msg| msg.0)),
         _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),

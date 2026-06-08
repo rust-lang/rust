@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use crate::common::intrinsic_helpers::TypeKind;
+use crate::common::values::test_values_array_name;
 
+use super::PASSES;
 use super::constraint::Constraint;
-use super::gen_rust::PASSES;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
@@ -50,17 +51,6 @@ where
 
     pub fn has_constraint(&self) -> bool {
         self.constraint.is_some()
-    }
-
-    /// Returns a string with the name of the static variable containing test values for intrinsic
-    /// arguments of this type.
-    pub(crate) fn rust_vals_array_name(&self) -> impl std::fmt::Display {
-        let loads = crate::common::gen_rust::PASSES;
-        format!(
-            "{ty}_{load_size}",
-            ty = self.ty.rust_scalar_type().to_uppercase(),
-            load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
-        )
     }
 
     /// Should this argument be passed by reference in C wrapper function declarations?
@@ -165,41 +155,6 @@ where
             .join("")
     }
 
-    /// Returns a string defining a static variable with test values used for all intrinsics with
-    /// arguments of `arg`'s type.
-    ///
-    /// e.g.
-    /// ```rust,ignore
-    /// static U8_20: [u8; 20] = [
-    ///     0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xf0,
-    ///     0x80, 0x3b, 0xff,
-    /// ];
-    /// ```
-    ///
-    /// `num_lanes * num_vectors + loads - 1` elements are present in the array, which is sufficient
-    /// for a `loads` number of `num_lanes * num_vectors` windows into the array to be loaded:
-    ///
-    /// ```text
-    /// [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xf0, 0x80, 0x3b, 0xff]
-    /// ^^^^^^^^^^^^^^^^^^^ first window of `num_lanes * num_vectors` elements (e.g. four elements)
-    ///       ^^^^^^^^^^^^^^^^^^ second window
-    ///                                                                 `loads`th window ^^^^^^^^^^^^^^^^^^^^^^
-    /// ```
-    pub fn gen_arg_rust(
-        arg: &Argument<T>,
-        w: &mut impl std::io::Write,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        writeln!(
-            w,
-            "static {name}: [{ty}; {load_size}] = {values};\n",
-            name = arg.rust_vals_array_name(),
-            ty = arg.ty.rust_scalar_type(),
-            load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-            values = arg.ty.populate_random(loads)
-        )
-    }
-
     /// Returns a string defining a local variable for each argument and loading a value into each
     /// using a load intrinsic.
     ///
@@ -226,14 +181,14 @@ where
                     format!(
                         "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
                         name = arg.generate_name(),
-                        vals_name = arg.rust_vals_array_name(),
+                        vals_name = test_values_array_name(&arg.ty),
                         load = arg.ty.get_load_function(),
                     )
                 } else {
                     format!(
                         "let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
                         name = arg.generate_name(),
-                        vals_name = arg.rust_vals_array_name(),
+                        vals_name = test_values_array_name(&arg.ty),
                     )
                 }
             })

@@ -12,6 +12,7 @@ static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
     "simple-raytracer",
     "804a7a21b9e673a482797aa289a18ed480e4d813",
+    &[],
     "ad6f59a2331a3f56",
     "<none>",
 );
