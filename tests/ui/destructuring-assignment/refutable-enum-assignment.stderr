@@ -1,12 +1,20 @@
 error[E0005]: refutable pattern in assignment
-  --> $DIR/non-exhaustive-destructure.rs:2:5
+  --> $DIR/refutable-enum-assignment.rs:9:5
    |
-LL |     None = Some(3);
-   |     ^^^^ pattern `Some(_)` not covered
+LL |     Foo::One = Foo::One;
+   |     ^^^^^^^^ pattern `Foo::Two` not covered
    |
    = note: destructuring assignments require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `Option<i32>`
+note: `Foo` defined here
+  --> $DIR/refutable-enum-assignment.rs:3:6
+   |
+LL | enum Foo {
+   |      ^^^
+LL |     One,
+LL |     Two,
+   |     --- not covered
+   = note: the matched value is of type `Foo`
 
 error: aborting due to 1 previous error
 
