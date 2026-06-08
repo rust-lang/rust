@@ -446,19 +446,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let region_bound = if !lifetime.is_elided() {
             self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
         } else {
+            // Curiously, we also use the *object region bound* for `Infer` (`'_`)
+            // while we obviously don't use the *object lifetime default* for it...
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                // Curiously, we prefer object lifetime default for `+ '_`...
-                if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+                let reason = if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind
+                {
+                    RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
                 } else {
-                    let reason =
-                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
-                            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
-                        } else {
-                            RegionInferReason::ExplicitObjectLifetime
-                        };
-                    self.re_infer(span, reason)
-                }
+                    RegionInferReason::ExplicitObjectLifetime
+                };
+
+                self.lower_lifetime(lifetime, reason)
             })
         };
         debug!(?region_bound);
