@@ -160,7 +160,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     /// Step to the next visible MIR instruction.
-    fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+    fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::MirInstruction)
     }
 
@@ -281,7 +281,7 @@ impl<'tcx> PrirodaContext<'tcx> {
 
     fn run_command(&mut self, command: DebuggerCommand) -> InterpResult<'tcx, CommandResult> {
         match command {
-            DebuggerCommand::Step => self.step().map(CommandResult::ExecutionStopped),
+            DebuggerCommand::StepI => self.stepi().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Continue =>
                 self.continue_execution().map(CommandResult::ExecutionStopped),
             DebuggerCommand::Breakpoint(path, line) =>
@@ -292,7 +292,7 @@ impl<'tcx> PrirodaContext<'tcx> {
 }
 
 enum DebuggerCommand {
-    Step,
+    StepI,
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),
@@ -367,7 +367,7 @@ impl CLI {
         let args = parts.next().unwrap_or("").trim();
 
         match command {
-            "" | "s" | "step" => Some(DebuggerCommand::Step),
+            "" | "si" | "stepi" => Some(DebuggerCommand::StepI),
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
