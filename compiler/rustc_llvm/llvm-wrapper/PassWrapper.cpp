@@ -1503,12 +1503,19 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   DenseSet<GlobalValue::GUID> CfiFunctionDecls;
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
+#if LLVM_VERSION_GE(23, 0)
+  auto Defs = Data->Index.cfiFunctionDefs().getExportedThinLTOGUIDs();
+  CfiFunctionDefs.insert(Defs.begin(), Defs.end());
+  auto Decls = Data->Index.cfiFunctionDecls().getExportedThinLTOGUIDs();
+  CfiFunctionDecls.insert(Decls.begin(), Decls.end());
+#else
   for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
     CfiFunctionDefs.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
   for (auto &Name : Data->Index.cfiFunctionDecls().symbols())
     CfiFunctionDecls.insert(GlobalValue::getGUIDAssumingExternalLinkage(
         GlobalValue::dropLLVMManglingEscape(Name)));
+#endif
 
   Key = llvm::computeLTOCacheKey(conf, Data->Index, ModId, ImportList,
                                  ExportList, ResolvedODR, DefinedGlobals,
