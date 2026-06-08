@@ -3153,6 +3153,35 @@ fn test_hover_layout_of_enum() {
 }
 
 #[test]
+fn test_hover_layout_nonzero_type_alias() {
+    check(
+        r#"//- minicore: non_zero
+use core::num;
+trait Trait { type Inner; }
+impl Trait for u8 { type Inner = num::NonZeroU8; }
+#[repr(transparent)]
+struct NonZero<T: Trait>(T::Inner);
+type NonZeroU8$0 = NonZero<u8>;
+"#,
+        expect![[r#"
+            *NonZeroU8*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NonZeroU8 = NonZero<u8>
+            ```
+
+            ---
+
+            size = 1, align = 1, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_layout_padding_info() {
     check(
         r#"struct $0Foo {

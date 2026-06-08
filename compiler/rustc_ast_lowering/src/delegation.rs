@@ -37,24 +37,29 @@
 //! also be emitted during HIR ty lowering.
 
 use std::iter;
+use std::ops::ControlFlow;
 
 use ast::visit::Visitor;
 use hir::def::{DefKind, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
+use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnDeclFlags};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, TyCtxt};
+use rustc_middle::ty::{Asyncness, PerOwnerResolverData, TyCtxt};
 use rustc_span::symbol::kw;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 use crate::delegation::generics::{GenericsGenerationResult, GenericsGenerationResults};
-use crate::errors::{CycleInDelegationSignatureResolution, UnresolvedDelegationCallee};
+use crate::diagnostics::{
+    CycleInDelegationSignatureResolution, DelegationAttemptedBlockWithDefsDeletion,
+    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
+};
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt, index_crate,
@@ -198,10 +203,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (param_count, c_variadic) = self.param_count(sig_id);
 
+        if !self.check_block_soundness(delegation, sig_id, is_method, param_count) {
+            return self.generate_delegation_error(span, delegation);
+        }
+
         let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
         let (body_id, call_expr_id) =
-            self.lower_delegation_body(delegation, is_method, param_count, &mut generics, span);
+            self.lower_delegation_body(delegation, sig_id, param_count, &mut generics, span);
 
         let decl = self.lower_delegation_decl(
             sig_id,
@@ -225,6 +234,82 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         DelegationResults { body_id, sig, ident, generics }
+    }
+
+    fn check_block_soundness(
+        &self,
+        delegation: &Delegation,
+        sig_id: DefId,
+        is_method: bool,
+        param_count: usize,
+    ) -> bool {
+        let Some(block) = delegation.body.as_ref() else { return true };
+        let should_generate_block = self.should_generate_block(delegation, sig_id, is_method);
+
+        // Report an error if user has explicitly specified delegation's target expression
+        // in a single delegation when reused function has no params.
+        if param_count == 0 && should_generate_block {
+            self.dcx().emit_err(DelegationBlockSpecifiedWhenNoParams { span: block.span });
+            return false;
+        }
+
+        struct DefinitionsFinder<'a> {
+            all_owners: &'a NodeMap<PerOwnerResolverData<'a>>,
+            // `self.owner.node_id_to_def_id`
+            nested_def_ids: &'a NodeMap<LocalDefId>,
+        }
+
+        impl<'a> ast::visit::Visitor<'a> for DefinitionsFinder<'a> {
+            type Result = ControlFlow<()>;
+
+            fn visit_id(&mut self, id: NodeId) -> Self::Result {
+                /*
+                    (from `tests\ui\delegation\target-expr-removal-defs-inside.rs`):
+                    ```rust
+                        reuse impl Trait for S1 {
+                            some::path::<{ fn foo() {} }>::xd();
+                            fn foo() {}
+                            self.0
+                        }
+                    ```
+
+                    Constant from unresolved path will be in `nested_owners`,
+                    `fn foo() {}` will not be in `nested_owners` but will be in `owners`,
+                    both have `LocalDefId`, so we check those two maps.
+                */
+                match self.all_owners.contains_key(&id) || self.nested_def_ids.contains_key(&id) {
+                    true => ControlFlow::Break(()),
+                    false => ControlFlow::Continue(()),
+                }
+            }
+        }
+
+        let mut collector = DefinitionsFinder {
+            all_owners: &self.resolver.owners,
+            nested_def_ids: &self.owner.node_id_to_def_id,
+        };
+
+        let contains_defs = collector.visit_block(block).is_break();
+
+        // If there are definitions inside and we can't delete target expression, so report an error.
+        // FIXME(fn_delegation): support deletion of target expression with defs inside.
+        if !should_generate_block && contains_defs {
+            self.dcx().emit_err(DelegationAttemptedBlockWithDefsDeletion { span: block.span });
+            return false;
+        }
+
+        true
+    }
+
+    fn should_generate_block(
+        &self,
+        delegation: &Delegation,
+        sig_id: DefId,
+        is_method: bool,
+    ) -> bool {
+        is_method
+            || matches!(self.tcx.def_kind(sig_id), DefKind::Fn)
+            || matches!(delegation.source, DelegationSource::Single)
     }
 
     fn add_attrs_if_needed(&mut self, span: Span, sig_id: DefId) {
@@ -415,7 +500,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_delegation_body(
         &mut self,
         delegation: &Delegation,
-        is_method: bool,
+        sig_id: DefId,
         param_count: usize,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
@@ -428,6 +513,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let mut args: Vec<hir::Expr<'_>> = Vec::with_capacity(param_count);
             let mut stmts: &[hir::Stmt<'hir>] = &[];
 
+            let is_method = this.is_method(sig_id, span);
+
             for idx in 0..param_count {
                 let (param, pat_node_id) = this.generate_param(is_method, idx, span);
                 parameters.push(param);
@@ -437,6 +524,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let arg = if let Some(block) = block
                     && idx == 0
+                    && this.should_generate_block(delegation, sig_id, is_method)
                 {
                     let mut self_resolver = SelfResolver {
                         ctxt: this,
@@ -465,17 +553,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
 
                 args.push(arg);
-            }
-
-            // If we have no params in signature function but user still wrote some code in
-            // delegation body, then add this code as first arg, eventually an error will be shown,
-            // also nested delegations may need to access information about this code (#154332),
-            // so it is better to leave this code as opposed to bodies of extern functions,
-            // which are completely erased from existence.
-            if param_count == 0
-                && let Some(block) = block
-            {
-                args.push(this.lower_block_expr(&block));
             }
 
             let (final_expr, hir_id) =

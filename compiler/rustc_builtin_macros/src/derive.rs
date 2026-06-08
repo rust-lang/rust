@@ -9,7 +9,7 @@ use rustc_session::Session;
 use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 
 use crate::cfg_eval::cfg_eval;
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) struct Expander {
     pub is_const: bool,
@@ -131,7 +131,7 @@ fn report_bad_target(
     let bad_target =
         !matches!(item_kind, Some(ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)));
     if bad_target {
-        return Err(sess.dcx().emit_err(errors::BadDeriveTarget { span, item: item.span() }));
+        return Err(sess.dcx().emit_err(diagnostics::BadDeriveTarget { span, item: item.span() }));
     }
     Ok(())
 }
@@ -141,11 +141,11 @@ fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {
         ast::LitKind::Str(_, ast::StrStyle::Cooked)
             if rustc_lexer::is_ident(lit.symbol.as_str()) =>
         {
-            errors::BadDeriveLitHelp::StrLit { sym: lit.symbol }
+            diagnostics::BadDeriveLitHelp::StrLit { sym: lit.symbol }
         }
-        _ => errors::BadDeriveLitHelp::Other,
+        _ => diagnostics::BadDeriveLitHelp::Other,
     };
-    sess.dcx().emit_err(errors::BadDeriveLit { span: lit.span, help });
+    sess.dcx().emit_err(diagnostics::BadDeriveLit { span: lit.span, help });
 }
 
 fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
@@ -154,10 +154,10 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
     match meta.kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(..) => {
-            sess.dcx().emit_err(errors::DerivePathArgsList { span });
+            sess.dcx().emit_err(diagnostics::DerivePathArgsList { span });
         }
         MetaItemKind::NameValue(..) => {
-            sess.dcx().emit_err(errors::DerivePathArgsValue { span });
+            sess.dcx().emit_err(diagnostics::DerivePathArgsValue { span });
         }
     }
 }

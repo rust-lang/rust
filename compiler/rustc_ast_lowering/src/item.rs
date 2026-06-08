@@ -19,7 +19,9 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault};
+use super::diagnostics::{
+    InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault,
+};
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
@@ -2107,18 +2109,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,
-                })
-            }
-            WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
-                hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
-                    lhs_ty: self.lower_ty_alloc(
-                        lhs_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                    ),
-                    rhs_ty: self.lower_ty_alloc(
-                        rhs_ty,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
-                    ),
                 })
             }
         });

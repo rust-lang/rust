@@ -10,7 +10,7 @@ use rustc_session::errors::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
-use crate::errors;
+use crate::diagnostics;
 
 /// The common case.
 macro_rules! gate {
@@ -133,7 +133,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 .collect();
 
             if !const_param_spans.is_empty() {
-                self.sess.dcx().emit_err(errors::ForbiddenConstParam { const_param_spans });
+                self.sess.dcx().emit_err(diagnostics::ForbiddenConstParam { const_param_spans });
             }
         }
 
@@ -144,9 +144,9 @@ impl<'a> PostExpansionVisitor<'a> {
                     // Issue #149695
                     // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
                     // which will cause ICEs when errors of the items visit unlowered parents.
-                    self.sess.dcx().emit_fatal(errors::ForbiddenBound { spans });
+                    self.sess.dcx().emit_fatal(diagnostics::ForbiddenBound { spans });
                 } else {
-                    self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                    self.sess.dcx().emit_err(diagnostics::ForbiddenBound { spans });
                 }
             }
         }
@@ -553,7 +553,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     // Under no circumstances do we want to advertise the feature name to users!
     if !visitor.features.negative_bounds() {
         for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
-            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
+            sess.dcx().emit_err(diagnostics::NegativeBoundUnsupported { span });
         }
     }
 
@@ -570,7 +570,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                     .emit();
             } else {
                 let suggestion = span.shrink_to_hi();
-                sess.dcx().emit_err(errors::MatchArmWithNoBody { span, suggestion });
+                sess.dcx().emit_err(diagnostics::MatchArmWithNoBody { span, suggestion });
             }
         }
     }
@@ -645,7 +645,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
         AttributeParser::parse_limited(sess, &krate.attrs, &[sym::feature])
     {
         // `feature(...)` used on non-nightly. This is definitely an error.
-        let mut err = errors::FeatureOnNonNightly {
+        let mut err = diagnostics::FeatureOnNonNightly {
             span: first_span,
             channel: option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)"),
             stable_features: vec![],
@@ -662,7 +662,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
                 .map(|feat| feat.stable_since)
                 .flatten();
             if let Some(since) = stable_since {
-                err.stable_features.push(errors::StableFeature { name, since });
+                err.stable_features.push(diagnostics::StableFeature { name, since });
             } else {
                 all_stable = false;
             }
@@ -688,7 +688,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
             && let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
         {
             let spans = vec![f1_span, f2_span];
-            sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
+            sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
+                spans,
+                f1: f1_name,
+                f2: f2_name,
+            });
         }
     }
 }
@@ -709,7 +713,11 @@ fn check_dependent_features(sess: &Session, features: &Features) {
                 .map(|s| format!("`{}`", s.as_str()))
                 .intersperse(String::from(", "))
                 .collect();
-            sess.dcx().emit_err(errors::MissingDependentFeatures { parent_span, parent, missing });
+            sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
+                parent_span,
+                parent,
+                missing,
+            });
         }
     }
 }
@@ -727,7 +735,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(errors::IncompatibleFeatures {
+        sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),
             f2: sym::generic_const_exprs,
@@ -749,7 +757,7 @@ fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
         .map(|feat| feat.attr_sp)
     {
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(errors::MissingDependentFeatures {
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
             parent_span: gca_span,
             parent: sym::generic_const_args,
             missing: String::from("-Znext-solver=globally"),

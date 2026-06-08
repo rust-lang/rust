@@ -1,5 +1,7 @@
 //! Proc macro ABI
-use crate::{ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
+use crate::{
+    ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv, token_stream::TokenStream,
+};
 use rustc_proc_macro::bridge;
 
 #[repr(transparent)]
@@ -12,7 +14,7 @@ impl From<bridge::PanicMessage> for crate::PanicMessage {
 }
 
 impl ProcMacros {
-    pub(crate) fn expand<S: ProcMacroSrvSpan>(
+    pub(crate) fn expand<'a, S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
         macro_body: TokenStream<S>,
@@ -20,7 +22,8 @@ impl ProcMacros {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        callback: Option<ProcMacroClientHandle<'_>>,
+        tracked_env: &'a mut TrackedEnv,
+        callback: Option<ProcMacroClientHandle<'a>>,
     ) -> Result<TokenStream<S>, crate::PanicMessage> {
         let parsed_attributes = attribute.unwrap_or_default();
 
@@ -31,7 +34,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
-                        S::make_server(call_site, def_site, mixed_site, callback),
+                        S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -40,7 +43,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
-                        S::make_server(call_site, def_site, mixed_site, callback),
+                        S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -49,7 +52,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
-                        S::make_server(call_site, def_site, mixed_site, callback),
+                        S::make_server(call_site, def_site, mixed_site, tracked_env, callback),
                         parsed_attributes,
                         macro_body,
                         cfg!(debug_assertions),

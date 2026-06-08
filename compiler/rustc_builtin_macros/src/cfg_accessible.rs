@@ -6,12 +6,12 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, Mult
 use rustc_feature::AttributeTemplate;
 use rustc_span::{Span, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) struct Expander;
 
 fn validate_input<'a>(ecx: &ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
-    use errors::CfgAccessibleInvalid::*;
+    use diagnostics::CfgAccessibleInvalid::*;
     match mi.meta_item_list() {
         None => {}
         Some([]) => {
@@ -62,7 +62,7 @@ impl MultiItemModifier for Expander {
             Ok(true) => ExpandResult::Ready(vec![item]),
             Ok(false) => ExpandResult::Ready(Vec::new()),
             Err(Indeterminate) if ecx.force_mode => {
-                ecx.dcx().emit_err(errors::CfgAccessibleIndeterminate { span });
+                ecx.dcx().emit_err(diagnostics::CfgAccessibleIndeterminate { span });
                 ExpandResult::Ready(vec![item])
             }
             Err(Indeterminate) => ExpandResult::Retry(item),

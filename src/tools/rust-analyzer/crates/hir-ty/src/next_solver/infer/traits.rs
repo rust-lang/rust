@@ -161,11 +161,11 @@ impl<'db> PredicateObligation<'db> {
     /// Flips the polarity of the inner predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
-    pub fn flip_polarity(&self, _interner: DbInterner<'db>) -> Option<PredicateObligation<'db>> {
+    pub fn flip_polarity(&self, interner: DbInterner<'db>) -> Option<PredicateObligation<'db>> {
         Some(PredicateObligation {
             cause: self.cause,
             param_env: self.param_env,
-            predicate: self.predicate.flip_polarity()?,
+            predicate: self.predicate.flip_polarity(interner)?,
             recursion_depth: self.recursion_depth,
         })
     }

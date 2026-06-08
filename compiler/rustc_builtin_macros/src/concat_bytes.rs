@@ -4,7 +4,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpa
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::get_exprs_from_tts;
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
@@ -14,7 +14,7 @@ fn invalid_type_err(
     span: Span,
     is_nested: bool,
 ) -> ErrorGuaranteed {
-    use errors::{
+    use diagnostics::{
         ConcatBytesInvalid, ConcatBytesInvalidSuggestion, ConcatBytesNonU8, ConcatBytesOob,
     };
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
@@ -105,7 +105,10 @@ fn handle_array_element(
                 Ok(LitKind::Byte(val)) => return Some(val),
                 Ok(LitKind::ByteStr(..)) => {
                     guar.get_or_insert_with(|| {
-                        dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: true })
+                        dcx.emit_err(diagnostics::ConcatBytesArray {
+                            span: expr.span,
+                            bytestr: true,
+                        })
                     });
                 }
                 _ => {
@@ -115,12 +118,12 @@ fn handle_array_element(
         }
         ExprKind::Array(_) | ExprKind::Repeat(_, _) => {
             guar.get_or_insert_with(|| {
-                dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false })
+                dcx.emit_err(diagnostics::ConcatBytesArray { span: expr.span, bytestr: false })
             });
         }
         ExprKind::IncludedBytes(..) => {
             guar.get_or_insert_with(|| {
-                dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false })
+                dcx.emit_err(diagnostics::ConcatBytesArray { span: expr.span, bytestr: false })
             });
         }
         _ => missing_literals.push(expr.span),
@@ -167,9 +170,10 @@ pub(crate) fn expand_concat_bytes(
                         }
                     }
                 } else {
-                    guar = Some(
-                        cx.dcx().emit_err(errors::ConcatBytesBadRepeat { span: count.value.span }),
-                    );
+                    guar =
+                        Some(cx.dcx().emit_err(diagnostics::ConcatBytesBadRepeat {
+                            span: count.value.span,
+                        }));
                 }
             }
             &ExprKind::Lit(token_lit) => match LitKind::from_token_lit(token_lit) {
@@ -196,7 +200,8 @@ pub(crate) fn expand_concat_bytes(
         }
     }
     ExpandResult::Ready(if !missing_literals.is_empty() {
-        let guar = cx.dcx().emit_err(errors::ConcatBytesMissingLiteral { spans: missing_literals });
+        let guar =
+            cx.dcx().emit_err(diagnostics::ConcatBytesMissingLiteral { spans: missing_literals });
         MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
     } else if let Some(guar) = guar {
         MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
