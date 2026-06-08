@@ -979,7 +979,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 /// Data extracted from a pattern that doesn't affect which branch is taken. Collected during
 /// pattern simplification and not mutated later.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct PatternExtraData<'tcx> {
     /// [`Span`] of the original pattern.
     span: Span,
@@ -1030,25 +1030,6 @@ struct FlatPat<'tcx> {
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
-}
-
-impl<'tcx> FlatPat<'tcx> {
-    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
-    /// for the given pattern.
-    fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
-        // Recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![];
-        let mut extra_data = PatternExtraData {
-            span: pattern.span,
-            bindings: Vec::new(),
-            ascriptions: Vec::new(),
-            is_never: pattern.is_never_pattern(),
-            guard_patterns: Vec::new(),
-        };
-        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
-
-        Self { match_pairs, extra_data }
-    }
 }
 
 /// Candidates are a generalization of (a) top-level match arms, and
