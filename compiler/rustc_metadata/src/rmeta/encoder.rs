@@ -82,7 +82,8 @@ macro_rules! empty_proc_macro {
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
-        $(fn $name(&mut self, value: $ty) {
+        $(#[inline]
+        fn $name(&mut self, value: $ty) {
             self.opaque.$name(value)
         })*
     }

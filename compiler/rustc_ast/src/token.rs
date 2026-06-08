@@ -866,6 +866,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is an identifier.
+    #[inline]
     pub fn is_ident(&self) -> bool {
         self.ident().is_some()
     }
@@ -918,6 +919,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
+    #[inline]
     pub fn is_keyword(&self, kw: Symbol) -> bool {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
@@ -980,6 +982,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
+    #[inline]
     pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
         match self.ident() {
             Some((id, IdentIsRaw::No)) => pred(id),
