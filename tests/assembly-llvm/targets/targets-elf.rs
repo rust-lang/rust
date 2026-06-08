@@ -28,6 +28,9 @@
 //@ revisions: aarch64_nintendo_switch_freestanding
 //@ [aarch64_nintendo_switch_freestanding] compile-flags: --target aarch64-nintendo-switch-freestanding
 //@ [aarch64_nintendo_switch_freestanding] needs-llvm-components: aarch64
+//@ revisions: aarch64_oe_linux_gnu
+//@ [aarch64_oe_linux_gnu] compile-flags: --target aarch64-oe-linux-gnu
+//@ [aarch64_oe_linux_gnu] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_freebsd
 //@ [aarch64_unknown_freebsd] compile-flags: --target aarch64-unknown-freebsd
 //@ [aarch64_unknown_freebsd] needs-llvm-components: aarch64
@@ -163,6 +166,9 @@
 //@ revisions: armv7_linux_androideabi
 //@ [armv7_linux_androideabi] compile-flags: --target armv7-linux-androideabi
 //@ [armv7_linux_androideabi] needs-llvm-components: arm
+//@ revisions: armv7_oe_linux_gnueabihf
+//@ [armv7_oe_linux_gnueabihf] compile-flags: --target armv7-oe-linux-gnueabihf
+//@ [armv7_oe_linux_gnueabihf] needs-llvm-components: arm
 //@ revisions: armv7_rtems_eabihf
 //@ [armv7_rtems_eabihf] compile-flags: --target armv7-rtems-eabihf
 //@ [armv7_rtems_eabihf] needs-llvm-components: arm
@@ -268,6 +274,9 @@
 //@ revisions: i686_linux_android
 //@ [i686_linux_android] compile-flags: --target i686-linux-android
 //@ [i686_linux_android] needs-llvm-components: x86
+//@ revisions: i686_oe_linux_gnu
+//@ [i686_oe_linux_gnu] compile-flags: --target i686-oe-linux-gnu
+//@ [i686_oe_linux_gnu] needs-llvm-components: x86
 //@ revisions: i686_unknown_freebsd
 //@ [i686_unknown_freebsd] compile-flags: --target i686-unknown-freebsd
 //@ [i686_unknown_freebsd] needs-llvm-components: x86
@@ -499,6 +508,9 @@
 //@ revisions: riscv64_linux_android
 //@ [riscv64_linux_android] compile-flags: --target riscv64-linux-android
 //@ [riscv64_linux_android] needs-llvm-components: riscv
+//@ revisions: riscv64_oe_linux_gnu
+//@ [riscv64_oe_linux_gnu] compile-flags: --target riscv64-oe-linux-gnu
+//@ [riscv64_oe_linux_gnu] needs-llvm-components: riscv
 //@ revisions: riscv64_wrs_vxworks
 //@ [riscv64_wrs_vxworks] compile-flags: --target riscv64-wrs-vxworks
 //@ [riscv64_wrs_vxworks] needs-llvm-components: riscv
@@ -661,6 +673,9 @@
 //@ revisions: x86_64_lynx_lynxos178
 //@ [x86_64_lynx_lynxos178] compile-flags: --target x86_64-lynx-lynxos178
 //@ [x86_64_lynx_lynxos178] needs-llvm-components: x86
+//@ revisions: x86_64_oe_linux_gnu
+//@ [x86_64_oe_linux_gnu] compile-flags: --target x86_64-oe-linux-gnu
+//@ [x86_64_oe_linux_gnu] needs-llvm-components: x86
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
