@@ -36,7 +36,7 @@ fn xdg_home_dir() -> PathBuf {
     }
 }
 
-fn xdg_dir(env: &str, fallback_home_subdir: impl AsRef<OsStr>) -> PathBuf {
+fn xdg_dir(env: &str, fallback_home_subdir: &str) -> PathBuf {
     var_os(env)
         .filter(|s| !s.is_empty())
         .map(PathBuf::from)
@@ -96,8 +96,8 @@ pub fn cache_home_dir() -> PathBuf {
 pub struct XdgDirsIter(Option<OsString>);
 
 impl XdgDirsIter {
-    fn new(env: &str, default: impl AsRef<OsStr>) -> Self {
-        let dirs = var_os(env).filter(|s| !s.is_empty()).unwrap_or_else(|| default.as_ref().into());
+    fn new(env: &str, default: &str) -> Self {
+        let dirs = var_os(env).filter(|s| !s.is_empty()).unwrap_or_else(|| default.into());
         Self(Some(dirs))
     }
 }
