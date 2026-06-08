@@ -29,7 +29,7 @@ use std::{
 
 use base_db::{
     CrateOrigin, InternedSourceRootId, LangCrateOrigin, LibraryRoots, LocalRoots, SourceRootId,
-    source_root_crates,
+    salsa::Update, source_root_crates,
 };
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
@@ -40,7 +40,6 @@ use hir::{
 };
 use itertools::Itertools;
 use rayon::prelude::*;
-use salsa::Update;
 
 use crate::RootDatabase;
 
@@ -366,6 +365,25 @@ pub struct SymbolIndex<'db> {
     map: fst::Map<Vec<u8>>,
 }
 
+// SAFETY:
+// - It is safe to compare a `SymbolIndex` from a previous revision to a new one.
+// - FileSymbol<'db>: Update
+unsafe impl<'db> Update for SymbolIndex<'db>
+where
+    FileSymbol<'db>: Update,
+{
+    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
+        // SAFETY: Safe to dereference as per `salsa::Update` contract.
+        let this = unsafe { &mut *old_pointer };
+        if *this != new_value {
+            *this = new_value;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl<'db> SymbolIndex<'db> {
     /// The symbol index for a given source root within library_roots.
     pub fn library_symbols(
@@ -472,18 +490,6 @@ impl Eq for SymbolIndex<'_> {}
 impl Hash for SymbolIndex<'_> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.symbols.hash(hasher)
-    }
-}
-
-unsafe impl Update for SymbolIndex<'_> {
-    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-        let this = unsafe { &mut *old_pointer };
-        if *this == new_value {
-            false
-        } else {
-            *this = new_value;
-            true
-        }
     }
 }
 

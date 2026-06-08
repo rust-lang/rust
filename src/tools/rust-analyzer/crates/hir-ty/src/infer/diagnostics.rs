@@ -90,7 +90,7 @@ pub(super) struct InferenceTyLoweringContext<'db, 'a> {
     ctx: TyLoweringContext<'db, 'a>,
     diagnostics: &'a Diagnostics,
     source: InferenceTyDiagnosticSource,
-    defined_anon_consts: &'a RefCell<ThinVec<AnonConstId>>,
+    defined_anon_consts: &'a RefCell<ThinVec<AnonConstId<'db>>>,
 }
 
 impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
@@ -98,7 +98,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     pub(super) fn new(
         db: &'db dyn HirDatabase,
         resolver: &'a Resolver<'db>,
-        store: &'a ExpressionStore,
+        store: &'db ExpressionStore,
         diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
         def: ExpressionStoreOwnerId,
@@ -107,7 +107,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         lifetime_elision: LifetimeElisionKind<'db>,
         allow_using_generic_params: bool,
         infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
-        defined_anon_consts: &'a RefCell<ThinVec<AnonConstId>>,
+        defined_anon_consts: &'a RefCell<ThinVec<AnonConstId<'db>>>,
         lifetime_lowering_mode: LifetimeLoweringMode,
     ) -> Self {
         let mut ctx = TyLoweringContext::new(

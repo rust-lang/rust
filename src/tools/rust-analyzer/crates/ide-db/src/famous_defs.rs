@@ -222,7 +222,7 @@ impl FamousDefs<'_, '_> {
         Some(res)
     }
 
-    fn find_def(&self, path: &str) -> Option<ScopeDef> {
+    fn find_def(&self, path: &str) -> Option<ScopeDef<'_>> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;

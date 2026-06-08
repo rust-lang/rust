@@ -532,7 +532,7 @@ impl<'db> HirDisplay<'db> for Field {
     }
 }
 
-impl<'db> HirDisplay<'db> for TupleField {
+impl<'db> HirDisplay<'db> for TupleField<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         write!(f, "pub {}: ", self.name().display(f.db, f.edition()))?;
         self.ty(f.db).hir_fmt(f)

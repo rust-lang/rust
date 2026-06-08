@@ -9,7 +9,7 @@ use crate::db::HirDatabase;
 
 use super::{Ctor, DbInterner, SolverDefId};
 
-pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'_> {
+pub(crate) fn generics<'db>(interner: DbInterner<'db>, def: SolverDefId<'db>) -> Generics<'db> {
     let db = interner.db;
     let (def, consider_late_bound) = match (def.try_into(), def) {
         (Ok(def), _) => (def, false),

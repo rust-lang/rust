@@ -457,7 +457,7 @@ fn highlight_name(
 pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
     krate: Option<hir::Crate>,
-    def: Definition,
+    def: Definition<'_>,
     edition: Edition,
     is_ref: bool,
 ) -> Highlight {
@@ -864,7 +864,7 @@ fn highlight_name_ref_by_syntax(
     }
 }
 
-fn is_consumed_lvalue(node: &SyntaxNode, local: &hir::Local, db: &RootDatabase) -> bool {
+fn is_consumed_lvalue(node: &SyntaxNode, local: &hir::Local<'_>, db: &RootDatabase) -> bool {
     // When lvalues are passed as arguments and they're not Copy, then mark them as Consuming.
     parents_match(node.clone().into(), &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST])
         && !local.ty(db).is_copy(db)

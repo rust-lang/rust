@@ -9,6 +9,7 @@ use either::Either;
 use hir_def::HasModule;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
+use salsa::Update;
 use stdx::never;
 
 use crate::{
@@ -56,17 +57,17 @@ pub struct BorrowRegion {
     pub places: Vec<MirSpan>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BorrowckResult {
-    owner: Either<InferBodyId, InternedClosureId>,
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
+pub struct BorrowckResult<'db> {
+    owner: Either<InferBodyId<'db>, InternedClosureId<'db>>,
     pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
     pub moved_out_of_ref: Vec<MovedOutOfRef>,
     pub partially_moved: Vec<PartiallyMoved>,
     pub borrow_regions: Vec<BorrowRegion>,
 }
 
-impl BorrowckResult {
-    pub fn mir_body<'db>(&self, db: &'db dyn HirDatabase) -> &'db MirBody {
+impl<'db> BorrowckResult<'db> {
+    pub fn mir_body(&self, db: &'db dyn HirDatabase) -> &'db MirBody<'db> {
         match self.owner {
             Either::Left(it) => db.mir_body(it).unwrap(),
             Either::Right(it) => db.mir_body_for_closure(it).unwrap(),
@@ -76,23 +77,29 @@ impl BorrowckResult {
 
 fn all_mir_bodies<'db>(
     db: &'db dyn HirDatabase,
-    def: InferBodyId,
-    mut cb: impl FnMut(&'db MirBody, Either<InferBodyId, InternedClosureId>) -> BorrowckResult,
+    def: InferBodyId<'db>,
+    mut cb: impl FnMut(
+        &'db MirBody<'db>,
+        Either<InferBodyId<'db>, InternedClosureId<'db>>,
+    ) -> BorrowckResult<'db>,
     mut merge_from_closures: impl FnMut(
-        (&mut BorrowckResult, &'db MirBody),
-        (&BorrowckResult, &'db MirBody),
+        (&mut BorrowckResult<'db>, &'db MirBody<'db>),
+        (&BorrowckResult<'db>, &'db MirBody<'db>),
     ),
-) -> Result<Box<[BorrowckResult]>, MirLowerError> {
+) -> Result<Box<[BorrowckResult<'db>]>, MirLowerError<'db>> {
     fn for_closure<'db>(
         db: &'db dyn HirDatabase,
-        c: InternedClosureId,
-        results: &mut Vec<(BorrowckResult, &'db MirBody)>,
-        cb: &mut impl FnMut(&'db MirBody, Either<InferBodyId, InternedClosureId>) -> BorrowckResult,
+        c: InternedClosureId<'db>,
+        results: &mut Vec<(BorrowckResult<'db>, &'db MirBody<'db>)>,
+        cb: &mut impl FnMut(
+            &'db MirBody<'db>,
+            Either<InferBodyId<'db>, InternedClosureId<'db>>,
+        ) -> BorrowckResult<'db>,
         merge_from_closures: &mut impl FnMut(
-            (&mut BorrowckResult, &'db MirBody),
-            (&BorrowckResult, &'db MirBody),
+            (&mut BorrowckResult<'db>, &'db MirBody<'db>),
+            (&BorrowckResult<'db>, &'db MirBody<'db>),
         ),
-    ) -> Result<(), MirLowerError> {
+    ) -> Result<(), MirLowerError<'db>> {
         match db.mir_body_for_closure(c) {
             Ok(body) => {
                 let parent_index = results.len();
@@ -108,8 +115,11 @@ fn all_mir_bodies<'db>(
     }
 
     fn merge<'db>(
-        results: &mut [(BorrowckResult, &'db MirBody)],
-        merge: &mut impl FnMut((&mut BorrowckResult, &'db MirBody), (&BorrowckResult, &'db MirBody)),
+        results: &mut [(BorrowckResult<'db>, &'db MirBody<'db>)],
+        merge: &mut impl FnMut(
+            (&mut BorrowckResult<'db>, &'db MirBody<'db>),
+            (&BorrowckResult<'db>, &'db MirBody<'db>),
+        ),
         parent_index: usize,
     ) {
         let (parent_and_before, children) = results.split_at_mut(parent_index + 1);
@@ -133,15 +143,18 @@ fn all_mir_bodies<'db>(
     }
 }
 
-impl InferBodyId {
-    pub fn borrowck(self, db: &dyn HirDatabase) -> Result<&[BorrowckResult], MirLowerError> {
+impl<'db> InferBodyId<'db> {
+    pub fn borrowck(
+        self,
+        db: &'db dyn HirDatabase,
+    ) -> Result<&'db [BorrowckResult<'db>], MirLowerError<'db>> {
         return borrowck_query(db, self).map_err(|e| e.clone());
 
         #[salsa::tracked(returns(as_deref), lru = 2024)]
-        fn borrowck_query(
-            db: &dyn HirDatabase,
-            def: InferBodyId,
-        ) -> Result<Box<[BorrowckResult]>, MirLowerError> {
+        fn borrowck_query<'db>(
+            db: &'db dyn HirDatabase,
+            def: InferBodyId<'db>,
+        ) -> Result<Box<[BorrowckResult<'db>]>, MirLowerError<'db>> {
             let _p = tracing::info_span!("InferBodyId::borrowck").entered();
             let module = def.module(db);
             let interner = DbInterner::new_with(db, module.krate(db));
@@ -198,7 +211,7 @@ impl InferBodyId {
 fn moved_out_of_ref<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody,
+    body: &MirBody<'db>,
 ) -> Vec<MovedOutOfRef> {
     let db = infcx.interner.db;
     let mut result = vec![];
@@ -293,7 +306,7 @@ fn moved_out_of_ref<'db>(
 fn partially_moved<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody,
+    body: &MirBody<'db>,
 ) -> Vec<PartiallyMoved> {
     let db = infcx.interner.db;
     let mut result = vec![];
@@ -375,7 +388,7 @@ fn partially_moved<'db>(
     result
 }
 
-fn borrow_regions(db: &dyn HirDatabase, body: &MirBody) -> Vec<BorrowRegion> {
+fn borrow_regions<'db>(db: &'db dyn HirDatabase, body: &MirBody<'db>) -> Vec<BorrowRegion> {
     let mut borrows = FxHashMap::default();
     for (_, block) in body.basic_blocks.iter() {
         db.unwind_if_revision_cancelled();
@@ -428,7 +441,7 @@ enum ProjectionCase {
 fn place_case<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody,
+    body: &MirBody<'db>,
     lvalue: &Place,
 ) -> ProjectionCase {
     let mut is_part_of = false;
@@ -455,13 +468,13 @@ fn place_case<'db>(
 /// `Uninit` and `drop` and similar after initialization.
 fn ever_initialized_map(
     db: &dyn HirDatabase,
-    body: &MirBody,
+    body: &MirBody<'_>,
 ) -> ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> {
     let mut result: ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>> =
         body.basic_blocks.iter().map(|it| (it.0, ArenaMap::default())).collect();
     fn dfs(
         db: &dyn HirDatabase,
-        body: &MirBody,
+        body: &MirBody<'_>,
         l: LocalId,
         stack: &mut Vec<BasicBlockId>,
         result: &mut ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>>,
@@ -574,7 +587,7 @@ fn record_usage_for_operand(arg: &Operand, result: &mut ArenaMap<LocalId, Mutabi
 fn mutability_of_locals<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
-    body: &MirBody,
+    body: &MirBody<'db>,
 ) -> ArenaMap<LocalId, MutabilityReason> {
     let db = infcx.interner.db;
     let mut result: ArenaMap<LocalId, MutabilityReason> =

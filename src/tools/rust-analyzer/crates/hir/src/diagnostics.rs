@@ -137,7 +137,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MovedOutOfRef<'db>,
     MutRefInImmRefPat,
     MutableRefBinding,
-    NeedMut,
+    NeedMut<'db>,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
     NonExhaustiveRecordPat,
@@ -168,8 +168,8 @@ diagnostics![AnyDiagnostic<'db> ->
     UnresolvedMethodCall<'db>,
     UnresolvedModule,
     UnresolvedIdent,
-    UnusedMut,
-    UnusedVariable,
+    UnusedMut<'db>,
+    UnusedVariable<'db>,
     GenericArgsProhibited,
     ParenthesizedGenericArgsWithoutFnTrait,
     BadRtn,
@@ -474,19 +474,19 @@ pub struct TypeMismatch<'db> {
 }
 
 #[derive(Debug)]
-pub struct NeedMut {
-    pub local: Local,
+pub struct NeedMut<'db> {
+    pub local: Local<'db>,
     pub span: InFile<SyntaxNodePtr>,
 }
 
 #[derive(Debug)]
-pub struct UnusedMut {
-    pub local: Local,
+pub struct UnusedMut<'db> {
+    pub local: Local<'db>,
 }
 
 #[derive(Debug)]
-pub struct UnusedVariable {
-    pub local: Local,
+pub struct UnusedVariable<'db> {
+    pub local: Local<'db>,
 }
 
 #[derive(Debug)]
@@ -835,7 +835,7 @@ impl<'db> AnyDiagnostic<'db> {
         d: &'db InferenceDiagnostic,
         source_map: &hir_def::expr_store::BodySourceMap,
         sig_map: &hir_def::expr_store::ExpressionStoreSourceMap,
-        type_owner: TypeOwnerId,
+        type_owner: TypeOwnerId<'db>,
     ) -> Option<AnyDiagnostic<'db>> {
         let expr_syntax = |expr| Self::expr_syntax(expr, source_map);
         let pat_syntax = |pat| Self::pat_syntax(pat, source_map);
@@ -1148,7 +1148,7 @@ impl<'db> AnyDiagnostic<'db> {
         db: &'db dyn HirDatabase,
         d: &'db SolverDiagnosticKind,
         span: SpanSyntax,
-        type_owner: TypeOwnerId,
+        type_owner: TypeOwnerId<'db>,
     ) -> Option<AnyDiagnostic<'db>> {
         let interner = DbInterner::new_no_crate(db);
         Some(match d {

@@ -254,7 +254,7 @@ impl TryFrom<AssocItem> for GenericDefId {
     }
 }
 
-impl From<(DefWithBodyId, BindingId)> for Local {
+impl<'db> From<(DefWithBodyId, BindingId)> for Local<'db> {
     fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
         Local { parent: parent.into(), parent_infer: parent.into(), binding_id }
     }

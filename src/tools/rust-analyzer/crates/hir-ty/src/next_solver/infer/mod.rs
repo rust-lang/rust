@@ -296,7 +296,7 @@ pub struct TypeTrace<'db> {
 
 /// Times when we replace bound regions with existentials:
 #[derive(Clone, Copy, Debug)]
-pub enum BoundRegionConversionTime {
+pub enum BoundRegionConversionTime<'db> {
     /// when a fn is called
     FnCall,
 
@@ -304,7 +304,7 @@ pub enum BoundRegionConversionTime {
     HigherRankedType,
 
     /// when projecting an associated type
-    AssocTypeProjection(SolverDefId),
+    AssocTypeProjection(SolverDefId<'db>),
 }
 
 /// See the `region_obligations` field for more information.
@@ -839,7 +839,7 @@ impl<'db> InferCtxt<'db> {
 
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
     /// each type/region parameter to a fresh inference variable.
-    pub fn fresh_args_for_item(&self, span: Span, def_id: SolverDefId) -> GenericArgs<'db> {
+    pub fn fresh_args_for_item(&self, span: Span, def_id: SolverDefId<'db>) -> GenericArgs<'db> {
         GenericArgs::for_item(self.interner, def_id, |_index, kind, _, _| {
             self.var_for_def(kind, span)
         })
@@ -849,7 +849,7 @@ impl<'db> InferCtxt<'db> {
     pub fn fill_rest_fresh_args(
         &self,
         span: Span,
-        def_id: SolverDefId,
+        def_id: SolverDefId<'db>,
         first: impl IntoIterator<Item = GenericArg<'db>>,
     ) -> GenericArgs<'db> {
         GenericArgs::fill_rest(self.interner, def_id, first, |_index, kind, _| {
@@ -903,7 +903,7 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline(always)]
-    pub fn can_define_opaque_ty(&self, id: impl Into<SolverDefId>) -> bool {
+    pub fn can_define_opaque_ty(&self, id: impl Into<SolverDefId<'db>>) -> bool {
         match self.typing_mode_raw().assert_not_erased() {
             TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators.contains(&id.into())
@@ -1102,7 +1102,7 @@ impl<'db> InferCtxt<'db> {
     pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
-        _lbrct: BoundRegionConversionTime,
+        _lbrct: BoundRegionConversionTime<'db>,
         value: Binder<'db, T>,
     ) -> T
     where

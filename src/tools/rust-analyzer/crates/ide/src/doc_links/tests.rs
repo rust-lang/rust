@@ -86,7 +86,7 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 fn def_under_cursor<'db>(
     sema: &Semantics<'db, RootDatabase>,
     position: &FilePosition,
-) -> (Definition, Cow<'db, hir::Docs>) {
+) -> (Definition<'db>, Cow<'db, hir::Docs>) {
     let (docs, def) = sema
         .parse_guess_edition(position.file_id)
         .syntax()
@@ -104,7 +104,7 @@ fn def_under_cursor<'db>(
 fn node_to_def<'db>(
     sema: &Semantics<'db, RootDatabase>,
     node: &SyntaxNode,
-) -> Option<Option<(Option<Cow<'db, hir::Docs>>, Definition)>> {
+) -> Option<Option<(Option<Cow<'db, hir::Docs>>, Definition<'db>)>> {
     Some(match_ast! {
         match node {
             ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Module(def))),

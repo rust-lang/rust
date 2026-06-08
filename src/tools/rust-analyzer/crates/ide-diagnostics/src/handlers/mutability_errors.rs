@@ -7,7 +7,10 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // Diagnostic: need-mut
 //
 // This diagnostic is triggered on mutating an immutable variable.
-pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NeedMut) -> Option<Diagnostic> {
+pub(crate) fn need_mut(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::NeedMut<'_>,
+) -> Option<Diagnostic> {
     let root = d.span.file_id.parse_or_expand(ctx.sema.db);
     let node = d.span.value.to_node(&root);
     let mut span = d.span;
@@ -64,7 +67,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NeedMut) -> Op
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
 pub(crate) fn unused_mut(
     ctx: &DiagnosticsContext<'_, '_>,
-    d: &hir::UnusedMut,
+    d: &hir::UnusedMut<'_>,
 ) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
     let fixes = (|| {

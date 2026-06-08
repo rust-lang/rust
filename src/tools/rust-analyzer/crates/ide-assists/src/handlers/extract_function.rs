@@ -324,7 +324,7 @@ struct Function<'db> {
     control_flow: ControlFlow<'db>,
     ret_ty: RetType<'db>,
     body: FunctionBody,
-    outliving_locals: Vec<OutlivedLocal>,
+    outliving_locals: Vec<OutlivedLocal<'db>>,
     /// Whether at least one of the container's tail expr is contained in the range we're extracting.
     contains_tail_expr: bool,
     mods: ContainerInfo<'db>,
@@ -332,7 +332,7 @@ struct Function<'db> {
 
 #[derive(Debug)]
 struct Param<'db> {
-    var: Local,
+    var: Local<'db>,
     ty: hir::Type<'db>,
     move_local: bool,
     requires_mut: bool,
@@ -441,8 +441,8 @@ enum FunctionBody {
 }
 
 #[derive(Debug)]
-struct OutlivedLocal {
-    local: Local,
+struct OutlivedLocal<'db> {
+    local: Local<'db>,
     mut_usage_outside_body: bool,
 }
 
@@ -452,7 +452,7 @@ struct OutlivedLocal {
 struct LocalUsages(ide_db::search::UsageSearchResult);
 
 impl LocalUsages {
-    fn find_local_usages(ctx: &AssistContext<'_, '_>, var: Local) -> Self {
+    fn find_local_usages<'db>(ctx: &AssistContext<'_, 'db>, var: Local<'db>) -> Self {
         Self(
             Definition::Local(var)
                 .usages(&ctx.sema)
@@ -807,10 +807,10 @@ impl FunctionBody {
 impl FunctionBody {
     /// Analyzes a function body, returning the used local variables that are referenced in it as well as
     /// whether it contains an await expression.
-    fn analyze(
+    fn analyze<'db>(
         &self,
-        sema: &Semantics<'_, RootDatabase>,
-    ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
+        sema: &Semantics<'db, RootDatabase>,
+    ) -> (FxIndexSet<Local<'db>>, Option<ast::SelfParam>) {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
 
@@ -819,7 +819,7 @@ impl FunctionBody {
             FunctionBody::Span { parent, text_range, .. } => (*text_range, Either::Right(parent)),
         };
 
-        let mut add_name_if_local = |local_ref: Local| {
+        let mut add_name_if_local = |local_ref: Local<'db>| {
             // locals defined inside macros are not relevant to us
             let InFile { file_id, value } = local_ref.primary_source(sema.db).source;
             if !file_id.is_macro() {
@@ -965,10 +965,10 @@ impl FunctionBody {
     }
 
     /// Local variables defined inside `body` that are accessed outside of it
-    fn ret_values<'a>(
+    fn ret_values<'a, 'db>(
         &self,
-        ctx: &'a AssistContext<'_, '_>,
-    ) -> impl Iterator<Item = OutlivedLocal> + 'a {
+        ctx: &'a AssistContext<'_, 'db>,
+    ) -> impl Iterator<Item = OutlivedLocal<'db>> + 'a {
         let range = self.text_range();
         locals_defined_in_body(&ctx.sema, self)
             .into_iter()
@@ -1070,7 +1070,7 @@ impl FunctionBody {
         &self,
         ctx: &AssistContext<'_, 'db>,
         container_info: &ContainerInfo<'db>,
-        locals: FxIndexSet<Local>,
+        locals: FxIndexSet<Local<'db>>,
     ) -> Vec<Param<'db>> {
         locals
             .into_iter()
@@ -1254,10 +1254,10 @@ fn path_element_of(reference: &FileReference) -> Option<ast::Expr> {
 }
 
 /// list local variables defined inside `body`
-fn locals_defined_in_body(
-    sema: &Semantics<'_, RootDatabase>,
+fn locals_defined_in_body<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     body: &FunctionBody,
-) -> FxIndexSet<Local> {
+) -> FxIndexSet<Local<'db>> {
     // FIXME: this doesn't work well with macros
     //        see https://github.com/rust-lang/rust-analyzer/pull/7535#discussion_r570048550
     let mut res = FxIndexSet::default();
@@ -1272,11 +1272,11 @@ fn locals_defined_in_body(
 }
 
 /// Returns usage details if local variable is used after(outside of) body
-fn local_outlives_body(
-    ctx: &AssistContext<'_, '_>,
+fn local_outlives_body<'db>(
+    ctx: &AssistContext<'_, 'db>,
     body_range: TextRange,
-    local: Local,
-) -> Option<OutlivedLocal> {
+    local: Local<'db>,
+) -> Option<OutlivedLocal<'db>> {
     let usages = LocalUsages::find_local_usages(ctx, local);
     let mut has_mut_usages = false;
     let mut any_outlives = false;
@@ -1299,7 +1299,7 @@ fn local_outlives_body(
 fn is_defined_outside_of_body(
     ctx: &AssistContext<'_, '_>,
     body: &FunctionBody,
-    src: &LocalSource,
+    src: &LocalSource<'_>,
 ) -> bool {
     src.original_file(ctx.db()) == ctx.file_id() && !body.contains_node(src.syntax())
 }
@@ -1547,7 +1547,7 @@ impl<'db> FlowHandler<'db> {
 fn path_expr_from_local(
     make: &SyntaxFactory,
     ctx: &AssistContext<'_, '_>,
-    var: Local,
+    var: Local<'_>,
     edition: Edition,
 ) -> ast::Expr {
     let name = var.name(ctx.db()).display(ctx.db(), edition).to_string();
@@ -2012,10 +2012,10 @@ fn make_ty(
     make.ty(&ty_str)
 }
 
-fn rewrite_body_segment(
-    ctx: &AssistContext<'_, '_>,
+fn rewrite_body_segment<'db>(
+    ctx: &AssistContext<'_, 'db>,
     to_this_param: Option<ast::SelfParam>,
-    params: &[Param<'_>],
+    params: &[Param<'db>],
     handler: &FlowHandler<'_>,
     syntax: &SyntaxNode,
 ) -> SyntaxNode {
@@ -2030,15 +2030,15 @@ fn rewrite_body_segment(
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
-fn fix_param_usages(
+fn fix_param_usages<'db>(
     editor: &SyntaxEditor,
     source_syntax: &SyntaxNode,
     syntax: &SyntaxNode,
-    ctx: &AssistContext<'_, '_>,
-    to_this_param: Option<Local>,
-    params: &[Param<'_>],
+    ctx: &AssistContext<'_, 'db>,
+    to_this_param: Option<Local<'db>>,
+    params: &[Param<'db>],
 ) {
-    let mut usages_for_param: Vec<(&Param<'_>, Vec<ast::Expr>)> = Vec::new();
+    let mut usages_for_param: Vec<(&Param<'db>, Vec<ast::Expr>)> = Vec::new();
     let mut usages_for_self_param: Vec<ast::Expr> = Vec::new();
     let source_range = source_syntax.text_range();
     let syntax_offset = source_range.start() - syntax.text_range().start();

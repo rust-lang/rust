@@ -225,7 +225,7 @@ impl<'db> DbInterner<'db> {
     /// free variants attached to `all_outlive_scope`.
     pub fn liberate_late_bound_regions<T>(
         self,
-        all_outlive_scope: SolverDefId,
+        all_outlive_scope: SolverDefId<'db>,
         value: Binder<'db, T>,
     ) -> T
     where

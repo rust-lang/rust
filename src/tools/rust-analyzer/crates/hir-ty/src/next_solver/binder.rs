@@ -1,5 +1,6 @@
 use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
+use salsa::Update;
 
 use crate::next_solver::{
     Binder, Clauses, DbInterner, EarlyBinder, FnSig, FnSigKind, GenericArg, PolyFnSig,
@@ -7,7 +8,7 @@ use crate::next_solver::{
     TraitRef, Ty,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct StoredEarlyBinder<T>(T);
 
 impl<T> StoredEarlyBinder<T> {
@@ -102,7 +103,7 @@ impl StoredPolyFnSig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable, Update)]
 pub struct StoredTraitRef {
     #[type_visitable(ignore)]
     def_id: TraitId,

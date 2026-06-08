@@ -9,15 +9,15 @@ use crate::{
     render::render_type_inference,
 };
 
-pub(crate) fn complete_type_path(
+pub(crate) fn complete_type_path<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_, '_>,
+    ctx: &CompletionContext<'_, 'db>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     location: &TypeLocation,
 ) {
     let _p = tracing::info_span!("complete_type_path").entered();
 
-    let scope_def_applicable = |def| {
+    let scope_def_applicable = |def: ScopeDef<'db>| {
         use hir::{GenericParam::*, ModuleDef::*};
         match def {
             ScopeDef::GenericParam(LifetimeParam(_)) => location.complete_lifetimes(),

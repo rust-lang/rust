@@ -77,7 +77,7 @@ impl<'db> Region<'db> {
 
     pub fn new_late_param(
         interner: DbInterner<'db>,
-        scope: SolverDefId,
+        scope: SolverDefId<'db>,
         bound_region: BoundRegion<'db>,
     ) -> Region<'db> {
         let late_bound_region = LateParamRegion { scope, bound_region };
@@ -169,7 +169,7 @@ pub struct EarlyParamRegion {
 /// This denotes some region at least as big as `scope`. It is similar to a placeholder region
 /// created when entering a binder, except it always lives in the root universe.
 pub struct LateParamRegion<'db> {
-    pub scope: SolverDefId,
+    pub scope: SolverDefId<'db>,
     pub bound_region: BoundRegion<'db>,
 }
 

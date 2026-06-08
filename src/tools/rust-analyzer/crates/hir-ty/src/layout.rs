@@ -176,7 +176,7 @@ pub fn layout_of_ty_query(
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
     let ty = infer_ctxt
-        .at(&cause, trait_env.param_env())
+        .at(&cause, trait_env.param_env(db))
         .deeply_normalize(ty.as_ref())
         .unwrap_or(ty.as_ref());
     let result = match ty.kind() {
@@ -190,7 +190,7 @@ pub fn layout_of_ty_query(
                             s,
                             repr.packed(),
                             &args,
-                            trait_env.as_ref(),
+                            trait_env.as_ref(db),
                             target,
                         );
                     }
@@ -355,11 +355,11 @@ pub fn layout_of_ty_query(
                 PatternKind::Range { start, end } => {
                     if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
                         scalar.valid_range_mut().start = extract_const_value(start)?
-                            .try_to_bits(db, trait_env.as_ref())
+                            .try_to_bits(db, trait_env.as_ref(db))
                             .ok_or(LayoutError::Unknown)?;
 
                         scalar.valid_range_mut().end = extract_const_value(end)?
-                            .try_to_bits(db, trait_env.as_ref())
+                            .try_to_bits(db, trait_env.as_ref(db))
                             .ok_or(LayoutError::Unknown)?;
 
                         // FIXME(pattern_types): create implied bounds from pattern types in signatures
@@ -419,10 +419,10 @@ pub fn layout_of_ty_query(
                                 .map(|pat| match pat.kind() {
                                     PatternKind::Range { start, end } => Ok::<_, LayoutError>((
                                         extract_const_value(start)?
-                                            .try_to_bits(db, trait_env.as_ref())
+                                            .try_to_bits(db, trait_env.as_ref(db))
                                             .ok_or(LayoutError::Unknown)?,
                                         extract_const_value(end)?
-                                            .try_to_bits(db, trait_env.as_ref())
+                                            .try_to_bits(db, trait_env.as_ref(db))
                                             .ok_or(LayoutError::Unknown)?,
                                     )),
                                     PatternKind::NotNull | PatternKind::Or(_) => {

@@ -201,6 +201,7 @@ macro_rules! impl_stored_interned_slice {
                 Self { interned: it.interned.to_owned() }
             }
 
+            // FIXME: This transmute is not safe as is!
             #[inline]
             pub fn as_ref<'a, 'db>(&'a self) -> $name<'db> {
                 let it = $name { interned: self.interned.as_ref() };
@@ -212,7 +213,7 @@ macro_rules! impl_stored_interned_slice {
         unsafe impl salsa::Update for $stored_name {
             unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
                 // SAFETY: Comparing by (pointer) equality is safe.
-                unsafe { crate::utils::unsafe_update_eq(old_pointer, new_value) }
+                unsafe { salsa::update_fallback(old_pointer, new_value) }
             }
         }
 
@@ -285,7 +286,7 @@ macro_rules! impl_stored_interned {
 
         unsafe impl salsa::Update for $stored_name {
             unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-                unsafe { crate::utils::unsafe_update_eq(old_pointer, new_value) }
+                unsafe { salsa::update_fallback(old_pointer, new_value) }
             }
         }
 
@@ -378,7 +379,7 @@ impl<'db> DbInterner<'db> {
     }
 
     #[inline]
-    pub fn default_types<'a>(&self) -> &'a crate::next_solver::DefaultAny<'db> {
+    pub fn default_types(&self) -> &'db crate::next_solver::DefaultAny<'db> {
         crate::next_solver::default_types(self.db)
     }
 
@@ -878,18 +879,18 @@ macro_rules! is_lang_item {
 }
 
 impl<'db> Interner for DbInterner<'db> {
-    type DefId = SolverDefId;
-    type LocalDefId = SolverDefId;
+    type DefId = SolverDefId<'db>;
+    type LocalDefId = SolverDefId<'db>;
     type LocalDefIds = SolverDefIds<'db>;
     type TraitId = TraitIdWrapper;
     type ForeignId = TypeAliasIdWrapper;
     type FunctionId = CallableIdWrapper;
-    type ClosureId = ClosureIdWrapper;
-    type CoroutineClosureId = CoroutineClosureIdWrapper;
-    type CoroutineId = CoroutineIdWrapper;
+    type ClosureId = ClosureIdWrapper<'db>;
+    type CoroutineClosureId = CoroutineClosureIdWrapper<'db>;
+    type CoroutineId = CoroutineIdWrapper<'db>;
     type AdtId = AdtIdWrapper;
     type ImplId = AnyImplId;
-    type UnevaluatedConstId = GeneralConstIdWrapper;
+    type UnevaluatedConstId = GeneralConstIdWrapper<'db>;
     type TraitAssocTyId = TraitAssocTyId;
     type TraitAssocConstId = TraitAssocConstId;
     type TraitAssocTermId = TraitAssocTermId;
@@ -1105,7 +1106,7 @@ impl<'db> Interner for DbInterner<'db> {
         AdtDef::new(def_id.0, self)
     }
 
-    fn alias_term_kind_from_def_id(self, def_id: SolverDefId) -> AliasTermKind<'db> {
+    fn alias_term_kind_from_def_id(self, def_id: SolverDefId<'db>) -> AliasTermKind<'db> {
         match def_id {
             SolverDefId::InternedOpaqueTyId(def_id) => {
                 AliasTermKind::OpaqueTy { def_id: def_id.into() }
@@ -1608,7 +1609,7 @@ impl<'db> Interner for DbInterner<'db> {
     ) {
         let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
         let trait_block = trait_def_id.0.loc(self.db).container.block(self.db);
-        let mut consider_impls_for_simplified_type = |simp: SimplifiedType| {
+        let mut consider_impls_for_simplified_type = |simp: SimplifiedType<'_>| {
             let type_block = simp.def().and_then(|def_id| {
                 let module = match def_id {
                     SolverDefId::AdtId(AdtId::StructId(id)) => id.module(self.db),
@@ -1973,14 +1974,14 @@ impl<'db> Interner for DbInterner<'db> {
 
         return SolverDefIds::new_from_slice(&result);
 
-        struct CoroutinesVisitor<'a> {
-            db: &'a dyn HirDatabase,
-            owner: InferBodyId,
-            store: &'a ExpressionStore,
-            coroutines: &'a mut Vec<SolverDefId>,
+        struct CoroutinesVisitor<'a, 'db> {
+            db: &'db dyn HirDatabase,
+            owner: InferBodyId<'db>,
+            store: &'db ExpressionStore,
+            coroutines: &'a mut Vec<SolverDefId<'db>>,
         }
 
-        impl StoreVisitor for CoroutinesVisitor<'_> {
+        impl<'db> StoreVisitor for CoroutinesVisitor<'_, 'db> {
             fn on_expr(&mut self, expr: ExprId) {
                 if let hir_def::hir::Expr::Closure {
                     closure_kind:
@@ -2266,7 +2267,10 @@ impl<'db> DbInterner<'db> {
     }
 }
 
-fn predicates_of(db: &dyn HirDatabase, def_id: SolverDefId) -> &GenericPredicates {
+fn predicates_of<'db>(
+    db: &'db dyn HirDatabase,
+    def_id: SolverDefId<'db>,
+) -> &'db GenericPredicates {
     match def_id {
         SolverDefId::BuiltinDeriveImplId(impl_) => crate::builtin_derive::predicates(db, impl_),
         SolverDefId::AnonConstId(anon_const) => {
@@ -2321,13 +2325,13 @@ macro_rules! TrivialTypeTraversalImpls {
 }
 
 TrivialTypeTraversalImpls! {
-    SolverDefId,
+    SolverDefId<'_>,
     TraitIdWrapper,
     TypeAliasIdWrapper,
     CallableIdWrapper,
-    ClosureIdWrapper,
-    CoroutineIdWrapper,
-    CoroutineClosureIdWrapper,
+    ClosureIdWrapper<'_>,
+    CoroutineIdWrapper<'_>,
+    CoroutineClosureIdWrapper<'_>,
     AdtIdWrapper,
     TraitAssocTyId,
     TraitAssocConstId,
@@ -2343,7 +2347,7 @@ TrivialTypeTraversalImpls! {
     InherentAssocTermId,
     OpaqueTyIdWrapper,
     AnyImplId,
-    GeneralConstIdWrapper,
+    GeneralConstIdWrapper<'_>,
     Safety,
     Span,
     ParamConst,

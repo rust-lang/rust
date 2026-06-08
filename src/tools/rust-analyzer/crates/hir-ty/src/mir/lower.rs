@@ -23,6 +23,7 @@ use la_arena::{ArenaMap, RawIdx};
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
+use salsa::Update;
 use span::{Edition, FileId};
 use syntax::TextRange;
 
@@ -80,15 +81,15 @@ struct DropScope {
 }
 
 struct MirLowerCtx<'a, 'db> {
-    result: MirBody,
-    owner: InferBodyId,
+    result: MirBody<'db>,
+    owner: InferBodyId<'db>,
     store_owner: ExpressionStoreOwnerId,
     current_loop_blocks: Option<LoopBlocks>,
     labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'db dyn HirDatabase,
     store: &'a ExpressionStore,
-    infer: &'a InferenceResult,
+    infer: &'a InferenceResult<'db>,
     types: &'db crate::next_solver::DefaultAny<'db>,
     resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
@@ -97,9 +98,9 @@ struct MirLowerCtx<'a, 'db> {
 }
 
 // FIXME: Make this smaller, its stored in database queries
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MirLowerError {
-    ConstEvalError(Box<str>, Box<ConstEvalError>),
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
+pub enum MirLowerError<'db> {
+    ConstEvalError(Box<str>, Box<ConstEvalError<'db>>),
     LayoutError(LayoutError),
     IncompleteExpr,
     IncompletePattern,
@@ -110,7 +111,7 @@ pub enum MirLowerError {
     UnresolvedMethod(String),
     UnresolvedField,
     UnsizedTemporary(StoredTy),
-    MissingFunctionDefinition(InferBodyId, ExprId),
+    MissingFunctionDefinition(InferBodyId<'db>, ExprId),
     HasErrors,
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
@@ -168,7 +169,7 @@ impl Drop for DropScopeToken {
 //     }
 // }
 
-impl MirLowerError {
+impl MirLowerError<'_> {
     pub fn pretty_print(
         &self,
         f: &mut String,
@@ -265,13 +266,13 @@ macro_rules! implementation_error {
     }};
 }
 
-impl From<LayoutError> for MirLowerError {
+impl From<LayoutError> for MirLowerError<'_> {
     fn from(value: LayoutError) -> Self {
         MirLowerError::LayoutError(value)
     }
 }
 
-impl MirLowerError {
+impl MirLowerError<'_> {
     fn unresolved_path(
         db: &dyn HirDatabase,
         p: &Path,
@@ -285,14 +286,14 @@ impl MirLowerError {
     }
 }
 
-type Result<'db, T> = std::result::Result<T, MirLowerError>;
+type Result<'db, T> = std::result::Result<T, MirLowerError<'db>>;
 
 impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        owner: InferBodyId,
+        owner: InferBodyId<'db>,
         store: &'a ExpressionStore,
-        infer: &'a InferenceResult,
+        infer: &'a InferenceResult<'db>,
     ) -> Self {
         let mut basic_blocks = Arena::new();
         let start_block = basic_blocks.alloc(BasicBlock {
@@ -1525,7 +1526,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_const(
         &mut self,
-        const_id: GeneralConstId,
+        const_id: GeneralConstId<'db>,
         prev_block: BasicBlockId,
         place: PlaceRef<'db>,
         subst: GenericArgs<'db>,
@@ -1539,7 +1540,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_const_to_operand(
         &mut self,
         subst: GenericArgs<'db>,
-        const_id: GeneralConstId,
+        const_id: GeneralConstId<'db>,
     ) -> Result<'db, Operand> {
         let konst = Const::new_unevaluated(
             self.interner(),
@@ -2126,8 +2127,8 @@ fn cast_kind<'db>(
 #[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_for_closure_cycle_result)]
 pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
-    closure: InternedClosureId,
-) -> Result<'db, MirBody> {
+    closure: InternedClosureId<'db>,
+) -> Result<'db, MirBody<'db>> {
     let InternedClosure { owner: body_owner, expr, .. } = closure.loc(db);
     let store = ExpressionStore::of(db, body_owner.expression_store_owner(db));
     let infer = InferenceResult::of(db, body_owner);
@@ -2283,7 +2284,10 @@ pub fn mir_body_for_closure_query<'db>(
 }
 
 #[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_cycle_result)]
-pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result<'db, MirBody> {
+pub fn mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
+    def: InferBodyId<'db>,
+) -> Result<'db, MirBody<'db>> {
     let krate = def.krate(db);
     let edition = krate.data(db).edition;
     let detail = match def {
@@ -2326,16 +2330,16 @@ pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result
 fn mir_body_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _def: InferBodyId,
-) -> Result<'db, MirBody> {
+    _def: InferBodyId<'db>,
+) -> Result<'db, MirBody<'db>> {
     Err(MirLowerError::Loop)
 }
 
 fn mir_body_for_closure_cycle_result<'db>(
     _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _def: InternedClosureId,
-) -> Result<'db, MirBody> {
+    _def: InternedClosureId<'db>,
+) -> Result<'db, MirBody<'db>> {
     Err(MirLowerError::Loop)
 }
 
@@ -2343,13 +2347,13 @@ fn mir_body_for_closure_cycle_result<'db>(
 /// then delegates to [`lower_to_mir_with_store`].
 pub fn lower_body_to_mir<'db>(
     db: &'db dyn HirDatabase,
-    owner: InferBodyId,
+    owner: InferBodyId<'db>,
     store: &ExpressionStore,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'db>,
     root_expr: ExprId,
     self_param: Option<BindingId>,
     params: &[Param<PatId>],
-) -> Result<'db, MirBody> {
+) -> Result<'db, MirBody<'db>> {
     // Extract params and self_param only when lowering the body's root expression for a function.
     if let Some(fid) = owner.as_function() {
         let callable_sig = {
@@ -2383,13 +2387,13 @@ pub fn lower_body_to_mir<'db>(
 ///   const (picks bindings owned by `root_expr`).
 pub fn lower_to_mir_with_store<'db>(
     db: &'db dyn HirDatabase,
-    owner: InferBodyId,
+    owner: InferBodyId<'db>,
     store: &ExpressionStore,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'db>,
     root_expr: ExprId,
     params: impl Iterator<Item = (PatId, Ty<'db>)> + Clone,
     self_param: Option<(BindingId, Ty<'db>)>,
-) -> Result<'db, MirBody> {
+) -> Result<'db, MirBody<'db>> {
     if infer.has_type_mismatches() || infer.is_erroneous() {
         return Err(MirLowerError::HasErrors);
     }

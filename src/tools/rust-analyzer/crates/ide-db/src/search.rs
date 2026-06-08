@@ -286,7 +286,7 @@ impl IntoIterator for SearchScope {
     }
 }
 
-impl Definition {
+impl<'db> Definition<'db> {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = tracing::info_span!("search_scope").entered();
 
@@ -440,7 +440,7 @@ impl Definition {
         }
     }
 
-    pub fn usages<'a, 'db>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
+    pub fn usages<'a>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
         FindUsages {
             def: self,
             rename: None,
@@ -457,7 +457,7 @@ impl Definition {
 
 #[derive(Clone)]
 pub struct FindUsages<'a, 'db> {
-    def: Definition,
+    def: Definition<'db>,
     rename: Option<&'a Rename>,
     sema: &'a Semantics<'db, RootDatabase>,
     scope: Option<&'a SearchScope>,
@@ -678,7 +678,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                 db: &RootDatabase,
                 to_process: &mut Vec<(SmolStr, SearchScope)>,
                 alias_name: &str,
-                def: Definition,
+                def: Definition<'_>,
             ) {
                 let alias = alias_name.trim_start_matches("r#").to_smolstr();
                 tracing::debug!("found alias: {alias}");
@@ -1211,7 +1211,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Either<PathResolution, InlineAsmOperand>,
+        res: Either<PathResolution<'db>, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         let def = res.either(Definition::from, Definition::from);
@@ -1393,7 +1393,10 @@ impl<'a, 'db> FindUsages<'a, 'db> {
     }
 }
 
-fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Option<hir::Type<'db>> {
+fn def_to_ty<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    def: &Definition<'db>,
+) -> Option<hir::Type<'db>> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),
@@ -1406,7 +1409,7 @@ fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Opti
 impl ReferenceCategory {
     fn new(
         sema: &Semantics<'_, RootDatabase>,
-        def: &Definition,
+        def: &Definition<'_>,
         r: &ast::NameRef,
     ) -> ReferenceCategory {
         let mut result = ReferenceCategory::empty();

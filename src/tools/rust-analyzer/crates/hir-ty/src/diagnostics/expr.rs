@@ -104,7 +104,7 @@ impl<'db> BodyValidationDiagnostic<'db> {
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: &'db Body,
-    infer: &'db InferenceResult,
+    infer: &'db InferenceResult<'db>,
     env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic<'db>>,
     validate_lints: bool,
@@ -633,9 +633,9 @@ impl<'db> FilterMapNextChecker<'db> {
     }
 }
 
-pub fn record_literal_missing_fields(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult,
+pub fn record_literal_missing_fields<'db>(
+    db: &'db dyn HirDatabase,
+    infer: &InferenceResult<'db>,
     id: ExprId,
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>)> {
@@ -676,9 +676,9 @@ pub fn record_literal_missing_fields(
     Some((variant_def, missed_fields))
 }
 
-pub fn record_pattern_missing_fields(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult,
+pub fn record_pattern_missing_fields<'db>(
+    db: &'db dyn HirDatabase,
+    infer: &InferenceResult<'db>,
     id: PatId,
     pat: &Pat,
 ) -> Option<(VariantId, Vec<LocalFieldId>)> {
@@ -713,8 +713,8 @@ pub fn record_pattern_missing_fields(
     Some((variant_def, missed_fields))
 }
 
-fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
-    fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
+fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult<'_>) -> bool {
+    fn walk(pat: PatId, body: &Body, infer: &InferenceResult<'_>, has_type_mismatches: &mut bool) {
         match infer.pat_has_type_mismatch(pat) {
             true => *has_type_mismatches = true,
             false if *has_type_mismatches => (),

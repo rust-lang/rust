@@ -301,7 +301,7 @@ pub(crate) trait Delegate<'db> {
     /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
     /// id will be the id of the expression `expr` but the place itself will have
     /// the id of the binding in the pattern `pat`.
-    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>);
+    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>);
 
     /// The value found at `place` is used, depending
     /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
@@ -316,7 +316,7 @@ pub(crate) trait Delegate<'db> {
     /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
     /// id will be the id of the expression `expr` but the place itself will have
     /// the id of the binding in the pattern `pat`.
-    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>);
+    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>);
 
     /// The value found at `place` is being borrowed with kind `bk`.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
@@ -324,7 +324,7 @@ pub(crate) trait Delegate<'db> {
         &mut self,
         place_with_id: PlaceWithOrigin,
         bk: BorrowKind,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     );
 
     /// The value found at `place` is being copied.
@@ -333,7 +333,7 @@ pub(crate) trait Delegate<'db> {
     /// If an implementation is not provided, use of a `Copy` type in a ByValue context is instead
     /// considered a use by `ImmBorrow` and `borrow` is called instead. This is because a shared
     /// borrow is the "minimum access" that would be needed to perform a copy.
-    fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
         self.borrow(place_with_id, BorrowKind::Immutable, ctx)
@@ -341,12 +341,12 @@ pub(crate) trait Delegate<'db> {
 
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
-    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>);
+    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'db>);
 
     /// The path at `binding_place` is a binding that is being initialized.
     ///
     /// This covers cases such as `let x = 42;`
-    fn bind(&mut self, binding_place: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn bind(&mut self, binding_place: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         // Bindings can normally be treated as a regular assignment, so by default we
         // forward this to the mutate callback.
         self.mutate(binding_place, ctx)
@@ -357,16 +357,16 @@ pub(crate) trait Delegate<'db> {
         &mut self,
         place_with_id: PlaceWithOrigin,
         cause: FakeReadCause,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     );
 }
 
 impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
-    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         (**self).consume(place_with_id, ctx)
     }
 
-    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         (**self).use_cloned(place_with_id, ctx)
     }
 
@@ -374,20 +374,20 @@ impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
         &mut self,
         place_with_id: PlaceWithOrigin,
         bk: BorrowKind,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     ) {
         (**self).borrow(place_with_id, bk, ctx)
     }
 
-    fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         (**self).copy(place_with_id, ctx)
     }
 
-    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         (**self).mutate(assignee_place, ctx)
     }
 
-    fn bind(&mut self, binding_place: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn bind(&mut self, binding_place: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         (**self).bind(binding_place, ctx)
     }
 
@@ -395,7 +395,7 @@ impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
         &mut self,
         place_with_id: PlaceWithOrigin,
         cause: FakeReadCause,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     ) {
         (**self).fake_read(place_with_id, cause, ctx)
     }
@@ -404,21 +404,21 @@ impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
 /// A visitor that reports how each expression is being used.
 ///
 /// See [module-level docs][self] and [`Delegate`] for details.
-pub(crate) struct ExprUseVisitor<'a, 'b, 'db, D: Delegate<'db>> {
-    cx: &'a mut InferenceContext<'b, 'db>,
+pub(crate) struct ExprUseVisitor<'a, 'db, D: Delegate<'db>> {
+    cx: &'a mut InferenceContext<'db>,
     delegate: D,
     closure_expr: ExprId,
     upvars: UpvarsRef<'db>,
 }
 
-impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
+impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
     /// Creates the ExprUseVisitor, configuring it with the various options provided:
     ///
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
     /// - `typeck_results` --- typeck results for the code being analyzed
     pub(crate) fn new(
-        cx: &'a mut InferenceContext<'b, 'db>,
+        cx: &'a mut InferenceContext<'db>,
         closure_expr: ExprId,
         upvars: UpvarsRef<'db>,
         delegate: D,
@@ -1165,7 +1165,7 @@ impl_from!(PatId for CatPatternPat);
 /// example, auto-derefs are explicit. Also, an index `a[b]` is decomposed into
 /// two operations: a dereference to reach the array data and then an index to
 /// jump forward to the relevant item.
-impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
+impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, 'db, D> {
     fn expect_and_resolve_type(&mut self, ty: Option<Ty<'db>>) -> Result<Ty<'db>> {
         match ty {
             Some(ty) => {

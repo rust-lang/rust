@@ -43,7 +43,7 @@ use super::{
     util::{FloatExt, IntegerExt},
 };
 
-pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId>;
+pub type SimplifiedType<'db> = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId<'db>>;
 pub type TyKind<'db> = rustc_type_ir::TyKind<DbInterner<'db>>;
 pub type FnHeader<'db> = rustc_type_ir::FnHeader<DbInterner<'db>>;
 pub type AliasTyKind<'db> = rustc_type_ir::AliasTyKind<DbInterner<'db>>;
@@ -1186,7 +1186,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine(
         interner: DbInterner<'db>,
-        def_id: CoroutineIdWrapper,
+        def_id: CoroutineIdWrapper<'db>,
         args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Coroutine(def_id, args))
@@ -1194,7 +1194,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_closure(
         interner: DbInterner<'db>,
-        def_id: CoroutineClosureIdWrapper,
+        def_id: CoroutineClosureIdWrapper<'db>,
         args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineClosure(def_id, args))
@@ -1202,7 +1202,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_closure(
         interner: DbInterner<'db>,
-        def_id: ClosureIdWrapper,
+        def_id: ClosureIdWrapper<'db>,
         args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Closure(def_id, args))
@@ -1210,7 +1210,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_witness(
         interner: DbInterner<'db>,
-        def_id: CoroutineIdWrapper,
+        def_id: CoroutineIdWrapper<'db>,
         args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineWitness(def_id, args))
@@ -1218,7 +1218,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_witness_for_coroutine(
         interner: DbInterner<'db>,
-        def_id: CoroutineIdWrapper,
+        def_id: CoroutineIdWrapper<'db>,
         coroutine_args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         // HACK: Coroutine witness types are lifetime erased, so they
