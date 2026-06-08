@@ -4010,9 +4010,7 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
- "rustc_ast",
  "rustc_data_structures",
- "rustc_hir",
  "rustc_span",
  "serde",
  "serde_json",
