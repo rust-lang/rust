@@ -477,9 +477,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         base_ty: Unnormalized<'tcx, Ty<'tcx>>,
         base_fn_mode: CItemKind,
     ) -> Self {
-        // Skip normalization for opaques: the new solver would put the revealed
-        // hidden type into the `InferCtxt`'s `OpaqueTypeStorage` and trigger a
-        // delayed bug on drop (issue #156352).
+        // Skip normalization for opaques: even in `TypingMode::Borrowck` the body's own
+        // defining opaques still get revealed, leaving entries in `OpaqueTypeStorage` that
+        // ICE on `InferCtxt` drop (issue #156352).
         let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
             base_ty.skip_norm_wip()
         } else {
@@ -906,7 +906,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
-            // Reachable when the new solver reveals a body's defining opaque.
+            // Safety net for when normalization reveals a body's own defining opaque
+            // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
+            // "opaque types have no C equivalent" message comes from `visit_for_opaque_ty`
+            // in `check_type` before normalization (issue #156352).
             ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
