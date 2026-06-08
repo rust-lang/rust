@@ -51,7 +51,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -231,13 +231,7 @@ impl WorkProductId {
         WorkProductId { hash: hasher.finish() }
     }
 }
-impl ToStableHashKey for WorkProductId {
-    type KeyType = Fingerprint;
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
-        self.hash
-    }
-}
+
 impl StableOrd for WorkProductId {
     // Fingerprint can use unstable (just a tuple of `u64`s), so WorkProductId can as well
     const CAN_USE_UNSTABLE_SORT: bool = true;

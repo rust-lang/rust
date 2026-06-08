@@ -6,7 +6,7 @@
 
 #![crate_type = "lib"]
 
-// EMIT_MIR spans.outer.PreCodegen.after.mir
+// EMIT_MIR spans.outer.runtime-optimized.after.mir
 pub fn outer(v: u8) -> u8 {
     inner(&v)
 }

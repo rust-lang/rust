@@ -1,8 +1,17 @@
 error[E0391]: cycle detected when computing layout of `Wrapper<()>`
+  --> $DIR/post-mono-layout-cycle.rs:11:1
    |
-   = note: ...which requires computing layout of `<() as Trait>::Assoc`...
+LL | struct Wrapper<T: Trait> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing layout of `<() as Trait>::Assoc`...
+  --> $DIR/post-mono-layout-cycle.rs:4:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^
    = note: ...which again requires computing layout of `Wrapper<()>`, completing the cycle
-   = note: cycle used when computing layout of `core::option::Option<Wrapper<()>>`
+note: cycle used when computing layout of `core::option::Option<Wrapper<()>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

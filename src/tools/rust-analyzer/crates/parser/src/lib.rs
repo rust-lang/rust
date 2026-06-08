@@ -56,6 +56,13 @@ pub use crate::{
     syntax_kind::SyntaxKind,
 };
 
+/// True if `c` is whitespace in Rust source (Unicode Pattern_White_Space as in the language reference).
+///
+/// See <https://doc.rust-lang.org/reference/whitespace.html>.
+pub fn is_rust_whitespace(c: char) -> bool {
+    frontmatter::is_whitespace(c)
+}
+
 /// Parse the whole of the input as a given syntactic construct.
 ///
 /// This covers two main use-cases:
@@ -104,8 +111,8 @@ impl TopEntryPoint {
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
-        let events = p.finish();
-        let res = event::process(events);
+        let (events, errors) = p.finish();
+        let res = event::process(events, errors);
 
         if cfg!(debug_assertions) {
             let mut depth = 0;
@@ -169,8 +176,8 @@ impl PrefixEntryPoint {
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
-        let events = p.finish();
-        event::process(events)
+        let (events, errors) = p.finish();
+        event::process(events, errors)
     }
 }
 
@@ -195,7 +202,7 @@ impl Reparser {
         let Reparser(r) = self;
         let mut p = parser::Parser::new(tokens);
         r(&mut p);
-        let events = p.finish();
-        event::process(events)
+        let (events, errors) = p.finish();
+        event::process(events, errors)
     }
 }

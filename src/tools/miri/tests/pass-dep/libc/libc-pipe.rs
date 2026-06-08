@@ -31,19 +31,19 @@ fn test_pipe() {
 
     // Read size == data available in buffer.
     let data = b"12345";
-    write_all_from_slice(fds[1], data).unwrap();
-    let buf3 = read_all_into_array::<5>(fds[0]).unwrap();
+    write_all(fds[1], data).unwrap();
+    let buf3 = read_exact_array::<5>(fds[0]).unwrap();
     assert_eq!(&buf3, data);
 
     // Read size > data available in buffer.
     let data = b"123";
-    write_all_from_slice(fds[1], data).unwrap();
+    write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (part1, rest) = read_into_slice(fds[0], &mut buf4).unwrap();
+    let (part1, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
     assert_eq!(part1[..], data[..part1.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
-    write_all_from_slice(fds[1], b"34").unwrap();
-    read_all_into_slice(fds[0], rest).unwrap();
+    write_all(fds[1], b"34").unwrap();
+    read_exact(fds[0], rest).unwrap();
 }
 
 fn test_pipe_threaded() {
@@ -51,19 +51,19 @@ fn test_pipe_threaded() {
     errno_check(unsafe { libc::pipe(fds.as_mut_ptr()) });
 
     let thread1 = thread::spawn(move || {
-        let buf = read_all_into_array::<5>(fds[0]).unwrap();
+        let buf = read_exact_array::<5>(fds[0]).unwrap();
         assert_eq!(&buf, b"abcde");
     });
     thread::yield_now();
-    write_all_from_slice(fds[1], b"abcde").unwrap();
+    write_all(fds[1], b"abcde").unwrap();
     thread1.join().unwrap();
 
     // Read and write from different direction
     let thread2 = thread::spawn(move || {
         thread::yield_now();
-        write_all_from_slice(fds[1], b"12345").unwrap();
+        write_all(fds[1], b"12345").unwrap();
     });
-    let buf = read_all_into_array::<5>(fds[0]).unwrap();
+    let buf = read_exact_array::<5>(fds[0]).unwrap();
     assert_eq!(&buf, b"12345");
     thread2.join().unwrap();
 }
@@ -77,13 +77,13 @@ fn test_race() {
     let thread1 = thread::spawn(move || {
         // write() from the main thread will occur before the read() here
         // because preemption is disabled and the main thread yields after write().
-        let buf = read_all_into_array::<1>(fds[0]).unwrap();
+        let buf = read_exact_array::<1>(fds[0]).unwrap();
         assert_eq!(&buf, b"a");
         // The read above establishes a happens-before so it is now safe to access this global variable.
         unsafe { assert_eq!(VAL, 1) };
     });
     unsafe { VAL = 1 };
-    write_all_from_slice(fds[1], b"a").unwrap();
+    write_all(fds[1], b"a").unwrap();
     thread::yield_now();
     thread1.join().unwrap();
 }
@@ -190,10 +190,10 @@ fn test_pipe_fcntl_threaded() {
         // The write below will unblock the `read` in main thread: even though
         // the socket is now "non-blocking", the shim needs to deal correctly
         // with threads that were blocked before the socket was made non-blocking.
-        write_all_from_slice(fds[1], b"abcde").unwrap();
+        write_all(fds[1], b"abcde").unwrap();
     });
     // The `read` below will block.
-    let buf = read_all_into_array::<5>(fds[0]).unwrap();
+    let buf = read_exact_array::<5>(fds[0]).unwrap();
     thread1.join().unwrap();
     assert_eq!(&buf, b"abcde");
 }

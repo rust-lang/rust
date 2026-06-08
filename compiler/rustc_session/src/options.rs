@@ -6,7 +6,7 @@ use std::str;
 use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
@@ -653,6 +653,7 @@ type OptionDescrs<O> = &'static [OptionDesc<O>];
 
 /// Indicates whether a removed option should warn or error.
 enum RemovedOption {
+    #[allow(unused)] // we might want deprecated options that warn again in the future
     Warn,
     Err,
 }
@@ -759,7 +760,7 @@ mod desc {
     pub(crate) const parse_number: &str = "a number";
     pub(crate) const parse_opt_number: &str = parse_number;
     pub(crate) const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
-    pub(crate) const parse_threads: &str = parse_number;
+    pub(crate) const parse_threads: &str = "a number or `sync`";
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
@@ -782,6 +783,8 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
+    pub(crate) const parse_codegen_retag_options: &str =
+        "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1067,22 +1070,23 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
-        let ret = match v.and_then(|s| s.parse().ok()) {
-            Some(0) => {
-                *slot = std::thread::available_parallelism().map_or(1, NonZero::<usize>::get);
-                true
-            }
-            Some(i) => {
-                *slot = i;
-                true
-            }
-            None => false,
+    pub(crate) fn parse_threads(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+        let Some(s) = v else { return false };
+        if s == "sync" {
+            // Enable synchronization despite only using one thread.
+            *slot = Some(1);
+            return true;
+        }
+        let n = match s.parse().ok() {
+            Some(0) => std::thread::available_parallelism().map_or(1, NonZero::<usize>::get),
+            Some(i) => i,
+            None => return false,
         };
         // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
         // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
-        *slot = slot.clone().min(MAX_THREADS_CAP);
-        ret
+        let n = n.min(MAX_THREADS_CAP);
+        *slot = (n > 1).then_some(n); // Enable synchronization if we're using more than one thread.
+        true
     }
 
     /// Use this for any numeric option that has a static default.
@@ -1518,6 +1522,29 @@ pub mod parse {
             "0" => InstrumentCoverage::No,
             _ => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_codegen_retag_options(
+        slot: &mut Option<CodegenRetagOptions>,
+        v: Option<&str>,
+    ) -> bool {
+        let mut no_precise_im = false;
+        let mut no_precise_pin = false;
+        if let Some(opt_list) = v.map(|s| s.split(',')) {
+            for opt in opt_list {
+                match opt {
+                    "no-precise-im" => {
+                        no_precise_im = true;
+                    }
+                    "no-precise-pin" => {
+                        no_precise_pin = true;
+                    }
+                    _ => return false,
+                }
+            }
+        }
+        *slot = Some(CodegenRetagOptions { no_precise_im, no_precise_pin });
         true
     }
 
@@ -2037,10 +2064,9 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 
     // tidy-alphabetical-start
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    ar: String = (String::new(), parse_string, [UNTRACKED],
-        "this option is deprecated and does nothing",
-        removed: Warn),
+    ar: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed",
+        removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
@@ -2075,11 +2101,10 @@ options! {
     help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
-        "this option is deprecated and does nothing \
+    inline_threshold: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
-        removed: Warn),
+        removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -2117,10 +2142,9 @@ options! {
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
-        "this option is deprecated and does nothing",
-        removed: Warn),
+    no_stack_check: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed",
+        removed: Err),
     no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
     no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
@@ -2154,7 +2178,6 @@ options! {
         "set rpath values in libs/exes (default: no)"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     soft_float: () = ((), parse_ignore, [UNTRACKED],
         "this option has been removed \
         (use a corresponding *eabi target instead)",
@@ -2205,6 +2228,8 @@ options! {
          either `loaded` or `not-loaded`."),
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
         "make cfg(version) treat the current version as incomplete (default: no)"),
+    assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
+        "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`)"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2242,6 +2267,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
+        "emit retag function calls in generated code"),
     codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
         "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2252,12 +2279,12 @@ options! {
         "inject the given attribute in the crate"),
     cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
-    debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
-        "emit discriminators and other data necessary for AutoFDO"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
+    debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
+        "emit discriminators and other data necessary for AutoFDO"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
         "deduplicate identical diagnostics (default: yes)"),
     default_visibility: Option<SymbolVisibility> = (None, parse_opt_symbol_visibility, [TRACKED],
@@ -2269,6 +2296,10 @@ options! {
         themselves (default: no)"),
     direct_access_external_data: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "Direct or use GOT indirect to reference external data symbols"),
+    disable_fast_paths: bool = (false, parse_bool, [TRACKED],
+        "disable various performance optimizations in trait solving"),
+    disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
+        "disable caching of compiled objects by the codegen backend during incremental compilation"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -2313,8 +2344,6 @@ options! {
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    emscripten_wasm_eh: bool = (true, parse_bool, [TRACKED],
-        "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
     experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
@@ -2544,6 +2573,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_stats_json` instead of this field")]
+    print_codegen_stats_json: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "print codegen statistics in JSON to a file (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: bool = (false, parse_bool, [UNTRACKED],
@@ -2670,12 +2702,12 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    /// We default to 1 here since we want to behave like
+    /// We default to None here since we want to behave like
     /// a sequential compiler for now. This'll likely be adjusted
     /// in the future. Note that -Zthreads=0 is the way to get
     /// the num_cpus behavior.
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: usize = (1, parse_threads, [UNTRACKED],
+    threads: Option<usize> = (None, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
@@ -2718,7 +2750,7 @@ written to standard error output)"),
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
-        `normal`, `identified`,
+        `normal`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `ast-tree` (raw AST before expansion),

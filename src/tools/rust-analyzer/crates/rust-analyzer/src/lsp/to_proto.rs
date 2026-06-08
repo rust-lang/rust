@@ -1608,7 +1608,6 @@ pub(crate) fn runnable(
                     Some((program, args)) => Some(lsp_ext::Runnable {
                         label,
                         location: Some(location),
-                        kind: lsp_ext::RunnableKind::Shell,
                         args: lsp_ext::RunnableArgs::Shell(lsp_ext::ShellRunnableArgs {
                             environment,
                             cwd: cwd.into(),
@@ -1621,7 +1620,6 @@ pub(crate) fn runnable(
                 None => Some(lsp_ext::Runnable {
                     label,
                     location: Some(location),
-                    kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
                         workspace_root: Some(workspace_root.into()),
                         override_cargo: config.override_cargo,
@@ -1648,7 +1646,6 @@ pub(crate) fn runnable(
                     Ok(Some(lsp_ext::Runnable {
                         label,
                         location: Some(location),
-                        kind: lsp_ext::RunnableKind::Shell,
                         args: lsp_ext::RunnableArgs::Shell(runnable_args),
                     }))
                 }
@@ -1668,7 +1665,6 @@ pub(crate) fn runnable(
             Ok(Some(lsp_ext::Runnable {
                 label,
                 location: Some(location),
-                kind: lsp_ext::RunnableKind::Cargo,
                 args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
                     workspace_root: None,
                     override_cargo: config.override_cargo,
@@ -2028,6 +2024,7 @@ pub(crate) fn rename_error(err: RenameError) -> LspError {
 mod tests {
     use expect_test::{Expect, expect};
     use ide::{Analysis, FilePosition};
+    use ide_db::base_db::AbsPathBuf;
     use ide_db::source_change::Snippet;
     use test_utils::extract_offset;
     use triomphe::Arc;
@@ -2048,7 +2045,10 @@ fn main() {
     }
 }"#;
 
-        let (analysis, file_id) = Analysis::from_single_file(text.to_owned());
+        let (analysis, file_id) = Analysis::from_single_file(
+            text.to_owned(),
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
+        );
         let folds = analysis.folding_ranges(file_id, true).unwrap();
         assert_eq!(folds.len(), 5);
 
@@ -2084,7 +2084,10 @@ fn bar(_: usize) {}
 "#;
 
         let (offset, text) = extract_offset(text);
-        let (analysis, file_id) = Analysis::from_single_file(text);
+        let (analysis, file_id) = Analysis::from_single_file(
+            text,
+            Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap())),
+        );
         let help = signature_help(
             analysis.signature_help(FilePosition { file_id, offset }).unwrap().unwrap(),
             CallInfoConfig { params_only: false, docs: true },

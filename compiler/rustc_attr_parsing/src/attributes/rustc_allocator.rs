@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct RustcAllocatorParser;
@@ -6,6 +8,7 @@ impl NoArgsAttributeParser for RustcAllocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_allocator];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocator;
 }
 
@@ -15,6 +18,7 @@ impl NoArgsAttributeParser for RustcAllocatorZeroedParser {
     const PATH: &[Symbol] = &[sym::rustc_allocator_zeroed];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocatorZeroed;
 }
 
@@ -25,12 +29,10 @@ impl SingleAttributeParser for RustcAllocatorZeroedVariantParser {
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "function");
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::RustcAllocatorZeroedVariant { name })
     }
@@ -42,6 +44,7 @@ impl NoArgsAttributeParser for RustcDeallocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_deallocator];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDeallocator;
 }
 
@@ -51,5 +54,6 @@ impl NoArgsAttributeParser for RustcReallocatorParser {
     const PATH: &[Symbol] = &[sym::rustc_reallocator];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcReallocator;
 }

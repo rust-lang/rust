@@ -21,10 +21,13 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::next_solver::{
-    ArgOutlivesPredicate, Canonical, CanonicalVarValues, Const, DbInterner, GenericArg,
-    OpaqueTypeKey, PlaceholderConst, PlaceholderRegion, PlaceholderType, Region, Ty, TyKind,
-    infer::InferCtxt,
+use crate::{
+    Span,
+    next_solver::{
+        ArgOutlivesPredicate, Canonical, CanonicalVarValues, Const, DbInterner, GenericArg,
+        OpaqueTypeKey, PlaceholderConst, PlaceholderRegion, PlaceholderType, Region, Ty, TyKind,
+        infer::InferCtxt,
+    },
 };
 use instantiate::CanonicalExt;
 use macros::{TypeFoldable, TypeVisitable};
@@ -50,6 +53,7 @@ impl<'db> InferCtxt<'db> {
     /// for each of the canonical inputs to your query.
     pub fn instantiate_canonical<T>(
         &self,
+        span: Span,
         canonical: &Canonical<'db, T>,
     ) -> (T, CanonicalVarValues<'db>)
     where
@@ -71,7 +75,9 @@ impl<'db> InferCtxt<'db> {
         let var_values = CanonicalVarValues::instantiate(
             self.interner,
             canonical.var_kinds,
-            |var_values, info| self.instantiate_canonical_var(info, var_values, |ui| universes[ui]),
+            |var_values, info| {
+                self.instantiate_canonical_var(span, info, var_values, |ui| universes[ui])
+            },
         );
         let result = canonical.instantiate(self.interner, &var_values);
         (result, var_values)
@@ -87,13 +93,14 @@ impl<'db> InferCtxt<'db> {
     /// We should somehow deduplicate all of this.
     pub fn instantiate_canonical_var(
         &self,
+        span: Span,
         cv_info: CanonicalVarKind<DbInterner<'db>>,
         previous_var_values: &[GenericArg<'db>],
         universe_map: impl Fn(UniverseIndex) -> UniverseIndex,
     ) -> GenericArg<'db> {
         match cv_info {
             CanonicalVarKind::Ty { ui, sub_root } => {
-                let vid = self.next_ty_var_id_in_universe(universe_map(ui));
+                let vid = self.next_ty_var_id_in_universe(universe_map(ui), span);
                 // If this inference variable is related to an earlier variable
                 // via subtyping, we need to add that info to the inference context.
                 if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
@@ -117,7 +124,7 @@ impl<'db> InferCtxt<'db> {
             }
 
             CanonicalVarKind::Region(ui) => {
-                self.next_region_var_in_universe(universe_map(ui)).into()
+                self.next_region_var_in_universe(universe_map(ui), span).into()
             }
 
             CanonicalVarKind::PlaceholderRegion(PlaceholderRegion { universe, bound, .. }) => {
@@ -126,7 +133,9 @@ impl<'db> InferCtxt<'db> {
                 Region::new_placeholder(self.interner, placeholder_mapped).into()
             }
 
-            CanonicalVarKind::Const(ui) => self.next_const_var_in_universe(universe_map(ui)).into(),
+            CanonicalVarKind::Const(ui) => {
+                self.next_const_var_in_universe(universe_map(ui), span).into()
+            }
             CanonicalVarKind::PlaceholderConst(PlaceholderConst { universe, bound, .. }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = PlaceholderConst::new(universe_mapped, bound);

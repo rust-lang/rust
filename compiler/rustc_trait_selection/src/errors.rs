@@ -868,9 +868,13 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             applicability = "unspecified",
             style = "verbose"
         )]
-        new_ty_span: Span,
-        #[skip_arg]
+        new_ty_span: Option<Span>,
         new_ty: Ty<'a>,
+        #[help(
+            "see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> \
+             for more information about lifetime errors related to mutable references"
+        )]
+        link_nomicon: bool,
     },
     #[diag("explicit lifetime required in parameter type", code = E0621)]
     WithParamType {
@@ -884,9 +888,13 @@ pub(crate) enum ExplicitLifetimeRequired<'a> {
             applicability = "unspecified",
             style = "verbose"
         )]
-        new_ty_span: Span,
-        #[skip_arg]
+        new_ty_span: Option<Span>,
         new_ty: Ty<'a>,
+        #[help(
+            "see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> \
+             for more information about lifetime errors related to mutable references"
+        )]
+        link_nomicon: bool,
     },
 }
 
@@ -1519,7 +1527,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     RemoveRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
     },
     #[suggestion(
@@ -1531,9 +1538,7 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
@@ -1545,7 +1550,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     Cast {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
@@ -1557,7 +1561,6 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastBoth {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
     },
@@ -1570,9 +1573,7 @@ pub(crate) enum FunctionPointerSuggestion<'a> {
     CastBothRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
         fn_name: String,
-        #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
     },

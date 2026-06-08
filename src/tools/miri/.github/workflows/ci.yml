@@ -12,6 +12,9 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: test (${{ matrix.host_target }})
@@ -152,6 +155,18 @@ jobs:
           cd ../rust # ./x does not seem to like being invoked from elsewhere
           ./x check miri
 
+  # This job is intentionally separate from `test` so that Priroda can be
+  # developed as a separate crate inside the Miri repository for now.
+  priroda-build:
+    name: Priroda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/workflows/setup
+      - name: build Priroda
+        working-directory: priroda
+        run: cargo build --locked
+
   coverage:
     name: coverage report
     runs-on: ubuntu-latest
@@ -165,7 +180,7 @@ jobs:
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   # And they should be added below in `cron-fail-notify` as well.
   conclusion:
-    needs: [test, style, bootstrap, coverage]
+    needs: [test, style, bootstrap, coverage, priroda-build]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -249,7 +264,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [test, style, bootstrap, coverage]
+    needs: [test, style, bootstrap, coverage, priroda-build]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification

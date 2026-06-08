@@ -22,7 +22,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // This diagnostic is triggered if a field does not exist on a given type.
 pub(crate) fn unresolved_field(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedField<'_>,
 ) -> Diagnostic {
     let method_suffix = if d.method_with_same_name_exists {
@@ -52,7 +52,7 @@ pub(crate) fn unresolved_field(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
     if d.method_with_same_name_exists {
         fixes.extend(method_fix(ctx, &d.expr));
@@ -62,7 +62,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Option<V
 }
 
 // FIXME: Add Snippet Support
-fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Option<Assist> {
+fn field_fix(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> Option<Assist> {
     // Get the FileRange of the invalid field access
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root).left()?;
@@ -101,7 +101,7 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField<'_>) -> Opti
 }
 
 fn add_variant_to_union(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     adt_union: Union,
     field_name: &str,
     suggested_type: Type,
@@ -129,7 +129,7 @@ fn add_variant_to_union(
 }
 
 fn add_field_to_struct_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     adt_struct: Struct,
     field_name: &str,
     suggested_type: Type,
@@ -263,7 +263,7 @@ fn record_field_layout(
 
 // FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     expr_ptr: &InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 ) -> Option<Assist> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);

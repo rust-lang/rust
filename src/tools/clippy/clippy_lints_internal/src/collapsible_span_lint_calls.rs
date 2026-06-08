@@ -89,10 +89,10 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             && let ExprKind::Path(..) = recv.kind
         {
             let mut app = Applicability::MachineApplicable;
-            let expr_ctxt = expr.span.ctxt();
+            let ctxt = expr.span.ctxt();
             let and_then_snippets = get_and_then_snippets(
                 cx,
-                expr_ctxt,
+                ctxt,
                 call_cx.span,
                 call_lint.span,
                 call_sp.span,
@@ -101,28 +101,24 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             );
             let mut sle = SpanlessEq::new(cx).deny_side_effects();
             match ps.ident.name {
-                sym::span_suggestion if sle.eq_expr(call_sp, &span_call_args[0]) => {
-                    let snippets = span_suggestion_snippets(cx, expr_ctxt, span_call_args, &mut app);
+                sym::span_suggestion if sle.eq_expr(ctxt, call_sp, &span_call_args[0]) => {
+                    let snippets = span_suggestion_snippets(cx, ctxt, span_call_args, &mut app);
                     suggest_suggestion(cx, expr, &and_then_snippets, &snippets, app);
                 },
-                sym::span_help if sle.eq_expr(call_sp, &span_call_args[0]) => {
-                    let help_snippet =
-                        snippet_with_context(cx, span_call_args[1].span, expr_ctxt, r#""...""#, &mut app).0;
+                sym::span_help if sle.eq_expr(ctxt, call_sp, &span_call_args[0]) => {
+                    let help_snippet = snippet_with_context(cx, span_call_args[1].span, ctxt, r#""...""#, &mut app).0;
                     suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), true, app);
                 },
-                sym::span_note if sle.eq_expr(call_sp, &span_call_args[0]) => {
-                    let note_snippet =
-                        snippet_with_context(cx, span_call_args[1].span, expr_ctxt, r#""...""#, &mut app).0;
+                sym::span_note if sle.eq_expr(ctxt, call_sp, &span_call_args[0]) => {
+                    let note_snippet = snippet_with_context(cx, span_call_args[1].span, ctxt, r#""...""#, &mut app).0;
                     suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), true, app);
                 },
                 sym::help => {
-                    let help_snippet =
-                        snippet_with_context(cx, span_call_args[0].span, expr_ctxt, r#""...""#, &mut app).0;
+                    let help_snippet = snippet_with_context(cx, span_call_args[0].span, ctxt, r#""...""#, &mut app).0;
                     suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false, app);
                 },
                 sym::note => {
-                    let note_snippet =
-                        snippet_with_context(cx, span_call_args[0].span, expr_ctxt, r#""...""#, &mut app).0;
+                    let note_snippet = snippet_with_context(cx, span_call_args[0].span, ctxt, r#""...""#, &mut app).0;
                     suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false, app);
                 },
                 _ => (),
@@ -140,7 +136,7 @@ struct AndThenSnippets {
 
 fn get_and_then_snippets(
     cx: &LateContext<'_>,
-    expr_ctxt: SyntaxContext,
+    ctxt: SyntaxContext,
     cx_span: Span,
     lint_span: Span,
     span_span: Span,
@@ -150,7 +146,7 @@ fn get_and_then_snippets(
     let cx_snippet = snippet_with_applicability(cx, cx_span, "cx", app);
     let lint_snippet = snippet_with_applicability(cx, lint_span, "..", app);
     let span_snippet = snippet_with_applicability(cx, span_span, "span", app);
-    let msg_snippet = snippet_with_context(cx, msg_span, expr_ctxt, r#""...""#, app).0;
+    let msg_snippet = snippet_with_context(cx, msg_span, ctxt, r#""...""#, app).0;
 
     AndThenSnippets {
         cx: cx_snippet,
@@ -168,12 +164,12 @@ struct SpanSuggestionSnippets {
 
 fn span_suggestion_snippets<'hir>(
     cx: &LateContext<'_>,
-    expr_ctxt: SyntaxContext,
+    ctxt: SyntaxContext,
     span_call_args: &'hir [Expr<'hir>],
     app: &mut Applicability,
 ) -> SpanSuggestionSnippets {
-    let help_snippet = snippet_with_context(cx, span_call_args[1].span, expr_ctxt, r#""...""#, app).0;
-    let sugg_snippet = snippet_with_context(cx, span_call_args[2].span, expr_ctxt, "..", app).0;
+    let help_snippet = snippet_with_context(cx, span_call_args[1].span, ctxt, r#""...""#, app).0;
+    let sugg_snippet = snippet_with_context(cx, span_call_args[2].span, ctxt, "..", app).0;
     let applicability_snippet =
         snippet_with_applicability(cx, span_call_args[3].span, "Applicability::MachineApplicable", app);
 

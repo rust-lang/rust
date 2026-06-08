@@ -135,6 +135,11 @@ pub(crate) fn proc_macro_test_dylib_path() -> Utf8PathBuf {
     path.into()
 }
 
+fn make_ctx() -> SyntaxContext {
+    // SAFETY: Tests do not use a Database, so this won't ever be used within salsa.
+    unsafe { SyntaxContext::from_u32(0) }
+}
+
 /// Creates a simple empty token tree suitable for testing.
 pub(crate) fn create_empty_token_tree(
     version: u32,
@@ -144,11 +149,7 @@ pub(crate) fn create_empty_token_tree(
         file_id: EditionedFileId::new(FileId::from_raw(0), Edition::CURRENT),
         ast_id: span::ROOT_ERASED_FILE_AST_ID,
     };
-    let span = Span {
-        range: TextRange::empty(0.into()),
-        anchor,
-        ctx: SyntaxContext::root(Edition::CURRENT),
-    };
+    let span = Span { range: TextRange::empty(0.into()), anchor, ctx: make_ctx() };
 
     let builder = TopSubtreeBuilder::new(Delimiter {
         open: span,

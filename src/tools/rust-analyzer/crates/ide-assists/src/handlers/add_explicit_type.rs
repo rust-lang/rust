@@ -20,7 +20,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let x: i32 = 92;
 // }
 // ```
-pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let syntax_node = ctx.find_node_at_offset::<Either<LetStmt, Param>>()?;
     let (ascribed_ty, expr, pat) = if let Either::Left(let_stmt) = syntax_node {
         let cursor_in_range = {
@@ -208,8 +208,6 @@ fn main() {
 }
 "#,
         );
-        // note: this may break later if we add more consteval. it just needs to be something that our
-        // consteval engine doesn't understand
         check_assist_not_applicable(
             add_explicit_type,
             r#"

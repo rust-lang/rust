@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "thumbv7a-none-eabi".into(),
         metadata: TargetMetadata {
             description: Some("Thumb-mode Bare Armv7-A".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
         },

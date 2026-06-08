@@ -410,7 +410,16 @@ pub struct FromUtf8Error {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-pub struct FromUtf16Error(());
+pub struct FromUtf16Error {
+    kind: FromUtf16ErrorKind,
+}
+
+#[cfg_attr(no_global_oom_handling, expect(dead_code))]
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum FromUtf16ErrorKind {
+    LoneSurrogate,
+    OddBytes,
+}
 
 impl String {
     /// Creates a new empty `String`.
@@ -719,7 +728,7 @@ impl String {
         let mut ret = String::with_capacity(v.len());
         for c in char::decode_utf16(v.iter().cloned()) {
             let Ok(c) = c else {
-                return Err(FromUtf16Error(()));
+                return Err(FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate });
             };
             ret.push(c);
         }
@@ -782,13 +791,13 @@ impl String {
     #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16le(v: &[u8]) -> Result<String, FromUtf16Error> {
         let (chunks, []) = v.as_chunks::<2>() else {
-            return Err(FromUtf16Error(()));
+            return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
                 .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error(())),
+                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
         }
     }
 
@@ -857,13 +866,13 @@ impl String {
     #[unstable(feature = "str_from_utf16_endian", issue = "116258")]
     pub fn from_utf16be(v: &[u8]) -> Result<String, FromUtf16Error> {
         let (chunks, []) = v.as_chunks::<2>() else {
-            return Err(FromUtf16Error(()));
+            return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
                 .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error(())),
+                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
         }
     }
 
@@ -2335,7 +2344,11 @@ impl fmt::Display for FromUtf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+        match self.kind {
+            FromUtf16ErrorKind::LoneSurrogate => "invalid utf-16: lone surrogate found",
+            FromUtf16ErrorKind::OddBytes => "invalid utf-16: odd number of bytes",
+        }
+        .fmt(f)
     }
 }
 
@@ -2654,7 +2667,7 @@ impl<'b> Pattern for &'b String {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(self.as_bytes()))
+        Some(Utf8Pattern::StringPattern(self.as_str()))
     }
 }
 
@@ -2697,7 +2710,7 @@ impl_eq! { Cow<'_, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for String {
+const impl Default for String {
     /// Creates an empty `String`.
     #[inline]
     fn default() -> String {

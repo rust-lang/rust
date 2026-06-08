@@ -191,6 +191,19 @@ where
                 }
             }
 
+            mir::Rvalue::Reborrow(target, mutability, borrowed_place) => {
+                // A Reborrow allows mutation if it is Reborrow or if the CoerceShared target isn't
+                // Freeze.
+                if !borrowed_place.is_indirect()
+                    && (mutability.is_mut() || !target.is_freeze(self.ccx.tcx, self.ccx.typing_env))
+                {
+                    if Q::in_any_value_of_ty(self.ccx, *target) {
+                        self.state.qualif.insert(borrowed_place.local);
+                        self.state.borrow.insert(borrowed_place.local);
+                    }
+                }
+            }
+
             mir::Rvalue::Cast(..)
             | mir::Rvalue::Use(..)
             | mir::Rvalue::CopyForDeref(..)

@@ -248,6 +248,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     self.manage_cond_expr(arg);
                 }
             }
+            ExprKind::Move(local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
             ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);

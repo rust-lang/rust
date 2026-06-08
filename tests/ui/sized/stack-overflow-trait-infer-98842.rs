@@ -2,11 +2,11 @@
 // issue: rust-lang/rust#98842
 //@ check-fail
 //@ edition:2021
-//~^^^^ ERROR cycle detected when computing layout of `Foo`
 
 // If the inner `Foo` is named through an associated type,
 // the "infinite size" error does not occur.
 struct Foo(<&'static Foo as ::core::ops::Deref>::Target);
+//~^ ERROR cycle detected when computing layout of `Foo`
 // But Rust will be unable to know whether `Foo` is sized or not,
 // and it will infinitely recurse somewhere trying to figure out the
 // size of this pointer (is my guess):

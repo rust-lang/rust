@@ -464,7 +464,7 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(func, args) => {
                 self.print_expr_call(func, args, fixup);
             }
-            ast::ExprKind::MethodCall(box ast::MethodCall { seg, receiver, args, .. }) => {
+            ast::ExprKind::MethodCall(ast::MethodCall { seg, receiver, args, .. }) => {
                 self.print_expr_method_call(seg, receiver, args, fixup);
             }
             ast::ExprKind::Binary(op, lhs, rhs) => {
@@ -582,7 +582,7 @@ impl<'a> State<'a> {
                 let empty = attrs.is_empty() && arms.is_empty();
                 self.bclose(expr.span, empty, cb);
             }
-            ast::ExprKind::Closure(box ast::Closure {
+            ast::ExprKind::Closure(ast::Closure {
                 binder,
                 capture_clause,
                 constness,
@@ -629,6 +629,11 @@ impl<'a> State<'a> {
                     fixup.leftmost_subexpression_with_dot(),
                 );
                 self.word(".await");
+            }
+            ast::ExprKind::Move(expr, _) => {
+                self.word("move(");
+                self.print_expr(expr, FixupContext::default());
+                self.word(")");
             }
             ast::ExprKind::Use(expr, _) => {
                 self.print_expr_cond_paren(

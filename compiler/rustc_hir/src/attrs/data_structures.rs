@@ -1212,7 +1212,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[pin_v2]`
-    PinV2,
+    PinV2(Span),
 
     /// Represents `#[prelude_import]`
     PreludeImport,

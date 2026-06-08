@@ -10,8 +10,8 @@
 mod libc_utils;
 
 use std::io::ErrorKind;
-use std::thread;
 use std::time::Duration;
+use std::{ptr, thread};
 
 use libc_utils::*;
 
@@ -50,6 +50,10 @@ fn main() {
     ))]
     test_send_recv_dontwait();
     test_write_read_nonblock();
+    test_readv_nonblock_err();
+    test_writev_nonblock_err();
+
+    test_getsockname_ipv4_connect_nonblock();
 
     test_getpeername_ipv4_nonblock();
     test_getpeername_ipv4_nonblock_no_peer();
@@ -225,6 +229,11 @@ fn test_connect_nonblock() {
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     loop {
+        // There should be no error during async connection.
+        let errno = net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR)
+            .unwrap();
+        assert_eq!(errno, 0);
+
         let result = net::sockname_ipv4(|storage, len| unsafe {
             libc::getpeername(client_sockfd, storage, len)
         });
@@ -260,12 +269,12 @@ fn test_send_recv_nonblock() {
         thread::sleep(Duration::from_millis(10));
 
         unsafe {
-            errno_result(libc_utils::write_all_generic(
+            libc_utils::write_all_generic(
                 TEST_BYTES.as_ptr().cast(),
                 TEST_BYTES.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(peerfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
 
@@ -273,12 +282,12 @@ fn test_send_recv_nonblock() {
         // This will block until the client sent us this data.
         let mut buffer = [0; TEST_BYTES.len()];
         unsafe {
-            errno_result(libc_utils::read_all_generic(
+            libc_utils::read_exact_generic(
                 buffer.as_mut_ptr().cast(),
                 buffer.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::recv(peerfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
         assert_eq!(&buffer, TEST_BYTES);
@@ -307,12 +316,12 @@ fn test_send_recv_nonblock() {
     // sleep multiple times until we received everything.
 
     unsafe {
-        errno_result(libc_utils::read_all_generic(
+        libc_utils::read_exact_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             libc_utils::RetryAfter(Duration::from_millis(10)),
             |buf, count| libc::recv(client_sockfd, buf, count, 0),
-        ))
+        )
         .unwrap()
     };
     assert_eq!(&buffer, TEST_BYTES);
@@ -321,32 +330,32 @@ fn test_send_recv_nonblock() {
 
     // Sending into the empty buffer should succeed without blocking.
     unsafe {
-        errno_result(libc_utils::write_all_generic(
+        libc_utils::write_all_generic(
             TEST_BYTES.as_ptr().cast(),
             TEST_BYTES.len(),
             libc_utils::NoRetry,
             |buf, count| libc::send(client_sockfd, buf, count, 0),
-        ))
+        )
         .unwrap()
     };
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
-            errno_result(libc_utils::write_all_generic(
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(client_sockfd, buf, count, 0),
-            ))
-            .unwrap_err()
+            )
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
@@ -376,12 +385,12 @@ fn test_send_recv_dontwait() {
         thread::sleep(Duration::from_millis(10));
 
         unsafe {
-            errno_result(libc_utils::write_all_generic(
+            libc_utils::write_all_generic(
                 TEST_BYTES.as_ptr().cast(),
                 TEST_BYTES.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(peerfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
 
@@ -389,12 +398,12 @@ fn test_send_recv_dontwait() {
         // This will block until the client sent us this data.
         let mut buffer = [0; TEST_BYTES.len()];
         unsafe {
-            errno_result(libc_utils::read_all_generic(
+            libc_utils::read_exact_generic(
                 buffer.as_mut_ptr().cast(),
                 buffer.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::recv(peerfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
         assert_eq!(&buffer, TEST_BYTES);
@@ -423,12 +432,12 @@ fn test_send_recv_dontwait() {
     // sleep multiple times until we received everything.
 
     unsafe {
-        errno_result(libc_utils::read_all_generic(
+        libc_utils::read_exact_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             libc_utils::RetryAfter(Duration::from_millis(10)),
             |buf, count| libc::recv(client_sockfd, buf, count, libc::MSG_DONTWAIT),
-        ))
+        )
         .unwrap()
     };
     assert_eq!(&buffer, TEST_BYTES);
@@ -437,32 +446,32 @@ fn test_send_recv_dontwait() {
 
     // Sending into the empty buffer should succeed without blocking.
     unsafe {
-        errno_result(libc_utils::write_all_generic(
+        libc_utils::write_all_generic(
             TEST_BYTES.as_ptr().cast(),
             TEST_BYTES.len(),
             libc_utils::NoRetry,
             |buf, count| libc::send(client_sockfd, buf, count, libc::MSG_DONTWAIT),
-        ))
+        )
         .unwrap()
     };
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
-            errno_result(libc_utils::write_all_generic(
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(client_sockfd, buf, count, libc::MSG_DONTWAIT),
-            ))
-            .unwrap_err()
+            )
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
@@ -482,23 +491,12 @@ fn test_write_read_nonblock() {
         // Yield back to client so that it starts receiving before we start sending.
         thread::sleep(Duration::from_millis(10));
 
-        let bytes_written = unsafe {
-            errno_result(libc_utils::write_all(
-                peerfd,
-                TEST_BYTES.as_ptr().cast(),
-                TEST_BYTES.len(),
-            ))
-            .unwrap()
-        };
-        assert_eq!(bytes_written as usize, TEST_BYTES.len());
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
 
         // The buffer should contain `TEST_BYTES` at the beginning.
         // This will block until the client sent us this data.
         let mut buffer = [0; TEST_BYTES.len()];
-        unsafe {
-            errno_result(libc_utils::read_all(peerfd, buffer.as_mut_ptr().cast(), buffer.len()))
-                .unwrap()
-        };
+        libc_utils::read_exact(peerfd, &mut buffer).unwrap();
         assert_eq!(&buffer, TEST_BYTES);
     });
 
@@ -529,12 +527,12 @@ fn test_write_read_nonblock() {
     // sleep multiple times until we read everything.
 
     unsafe {
-        errno_result(libc_utils::read_all_generic(
+        libc_utils::read_exact_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             libc_utils::RetryAfter(Duration::from_millis(10)),
             |buf, count| libc::read(client_sockfd, buf, count),
-        ))
+        )
         .unwrap()
     };
     assert_eq!(&buffer, TEST_BYTES);
@@ -542,36 +540,154 @@ fn test_write_read_nonblock() {
     // Now we test non-blocking writing.
 
     // Writing into the empty buffer should succeed without blocking.
-    let bytes_written = unsafe {
-        errno_result(libc_utils::write_all(
-            client_sockfd,
-            TEST_BYTES.as_ptr().cast(),
-            TEST_BYTES.len(),
-        ))
-        .unwrap()
-    };
-    assert_eq!(bytes_written as usize, TEST_BYTES.len());
+    libc_utils::write_all(client_sockfd, TEST_BYTES).unwrap();
 
-    if !cfg!(windows_host) {
-        // Keep sending data until the buffer is full and we block.
-        // We cannot test this on Windows since there apparently the send buffer
-        // never fills up, at least for localhost connections.
-
-        let fill_buf = [1u8; 5_000_000];
-        // This fills the socket receive buffer and thus should start blocking.
-        let err = unsafe {
-            errno_result(libc_utils::write_all_generic(
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
                 fill_buf.as_ptr().cast(),
                 fill_buf.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::write(client_sockfd, buf, count),
-            ))
-            .unwrap_err()
+            )
         };
-        assert_eq!(err.kind(), ErrorKind::WouldBlock)
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
     }
 
     server_thread.join().unwrap();
+}
+
+/// Test that Miri's internal temporary read buffer gets correctly deallocated when the
+/// vectored read produces an error due to the socket read buffer being empty.
+fn test_readv_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let err = unsafe {
+        errno_result(libc::readv(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+}
+
+/// Test that Miri's internal temporary write buffer gets correctly deallocated when the
+/// vectored write produces an error due to the socket write buffer being full.
+fn test_writev_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut write_buffer = [1u8; 32_000];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(15_000);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    loop {
+        let result = unsafe {
+            errno_result(libc::writev(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+        };
+
+        match result {
+            Ok(_) => { /* continue filling buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+}
+
+/// Test the `getsockname` syscall on a connecting IPv4 socket
+/// which is not connected.
+fn test_getsockname_ipv4_connect_nonblock() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12321` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12321` is just a random non-zero port because Windows
+    // and Apple hosts return EADDRNOTAVAIL when attempting to connect to
+    // a zero port.
+    let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
+
+    // Non-blocking connect should fail with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getsockname(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    // The unspecified IPv4 address.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    if cfg!(windows_host) {
+        // On Windows hosts a connecting socket is bound to the unspecified address.
+        assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    } else {
+        // On UNIX hosts a connecting socket is bound to any local interface address
+        // but not the unspecified address.
+        assert_ne!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    }
+    assert!(sock_addr.sin_port > 0);
 }
 
 /// Test that the `getpeername` syscall successfully returns the peer address
@@ -650,6 +766,11 @@ fn test_getpeername_ipv4_nonblock_no_peer() {
     // Non-blocking connect should fail with EINPROGRESS.
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    // There should be no error during async connection.
+    let errno =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR).unwrap();
+    assert_eq!(errno, 0);
 
     // Since we're never accepting the connection, the socket should never be
     // successfully connected and thus we should be unable to read the peername.

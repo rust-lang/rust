@@ -44,7 +44,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_default_from_new(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let fn_node = ctx.find_node_at_offset::<ast::Fn>()?;
     let fn_name = fn_node.name()?;
 
@@ -154,7 +157,7 @@ fn generate_default_impl(make: &SyntaxFactory, impl_: &ast::Impl, self_ty: ast::
     )
 }
 
-fn is_default_implemented(ctx: &AssistContext<'_>, impl_: &Impl) -> bool {
+fn is_default_implemented(ctx: &AssistContext<'_, '_>, impl_: &Impl) -> bool {
     let db = ctx.sema.db;
     let impl_ = ctx.sema.to_def(impl_);
     let impl_def = match impl_ {

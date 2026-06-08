@@ -1,11 +1,12 @@
 //! Performs various peephole optimizations.
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Integer};
 use rustc_hir::{LangItem, find_attr};
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, sym};
 
@@ -33,14 +34,14 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         if !preserve_ub_checks {
             SimplifyUbCheck { tcx }.visit_body(body);
         }
-        let ctx = InstSimplifyContext {
+        let mut ctx = InstSimplifyContext {
             tcx,
-            local_decls: &body.local_decls,
             typing_env: body.typing_env(tcx),
+            local_decls: &mut body.local_decls,
         };
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
-                let StatementKind::Assign(box (.., rvalue)) = &mut statement.kind else {
+                let StatementKind::Assign((.., rvalue)) = &mut statement.kind else {
                     continue;
                 };
 
@@ -55,6 +56,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
             let terminator = block.terminator.as_mut().unwrap();
             ctx.simplify_primitive_clone(terminator, &mut block.statements);
             ctx.simplify_size_or_align_of_val(terminator, &mut block.statements);
+            ctx.simplify_raw_eq(terminator, &mut block.statements);
             ctx.simplify_intrinsic_assert(terminator);
             ctx.simplify_nounwind_call(terminator);
             simplify_duplicate_switch_targets(terminator);
@@ -68,7 +70,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
 
 struct InstSimplifyContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    local_decls: &'a LocalDecls<'tcx>,
+    local_decls: &'a mut IndexVec<Local, LocalDecl<'tcx>>,
     typing_env: ty::TypingEnv<'tcx>,
 }
 
@@ -77,7 +79,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     /// GVN can also do this optimization, but GVN is only run at mir-opt-level 2 so having this in
     /// InstSimplify helps unoptimized builds.
     fn simplify_repeated_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = &*rvalue else {
+        let Rvalue::Aggregate(AggregateKind::Array(_), fields) = &*rvalue else {
             return;
         };
         if fields.len() < 5 {
@@ -104,7 +106,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
     /// Transform boolean comparisons into logical operations.
     fn simplify_bool_cmp(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) = &*rvalue else { return };
+        let Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), (a, b)) = &*rvalue else { return };
         *rvalue = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
             // Transform "Eq(a, true)" ==> "a"
             (BinOp::Eq, _, Some(true)) => Rvalue::Use(a.clone(), WithRetag::Yes),
@@ -168,7 +170,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
     /// Transform `Aggregate(RawPtr, [p, ()])` ==> `Cast(PtrToPtr, p)`.
     fn simplify_ptr_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
-        if let Rvalue::Aggregate(box AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
+        if let Rvalue::Aggregate(AggregateKind::RawPtr(pointee_ty, mutability), fields) = rvalue
             && let meta_ty = fields.raw[1].ty(self.local_decls, self.tcx)
             && meta_ty.is_unit()
         {
@@ -312,6 +314,63 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                 StatementKind::Assign(Box::new((
                     *destination,
                     Rvalue::Use(const_op, WithRetag::Yes),
+                ))),
+            ));
+            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+        }
+    }
+
+    /// Simplify `raw_eq` intrinsic calls to `Eq` when the type has the size of a primitive.
+    ///
+    /// For example, replace `raw_eq::<[u8; 4]>(a, b)` with `Eq(Transmute(a), Transmute(b))`.
+    fn simplify_raw_eq(
+        &mut self,
+        terminator: &mut Terminator<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let tcx = self.tcx;
+        let source_info = terminator.source_info;
+        let span = source_info.span;
+        if let TerminatorKind::Call {
+            func, args, destination, target: Some(destination_block), ..
+        } = &terminator.kind
+            && args.len() == 2
+            && let Some((fn_def_id, generics)) = func.const_fn_def()
+            && tcx.is_intrinsic(fn_def_id, sym::raw_eq)
+            && let generic_ty = generics.type_at(0)
+            && let Ok(layout) = tcx.layout_of(self.typing_env.as_query_input(generic_ty))
+            && let Ok(integer) = Integer::from_size(layout.size)
+        {
+            let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, generic_ty);
+            let uint_ty = integer.to_ty(tcx, false);
+
+            let mut transmute_operand = |op: &Operand<'tcx>| -> Operand<'tcx> {
+                let ref_local = self.local_decls.push(LocalDecl::new(ref_ty, span));
+                statements.push(Statement::new(
+                    source_info,
+                    StatementKind::Assign(Box::new((
+                        Place::from(ref_local),
+                        Rvalue::Use(op.clone(), WithRetag::Yes),
+                    ))),
+                ));
+                let place = Place::from(ref_local).project_deeper(&[ProjectionElem::Deref], tcx);
+                let int_local = self.local_decls.push(LocalDecl::new(uint_ty, span));
+                statements.push(Statement::new(
+                    source_info,
+                    StatementKind::Assign(Box::new((
+                        Place::from(int_local),
+                        Rvalue::Cast(CastKind::Transmute, Operand::Copy(place), uint_ty),
+                    ))),
+                ));
+                Operand::Move(Place::from(int_local))
+            };
+            let lhs_op = transmute_operand(&args[0].node);
+            let rhs_op = transmute_operand(&args[1].node);
+            statements.push(Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    *destination,
+                    Rvalue::BinaryOp(BinOp::Eq, Box::new((lhs_op, rhs_op))),
                 ))),
             ));
             terminator.kind = TerminatorKind::Goto { target: *destination_block };

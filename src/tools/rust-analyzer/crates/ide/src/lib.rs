@@ -70,7 +70,7 @@ use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
     FxHashMap, FxIndexSet,
     base_db::{
-        CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
+        AbsPathBuf, CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
         salsa::{Cancelled, Database},
     },
     prime_caches, symbol_index,
@@ -253,7 +253,7 @@ impl Analysis {
     // Creates an analysis instance for a single file, without any external
     // dependencies, stdlib support or ability to apply changes. See
     // `AnalysisHost` for creating a fully-featured analysis.
-    pub fn from_single_file(text: String) -> (Analysis, FileId) {
+    pub fn from_single_file(text: String, proc_macro_cwd: Arc<AbsPathBuf>) -> (Analysis, FileId) {
         let mut host = AnalysisHost::default();
         let file_id = FileId::from_raw(0);
         let mut file_set = FileSet::default();
@@ -267,11 +267,6 @@ impl Analysis {
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
 
-        // FIXME: This is less than ideal
-        let proc_macro_cwd = Arc::new(
-            TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
-                .unwrap(),
-        );
         let crate_attrs = Vec::new();
         cfg_options.insert_atom(sym::test);
         crate_graph.add_crate_root(

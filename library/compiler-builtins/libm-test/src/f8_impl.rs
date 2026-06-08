@@ -36,6 +36,7 @@ impl Float for f8 {
     const NEG_SNAN: Self = Self(0b1_1111_001);
 
     const MIN_POSITIVE_NORMAL: Self = Self(1 << Self::SIG_BITS);
+    const MIN_POSITIVE_SUBNORMAL: Self = Self(1);
     // FIXME: incorrect values
     const EPSILON: Self = Self::ZERO;
     const PI: Self = Self::ZERO;

@@ -1212,21 +1212,25 @@ pub(crate) struct UnknownCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("unstable feature specified for `-Ctarget-feature`: `{$feature}`")]
-#[note("this feature is not stably supported; its behavior can change in the future")]
+#[note("{$note}; its behavior can change in the future")]
 pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
+    pub note: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-#[note(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-#[note("for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>")]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,
+    #[note(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    #[note(
+        "for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>"
+    )]
+    pub future_compat_note: bool,
 }
 
 pub(crate) struct TargetFeatureDisableOrEnable<'a> {

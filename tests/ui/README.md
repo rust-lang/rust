@@ -109,6 +109,10 @@ Tests focused on associated types. If the associated type is not in a trait defi
 
 See [Associated Types | Reference](https://doc.rust-lang.org/reference/items/associated-items.html#associated-types).
 
+## `tests/ui/assumptions_on_binders`: -Zassumptions-on-binders
+
+Tests focused on the -Zassumptions-on-binders flag.
+
 ## `tests/ui/async-await`: Async/Await
 
 Tests for the async/await related features. E.g. async functions, await expressions, and their interaction with other language features.
@@ -927,6 +931,10 @@ Tests on the module system.
 
 **FIXME**: `tests/ui/imports/` should probably be merged with this.
 
+## `tests/ui/move-expr/`
+
+Tests for `#![feature(move_expr)]`.
+
 ## `tests/ui/moves`
 
 Tests on moves (destructive moves).
@@ -934,6 +942,9 @@ Tests on moves (destructive moves).
 ## `tests/ui/mut/`
 
 Broad category of tests on mutability, such as the `mut` keyword, borrowing a value as both immutable and mutable (and the associated error), or adding mutable references to `const` declarations.
+
+## `tests/ui/mut-restriction/`
+Tests for `#![feature(mut_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/namespace/`
 
@@ -1236,6 +1247,10 @@ In this directory, multiple crates are compiled, but some of them have `inline` 
 
 Tests on name shadowing.
 
+## `tests/ui/share-trait`
+
+Tests for the unstable `Share` trait.
+
 ## `tests/ui/shell-argfiles/`: `-Z shell-argfiles` command line flag
 
 The `-Zshell-argfiles` compiler flag allows argfiles to be parsed using POSIX "shell-style" quoting. When enabled, the compiler will use shlex to parse the arguments from argfiles specified with `@shell:<path>`.
@@ -1485,6 +1500,10 @@ See [Uninhabited | Reference](https://doc.rust-lang.org/reference/glossary.html?
 ## `tests/ui/union/`
 
 See [Unions | Reference](https://doc.rust-lang.org/reference/items/unions.html).
+
+## `tests/ui/unnamed-enum-variants`: `_ = <range-or-int>` in an `enum`
+
+See [Tracking Issue for Unnamed Enum Variants (Open Enums) #156628](https://github.com/rust-lang/rust/issues/156628)
 
 ## `tests/ui/unop/`: Unary operators `-`, `*` and `!`
 

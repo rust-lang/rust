@@ -238,7 +238,7 @@ mod break_keyword {}
 ///
 /// Turning a `fn` into a `const fn` has no effect on run-time uses of that function.
 ///
-/// ## Other uses of `const`
+/// ## raw pointers
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
 /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
@@ -961,14 +961,14 @@ mod loop_keyword {}
 /// returned.
 ///
 /// ```rust
-/// let opt = Option::None::<usize>;
+/// let opt: Option<usize> = None;
 /// let x = match opt {
 ///     Some(int) => int,
 ///     None => 10,
 /// };
 /// assert_eq!(x, 10);
 ///
-/// let a_number = Option::Some(10);
+/// let a_number = Some(10);
 /// match a_number {
 ///     Some(x) if x <= 5 => println!("0 to 5 num = {x}"),
 ///     Some(x @ 6..=10) => println!("6 to 10 num = {x}"),

@@ -7,8 +7,6 @@ unstable-options` to be accepted.
 ## linker-flavor
 
 In addition to the stable set of linker flavors, the following unstable values also exist:
-- `ptx`: use [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker)
-  for Nvidia NVPTX GPGPU support.
 - `bpf`: use [`bpf-linker`](https://github.com/alessandrod/bpf-linker) for eBPF support.
 - `llbc`: for linking in llvm bitcode. Install the preview rustup components`llvm-bitcode-linker`
   and `llvm-tools` to use as a self-contained linker by passing

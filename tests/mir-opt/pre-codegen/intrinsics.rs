@@ -7,12 +7,12 @@
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 
-// EMIT_MIR intrinsics.f_unit.PreCodegen.after.mir
+// EMIT_MIR intrinsics.f_unit.runtime-optimized.after.mir
 pub fn f_unit() {
     f_dispatch(());
 }
 
-// EMIT_MIR intrinsics.f_u64.PreCodegen.after.mir
+// EMIT_MIR intrinsics.f_u64.runtime-optimized.after.mir
 pub fn f_u64() {
     f_dispatch(0u64);
 }

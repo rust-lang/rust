@@ -314,7 +314,7 @@ pub const trait IntoIterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<I: [const] Iterator> const IntoIterator for I {
+const impl<I: [const] Iterator> IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 

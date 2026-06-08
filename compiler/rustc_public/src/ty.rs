@@ -1167,8 +1167,10 @@ pub enum Abi {
     RiscvInterruptM,
     RiscvInterruptS,
     RustPreserveNone,
+    RustTail,
     RustInvalid,
     Custom,
+    Swift,
 }
 
 /// A binder represents a possibly generic type and its bound vars.

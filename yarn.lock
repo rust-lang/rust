@@ -290,10 +290,10 @@ braces@^3.0.3:
   dependencies:
     fill-range "^7.1.1"
 
-browser-ui-test@^0.23.3:
-  version "0.23.3"
-  resolved "https://registry.yarnpkg.com/browser-ui-test/-/browser-ui-test-0.23.3.tgz#fe3b978cfe43d09ee9edd4b9d939a936dd654c30"
-  integrity sha512-VWiRH7sSwpnQSe1Rll5iOPS+IeFa1rMThCXrP5Pwspm95OOA8Wylv2B6yqreEw25DE3qPmgJUeZZC7Uh9wnjSg==
+browser-ui-test@^0.23.5:
+  version "0.23.5"
+  resolved "https://registry.yarnpkg.com/browser-ui-test/-/browser-ui-test-0.23.5.tgz#f8fab778a1e00f339f53bb44e76ad14c5b57ce4f"
+  integrity sha512-S4ztxfOa3vSqV86xS6huIrA8MKSrSqfZUFJfAgEN29U17eRtrYQt/ZGKYJBUP5sv5UYH6ZgnE05z8+Werm/8sw==
   dependencies:
     css-unit-converter "^1.1.2"
     pngjs "^3.4.0"

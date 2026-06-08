@@ -140,6 +140,8 @@ impl CollapsibleIf {
 
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
+                    // Note: We intentionally use char::is_whitespace instead of rustc_lexer::is_whitespace here to
+                    // avoid visual issues with zero-width spaces. See ui tests.
                     let requires_space = snippet(cx, up_to_else, "..").ends_with(|c: char| !c.is_whitespace());
                     let mut applicability = Applicability::MachineApplicable;
                     diag.span_suggestion(
@@ -238,7 +240,7 @@ impl CollapsibleIf {
             },
 
             [attr]
-                if matches!(Level::from_attr(attr.name(), || attr.id()), Some((Level::Expect, _)))
+                if matches!(Level::from_opt_symbol(attr.name()), Some(Level::Expect))
                     && let Some(metas) = attr.meta_item_list()
                     && let Some(MetaItemInner::MetaItem(meta_item)) = metas.first()
                     && let [tool, lint_name] = meta_item.path.segments.as_slice()

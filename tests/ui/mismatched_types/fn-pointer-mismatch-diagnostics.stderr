@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch-diagnostics.rs:14:26
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:20:26
    |
 LL |     let b: fn() -> u32 = bar;
    |            -----------   ^^^ expected fn pointer, found fn item
@@ -10,7 +10,7 @@ LL |     let b: fn() -> u32 = bar;
                  found fn item `fn() -> () {bar}`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch-diagnostics.rs:15:22
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:21:22
    |
 LL |     let f: fn(i32) = foo;
    |            -------   ^^^ expected fn pointer, found fn item
@@ -20,6 +20,51 @@ LL |     let f: fn(i32) = foo;
    = note: expected fn pointer `fn(_) -> ()`
                  found fn item `fn(_) -> u32 {foo}`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:24:34
+   |
+LL |     let _: for<'a> fn(&'a i32) = extern_foo;
+   |            -------------------   ^^^^^^^^^^ expected "Rust" fn, found "C" fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> fn(&'a _)`
+                 found fn item `for<'a> extern "C" fn(&'a _) {extern_foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:25:34
+   |
+LL |     let _: for<'a> fn(&'a i32) = unsafe_extern_foo;
+   |            -------------------   ^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> fn(&'a _)`
+                 found fn item `for<'a> unsafe extern "C" fn(&'a _) {unsafe_extern_foo}`
+   = note: unsafe functions cannot be coerced into safe function pointers
+
+error[E0308]: mismatched types
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:26:45
+   |
+LL |     let _: for<'a> extern "C" fn(&'a i32) = rust_foo;
+   |            ------------------------------   ^^^^^^^^ expected "C" fn, found "Rust" fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> extern "C" fn(&'a _)`
+                 found fn item `for<'a> fn(&'a _) {rust_foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-pointer-mismatch-diagnostics.rs:27:52
+   |
+LL |     let _: for<'a> unsafe extern "C" fn(&'a i32) = rust_foo;
+   |            -------------------------------------   ^^^^^^^^ expected "C" fn, found "Rust" fn
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> unsafe extern "C" fn(&'a _)`
+                 found fn item `for<'a> fn(&'a _) {rust_foo}`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

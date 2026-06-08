@@ -12,7 +12,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
-use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
@@ -510,18 +510,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.def_path_table();
+        let defs = self.tcx.definitions();
         if self.is_proc_macro {
-            for def_index in std::iter::once(CRATE_DEF_INDEX)
-                .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
+            for def_id in std::iter::once(CRATE_DEF_ID)
+                .chain(self.tcx.resolutions(()).proc_macros.iter().copied())
             {
-                let def_key = self.lazy(table.def_key(def_index));
-                let def_path_hash = table.def_path_hash(def_index);
-                self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
+                let def_key = self.lazy(defs.def_key(def_id));
+                let def_path_hash = defs.def_path_hash(def_id);
+                self.tables.def_keys.set_some(def_id.local_def_index, def_key);
+                self.tables
+                    .def_path_hashes
+                    .set(def_id.local_def_index, def_path_hash.local_hash().as_u64());
             }
         } else {
-            for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
+            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
                 self.tables.def_keys.set_some(def_index, def_key);
                 self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
@@ -1628,7 +1630,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
-                record!(self.tables.trait_impl_trait_tys[def_id] <- table);
+                record!(self.tables.collect_return_position_impl_trait_in_trait_tys[def_id] <- table);
             }
             if let DefKind::Impl { .. } | DefKind::Trait = def_kind {
                 let table = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
@@ -2034,7 +2036,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 let def_id = id.to_def_id();
                 self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
-                self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);
@@ -2465,7 +2466,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         return;
     };
 
-    if tcx.sess.threads() != 1 {
+    if tcx.sess.threads().is_some() {
         // Prefetch some queries used by metadata encoding.
         // This is not necessary for correctness, but is only done for performance reasons.
         // It can be removed if it turns out to cause trouble or be detrimental to performance.

@@ -81,6 +81,11 @@ pub enum PathLoweringDiagnostic {
         def: GenericDefId,
         expected_count: u32,
     },
+    /// Generic defaults are not allowed to refer to `Self`.
+    GenericDefaultRefersToSelf {
+        /// Index of the `Self` segment.
+        segment: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

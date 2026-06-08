@@ -6,14 +6,14 @@
 #![feature(async_drop)]
 #![allow(incomplete_features)]
 
-use core::future::{async_drop_in_place, Future};
+use core::future::{Future, async_drop_in_place};
 use core::mem::{self};
 use core::pin::pin;
 use core::task::{Context, Waker};
 
 async fn test_async_drop<T>(x: T) {
     let mut x = mem::MaybeUninit::new(x);
-    pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    pin!(unsafe { async_drop_in_place(&mut *x.as_mut_ptr()) });
 }
 
 fn main() {

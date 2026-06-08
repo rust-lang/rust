@@ -195,6 +195,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/default_unsafe_item.rs");
     }
     #[test]
+    fn deref_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/deref_pat.rs"); }
+    #[test]
     fn destructuring_assignment_struct_rest_pattern() {
         run_and_expect_no_errors(
             "test_data/parser/inline/ok/destructuring_assignment_struct_rest_pattern.rs",
@@ -472,6 +474,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/nocontentexpr_after_item.rs");
     }
     #[test]
+    fn not_null_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/not_null_pat.rs"); }
+    #[test]
     fn offset_of_parens() {
         run_and_expect_no_errors("test_data/parser/inline/ok/offset_of_parens.rs");
     }
@@ -503,6 +507,8 @@ mod ok {
     fn path_type_with_bounds() {
         run_and_expect_no_errors("test_data/parser/inline/ok/path_type_with_bounds.rs");
     }
+    #[test]
+    fn pattern_type() { run_and_expect_no_errors("test_data/parser/inline/ok/pattern_type.rs"); }
     #[test]
     fn placeholder_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/placeholder_pat.rs");
@@ -583,6 +589,8 @@ mod ok {
     fn reference_type() {
         run_and_expect_no_errors("test_data/parser/inline/ok/reference_type.rs");
     }
+    #[test]
+    fn return_attr() { run_and_expect_no_errors("test_data/parser/inline/ok/return_attr.rs"); }
     #[test]
     fn return_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/return_expr.rs"); }
     #[test]
@@ -956,8 +964,8 @@ mod err {
     #[test]
     fn top_level_let() { run_and_expect_errors("test_data/parser/inline/err/top_level_let.rs"); }
     #[test]
-    fn tuple_expr_leading_comma() {
-        run_and_expect_errors("test_data/parser/inline/err/tuple_expr_leading_comma.rs");
+    fn tuple_expr_empty_expr() {
+        run_and_expect_errors("test_data/parser/inline/err/tuple_expr_empty_expr.rs");
     }
     #[test]
     fn tuple_field_list_recovery() {

@@ -65,7 +65,9 @@ impl AbiMap {
             _ => ArchKind::Other,
         };
 
-        let os = if target.is_like_windows {
+        let os = if target.is_like_darwin {
+            OsKind::Apple
+        } else if target.is_like_windows {
             OsKind::Windows
         } else if target.is_like_vexos {
             OsKind::VEXos
@@ -80,6 +82,15 @@ impl AbiMap {
     pub fn canonize_abi(&self, extern_abi: ExternAbi, has_c_varargs: bool) -> AbiMapping {
         let AbiMap { os, arch } = *self;
 
+        if extern_abi == ExternAbi::Swift {
+            // Per https://www.swift.org/blog/abi-stability-and-more/, Swift's ABI
+            // is only stable on Apple platforms, so we reject it elsewhere.
+            match os {
+                OsKind::Apple => {}
+                _ => return AbiMapping::Invalid,
+            }
+        }
+
         let canon_abi = match (extern_abi, arch) {
             // infallible lowerings
             (ExternAbi::C { .. }, _) => CanonAbi::C,
@@ -89,8 +100,11 @@ impl AbiMap {
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
             (ExternAbi::RustPreserveNone, _) => CanonAbi::RustPreserveNone,
+            (ExternAbi::RustTail, _) => CanonAbi::RustTail,
 
             (ExternAbi::Custom, _) => CanonAbi::Custom,
+
+            (ExternAbi::Swift, _) => CanonAbi::Swift,
 
             (ExternAbi::System { .. }, ArchKind::X86)
                 if os == OsKind::Windows && !has_c_varargs =>
@@ -213,6 +227,7 @@ enum ArchKind {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum OsKind {
+    Apple,
     Windows,
     VEXos,
     Other,

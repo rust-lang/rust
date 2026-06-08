@@ -3,7 +3,7 @@ use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::{is_from_proc_macro, is_inside_let_else};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
-use rustc_hir::{ExprKind, HirId, ItemKind, MatchSource, Node, OwnerNode, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, HirId, MatchSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::adjustment::Adjust;
 
@@ -23,13 +23,11 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         && maybe_constr.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
 
         // Ensure this is not the final stmt, otherwise removing it would cause a compile error
-        && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir_get_parent_item(expr.hir_id))
-        && let ItemKind::Fn { body, .. } = item.kind
-        && let block = cx.tcx.hir_body(body).value
-        && let ExprKind::Block(block, _) = block.kind
+        && let block = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id)).value
+        && let ExprKind::Block(block, _) = peel_async_body(block).kind
         && !is_inside_let_else(cx.tcx, expr)
         && let [.., final_stmt] = block.stmts
-        && final_stmt.hir_id != stmt.hir_id
+        && (block.expr.is_some() || final_stmt.hir_id != stmt.hir_id)
         && !is_from_proc_macro(cx, expr)
         && !stmt_needs_never_type(cx, stmt.hir_id)
     {
@@ -42,6 +40,21 @@ pub(super) fn check_stmt<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
             String::new(),
             Applicability::MachineApplicable,
         );
+    }
+}
+
+/// In async functions, the body is wrapped in a
+/// `Block { expr: DropTemps(inner) }`. We peel through to `inner` so
+/// we can check the actual stmts.
+/// Returns `body_value` unchanged for non-async functions.
+fn peel_async_body<'a>(body_value: &'a Expr<'a>) -> &'a Expr<'a> {
+    if let ExprKind::Block(block, _) = body_value.kind
+        && let Some(expr) = block.expr
+        && let ExprKind::DropTemps(inner) = expr.kind
+    {
+        inner
+    } else {
+        body_value
     }
 }
 

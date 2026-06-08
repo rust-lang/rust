@@ -1,11 +1,11 @@
 //@ build-fail
-//~^ ERROR: cycle detected when computing layout of
 
 // Issue #111176 -- ensure that we do not emit ICE on layout cycles
 
 use std::mem;
 
 pub struct S<T: Tr> {
+    //~^ ERROR: cycle detected when computing layout of
     pub f: <T as Tr>::I,
 }
 

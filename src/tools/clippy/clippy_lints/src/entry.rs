@@ -498,11 +498,11 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
         }
 
         match try_parse_insert(self.cx, expr) {
-            Some(insert_expr) if self.spanless_eq.eq_expr(self.map, insert_expr.map) => {
+            Some(insert_expr) if self.spanless_eq.eq_expr(self.ctxt, self.map, insert_expr.map) => {
                 self.visit_insert_expr_arguments(&insert_expr);
                 // Multiple inserts, inserts with a different key, and inserts from a macro can't use the entry api.
                 if self.is_map_used
-                    || !self.spanless_eq.eq_expr(self.key, insert_expr.key)
+                    || !self.spanless_eq.eq_expr(self.ctxt, self.key, insert_expr.key)
                     || expr.span.ctxt() != self.ctxt
                 {
                     self.can_use_entry = false;
@@ -521,10 +521,10 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 self.visit_non_tail_expr(insert_expr.value);
                 self.is_single_insert = is_single_insert;
             },
-            _ if is_any_expr_in_map_used(self.cx, &mut self.spanless_eq, self.map, expr) => {
+            _ if is_any_expr_in_map_used(self.cx, &mut self.spanless_eq, self.ctxt, self.map, expr) => {
                 self.is_map_used = true;
             },
-            _ if self.spanless_eq.eq_expr(self.key, expr) => {
+            _ if self.spanless_eq.eq_expr(self.ctxt, self.key, expr) => {
                 self.is_key_used = true;
             },
             _ => match expr.kind {
@@ -600,11 +600,12 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
 fn is_any_expr_in_map_used<'tcx>(
     cx: &LateContext<'tcx>,
     spanless_eq: &mut SpanlessEq<'_, 'tcx>,
+    ctxt: SyntaxContext,
     map: &'tcx Expr<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> bool {
     for_each_expr(cx, map, |e| {
-        if spanless_eq.eq_expr(e, expr) {
+        if spanless_eq.eq_expr(ctxt, e, expr) {
             return ControlFlow::Break(());
         }
         ControlFlow::Continue(())

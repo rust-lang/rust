@@ -1,12 +1,10 @@
 use std::ops::RangeInclusive;
 
 use rustc_middle::bug;
-use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 
 use super::visitor::ResultsVisitor;
-use super::{Analysis, Effect, EffectIndex};
+use super::{Analysis, Effect, EffectIndex, SwitchTargetIndex};
 
 pub trait Direction {
     const IS_FORWARD: bool;
@@ -103,18 +101,20 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::Yield { resume, resume_arg, .. } if resume == block => {
+                mir::TerminatorKind::Yield { resume, drop, resume_arg, .. }
+                    if resume == block || drop == Some(block) =>
+                {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
-                        resume,
+                        block,
                         CallReturnPlaces::Yield(resume_arg),
                     );
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { ref discr, .. } => {
-                    if let Some(_data) = analysis.get_switch_int_data(pred, discr) {
+                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
+                    if let Some(_data) = analysis.get_switch_int_data(pred, targets, discr) {
                         bug!(
                             "SwitchInt edge effects are unsupported in backward dataflow analyses"
                         );
@@ -277,18 +277,18 @@ impl Direction for Forward {
 
                 if !return_.is_empty() {
                     analysis.apply_call_return_effect(exit_state, block, place);
-                    for &target in return_ {
+                    for target in return_ {
                         propagate(target, exit_state);
                     }
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
-                if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
+                if let Some(mut data) = analysis.get_switch_int_data(block, targets, discr) {
                     let mut tmp = analysis.bottom_value(body);
-                    for (value, target) in targets.iter() {
+                    for (i, (_value, target)) in targets.iter().enumerate() {
                         tmp.clone_from(exit_state);
-                        let value = SwitchTargetValue::Normal(value);
-                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value, targets);
+                        let target_idx = SwitchTargetIndex::Normal(i);
+                        analysis.apply_switch_int_edge_effect(&mut tmp, &mut data, target_idx);
                         propagate(target, &tmp);
                     }
 
@@ -296,10 +296,9 @@ impl Direction for Forward {
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
                     analysis.apply_switch_int_edge_effect(
-                        &mut data,
                         exit_state,
-                        SwitchTargetValue::Otherwise,
-                        targets,
+                        &mut data,
+                        SwitchTargetIndex::Otherwise,
                     );
                     propagate(targets.otherwise(), exit_state);
                 } else {

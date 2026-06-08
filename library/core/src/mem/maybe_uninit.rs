@@ -437,7 +437,8 @@ impl<T> MaybeUninit<T> {
     /// be null.
     ///
     /// Note that if `T` has padding bytes, those bytes are *not* preserved when the
-    /// `MaybeUninit<T>` value is returned from this function, so those bytes will *not* be zeroed.
+    /// `MaybeUninit<T>` value is returned from this function, so those bytes are not
+    /// guaranteed to be zeroed.
     ///
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.

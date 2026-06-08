@@ -73,16 +73,18 @@ impl<'tcx> ConstToPat<'tcx> {
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
-            let def_kind = self.tcx.def_kind(uv.def);
-            if let hir::def::DefKind::AssocConst { .. } = def_kind
-                && let Some(def_id) = uv.def.as_local()
+            if let ty::UnevaluatedConstKind::Projection { def_id }
+            | ty::UnevaluatedConstKind::Inherent { def_id } = uv.kind
+                && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
-            if let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } = def_kind
+            if let ty::UnevaluatedConstKind::Projection { def_id }
+            | ty::UnevaluatedConstKind::Inherent { def_id }
+            | ty::UnevaluatedConstKind::Free { def_id } = uv.kind
             {
-                err.span_label(self.tcx.def_span(uv.def), msg!("constant defined here"));
+                err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
             }
         }
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
@@ -100,10 +102,8 @@ impl<'tcx> ConstToPat<'tcx> {
         //
         // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
         // instead of having this logic here
-        let typing_env = self
-            .tcx
-            .erase_and_anonymize_regions(self.typing_env)
-            .with_post_analysis_normalized(self.tcx);
+        let typing_env =
+            self.tcx.erase_and_anonymize_regions(self.typing_env).with_codegen_normalized(self.tcx);
         let uv = self.tcx.erase_and_anonymize_regions(uv);
 
         // try to resolve e.g. associated constants to their definition on an impl, and then
@@ -117,8 +117,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 // We've emitted an error on the original const, it would be redundant to complain
                 // on its use as well.
                 if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
-                    && let hir::def::DefKind::Const { .. } | hir::def::DefKind::AssocConst { .. } =
-                        self.tcx.def_kind(uv.def)
+                    && let ty::UnevaluatedConstKind::Projection { .. }
+                    | ty::UnevaluatedConstKind::Inherent { .. }
+                    | ty::UnevaluatedConstKind::Free { .. } = uv.kind
                 {
                     err.downgrade_to_delayed_bug();
                 }
@@ -183,7 +184,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        thir_pat.extra.get_or_insert_default().expanded_const = Some(uv.def);
+        thir_pat.extra.get_or_insert_default().expanded_const = Some(uv.kind.def_id());
         thir_pat
     }
 

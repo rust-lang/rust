@@ -1,4 +1,3 @@
-//~ NOTE not an `extern` block
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -43,7 +42,10 @@
 #![allow(x5300)] //~ WARN unknown lint: `x5300`
 #![forbid(x5200)] //~ WARN unknown lint: `x5200`
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
-#![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
+#![macro_use] //~ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
+//~| HELP remove the attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
 #![should_panic] //~ WARN attribute cannot be used on
@@ -67,8 +69,10 @@
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
-#![link(name = "x")] //~ WARN attribute should be applied to an `extern` block
-//~^ WARN this was previously accepted
+#![link(name = "x")] //~ WARN attribute cannot be used on
+//~| WARN this was previously accepted
+//~| HELP can only be applied to foreign modules
+//~| HELP remove the attribute
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
@@ -683,35 +687,40 @@ mod link_section {
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
 #[link(name = "x")]
-//~^ WARN attribute should be applied to an `extern` block
+//~^ WARN attribute cannot be used on
 //~| WARN this was previously accepted
+//~| HELP can only be applied to foreign modules
+//~| HELP remove the attribute
 mod link {
-    //~^ NOTE not an `extern` block
-
     mod inner { #![link(name = "x")] }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] fn f() { }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] struct S;
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] type T = S;
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] impl S { }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] extern "Rust" {}
     //~^ WARN attribute should be applied to an `extern` block

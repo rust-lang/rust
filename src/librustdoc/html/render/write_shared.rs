@@ -14,7 +14,6 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
@@ -165,7 +164,7 @@ fn write_rendered_cross_crate_info(
     resource_suffix: &str,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
-    if opt.should_emit_crate() {
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
         if include_sources {
             write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
         }
@@ -190,7 +189,7 @@ fn write_resources(
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
 ) -> Result<(), Error> {
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
         // Handle added third-party themes
         for entry in style_files {
             let theme = entry.basename()?;
@@ -218,7 +217,7 @@ fn write_resources(
         }
     }
 
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlStaticFiles) {
+    if opt.emit.contains(&EmitType::HtmlStaticFiles) {
         let static_dir = dst.join("static.files");
         try_err!(fs::create_dir_all(&static_dir), &static_dir);
 
@@ -730,8 +729,10 @@ impl TraitAliasPart {
                         None
                     } else {
                         let impl_ = imp.inner_impl();
+                        let print = print_impl(impl_, false, cx);
                         Some(Implementor {
-                            text: print_impl(impl_, false, cx).to_string(),
+                            text: format!("{}", print),
+                            cmp_text: format!("{:#}", print),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                             is_negative: impl_.is_negative_trait_impl(),
@@ -754,14 +755,9 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let mut implementors = implementors.collect::<Vec<_>>();
-            implementors.sort_unstable_by(|a, b| {
-                // We sort negative impls first.
-                match (a.is_negative, b.is_negative) {
-                    (false, true) => Ordering::Greater,
-                    (true, false) => Ordering::Less,
-                    _ => compare_names(&a.text, &b.text),
-                }
-            });
+            // Negative impls are naturally sorted first, because `impl !A` is less than `impl B`
+            // for any value of `B`, because `!` is less than any identifier-starting char.
+            implementors.sort_unstable_by(|a, b| compare_names(&a.cmp_text, &b.cmp_text));
 
             let part = OrderedJson::array_unsorted(
                 implementors
@@ -777,7 +773,11 @@ impl TraitAliasPart {
 }
 
 struct Implementor {
+    // HTML text used in generated output.
     text: String,
+    // Plain text used just for sorting output. This is a performance win, because this plain text
+    // is much shorter than the HTML output and sorting is hot.
+    cmp_text: String,
     synthetic: bool,
     types: Vec<String>,
     is_negative: bool,

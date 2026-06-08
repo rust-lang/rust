@@ -2,7 +2,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: undeclared-label
 pub(crate) fn undeclared_label(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UndeclaredLabel,
 ) -> Diagnostic {
     let name = &d.name;
@@ -86,16 +86,18 @@ fn foo() {
         check_diagnostics(
             r#"
 //- minicore: option, try
-fn foo() {
+fn foo() -> Option<()> {
     None?;
+    None
 }
 "#,
         );
         check_diagnostics(
             r#"
 //- minicore: option, try, future
-async fn foo() {
+async fn foo() -> Option<()> {
     None?;
+    None
 }
 "#,
         );
@@ -103,7 +105,7 @@ async fn foo() {
             r#"
 //- minicore: option, try, future, fn
 async fn foo() {
-    || None?;
+    || { None?; Some(()) };
 }
 "#,
         );

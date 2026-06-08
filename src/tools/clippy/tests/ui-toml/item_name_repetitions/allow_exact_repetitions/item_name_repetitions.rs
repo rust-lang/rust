@@ -1,5 +1,4 @@
 #![warn(clippy::module_name_repetitions)]
-#![allow(dead_code)]
 
 pub mod foo {
     // this line should produce a warning:

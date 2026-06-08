@@ -242,7 +242,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
-            ExprKind::Closure(box ClosureExpr {
+            ExprKind::Closure(ClosureExpr {
                 closure_id,
                 args,
                 ref upvars,
@@ -433,6 +433,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Use(operand, WithRetag::Yes))
+            }
+            ExprKind::Reborrow { source, mutability, target } => {
+                let temp = unpack!(block = this.as_temp(block, scope, source, mutability));
+                block.and(Rvalue::Reborrow(target, mutability, temp.into()))
             }
         }
     }
@@ -638,7 +642,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         unwind: UnwindAction::Continue,
                         replace: false,
                         drop: None,
-                        async_fut: None,
                     },
                 );
                 this.diverge_from(block);

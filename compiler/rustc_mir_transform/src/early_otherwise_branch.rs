@@ -303,8 +303,7 @@ fn evaluate_candidate<'tcx>(
         // ```
         let [
             Statement {
-                kind: StatementKind::Assign(box (_, Rvalue::Discriminant(child_place))),
-                ..
+                kind: StatementKind::Assign((_, Rvalue::Discriminant(child_place))), ..
             },
         ] = bbs[child].statements.as_slice()
         else {
@@ -368,8 +367,7 @@ fn verify_candidate_branch<'tcx>(
             return false;
         };
         // The statement must assign the discriminant of `place`.
-        let StatementKind::Assign(box (discr_place, Rvalue::Discriminant(from_place))) =
-            statement.kind
+        let StatementKind::Assign((discr_place, Rvalue::Discriminant(from_place))) = statement.kind
         else {
             return false;
         };

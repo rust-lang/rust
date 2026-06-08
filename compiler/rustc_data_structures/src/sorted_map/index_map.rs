@@ -29,7 +29,7 @@ pub struct SortedIndexMultiMap<I: Idx, K, V> {
     items: IndexVec<I, (K, V)>,
 
     // We can ignore this field because it is not observable from the outside.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     /// Indices of the items in the set, sorted by the item's key.
     idx_sorted_by_item_key: Vec<I>,
 }

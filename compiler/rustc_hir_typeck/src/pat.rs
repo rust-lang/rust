@@ -1007,7 +1007,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Err(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Err(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+            // If scrutinee is String and pattern is &str, suggest .as_str()
+            let expected = self.resolve_vars_with_obligations(expected);
+            if let ty::Adt(adt, _) = expected.kind()
+                && self.tcx.is_lang_item(adt.did(), LangItem::String)
+                && pat_ty.is_ref()
+                && pat_ty.peel_refs().is_str()
+                && let Some(origin_expr) = ti.origin_expr
+            {
+                err.span_suggestion_verbose(
+                    origin_expr.span.shrink_to_hi(),
+                    "consider converting the `String` to a `&str` using `.as_str()`",
+                    ".as_str()",
+                    Applicability::MachineApplicable,
+                );
+            }
             err.emit();
         }
 
@@ -1352,7 +1367,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Precondition: pat is a `Ref(_)` pattern
-    // FIXME(pin_ergonomics): add suggestions for `&pin mut` or `&pin const` patterns
     fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, pinned, mutbl) = pat.kind
@@ -1407,6 +1421,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             match binding_parent {
+                hir::Node::Param(hir::Param { ty_span, pat, .. })
+                    if pat.span != *ty_span
+                        && pinned.is_pinned()
+                        && !tcx.features().pin_ergonomics() =>
+                {
+                    // FIXME(pin_ergonomics): Once `pin_ergonomics` is stabilized, remove this
+                    // gate and allow the pinned reference type-position suggestion unconditionally.
+                }
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
@@ -1414,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("to take parameter `{binding}` by reference, move `&{pin_and_mut}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
-                            (ty_span.shrink_to_lo(), mutbl.ref_prefix_str().to_owned()),
+                            (ty_span.shrink_to_lo(), format!("&{}", pinned.prefix_str(mutbl))),
                         ],
                         Applicability::MachineApplicable
                     );

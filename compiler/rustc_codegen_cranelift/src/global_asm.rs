@@ -2,9 +2,8 @@
 //! standalone executable.
 
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
@@ -12,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::Session;
 use rustc_target::asm::InlineAsmArch;
 
 use crate::prelude::*;
@@ -163,33 +162,28 @@ fn codegen_global_asm_inner<'tcx>(
 pub(crate) struct GlobalAsmConfig {
     assembler: PathBuf,
     target: String,
-    pub(crate) output_filenames: Arc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {
-    pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
+    pub(crate) fn new(sess: &Session) -> Self {
         GlobalAsmConfig {
-            assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
-            target: match &tcx.sess.opts.target_triple {
+            assembler: crate::toolchain::get_toolchain_binary(sess, "as"),
+            target: match &sess.opts.target_triple {
                 rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
                 rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }
             },
-            output_filenames: tcx.output_filenames(()).clone(),
         }
     }
 }
 
 pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
-    cgu_name: &str,
     global_asm: String,
-    invocation_temp: Option<&str>,
-) -> Result<Option<PathBuf>, String> {
-    if global_asm.is_empty() {
-        return Ok(None);
-    }
+    global_asm_object_file: &Path,
+) -> Result<(), String> {
+    assert!(!global_asm.is_empty());
 
     // Remove all LLVM style comments
     let mut global_asm = global_asm
@@ -198,11 +192,6 @@ pub(crate) fn compile_global_asm(
         .collect::<Vec<_>>()
         .join("\n");
     global_asm.push('\n');
-
-    let global_asm_object_file = add_file_stem_postfix(
-        config.output_filenames.temp_path_for_cgu(OutputType::Object, cgu_name, invocation_temp),
-        ".asm",
-    );
 
     // Assemble `global_asm`
     if option_env!("CG_CLIF_FORCE_GNU_AS").is_some() {
@@ -270,16 +259,5 @@ pub(crate) fn compile_global_asm(
         }
     }
 
-    Ok(Some(global_asm_object_file))
-}
-
-pub(crate) fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
-    let mut new_filename = path.file_stem().unwrap().to_owned();
-    new_filename.push(postfix);
-    if let Some(extension) = path.extension() {
-        new_filename.push(".");
-        new_filename.push(extension);
-    }
-    path.set_file_name(new_filename);
-    path
+    Ok(())
 }

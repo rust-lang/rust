@@ -4,8 +4,8 @@ error: `#[must_use]` attribute cannot be used on macro calls
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/unused_attributes-must_use.rs:4:9
    |
@@ -18,8 +18,8 @@ error: `#[must_use]` attribute cannot be used on extern crates
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on modules
   --> $DIR/unused_attributes-must_use.rs:11:1
@@ -27,8 +27,8 @@ error: `#[must_use]` attribute cannot be used on modules
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on use statements
   --> $DIR/unused_attributes-must_use.rs:15:1
@@ -36,8 +36,8 @@ error: `#[must_use]` attribute cannot be used on use statements
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on constants
   --> $DIR/unused_attributes-must_use.rs:19:1
@@ -45,8 +45,8 @@ error: `#[must_use]` attribute cannot be used on constants
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on statics
   --> $DIR/unused_attributes-must_use.rs:22:1
@@ -54,8 +54,8 @@ error: `#[must_use]` attribute cannot be used on statics
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/unused_attributes-must_use.rs:40:1
@@ -63,8 +63,8 @@ error: `#[must_use]` attribute cannot be used on inherent impl blocks
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on foreign modules
   --> $DIR/unused_attributes-must_use.rs:55:1
@@ -72,8 +72,8 @@ error: `#[must_use]` attribute cannot be used on foreign modules
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on foreign statics
   --> $DIR/unused_attributes-must_use.rs:59:5
@@ -81,8 +81,8 @@ error: `#[must_use]` attribute cannot be used on foreign statics
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on type aliases
   --> $DIR/unused_attributes-must_use.rs:73:1
@@ -90,8 +90,8 @@ error: `#[must_use]` attribute cannot be used on type aliases
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on type parameters
   --> $DIR/unused_attributes-must_use.rs:77:8
@@ -99,8 +99,8 @@ error: `#[must_use]` attribute cannot be used on type parameters
 LL | fn qux<#[must_use] T>(_: T) {}
    |        ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on associated consts
   --> $DIR/unused_attributes-must_use.rs:82:5
@@ -108,8 +108,8 @@ error: `#[must_use]` attribute cannot be used on associated consts
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on associated types
   --> $DIR/unused_attributes-must_use.rs:85:5
@@ -117,8 +117,8 @@ error: `#[must_use]` attribute cannot be used on associated types
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait impl blocks
   --> $DIR/unused_attributes-must_use.rs:95:1
@@ -126,8 +126,8 @@ error: `#[must_use]` attribute cannot be used on trait impl blocks
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait methods in impl blocks
   --> $DIR/unused_attributes-must_use.rs:100:5
@@ -135,8 +135,8 @@ error: `#[must_use]` attribute cannot be used on trait methods in impl blocks
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on trait aliases
   --> $DIR/unused_attributes-must_use.rs:107:1
@@ -144,8 +144,8 @@ error: `#[must_use]` attribute cannot be used on trait aliases
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on macro defs
   --> $DIR/unused_attributes-must_use.rs:111:1
@@ -153,8 +153,8 @@ error: `#[must_use]` attribute cannot be used on macro defs
 LL | #[must_use]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on statements
   --> $DIR/unused_attributes-must_use.rs:120:5
@@ -162,8 +162,8 @@ error: `#[must_use]` attribute cannot be used on statements
 LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on closures
   --> $DIR/unused_attributes-must_use.rs:125:13
@@ -171,8 +171,8 @@ error: `#[must_use]` attribute cannot be used on closures
 LL |     let x = #[must_use]
    |             ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, foreign functions, functions, methods, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on match arms
   --> $DIR/unused_attributes-must_use.rs:148:9
@@ -180,8 +180,8 @@ error: `#[must_use]` attribute cannot be used on match arms
 LL |         #[must_use]
    |         ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on struct fields
   --> $DIR/unused_attributes-must_use.rs:157:28
@@ -189,8 +189,8 @@ error: `#[must_use]` attribute cannot be used on struct fields
 LL |     let s = PatternField { #[must_use]  foo: 123 };
    |                            ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: `#[must_use]` attribute cannot be used on pattern fields
   --> $DIR/unused_attributes-must_use.rs:159:24
@@ -198,8 +198,8 @@ error: `#[must_use]` attribute cannot be used on pattern fields
 LL |     let PatternField { #[must_use] foo } = s;
    |                        ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused `X` that must be used
   --> $DIR/unused_attributes-must_use.rs:130:5

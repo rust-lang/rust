@@ -59,15 +59,17 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
+use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, RegionVid, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
+use rustc_span::Span;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -145,6 +147,8 @@ impl<'tcx> InferCtxt<'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        assert!(!self.tcx.assumptions_on_binders());
+
         // `is_global` means the type has no params, infer, placeholder, or non-`'static`
         // free regions. If the type has none of these things, then we can skip registering
         // this outlives obligation since it has no components which affect lifetime
@@ -199,6 +203,82 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 
+    pub fn destructure_solver_region_constraints_for_regionck(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        span: Span,
+    ) {
+        let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
+            outlives_env.known_type_outlives().into_iter().cloned().collect(),
+            outlives_env.free_region_map().relation.clone(),
+        );
+        self.destructure_solver_region_constraints(assumptions, self, span);
+    }
+
+    pub fn destructure_solver_region_constraints_for_borrowck(
+        &self,
+        // this is always ConstraintConversion but lol
+        conversion: impl TypeOutlivesDelegate<'tcx>,
+        known_type_outlives: &[PolyTypeOutlivesPredicate<'tcx>],
+        region_outlives: TransitiveRelation<RegionVid>,
+        span: Span,
+    ) {
+        let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
+            known_type_outlives.into_iter().cloned().collect(),
+            region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
+        );
+        self.destructure_solver_region_constraints(assumptions, conversion, span);
+    }
+
+    #[instrument(level = "debug", skip(self, conversion))]
+    pub fn destructure_solver_region_constraints(
+        &self,
+        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
+        mut conversion: impl TypeOutlivesDelegate<'tcx>,
+        span: Span,
+    ) {
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
+        let origin = SubregionOrigin::SolverRegionConstraint(span);
+        let category = origin.to_constraint_category();
+
+        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        debug!(?constraint);
+        let constraint =
+            rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                constraint,
+                &assumptions,
+            );
+        debug!(?constraint);
+        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
+        debug!(?constraint);
+
+        let mut constraints = vec![constraint];
+        while let Some(c) = constraints.pop() {
+            use rustc_type_ir::region_constraint::RegionConstraint::*;
+
+            match c {
+                Ambiguity => {
+                    self.dcx().err("unable to satisfy constraints involving placeholders due to unknown implied bounds");
+                }
+                RegionOutlives(a, b) => {
+                    conversion.push_sub_region_constraint(
+                        origin.clone(),
+                        // we flip these because regionck is silly :>
+                        b,
+                        a,
+                        category,
+                    );
+                }
+                // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
+                And(nested) | Or(nested) => constraints.extend(nested),
+                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => unreachable!(),
+            }
+        }
+    }
+
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth.
@@ -217,8 +297,13 @@ impl<'tcx> InferCtxt<'tcx> {
             SubregionOrigin<'tcx>,
         )
             -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
+        span: Span,
     ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
+
+        if self.tcx.assumptions_on_binders() {
+            self.destructure_solver_region_constraints_for_regionck(outlives_env, span);
+        }
 
         // Must loop since the process of normalizing may itself register region obligations.
         for iteration in 0.. {
@@ -458,7 +543,7 @@ where
         // These are guaranteed to apply, no matter the inference
         // results.
         let trait_bounds: Vec<_> =
-            self.verify_bound.declared_bounds_from_definition(alias_ty).collect();
+            rustc_type_ir::outlives::declared_bounds_from_definition(self.tcx, alias_ty).collect();
 
         debug!(?trait_bounds);
 

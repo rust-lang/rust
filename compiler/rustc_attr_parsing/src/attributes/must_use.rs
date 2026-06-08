@@ -1,3 +1,5 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 
 pub(crate) struct MustUseParser;
@@ -24,22 +26,14 @@ impl SingleAttributeParser for MustUseParser {
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::MustUse {
             span: cx.attr_span,
             reason: match args {
                 ArgParser::NoArgs => None,
-                ArgParser::NameValue(name_value) => {
-                    let Some(value_str) = name_value.value_as_str() else {
-                        cx.adcx().expected_string_literal(
-                            name_value.value_span,
-                            Some(&name_value.value_as_lit()),
-                        );
-                        return None;
-                    };
-                    Some(value_str)
-                }
+                ArgParser::NameValue(name_value) => cx.expect_string_literal(name_value),
                 ArgParser::List(list) => {
                     cx.adcx().expected_nv_or_no_args(list.span);
                     return None;

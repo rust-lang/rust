@@ -1,4 +1,4 @@
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:6:1
    |
 LL | #[cfg(any(foo, foo::bar))]
@@ -13,7 +13,7 @@ LL - #[cfg(any(foo, foo::bar))]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:12:1
    |
 LL | #[cfg(any(foo::bar, foo))]
@@ -28,7 +28,7 @@ LL - #[cfg(any(foo::bar, foo))]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:18:1
    |
 LL | #[cfg(all(foo, foo::bar))]
@@ -43,7 +43,7 @@ LL - #[cfg(all(foo, foo::bar))]
 LL + #[cfg(predicate)]
    |
 
-error[E0539]: malformed `cfg` attribute input
+error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:24:1
    |
 LL | #[cfg(all(foo::bar, foo))]
@@ -60,4 +60,4 @@ LL + #[cfg(predicate)]
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0539`.
+For more information about this error, try `rustc --explain E0565`.

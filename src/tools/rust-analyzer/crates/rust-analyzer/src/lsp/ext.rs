@@ -451,23 +451,15 @@ pub struct Runnable {
     pub label: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<lsp_types::LocationLink>,
-    pub kind: RunnableKind,
+    #[serde(flatten)]
     pub args: RunnableArgs,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-#[serde(untagged)]
+#[serde(tag = "kind", content = "args", rename_all = "lowercase")]
 pub enum RunnableArgs {
     Cargo(CargoRunnableArgs),
     Shell(ShellRunnableArgs),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum RunnableKind {
-    Cargo,
-    Shell,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -858,6 +850,7 @@ pub struct InlayHintResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
+    #[serde(default)]
     pub as_underscore: bool,
 }
 
@@ -879,4 +872,95 @@ impl Request for GetFailedObligations {
     type Params = GetFailedObligationsParams;
     type Result = String;
     const METHOD: &'static str = "rust-analyzer/getFailedObligations";
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn cargo_runnable_round_trips() {
+        let runnable = Runnable {
+            label: "cargo test -p my-crate".to_owned(),
+            location: None,
+            args: RunnableArgs::Cargo(CargoRunnableArgs {
+                environment: [("RUSTC_TOOLCHAIN".to_owned(), "/toolchain".to_owned())]
+                    .into_iter()
+                    .collect(),
+                cwd: "/project".into(),
+                override_cargo: None,
+                workspace_root: Some("/project".into()),
+                cargo_args: vec![
+                    "test".into(),
+                    "--package".into(),
+                    "my-crate".into(),
+                    "--lib".into(),
+                ],
+                executable_args: vec!["my_test".into(), "--exact".into()],
+            }),
+        };
+        let expected = json!({
+            "label": "cargo test -p my-crate",
+            "kind": "cargo",
+            "args": {
+                "environment": {"RUSTC_TOOLCHAIN": "/toolchain"},
+                "cwd": "/project",
+                "overrideCargo": null,
+                "workspaceRoot": "/project",
+                "cargoArgs": ["test", "--package", "my-crate", "--lib"],
+                "executableArgs": ["my_test", "--exact"],
+            }
+        });
+
+        let serialized = serde_json::to_value(&runnable).expect("serialized runnable");
+        assert_eq!(serialized, expected);
+
+        let deserialized: Runnable =
+            serde_json::from_value(expected).expect("cargo runnable should deserialize");
+        let RunnableArgs::Cargo(cargo) = &deserialized.args else {
+            panic!("expected Cargo variant, got {:?}", deserialized.args);
+        };
+        assert_eq!(cargo.cargo_args, vec!["test", "--package", "my-crate", "--lib"]);
+        assert_eq!(cargo.executable_args, vec!["my_test", "--exact"]);
+    }
+
+    #[test]
+    fn shell_runnable_round_trips() {
+        let runnable = Runnable {
+            label: "nextest test_one".to_owned(),
+            location: None,
+            args: RunnableArgs::Shell(ShellRunnableArgs {
+                environment: [("RUSTC_TOOLCHAIN".to_owned(), "/toolchain".to_owned())]
+                    .into_iter()
+                    .collect(),
+                cwd: "/project".into(),
+                program: "cargo".into(),
+                args: vec!["nextest".into(), "run".into(), "--package".into(), "my-crate".into()],
+            }),
+        };
+        let expected = json!({
+            "label": "nextest test_one",
+            "kind": "shell",
+            "args": {
+                "environment": {"RUSTC_TOOLCHAIN": "/toolchain"},
+                "cwd": "/project",
+                "program": "cargo",
+                "args": ["nextest", "run", "--package", "my-crate"],
+            }
+        });
+
+        let serialized = serde_json::to_value(&runnable).expect("serialized runnable");
+        assert_eq!(serialized, expected);
+
+        // Every shell runnable is a structurally valid cargo runnable if the `kind` tag isn't
+        // used. This test ensures that the `kind` tag is used.
+        let deserialized: Runnable =
+            serde_json::from_value(expected).expect("shell runnable should deserialize");
+        let RunnableArgs::Shell(shell) = &deserialized.args else {
+            panic!("expected Shell variant, got {:?}", deserialized.args);
+        };
+        assert_eq!(shell.program, "cargo");
+        assert_eq!(shell.args, vec!["nextest", "run", "--package", "my-crate"]);
+    }
 }

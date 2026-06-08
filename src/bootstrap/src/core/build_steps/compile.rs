@@ -457,6 +457,16 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        if srcdir.join("eh").exists() {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir.join("eh"),
+                "libunwind.a",
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
     } else if target.is_windows_gnu() || target.is_windows_gnullvm() {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, &builder.cc(target), target, CLang::C, obj);
@@ -1989,12 +1999,16 @@ impl Step for Sysroot {
             }
 
             // Copy the compiler into the correct sysroot.
-            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
-            // This fixes an issue where we'd have multiple copies of libc in the sysroot with no way to tell which to load.
-            // There are a few quirks of bootstrap that interact to make this reliable:
+            //
+            // FIXME(#156525): investigate if this is still needed.
+            //
+            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're
+            // requested with `builder.ensure(Rustc)`. This fixes an issue where we'd have multiple
+            // copies of libc in the sysroot with no way to tell which to load. There are a few
+            // quirks of bootstrap that interact to make this reliable:
             // 1. The order `Step`s are run is hard-coded in `builder.rs` and not configurable. This
-            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter to
-            //    fail because of duplicate metadata.
+            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter
+            //    to fail because of duplicate metadata.
             // 2. The sysroot is deleted and recreated between each invocation, so running `x test
             //    ui-fulldeps && x test ui` can't cause failures.
             let mut filtered_files = Vec::new();

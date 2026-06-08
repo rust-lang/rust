@@ -1277,6 +1277,16 @@
             {
                 "title": "Completion",
                 "properties": {
+                    "rust-analyzer.completion.addColonsToModule": {
+                        "markdownDescription": "Automatically add `::` when completing the module.\n\nWill not be completed in `use`.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Completion",
+                "properties": {
                     "rust-analyzer.completion.addSemicolonToUnit": {
                         "markdownDescription": "Automatically add a semicolon when completing unit-returning functions.\n\nIn `match` arms it completes a comma instead.",
                         "default": true,
@@ -1318,7 +1328,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.autoimport.exclude": {
-                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nFor modules the type \"subItems\" can be used to only exclude the all items in it but not the module\nitself. This does not include items defined in nested modules.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
                         "default": [
                             {
                                 "path": "core::borrow::Borrow",
@@ -1345,11 +1355,13 @@
                                             "type": "string",
                                             "enum": [
                                                 "always",
-                                                "methods"
+                                                "methods",
+                                                "subItems"
                                             ],
                                             "enumDescriptions": [
                                                 "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                                "Do not show this traits methods in auto-import completions."
+                                                "Do not show this trait's methods in auto-import completions.",
+                                                "Do not show this module's all items in it in auto-import completions."
                                             ]
                                         }
                                     }

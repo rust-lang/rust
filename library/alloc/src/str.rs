@@ -208,6 +208,23 @@ where
     result
 }
 
+/// Helper for final sigma lowercase
+#[cfg(not(no_global_oom_handling))]
+fn map_uppercase_sigma(from: &str, i: usize) -> char {
+    fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+        match iter.skip_while(|&c| c.is_case_ignorable()).next() {
+            Some(c) => c.is_cased(),
+            None => false,
+        }
+    }
+
+    // See https://www.unicode.org/versions/latest/core-spec/chapter-3/#G54277
+    // for the definition of `Final_Sigma`.
+    let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
+        && !case_ignorable_then_cased(from[i + const { 'Σ'.len_utf8() }..].chars());
+    if is_word_final { 'ς' } else { 'σ' }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
     #[inline]
@@ -291,7 +308,10 @@ impl str {
     pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
         // Fast path for replacing a single ASCII character with another.
         if let Some(from_byte) = match from.as_utf8_pattern() {
-            Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
+            Some(Utf8Pattern::StringPattern(s)) => match s.as_bytes() {
+                [from_byte] => Some(*from_byte),
+                _ => None,
+            },
             Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
             _ => None,
         } {
@@ -368,7 +388,7 @@ impl str {
     ///
     /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
     /// casing of Greek sigma. However, like that method, it does not handle locale-specific
-    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// casing, like Turkish and Azeri I/ı/İ/i. See its documentation
     /// for more information.
     ///
     /// # Examples
@@ -376,12 +396,12 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = "HELLO";
+    /// let s = "HELLO WORLD";
     ///
-    /// assert_eq!("hello", s.to_lowercase());
+    /// assert_eq!("hello world", s.to_lowercase());
     /// ```
     ///
-    /// A tricky example, with sigma:
+    /// Tricky examples, with sigma:
     ///
     /// ```
     /// let sigma = "Σ";
@@ -392,6 +412,10 @@ impl str {
     /// let odysseus = "ὈΔΥΣΣΕΎΣ";
     ///
     /// assert_eq!("ὀδυσσεύς", odysseus.to_lowercase());
+    ///
+    /// let odysseus_king_of_ithaca = "Ο ΟΔΥΣΣΈΑΣ ΒΑΣΙΛΙΆΣ ΤΗΣ ΙΘΆΚΗΣ";
+    ///
+    /// assert_eq!("ο οδυσσέας βασιλιάς της ιθάκης", odysseus_king_of_ithaca.to_lowercase());
     /// ```
     ///
     /// Languages without case are not changed:
@@ -438,21 +462,136 @@ impl str {
             }
         }
         return s;
+    }
 
-        fn map_uppercase_sigma(from: &str, i: usize) -> char {
-            // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
-            // for the definition of `Final_Sigma`.
-            let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
-                && !case_ignorable_then_cased(from[i + const { 'Σ'.len_utf8() }..].chars());
-            if is_word_final { 'ς' } else { 'σ' }
-        }
+    /// Returns the titlecase equivalent of this string slice,
+    /// which is assumed to represent a single word,
+    /// as a new [`String`].
+    ///
+    /// Essentially, this consists of uppercasing the first cased letter
+    /// (with [`char::to_titlecase()`]), and lowercasing everything that follows.
+    ///
+    /// 'Titlecase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34082)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
+    ///
+    /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
+    /// casing of Greek sigma. However, like that method, it does not handle locale-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See its documentation
+    /// for more information.
+    ///
+    /// This method does not perform any kind of word segmentation.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let s = "HELLO WORLD";
+    ///
+    /// assert_eq!("Hello world", s.word_to_titlecase());
+    /// ```
+    ///
+    /// The first *cased* letter is uppercased:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let the_night_before_christmas = "'twas";
+    ///
+    /// assert_eq!("'Twas", the_night_before_christmas.word_to_titlecase());
+    /// ```
+    ///
+    /// Languages without case are not changed:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.word_to_titlecase());
+    /// ```
+    ///
+    /// Georgian uppercase ("Mtavruli") letters are not used in titlecase:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let georgian = "ერთობაშია";
+    ///
+    /// assert_eq!(georgian, georgian.word_to_titlecase());
+    /// ```
+    ///
+    /// No word segmentation is performed,
+    /// so only the first cased letter in the whole string gets uppercased:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let blazingly_fast = "ferris and I";
+    ///
+    /// assert_eq!("Ferris and i", blazingly_fast.word_to_titlecase());
+    /// ```
+    ///
+    /// Tricky examples, with sigma:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let odysseus = "ὈΔΥΣΣΕΎΣ";
+    ///
+    /// assert_eq!("Ὀδυσσεύς", odysseus.word_to_titlecase());
+    ///
+    /// let odysseus_king_of_ithaca = "Ο ΟΔΥΣΣΈΑΣ ΒΑΣΙΛΙΆΣ ΤΗΣ ΙΘΆΚΗΣ";
+    ///
+    /// assert_eq!("Ο οδυσσέας βασιλιάς της ιθάκης", odysseus_king_of_ithaca.word_to_titlecase());
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the titlecase word as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "titlecase", issue = "153892")]
+    pub fn word_to_titlecase(&self) -> String {
+        // FIXME: add ASCII fast path
 
-        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            match iter.skip_while(|&c| c.is_case_ignorable()).next() {
-                Some(c) => c.is_cased(),
-                None => false,
+        let mut s = String::with_capacity(self.len());
+        let mut chars = self.char_indices();
+
+        'until_first_cased_char: for (_, c) in chars.by_ref() {
+            if c.is_cased() {
+                s.extend(c.to_titlecase());
+                break 'until_first_cased_char;
+            } else {
+                s.push(c);
             }
         }
+
+        for (i, c) in chars {
+            if c == 'Σ' {
+                // Σ maps to σ, except at the end of a word where it maps to ς.
+                // This is the only conditional (contextual) but language-independent mapping
+                // in `SpecialCasing.txt`,
+                // so hard-code it rather than have a generic "condition" mechanism.
+                // See https://github.com/rust-lang/rust/issues/26035
+                let sigma_lowercase = map_uppercase_sigma(self, i);
+                s.push(sigma_lowercase);
+            } else {
+                match conversions::to_lower(c) {
+                    [a, '\0', _] => s.push(a),
+                    [a, b, '\0'] => {
+                        s.push(a);
+                        s.push(b);
+                    }
+                    [a, b, c] => {
+                        s.push(a);
+                        s.push(b);
+                        s.push(c);
+                    }
+                }
+            }
+        }
+
+        s
     }
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
@@ -474,9 +613,9 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = "hello";
+    /// let s = "hello world";
     ///
-    /// assert_eq!("HELLO", s.to_uppercase());
+    /// assert_eq!("HELLO WORLD", s.to_uppercase());
     /// ```
     ///
     /// Scripts without case are not changed:
@@ -505,6 +644,108 @@ impl str {
 
         for c in rest.chars() {
             match conversions::to_upper(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
+        s
+    }
+
+    /// Returns the case-folded equivalent of this string slice, as a new [`String`].
+    ///
+    /// Case folding is a transformation, mostly matching lowercase, that is meant to be used
+    /// for case-insensitive string comparisons. Case-folded strings should not usually
+    /// be exposed directly to users.
+    ///
+    /// For the precise specification of case folding, see
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63737)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when case folding,
+    /// this function returns a [`String`] instead of modifying the parameter in-place.
+    ///
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still casefold differently. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
+    ///
+    /// Like [`char::to_casefold_unnormalized()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "HELLO";
+    /// let s1 = "Hello";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "hello")
+    /// ```
+    ///
+    /// Scripts without case are not changed:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.to_casefold_unnormalized());
+    /// ```
+    ///
+    /// One character can become multiple:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "TSCHÜẞ";
+    /// let s1 = "TSCHÜSS";
+    /// let s2 = "tschüß";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), s2.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "tschüss");
+    /// ```
+    ///
+    /// No NFC [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Å";
+    /// let decomp = "Å";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert_eq!(comp.to_casefold_unnormalized(), "\u{E5}");
+    /// assert_eq!(decomp.to_casefold_unnormalized(), "a\u{030A}");
+    /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the case-folded string as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "154742")]
+    pub fn to_casefold_unnormalized(&self) -> String {
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
+
+        for c in rest.chars() {
+            match conversions::to_casefold(c) {
                 [a, '\0', _] => s.push(a),
                 [a, b, '\0'] => {
                     s.push(a);

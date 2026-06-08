@@ -423,10 +423,6 @@ pub trait MacResult {
         None
     }
 
-    fn make_method_receiver_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
-        self.make_expr()
-    }
-
     /// Creates zero or more items.
     fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
         None
@@ -1121,6 +1117,8 @@ pub trait ResolverExpand {
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;
+    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Ord` inside it?
+    fn has_derive_ord(&self, expn_id: LocalExpnId) -> bool;
     /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
     fn resolve_derives(
         &mut self,

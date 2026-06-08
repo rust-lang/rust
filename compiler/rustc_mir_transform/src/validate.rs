@@ -145,26 +145,21 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             let src = self.body.basic_blocks.get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                (false, false, EdgeKind::Normal)
+                (false, false, EdgeKind::Normal) => {}
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
-                | (true, true, EdgeKind::Normal) => {}
+                (true, true, EdgeKind::Normal) => {}
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 (false, true, EdgeKind::Unwind) => {
                     self.unwind_edge_count += 1;
                 }
                 // All other jumps are invalid
-                _ => {
-                    self.fail(
-                        location,
-                        format!(
-                            "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
-                            edge_kind,
-                            bb,
-                            src.is_cleanup,
-                            bb.is_cleanup,
-                        )
-                    )
-                }
+                _ => self.fail(
+                    location,
+                    format!(
+                        "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
+                        edge_kind, bb, src.is_cleanup, bb.is_cleanup,
+                    ),
+                ),
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))
@@ -372,6 +367,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                        self.fail(
+                            location,
+                            "`async drop` should have been removed after drop elaboration",
+                        );
+                    }
                 }
             }
             TerminatorKind::Call { func, args, .. }
@@ -720,7 +721,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, args));
+                        check_equal(self, location, field.ty(self.tcx, args).skip_norm_wip());
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
@@ -899,7 +900,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        if let Some(box VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
+        if let Some(VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
             if ty.is_union() || ty.is_enum() {
                 self.fail(
                     START_BLOCK.start_location(),
@@ -966,7 +967,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+        if let ClearCrossCrate::Set(LocalInfo::DerefTemp) =
             self.body.local_decls[place.local].local_info
             && !place.is_indirect_first_projection()
         {
@@ -1032,9 +1033,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert_eq!(idx, FIRST_VARIANT);
                     let dest_ty = self.tcx.normalize_erasing_regions(
                         self.typing_env,
-                        Unnormalized::new_wip(
-                            adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
-                        ),
+                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
                     if let [field] = fields.raw.as_slice() {
                         let src_ty = field.ty(self.body, self.tcx);
@@ -1057,10 +1056,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ));
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
-                        let dest_ty = self.tcx.normalize_erasing_regions(
-                            self.typing_env,
-                            Unnormalized::new_wip(dest.ty(self.tcx, args)),
-                        );
+                        let dest_ty = self
+                            .tcx
+                            .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }
@@ -1152,7 +1150,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            Rvalue::Ref(..) => {}
+            Rvalue::Ref(..) | Rvalue::Reborrow(..) => {}
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
@@ -1460,7 +1458,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
+            StatementKind::Assign((dest, rvalue)) => {
                 // LHS and RHS of the assignment must have the same type.
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
@@ -1478,7 +1476,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let Some(local) = dest.as_local()
-                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+                    && let ClearCrossCrate::Set(LocalInfo::DerefTemp) =
                         self.body.local_decls[local].local_info
                     && !matches!(rvalue, Rvalue::CopyForDeref(_))
                 {
@@ -1501,7 +1499,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => {
                 let ty = op.ty(&self.body.local_decls, self.tcx);
                 if !ty.is_bool() {
                     self.fail(
@@ -1510,7 +1508,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
                 CopyNonOverlapping { src, dst, count },
             )) => {
                 let src_ty = src.ty(&self.body.local_decls, self.tcx);
@@ -1645,7 +1643,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
-        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
+        if let ClearCrossCrate::Set(LocalInfo::DerefTemp) = local_decl.local_info {
             if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                 self.fail(
                     START_BLOCK.start_location(),

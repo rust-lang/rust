@@ -114,6 +114,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::field_offset
+        | sym::field_representing_type_actual_type_id
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -180,6 +181,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ptr_guaranteed_cmp
         | sym::ptr_mask
         | sym::ptr_metadata
+        | sym::return_address
         | sym::rotate_left
         | sym::rotate_right
         | sym::round_ties_even_f16
@@ -199,6 +201,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sinf64
         | sym::sinf128
         | sym::size_of
+        | sym::size_of_type_id
         | sym::sqrtf16
         | sym::sqrtf32
         | sym::sqrtf64
@@ -211,6 +214,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf128
         | sym::type_id
         | sym::type_id_eq
+        | sym::type_id_field_representing_type
+        | sym::type_id_fields
+        | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
         | sym::type_of
@@ -281,6 +287,7 @@ pub(crate) fn check_intrinsic_type(
         let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]).skip_norm_wip();
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
+    let type_id_ty = || tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap();
 
     let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
     let n_lts = 0;
@@ -294,6 +301,7 @@ pub(crate) fn check_intrinsic_type(
         sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
+        sym::size_of_type_id => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, tcx.types.usize)),
         sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
         sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
@@ -313,16 +321,13 @@ pub(crate) fn check_intrinsic_type(
         sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
-        sym::type_id => (
-            1,
-            0,
-            vec![],
-            tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap(),
-        ),
-        sym::type_id_eq => {
-            let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap();
-            (0, 0, vec![type_id, type_id], tcx.types.bool)
+        sym::type_id => (1, 0, vec![], type_id_ty()),
+        sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
+        sym::type_id_field_representing_type => {
+            (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
+        sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
+        sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_vtable => {
             let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
             let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
@@ -335,19 +340,15 @@ pub(crate) fn check_intrinsic_type(
             let option_args = tcx.mk_args(&[dyn_ty.into()]);
             let ret_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
 
-            (
-                0,
-                0,
-                vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap(); 2],
-                ret_ty,
-            )
+            (0, 0, vec![type_id_ty(); 2], ret_ty)
         }
         sym::type_of => (
             0,
             0,
-            vec![tcx.type_of(tcx.lang_items().type_id().unwrap()).no_bound_vars().unwrap()],
+            vec![type_id_ty()],
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
+        sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
         sym::offload => (
             3,
             0,
@@ -355,6 +356,7 @@ pub(crate) fn check_intrinsic_type(
                 param(0),
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
+                tcx.types.u32,
                 param(1),
             ],
             param(2),
@@ -636,16 +638,18 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::catch_unwind => {
+            let mut_data = Ty::new_mut_ptr(tcx, param(0));
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
             let try_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8], tcx.types.unit));
-            let catch_fn_ty =
-                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8, mut_u8], tcx.types.unit));
+                ty::Binder::dummy(tcx.mk_fn_sig_unsafe_rust_abi([mut_data], tcx.types.unit));
+            let catch_fn_ty = ty::Binder::dummy(
+                tcx.mk_fn_sig_unsafe_rust_abi([mut_data, mut_u8], tcx.types.unit),
+            );
             (
+                1,
                 0,
-                0,
-                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_u8, Ty::new_fn_ptr(tcx, catch_fn_ty)],
-                tcx.types.i32,
+                vec![Ty::new_fn_ptr(tcx, try_fn_ty), mut_data, Ty::new_fn_ptr(tcx, catch_fn_ty)],
+                tcx.types.bool,
             )
         }
 
@@ -802,6 +806,8 @@ pub(crate) fn check_intrinsic_type(
         | sym::atomic_or
         | sym::atomic_xor => (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], param(0)),
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
+
+        sym::return_address => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

@@ -903,7 +903,6 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             tcx.sess.split_debuginfo(),
             tcx.sess.opts.unstable_opts.split_dwarf_kind,
             codegen_unit_name,
-            tcx.sess.invocation_temp.as_deref(),
         ) {
         // We get a path relative to the working directory from split_dwarf_path
         Some(tcx.sess.source_map().path_mapping().to_real_filename(work_dir, f))
@@ -1242,12 +1241,9 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    assert!(
-        up_var_tys
-            .iter()
-            .all(|t| t
-                == cx.tcx.normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(t)))
-    );
+    for ty in up_var_tys.iter() {
+        cx.tcx.assert_fully_normalized(cx.typing_env(), ty);
+    }
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_coroutine_ty);

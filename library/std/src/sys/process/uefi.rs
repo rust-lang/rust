@@ -1,6 +1,6 @@
 use r_efi::protocols::{simple_text_input, simple_text_output};
 
-use super::env::{CommandEnv, CommandEnvs};
+use super::env::{CommandEnv, CommandEnvs, CommandResolvedEnvs};
 use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
@@ -27,11 +27,13 @@ pub struct Command {
     env: CommandEnv,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub enum Stdio {
     Inherit,
     Null,
     MakePipe,
+    #[allow(dead_code)] // This variant exists only for the Debug impl
+    InheritFile(File),
 }
 
 impl Command {
@@ -86,6 +88,10 @@ impl Command {
         self.env.does_clear()
     }
 
+    pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
+        CommandResolvedEnvs::new(self.env.capture())
+    }
+
     pub fn get_current_dir(&self) -> Option<&Path> {
         None
     }
@@ -116,6 +122,7 @@ impl Command {
                 )
             }
             .map(Some),
+            Stdio::InheritFile(_) => Err(unsupported()?),
             Stdio::Inherit => Ok(None),
         }
     }
@@ -131,6 +138,7 @@ impl Command {
                 )
             }
             .map(Some),
+            Stdio::InheritFile(_) => Err(unsupported()?),
             Stdio::Inherit => Ok(None),
             Stdio::MakePipe => unsupported(),
         }
@@ -149,7 +157,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     }
 
     // Setup Stdout
-    let stdout = command.stdout.unwrap_or(Stdio::MakePipe);
+    let stdout = command.stdout.take().unwrap_or(Stdio::MakePipe);
     let stdout = Command::create_pipe(stdout)?;
     if let Some(con) = stdout {
         cmd.stdout_init(con)
@@ -158,7 +166,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     };
 
     // Setup Stderr
-    let stderr = command.stderr.unwrap_or(Stdio::MakePipe);
+    let stderr = command.stderr.take().unwrap_or(Stdio::MakePipe);
     let stderr = Command::create_pipe(stderr)?;
     if let Some(con) = stderr {
         cmd.stderr_init(con)
@@ -167,7 +175,7 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
     };
 
     // Setup Stdin
-    let stdin = command.stdin.unwrap_or(Stdio::Null);
+    let stdin = command.stdin.take().unwrap_or(Stdio::Null);
     let stdin = Command::create_stdin(stdin)?;
     if let Some(con) = stdin {
         cmd.stdin_init(con)
@@ -213,25 +221,19 @@ impl From<ChildPipe> for Stdio {
 
 impl From<io::Stdout> for Stdio {
     fn from(_: io::Stdout) -> Stdio {
-        // FIXME: This is wrong.
-        // Instead, the Stdio we have here should be a unit struct.
-        panic!("unsupported")
+        Stdio::Inherit
     }
 }
 
 impl From<io::Stderr> for Stdio {
     fn from(_: io::Stderr) -> Stdio {
-        // FIXME: This is wrong.
-        // Instead, the Stdio we have here should be a unit struct.
-        panic!("unsupported")
+        Stdio::Inherit
     }
 }
 
 impl From<File> for Stdio {
-    fn from(_file: File) -> Stdio {
-        // FIXME: This is wrong.
-        // Instead, the Stdio we have here should be a unit struct.
-        panic!("unsupported")
+    fn from(file: File) -> Stdio {
+        Stdio::InheritFile(file)
     }
 }
 
@@ -638,7 +640,7 @@ mod uefi_command_internal {
             }
 
             if let Some((ptr, len)) = self.args {
-                let _ = unsafe { Box::from_raw(crate::ptr::slice_from_raw_parts_mut(ptr, len)) };
+                let _ = unsafe { Box::from_raw(ptr.cast_slice(len)) };
             }
         }
     }

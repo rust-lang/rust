@@ -27,7 +27,6 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
@@ -368,7 +367,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
                     if let ty::ConstKind::Unevaluated(uv) = c.kind()
-                        && self.0.def_kind(uv.def) == DefKind::AnonConst
+                        && matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
                     {
                         let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
                         let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
@@ -607,8 +606,8 @@ pub fn try_evaluate_const<'tcx>(
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Unevaluated(uv) => {
-            let opt_anon_const_kind =
-                (tcx.def_kind(uv.def) == DefKind::AnonConst).then(|| tcx.anon_const_kind(uv.def));
+            let opt_anon_const_kind = matches!(uv.kind, ty::UnevaluatedConstKind::Anon { .. })
+                .then(|| tcx.anon_const_kind(uv.kind.def_id()));
 
             // Postpone evaluation of constants that depend on generic parameters or
             // inference variables.
@@ -630,7 +629,7 @@ pub fn try_evaluate_const<'tcx>(
                         // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
                         // inference variables and generic parameters to show up in `ty::Const` even though the anon const
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
-                        match tcx.thir_abstract_const(uv.def) {
+                        match tcx.thir_abstract_const(uv.kind.def_id()) {
                             Ok(Some(ct)) => {
                                 let ct = tcx.expand_abstract_consts(
                                     ct.instantiate(tcx, uv.args).skip_norm_wip(),
@@ -651,8 +650,9 @@ pub fn try_evaluate_const<'tcx>(
                                 }
                             }
                             Err(_) | Ok(None) => {
-                                let args = GenericArgs::identity_for_item(tcx, uv.def);
-                                let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+                                let args = GenericArgs::identity_for_item(tcx, uv.kind.def_id());
+                                let typing_env =
+                                    ty::TypingEnv::post_analysis(tcx, uv.kind.def_id());
                                 (args, typing_env)
                             }
                         }
@@ -680,8 +680,8 @@ pub fn try_evaluate_const<'tcx>(
                     // affect evaluation of the constant as this would make it a "truly" generic const arg.
                     // To prevent this we discard all the generic arguments and evalaute with identity args
                     // and in its own environment instead of the current environment we are normalizing in.
-                    let args = GenericArgs::identity_for_item(tcx, uv.def);
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+                    let args = GenericArgs::identity_for_item(tcx, uv.kind.def_id());
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, uv.kind.def_id());
 
                     (args, typing_env)
                 }
@@ -701,7 +701,10 @@ pub fn try_evaluate_const<'tcx>(
                     // logic does not go through type system normalization. If it did this would
                     // be a backwards compatibility problem as we do not enforce "syntactic" non-
                     // usage of generic parameters like we do here.
-                    if uv.args.has_non_region_param() || uv.args.has_non_region_infer() {
+                    if uv.args.has_non_region_param()
+                        || uv.args.has_non_region_infer()
+                        || uv.args.has_non_region_placeholders()
+                    {
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
 
@@ -713,17 +716,21 @@ pub fn try_evaluate_const<'tcx>(
                 }
             };
 
-            let uv = ty::UnevaluatedConst::new(uv.def, args);
+            let uv = ty::UnevaluatedConst::new(tcx, uv.kind, args);
             let erased_uv = tcx.erase_and_anonymize_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;
             // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
             // where it gets used as a const generic.
-            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, tcx.def_span(uv.def)) {
+            match tcx.const_eval_resolve_for_typeck(
+                typing_env,
+                erased_uv,
+                tcx.def_span(uv.kind.def_id()),
+            ) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,
-                    tcx.type_of(uv.def).instantiate(tcx, uv.args).skip_norm_wip(),
+                    tcx.type_of(uv.kind.def_id()).instantiate(tcx, uv.args).skip_norm_wip(),
                 )),
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(

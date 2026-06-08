@@ -322,10 +322,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     (pred, span)
                 }))
             }
-
-            hir::WherePredicateKind::EqPredicate(..) => {
-                // FIXME(#20041)
-            }
         }
     }
 
@@ -435,7 +431,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstCollector<'tcx> {
         fn visit_const(&mut self, c: ty::Const<'tcx>) {
             if let ty::ConstKind::Unevaluated(uv) = c.kind() {
-                if let Some(local) = uv.def.as_local()
+                if let Some(local) = uv.kind.def_id().as_local()
                     && is_const_param_default(self.tcx, local)
                 {
                     // Do not look into const param defaults,
@@ -449,11 +445,11 @@ fn const_evaluatable_predicates_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if self.tcx.is_type_const(uv.def) {
+                if self.tcx.is_type_const(uv.kind.def_id()) {
                     return;
                 }
 
-                let span = self.tcx.def_span(uv.def);
+                let span = self.tcx.def_span(uv.kind.def_id());
                 self.preds.insert((ty::ClauseKind::ConstEvaluatable(c).upcast(self.tcx), span));
             }
         }

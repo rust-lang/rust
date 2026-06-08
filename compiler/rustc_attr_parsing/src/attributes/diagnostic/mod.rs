@@ -23,7 +23,6 @@ use crate::errors::{
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
-pub(crate) mod check_cfg;
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
@@ -396,9 +395,7 @@ pub(crate) fn parse_format_string(
         .map(|piece| match piece {
             RpfPiece::Lit(lit) => Piece::Lit(Symbol::intern(lit)),
             RpfPiece::NextArgument(arg) => {
-                warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
-                let arg = parse_arg(&arg, mode, &mut warnings, span, parser.is_source_literal);
-                Piece::Arg(arg)
+                Piece::Arg(parse_arg(&arg, mode, &mut warnings, span, parser.is_source_literal))
             }
         })
         .collect();
@@ -415,15 +412,25 @@ fn parse_arg(
 ) -> FormatArg {
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
 
-    match arg.position {
+    let mut check_format = true;
+
+    let ret = match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
             (Mode::RustcOnUnimplemented, sym::ItemContext) => FormatArg::ItemContext,
 
-            // Like `{This}`, but sugared.
-            // FIXME(mejrs) maybe rename/rework this or something
-            // if we want to apply this to other attrs?
-            (Mode::RustcOnUnimplemented, sym::Trait) => FormatArg::Trait,
+            // `{This:ty}`
+            (Mode::RustcOnUnimplemented, sym::This) => match arg.format.ty {
+                "resolved" => {
+                    check_format = false;
+                    FormatArg::ThisResolved
+                }
+                "path" => {
+                    check_format = false;
+                    FormatArg::ThisPath
+                }
+                _ => FormatArg::This,
+            },
 
             // Some diagnostic attributes can use `{This}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.
@@ -431,10 +438,7 @@ fn parse_arg(
             // FIXME(mejrs) `DiagnosticOnUnimplemented` is intentionally not here;
             // that requires lang approval which is best kept for a standalone PR.
             (
-                Mode::RustcOnUnimplemented
-                | Mode::DiagnosticOnUnknown
-                | Mode::DiagnosticOnMove
-                | Mode::DiagnosticOnUnmatchArgs,
+                Mode::DiagnosticOnUnknown | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnmatchArgs,
                 sym::This,
             ) => FormatArg::This,
 
@@ -471,11 +475,11 @@ fn parse_arg(
                     attr: mode.as_str(),
                     allowed: mode.allowed_format_arguments(),
                 });
-                return FormatArg::AsIs(Symbol::intern(&format!("{{{as_is}}}")));
+                FormatArg::AsIs(Symbol::intern(&format!("{{{as_is}}}")))
             }
         },
 
-        // `{:1}` and `{}` are ignored
+        // `{1}` and `{}` are ignored
         Position::ArgumentIs(idx) => {
             warnings.push(FormatWarning::IndexedArgument { span });
             FormatArg::AsIs(Symbol::intern(&format!("{{{idx}}}")))
@@ -484,7 +488,11 @@ fn parse_arg(
             warnings.push(FormatWarning::PositionalArgument { span });
             FormatArg::AsIs(sym::empty_braces)
         }
+    };
+    if check_format {
+        warn_on_format_spec(&arg.format, warnings, input_span, is_source_literal);
     }
+    ret
 }
 
 /// `#[rustc_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
@@ -495,12 +503,8 @@ fn warn_on_format_spec(
     input_span: Span,
     is_source_literal: bool,
 ) {
-    if spec.ty != "" {
-        let span = spec
-            .ty_span
-            .as_ref()
-            .map(|inner| slice_span(input_span, inner.clone(), is_source_literal))
-            .unwrap_or(input_span);
+    if let Some(ty_span) = &spec.ty_span {
+        let span = slice_span(input_span, ty_span.clone(), is_source_literal);
         warnings.push(FormatWarning::InvalidSpecifier { span })
     }
 }

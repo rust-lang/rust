@@ -7,9 +7,7 @@ use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_data_structures::stable_hasher::{
-    StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
-};
+use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
 
@@ -239,6 +237,7 @@ symbols! {
         IntoFuture,
         IntoIterator,
         IntoIteratorItem,
+        IoBufReader,
         IrTyKind,
         Item,
         ItemContext,
@@ -286,6 +285,7 @@ symbols! {
         Rc,
         RcWeak,
         Ready,
+        Reborrow,
         RefCell,
         Reference,
         Relaxed,
@@ -294,6 +294,8 @@ symbols! {
         ResumeTy,
         Reverse,
         Rust,
+        // Temporary name for the rust_embed hack introduced in #145108
+        RustEmbed,
         RustaceansAreAwesome,
         RwLock,
         RwLockReadGuard,
@@ -307,6 +309,7 @@ symbols! {
         Some,
         Source,
         SpanCtxt,
+        StdinLock,
         Str,
         String,
         Struct,
@@ -317,7 +320,6 @@ symbols! {
         Target,
         This,
         TokenStream,
-        Trait,
         TrivialClone,
         Try,
         TryCaptureGeneric,
@@ -356,6 +358,7 @@ symbols! {
         abi_msp430_interrupt,
         abi_ptx,
         abi_riscv_interrupt,
+        abi_swift,
         abi_sysv64,
         abi_thiscall,
         abi_unadjusted,
@@ -576,7 +579,6 @@ symbols! {
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,
-        cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_overflow_checks,
         cfg_panic,
@@ -599,6 +601,7 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        clflushopt_target_feature,
         client,
         clippy,
         clobber_abi,
@@ -624,6 +627,7 @@ symbols! {
         cmse_nonsecure_entry,
         coerce_pointee_validated,
         coerce_shared,
+        coerce_shared_target,
         coerce_unsized,
         coff,
         cold,
@@ -751,8 +755,8 @@ symbols! {
         custom_mir,
         custom_test_frameworks,
         d32,
-        dbg_macro,
         dead_code,
+        dead_code_pub_in_binary,
         dealloc,
         debug,
         debug_assert_eq_macro,
@@ -835,6 +839,7 @@ symbols! {
         dreg_low8,
         dreg_low16,
         drop,
+        drop_glue,
         drop_in_place,
         drop_types_in_const,
         dropck_eyepatch,
@@ -850,7 +855,6 @@ symbols! {
         edition_panic,
         effective_target_features,
         effects,
-        eh_catch_typeinfo,
         eh_personality,
         eii,
         eii_declaration,
@@ -867,7 +871,6 @@ symbols! {
         //   to be detected if it accidentally does get used.
         empty: "",
         empty_braces: "{}",
-        emscripten_wasm_eh,
         enable,
         end,
         entry_nops,
@@ -945,6 +948,7 @@ symbols! {
         field_offset,
         field_projections,
         field_representing_type,
+        field_representing_type_actual_type_id,
         field_representing_type_raw,
         field_type,
         fields,
@@ -1035,6 +1039,7 @@ symbols! {
         global_asm,
         global_registration,
         globs,
+        gpu_kernel: "gpu-kernel",
         gpu_launch_sized_workgroup_mem,
         gt,
         guard,
@@ -1321,6 +1326,7 @@ symbols! {
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
+        move_expr,
         move_ref_pattern,
         move_size_limit,
         movrs_target_feature,
@@ -1333,6 +1339,7 @@ symbols! {
         must_use,
         mut_preserve_binding_mode_2024,
         mut_ref,
+        mut_restriction,
         mutable,
         naked,
         naked_asm,
@@ -1417,6 +1424,7 @@ symbols! {
         of,
         off,
         offload,
+        offload_kernel,
         offset,
         offset_of,
         offset_of_enum,
@@ -1516,6 +1524,7 @@ symbols! {
         pic,
         pie,
         pin,
+        pin_drop,
         pin_ergonomics,
         pin_v2,
         platform_intrinsics,
@@ -1661,6 +1670,7 @@ symbols! {
         residual,
         result,
         result_ffi_guarantees,
+        return_address,
         return_position_impl_trait_in_trait,
         return_type_notation,
         riscv32,
@@ -1690,12 +1700,12 @@ symbols! {
         rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
-        rust_eh_catch_typeinfo,
         rust_eh_personality,
         rust_future,
         rust_logo,
         rust_out,
         rust_preserve_none_cc,
+        rust_tail_cc,
         rustc,
         rustc_abi,
         // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
@@ -1927,6 +1937,7 @@ symbols! {
         sinf128,
         size,
         size_of,
+        size_of_type_id,
         size_of_val,
         sized,
         sized_hierarchy,
@@ -2016,8 +2027,8 @@ symbols! {
         target_feature_11,
         target_feature_inline_always,
         target_has_atomic,
-        target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
+        target_has_atomic_primitive_alignment,
         target_has_reliable_f16,
         target_has_reliable_f16_math,
         target_has_reliable_f128,
@@ -2090,6 +2101,9 @@ symbols! {
         type_changing_struct_update,
         type_id,
         type_id_eq,
+        type_id_field_representing_type,
+        type_id_fields,
+        type_id_variants,
         type_id_vtable,
         type_info,
         type_ir,
@@ -2150,11 +2164,13 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
+        unimplemented,
         unit,
         universal_impl_trait,
         unix,
         unlikely,
         unmarked_api,
+        unnamed_enum_variants,
         unnamed_fields,
         unpin,
         unqualified_local_imports,
@@ -2636,14 +2652,6 @@ impl StableHash for Symbol {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_str().stable_hash(hcx, hasher);
-    }
-}
-
-impl ToStableHashKey for Symbol {
-    type KeyType = String;
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> String {
-        self.as_str().to_string()
     }
 }
 

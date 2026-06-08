@@ -245,7 +245,7 @@ use core::any::Any;
 use core::cell::{Cell, CloneFromCell};
 #[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
-use core::clone::{CloneToUninit, UseCloned};
+use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -1160,10 +1160,7 @@ impl<T> Rc<[T]> {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                        as *mut RcInner<[mem::MaybeUninit<T>]>
-                },
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
             ))
         }
     }
@@ -1231,10 +1228,7 @@ impl<T, A: Allocator> Rc<[T], A> {
                 Rc::allocate_for_layout(
                     Layout::array::<T>(len).unwrap(),
                     |layout| alloc.allocate_zeroed(layout),
-                    |mem| {
-                        ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut RcInner<[mem::MaybeUninit<T>]>
-                    },
+                    |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
                 ),
                 alloc,
             )
@@ -1245,7 +1239,9 @@ impl<T, A: Allocator> Rc<[T], A> {
     ///
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
-    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    /// # Errors
+    ///
+    /// Returns the original `Rc<[T]>` in the `Err` variant if `self.len()` does not equal `N`.
     ///
     /// # Examples
     ///
@@ -1260,16 +1256,16 @@ impl<T, A: Allocator> Rc<[T], A> {
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
-    pub fn into_array<const N: usize>(self) -> Option<Rc<[T; N], A>> {
+    pub fn into_array<const N: usize>(self) -> Result<Rc<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);
             let ptr = ptr as *const [T; N];
 
             // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
             let me = unsafe { Rc::from_raw_in(ptr, alloc) };
-            Some(me)
+            Ok(me)
         } else {
-            None
+            Err(self)
         }
     }
 }
@@ -1545,13 +1541,11 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
-    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The pointer must have been obtained through [`Rc::into_raw`] and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`].
     /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator.
-    ///
-    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1581,7 +1575,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`and must satisfy the
+    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
     /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
     /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
@@ -2325,7 +2319,7 @@ impl<T> Rc<[T]> {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2402,7 +2396,7 @@ impl<T, A: Allocator> Rc<[T], A> {
             Rc::<[T]>::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2524,6 +2518,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T: ?Sized, A: Allocator + Clone> Share for Rc<T, A> {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]

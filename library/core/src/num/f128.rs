@@ -33,6 +33,7 @@ pub mod consts {
     pub const TAU: f128 = 6.28318530717958647692528676655900576839433879875021164194989_f128;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f128", issue = "116909")]
     pub const GOLDEN_RATIO: f128 =
         1.61803398874989484820458683436563811772030917980576286213545_f128;
@@ -843,7 +844,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -874,7 +875,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -906,7 +907,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -938,7 +939,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -977,7 +978,7 @@ impl f128 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f128) -> f128 {
-        const HI: f128 = f128::MAX / 2.;
+        const HI: f128 = f128::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -985,9 +986,9 @@ impl f128 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
@@ -1620,8 +1621,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -1649,8 +1649,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.01_f128;
     /// let g = 4.0_f128;
@@ -1678,8 +1677,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -1712,8 +1710,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -1744,8 +1741,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -1774,8 +1770,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 3.6_f128;
     /// let y = -3.6_f128;
@@ -1813,8 +1808,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let m = 10.0_f128;
     /// let x = 4.0_f128;
@@ -1858,8 +1852,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -1902,8 +1895,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -1945,12 +1937,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    /// assert!(abs_difference <= f128::EPSILON);
+    /// assert!(abs_difference <= 1e-9);
     ///
     /// assert_eq!(f128::powi(f128::NAN, 0), 1.0);
     /// assert_eq!(f128::powi(0.0, 0), 1.0);
@@ -1978,8 +1969,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let positive = 4.0_f128;
     /// let negative = -4.0_f128;

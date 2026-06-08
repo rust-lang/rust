@@ -562,6 +562,16 @@ pub(crate) struct UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
+#[derive(Diagnostic)]
+#[diag("call `{$function}` explicitly is unsafe and requires unsafe block", code = E0133)]
+pub(crate) struct CallDropExplicitlyRequiresUnsafe {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) function: String,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
 #[derive(Subdiagnostic)]
 #[label("items do not inherit unsafety from separate enclosing items")]
 pub(crate) struct UnsafeNotInheritedNote {
@@ -714,9 +724,25 @@ pub(crate) struct NonConstPath {
     pub(crate) span: Span,
 }
 
+pub(crate) struct UnreachablePattern<'tcx> {
+    pub(crate) covered_by_many_n_more_count: Option<usize>,
+    pub(crate) inner: UnreachablePatternInner<'tcx>,
+}
+
+impl<'a, 'tcx, G: EmissionGuarantee> Diagnostic<'a, G> for UnreachablePattern<'tcx> {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag = self.inner.into_diag(dcx, level);
+        if let Some(covered_by_many_n_more_count) = self.covered_by_many_n_more_count {
+            diag.arg("covered_by_many_n_more_count", covered_by_many_n_more_count);
+        }
+        diag
+    }
+}
+
 #[derive(Diagnostic)]
 #[diag("unreachable pattern")]
-pub(crate) struct UnreachablePattern<'tcx> {
+pub(crate) struct UnreachablePatternInner<'tcx> {
     #[label("no value can reach this")]
     pub(crate) span: Option<Span>,
     #[label("matches no values because `{$matches_no_values_ty}` is uninhabited")]
@@ -746,7 +772,6 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) covered_by_one: Option<Span>,
     #[note("multiple earlier patterns match some of the same values")]
     pub(crate) covered_by_many: Option<MultiSpan>,
-    pub(crate) covered_by_many_n_more_count: usize,
     #[suggestion("remove the match arm", code = "", applicability = "machine-applicable")]
     pub(crate) suggest_remove: Option<Span>,
 }

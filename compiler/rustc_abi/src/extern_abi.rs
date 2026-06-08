@@ -3,7 +3,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher, StableOrd};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher, StableOrd};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable};
 #[cfg(feature = "nightly")]
@@ -49,6 +49,11 @@ pub enum ExternAbi {
     /// forcing callers to save all registers.
     RustPreserveNone,
 
+    /// Ensures that calls in tail position can always be optimized into a jump.
+    ///
+    /// This ABI is not stable, and relies on LLVM implementation details.
+    RustTail,
+
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
@@ -61,6 +66,10 @@ pub enum ExternAbi {
     /// UEFI ABI, usually an alias of C, but sometimes an arch-specific alias
     /// and only valid on platforms that have a UEFI standard
     EfiApi,
+
+    /// Swift's calling convention, used to interoperate with Swift code without
+    /// going through C as an intermediary.
+    Swift,
 
     /* arm */
     /// Arm Architecture Procedure Call Standard, sometimes `ExternAbi::C` is an alias for this
@@ -173,6 +182,7 @@ abi_impls! {
             C { unwind: false } =><= "C",
             C { unwind: true } =><= "C-unwind",
             Rust =><= "Rust",
+            Swift =><= "Swift",
             Aapcs { unwind: false } =><= "aapcs",
             Aapcs { unwind: true } =><= "aapcs-unwind",
             AvrInterrupt =><= "avr-interrupt",
@@ -200,6 +210,7 @@ abi_impls! {
             System { unwind: true } =><= "system-unwind",
             SysV64 { unwind: false } =><= "sysv64",
             SysV64 { unwind: true } =><= "sysv64-unwind",
+            RustTail =><= "tail",
             Thiscall { unwind: false } =><= "thiscall",
             Thiscall { unwind: true } =><= "thiscall-unwind",
             Unadjusted =><= "unadjusted",
@@ -275,7 +286,7 @@ impl ExternAbi {
     /// - are subject to change between compiler versions
     pub fn is_rustic_abi(self) -> bool {
         use ExternAbi::*;
-        matches!(self, Rust | RustCall | RustCold | RustPreserveNone)
+        matches!(self, Rust | RustCall | RustCold | RustPreserveNone | RustTail)
     }
 
     /// Returns whether the ABI supports C variadics. This only controls whether we allow *imports*
@@ -348,7 +359,9 @@ impl ExternAbi {
             | Self::Vectorcall { .. }
             | Self::SysV64 { .. }
             | Self::Win64 { .. }
-            | Self::RustPreserveNone => true,
+            | Self::RustPreserveNone
+            | Self::RustTail
+            | Self::Swift => true,
         }
     }
 }

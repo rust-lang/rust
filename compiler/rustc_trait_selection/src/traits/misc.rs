@@ -5,7 +5,7 @@ use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::{Span, sym};
 
 use crate::regions::InferCtxtRegionExt;
@@ -249,11 +249,7 @@ pub fn all_fields_implement_trait<'tcx>(
             } else {
                 ObligationCause::dummy_with_span(field_ty_span)
             };
-            let ty = ocx.normalize(
-                &normalization_cause,
-                param_env,
-                Unnormalized::new_wip(unnormalized_ty),
-            );
+            let ty: Ty<'_> = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
             let normalization_errors = ocx.try_evaluate_obligations();
 
             // NOTE: The post-normalization type may also reference errors,
@@ -261,7 +257,13 @@ pub fn all_fields_implement_trait<'tcx>(
             // between expected and found const-generic types. Don't report an
             // additional copy error here, since it's not typically useful.
             if !normalization_errors.is_empty() || ty.references_error() {
-                tcx.dcx().span_delayed_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
+                tcx.dcx().span_delayed_bug(
+                    field_span,
+                    format!(
+                        "couldn't normalize struct field `{ty}` when checking {tr} implementation",
+                        tr = tcx.def_path_str(trait_def_id)
+                    ),
+                );
                 continue;
             }
 

@@ -6,7 +6,7 @@ use std::io::ErrorKind;
 use crate::concurrency::VClock;
 use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::linux_like::epoll::{EpollEvents, EvalContextExt as _};
+use crate::shims::unix::linux_like::epoll::{EpollReadiness, EvalContextExt as _};
 use crate::*;
 
 /// Maximum value that the eventfd counter can hold.
@@ -97,8 +97,9 @@ impl FileDescription for EventFd {
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
-        // Check the size of slice, and return error only if the size of the slice < 8.
-        if len < ty.layout.size.bytes_usize() {
+        // Check the size of slice, and return error if the size is wrong. The docs say we only
+        // error when the size is too small, but Linux seems to also error when the size is too big.
+        if len != ty.layout.size.bytes_usize() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
@@ -114,14 +115,14 @@ impl FileDescription for EventFd {
 }
 
 impl UnixFileDescription for EventFd {
-    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollEvents> {
+    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
         // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
         // need to be supported in the future, the check should be added here.
 
-        interp_ok(EpollEvents {
+        interp_ok(EpollReadiness {
             epollin: self.counter.get() != 0,
             epollout: self.counter.get() != MAX_COUNTER,
-            ..EpollEvents::new()
+            ..EpollReadiness::empty()
         })
     }
 }

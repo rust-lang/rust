@@ -95,6 +95,21 @@ impl PidFd {
         .map(drop)
     }
 
+    pub(crate) fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+        // since kernel 6.9
+        // https://lore.kernel.org/all/20240210-chihuahua-hinzog-3945b6abd44a@brauner/
+        cvt(unsafe {
+            libc::syscall(
+                libc::SYS_pidfd_send_signal,
+                self.0.as_raw_fd(),
+                signal,
+                crate::ptr::null::<()>(),
+                libc::PIDFD_SIGNAL_PROCESS_GROUP,
+            )
+        })
+        .map(drop)
+    }
+
     pub fn wait(&self) -> io::Result<ExitStatus> {
         let r = self.waitid(libc::WEXITED)?;
         match r {

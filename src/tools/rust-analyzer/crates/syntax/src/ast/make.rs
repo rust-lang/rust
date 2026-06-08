@@ -294,12 +294,7 @@ fn merge_where_clause(
         (None, None) => None,
         (None, Some(bs)) => Some(bs),
         (Some(ps), None) => Some(ps),
-        (Some(ps), Some(bs)) => {
-            let preds = where_clause(std::iter::empty()).clone_for_update();
-            ps.predicates().for_each(|p| preds.add_predicate(p));
-            bs.predicates().for_each(|p| preds.add_predicate(p));
-            Some(preds)
-        }
+        (Some(ps), Some(bs)) => Some(where_clause(ps.predicates().chain(bs.predicates()))),
     }
 }
 
@@ -541,9 +536,10 @@ pub fn block_expr(
     quote! {
         BlockExpr {
             StmtList {
-                ['{'] "\n"
-                #("    " #stmts "\n")*
-                #("    " #tail_expr "\n")*
+                ['{']
+                #("\n    " #stmts)*
+                #("\n    " #tail_expr)*
+                "\n"
                 ['}']
             }
         }
@@ -875,6 +871,10 @@ pub fn or_pat(pats: impl IntoIterator<Item = ast::Pat>, leading_pipe: bool) -> a
 
 pub fn box_pat(pat: ast::Pat) -> ast::BoxPat {
     ast_from_text(&format!("fn f(box {pat}: ())"))
+}
+
+pub fn deref_pat(pat: ast::Pat) -> ast::Pat {
+    ast_from_text(&format!("fn f(deref!({pat}): ())"))
 }
 
 pub fn paren_pat(pat: ast::Pat) -> ast::ParenPat {

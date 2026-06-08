@@ -41,7 +41,7 @@ use crate::{
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
-pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
@@ -99,7 +99,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 //
 // pub use foo::{Bar, Baz};
 // ```
-pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
@@ -140,7 +140,7 @@ pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_>) -
 }
 
 fn build_expanded_import(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     use_tree: UseTree,
     use_item: Use,
@@ -162,7 +162,8 @@ fn build_expanded_import(
         }
     };
 
-    let refs_in_target = find_refs_in_mod(ctx, target_module, visible_from, must_be_pub);
+    let refs_in_target =
+        find_refs_in_mod(ctx, target_module, current_module, visible_from, must_be_pub);
     let imported_defs = find_imported_defs(ctx, use_item);
 
     let filtered_defs =
@@ -237,7 +238,7 @@ fn find_parent_and_path(
     }
 }
 
-fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_>) -> bool {
+fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_, '_>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
     def.usages(&ctx.sema).in_scope(&search_scope).at_least_one()
 }
@@ -251,7 +252,11 @@ struct Ref {
 }
 
 impl Ref {
-    fn from_scope_def(ctx: &AssistContext<'_>, name: Name, scope_def: ScopeDef) -> Option<Self> {
+    fn from_scope_def(
+        ctx: &AssistContext<'_, '_>,
+        name: Name,
+        scope_def: ScopeDef,
+    ) -> Option<Self> {
         match scope_def {
             ScopeDef::ModuleDef(def) => Some(Ref {
                 visible_name: name,
@@ -267,7 +272,7 @@ impl Ref {
 struct Refs(Vec<Ref>);
 
 impl Refs {
-    fn used_refs(&self, ctx: &AssistContext<'_>) -> Refs {
+    fn used_refs(&self, ctx: &AssistContext<'_, '_>) -> Refs {
         Refs(
             self.0
                 .clone()
@@ -297,8 +302,9 @@ impl Refs {
 }
 
 fn find_refs_in_mod(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     expandable: Expandable,
+    current_module: Module,
     visible_from: Module,
     must_be_pub: bool,
 ) -> Refs {
@@ -308,6 +314,10 @@ fn find_refs_in_mod(
             let refs = module_scope
                 .into_iter()
                 .filter_map(|(n, d)| Ref::from_scope_def(ctx, n, d))
+                .filter(|r| match r.def {
+                    Definition::Module(it) => it != current_module,
+                    _ => r.def.module(ctx.db()).map_or(false, |it| it != current_module),
+                })
                 .filter(|r| !must_be_pub || r.is_pub)
                 .collect();
             Refs(refs)
@@ -325,8 +335,8 @@ fn find_refs_in_mod(
     }
 }
 
-fn is_visible_from(ctx: &AssistContext<'_>, expandable: &Expandable, from: Module) -> bool {
-    fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
+fn is_visible_from(ctx: &AssistContext<'_, '_>, expandable: &Expandable, from: Module) -> bool {
+    fn is_mod_visible_from(ctx: &AssistContext<'_, '_>, module: Module, from: Module) -> bool {
         match module.parent(ctx.db()) {
             Some(parent) => {
                 module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
@@ -366,7 +376,7 @@ fn is_visible_from(ctx: &AssistContext<'_>, expandable: &Expandable, from: Modul
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition> {
+fn find_imported_defs(ctx: &AssistContext<'_, '_>, use_item: Use) -> Vec<Definition> {
     [Direction::Prev, Direction::Next]
         .into_iter()
         .flat_map(|dir| {
@@ -435,6 +445,31 @@ use foo::{Bar, Baz, f};
 fn qux(bar: Bar, baz: Baz) {
     f();
 }
+",
+        )
+    }
+
+    #[test]
+    fn expanding_glob_import_on_cycle_import() {
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub use crate::*$0;
+    pub struct Foo;
+    pub fn bar() -> Bar { _ = Foo; Bar }
+}
+pub use foo::*;
+pub struct Bar;
+",
+            r"
+mod foo {
+    pub use crate::Bar;
+    pub struct Foo;
+    pub fn bar() -> Bar { _ = Foo; Bar }
+}
+pub use foo::*;
+pub struct Bar;
 ",
         )
     }

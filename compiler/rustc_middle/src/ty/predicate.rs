@@ -113,7 +113,7 @@ impl<'tcx> Predicate<'tcx> {
 impl<'tcx> rustc_errors::IntoDiagArg for Predicate<'tcx> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
-            let pred = tcx.short_string(self, path);
+            let pred = tcx.short_string(tcx.lift(self), path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(pred))
         })
     }
@@ -122,7 +122,7 @@ impl<'tcx> rustc_errors::IntoDiagArg for Predicate<'tcx> {
 impl<'tcx> rustc_errors::IntoDiagArg for Clause<'tcx> {
     fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         ty::tls::with(|tcx| {
-            let clause = tcx.short_string(self, path);
+            let clause = tcx.short_string(tcx.lift(self), path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(clause))
         })
     }

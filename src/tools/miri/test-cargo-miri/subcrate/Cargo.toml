@@ -1,7 +1,6 @@
 [package]
 name = "subcrate"
 version = "0.1.0"
-authors = ["Miri Team"]
 # This is deliberately *not* on the 2024 edition to ensure doctests keep working
 # on old editions.
 edition = "2018"

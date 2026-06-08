@@ -18,9 +18,7 @@ extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate rustc_fs_util;
 extern crate rustc_hir;
-extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_log;
 extern crate rustc_session;
@@ -40,9 +38,9 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
 use rustc_log::tracing::info;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_span::{Symbol, sym};
@@ -60,7 +58,6 @@ mod codegen_f16_f128;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
-mod concurrency_limiter;
 mod config;
 mod constant;
 mod debuginfo;
@@ -91,7 +88,7 @@ mod prelude {
     };
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
     pub(crate) use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Scalar, Size, VariantIdx};
-    pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+    pub(crate) use rustc_data_structures::fx::FxHashMap;
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
     pub(crate) use rustc_middle::mir::{self, *};
@@ -133,7 +130,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => {
-                sess.dcx().warn("LTO is not supported. You may get a linker error.")
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
             }
         }
 
@@ -150,6 +147,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
+    }
+
+    fn thin_lto_supported(&self) -> bool {
+        false
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
@@ -200,6 +201,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        // All Cranelift supported targets support ret except for s390x
+        mnemonic == "ret" && sess.target.arch != Arch::S390x
+    }
+
     fn target_cpu(&self, sess: &Session) -> String {
         // FIXME handle `-Ctarget-cpu=native`
         match sess.opts.cg.target_cpu {
@@ -209,17 +215,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
         .to_owned()
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.get().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, _crate_info, config.jit_args.clone());
+            driver::jit::run_jit(tcx, self.target_cpu(tcx.sess), config.jit_args.clone());
 
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         } else {
-            driver::aot::run_aot(tcx)
+            Box::new(rustc_codegen_ssa::base::codegen_crate(driver::aot::AotDriver, tcx))
         }
     }
 
@@ -227,9 +233,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        outputs: &OutputFilenames,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
+        _outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
+    ) -> (CompiledModules, WorkProductMap) {
+        ongoing_codegen
+            .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
+            .unwrap()
+            .join(sess, crate_info)
+    }
+
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![sym::type_id_eq]
     }
 }
 
@@ -244,7 +258,9 @@ fn enable_verifier(sess: &Session) -> bool {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    match sess.target.llvm_target.parse() {
+    // Use versioned target triple to make `OperatingSystem::MacOSX(...)`
+    // contain a value, which we use when emitting `LC_BUILD_VERSION`.
+    match back::versioned_llvm_target(sess).parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }

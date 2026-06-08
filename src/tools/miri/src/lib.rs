@@ -9,6 +9,7 @@
     feature(abort_unwind)
 )]
 #![feature(rustc_private)]
+#![feature(dirfd)]
 #![feature(f16)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
@@ -69,6 +70,7 @@ extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_index;
 extern crate rustc_log;
 extern crate rustc_middle;
@@ -133,8 +135,11 @@ pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
     BorTag, BorrowTrackerMethod, EvalContextExt as _, TreeBorrowsParams,
 };
-pub use crate::clock::{Instant, MonotonicClock};
-pub use crate::concurrency::blocking_io::{BlockingIoManager, EvalContextExt as _, WithSource};
+pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutStyle};
+pub use crate::concurrency::blocking_io::{
+    BlockingIoInterest, BlockingIoManager, BlockingIoSourceReadiness, EvalContextExt as _,
+    SourceFileDescription,
+};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
@@ -143,7 +148,7 @@ pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
 pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
-    ThreadManager, TimeoutAnchor, TimeoutClock, UnblockKind,
+    ThreadManager, TlsAllocAction, UnblockKind,
 };
 pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;
@@ -151,7 +156,7 @@ pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_result,
 };
-pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
+pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, entry_fn, eval_entry};
 pub use crate::helpers::{EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{

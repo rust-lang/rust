@@ -28,7 +28,7 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v self
-//@ lldb-check:[...] { x = 2222 y = 3333 }
+//@ lldb-check:[...] {x:2222, y:3333}
 //@ lldb-command:continue
 
 //@ lldb-command:v self

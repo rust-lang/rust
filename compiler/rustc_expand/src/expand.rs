@@ -8,9 +8,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, DelegationSuffixes, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs,
-    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
-    PatKind, StmtKind, TyKind, token,
+    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
+    ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
+    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
@@ -68,6 +68,7 @@ macro_rules! ast_fragments {
         /// Can also serve as an input and intermediate result for macro expansion operations.
         pub enum AstFragment {
             OptExpr(Option<Box<ast::Expr>>),
+            MethodReceiverExpr(Box<ast::Expr>),
             $($Kind($AstTy),)*
         }
 
@@ -75,6 +76,7 @@ macro_rules! ast_fragments {
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum AstFragmentKind {
             OptExpr,
+            MethodReceiverExpr,
             $($Kind,)*
         }
 
@@ -82,6 +84,7 @@ macro_rules! ast_fragments {
             pub fn name(self) -> &'static str {
                 match self {
                     AstFragmentKind::OptExpr => "expression",
+                    AstFragmentKind::MethodReceiverExpr => "expression",
                     $(AstFragmentKind::$Kind => $kind_name,)*
                 }
             }
@@ -90,6 +93,8 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
+                    AstFragmentKind::MethodReceiverExpr =>
+                        result.make_expr().map(AstFragment::MethodReceiverExpr),
                     $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
                 }
             }
@@ -116,6 +121,13 @@ macro_rules! ast_fragments {
                 }
             }
 
+            pub(crate) fn make_method_receiver_expr(self) -> Box<ast::Expr> {
+                match self {
+                    AstFragment::MethodReceiverExpr(expr) => expr,
+                    _ => panic!("AstFragment::make_method_receiver_expr called on the wrong kind of fragment"),
+                }
+            }
+
             $(pub fn $make_ast(self) -> $AstTy {
                 match self {
                     AstFragment::$Kind(ast) => ast,
@@ -134,6 +146,7 @@ macro_rules! ast_fragments {
                             *opt_expr = vis.filter_map_expr(expr)
                         }
                     }
+                    AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ast) => vis.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
                         ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast, $($args)*)),)?)*
@@ -144,6 +157,7 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragment::OptExpr(Some(expr)) => try_visit!(visitor.visit_expr(expr)),
                     AstFragment::OptExpr(None) => {}
+                    AstFragment::MethodReceiverExpr(expr) => try_visit!(visitor.visit_method_receiver_expr(expr)),
                     $($(AstFragment::$Kind(ast) => try_visit!(visitor.$visit_ast(ast)),)?)*
                     $($(AstFragment::$Kind(ast) => walk_list!(visitor, $visit_ast_elt, &ast[..], $($args)*),)?)*
                 }
@@ -165,11 +179,6 @@ ast_fragments! {
         "expression";
         one fn visit_expr;
         fn make_expr;
-    }
-    MethodReceiverExpr(Box<ast::Expr>) {
-        "expression";
-        one fn visit_method_receiver_expr;
-        fn make_method_receiver_expr;
     }
     Pat(Box<ast::Pat>) {
         "pattern";
@@ -983,7 +992,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 type Node = AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag>;
                 let single_delegations = build_single_delegations::<Node>(
-                    self.cx, deleg, &item, &suffixes, item.span, true,
+                    self.cx,
+                    deleg,
+                    &item,
+                    &suffixes,
+                    item.span,
+                    DelegationSource::Glob,
                 );
                 // `-Zmacro-stats` ignores these because they don't seem important.
                 fragment_kind.expect_from_annotatables(single_delegations.map(|item| {
@@ -2032,8 +2046,12 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
     item: &'a ast::Item<Node::ItemKind>,
     suffixes: &'a [(Ident, Option<Ident>)],
     item_span: Span,
-    from_glob: bool,
+    source: DelegationSource,
 ) -> impl Iterator<Item = ast::Item<Node::ItemKind>> + 'a {
+    debug_assert_ne!(source, DelegationSource::Single);
+
+    let from_glob = source == DelegationSource::Glob;
+
     if suffixes.is_empty() {
         // Report an error for now, to avoid keeping stem for resolution and
         // stability checks.
@@ -2057,7 +2075,7 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
                 ident: rename.unwrap_or(ident),
                 rename,
                 body: deleg.body.clone(),
-                from_glob,
+                source,
             })),
             tokens: None,
         }
@@ -2401,7 +2419,12 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     };
 
                     let single_delegations = build_single_delegations::<Node>(
-                        self.cx, deleg, item, suffixes, item.span, false,
+                        self.cx,
+                        deleg,
+                        item,
+                        suffixes,
+                        item.span,
+                        DelegationSource::List(LocalExpnId::fresh_empty()),
                     );
                     Node::flatten_outputs(single_delegations.map(|item| {
                         let mut item = Node::from_item(item);

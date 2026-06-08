@@ -18,18 +18,15 @@ use hir_def::{
     signatures::{StructFlags, StructSignature},
 };
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
-    Variance,
-    inherent::{AdtDef, IntoKind},
-};
+use rustc_type_ir::{Variance, inherent::IntoKind};
 use stdx::never;
 
 use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     next_solver::{
-        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Region,
-        RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
+        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Pattern,
+        PatternKind, Region, RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
     },
 };
 
@@ -129,7 +126,7 @@ impl<'db> Context<'db> {
                 let mut add_constraints_from_variant = |variant| {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            field.get().instantiate_identity(),
+                            field.get().instantiate_identity().skip_norm_wip(),
                             Variance::Covariant,
                         );
                     }
@@ -138,7 +135,7 @@ impl<'db> Context<'db> {
                     AdtId::StructId(s) => add_constraints_from_variant(VariantId::StructId(s)),
                     AdtId::UnionId(u) => add_constraints_from_variant(VariantId::UnionId(u)),
                     AdtId::EnumId(e) => {
-                        e.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
+                        e.enum_variants(db).variants.values().for_each(|&(variant, _)| {
                             add_constraints_from_variant(VariantId::EnumVariantId(variant))
                         });
                     }
@@ -214,7 +211,7 @@ impl<'db> Context<'db> {
                 }
             }
             TyKind::Adt(def, args) => {
-                self.add_constraints_from_args(def.def_id().0.into(), args, variance);
+                self.add_constraints_from_args(def.def_id().into(), args, variance);
             }
             TyKind::Alias(alias) => {
                 // FIXME: Probably not correct wrt. opaques.
@@ -252,13 +249,31 @@ impl<'db> Context<'db> {
                 // we encounter this when walking the trait references for object
                 // types, where we use Error as the Self type
             }
+            TyKind::Pat(typ, pat) => {
+                self.add_constraints_from_pat(pat);
+                self.add_constraints_from_ty(typ, variance);
+            }
             TyKind::Bound(..) => {}
             TyKind::CoroutineWitness(..)
             | TyKind::Placeholder(..)
             | TyKind::Infer(..)
-            | TyKind::UnsafeBinder(..)
-            | TyKind::Pat(..) => {
+            | TyKind::UnsafeBinder(..) => {
                 never!("unexpected type encountered in variance inference: {:?}", ty)
+            }
+        }
+    }
+
+    fn add_constraints_from_pat(&mut self, pat: Pattern<'db>) {
+        match pat.kind() {
+            PatternKind::Range { start, end } => {
+                self.add_constraints_from_const(start);
+                self.add_constraints_from_const(end);
+            }
+            PatternKind::NotNull => {}
+            PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.add_constraints_from_pat(pat)
+                }
             }
         }
     }
@@ -479,7 +494,6 @@ struct Other<'a> {
 
     #[test]
     fn rustc_test_variance_associated_consts() {
-        // FIXME: Should be invariant
         check(
             r#"
 trait Trait {
@@ -491,7 +505,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: bivariant]
+                Foo[T: invariant]
             "#]],
         );
     }

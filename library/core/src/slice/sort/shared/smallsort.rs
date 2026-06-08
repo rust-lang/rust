@@ -284,7 +284,7 @@ fn small_sort_general_with_scratch<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
         // permutation of the input through drop_guard. This technique is similar
         // to ping-pong merging.
         bidirectional_merge(
-            &*ptr::slice_from_raw_parts(drop_guard.src, drop_guard.len),
+            slice::from_raw_parts(drop_guard.src, drop_guard.len),
             drop_guard.dst,
             is_less,
         );
@@ -332,7 +332,7 @@ where
     let v_base = v.as_mut_ptr();
     let initial_region_len = if no_merge { len } else { len_div_2 };
     // SAFETY: Both possible values of `initial_region_len` are in-bounds.
-    let mut region = unsafe { &mut *ptr::slice_from_raw_parts_mut(v_base, initial_region_len) };
+    let mut region = unsafe { slice::from_raw_parts_mut(v_base, initial_region_len) };
 
     // Avoid compiler unrolling, we *really* don't want that to happen here for binary-size reasons.
     loop {
@@ -357,9 +357,7 @@ where
         }
 
         // SAFETY: The right side of `v` based on `len_div_2` is guaranteed in-bounds.
-        unsafe {
-            region = &mut *ptr::slice_from_raw_parts_mut(v_base.add(len_div_2), len - len_div_2)
-        };
+        unsafe { region = slice::from_raw_parts_mut(v_base.add(len_div_2), len - len_div_2) };
     }
 
     // SAFETY: We checked that T is Freeze and thus observation safe.
@@ -367,11 +365,7 @@ where
     // scratch and v must not alias and scratch has v.len() space.
     unsafe {
         let scratch_base = stack_array.as_mut_ptr() as *mut T;
-        bidirectional_merge(
-            &mut *ptr::slice_from_raw_parts_mut(v_base, len),
-            scratch_base,
-            is_less,
-        );
+        bidirectional_merge(slice::from_raw_parts_mut(v_base, len), scratch_base, is_less);
         ptr::copy_nonoverlapping(scratch_base, v_base, len);
     }
 }
@@ -675,7 +669,7 @@ unsafe fn sort8_stable<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     // SAFETY: scratch_base[0..8] is now initialized, allowing us to merge back
     // into dst.
     unsafe {
-        bidirectional_merge(&*ptr::slice_from_raw_parts(scratch_base, 8), dst, is_less);
+        bidirectional_merge(slice::from_raw_parts(scratch_base, 8), dst, is_less);
     }
 }
 

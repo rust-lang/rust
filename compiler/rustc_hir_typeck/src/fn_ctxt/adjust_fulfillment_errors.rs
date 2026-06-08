@@ -484,7 +484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> bool {
         if let traits::FulfillmentErrorCode::Select(traits::SelectionError::SignatureMismatch(
-            box traits::SignatureMismatchData { expected_trait_ref, .. },
+            traits::SignatureMismatchData { expected_trait_ref, .. },
         )) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
                 expected_trait_ref.self_ty().kind()
@@ -511,7 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .filter(|field| {
-                let field_ty = field.ty(self.tcx, identity_args);
+                let field_ty = field.ty(self.tcx, identity_args).skip_norm_wip();
                 find_param_in_ty(field_ty.into(), param_to_point_at)
             })
             .collect();
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variant_with_id(variant_def_id)
                     .fields
                     .iter()
-                    .map(|field| field.ty(self.tcx, in_ty_adt_generic_args))
+                    .map(|field| field.ty(self.tcx, in_ty_adt_generic_args).skip_norm_wip())
                     .enumerate()
                     .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param)),
             ) else {

@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is shown when the derive attribute is used on an item other than a `struct`,
 // `enum` or `union`.
 pub(crate) fn invalid_derive_target(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::InvalidDeriveTarget,
 ) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range_for_range(d.range);

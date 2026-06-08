@@ -382,7 +382,6 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id, &mut |name, data| {
-                            progress(format!("proc-macro {name} built"));
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
                             }
@@ -392,6 +391,7 @@ impl WorkspaceBuildScripts {
                                     .kind
                                     .contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
+                                progress(format!("proc-macro {name} built"));
                                 data.proc_macro_dylib_path =
                                     match message.filenames.iter().find(|file| is_dylib(file)) {
                                         Some(filename) => {

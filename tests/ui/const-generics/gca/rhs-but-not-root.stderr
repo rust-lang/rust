@@ -1,5 +1,5 @@
 error: generic parameters in const blocks are only allowed as the direct value of a `type const`
-  --> $DIR/rhs-but-not-root.rs:7:54
+  --> $DIR/rhs-but-not-root.rs:8:54
    |
 LL | type const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
    |                                                      ^

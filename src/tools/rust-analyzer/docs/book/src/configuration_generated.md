@@ -375,6 +375,15 @@ If false, `-p <package>` will be passed instead if applicable. In case it is not
 check will be performed.
 
 
+## rust-analyzer.completion.addColonsToModule {#completion.addColonsToModule}
+
+Default: `true`
+
+Automatically add `::` when completing the module.
+
+Will not be completed in `use`.
+
+
 ## rust-analyzer.completion.addSemicolonToUnit {#completion.addSemicolonToUnit}
 
 Default: `true`
@@ -436,6 +445,9 @@ verbose form `{ "path": "path::to::item", type: "always" }`.
 
 For traits the type "methods" can be used to only exclude the methods but not the trait
 itself.
+
+For modules the type "subItems" can be used to only exclude the all items in it but not the module
+itself. This does not include items defined in nested modules.
 
 This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
 

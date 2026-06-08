@@ -5,21 +5,23 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
-use crate::hir::{ModuleItems, nested_filter};
+use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
-use crate::query::LocalCrate;
+use crate::query::{IntoQueryKey, LocalCrate};
 use crate::ty::TyCtxt;
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
@@ -101,6 +103,37 @@ impl<'tcx> Iterator for ParentOwnerIterator<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline]
+    pub fn local_def_id_to_hir_id(self, def_id: impl IntoQueryKey<LocalDefId>) -> HirId {
+        let def_id = def_id.into_query_key();
+        match self.hir_owner(def_id) {
+            ProjectedMaybeOwner::Owner(_) => HirId::make_owner(def_id),
+            ProjectedMaybeOwner::NonOwner(hir_id) => hir_id,
+        }
+    }
+
+    /// This function is used only inside eval-always query `analysis`
+    /// (`analysis -> run_required_analysis` -> `emit_delayed_lints`), so it is safe
+    /// to obtain delayed lints from non-eval-always `owner` query.
+    #[inline]
+    pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx Steal<DelayedLints>> {
+        self.dep_graph.assert_eval_always();
+        self.hir_owner(id.def_id).as_owner().map(|o| o.delayed_lints)
+    }
+
+    #[inline]
+    pub fn in_scope_traits_map(
+        self,
+        id: OwnerId,
+    ) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
+        self.hir_owner(id.def_id).as_owner().map(|o| o.trait_map)
+    }
+
+    #[inline]
+    pub fn opt_hir_owner_nodes(self, def_id: LocalDefId) -> Option<&'tcx OwnerNodes<'tcx>> {
+        self.hir_owner(def_id).as_owner().map(|o| o.nodes)
+    }
+
     #[inline]
     fn expect_hir_owner_nodes(self, def_id: LocalDefId) -> &'tcx OwnerNodes<'tcx> {
         self.opt_hir_owner_nodes(def_id)
@@ -317,11 +350,9 @@ impl<'tcx> TyCtxt<'tcx> {
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
-            // Const closures use their parent's const context
-            BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                return self.hir_body_const_context(self.local_parent(local_def_id));
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
+                ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if self.is_const_fn(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
@@ -834,6 +865,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_sig_id()
     }
 
+    pub fn hir_opt_delegation_info(self, def_id: LocalDefId) -> Option<&'tcx DelegationInfo> {
+        self.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_info()
+    }
+
+    pub fn hir_delegation_info(self, delegation_id: LocalDefId) -> &'tcx DelegationInfo {
+        self.hir_opt_delegation_info(delegation_id).expect("processing delegation")
+    }
+
     #[inline]
     fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
         match self.hir_node(id) {
@@ -982,8 +1021,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 span,
                 ..
             }) => {
-                // Ensure that the returned span has the item's SyntaxContext.
-                fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
+                // Ensure that the returned span has the closure expression's SyntaxContext.
+                fn_decl_span.find_ancestor_inside_same_ctxt(*span).unwrap_or(*span)
             }
             _ => self.hir_span_with_body(hir_id),
         };

@@ -68,7 +68,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Signature:
-        //   fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32
+        //   fn catch_unwind(try_fn: unsafe fn(*mut Data), data: *mut Data, catch_fn: unsafe fn(*mut Data, *mut u8)) -> bool
         // Calls `try_fn` with `data` as argument. If that executes normally, returns 0.
         // If that unwinds, calls `catch_fn` with the first argument being `data` and
         // then second argument being a target-dependent `payload` (i.e. it is up to us to define
@@ -129,7 +129,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
 
             // We set the return value of `catch_unwind` to 1, since there was a panic.
-            this.write_scalar(Scalar::from_i32(1), &catch_unwind.dest)?;
+            this.write_scalar(Scalar::from_bool(true), &catch_unwind.dest)?;
 
             // The Thread's `panic_payload` holds what was passed to `miri_start_unwind`.
             // This is exactly the second argument we need to pass to `catch_fn`.

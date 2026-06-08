@@ -153,7 +153,6 @@ impl Target {
         forward!(is_like_vexos);
         forward!(binary_format);
         forward!(default_dwarf_version);
-        forward!(allows_weak_linkage);
         forward!(has_rpath);
         forward!(no_default_libraries);
         forward!(position_independent_executables);
@@ -253,7 +252,7 @@ impl ToJson for Target {
             };
             ($attr:ident, $json_name:expr) => {{
                 let name = $json_name;
-                d.insert(name.into(), target.$attr.to_json());
+                d.insert(name.to_string(), target.$attr.to_json());
             }};
         }
 
@@ -263,7 +262,7 @@ impl ToJson for Target {
                 let name = $json_name;
                 #[allow(rustc::bad_opt_access)]
                 if default.$attr != target.$attr {
-                    d.insert(name.into(), target.$attr.to_json());
+                    d.insert(name.to_string(), target.$attr.to_json());
                 }
             }};
             (link_args - $attr:ident, $json_name:expr) => {{
@@ -352,7 +351,6 @@ impl ToJson for Target {
         target_option_val!(is_like_vexos);
         target_option_val!(binary_format);
         target_option_val!(default_dwarf_version);
-        target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
@@ -449,7 +447,6 @@ impl schemars::JsonSchema for EndianWrapper {
             "type": "string",
             "enum": ["big", "little"]
         })
-        .into()
     }
 }
 
@@ -475,7 +472,6 @@ impl schemars::JsonSchema for ExternAbiWrapper {
             "type": "string",
             "enum": all,
         })
-        .into()
     }
 }
 
@@ -575,7 +571,6 @@ struct TargetSpecJson {
     is_like_vexos: Option<bool>,
     binary_format: Option<BinaryFormat>,
     default_dwarf_version: Option<u32>,
-    allows_weak_linkage: Option<bool>,
     has_rpath: Option<bool>,
     no_default_libraries: Option<bool>,
     position_independent_executables: Option<bool>,

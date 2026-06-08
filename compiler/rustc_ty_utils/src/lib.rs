@@ -6,7 +6,7 @@
 
 // tidy-alphabetical-start
 #![feature(associated_type_defaults)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(iterator_try_collect)]
 #![feature(never_type)]
 // tidy-alphabetical-end

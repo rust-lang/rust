@@ -220,4 +220,24 @@ fn f(a: A) {
 "#,
         );
     }
+
+    #[test]
+    fn diagnostic_range_respect_allows() {
+        check_diagnostics(
+            r#"
+#![allow(clippy::redundant_field_names, unused)]
+
+struct Foo {
+    bar: u32,
+}
+
+fn main() {
+    let bar = 23;
+    let foo = Foo {
+	    bar: bar,
+    };
+}
+        "#,
+        );
+    }
 }

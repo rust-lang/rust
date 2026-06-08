@@ -1,6 +1,5 @@
 use std::ffi::{OsStr, OsString};
-use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::process::{Command, Output, Stdio};
 
 use camino::Utf8Path;
@@ -260,6 +259,19 @@ impl TestCx<'_> {
                             "add-auto-load-safe-path {}\n",
                             self.output_base_dir().as_str().replace(r"\", r"\\")
                         ));
+
+                        // GDB visualizer scripts aren't properly embedded on `*-windows-gnu`
+                        // at the moment (see: issue #156687), so we need to load them in
+                        // manually.
+                        #[cfg(target_os = "windows")]
+                        {
+                            script_str.push_str(&format!(
+                                "source {}\n",
+                                self.config
+                                    .src_root
+                                    .join("src/etc/gdb_load_rust_pretty_printers.py")
+                            ));
+                        }
                     }
                 }
                 _ => {
@@ -407,9 +419,7 @@ impl TestCx<'_> {
             "command script import {}/lldb_lookup.py\n",
             rust_pp_module_abs_path
         ));
-        File::open(rust_pp_module_abs_path.join("lldb_commands"))
-            .and_then(|mut file| file.read_to_string(&mut script_str))
-            .expect("Failed to read lldb_commands");
+        script_str.push_str("script print(lldb_lookup.FEATURE_FLAGS)\n");
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap();

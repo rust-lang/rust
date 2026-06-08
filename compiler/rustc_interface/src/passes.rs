@@ -877,16 +877,15 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
-    providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.queries.lower_delayed_owner = rustc_ast_lowering::lower_delayed_owner;
-    // `delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
+    // `hir_delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
     // as if this query was not fed it means that `MaybeOwner` does not exist for provided LocalDefId.
-    providers.queries.delayed_owner = |_, _| MaybeOwner::Phantom;
+    providers.queries.hir_delayed_owner = |_, _| MaybeOwner::Phantom;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
+    rustc_ast_lowering::provide(&mut providers.queries);
     limits::provide(&mut providers.queries);
     proc_macro_decls::provide(&mut providers.queries);
     rustc_expand::provide(&mut providers.queries);
@@ -1084,6 +1083,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
 
+    rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
+
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
         par_fns(&mut [
@@ -1180,10 +1181,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 && (!tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()))
             {
                 // Eagerly check the unsubstituted layout for cycles.
-                tcx.ensure_ok().layout_of(
-                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                        .as_query_input(tcx.type_of(def_id).instantiate_identity().skip_norm_wip()),
-                );
+                tcx.ensure_ok()
+                    .layout_of(ty::TypingEnv::codegen(tcx, def_id.to_def_id()).as_query_input(
+                        tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
+                    ));
             }
         });
     });
@@ -1305,8 +1306,6 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
-
     let codegen = tcx.sess.time("codegen_crate", || {
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
             // Skip crate items and just output metadata in -Z no-codegen mode.
@@ -1315,7 +1314,7 @@ pub(crate) fn start_codegen<'tcx>(
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
-            codegen_backend.codegen_crate(tcx, &crate_info)
+            codegen_backend.codegen_crate(tcx)
         }
     });
 
@@ -1326,6 +1325,8 @@ pub(crate) fn start_codegen<'tcx>(
     if tcx.sess.opts.unstable_opts.print_type_sizes {
         tcx.sess.code_stats.print_type_sizes();
     }
+
+    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
 
     (codegen, crate_info, metadata)
 }

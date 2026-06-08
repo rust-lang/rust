@@ -17,8 +17,8 @@ trait MySized: MyMetaSized {}
 trait MyAdd<'a, T> {}
 //~^^ ERROR: `add` lang item must be applied to a trait with 1 generic argument [E0718]
 
-#[lang = "drop_in_place"]
-//~^ ERROR `drop_in_place` lang item must be applied to a function with at least 1 generic
+#[lang = "drop_glue"]
+//~^ ERROR `drop_glue` lang item must be applied to a function with 1 generic
 fn my_ptr_drop() {}
 
 #[lang = "index"]

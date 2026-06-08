@@ -343,6 +343,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
                 }
+                Adjust::GenericReborrow(_) => {
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
+                }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }
@@ -470,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tail = self.tcx.struct_tail_raw(
                 ty,
                 &self.misc(span),
-                |ty| self.normalize(span, Unnormalized::new_wip(ty)),
+                |ty| self.normalize(span, ty),
                 || {},
             );
             // Sized types have static alignment, and so do slices.
@@ -641,7 +644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize(span, Unnormalized::new_wip(field.ty(self.tcx, args)))
+        self.normalize(span, field.ty(self.tcx, args))
     }
 
     /// Drain all obligations that are stalled on coroutines defined in this body.
@@ -660,7 +663,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::TypingMode::Coherence
             | ty::TypingMode::Borrowck { .. }
             | ty::TypingMode::PostBorrowckAnalysis { .. }
-            | ty::TypingMode::PostAnalysis => {
+            | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Codegen => {
                 bug!()
             }
         };
@@ -1007,10 +1011,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!(?def_id, ?container, ?container_id);
                 match container {
                     ty::AssocContainer::Trait => {
+                        let arg_span = if let hir::Node::Expr(call_expr) =
+                            self.tcx.parent_hir_node(hir_id)
+                            && let hir::ExprKind::Call(_, args) = call_expr.kind
+                            && let Some(first_arg) = args.first()
+                        {
+                            let mut arg = first_arg;
+                            while let hir::ExprKind::AddrOf(_, _, inner) = arg.kind {
+                                arg = inner;
+                            }
+                            Some(arg.span)
+                        } else {
+                            None
+                        };
+
                         if let Err(e) = callee::check_legal_trait_for_method_call(
                             tcx,
                             path_span,
-                            None,
+                            arg_span,
                             span,
                             container_id,
                             self.body_id.to_def_id(),

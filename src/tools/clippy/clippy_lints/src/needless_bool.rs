@@ -10,6 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -169,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
             }
             if let Some((lhs_a, a)) = fetch_assign(then)
                 && let Some((lhs_b, b)) = fetch_assign(else_expr)
-                && SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
+                && SpanlessEq::new(cx).eq_expr(SyntaxContext::root(), lhs_a, lhs_b)
             {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_context(cx, cond, e.span.ctxt(), "..", &mut applicability);

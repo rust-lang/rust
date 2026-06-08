@@ -425,6 +425,7 @@ impl Add<Duration> for Instant {
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
+    #[track_caller]
     fn add(self, other: Duration) -> Instant {
         self.checked_add(other).expect("overflow when adding duration to instant")
     }
@@ -441,6 +442,7 @@ impl AddAssign<Duration> for Instant {
 impl Sub<Duration> for Instant {
     type Output = Instant;
 
+    #[track_caller]
     fn sub(self, other: Duration) -> Instant {
         self.checked_sub(other).expect("overflow when subtracting duration from instant")
     }
@@ -742,8 +744,9 @@ impl Add<Duration> for SystemTime {
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
     /// underlying data structure. See [`SystemTime::checked_add`] for a version without panic.
+    #[track_caller]
     fn add(self, dur: Duration) -> SystemTime {
-        self.checked_add(dur).expect("overflow when adding duration to instant")
+        self.checked_add(dur).expect("overflow when adding duration to `SystemTime`")
     }
 }
 
@@ -758,8 +761,9 @@ impl AddAssign<Duration> for SystemTime {
 impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
+    #[track_caller]
     fn sub(self, dur: Duration) -> SystemTime {
-        self.checked_sub(dur).expect("overflow when subtracting duration from instant")
+        self.checked_sub(dur).expect("overflow when subtracting duration from `SystemTime`")
     }
 }
 

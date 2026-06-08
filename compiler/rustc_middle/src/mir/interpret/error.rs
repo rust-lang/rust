@@ -200,7 +200,7 @@ impl InterpErrorBacktrace {
 
 impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn into_parts(self) -> (InterpErrorKind<'tcx>, InterpErrorBacktrace) {
-        let InterpErrorInfo(box InterpErrorInfoInner { kind, backtrace }) = self;
+        let InterpErrorInfo(InterpErrorInfoInner { kind, backtrace }) = self;
         (kind, backtrace)
     }
 

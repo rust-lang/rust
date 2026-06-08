@@ -1,6 +1,6 @@
 //@ only-wasm32
 //@ revisions: WASM WASMEXN
-//@ [WASMEXN] compile-flags: -C panic=unwind -Z emscripten-wasm-eh
+//@ [WASMEXN] compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics, link_llvm_intrinsics)]
@@ -49,7 +49,7 @@ pub fn test_rtry() {
             |_| {
                 may_panic();
             },
-            core::ptr::null_mut(),
+            core::ptr::null_mut::<u8>(),
             |data, exception| {
                 log_number(data as usize);
                 log_number(exception as usize);

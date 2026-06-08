@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub(crate) fn render_macro(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx<'_>,
 
     name: hir::Name,
@@ -22,7 +22,7 @@ pub(crate) fn render_macro(
 }
 
 pub(crate) fn render_macro_pat(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     _pattern_ctx: &PatternContext,
     name: hir::Name,
     macro_: hir::Macro,
@@ -32,7 +32,7 @@ pub(crate) fn render_macro_pat(
 }
 
 fn render(
-    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     is_use_path: bool,
     has_macro_bang: bool,
     has_call_parens: bool,
@@ -91,7 +91,7 @@ fn render(
 }
 
 fn label(
-    ctx: &RenderContext<'_>,
+    ctx: &RenderContext<'_, '_>,
     needs_bang: bool,
     bra: &str,
     ket: &str,

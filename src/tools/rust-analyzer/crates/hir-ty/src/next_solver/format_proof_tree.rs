@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::next_solver::inspect::{InspectCandidate, InspectGoal};
 use crate::next_solver::{AnyImplId, infer::InferCtxt};
-use crate::next_solver::{DbInterner, Span};
+use crate::{Span, next_solver::DbInterner};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofTreeData {
@@ -59,7 +59,7 @@ impl<'a, 'db> ProofTreeSerializer<'a, 'db> {
 
         let mut nested = Vec::new();
         self.infcx.probe(|_| {
-            for nested_goal in candidate.instantiate_nested_goals() {
+            for nested_goal in candidate.instantiate_nested_goals(Span::Dummy) {
                 nested.push(self.serialize_goal(&nested_goal));
             }
         });

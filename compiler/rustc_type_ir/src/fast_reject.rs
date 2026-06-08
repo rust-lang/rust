@@ -5,12 +5,6 @@ use std::marker::PhantomData;
 
 use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::fingerprint::Fingerprint;
-#[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{
-    StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
-};
-#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
@@ -46,18 +40,6 @@ pub enum SimplifiedType<DefId> {
     UnsafeBinder,
     Placeholder,
     Error,
-}
-
-#[cfg(feature = "nightly")]
-impl<DefId: StableHash> ToStableHashKey for SimplifiedType<DefId> {
-    type KeyType = Fingerprint;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Fingerprint {
-        let mut hasher = StableHasher::new();
-        self.stable_hash(hcx, &mut hasher);
-        hasher.finish()
-    }
 }
 
 /// Generic parameters are pretty much just bound variables, e.g.

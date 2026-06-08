@@ -1,0 +1,8 @@
+warning: address resolution failed: $MSG
+  --> tests/pass-dep/libc/libc-socket-invalid-addr.rs:LL:CC
+   |
+LL |         unsafe { libc::getaddrinfo(node_c_str.as_ptr(), service_c_str.as_ptr(), &hints, &mut res) };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error during address resolution
+   |
+   = note: Miri cannot return proper error information from this call; only a generic error code is being returned
+

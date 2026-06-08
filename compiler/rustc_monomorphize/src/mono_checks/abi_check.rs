@@ -25,10 +25,7 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
     match mode {
         PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
         PassMode::Cast { pad_i32: _, cast }
-            if cast
-                .prefix
-                .iter()
-                .any(|r| r.is_some_and(|x| matches!(x.kind, RegKind::Vector { .. })))
+            if cast.prefix.iter().any(|x| matches!(x.kind, RegKind::Vector { .. }))
                 || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
         {
             UsesVectorRegisters::FixedVector

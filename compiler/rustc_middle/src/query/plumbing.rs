@@ -11,10 +11,10 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
+use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryKey, QueryStackFrame};
 use crate::ty::{self, TyCtxt};
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
@@ -86,6 +86,9 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// True if this query has the `feedable` modifier.
     pub feedable: bool,
 
+    pub cache_on_disk_local: bool,
+    pub separate_provide_extern: bool,
+
     pub dep_kind: DepKind,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
@@ -97,18 +100,16 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
-
     /// Function pointer that tries to load a query value from disk.
     ///
-    /// This should only be called after a successful check of `will_cache_on_disk_for_key_fn`.
+    /// This should only be called after a successful check of [`Self::will_cache_on_disk_for_key`].
     pub try_load_from_disk_fn:
         fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<C::Value>,
 
     /// Function pointer that hashes this query's result values.
     ///
     /// For `no_hash` queries, this function pointer is None.
-    pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
+    pub hash_value_fn: Option<fn(&mut StableHashState<'_>, &C::Value) -> Fingerprint>,
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
@@ -131,6 +132,12 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+}
+
+impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
+    pub fn will_cache_on_disk_for_key(&self, key: C::Key) -> bool {
+        self.cache_on_disk_local && (!self.separate_provide_extern || key.as_local_key().is_some())
+    }
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -328,7 +335,7 @@ macro_rules! define_callbacks {
                 /// This query has the `separate_provide_extern` modifier.
                 #[cfg($separate_provide_extern)]
                 pub type LocalKey<'tcx> =
-                    <Key<'tcx> as $crate::query::AsLocalQueryKey>::LocalQueryKey;
+                    <Key<'tcx> as $crate::query::QueryKey>::LocalQueryKey;
                 /// Key type used by provider functions in `local_providers`.
                 #[cfg(not($separate_provide_extern))]
                 pub type LocalKey<'tcx> = Key<'tcx>;

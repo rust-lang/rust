@@ -17,7 +17,7 @@ use crate::{
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn normalize_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn normalize_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let use_item = if ctx.has_empty_selection() {
         ctx.find_node_at_offset()?
     } else {

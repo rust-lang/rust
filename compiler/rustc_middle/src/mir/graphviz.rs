@@ -4,24 +4,22 @@ use gsgdt::GraphvizSettings;
 use rustc_graphviz as dot;
 
 use super::generic_graph::mir_fn_to_generic_graph;
-use super::pretty::dump_mir_def_ids;
 use crate::mir::*;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<W>(tcx: TyCtxt<'_>, single: Option<DefId>, w: &mut W) -> io::Result<()>
+pub fn write_mir_graphviz<W>(tcx: TyCtxt<'_>, w: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    let def_ids = dump_mir_def_ids(tcx, single);
-
-    let mirs = def_ids
+    let mirs = tcx
+        .mir_keys(())
         .iter()
         .filter(|&&def_id| !tcx.is_trivial_const(def_id))
         .flat_map(|&def_id| {
             if tcx.is_const_fn(def_id) {
                 vec![tcx.optimized_mir(def_id), tcx.mir_for_ctfe(def_id)]
             } else {
-                vec![tcx.instance_mir(ty::InstanceKind::Item(def_id))]
+                vec![tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()))]
             }
         })
         .collect::<Vec<_>>();

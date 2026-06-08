@@ -1,5 +1,5 @@
 use rustc_errors::msg;
-use rustc_feature::Features;
+use rustc_feature::{AttributeStability, Features};
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_hir::attrs::*;
 use rustc_session::Session;
@@ -17,7 +17,7 @@ use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
     ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
     InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
+    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
     WholeArchiveNeedsStatic,
 };
 
@@ -34,13 +34,24 @@ impl SingleAttributeParser for LinkNameParser {
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+        let name = cx.expect_string_literal(nv)?;
+
+        if name.as_str().contains('\0') {
+            // `#[link_name = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
             return None;
-        };
+        }
+        if name.is_empty() {
+            // Otherwise LLVM will just make up a name and the linker will fail
+            // to find an empty symbol name.
+            cx.emit_err(EmptyLinkName { span: nv.value_span });
+            return None;
+        }
 
         Some(LinkName { name, span: cx.attr_span })
     }
@@ -59,7 +70,9 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -218,7 +231,7 @@ impl CombineAttributeParser for LinkParser {
         if wasm_import_module.is_some() {
             (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
         }
-        let Some((name, name_span)) = name else {
+        let Some((name, _name_span)) = name else {
             cx.emit_err(LinkRequiresName { span: cx.attr_span });
             return None;
         };
@@ -228,12 +241,6 @@ impl CombineAttributeParser for LinkParser {
             if !matches!(kind, Some(NativeLibKind::RawDylib { .. })) {
                 cx.emit_err(ImportNameTypeRaw { span });
             }
-        }
-
-        if let Some(NativeLibKind::RawDylib { .. }) = kind
-            && name.as_str().contains('\0')
-        {
-            cx.emit_err(RawDylibNoNul { span: name_span });
         }
 
         Some(LinkEntry {
@@ -260,14 +267,17 @@ impl LinkParser {
         let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::name)) else {
             return false;
         };
-        let Some(link_name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.args_span(), Some(nv.value_as_lit()));
+        let Some(link_name) = cx.expect_string_literal(nv) else {
             return false;
         };
 
+        if link_name.as_str().contains('\0') {
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
+        }
         if link_name.is_empty() {
             cx.emit_err(EmptyLinkName { span: nv.value_span });
         }
+
         *name = Some((link_name, nv.value_span));
         true
     }
@@ -286,8 +296,7 @@ impl LinkParser {
         let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::kind)) else {
             return true;
         };
-        let Some(link_kind) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
+        let Some(link_kind) = cx.expect_string_literal(nv) else {
             return true;
         };
 
@@ -365,8 +374,7 @@ impl LinkParser {
         let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::modifiers)) else {
             return true;
         };
-        let Some(link_modifiers) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
+        let Some(link_modifiers) = cx.expect_string_literal(nv) else {
             return true;
         };
         *modifiers = Some((link_modifiers, nv.value_span));
@@ -408,8 +416,7 @@ impl LinkParser {
         else {
             return true;
         };
-        let Some(link_wasm_import_module) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
+        let Some(link_wasm_import_module) = cx.expect_string_literal(nv) else {
             return true;
         };
         *wasm_import_module = Some((link_wasm_import_module, item.span()));
@@ -429,8 +436,7 @@ impl LinkParser {
         else {
             return true;
         };
-        let Some(link_import_name_type) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+        let Some(link_import_name_type) = cx.expect_string_literal(nv) else {
             return true;
         };
         if cx.sess().target.arch != Arch::X86 {
@@ -484,6 +490,7 @@ impl SingleAttributeParser for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -498,10 +505,7 @@ impl SingleAttributeParser for LinkSectionParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(nv)?;
         if name.as_str().contains('\0') {
             // `#[link_section = ...]` will be converted to a null-terminated string,
             // so it may not contain any null characters.
@@ -529,6 +533,7 @@ pub(crate) struct ExportStableParser;
 impl NoArgsAttributeParser for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const STABILITY: AttributeStability = unstable!(export_stable);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
 
@@ -537,6 +542,7 @@ impl NoArgsAttributeParser for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(ffi_const);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::FfiConst;
 }
 
@@ -545,6 +551,7 @@ impl NoArgsAttributeParser for FfiPureParser {
     const PATH: &[Symbol] = &[sym::ffi_pure];
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
 
@@ -557,6 +564,7 @@ impl NoArgsAttributeParser for RustcStdInternalSymbolParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
     ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcStdInternalSymbol;
 }
 
@@ -573,6 +581,7 @@ impl SingleAttributeParser for LinkOrdinalParser {
         List: &["ordinal"],
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ordinal = parse_single_integer(cx, args)?;
@@ -603,7 +612,6 @@ pub(crate) struct LinkageParser;
 
 impl SingleAttributeParser for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -614,7 +622,6 @@ impl SingleAttributeParser for LinkageParser {
         Allow(Target::ForeignFn),
         Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
-
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
         "available_externally",
         "common",
@@ -626,13 +633,12 @@ impl SingleAttributeParser for LinkageParser {
         "weak",
         "weak_odr",
     ]);
+    const STABILITY: AttributeStability = unstable!(linkage);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::linkage))?;
 
-        let Some(value) = name_value.value_as_str() else {
-            cx.adcx()
-                .expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+        let Some(value) = cx.expect_string_literal(name_value) else {
             return None;
         };
 
@@ -683,6 +689,7 @@ pub(crate) struct NeedsAllocatorParser;
 impl NoArgsAttributeParser for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(allocator_internals);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
 
@@ -691,5 +698,6 @@ pub(crate) struct CompilerBuiltinsParser;
 impl NoArgsAttributeParser for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(compiler_builtins);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

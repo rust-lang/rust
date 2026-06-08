@@ -23,9 +23,7 @@ fn main() {
     assert_eq!(res, 0);
     let arr1: [u8; 212992] = [1; 212992];
     // Exhaust the space in the buffer so the subsequent write will block.
-    let res =
-        unsafe { libc_utils::write_all(fds[0], arr1.as_ptr() as *const libc::c_void, 212992) };
-    assert_eq!(res, 212992);
+    libc_utils::write_all(fds[0], &arr1).unwrap();
     let thread1 = thread::spawn(move || {
         let data = "a".as_bytes();
         // The write below will be blocked because the buffer is already full.

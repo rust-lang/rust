@@ -314,7 +314,7 @@ pub struct LocatedImport {
     pub item_to_import: ItemInNs,
     /// The path import candidate, resolved.
     ///
-    /// Not necessary matches the import:
+    /// Not necessarily matches the import:
     /// For any associated constant from the trait, we try to access as `some::path::SomeStruct::ASSOC_`
     /// the original item is the associated constant, but the import has to be a trait that
     /// defines this constant.
@@ -454,6 +454,7 @@ impl<'db> ImportAssets<'db> {
                 |trait_to_import| {
                     !scope_definitions
                         .contains(&ScopeDef::ModuleDef(ModuleDef::Trait(trait_to_import)))
+                        && !scope.can_use_trait_methods(trait_to_import)
                 },
             ),
         }
@@ -813,13 +814,13 @@ fn trait_applicable_items<'db>(
         let mut deref_chain = trait_candidate.receiver_ty.autoderef(db).collect::<Vec<_>>();
         // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
         if let Some((ty, _len)) = deref_chain.last().and_then(|ty| ty.as_array(db)) {
-            let slice = Type::new_slice(ty);
+            let slice = Type::new_slice(db, ty);
             deref_chain.push(slice);
         }
         deref_chain
             .into_iter()
             .flat_map(|ty| {
-                let fingerprint = ty.fingerprint_for_trait_impl()?;
+                let fingerprint = ty.fingerprint_for_trait_impl(db)?;
                 let mut crates = vec![];
 
                 if let Some(adt) = ty.as_adt() {

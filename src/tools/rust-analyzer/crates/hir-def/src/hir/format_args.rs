@@ -7,7 +7,7 @@ use rustc_parse_format as parse;
 use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{
-    TextRange,
+    AstPtr, TextRange,
     ast::{self, IsString},
 };
 
@@ -146,6 +146,7 @@ pub enum FormatCount {
 pub struct FormatArgument {
     pub kind: FormatArgumentKind,
     pub expr: ExprId,
+    pub syntax: Option<AstPtr<ast::Expr>>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -171,6 +172,7 @@ use PositionUsedAs::*;
 #[allow(clippy::unnecessary_lazy_evaluations)]
 pub(crate) fn parse(
     s: &ast::String,
+    string_ptr: AstPtr<ast::Expr>,
     fmt_snippet: Option<String>,
     mut args: FormatArgumentsCollector,
     is_direct_literal: bool,
@@ -273,6 +275,11 @@ pub(crate) fn parse(
                             // FIXME: This is problematic, we might want to synthesize a dummy
                             // expression proper and/or desugar these.
                             expr: synth(name, span),
+                            // FIXME: This will lead us to show failed trait bounds (e.g. `T: Display`)
+                            // on the whole template string for implicit arguments instead of just their name.
+                            // Fixing this is hard since we don't have an `AstPtr` for the arg, and it's
+                            // only part of an expression.
+                            syntax: Some(string_ptr),
                         }))
                     }
                 }

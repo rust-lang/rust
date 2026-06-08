@@ -89,9 +89,17 @@ where
     fn compute_type_outlives_goal(
         &mut self,
         goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
-        self.register_ty_outlives(ty, lt);
+
+        if self.cx().assumptions_on_binders() {
+            // FIXME(-Zassumptions-on-binders): we need to normalize `ty`
+            let constraint = self.destructure_type_outlives(ty, lt);
+            self.register_solver_region_constraint(constraint);
+        } else {
+            self.register_ty_outlives(ty, lt);
+        }
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -99,14 +107,25 @@ where
     fn compute_region_outlives_goal(
         &mut self,
         goal: Goal<I, ty::OutlivesPredicate<I, I::Region>>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesPredicate(a, b) = goal.predicate;
-        self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
+
+        if self.cx().assumptions_on_binders() {
+            let constraint =
+                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b);
+            self.register_solver_region_constraint(constraint);
+        } else {
+            self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
+        }
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_coerce_goal(&mut self, goal: Goal<I, ty::CoercePredicate<I>>) -> QueryResult<I> {
+    fn compute_coerce_goal(
+        &mut self,
+        goal: Goal<I, ty::CoercePredicate<I>>,
+    ) -> QueryResultOrRerunNonErased<I> {
         self.compute_subtype_goal(Goal {
             param_env: goal.param_env,
             predicate: ty::SubtypePredicate {
@@ -118,7 +137,10 @@ where
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_subtype_goal(&mut self, goal: Goal<I, ty::SubtypePredicate<I>>) -> QueryResult<I> {
+    fn compute_subtype_goal(
+        &mut self,
+        goal: Goal<I, ty::SubtypePredicate<I>>,
+    ) -> QueryResultOrRerunNonErased<I> {
         match (goal.predicate.a.kind(), goal.predicate.b.kind()) {
             (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
                 self.sub_unify_ty_vids_raw(a_vid, b_vid);
@@ -131,16 +153,22 @@ where
         }
     }
 
-    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::TraitId) -> QueryResult<I> {
+    fn compute_dyn_compatible_goal(
+        &mut self,
+        trait_def_id: I::TraitId,
+    ) -> QueryResultOrRerunNonErased<I> {
         if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
-            Err(NoSolution)
+            Err(NoSolution.into())
         }
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::Term>) -> QueryResult<I> {
+    fn compute_well_formed_goal(
+        &mut self,
+        goal: Goal<I, I::Term>,
+    ) -> QueryResultOrRerunNonErased<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
                 self.add_goals(GoalSource::Misc, goals);
@@ -154,8 +182,8 @@ where
         &mut self,
         param_env: <I as Interner>::ParamEnv,
         symbol: <I as Interner>::Symbol,
-    ) -> QueryResult<I> {
-        if self.may_use_unstable_feature(param_env, symbol) {
+    ) -> QueryResultOrRerunNonErased<I> {
+        if self.may_use_unstable_feature(param_env, symbol)? {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
@@ -166,7 +194,7 @@ where
     fn compute_const_evaluatable_goal(
         &mut self,
         Goal { param_env, predicate: ct }: Goal<I, I::Const>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         match ct.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 // We never return `NoSolution` here as `evaluate_const` emits an
@@ -177,7 +205,7 @@ where
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, uv) {
+                if let Some(_normalized) = self.evaluate_const(param_env, uv)? {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 } else {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
@@ -203,19 +231,23 @@ where
     fn compute_const_arg_has_type_goal(
         &mut self,
         goal: Goal<I, (I::Const, I::Ty)>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let (ct, ty) = goal.predicate;
         let ct = self.structurally_normalize_const(goal.param_env, ct)?;
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
-                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                return self
+                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    .map_err(Into::into);
             }
             ty::ConstKind::Error(_) => {
-                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                return self
+                    .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    .map_err(Into::into);
             }
             ty::ConstKind::Unevaluated(uv) => {
-                self.cx().type_of(uv.def.into()).instantiate(self.cx(), uv.args).skip_norm_wip()
+                self.cx().type_of(uv.kind.def_id()).instantiate(self.cx(), uv.args).skip_norm_wip()
             }
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
@@ -231,7 +263,7 @@ where
         };
 
         self.eq(goal.param_env, ct_ty, ty)?;
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
     }
 }
 
@@ -308,7 +340,7 @@ where
         &mut self,
         param_env: I::ParamEnv,
         ty: I::Ty,
-    ) -> Result<I::Ty, NoSolution> {
+    ) -> Result<I::Ty, NoSolutionOrRerunNonErased> {
         self.structurally_normalize_term(param_env, ty.into()).map(|term| term.expect_ty())
     }
 
@@ -323,7 +355,7 @@ where
         &mut self,
         param_env: I::ParamEnv,
         ct: I::Const,
-    ) -> Result<I::Const, NoSolution> {
+    ) -> Result<I::Const, NoSolutionOrRerunNonErased> {
         self.structurally_normalize_term(param_env, ct.into()).map(|term| term.expect_const())
     }
 
@@ -335,8 +367,8 @@ where
         &mut self,
         param_env: I::ParamEnv,
         term: I::Term,
-    ) -> Result<I::Term, NoSolution> {
-        if let Some(_) = term.to_alias_term(self.cx()) {
+    ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
+        if let Some(_) = term.to_alias_term() {
             let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),
@@ -357,16 +389,20 @@ where
         }
     }
 
-    fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
-        match self.typing_mode() {
+    fn opaque_type_is_rigid(&self, def_id: I::OpaqueTyId) -> bool {
+        match self
+            .typing_mode()
+            // Caller should handle erased mode
+            .assert_not_erased()
+        {
             // Opaques are never rigid outside of analysis mode.
-            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+            TypingMode::Coherence | TypingMode::PostAnalysis | TypingMode::Codegen => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
             TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
             | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
-                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
+                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id.into()))
             }
         }
     }

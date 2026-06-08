@@ -37,13 +37,13 @@ pub(super) fn hints(
     let def = def.try_into().ok()?;
     let (hir, source_map) = hir::Body::with_source_map(sema.db, def);
 
-    let mir = sema.db.mir_body(def).ok()?;
+    let mir = sema.db.mir_body(def.into()).ok()?;
 
     let local_to_binding = mir.local_to_binding_map();
 
     for (_, bb) in mir.basic_blocks.iter() {
         let terminator = bb.terminator.as_ref()?;
-        if let TerminatorKind::Drop { place, .. } = terminator.kind {
+        if let TerminatorKind::Drop { place, .. } = &terminator.kind {
             if !place.projection.is_empty() {
                 continue; // Ignore complex cases for now
             }

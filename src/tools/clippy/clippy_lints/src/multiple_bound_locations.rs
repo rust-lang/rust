@@ -69,7 +69,6 @@ impl EarlyLintPass for MultipleBoundLocations {
                             emit_lint(cx, *bound_span, pred.lifetime.ident.span);
                         }
                     },
-                    WherePredicateKind::EqPredicate(_) => {},
                 }
             }
         }

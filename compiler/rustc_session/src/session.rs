@@ -5,8 +5,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
-use rand::{RngCore, rng};
-use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -163,17 +161,12 @@ pub struct Session {
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
 
-    /// A random string generated per invocation of rustc.
-    ///
-    /// This is prepended to all temporary files so that they do not collide
-    /// during concurrent invocations of rustc, or past invocations that were
-    /// preserved with a flag like `-C save-temps`, since these files may be
-    /// hard linked.
-    pub invocation_temp: Option<String>,
-
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
     pub replaced_intrinsics: FxHashSet<Symbol>,
+    /// The names of intrinsics that the current codegen backend does *not* replace
+    /// with its own implementations.
+    pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
     pub thin_lto_supported: bool,
@@ -560,6 +553,8 @@ impl Session {
         // HWAddressSanitizer and KernelHWAddressSanitizer will use lifetimes to detect use after
         // scope bugs in the future.
         || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
+        // Lifetimes are necessary for retagging semantics.
+        || self.opts.unstable_opts.codegen_emit_retag.is_some()
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -607,6 +602,10 @@ impl Session {
 
     pub fn print_llvm_stats(&self) -> bool {
         self.opts.unstable_opts.print_codegen_stats
+    }
+
+    pub fn print_llvm_stats_json(&self) -> Option<&String> {
+        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
     }
 
     pub fn verify_llvm_ir(&self) -> bool {
@@ -813,10 +812,12 @@ impl Session {
                 .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
     }
 
-    /// Returns the number of query threads that should be used for this
-    /// compilation
+    /// Returns the number of threads used for the thread pool.
+    ///
+    /// `None` means thread pool is not used and synchronization is disabled.
+    /// `Some(n)` means synchronization is enabled with `n` worker threads.
     #[inline]
-    pub fn threads(&self) -> usize {
+    pub fn threads(&self) -> Option<usize> {
         self.opts.unstable_opts.threads
     }
 
@@ -1097,11 +1098,6 @@ pub fn build_session(
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
 
-    let invocation_temp = sopts
-        .incremental
-        .as_ref()
-        .map(|_| rng().next_u32().to_base_fixed_len(CASE_INSENSITIVE).to_string());
-
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let sess = Session {
@@ -1132,8 +1128,8 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
-        invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
+        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),

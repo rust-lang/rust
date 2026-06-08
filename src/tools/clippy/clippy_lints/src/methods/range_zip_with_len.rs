@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
         // `.iter()` and `.len()` called on same `Path`
         && let ExprKind::Path(QPath::Resolved(_, iter_path)) = recv.kind
         && let ExprKind::Path(QPath::Resolved(_, len_path)) = len_recv.kind
-        && SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments)
+        && SpanlessEq::new(cx).eq_path_segments(expr.span.ctxt(), iter_path.segments, len_path.segments)
     {
         span_lint_and_then(
             cx,

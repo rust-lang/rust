@@ -7,7 +7,7 @@ use crate::def_id::DefId;
 
 #[derive(Debug, Default, StableHash)]
 pub struct DiagnosticItems {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub id_to_name: DefIdMap<Symbol>,
     pub name_to_id: FxIndexMap<Symbol, DefId>,
 }

@@ -8,7 +8,7 @@ pub enum Thing {
     B,
 }
 
-// EMIT_MIR duplicate_switch_targets.ub_if_b.PreCodegen.after.mir
+// EMIT_MIR duplicate_switch_targets.ub_if_b.runtime-optimized.after.mir
 pub unsafe fn ub_if_b(t: Thing) -> Thing {
     match t {
         Thing::A => t,

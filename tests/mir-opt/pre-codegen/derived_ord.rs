@@ -33,5 +33,5 @@ pub fn demo_le(a: &MultiField, b: &MultiField) -> bool {
     *a <= *b
 }
 
-// EMIT_MIR derived_ord.{impl#0}-partial_cmp.PreCodegen.after.mir
-// EMIT_MIR derived_ord.demo_le.PreCodegen.after.mir
+// EMIT_MIR derived_ord.{impl#0}-partial_cmp.runtime-optimized.after.mir
+// EMIT_MIR derived_ord.demo_le.runtime-optimized.after.mir

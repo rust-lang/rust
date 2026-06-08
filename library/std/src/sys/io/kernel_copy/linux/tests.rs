@@ -166,10 +166,14 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
     let mut sink = crate::net::TcpStream::connect(sink_drainer.local_addr().unwrap()).unwrap();
     let mut sink_drainer = sink_drainer.accept().unwrap().0;
 
-    crate::thread::spawn(move || {
+    let t = crate::thread::spawn(move || {
         let mut sink_buf = vec![0u8; 1024 * 1024];
         loop {
-            sink_drainer.read(&mut sink_buf[..]).unwrap();
+            let n = sink_drainer.read(&mut sink_buf[..]).unwrap();
+            if n == 0 {
+                // EOF
+                break;
+            }
         }
     });
 
@@ -178,6 +182,9 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
         src.seek(SeekFrom::Start(0)).unwrap();
         assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
     });
+
+    drop(sink); // close our end, so that the thread goes down
+    t.join().unwrap();
 }
 
 #[bench]
@@ -196,10 +203,14 @@ fn bench_file_to_uds_copy(b: &mut test::Bencher) {
 
     let (mut sink, mut sink_drainer) = crate::os::unix::net::UnixStream::pair().unwrap();
 
-    crate::thread::spawn(move || {
+    let t = crate::thread::spawn(move || {
         let mut sink_buf = vec![0u8; 1024 * 1024];
         loop {
-            sink_drainer.read(&mut sink_buf[..]).unwrap();
+            let n = sink_drainer.read(&mut sink_buf[..]).unwrap();
+            if n == 0 {
+                // EOF
+                break;
+            }
         }
     });
 
@@ -208,6 +219,9 @@ fn bench_file_to_uds_copy(b: &mut test::Bencher) {
         src.seek(SeekFrom::Start(0)).unwrap();
         assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
     });
+
+    drop(sink); // close our end, so that the thread goes down
+    t.join().unwrap();
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]

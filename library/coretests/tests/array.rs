@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::num::NonZero;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::{array, assert_eq};
@@ -105,6 +106,34 @@ fn iterator_clone() {
     assert_eq!(clone.next_back(), Some(4));
     assert_eq!(it.next(), Some(2));
     assert_eq!(clone.next(), Some(2));
+    assert_eq!(it.next(), None);
+    assert_eq!(clone.next(), None);
+}
+
+#[test]
+fn iterator_clone_spec() {
+    #[derive(Debug, PartialEq)]
+    struct Foo(i32);
+
+    impl Clone for Foo {
+        fn clone(&self) -> Self {
+            // nontrivial clone
+            Foo(-self.0)
+        }
+    }
+
+    let mut it = IntoIterator::into_iter([Foo(0), Foo(2), Foo(4), Foo(6), Foo(8)]);
+    assert_eq!(it.next(), Some(Foo(0)));
+    assert_eq!(it.next_back(), Some(Foo(8)));
+    let mut clone = it.clone();
+    assert_eq!(it.next_back(), Some(Foo(6)));
+    assert_eq!(clone.next_back(), Some(Foo(-6)));
+    assert_eq!(it.next_back(), Some(Foo(4)));
+    assert_eq!(clone.next_back(), Some(Foo(-4)));
+    assert_eq!(it.next(), Some(Foo(2)));
+    assert_eq!(clone.next(), Some(Foo(-2)));
+    assert_eq!(it.next(), None);
+    assert_eq!(clone.next(), None);
 }
 
 #[test]
@@ -168,8 +197,6 @@ fn iterator_debug() {
 
 #[test]
 fn iterator_drops() {
-    use core::cell::Cell;
-
     // This test makes sure the correct number of elements are dropped. The `R`
     // type is just a reference to a `Cell` that is incremented when an `R` is
     // dropped.
@@ -337,8 +364,6 @@ fn array_map_drop_safety() {
 
 #[test]
 fn cell_allows_array_cycle() {
-    use core::cell::Cell;
-
     #[derive(Debug)]
     struct B<'a> {
         a: [Cell<Option<&'a B<'a>>>; 2],
@@ -513,7 +538,6 @@ fn array_rsplit_array_mut_out_of_bounds() {
 
 #[test]
 fn array_intoiter_advance_by() {
-    use std::cell::Cell;
     struct DropCounter<'a>(usize, &'a Cell<usize>);
     impl Drop for DropCounter<'_> {
         fn drop(&mut self) {
@@ -566,7 +590,6 @@ fn array_intoiter_advance_by() {
 
 #[test]
 fn array_intoiter_advance_back_by() {
-    use std::cell::Cell;
     struct DropCounter<'a>(usize, &'a Cell<usize>);
     impl Drop for DropCounter<'_> {
         fn drop(&mut self) {
@@ -718,6 +741,33 @@ fn array_map_drops_unmapped_elements_on_panic() {
     }
 }
 
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_map_drops_unmapped_zst_elements_on_panic() {
+    use std::sync::ReentrantLock;
+
+    static DROPPED: ReentrantLock<Cell<usize>> = ReentrantLock::new(Cell::new(0));
+
+    struct ZstDrop;
+    impl Drop for ZstDrop {
+        fn drop(&mut self) {
+            DROPPED.lock().update(|x| x + 1);
+        }
+    }
+
+    let dropped = DROPPED.lock();
+    dropped.set(0);
+    let array = [const { ZstDrop }; 5];
+    let success = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = array.map(|x| {
+            drop(x);
+            assert_eq!(dropped.get(), 1);
+        });
+    }));
+    assert!(success.is_err());
+    assert_eq!(dropped.get(), 5);
+}
+
 // This covers the `PartialEq::<[T]>::eq` impl for `[T; N]` when it returns false.
 #[test]
 fn array_eq() {
@@ -748,7 +798,7 @@ const fn extra_const_array_ops() {
         { std::array::from_fn(const |i| i + 4).map(const |x| x * 2).map(const |x| x as _) };
     let y = 4;
     struct Z(u16);
-    impl const Drop for Z {
+    const impl Drop for Z {
         fn drop(&mut self) {}
     }
     let w = Z(2);

@@ -199,9 +199,9 @@ impl<T: ToTokenTree + Clone> ToTokenTree for &T {
 }
 
 impl_to_to_tokentrees! {
-    span: u32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
-    span: usize => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
-    span: i32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: u32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: usize => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: i32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };

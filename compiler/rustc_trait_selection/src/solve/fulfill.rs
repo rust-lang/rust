@@ -186,8 +186,9 @@ where
 
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-                if let Some(certainty) =
-                    delegate.compute_goal_fast_path(goal, obligation.cause.span)
+                if !delegate.disable_trait_solver_fast_paths()
+                    && let Some(certainty) =
+                        delegate.compute_goal_fast_path(goal, obligation.cause.span)
                 {
                     match certainty {
                         // This fast path doesn't depend on region identity so it doesn't
@@ -275,14 +276,15 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let stalled_coroutines = match infcx.typing_mode() {
+        let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
             TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
-            | TypingMode::PostAnalysis => return Default::default(),
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => return Default::default(),
         };
 
         if stalled_coroutines.is_empty() {
