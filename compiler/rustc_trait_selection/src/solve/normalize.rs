@@ -9,8 +9,8 @@ use rustc_middle::ty::{
     self, Binder, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
     UniverseIndex, Unnormalized,
 };
-use rustc_next_trait_solver::normalize::NormalizationFolder;
-use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use rustc_next_trait_solver::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
+use rustc_next_trait_solver::solve::{NoSolution, SolverDelegateEvalExt};
 
 use super::{FulfillmentCtxt, NextSolverError};
 use crate::solve::{Certainty, SolverDelegate};
@@ -42,38 +42,53 @@ where
     let infcx = at.infcx;
     let value = value.skip_normalization();
     let value = infcx.resolve_vars_if_possible(value);
+
+    if !value.has_non_rigid_aliases() {
+        return Normalized { value, obligations: Default::default() };
+    }
+
     let original_value = value.clone();
-    let mut folder =
-        NormalizationFolder::new(infcx, universes.clone(), Default::default(), |alias_term| {
-            let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-            let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
-            let predicate = ty::PredicateKind::AliasRelate(
-                alias_term,
-                infer_term,
-                ty::AliasRelationDirection::Equate,
-            );
-            let goal = Goal::new(infcx.tcx, at.param_env, predicate);
-            let result = delegate.evaluate_root_goal(goal, at.cause.span, None)?;
-            let normalized = infcx.resolve_vars_if_possible(infer_term);
-            let stalled_goal = match result.certainty {
-                Certainty::Yes => None,
-                Certainty::Maybe { .. } => Some(infcx.resolve_vars_if_possible(result.goal)),
-            };
-            Ok((normalized, stalled_goal))
-        });
-    if let Ok(value) = value.try_fold_with(&mut folder) {
-        let obligations = folder
-            .stalled_goals()
-            .into_iter()
-            .map(|goal| {
-                Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate)
-            })
-            .collect();
-        Normalized { value, obligations }
-    } else {
-        let mut replacer = ReplaceAliasWithInfer { at, obligations: Default::default(), universes };
-        let value = original_value.fold_with(&mut replacer);
-        Normalized { value, obligations: replacer.obligations }
+    let mut stalled_goals = vec![];
+    let mut folder = NormalizationFolder::new(infcx, universes.clone(), |alias_term| {
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        let infer_term = delegate.next_term_var_for_alias(alias_term, at.cause.span);
+        let predicate = ty::PredicateKind::AliasRelate(
+            alias_term.to_term(infcx.tcx),
+            infer_term.into(),
+            ty::AliasRelationDirection::Equate,
+        );
+        let goal = Goal::new(infcx.tcx, at.param_env, predicate);
+        let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
+            Ok(result) => result,
+            Err(err) => return Err(err),
+        };
+        let normalized = infcx.resolve_vars_if_possible(infer_term);
+        let normalization_was_ambiguous = match result.certainty {
+            Certainty::Yes => NormalizationWasAmbiguous::No,
+            Certainty::Maybe { .. } => {
+                stalled_goals.push(infcx.resolve_vars_if_possible(goal));
+                NormalizationWasAmbiguous::Yes
+            }
+        };
+        Ok((normalized, normalization_was_ambiguous))
+    });
+
+    match value.try_fold_with(&mut folder) {
+        Ok(value) => {
+            let obligations = stalled_goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate)
+                })
+                .collect();
+            Normalized { value, obligations }
+        }
+        Err(NoSolution) => {
+            let mut replacer =
+                ReplaceAliasWithInfer { at, obligations: Default::default(), universes };
+            let value = original_value.fold_with(&mut replacer);
+            Normalized { value, obligations: replacer.obligations }
+        }
     }
 }
 

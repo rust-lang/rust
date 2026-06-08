@@ -56,13 +56,17 @@ where
 
         let normalized = match inherent.kind {
             ty::AliasTermKind::InherentTy { def_id } => {
-                cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip().into()
+                let inherent =
+                    cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip();
+                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                inherent.into()
             }
-            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => cx
-                .const_of_item(def_id.into())
-                .instantiate(cx, inherent_args)
-                .skip_norm_wip()
-                .into(),
+            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => {
+                let inherent =
+                    cx.const_of_item(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip();
+                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                inherent.into()
+            }
             ty::AliasTermKind::InherentConst { .. } => {
                 // FIXME(gca): This is dead code at the moment. It should eventually call
                 // self.evaluate_const like projected consts do in consider_impl_candidate in

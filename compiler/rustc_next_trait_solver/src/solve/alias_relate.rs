@@ -94,10 +94,12 @@ where
             }
 
             (Some(alias), None) => {
+                debug_assert_eq!(alias.is_rigid, ty::IsRigid::Yes);
                 self.relate_rigid_alias_non_alias(param_env, alias, variance, rhs)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             (None, Some(alias)) => {
+                debug_assert_eq!(alias.is_rigid, ty::IsRigid::Yes);
                 self.relate_rigid_alias_non_alias(
                     param_env,
                     alias,
