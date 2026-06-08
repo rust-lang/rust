@@ -14,6 +14,7 @@ use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::smallvec::smallvec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -25,6 +26,7 @@ use rustc_span::{Ident, Symbol};
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
+use crate::clean::paths::ItemPath;
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
@@ -354,7 +356,7 @@ pub(crate) struct HrefInfo {
     /// Kind of the item (used to generate the `title` attribute).
     pub(crate) kind: ItemType,
     /// Rust path to the item (used to generate the `title` attribute).
-    pub(crate) rust_path: Vec<Symbol>,
+    pub(crate) rust_path: ItemPath,
 }
 
 /// This function is to get the external macro path because they are not in the cache used in
@@ -451,7 +453,7 @@ fn generate_item_def_id_path(
         }
     }
 
-    let mut fqp = vec![crate_name];
+    let mut fqp = ItemPath::from(smallvec![crate_name]);
     let shortty = if let Some(prim) = prim {
         fqp.push(prim.as_sym());
         ItemType::Primitive
