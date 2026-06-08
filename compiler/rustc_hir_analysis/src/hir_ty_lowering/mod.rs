@@ -2769,7 +2769,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     did,
                     path.segments.last().unwrap(),
                 );
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+
+                if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                } else {
+                    let tcx = self.tcx();
+                    let generics = tcx.generics_of(did);
+
+                    // Use infer tys for synthetic params; otherwise the impl header's trait ref may
+                    // contain callee-owned synthetic params and fail when instantiated with impl args.
+                    // See issue #155834
+                    let args = args.iter().enumerate().map(|(index, arg)| {
+                        let param = generics.param_at(index, tcx);
+                        if param.kind.is_synthetic() {
+                            self.ty_infer(Some(param), span).into()
+                        } else {
+                            arg
+                        }
+                    });
+
+                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
+                }
             }
 
             // Exhaustive match to be clear about what exactly we're considering to be
