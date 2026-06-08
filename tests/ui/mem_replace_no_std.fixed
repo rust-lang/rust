@@ -1,4 +1,4 @@
-#![warn(clippy::mem_replace_option_with_some, clippy::mem_replace_with_default)]
+#![warn(clippy::mem_replace_with_default)]
 #![no_std]
 
 use core::mem;
