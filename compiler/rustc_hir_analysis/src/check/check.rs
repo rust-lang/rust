@@ -317,7 +317,7 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    // FIXME(#132279): Once `PostBorrowckAnalysis` is supported in the old solver, this branch should be removed.
+    // FIXME(#132279): Once `PostBorrowck` is supported in the old solver, this branch should be removed.
     let infcx = tcx.infer_ctxt().build(if tcx.next_trait_solver_globally() {
         TypingMode::post_borrowck_analysis(tcx, defining_use_anchor)
     } else {
@@ -2321,7 +2321,7 @@ pub(super) fn check_coroutine_obligations(
         }
     } else {
         // We're not checking region constraints here, so we can simply drop the
-        // added opaque type uses in `TypingMode::Borrowck`.
+        // added opaque type uses in `TypingMode::PostTypeckUntilBorrowck`.
         let _ = infcx.take_opaque_types();
     }
 
@@ -2338,7 +2338,7 @@ pub(super) fn check_potentially_region_dependent_goals<'tcx>(
     let typeck_results = tcx.typeck(def_id);
     let param_env = tcx.param_env(def_id);
 
-    // We use `TypingMode::Borrowck` as we want to use the opaque types computed by HIR typeck.
+    // We use `TypingMode::PostTypeckUntilBorrowck` as we want to use the opaque types computed by HIR typeck.
     let typing_mode = TypingMode::borrowck(tcx, def_id);
     let infcx = tcx.infer_ctxt().ignoring_regions().build(typing_mode);
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);

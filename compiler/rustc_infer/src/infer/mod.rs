@@ -342,19 +342,19 @@ impl<'tcx> Drop for InferCtxt<'tcx> {
         let mut inner = self.inner.borrow_mut();
         let opaque_type_storage = &mut inner.opaque_type_storage;
 
-        // No need for the drop bomb when we're in TypingMode::Borrowck, and the InferCtxt doesn't consider regions.
-        // This is okay since in `Borrowck`, the only reason we care about opaques is in relation to regions.
-        // In some places *after* typeck, like in lints we use `TypingMode::Borrowck`
-        // to prevent defining opaque types and we simply don't care about regions.
+        // No need for the drop bomb when we're in `TypingMode::PostTypeckUntilBorrowck`, and the `InferCtxt`
+        // doesn't consider regions. This is okay since in borrowck, the only reason we care about opaques is
+        // in relation to regions. In some places *after* typeck that aren't borrowck, like in lints we use
+        // `TypingMode::PostTypeckUntilBorrowck` to prevent defining opaque types and we simply don't care about regions.
         match self.typing_mode_raw() {
             TypingMode::Coherence
-            | TypingMode::Analysis { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => {}
             // In erased mode, the opaque type storage is always empty
             TypingMode::ErasedNotCoherence(..) => {}
-            TypingMode::Borrowck { .. } => {
+            TypingMode::PostTypeckUntilBorrowck { .. } => {
                 if !self.considering_regions {
                     return;
                 }
@@ -1146,17 +1146,15 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
         match self.typing_mode_raw().assert_not_erased() {
-            TypingMode::Analysis {
-                defining_opaque_types_and_generators: defining_opaque_types,
-            }
-            | TypingMode::Borrowck { defining_opaque_types } => {
+            TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
             // FIXME(#132279): This function is quite weird in post-analysis
             // and post-borrowck analysis mode. We may need to modify its uses
-            // to support PostBorrowckAnalysis in the old solver as well.
+            // to support PostBorrowck in the old solver as well.
             TypingMode::Coherence
-            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => false,
         }
@@ -1482,12 +1480,12 @@ impl<'tcx> InferCtxt<'tcx> {
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
             // function and require explicit comments on all use-sites in the future.
-            ty::TypingMode::Analysis { defining_opaque_types_and_generators: _ }
-            | ty::TypingMode::Borrowck { defining_opaque_types: _ } => {
+            ty::TypingMode::Typeck { defining_opaque_types_and_generators: _ }
+            | ty::TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence
-            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen) => mode,
             ty::TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
