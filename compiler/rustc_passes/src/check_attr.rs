@@ -402,6 +402,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcUnsafeSpecializationMarker => (),
             AttributeKind::Sanitize { .. } => {}
             AttributeKind::ShouldPanic { .. } => (),
+            AttributeKind::Splat(..) => (),
             AttributeKind::Stability { .. } => (),
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
