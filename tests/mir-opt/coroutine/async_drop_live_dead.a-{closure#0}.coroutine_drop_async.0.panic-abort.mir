@@ -1,35 +1,39 @@
 // MIR for `a::{closure#0}` 0 coroutine_drop_async
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _2;
+    debug _task_context => _24;
     debug x => ((*_23).0: T);
     let mut _0: std::task::Poll<()>;
     let _3: T;
     let mut _4: impl std::future::Future<Output = ()>;
-    let mut _5: &mut std::task::Context<'_>;
+    let mut _5: std::future::ResumeTy;
     let mut _6: std::task::Poll<()>;
     let mut _7: isize;
     let mut _8: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
     let mut _9: &mut std::task::Context<'_>;
-    let mut _10: &mut std::task::Context<'_>;
+    let mut _10: std::future::ResumeTy;
     let mut _11: &mut impl std::future::Future<Output = ()>;
-    let mut _12: &mut std::task::Context<'_>;
+    let mut _12: std::future::ResumeTy;
     let mut _13: std::task::Poll<()>;
     let mut _14: isize;
     let mut _15: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
     let mut _16: &mut std::task::Context<'_>;
-    let mut _17: &mut std::task::Context<'_>;
+    let mut _17: std::future::ResumeTy;
     let mut _18: &mut impl std::future::Future<Output = ()>;
     let mut _19: std::pin::Pin<&mut T>;
     let mut _20: &mut T;
     let mut _21: ();
     let mut _22: u32;
     let mut _23: &mut {async fn body of a<T>()};
+    let mut _24: std::future::ResumeTy;
+    let mut _25: std::ptr::NonNull<std::task::Context<'_>>;
     scope 1 {
         debug x => (((*_23) as variant#4).1: T);
     }
 
     bb0: {
+        _25 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+        _24 = std::future::ResumeTy(move _25);
         _23 = copy (_1.0: &mut {async fn body of a<T>()});
         _22 = discriminant((*_23));
         switchInt(move _22) -> [0: bb13, 3: bb16, 4: bb17, otherwise: bb18];
@@ -51,7 +55,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb4: {
-        _2 = move _5;
+        _24 = move _5;
         StorageDead(_5);
         goto -> bb10;
     }
@@ -78,8 +82,8 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb9: {
-        _10 = move _2;
-        _9 = move _10;
+        _10 = move _24;
+        _9 = copy (_10.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb8;
     }
 
@@ -89,7 +93,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb11: {
-        _2 = move _12;
+        _24 = move _12;
         StorageDead(_12);
         goto -> bb10;
     }
@@ -113,13 +117,13 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb16: {
         StorageLive(_5);
-        _5 = move _2;
+        _5 = move _24;
         goto -> bb4;
     }
 
     bb17: {
         StorageLive(_12);
-        _12 = move _2;
+        _12 = move _24;
         goto -> bb11;
     }
 
