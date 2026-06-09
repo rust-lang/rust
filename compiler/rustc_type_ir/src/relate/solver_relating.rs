@@ -311,13 +311,13 @@ where
             //
             // [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
             ty::Covariant => {
-                self.infcx.enter_forall(b, |b| {
+                self.infcx.enter_forall_with_empty_assumptions(b, |b| {
                     let a = self.infcx.instantiate_binder_with_infer(a);
                     self.relate(a, b)
                 })?;
             }
             ty::Contravariant => {
-                self.infcx.enter_forall(a, |a| {
+                self.infcx.enter_forall_with_empty_assumptions(a, |a| {
                     let b = self.infcx.instantiate_binder_with_infer(b);
                     self.relate(a, b)
                 })?;
@@ -334,13 +334,13 @@ where
             // `exists<..> A == for<..> B` and `exists<..> B == for<..> A`.
             // Check if `exists<..> A == for<..> B`
             ty::Invariant => {
-                self.infcx.enter_forall(b, |b| {
+                self.infcx.enter_forall_with_empty_assumptions(b, |b| {
                     let a = self.infcx.instantiate_binder_with_infer(a);
                     self.relate(a, b)
                 })?;
 
                 // Check if `exists<..> B == for<..> A`.
-                self.infcx.enter_forall(a, |a| {
+                self.infcx.enter_forall_with_empty_assumptions(a, |a| {
                     let b = self.infcx.instantiate_binder_with_infer(b);
                     self.relate(a, b)
                 })?;

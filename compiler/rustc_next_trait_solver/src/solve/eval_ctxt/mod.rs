@@ -1331,8 +1331,8 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
-    /// `enter_forall`, but takes `&mut self` and passes it back through the
-    /// callback since it can't be aliased during the call.
+    /// `enter_forall_with_assumptions`, but takes `&mut self` and passes it back through
+    /// the callback since it can't be aliased during the call.
     ///
     /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
     /// assumptions associated with the binder.
@@ -1344,7 +1344,7 @@ where
         param_env: I::ParamEnv,
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
-        self.delegate.enter_forall(value, |value| {
+        self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
