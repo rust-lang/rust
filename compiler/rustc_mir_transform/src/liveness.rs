@@ -235,6 +235,11 @@ fn maybe_drop_guard<'tcx>(
 ) -> bool {
     if ever_dropped.contains(index) {
         let ty = checked_places.places[index].ty(&body.local_decls, tcx).ty;
+        // FIXME(rigid_aliases_marker): ideally we set aliases to non_rigid right after
+        // the typing mode is set to `PostAnalysis`.
+        // But modifying local decls in MIR body is inconvenient. And we can't fold
+        // `PlaceRef` in `checked_places`.
+        let ty = ty::set_aliases_to_non_rigid(tcx, ty);
         matches!(
             ty.kind(),
             ty::Closure(..)
