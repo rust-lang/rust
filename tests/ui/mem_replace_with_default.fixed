@@ -1,4 +1,8 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::mem_replace_with_default)]
+
+extern crate proc_macros;
+use proc_macros::{external, inline_macros};
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::mem;
@@ -67,6 +71,13 @@ fn main() {
     let mut slice: &[i32] = &[1, 2, 3];
     let _ = std::mem::take(&mut slice);
     //~^ mem_replace_with_default
+}
+
+#[inline_macros]
+fn macros(s: &mut String) {
+    let _ = inline!(std::mem::take($s));
+    //~^ mem_replace_with_default
+    let _ = external!(std::mem::replace($s, Default::default()));
 }
 
 // lint is disabled for primitives because in this case `take`

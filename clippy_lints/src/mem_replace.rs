@@ -268,18 +268,16 @@ fn check_replace_with_default(
             expr.span,
             "replacing a value of type `T` with `T::default()`",
             |diag| {
-                if !expr.span.from_expansion() {
-                    let mut applicability = Applicability::MachineApplicable;
-                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
-                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
+                let mut applicability = Applicability::MachineApplicable;
+                let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(
-                        expr.span,
-                        format!("consider using `{top_crate}::mem::take` instead"),
-                        suggestion,
-                        applicability,
-                    );
-                }
+                diag.span_suggestion(
+                    expr.span,
+                    format!("consider using `{top_crate}::mem::take` instead"),
+                    suggestion,
+                    applicability,
+                );
             },
         );
         true
