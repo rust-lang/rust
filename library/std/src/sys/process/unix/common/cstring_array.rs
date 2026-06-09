@@ -32,11 +32,6 @@ impl CStringArray {
         drop(unsafe { CString::from_raw(old.cast_mut()) });
     }
 
-    /// Returns the length of the array (null pointer excluded).
-    pub fn len(&self) -> usize {
-        self.ptrs.len() - 1
-    }
-
     /// Push an additional string to the array.
     pub fn push(&mut self, item: CString) {
         let argc = self.ptrs.len() - 1;
@@ -46,25 +41,6 @@ impl CStringArray {
         self.ptrs.push(ptr::null());
         // Now, replace the previous null pointer.
         self.ptrs[argc] = item.into_raw();
-    }
-
-    /// Inserts an additional string to the array at the specified index.
-    /// This will panic if the item is inserted at `index > len`.
-    pub fn insert(&mut self, index: usize, item: CString) {
-        #[cold]
-        #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
-        #[track_caller]
-        #[optimize(size)]
-        fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("insertion index (is {index}) should be <= len (is {len})");
-        }
-
-        let len = self.len();
-        if index > len {
-            assert_failed(index, len);
-        }
-
-        self.ptrs.insert(index, item.into_raw());
     }
 
     /// Returns a pointer to the C-string array managed by this type.
