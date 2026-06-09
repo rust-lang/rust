@@ -9,7 +9,7 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC2 which is only 1 byte from the end of the allocation
+error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 255 bytes, but got ALLOC$ID which is only 1 byte from the end of the allocation
   --> $DIR/ub-nonnull.rs:22:29
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
@@ -37,7 +37,7 @@ LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
+error[E0080]: reading memory at ALLOC$ID[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
   --> $DIR/ub-nonnull.rs:36:38
    |
 LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
@@ -55,7 +55,7 @@ LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               00 00 00 00 00 00 00 00 ╾ALLOC$ID╼ │ ........╾──────╼
            }
 
 error[E0080]: constructing invalid value of type NonNull<()>: at .pointer, encountered a maybe-null pointer, but expected something that is definitely non-zero
@@ -66,7 +66,7 @@ LL | const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error: aborting due to 7 previous errors

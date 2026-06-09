@@ -6,7 +6,7 @@ LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error: constant extern_::C cannot be used as pattern

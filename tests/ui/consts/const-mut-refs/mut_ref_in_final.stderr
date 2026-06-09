@@ -36,7 +36,7 @@ LL | const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type &mut u16: encountered mutable reference or box pointing to read-only memory
@@ -47,7 +47,7 @@ LL | static IMMUT_MUT_REF_STATIC: &mut u16 = unsafe { mem::transmute(&13) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0716]: temporary value dropped while borrowed
@@ -150,7 +150,7 @@ LL |     const DANGLING: Option<&mut i32> = helper_dangling();
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type Option<&mut i32>: at .<enum-variant(Some)>.0, encountered a dangling reference (use-after-free)
@@ -161,7 +161,7 @@ LL |     static DANGLING_STATIC: Option<&mut i32> = helper_dangling();
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error: aborting due to 16 previous errors

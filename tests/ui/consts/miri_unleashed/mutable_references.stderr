@@ -6,7 +6,7 @@ LL | static FOO: &&mut u32 = &&mut 42;
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
@@ -17,7 +17,7 @@ LL | static OH_YES: &mut i32 = &mut 42;
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error: encountered mutable pointer in final value of static
@@ -40,7 +40,7 @@ LL | const BLUNT: &mut i32 = &mut 42;
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type Meh: at .x.<deref>, encountered `UnsafeCell` in read-only memory
@@ -51,7 +51,7 @@ LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type Meh: at .x.<deref>, encountered `UnsafeCell` in read-only memory
@@ -62,7 +62,7 @@ LL | const MUH: Meh = Meh {
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constructing invalid value of type &dyn Sync: at .<deref>.<dyn-downcast(Synced)>.x, encountered `UnsafeCell` in read-only memory
@@ -73,7 +73,7 @@ LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾──────╼╾──────╼
            }
 
 error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
@@ -84,7 +84,7 @@ LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const 
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
+               ╾ALLOC$ID╼                         │ ╾──────╼
            }
 
 error[E0080]: constant accesses mutable global memory
