@@ -190,6 +190,73 @@ class GenerateAndParseConfig(unittest.TestCase):
         self.assertNotEqual(build.config_toml.find("codegen-backends = ['llvm']"), -1)
 
 
+class GetTomlDottedKeys(unittest.TestCase):
+    """Test that get_toml understands the dotted-table key syntax that a
+    hand-written bootstrap.toml may use (e.g. `build.cargo = "..."`), and that
+    it checks the table a key belongs to. See issue #156948."""
+
+    def parse(self, config_toml):
+        return bootstrap.RustBuild(config_toml=config_toml, args=bootstrap.FakeArgs())
+
+    def test_dotted_key(self):
+        build = self.parse('build.cargo = "/path/to/cargo"')
+        self.assertEqual(build.get_toml("cargo", "build"), "/path/to/cargo")
+
+    def test_dotted_key_matches_section_form(self):
+        dotted = self.parse('build.cargo = "/path/to/cargo"')
+        section = self.parse('[build]\ncargo = "/path/to/cargo"')
+        self.assertEqual(
+            dotted.get_toml("cargo", "build"), section.get_toml("cargo", "build")
+        )
+
+    def test_dotted_key_wrong_section(self):
+        # A `cargo` key in some other table must not be picked up for `build`.
+        build = self.parse('[foo]\ncargo = "false"')
+        self.assertIsNone(build.get_toml("cargo", "build"))
+
+    def test_program_config_requires_build_table(self):
+        # A cargo/rustc key outside [build] must be ignored; program_config
+        # falls back to the stage0 default path rather than the misplaced value.
+        wrong = self.parse('[foo]\ncargo = "/wrong/cargo"')
+        cargo_default = os.path.join(
+            wrong.bin_root(), "bin", "cargo" + bootstrap.EXE_SUFFIX
+        )
+        self.assertEqual(wrong.cargo(), cargo_default)
+
+        wrong_rustc = self.parse('[foo]\nrustc = "/wrong/rustc"')
+        rustc_default = os.path.join(
+            wrong_rustc.bin_root(), "bin", "rustc" + bootstrap.EXE_SUFFIX
+        )
+        self.assertEqual(wrong_rustc.rustc(), rustc_default)
+
+        # A dotted key in the build table is honored.
+        right = self.parse('build.cargo = "/path/to/cargo"')
+        self.assertEqual(right.cargo(), "/path/to/cargo")
+
+    def test_dotted_target_key(self):
+        build = self.parse('target.x86_64-unknown-linux-gnu.cc = "gcc"')
+        self.assertEqual(build.get_toml("cc", "target.x86_64-unknown-linux-gnu"), "gcc")
+
+    def test_dotted_key_inside_section(self):
+        # A dotted key nested under a `[section]` header composes with that
+        # section's name; it is equivalent to the fully top-level dotted form.
+        nested = self.parse('[target]\nx86_64-unknown-linux-gnu.cc = "gcc"')
+        self.assertEqual(
+            nested.get_toml("cc", "target.x86_64-unknown-linux-gnu"), "gcc"
+        )
+        top_level = self.parse('target.x86_64-unknown-linux-gnu.cc = "gcc"')
+        self.assertEqual(
+            nested.get_toml("cc", "target.x86_64-unknown-linux-gnu"),
+            top_level.get_toml("cc", "target.x86_64-unknown-linux-gnu"),
+        )
+
+    def test_dotted_prefix_does_not_alias_other_section(self):
+        # `build.cargo` inside `[foo]` is `foo.build.cargo`, not the top-level
+        # `[build]` table, so it must not be returned for section "build".
+        build = self.parse('[foo]\nbuild.cargo = "false"')
+        self.assertIsNone(build.get_toml("cargo", "build"))
+
+
 class BuildBootstrap(unittest.TestCase):
     """Test that we generate the appropriate arguments when building bootstrap"""
 
