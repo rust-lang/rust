@@ -10,8 +10,9 @@ fn dummy(x: u8) -> u8 {
 fn foo(mut x: u8) {
     // CHECK-LABEL: fn foo(
     // CHECK: debug x => [[x:_.*]];
-    // CHECK: dummy(move [[x]])
-    // CHECK: [[x]] = move {{_.*}};
+    // CHECK: [[tmp:_.*]] = copy [[x]];
+    // CHECK: [[x]] = dummy(move [[tmp]])
+
     // calling `dummy` to make a use of `x` that copyprop cannot eliminate
     x = dummy(x); // this will assign a local to `x`
 }
