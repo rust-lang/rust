@@ -50,4 +50,37 @@ trait InheritedOnly: OnlyPointeeSized {
     }
 }
 
+
+
+fn only(){
+    let only = 0u32;
+}
+
+mod a{
+    #[allow(non_camel_case_types)]
+    struct only {}
+}
+
+mod b {
+    use std::marker::{MetaSized, PointeeSized};
+
+    #[allow(non_camel_case_types)]
+    trait only: only PointeeSized {
+        fn foo(&self) {
+            size_of_val(self);
+            //~^ ERROR the size for values of type `Self` cannot be known
+        }
+    }
+}
+
+mod only{
+   pub trait Alpha {}
+}
+
+// In the below context, rust will attempt to look for `Alpha` in the crate root, not in a module
+// `only`
+//fn alpha<T: only::Alpha>(){
+//}
+
+
 fn main() {}
