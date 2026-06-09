@@ -1,0 +1,25 @@
+warning: unstable feature specified for `-Ctarget-feature`: `hvx-length128b`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+error: avoid using named labels in inline assembly
+  --> $DIR/hexagon-register-pairs.rs:32:15
+   |
+LL |         asm!("label1: r7:6 = combine(#2, #3)");
+   |               ^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+   = note: `#[deny(named_asm_labels)]` on by default
+
+error: avoid using named labels in inline assembly
+  --> $DIR/hexagon-register-pairs.rs:35:15
+   |
+LL |         asm!("hexagon_label: nop");
+   |               ^^^^^^^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

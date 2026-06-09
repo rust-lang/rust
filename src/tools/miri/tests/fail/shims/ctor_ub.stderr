@@ -1,0 +1,22 @@
+error: Undefined Behavior: entering unreachable code
+  --> tests/fail/shims/ctor_ub.rs:LL:CC
+   |
+LL |     std::hint::unreachable_unchecked()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+note: the current function got called indirectly due to this code
+  --> tests/fail/shims/ctor_ub.rs:LL:CC
+   |
+LL |         static $ident: unsafe extern "C" fn() = $ctor;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | ctor! { CTOR = ctor }
+   | --------------------- in this macro invocation
+   = note: this error originates in the macro `ctor` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

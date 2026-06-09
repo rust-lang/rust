@@ -1,0 +1,14 @@
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:25:13
+   |
+LL |     let _ = std::collections::hash_map::HashMap::<i32, i32>::new();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui-toml/absolute_paths/absolute_paths.rs:7:9
+   |
+LL | #![deny(clippy::absolute_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,41 @@
+error[E0027]: pattern does not mention field `1`
+  --> $DIR/struct-pat-unmentioned-tuple-indices.rs:9:9
+   |
+LL |     let S { 0: _ } = S(1, 2.2);
+   |         ^^^^^^^^^^ missing field `1`
+   |
+help: include the missing field in the pattern
+   |
+LL |     let S { 0: _, 1: _ } = S(1, 2.2);
+   |                 ++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let S { 0: _, 1: _ } = S(1, 2.2);
+   |                 ++++++
+help: or always ignore missing fields here
+   |
+LL |     let S { 0: _, .. } = S(1, 2.2);
+   |                 ++++
+
+error[E0027]: pattern does not mention field `1`
+  --> $DIR/struct-pat-unmentioned-tuple-indices.rs:10:9
+   |
+LL |     let E::V { 0: _ } = E::V(1, 2.2);
+   |         ^^^^^^^^^^^^^ missing field `1`
+   |
+help: include the missing field in the pattern
+   |
+LL |     let E::V { 0: _, 1: _ } = E::V(1, 2.2);
+   |                    ++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let E::V { 0: _, 1: _ } = E::V(1, 2.2);
+   |                    ++++++
+help: or always ignore missing fields here
+   |
+LL |     let E::V { 0: _, .. } = E::V(1, 2.2);
+   |                    ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0027`.

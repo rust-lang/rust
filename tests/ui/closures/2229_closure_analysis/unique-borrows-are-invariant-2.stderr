@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/unique-borrows-are-invariant-2.rs:15:17
+   |
+LL | impl<'b> Spooky<'b> {
+   |      -- lifetime `'b` defined here
+LL |     fn create_self_reference<'a>(&'a mut self) {
+   |                              -- lifetime `'a` defined here
+...
+LL |                 self.borrowed = borrow;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

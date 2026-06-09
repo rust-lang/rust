@@ -1,0 +1,30 @@
+Function name: issue_93054::foo2 (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 15, 01, 00, 1c]
+Number of files: 1
+- file 0 => $DIR/issue-93054.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 21, 1) to (start + 0, 28)
+Highest counter ID seen: (none)
+
+Function name: issue_93054::main
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 1d, 01, 00, 0a, 01, 00, 0c, 00, 0d]
+Number of files: 1
+- file 0 => $DIR/issue-93054.rs
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 29, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 0, 12) to (start + 0, 13)
+Highest counter ID seen: c0
+
+Function name: issue_93054::make (unused)
+Raw bytes (19): 0x[01, 01, 00, 03, 00, 19, 01, 00, 1b, 00, 01, 05, 00, 09, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/issue-93054.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Zero) at (prev + 25, 1) to (start + 0, 27)
+- Code(Zero) at (prev + 1, 5) to (start + 0, 9)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: (none)
+

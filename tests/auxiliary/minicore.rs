@@ -1,0 +1,407 @@
+//! Auxiliary `minicore` prelude which stubs out `core` items for `no_core` tests that need to work
+//! in cross-compilation scenarios where no `core` is available (that don't want nor need to
+//! `-Zbuild-std`).
+//!
+//! # Important notes
+//!
+//! - `minicore` is **only** intended for `core` items, and the stubs should match the actual `core`
+//!   items. For identical error output, any `diagnostic` attributes (e.g. `on_unimplemented`)
+//!   should also be replicated here.
+//! - Be careful of adding new features and things that are only available for a subset of targets.
+//!
+//! # References
+//!
+//! This is partially adapted from `rustc_codegen_cranelift`:
+//! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
+// ignore-tidy-linelength
+
+#![feature(
+    no_core,
+    intrinsics,
+    lang_items,
+    auto_traits,
+    freeze_impls,
+    negative_impls,
+    pattern_types,
+    rustc_attrs,
+    decl_macro,
+    f16,
+    f128,
+    transparent_unions,
+    asm_experimental_arch,
+    unboxed_closures
+)]
+#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![no_std]
+#![no_core]
+
+// `core` has some exotic `marker_impls!` macro for handling the with-generics cases, but for our
+// purposes, just use a simple macro_rules macro.
+macro_rules! impl_marker_trait {
+    ($Trait:ident => [$( $ty:ident ),* $(,)?] ) => {
+        $( impl $Trait for $ty {} )*
+    }
+}
+
+#[lang = "pointee_sized"]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may or may not have a size",
+    label = "may or may not have a known size"
+)]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known",
+    label = "doesn't have a known size"
+)]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known at compilation time",
+    label = "doesn't have a size known at compile-time"
+)]
+pub trait Sized: MetaSized {}
+
+#[lang = "destruct"]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
+pub trait Destruct: PointeeSized {}
+
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}
+
+#[lang = "copy"]
+pub trait Copy: Sized {}
+
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
+#[lang = "freeze"]
+pub unsafe auto trait Freeze {}
+
+#[lang = "unsafe_unpin"]
+pub unsafe auto trait UnsafeUnpin {}
+
+#[lang = "unpin"]
+#[diagnostic::on_unimplemented(
+    note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
+    message = "`{Self}` cannot be unpinned"
+)]
+pub auto trait Unpin {}
+
+impl_marker_trait!(
+    Copy => [
+        char, bool,
+        isize, i8, i16, i32, i64, i128,
+        usize, u8, u16, u32, u64, u128,
+        f16, f32, f64, f128,
+    ]
+);
+impl<'a, T: PointeeSized> Copy for &'a T {}
+impl<T: PointeeSized> Copy for *const T {}
+impl<T: PointeeSized> Copy for *mut T {}
+impl<T: Copy, const N: usize> Copy for [T; N] {}
+
+#[lang = "phantom_data"]
+pub struct PhantomData<T: PointeeSized>;
+impl<T: PointeeSized> Copy for PhantomData<T> {}
+
+pub enum Option<T> {
+    None,
+    Some(T),
+}
+impl<T: Copy> Copy for Option<T> {}
+
+pub enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+impl<T: Copy, E: Copy> Copy for Result<T, E> {}
+
+#[lang = "manually_drop"]
+#[repr(transparent)]
+pub struct ManuallyDrop<T: PointeeSized> {
+    value: T,
+}
+impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
+
+#[lang = "maybe_uninit"]
+#[repr(transparent)]
+pub union MaybeUninit<T> {
+    uninit: (),
+    value: ManuallyDrop<T>,
+}
+
+impl<T: Copy + PointeeSized> Copy for MaybeUninit<T> {}
+
+impl<T> MaybeUninit<T> {
+    pub const fn uninit() -> Self {
+        Self { uninit: () }
+    }
+
+    pub const fn new(value: T) -> Self {
+        Self { value: ManuallyDrop { value } }
+    }
+}
+
+#[repr(transparent)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonNull<T: ?Sized> {
+    pointer: pattern_type!(*const T is !null),
+}
+impl<T: ?Sized> Copy for NonNull<T> {}
+
+#[repr(transparent)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
+
+pub trait ZeroablePrimitive {
+    type NonZeroInner;
+}
+
+macro_rules! define_valid_range_type {
+    ($(
+        $name:ident($int:ident is $pat:pat);
+    )+) => {$(
+        #[repr(transparent)]
+        pub struct $name(pattern_type!($int is $pat));
+
+        impl ZeroablePrimitive for $int {
+            type NonZeroInner = $name;
+        }
+    )+};
+}
+
+define_valid_range_type! {
+    NonZeroU8Inner(u8 is 1..=0xFF);
+    NonZeroU16Inner(u16 is 1..=0xFFFF);
+    NonZeroU32Inner(u32 is 1..=0xFFFF_FFFF);
+    NonZeroU64Inner(u64 is 1..=0xFFFF_FFFF_FFFF_FFFF);
+
+    NonZeroI8Inner(i8 is (-128..=-1 | 1..=0x7F));
+    NonZeroI32Inner(i32 is (-0x8000_0000..=-1 | 1..=0x7FFF_FFFF));
+}
+
+pub struct Unique<T: ?Sized> {
+    pub pointer: NonNull<T>,
+    pub _marker: PhantomData<T>,
+}
+
+#[lang = "unsafe_cell"]
+#[repr(transparent)]
+pub struct UnsafeCell<T: PointeeSized> {
+    value: T,
+}
+impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+
+#[lang = "tuple_trait"]
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
+pub trait Tuple {}
+
+#[rustc_builtin_macro]
+pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro cfg_select($($tt:tt)*) {
+    /* compiler built-in */
+}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {
+    ($($e:expr),* $(,)?) => {
+        /* compiler built-in */
+    };
+}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! stringify {
+    ($($t:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+
+#[lang = "add"]
+pub trait Add<Rhs = Self> {
+    type Output;
+
+    fn add(self, _: Rhs) -> Self::Output;
+}
+
+impl Add<isize> for isize {
+    type Output = isize;
+
+    fn add(self, other: isize) -> isize {
+        7 // avoid needing to add all of the overflow handling and panic language items
+    }
+}
+
+#[lang = "neg"]
+pub trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for isize {
+    type Output = isize;
+
+    fn neg(self) -> isize {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> i8 {
+        loop {}
+    }
+}
+
+impl Neg for i32 {
+    type Output = i32;
+
+    fn neg(self) -> i32 {
+        loop {}
+    }
+}
+
+#[lang = "sync"]
+pub trait Sync {}
+impl_marker_trait!(
+    Sync => [
+        char, bool,
+        isize, i8, i16, i32, i64, i128,
+        usize, u8, u16, u32, u64, u128,
+        f16, f32, f64, f128,
+    ]
+);
+
+impl Sync for () {}
+
+impl<T, const N: usize> Sync for [T; N] {}
+
+#[lang = "drop_glue"]
+fn drop_glue<T>(_: &mut T) {}
+
+#[lang = "fn_once"]
+pub trait FnOnce<Args: Tuple> {
+    #[lang = "fn_once_output"]
+    type Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+#[lang = "fn_mut"]
+pub trait FnMut<Args: Tuple>: FnOnce<Args> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+
+#[lang = "fn"]
+pub trait Fn<Args: Tuple>: FnMut<Args> {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
+
+#[lang = "dispatch_from_dyn"]
+trait DispatchFromDyn<T> {}
+
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
+
+#[lang = "unsize"]
+trait Unsize<T: PointeeSized>: PointeeSized {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T: PointeeSized> {}
+
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
+
+#[lang = "drop"]
+trait Drop {
+    fn drop(&mut self);
+}
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
+pub mod mem {
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn size_of<T>() -> usize;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn align_of<T>() -> usize;
+}
+
+pub mod ptr {
+    #[inline]
+    #[rustc_diagnostic_item = "ptr_write_volatile"]
+    pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+        #[rustc_intrinsic]
+        pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+
+        unsafe { volatile_store(dst, src) };
+    }
+}
+
+#[lang = "c_void"]
+#[repr(u8)]
+pub enum c_void {
+    __variant1,
+    __variant2,
+}
+
+#[rustc_builtin_macro(pattern_type)]
+#[macro_export]
+macro_rules! pattern_type {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+impl Copy for Ordering {}
+
+#[lang = "const_param_ty"]
+#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+pub trait ConstParamTy_ {}
+
+pub enum SimdAlign {
+    // These values must match the compiler's `SimdAlign` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    Unaligned = 0,
+    Element = 1,
+    Vector = 2,
+}
+
+impl ConstParamTy_ for SimdAlign {}

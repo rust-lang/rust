@@ -1,0 +1,24 @@
+error: for loop over an `Option`. This is more readably written as an `if let` statement
+  --> $DIR/macro-iterator-next.rs:15:14
+   |
+LL |     for _ in mac!(next [1, 2]) {}
+   |              ^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/macro-iterator-next.rs:5:11
+   |
+LL | #![forbid(for_loops_over_fallibles)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in mac!(next [1, 2]) {}
+LL +     while let Some(_) = mac!(next [1, 2]) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in mac!(next [1, 2]) {}
+LL +     if let Some(_) = mac!(next [1, 2]) {}
+   |
+
+error: aborting due to 1 previous error
+

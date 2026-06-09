@@ -1,0 +1,33 @@
+error[E0635]: unknown feature `unknown_rust_feature`
+  --> $DIR/unknown-feature.rs:2:5
+   |
+LL |     unknown_rust_feature,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0635]: unknown feature `associated_types_default`
+  --> $DIR/unknown-feature.rs:6:5
+   |
+LL |     associated_types_default,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: there is a feature with a similar name: `associated_type_defaults`
+   |
+LL -     associated_types_default,
+LL +     associated_type_defaults,
+   |
+
+error[E0635]: unknown feature `core_intrnisics`
+  --> $DIR/unknown-feature.rs:11:5
+   |
+LL |     core_intrnisics,
+   |     ^^^^^^^^^^^^^^^
+   |
+help: there is a feature with a similar name: `core_intrinsics`
+   |
+LL -     core_intrnisics,
+LL +     core_intrinsics,
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0635`.

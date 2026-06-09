@@ -1,0 +1,15 @@
+error[E0381]: used binding `blah` is possibly-uninitialized
+  --> $DIR/E0381-duplicated-label.rs:11:33
+   |
+LL |             let blah: Option<String>;
+   |                 ---- binding declared here but left uninitialized
+LL |             if true {
+LL |                 blah = Some("".to_string());
+   |                 ---- binding initialized here in some conditions
+LL |             }
+LL |             if let Some(blah) = blah.as_ref() {
+   |                                 ^^^^ `blah` used here but it is possibly-uninitialized
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

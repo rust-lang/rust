@@ -1,0 +1,75 @@
+error[E0609]: no field `x` on type `&Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:31:11
+   |
+LL |     fn equals_ref<Point>(a: &Point, b: &Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |           ^ unknown field
+
+error[E0609]: no field `x` on type `&Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:31:18
+   |
+LL |     fn equals_ref<Point>(a: &Point, b: &Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                  ^ unknown field
+
+error[E0609]: no field `y` on type `&Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:31:25
+   |
+LL |     fn equals_ref<Point>(a: &Point, b: &Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                         ^ unknown field
+
+error[E0609]: no field `y` on type `&Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:31:32
+   |
+LL |     fn equals_ref<Point>(a: &Point, b: &Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                                ^ unknown field
+
+error[E0609]: no field `x` on type `Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:39:11
+   |
+LL |     fn equals_val<Point>(a: Point, b: Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |           ^ unknown field
+
+error[E0609]: no field `x` on type `Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:39:18
+   |
+LL |     fn equals_val<Point>(a: Point, b: Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                  ^ unknown field
+
+error[E0609]: no field `y` on type `Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:39:25
+   |
+LL |     fn equals_val<Point>(a: Point, b: Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                         ^ unknown field
+
+error[E0609]: no field `y` on type `Point`
+  --> $DIR/issue-52082-type-param-shadows-existing-type.rs:39:32
+   |
+LL |     fn equals_val<Point>(a: Point, b: Point) -> bool
+   |                   ----- type parameter 'Point' declared here
+LL |     {
+LL |         a.x == b.x && a.y == b.y
+   |                                ^ unknown field
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

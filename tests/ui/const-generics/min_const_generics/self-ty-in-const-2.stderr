@@ -1,0 +1,14 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/self-ty-in-const-2.rs:15:41
+   |
+LL |         let _: [u8; std::mem::size_of::<Self>()];
+   |                                         ^^^^
+   |
+note: not a concrete type
+  --> $DIR/self-ty-in-const-2.rs:13:17
+   |
+LL | impl<T> Baz for Bar<T> {
+   |                 ^^^^^^
+
+error: aborting due to 1 previous error
+

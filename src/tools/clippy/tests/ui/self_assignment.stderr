@@ -1,0 +1,71 @@
+error: self-assignment of `a` to `a`
+  --> tests/ui/self_assignment.rs:13:5
+   |
+LL |     a = a;
+   |     ^^^^^
+   |
+   = note: `-D clippy::self-assignment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::self_assignment)]`
+
+error: self-assignment of `*b` to `*b`
+  --> tests/ui/self_assignment.rs:16:5
+   |
+LL |     *b = *b;
+   |     ^^^^^^^
+
+error: self-assignment of `s` to `s`
+  --> tests/ui/self_assignment.rs:19:5
+   |
+LL |     s = s;
+   |     ^^^^^
+
+error: self-assignment of `s.a` to `s.a`
+  --> tests/ui/self_assignment.rs:22:5
+   |
+LL |     s.a = s.a;
+   |     ^^^^^^^^^
+
+error: self-assignment of `s.b[5 + 4]` to `s.b[9]`
+  --> tests/ui/self_assignment.rs:25:5
+   |
+LL |     s.b[9] = s.b[5 + 4];
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: self-assignment of `s.c[0][1]` to `s.c[0][1]`
+  --> tests/ui/self_assignment.rs:28:5
+   |
+LL |     s.c[0][1] = s.c[0][1];
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: self-assignment of `s.b[a]` to `s.b[a]`
+  --> tests/ui/self_assignment.rs:31:5
+   |
+LL |     s.b[a] = s.b[a];
+   |     ^^^^^^^^^^^^^^^
+
+error: self-assignment of `*s.e` to `*s.e`
+  --> tests/ui/self_assignment.rs:34:5
+   |
+LL |     *s.e = *s.e;
+   |     ^^^^^^^^^^^
+
+error: self-assignment of `s.b[10 + a]` to `s.b[a + 10]`
+  --> tests/ui/self_assignment.rs:37:5
+   |
+LL |     s.b[a + 10] = s.b[10 + a];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: self-assignment of `t.1` to `t.1`
+  --> tests/ui/self_assignment.rs:41:5
+   |
+LL |     t.1 = t.1;
+   |     ^^^^^^^^^
+
+error: self-assignment of `(t.0)` to `t.0`
+  --> tests/ui/self_assignment.rs:44:5
+   |
+LL |     t.0 = (t.0);
+   |     ^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

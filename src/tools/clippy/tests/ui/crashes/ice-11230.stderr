@@ -1,0 +1,11 @@
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> tests/ui/crashes/ice-11230.rs:8:14
+   |
+LL |     for v in A.iter() {}
+   |              ^^^^^^^^ help: to write this more concisely, try: `A`
+   |
+   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
+
+error: aborting due to 1 previous error
+

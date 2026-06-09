@@ -1,0 +1,39 @@
+error: lifetimes cannot use keyword names
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:5:18
+   |
+LL | const fn add(a: &'self isize) -> usize {
+   |                  ^^^^^
+
+error[E0261]: use of undeclared lifetime name `'self`
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:5:18
+   |
+LL | const fn add(a: &'self isize) -> usize {
+   |                  ^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'self` here
+   |
+LL | const fn add<'self>(a: &'self isize) -> usize {
+   |             +++++++
+
+error[E0425]: cannot find value `Qux` in this scope
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:5
+   |
+LL |     Qux + y
+   |     ^^^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/ice-extra-args-fn-abi-issue-127423.rs:8:11
+   |
+LL |     Qux + y
+   |           ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     Qux + y
+LL +     Qux + a
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0261, E0425.
+For more information about an error, try `rustc --explain E0261`.

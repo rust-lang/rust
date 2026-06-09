@@ -1,0 +1,17 @@
+error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
+  --> $DIR/closure-arg-count-expected-type-issue-47244.rs:16:23
+   |
+LL |     let _n = m.iter().map(|_, b| {
+   |                       ^^^ ------ takes 2 distinct arguments
+   |                       |
+   |                       expected closure that takes a single 2-tuple as argument
+   |
+help: change the closure to accept a tuple instead of individual arguments
+   |
+LL -     let _n = m.iter().map(|_, b| {
+LL +     let _n = m.iter().map(|(_, b)| {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0593`.

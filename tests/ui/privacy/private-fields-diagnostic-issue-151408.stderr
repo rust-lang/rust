@@ -1,0 +1,45 @@
+error: cannot construct `aux::Named` with struct literal syntax due to private fields
+  --> $DIR/private-fields-diagnostic-issue-151408.rs:8:13
+   |
+LL |     let _ = Named {};
+   |             ^^^^^
+   |
+help: you might have meant to use the `new` associated function
+   |
+LL -     let _ = Named {};
+LL +     let _ = Named::new();
+   |
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/private-fields-diagnostic-issue-151408.rs:11:13
+   |
+LL |     let _ = PublicTuple();
+   |             ^^^^^^^^^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/auxiliary/private-fields-diagnostic-aux-issue-151408.rs:18:24
+   |
+LL | pub struct PublicTuple(PrivateInner);
+   |                        ^^^^^^^^^^^^ private field
+help: you might have meant to use the `new` associated function
+   |
+LL |     let _ = PublicTuple::new();
+   |                        +++++
+
+error: cannot construct `NamedWithMultipleFields` with struct literal syntax due to private fields
+  --> $DIR/private-fields-diagnostic-issue-151408.rs:15:13
+   |
+LL |     let _ = NamedWithMultipleFields { visible: 1 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...and other private field `hidden` that was not provided
+
+error: cannot construct `NamedWithMultipleFields` with struct literal syntax due to private fields
+  --> $DIR/private-fields-diagnostic-issue-151408.rs:18:13
+   |
+LL |     let _ = NamedWithMultipleFields {};
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

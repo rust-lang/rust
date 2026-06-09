@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `NotClonableUpvar: Clone` is not satisfied in `{async closure@$DIR/not-clone-closure.rs:27:21: 27:34}`
+  --> $DIR/not-clone-closure.rs:30:15
+   |
+LL |     not_clone.clone();
+   |               ^^^^^ unsatisfied trait bound
+   |
+   = help: within `{async closure@$DIR/not-clone-closure.rs:27:21: 27:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`
+note: required because it's used within this closure
+  --> $DIR/not-clone-closure.rs:27:21
+   |
+LL |     let not_clone = async move || {
+   |                     ^^^^^^^^^^^^^
+help: consider annotating `NotClonableUpvar` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClonableUpvar;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,31 @@
+[package]
+name = "intern"
+version = "0.0.0"
+repository.workspace = true
+description = "Global `Arc`-based object interning infrastructure for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+
+[dependencies]
+dashmap.workspace = true
+# We need to freeze the version of the crate, as it needs to match with dashmap
+hashbrown = { version = "0.14.*", features = [
+    "inline-more",
+], default-features = false }
+rustc-hash.workspace = true
+triomphe.workspace = true
+rayon.workspace = true
+arrayvec.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+prevent-gc = []

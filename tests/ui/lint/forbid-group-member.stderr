@@ -1,0 +1,29 @@
+warning: allow(unused_variables) incompatible with previous forbid
+  --> $DIR/forbid-group-member.rs:8:9
+   |
+LL | #![forbid(unused)]
+   |           ------ `forbid` level set here
+LL |
+LL | #[allow(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: `#[warn(forbidden_lint_groups)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: allow(unused_variables) incompatible with previous forbid
+  --> $DIR/forbid-group-member.rs:8:9
+   |
+LL | #![forbid(unused)]
+   |           ------ `forbid` level set here
+LL |
+LL | #[allow(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: `#[warn(forbidden_lint_groups)]` (part of `#[warn(future_incompatible)]`) on by default
+

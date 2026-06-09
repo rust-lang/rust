@@ -1,0 +1,19 @@
+error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC which is only 4 bytes from the end of the allocation
+  --> tests/fail/dangling_pointers/out_of_bounds_project.rs:LL:CC
+   |
+LL |         let _field = addr_of!((*ptr).2);
+   |                      ^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/dangling_pointers/out_of_bounds_project.rs:LL:CC
+   |
+LL |     let v = 0u32;
+   |         ^
+   = note: this error originates in the macro `addr_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

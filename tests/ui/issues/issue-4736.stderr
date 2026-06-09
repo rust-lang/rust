@@ -1,0 +1,18 @@
+error[E0560]: struct `NonCopyable` has no field named `p`
+  --> $DIR/issue-4736.rs:4:26
+   |
+LL | struct NonCopyable(());
+   |        ----------- `NonCopyable` defined here
+...
+LL |     let z = NonCopyable{ p: () };
+   |                          ^ field does not exist
+   |
+help: `NonCopyable` is a tuple struct, use the appropriate syntax
+   |
+LL -     let z = NonCopyable{ p: () };
+LL +     let z = NonCopyable(/* () */);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.

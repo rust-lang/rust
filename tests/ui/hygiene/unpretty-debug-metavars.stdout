@@ -1,0 +1,53 @@
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded,hygiene
+
+// Regression test for token hygiene annotations in -Zunpretty=expanded,hygiene
+// Previously, metavar parameters in macro-generated macro_rules! definitions
+// were missing hygiene annotations, making identical `$marg` bindings
+// indistinguishable.
+
+// Don't break whenever Symbol numbering changes
+//@ normalize-stdout: "\d+#" -> "0#"
+
+#![feature /* 0#0 */(no_core /* 0#0 */)]
+#![no_core /* 0#0 */]
+
+macro_rules! make_macro
+    /*
+    0#0
+    */ {
+    (@inner /* 0#0 */ $name /* 0#0 */:ident /* 0#0
+    */($dol /* 0#0 */:tt /* 0#0 */) $a /* 0#0 */:ident /* 0#0 */)
+    =>
+    {
+        macro_rules /* 0#0 */! $name /* 0#0 */
+        {
+            ($dol /* 0#0 */ $a /* 0#0 */ : expr /* 0#0 */, $dol /*
+            0#0 */ marg /* 0#0 */ : expr /* 0#0 */) => {}
+        }
+    }; ($name /* 0#0 */:ident /* 0#0 */) =>
+    {
+        make_macro /* 0#0
+        */!{@inner /* 0#0 */ $name /* 0#0 */($) marg /* 0#0 */}
+    };
+}
+macro_rules! add2
+    /*
+    0#0
+    */ {
+    ($ marg /* 0#1 */ : expr /* 0#2 */, $marg /* 0#2 */ : expr /*
+    0#2 */) => {}
+}
+
+
+/*
+Expansions:
+crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "make_macro")
+crate0::{{expn2}}: parent: crate0::{{expn1}}, call_site_ctxt: #1, def_site_ctxt: #0, kind: Macro(Bang, "make_macro")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, SemiOpaque)
+#2: parent: #0, outer_mark: (crate0::{{expn2}}, SemiOpaque)
+*/

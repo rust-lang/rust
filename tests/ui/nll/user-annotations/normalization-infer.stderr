@@ -1,0 +1,122 @@
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/normalization-infer.rs:11:12
+   |
+LL |     let _: <(_,) as Tr>::Ty = a;
+   |            ^^^^^^^^^^^^^^^^
+   |            |
+   |            the parameter type `A` must be valid for the static lifetime...
+   |            ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test1<A: 'static, B, C, D>(a: A, b: B, c: C) {
+   |           +++++++++
+
+error[E0310]: the parameter type `B` may not live long enough
+  --> $DIR/normalization-infer.rs:12:5
+   |
+LL |     Some::<<(_,) as Tr>::Ty>(b);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `B` must be valid for the static lifetime...
+   |     ...so that the type `B` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test1<A, B: 'static, C, D>(a: A, b: B, c: C) {
+   |              +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/normalization-infer.rs:13:11
+   |
+LL |     || -> <(_,) as Tr>::Ty { c };
+   |           ^^^^^^^^^^^^^^^^
+   |           |
+   |           the parameter type `C` must be valid for the static lifetime...
+   |           ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test1<A, B, C: 'static, D>(a: A, b: B, c: C) {
+   |                 +++++++++
+
+error[E0310]: the parameter type `D` may not live long enough
+  --> $DIR/normalization-infer.rs:14:6
+   |
+LL |     |d: <(_,) as Tr>::Ty| -> D { d };
+   |      ^
+   |      |
+   |      the parameter type `D` must be valid for the static lifetime...
+   |      ...so that the type `D` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test1<A, B, C, D: 'static>(a: A, b: B, c: C) {
+   |                    +++++++++
+
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/normalization-infer.rs:28:12
+   |
+LL |     let _: Alias<_, _> = (a, 0u8);
+   |            ^^^^^^^^^^^
+   |            |
+   |            the parameter type `A` must be valid for the static lifetime...
+   |            ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test2<A: 'static, B, C>(a: A, b: B, c: C) {
+   |           +++++++++
+
+error[E0310]: the parameter type `B` may not live long enough
+  --> $DIR/normalization-infer.rs:29:5
+   |
+LL |     Some::<Alias<_, _>>((b, 0u8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `B` must be valid for the static lifetime...
+   |     ...so that the type `B` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test2<A, B: 'static, C>(a: A, b: B, c: C) {
+   |              +++++++++
+
+error[E0310]: the parameter type `C` may not live long enough
+  --> $DIR/normalization-infer.rs:30:11
+   |
+LL |     || -> Alias<_, _> { (c, 0u8) };
+   |           ^^^^^^^^^^^
+   |           |
+   |           the parameter type `C` must be valid for the static lifetime...
+   |           ...so that the type `C` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test2<A, B, C: 'static>(a: A, b: B, c: C) {
+   |                 +++++++++
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/normalization-infer.rs:32:28
+   |
+LL |     let _: Alias<_, _> = (&temp(), 0u8);
+   |            -----------     ^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/normalization-infer.rs:33:27
+   |
+LL |     Some::<Alias<_, _>>((&temp(), 0u8));
+   |                         --^^^^^^------ - temporary value is freed at the end of this statement
+   |                         | |
+   |                         | creates a temporary value which is freed while still in use
+   |                         this usage requires that borrow lasts for `'static`
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0310, E0716.
+For more information about an error, try `rustc --explain E0310`.

@@ -1,0 +1,33 @@
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
+  --> $DIR/static-return-lifetime-infered.rs:7:9
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                         -----     ----------------------- opaque type defined here
+   |                         |
+   |                         hidden type `Map<std::slice::Iter<'_, (u32, u32)>, {closure@$DIR/static-return-lifetime-infered.rs:7:27: 7:30}>` captures the anonymous lifetime defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + use<'_> {
+   |                                                           +++++++++
+
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
+  --> $DIR/static-return-lifetime-infered.rs:11:9
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    --               ----------------------- opaque type defined here
+   |                    |
+   |                    hidden type `Map<std::slice::Iter<'a, (u32, u32)>, {closure@$DIR/static-return-lifetime-infered.rs:11:27: 11:30}>` captures the lifetime `'a` as defined here
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + use<'a> {
+   |                                                             +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

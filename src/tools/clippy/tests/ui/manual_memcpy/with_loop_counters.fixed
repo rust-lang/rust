@@ -1,0 +1,55 @@
+#![warn(clippy::needless_range_loop, clippy::manual_memcpy)]
+#![allow(clippy::redundant_slicing, clippy::identity_op)]
+
+pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
+    let mut count = 0;
+    dst[3..src.len()].copy_from_slice(&src[..(src.len() - 3)]);
+
+    let mut count = 0;
+    dst[..(src.len() - 3)].copy_from_slice(&src[3..]);
+
+    let mut count = 3;
+    dst[3..(src.len() + 3)].copy_from_slice(&src[..]);
+
+    let mut count = 3;
+    dst[..src.len()].copy_from_slice(&src[3..(src.len() + 3)]);
+
+    let mut count = 0;
+    dst[3..(3 + src.len())].copy_from_slice(&src[..(3 + src.len() - 3)]);
+
+    let mut count = 3;
+    dst[5..src.len()].copy_from_slice(&src[(3 - 2)..((src.len() - 2) + 3 - 5)]);
+
+    let mut count = 2;
+    dst.copy_from_slice(&src[2..(dst.len() + 2)]);
+
+    let mut count = 5;
+    dst[3..10].copy_from_slice(&src[5..(10 + 5 - 3)]);
+
+    let mut count = 3;
+    let mut count2 = 30;
+    dst[3..(src.len() + 3)].copy_from_slice(&src[..]);
+    dst2[30..(src.len() + 30)].copy_from_slice(&src[..]);
+
+    // make sure parentheses are added properly to bitwise operators, which have lower precedence than
+    // arithmetic ones
+    let mut count = 0 << 1;
+    dst[(0 << 1)..((1 << 1) + (0 << 1))].copy_from_slice(&src[2..((1 << 1) + 2)]);
+
+    // make sure incrementing expressions without semicolons at the end of loops are handled correctly.
+    let mut count = 0;
+    dst[3..src.len()].copy_from_slice(&src[..(src.len() - 3)]);
+
+    // make sure ones where the increment is not at the end of the loop.
+    // As a possible enhancement, one could adjust the offset in the suggestion according to
+    // the position. For example, if the increment is at the top of the loop;
+    // treating the loop counter as if it were initialized 1 greater than the original value.
+    let mut count = 0;
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..src.len() {
+        count += 1;
+        dst[i] = src[count];
+    }
+}
+
+fn main() {}

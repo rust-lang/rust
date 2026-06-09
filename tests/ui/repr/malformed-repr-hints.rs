@@ -1,0 +1,43 @@
+// Regression test for various ICEs inspired by
+// https://github.com/rust-lang/rust/issues/83921#issuecomment-814640734
+
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
+
+#[repr(packed())]
+//~^ ERROR: malformed `repr` attribute input
+struct S1;
+
+#[repr(align)]
+//~^ ERROR: malformed `repr` attribute input
+struct S2;
+
+#[repr(align(2, 4))]
+//~^ ERROR: malformed `repr` attribute input
+struct S3;
+
+#[repr(align())]
+//~^ ERROR: malformed `repr` attribute input
+struct S4;
+
+// Regression test for issue #118334:
+#[repr(Rust(u8))]
+//~^ ERROR: malformed `repr` attribute input
+#[repr(Rust(0))]
+//~^ ERROR: malformed `repr` attribute input
+#[repr(Rust = 0)]
+//~^ ERROR: malformed `repr` attribute input
+struct S5;
+
+#[repr(i8())]
+//~^ ERROR: malformed `repr` attribute input
+enum E1 { A, B }
+
+#[repr(u32(42))]
+//~^ ERROR: malformed `repr` attribute input
+enum E2 { A, B }
+
+#[repr(i64 = 2)]
+//~^ ERROR: malformed `repr` attribute input
+enum E3 { A, B }
+
+fn main() {}

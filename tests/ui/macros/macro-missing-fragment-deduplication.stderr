@@ -1,0 +1,75 @@
+error: missing fragment specifier
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($name:spec) => {};
+   |           +++++
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:8:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:9:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:10:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-missing-fragment-deduplication.rs:11:5
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL |     m!();
+   |     ^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$name:tt`
+  --> $DIR/macro-missing-fragment-deduplication.rs:4:6
+   |
+LL |     ($name) => {};
+   |      ^^^^^
+
+error: aborting due to 5 previous errors
+

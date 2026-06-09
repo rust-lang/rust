@@ -1,0 +1,196 @@
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:10:13
+   |
+LL |     let v = vec![SyncWeak::<u32>::new(); 2];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_clone_in_vec_init)]`
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(SyncWeak::<u32>::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = SyncWeak::<u32>::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:13:14
+   |
+LL |     let v2 = vec![UnSyncWeak::<u32>::new(); 2];
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v2 = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(UnSyncWeak::<u32>::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v2 = {
+LL +         let data = UnSyncWeak::<u32>::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:16:13
+   |
+LL |     let v = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Rc::downgrade(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = Rc::downgrade(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:19:13
+   |
+LL |     let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Arc::downgrade(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = Arc::downgrade(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:28:21
+   |
+LL |             let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~             let v = {
+LL +                 let mut v = Vec::with_capacity(2);
+LL +                 (0..2).for_each(|_| v.push(Arc::downgrade(..)));
+LL +                 v
+LL ~             };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~             let v = {
+LL +                 let data = Arc::downgrade(..);
+LL +                 vec![data; 2]
+LL ~             };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:31:22
+   |
+LL |             let v2 = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~             let v2 = {
+LL +                 let mut v = Vec::with_capacity(2);
+LL +                 (0..2).for_each(|_| v.push(Rc::downgrade(..)));
+LL +                 v
+LL ~             };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~             let v2 = {
+LL +                 let data = Rc::downgrade(..);
+LL +                 vec![data; 2]
+LL ~             };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:38:13
+   |
+LL |       let v = vec![
+   |  _____________^
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Arc::downgrade(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = Arc::downgrade(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:50:14
+   |
+LL |       let v1 = vec![
+   |  ______________^
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Weak` instance
+help: consider initializing each `Weak` element individually
+   |
+LL ~     let v1 = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Rc::downgrade(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Weak` initialization to a variable
+   |
+LL ~     let v1 = {
+LL +         let data = Rc::downgrade(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: aborting due to 8 previous errors
+

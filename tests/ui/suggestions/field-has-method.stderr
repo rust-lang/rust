@@ -1,0 +1,17 @@
+error[E0599]: no method named `kind` found for struct `InferOk<T>` in the current scope
+  --> $DIR/field-has-method.rs:19:15
+   |
+LL | struct InferOk<T> {
+   | ----------------- method `kind` not found for this struct
+...
+LL |     let k = i.kind();
+   |               ^^^^ method not found in `InferOk<Ty>`
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     let k = i.value.kind();
+   |               ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

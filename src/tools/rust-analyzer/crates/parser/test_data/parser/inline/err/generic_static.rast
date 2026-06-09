@@ -1,0 +1,27 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "i32"
+      R_ANGLE ">"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 8: `static` may not have generic parameters

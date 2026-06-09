@@ -1,0 +1,44 @@
+name: Generate lints and feature flags
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '50 23 * * 6'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lints-gen:
+    name: Generate lints
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install nightly
+        run: rustup default nightly
+
+      - name: Generate lints/feature flags
+        run: cargo codegen lint-definitions
+
+      - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Submit PR
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          commit-message: "internal: update generated lints"
+          branch: "ci/gen-lints"
+          delete-branch: true
+          sign-commits: true
+          title: "Update generated lints"
+          body: "Weekly lint updates for `crates/ide-db/src/generated/lints.rs`."
+          labels: "A-infra"

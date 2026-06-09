@@ -1,0 +1,24 @@
+error[E0277]: `<P as Process<'_>>::Item` is not an iterator
+  --> $DIR/issue-22872.rs:20:40
+   |
+LL |     let _: Box<dyn for<'b> Wrap<'b>> = Box::new(Wrapper(process));
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<P as Process<'_>>::Item` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `<P as Process<'_>>::Item`
+note: required for `Wrapper<P>` to implement `for<'b> Wrap<'b>`
+  --> $DIR/issue-22872.rs:7:13
+   |
+LL | impl<'b, P> Wrap<'b> for Wrapper<P>
+   |             ^^^^^^^^     ^^^^^^^^^^
+LL | where P: Process<'b>,
+LL |       <P as Process<'b>>::Item: Iterator {
+   |                                 -------- unsatisfied trait bound introduced here
+   = note: required for the cast from `Box<Wrapper<P>>` to `Box<dyn for<'b> Wrap<'b>>`
+help: consider further restricting the associated type
+   |
+LL | fn push_process<P>(process: P) where P: Process<'static>, <P as Process<'_>>::Item: Iterator {
+   |                                                         ++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

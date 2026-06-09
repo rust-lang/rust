@@ -1,0 +1,104 @@
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> tests/ui/manual_non_exhaustive_struct.rs:5:5
+   |
+LL | /     pub struct S {
+LL | |
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         _c: (),
+LL | |     }
+   | |_____^
+   |
+help: remove this field
+  --> tests/ui/manual_non_exhaustive_struct.rs:9:9
+   |
+LL |         _c: (),
+   |         ^^^^^^
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
+help: use the `#[non_exhaustive]` attribute instead
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub struct S {
+   |
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> tests/ui/manual_non_exhaustive_struct.rs:14:5
+   |
+LL | /     pub struct Sp {
+LL | |
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         _c: (),
+LL | |     }
+   | |_____^
+   |
+note: the struct is already non-exhaustive
+  --> tests/ui/manual_non_exhaustive_struct.rs:13:5
+   |
+LL |     #[non_exhaustive]
+   |     ^^^^^^^^^^^^^^^^^
+help: remove this field
+  --> tests/ui/manual_non_exhaustive_struct.rs:18:9
+   |
+LL |         _c: (),
+   |         ^^^^^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> tests/ui/manual_non_exhaustive_struct.rs:28:5
+   |
+LL | /     pub struct NoUnderscore {
+LL | |
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         c: (),
+LL | |     }
+   | |_____^
+   |
+help: remove this field
+  --> tests/ui/manual_non_exhaustive_struct.rs:32:9
+   |
+LL |         c: (),
+   |         ^^^^^
+help: use the `#[non_exhaustive]` attribute instead
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub struct NoUnderscore {
+   |
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> tests/ui/manual_non_exhaustive_struct.rs:56:5
+   |
+LL |     pub struct T(pub i32, pub i32, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove this field
+  --> tests/ui/manual_non_exhaustive_struct.rs:56:36
+   |
+LL |     pub struct T(pub i32, pub i32, ());
+   |                                    ^^
+help: use the `#[non_exhaustive]` attribute instead
+   |
+LL ~     #[non_exhaustive]
+LL ~     pub struct T(pub i32, pub i32, ());
+   |
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> tests/ui/manual_non_exhaustive_struct.rs:61:5
+   |
+LL |     pub struct Tp(pub i32, pub i32, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the struct is already non-exhaustive
+  --> tests/ui/manual_non_exhaustive_struct.rs:60:5
+   |
+LL |     #[non_exhaustive]
+   |     ^^^^^^^^^^^^^^^^^
+help: remove this field
+  --> tests/ui/manual_non_exhaustive_struct.rs:61:37
+   |
+LL |     pub struct Tp(pub i32, pub i32, ());
+   |                                     ^^
+
+error: aborting due to 5 previous errors
+

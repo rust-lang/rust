@@ -1,0 +1,43 @@
+error: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+  --> tests/ui/repeat_vec_with_capacity.rs:6:9
+   |
+LL |         vec![Vec::<()>::with_capacity(42); 123];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only the last `Vec` will have the capacity
+   = note: `-D clippy::repeat-vec-with-capacity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeat_vec_with_capacity)]`
+help: if you intended to initialize multiple `Vec`s with an initial capacity, try
+   |
+LL -         vec![Vec::<()>::with_capacity(42); 123];
+LL +         (0..123).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
+   |
+
+error: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+  --> tests/ui/repeat_vec_with_capacity.rs:12:9
+   |
+LL |         vec![Vec::<()>::with_capacity(42); n];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only the last `Vec` will have the capacity
+help: if you intended to initialize multiple `Vec`s with an initial capacity, try
+   |
+LL -         vec![Vec::<()>::with_capacity(42); n];
+LL +         (0..n).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
+   |
+
+error: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
+  --> tests/ui/repeat_vec_with_capacity.rs:27:9
+   |
+LL |         std::iter::repeat(Vec::<()>::with_capacity(42));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: none of the yielded `Vec`s will have the requested capacity
+help: if you intended to create an iterator that yields `Vec`s with an initial capacity, try
+   |
+LL -         std::iter::repeat(Vec::<()>::with_capacity(42));
+LL +         std::iter::repeat_with(|| Vec::<()>::with_capacity(42));
+   |
+
+error: aborting due to 3 previous errors
+

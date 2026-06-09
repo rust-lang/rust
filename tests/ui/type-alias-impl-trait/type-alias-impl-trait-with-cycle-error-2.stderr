@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<Foo as Bar<Foo>>::Item == Foo`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-2.rs:9:21
+   |
+LL | fn crash(x: Foo) -> Foo {
+   |                     ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,0 +1,42 @@
+error[E0004]: non-exhaustive patterns: `UnstableEnum::Stable2` and `_` not covered
+  --> $DIR/stable-gated-patterns.rs:8:11
+   |
+LL |     match UnstableEnum::Stable {
+   |           ^^^^^^^^^^^^^^^^^^^^ patterns `UnstableEnum::Stable2` and `_` not covered
+   |
+note: `UnstableEnum` defined here
+  --> $DIR/auxiliary/unstable.rs:5:1
+   |
+LL | pub enum UnstableEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     Stable2,
+   |     ------- not covered
+   = note: the matched value is of type `UnstableEnum`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         UnstableEnum::Stable => {},
+LL +         UnstableEnum::Stable2 | _ => todo!()
+   |
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/stable-gated-patterns.rs:13:11
+   |
+LL |     match UnstableEnum::Stable {
+   |           ^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |
+note: `UnstableEnum` defined here
+  --> $DIR/auxiliary/unstable.rs:5:1
+   |
+LL | pub enum UnstableEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: the matched value is of type `UnstableEnum`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         UnstableEnum::Stable2 => {},
+LL +         _ => todo!()
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

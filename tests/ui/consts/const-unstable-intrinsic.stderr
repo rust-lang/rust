@@ -1,0 +1,89 @@
+error[E0658]: use of unstable library feature `unstable`
+  --> $DIR/const-unstable-intrinsic.rs:17:9
+   |
+LL |         unstable_intrinsic::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable`
+  --> $DIR/const-unstable-intrinsic.rs:20:9
+   |
+LL |         unstable_intrinsic::align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `size_of_val` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:17:9
+   |
+LL |         unstable_intrinsic::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
+
+error: `align_of_val` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:20:9
+   |
+LL |         unstable_intrinsic::align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:24:9
+   |
+LL |         size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:26:9
+   |
+LL |         align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+
+error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
+  --> $DIR/const-unstable-intrinsic.rs:48:14
+   |
+LL |     unsafe { copy(src, dst, count) }
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:56:9
+   |
+LL |         super::size_of_val(src);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
+LL |     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
+   |
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

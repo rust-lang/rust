@@ -1,0 +1,26 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/replace-impl-infer-ty-from-trait.rs:9:15
+   |
+LL |     fn bar(i: _, t: _, s: _) -> _ {
+   |               ^     ^     ^     ^ not allowed in type signatures
+   |               |     |     |
+   |               |     |     not allowed in type signatures
+   |               |     not allowed in type signatures
+   |               not allowed in type signatures
+   |
+help: try replacing `_` with the types in the corresponding trait method signature
+   |
+LL -     fn bar(i: _, t: _, s: _) -> _ {
+LL +     fn bar(i: i32, t: usize, s: &()) -> (usize, i32) {
+   |
+
+error[E0282]: type annotations needed
+  --> $DIR/replace-impl-infer-ty-from-trait.rs:9:15
+   |
+LL |     fn bar(i: _, t: _, s: _) -> _ {
+   |               ^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0282.
+For more information about an error, try `rustc --explain E0121`.

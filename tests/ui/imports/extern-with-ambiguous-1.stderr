@@ -1,0 +1,23 @@
+error[E0659]: `error` is ambiguous
+  --> $DIR/extern-with-ambiguous-1.rs:16:5
+   |
+LL | use error::*;
+   |     ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `error` could refer to the module imported here
+  --> $DIR/extern-with-ambiguous-1.rs:14:5
+   |
+LL | use s::*;
+   |     ^^^^
+   = help: consider adding an explicit import of `error` to disambiguate
+note: `error` could also refer to the module imported here
+  --> $DIR/extern-with-ambiguous-1.rs:15:5
+   |
+LL | use extern_with_ambiguous_1_extern::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `error` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

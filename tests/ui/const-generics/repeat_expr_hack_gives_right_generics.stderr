@@ -1,0 +1,20 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/repeat_expr_hack_gives_right_generics.rs:20:17
+   |
+LL |     bar::<{ [1; N] }>();
+   |                 ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/repeat_expr_hack_gives_right_generics.rs:22:19
+   |
+LL |     bar::<{ [1; { N + 1 }] }>();
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 2 previous errors
+

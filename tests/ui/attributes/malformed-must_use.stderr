@@ -1,0 +1,21 @@
+error[E0539]: malformed `must_use` attribute input
+  --> $DIR/malformed-must_use.rs:1:1
+   |
+LL | #[must_use()]
+   | ^^^^^^^^^^--^
+   |           |
+   |           didn't expect a list here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[must_use()]
+LL + #[must_use = "reason"]
+   |
+LL - #[must_use()]
+LL + #[must_use]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0539`.

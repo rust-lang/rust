@@ -1,0 +1,67 @@
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/trait-impl-bound-suggestions.rs:14:52
+   |
+LL |     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
+   |                                                    ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound in `ConstrainedStruct`
+  --> $DIR/trait-impl-bound-suggestions.rs:8:29
+   |
+LL | struct ConstrainedStruct<X: Copy> {
+   |                             ^^^^ required by this bound in `ConstrainedStruct`
+help: consider further restricting type parameter `X` with trait `Copy`
+   |
+LL | trait InsufficientlyConstrainedGeneric<X=()> where Self: Sized, X: std::marker::Copy {
+   |                                                               ++++++++++++++++++++++
+
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/trait-impl-bound-suggestions.rs:24:52
+   |
+LL |     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
+   |                                                    ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound in `ConstrainedStruct`
+  --> $DIR/trait-impl-bound-suggestions.rs:8:29
+   |
+LL | struct ConstrainedStruct<X: Copy> {
+   |                             ^^^^ required by this bound in `ConstrainedStruct`
+help: consider further restricting type parameter `X` with trait `Copy`
+   |
+LL | trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where Self: Sized, X: std::marker::Copy {
+   |                                                                             ++++++++++++++++++++++
+
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/trait-impl-bound-suggestions.rs:16:29
+   |
+LL |         ConstrainedStruct { x }
+   |                             ^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound in `ConstrainedStruct`
+  --> $DIR/trait-impl-bound-suggestions.rs:8:29
+   |
+LL | struct ConstrainedStruct<X: Copy> {
+   |                             ^^^^ required by this bound in `ConstrainedStruct`
+help: consider further restricting type parameter `X` with trait `Copy`
+   |
+LL | trait InsufficientlyConstrainedGeneric<X=()> where Self: Sized, X: std::marker::Copy {
+   |                                                               ++++++++++++++++++++++
+
+error[E0277]: the trait bound `X: Copy` is not satisfied
+  --> $DIR/trait-impl-bound-suggestions.rs:26:29
+   |
+LL |         ConstrainedStruct { x }
+   |                             ^ the trait `Copy` is not implemented for `X`
+   |
+note: required by a bound in `ConstrainedStruct`
+  --> $DIR/trait-impl-bound-suggestions.rs:8:29
+   |
+LL | struct ConstrainedStruct<X: Copy> {
+   |                             ^^^^ required by this bound in `ConstrainedStruct`
+help: consider further restricting type parameter `X` with trait `Copy`
+   |
+LL | trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where Self: Sized, X: std::marker::Copy {
+   |                                                                             ++++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

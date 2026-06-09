@@ -1,0 +1,19 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-unused-region-param.rs:3:19
+   |
+LL | struct SomeStruct<'a> { x: u32 }
+   |                   ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-unused-region-param.rs:4:15
+   |
+LL | enum SomeEnum<'a> { Nothing }
+   |               ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

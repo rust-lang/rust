@@ -1,0 +1,56 @@
+error: free static item without body
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:5:1
+   |
+LL | static A: u8;
+   | ^^^^^^^^^^^^-
+   |             |
+   |             help: provide a definition for the static: `= <expr>;`
+
+error: free static item without body
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:6:1
+   |
+LL | static B;
+   | ^^^^^^^^-
+   |         |
+   |         help: provide a definition for the static: `= <expr>;`
+
+error: free static item without body
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:9:1
+   |
+LL | static mut C: u8;
+   | ^^^^^^^^^^^^^^^^-
+   |                 |
+   |                 help: provide a definition for the static: `= <expr>;`
+
+error: free static item without body
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:1
+   |
+LL | static mut D;
+   | ^^^^^^^^^^^^-
+   |             |
+   |             help: provide a definition for the static: `= <expr>;`
+
+error: missing type for `static` item
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:6:9
+   |
+LL | static B;
+   |         ^
+   |
+help: provide a type for the item
+   |
+LL | static B: <type>;
+   |         ++++++++
+
+error: missing type for `static mut` item
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:13
+   |
+LL | static mut D;
+   |             ^
+   |
+help: provide a type for the item
+   |
+LL | static mut D: <type>;
+   |             ++++++++
+
+error: aborting due to 6 previous errors
+

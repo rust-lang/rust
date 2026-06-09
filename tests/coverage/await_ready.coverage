@@ -1,0 +1,24 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |#![coverage(off)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|       |async fn ready() -> u8 {
+   LL|       |    1
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(on)]
+   LL|       |#[rustfmt::skip]
+   LL|      1|async fn await_ready() -> u8 {
+   LL|       |    // await should be covered even if the function never yields
+   LL|      1|    ready()
+   LL|      1|        .await
+   LL|      1|}
+   LL|       |
+   LL|       |fn main() {
+   LL|       |    let mut future = Box::pin(await_ready());
+   LL|       |    executor::block_on(future.as_mut());
+   LL|       |}
+

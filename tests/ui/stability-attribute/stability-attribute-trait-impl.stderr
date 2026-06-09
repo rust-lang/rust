@@ -1,0 +1,30 @@
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/stability-attribute-trait-impl.rs:32:1
+   |
+LL | #[unstable(feature = "j", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+   = note: `#[deny(ineffective_unstable_trait_impl)]` on by default
+
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/stability-attribute-trait-impl.rs:36:1
+   |
+LL | #[unstable(feature = "k", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+
+error: module has missing stability attribute
+  --> $DIR/stability-attribute-trait-impl.rs:1:1
+   |
+LL | / #![feature(staged_api, never_type, rust_cold_cc)]
+LL | |
+LL | |
+LL | | #[stable(feature = "a", since = "3.3.3")]
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 3 previous errors
+

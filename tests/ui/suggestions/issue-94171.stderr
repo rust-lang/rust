@@ -1,0 +1,35 @@
+error: unknown start of token: `
+  --> $DIR/issue-94171.rs:2:5
+   |
+LL | (; {`
+   |     ^
+   |
+help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
+   |
+LL - (; {`
+LL + (; {'
+   |
+
+error: mismatched closing delimiter: `]`
+  --> $DIR/issue-94171.rs:1:5
+   |
+LL | fn L(]{match
+   |     ^^ mismatched closing delimiter
+   |     |
+   |     unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-94171.rs:5:52
+   |
+LL | fn L(]{match
+   |       - unclosed delimiter
+LL | (; {`
+   | -  - unclosed delimiter
+   | |
+   | unclosed delimiter
+...
+LL |
+   |                                                   ^
+
+error: aborting due to 3 previous errors
+

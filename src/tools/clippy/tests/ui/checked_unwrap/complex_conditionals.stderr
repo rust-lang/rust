@@ -1,0 +1,205 @@
+error: called `unwrap` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:8:9
+   |
+LL |     if x.is_ok() && y.is_err() {
+   |        --------- the check is happening here
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+   = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap)]`
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:11:9
+   |
+LL |     if x.is_ok() && y.is_err() {
+   |        --------- because of this check
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::panicking-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::panicking_unwrap)]`
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:14:9
+   |
+LL |     if x.is_ok() && y.is_err() {
+   |                     ---------- because of this check
+...
+LL |         y.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `y` after checking its variant with `is_err`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:17:9
+   |
+LL |     if x.is_ok() && y.is_err() {
+   |                     ---------- the check is happening here
+...
+LL |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:32:9
+   |
+LL |     if x.is_ok() || y.is_ok() {
+   |        --------- because of this check
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:35:9
+   |
+LL |     if x.is_ok() || y.is_ok() {
+   |        --------- the check is happening here
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:38:9
+   |
+LL |     if x.is_ok() || y.is_ok() {
+   |                     --------- because of this check
+...
+LL |         y.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `y` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:41:9
+   |
+LL |     if x.is_ok() || y.is_ok() {
+   |                     --------- the check is happening here
+...
+LL |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: called `unwrap` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:46:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |        --------- the check is happening here
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:49:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |        --------- because of this check
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:52:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                       --------- because of this check
+...
+LL |         y.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `y` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:55:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                       --------- the check is happening here
+...
+LL |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: called `unwrap` on `z` after checking its variant with `is_err`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:58:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                                    ---------- the check is happening here
+...
+LL |         z.unwrap();
+   |         ^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:61:9
+   |
+LL |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                                    ---------- because of this check
+...
+LL |         z.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:70:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |        --------- because of this check
+...
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `x` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:73:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |        --------- the check is happening here
+...
+LL |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: called `unwrap` on `y` after checking its variant with `is_ok`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:76:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                       --------- the check is happening here
+...
+LL |         y.unwrap();
+   |         ^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: this call to `unwrap_err()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:79:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                       --------- because of this check
+...
+LL |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:82:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                                    ---------- because of this check
+...
+LL |         z.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap_err` on `z` after checking its variant with `is_err`
+  --> tests/ui/checked_unwrap/complex_conditionals.rs:85:9
+   |
+LL |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                                    ---------- the check is happening here
+...
+LL |         z.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: try using `if let` or `match`
+
+error: aborting due to 20 previous errors
+

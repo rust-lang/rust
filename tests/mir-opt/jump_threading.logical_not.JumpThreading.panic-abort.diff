@@ -1,0 +1,46 @@
+- // MIR for `logical_not` before JumpThreading
++ // MIR for `logical_not` after JumpThreading
+  
+  fn logical_not() -> i32 {
+      let mut _0: i32;
+      let _1: bool;
+      let mut _2: bool;
+      let mut _3: bool;
+      let mut _4: bool;
+      scope 1 {
+          debug a => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const false;
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+          _3 = Not(move _4);
+          StorageDead(_4);
+          _2 = Eq(move _3, const true);
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1];
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          _0 = const 1_i32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          _0 = const 0_i32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

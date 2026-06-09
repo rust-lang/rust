@@ -1,0 +1,50 @@
+Per ]8;;https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md\RFC 401]8;;\, if you have a function declaration [2mfoo[0m:
+
+[95mstruct[0m[2m[97m [0m[33mS[0m[2m[97m;[0m[2m[97m
+
+[0m[2m[97m// For the purposes of this explanation, all of these[0m[2m[97m
+[0m[2m[97m// different kinds of `fn` declarations are equivalent:[0m[2m[97m
+
+[0m[95mfn[0m[34m [0m[34mfoo[0m[2m[97m([0mx[2m[97m:[0m[2m[97m [0m[33mS[0m[2m[97m)[0m[2m[97m [0m[2m[97m{[0m[2m[97m [0m[2m[97m/* ... */[0m[2m[97m [0m[2m[97m}[0m[2m[97m
+[0m[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[2m[97m{[0m[2m[97m
+    [0m[95mfn[0m[34m [0m[34mfoo[0m[2m[97m([0mx[2m[97m:[0m[2m[97m [0m[33mS[0m[2m[97m)[0m[2m[97m;[0m[2m[97m
+[0m[2m[97m}[0m[2m[97m
+[0m[95mimpl[0m[2m[97m [0m[33mS[0m[2m[97m [0m[2m[97m{[0m[2m[97m
+    [0m[95mfn[0m[34m [0m[34mfoo[0m[2m[97m([0mself[2m[97m)[0m[2m[97m [0m[2m[97m{[0m[2m[97m [0m[2m[97m/* ... */[0m[2m[97m [0m[2m[97m}[0m[2m[97m
+[0m[2m[97m}[0m
+
+the type of [2mfoo[0m is [1mnot[0m [2mfn(S)[0m, as one might expect. Rather, it is a unique, zero-sized marker type written here as [2mtypeof(foo)[0m. However, [2mtypeof(foo)
+[0m can be [3mcoerced[0m to a function pointer [2mfn(S)[0m, so you rarely notice this:
+
+[95mlet[0m[2m[97m [0mx[2m[97m:[0m[2m[97m [0m[34mfn[0m[34m([0m[33mS[0m[2m[97m)[0m[2m[97m [0m[2m[97m=[0m[2m[97m [0mfoo[2m[97m;[0m[2m[97m [0m[2m[97m// OK, coerces[0m
+
+The reason that this matter is that the type [2mfn(S)[0m is not specific to any particular function: it's a function [3mpointer[0m. So calling [2mx()[0m
+results in a virtual call, whereas [2mfoo()[0m is statically dispatched, because the type of [2mfoo[0m tells us precisely what function is being called.
+
+As noted above, coercions mean that most code doesn't have to be concerned with this distinction. However, you can tell the difference when
+using [1mtransmute[0m to convert a fn item into a fn pointer.
+
+This is sometimes done as part of an FFI:
+
+[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[95mfn[0m[34m [0m[34mfoo[0m[2m[97m([0muserdata[2m[97m:[0m[2m[97m [0m[33mBox[0m[2m[97m<[0m[36mi32[0m[2m[97m>[0m[2m[97m)[0m[2m[97m [0m[2m[97m{[0m[2m[97m
+    [0m[2m[97m/* ... */[0m[2m[97m
+[0m[2m[97m}[0m[2m[97m
+
+[0m[95munsafe[0m[2m[97m [0m[2m[97m{[0m[2m[97m
+    [0m[95mlet[0m[2m[97m [0mf[2m[97m:[0m[2m[97m [0m[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[34mfn[0m[34m([0m[2m[97m*[0m[95mmut[0m[2m[97m [0m[36mi32[0m[2m[97m)[0m[2m[97m [0m[2m[97m=[0m[2m[97m [0m[34mtransmute[0m[2m[97m([0mfoo[2m[97m)[0m[2m[97m;[0m[2m[97m
+    [0m[34mcallback[0m[2m[97m([0mf[2m[97m)[0m[2m[97m;[0m[2m[97m
+[0m[2m[97m}[0m
+
+Here, transmute is being used to convert the types of the fn arguments. This pattern is incorrect because the type of [2mfoo[0m is a function [1mitem[0m 
+([2mtypeof(foo)[0m), which is zero-sized, and the target type ([2mfn()[0m) is a function pointer, which is not zero-sized. This pattern should be
+rewritten. There are a few possible ways to do this:
+
+*   change the original fn declaration to match the expected signature, and do the cast in the fn body (the preferred option)
+*   cast the fn item of a fn pointer before calling transmute, as shown here:
+
+[95mlet[0m[2m[97m [0mf[2m[97m:[0m[2m[97m [0m[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[34mfn[0m[34m([0m[2m[97m*[0m[95mmut[0m[2m[97m [0m[36mi32[0m[2m[97m)[0m[2m[97m [0m[2m[97m=[0m[2m[97m [0m[34mtransmute[0m[2m[97m([0mfoo[2m[97m [0m[95mas[0m[2m[97m [0m[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[34mfn[0m[34m([0m_[2m[97m)[0m[2m[97m)[0m[2m[97m;[0m[2m[97m
+[0m[95mlet[0m[2m[97m [0mf[2m[97m:[0m[2m[97m [0m[95mextern[0m[2m[97m [0m[32m"C"[0m[2m[97m [0m[34mfn[0m[34m([0m[2m[97m*[0m[95mmut[0m[2m[97m [0m[36mi32[0m[2m[97m)[0m[2m[97m [0m[2m[97m=[0m[2m[97m [0m[34mtransmute[0m[2m[97m([0mfoo[2m[97m [0m[95mas[0m[2m[97m [0m[36musize[0m[2m[97m)[0m[2m[97m;[0m[2m[97m [0m[2m[97m// works too[0m
+
+The same applies to transmutes to [2m*mut fn()[0m, which were observed in practice. Note though that use of this type is generally incorrect. The
+intention is typically to describe a function pointer, but just [2mfn()[0m alone suffices for that. [2m*mut fn()[0m is a pointer to a fn pointer. (Since these
+values are typically just passed to C code, however, this rarely makes a difference in practice.)

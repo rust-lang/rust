@@ -1,0 +1,15 @@
+error[E0599]: no method named `foo` found for struct `E` in the current scope
+  --> $DIR/method-chain-expression-failure.rs:29:23
+   |
+LL | struct E;
+   | -------- method `foo` not found for this struct
+...
+LL |     A.b().c().d().e().foo();
+   |     -     ---         ^^^ method not found in `E`
+   |     |     |
+   |     |     method `foo` is available on `&C`
+   |     method `foo` is available on `&A`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,26 @@
+error: expected one of `,` or `>`, found keyword `as`
+  --> $DIR/issue-84831.rs:5:13
+   |
+LL |     std::<_ as _>;
+   |             ^^ expected one of `,` or `>`
+   |
+help: expressions must be enclosed in braces to be used as const generic arguments
+   |
+LL |     std::<{ _ as _ }>;
+   |           +        +
+
+error[E0423]: expected value, found crate `std`
+  --> $DIR/issue-84831.rs:2:5
+   |
+LL |     std::<0>;
+   |     ^^^^^^^^ not a value
+
+error[E0423]: expected value, found crate `std`
+  --> $DIR/issue-84831.rs:5:5
+   |
+LL |     std::<_ as _>;
+   |     ^^^^^^^^^^^^^ not a value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

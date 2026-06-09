@@ -1,0 +1,15 @@
+error: `mut` must be attached to each individual binding
+  --> $DIR/issue-80186-mut-binding-help-suggestion.rs:5:9
+   |
+LL |     let mut &x = &0;
+   |         ^^^^^^
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
+help: add `mut` to each binding
+   |
+LL -     let mut &x = &0;
+LL +     let &(mut x) = &0;
+   |
+
+error: aborting due to 1 previous error
+

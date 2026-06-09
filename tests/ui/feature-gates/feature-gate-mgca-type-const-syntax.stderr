@@ -1,0 +1,63 @@
+error[E0658]: `type const` syntax is experimental
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:1:1
+   |
+LL | type const FOO: u8 = 10;
+   | ^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `type const` syntax is experimental
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:6:5
+   |
+LL |     type const BAR: bool;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `type const` syntax is experimental
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:12:5
+   |
+LL |     type const BAR: bool = false;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: top-level `type const` are unstable
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:1:1
+   |
+LL | type const FOO: u8 = 10;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated `type const` are unstable
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:6:5
+   |
+LL |     type const BAR: bool;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: associated `type const` are unstable
+  --> $DIR/feature-gate-mgca-type-const-syntax.rs:12:5
+   |
+LL |     type const BAR: bool = false;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,184 @@
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:11:13
+   |
+LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
+   |
+   = note: `-D clippy::manual-split-once` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_split_once)]`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:13:13
+   |
+LL |     let _ = "key=value".splitn(2, '=').skip(1).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:15:18
+   |
+LL |     let (_, _) = "key=value".splitn(2, '=').next_tuple().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=')`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:19:13
+   |
+LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:23:13
+   |
+LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:27:13
+   |
+LL |     let _ = s.splitn(2, '=').skip(1).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:31:17
+   |
+LL |         let _ = s.splitn(2, '=').nth(1)?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=')?.1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:33:17
+   |
+LL |         let _ = s.splitn(2, '=').skip(1).next()?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=')?.1`
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:35:17
+   |
+LL |         let _ = s.rsplitn(2, '=').nth(1)?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=')?.0`
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:37:17
+   |
+LL |         let _ = s.rsplitn(2, '=').skip(1).next()?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=')?.0`
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:46:13
+   |
+LL |     let _ = "key=value".rsplitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".rsplit_once('=').unwrap().0`
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:48:18
+   |
+LL |     let (_, _) = "key=value".rsplitn(2, '=').next_tuple().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".rsplit_once('=').map(|(x, y)| (y, x))`
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:50:13
+   |
+LL |     let _ = s.rsplitn(2, '=').nth(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=').map(|x| x.0)`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:55:5
+   |
+LL |     let mut iter = "a.b.c".splitn(2, '.');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let l = iter.next().unwrap();
+   |     ----------------------------- first usage here
+LL |     let r = iter.next().unwrap();
+   |     ----------------------------- second usage here
+   |
+help: replace with `split_once`
+   |
+LL ~     let (l, r) = "a.b.c".split_once('.').unwrap();
+LL |
+LL ~     
+LL ~     
+   |
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:60:5
+   |
+LL |     let mut iter = "a.b.c".splitn(2, '.');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let l = iter.next()?;
+   |     --------------------- first usage here
+LL |     let r = iter.next()?;
+   |     --------------------- second usage here
+   |
+help: replace with `split_once`
+   |
+LL ~     let (l, r) = "a.b.c".split_once('.')?;
+LL |
+LL ~     
+LL ~     
+   |
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:65:5
+   |
+LL |     let mut iter = "a.b.c".rsplitn(2, '.');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let r = iter.next().unwrap();
+   |     ----------------------------- first usage here
+LL |     let l = iter.next().unwrap();
+   |     ----------------------------- second usage here
+   |
+help: replace with `rsplit_once`
+   |
+LL ~     let (l, r) = "a.b.c".rsplit_once('.').unwrap();
+LL |
+LL ~     
+LL ~     
+   |
+
+error: manual implementation of `rsplit_once`
+  --> tests/ui/manual_split_once.rs:70:5
+   |
+LL |     let mut iter = "a.b.c".rsplitn(2, '.');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let r = iter.next()?;
+   |     --------------------- first usage here
+LL |     let l = iter.next()?;
+   |     --------------------- second usage here
+   |
+help: replace with `rsplit_once`
+   |
+LL ~     let (l, r) = "a.b.c".rsplit_once('.')?;
+LL |
+LL ~     
+LL ~     
+   |
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:156:13
+   |
+LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
+  --> tests/ui/manual_split_once.rs:159:5
+   |
+LL |     let mut iter = "a.b.c".splitn(2, '.');
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let a = iter.next().unwrap();
+   |     ----------------------------- first usage here
+LL |     let b = iter.next().unwrap();
+   |     ----------------------------- second usage here
+   |
+help: replace with `split_once`
+   |
+LL ~     let (a, b) = "a.b.c".split_once('.').unwrap();
+LL |
+LL ~     
+LL ~     
+   |
+
+error: aborting due to 19 previous errors
+

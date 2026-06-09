@@ -1,0 +1,13 @@
+error[E0464]: multiple candidates for `rlib` dependency `crateresolve1` found
+  --> $DIR/crateresolve1.rs:11:1
+   |
+LL | extern crate crateresolve1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: candidate #1: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-1.somelib
+   = note: candidate #2: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-2.somelib
+   = note: candidate #3: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-3.somelib
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0464`.

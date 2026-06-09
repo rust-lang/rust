@@ -1,0 +1,28 @@
+error: prefix `world` is unknown
+  --> $DIR/lex-bad-str-literal-as-char-4.rs:4:25
+   |
+LL |         println!('hello world');
+   |                         ^^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: if you meant to write a string literal, use double quotes
+   |
+LL -         println!('hello world');
+LL +         println!("hello world");
+   |
+
+error[E0762]: unterminated character literal
+  --> $DIR/lex-bad-str-literal-as-char-4.rs:4:30
+   |
+LL |         println!('hello world');
+   |                              ^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -         println!('hello world');
+LL +         println!("hello world");
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0762`.

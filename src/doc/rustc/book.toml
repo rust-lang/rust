@@ -1,0 +1,12 @@
+[book]
+title = "The rustc book"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustc"
+edit-url-template = "https://github.com/rust-lang/rust/edit/main/src/doc/rustc/{path}"
+
+[output.html.search]
+use-boolean-and = true
+
+[output.html.playground]
+runnable = false

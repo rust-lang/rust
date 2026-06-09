@@ -1,0 +1,13 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-68987-unmatch-issue-2.rs:14:1
+   |
+LL | async fn obstest() -> Result<> {
+   |                                - the nearest open delimiter
+LL |     let obs_connect = || -> Result<(), MyError) {
+   |                                               - missing open `(` for this delimiter
+...
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+

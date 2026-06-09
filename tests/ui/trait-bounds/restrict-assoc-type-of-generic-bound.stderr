@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/restrict-assoc-type-of-generic-bound.rs:9:12
+   |
+LL | pub fn foo<A: MyTrait, B>(a: A) -> B {
+   |                        -           - expected `B` because of return type
+   |                        |
+   |                        expected this type parameter
+LL |     return a.bar();
+   |            ^^^^^^^ expected type parameter `B`, found associated type
+   |
+   = note: expected type parameter `B`
+             found associated type `<A as MyTrait>::T`
+   = note: the caller chooses a type for `B` which can be different from `<A as MyTrait>::T`
+help: consider further restricting this bound
+   |
+LL | pub fn foo<A: MyTrait<T = B>, B>(a: A) -> B {
+   |                      +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

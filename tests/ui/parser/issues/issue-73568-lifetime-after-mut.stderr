@@ -1,0 +1,61 @@
+error: lifetime must precede `mut`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:2:13
+   |
+LL | fn x<'a>(x: &mut 'a i32){}
+   |             ^^^^^^^
+   |
+help: place the lifetime before `mut`
+   |
+LL - fn x<'a>(x: &mut 'a i32){}
+LL + fn x<'a>(x: &'a mut i32){}
+   |
+
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:14:13
+   |
+LL | fn y<'a>(y: &mut 'a + Send) {
+   |             ^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn y<'a>(y: &mut ('a + Send)) {
+   |                  +         +
+
+error: lifetime must precede `mut`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:6:22
+   |
+LL |         fn w<$lt>(w: &mut $lt i32) {}
+   |                      ^^^^^^^^
+...
+LL | mac!('a);
+   | -------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: place the lifetime before `mut`
+   |
+LL -         fn w<$lt>(w: &mut $lt i32) {}
+LL +         fn w<$lt>(w: &$lt mut i32) {}
+   |
+
+error[E0423]: expected value, found trait `Send`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:17:28
+   |
+LL |     let z = y as &mut 'a + Send;
+   |                            ^^^^ not a value
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-73568-lifetime-after-mut.rs:14:18
+   |
+LL | fn y<'a>(y: &mut 'a + Send) {
+   |                  ^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-73568-lifetime-after-mut.rs:17:23
+   |
+LL |     let z = y as &mut 'a + Send;
+   |                       ^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0178, E0224, E0423.
+For more information about an error, try `rustc --explain E0178`.

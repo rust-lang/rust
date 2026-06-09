@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `pub`
+  --> $DIR/keyword-pub-as-identifier.rs:4:9
+   |
+LL |     let pub = "foo";
+   |         ^^^ expected identifier, found keyword
+   |
+help: escape `pub` to use it as an identifier
+   |
+LL |     let r#pub = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

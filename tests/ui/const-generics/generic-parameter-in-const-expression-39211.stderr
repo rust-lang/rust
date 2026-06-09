@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/generic-parameter-in-const-expression-39211.rs:9:17
+   |
+LL |     let a = [3; M::Row::DIM];
+   |                 ^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/generic-parameter-in-const-expression-39211.rs:9:13
+   |
+LL |     let a = [3; M::Row::DIM];
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+

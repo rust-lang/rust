@@ -1,0 +1,28 @@
+error: unnecessary `pub(self)`
+  --> tests/ui/needless_pub_self.rs:13:1
+   |
+LL | pub(self) fn a() {}
+   | ^^^^^^^^^
+   |
+   = note: `-D clippy::needless-pub-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pub_self)]`
+   = help: remove it
+
+error: unnecessary `pub(in self)`
+  --> tests/ui/needless_pub_self.rs:15:1
+   |
+LL | pub(in self) fn b() {}
+   | ^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: unnecessary `pub(self)`
+  --> tests/ui/needless_pub_self.rs:22:5
+   |
+LL |     pub(self) fn f() {}
+   |     ^^^^^^^^^
+   |
+   = help: remove it
+
+error: aborting due to 3 previous errors
+

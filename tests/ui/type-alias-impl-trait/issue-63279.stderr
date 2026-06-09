@@ -1,0 +1,48 @@
+error[E0277]: expected a `FnOnce()` closure, found `()`
+  --> $DIR/issue-63279.rs:6:11
+   |
+LL | fn c() -> Closure {
+   |           ^^^^^^^ expected an `FnOnce()` closure, found `()`
+   |
+   = help: the trait `FnOnce()` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+
+error[E0277]: expected a `FnOnce()` closure, found `()`
+  --> $DIR/issue-63279.rs:8:11
+   |
+LL |     || -> Closure { || () }
+   |           ^^^^^^^ expected an `FnOnce()` closure, found `()`
+   |
+   = help: the trait `FnOnce()` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-63279.rs:8:21
+   |
+LL |     || -> Closure { || () }
+   |                     ^^^^^ expected `()`, found closure
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/issue-63279.rs:8:21: 8:23}`
+help: use parentheses to call this closure
+   |
+LL |     || -> Closure { (|| ())() }
+   |                     +     +++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-63279.rs:8:5
+   |
+LL |     || -> Closure { || () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/issue-63279.rs:8:5: 8:18}`
+help: use parentheses to call this closure
+   |
+LL |     (|| -> Closure { || () })()
+   |     +                       +++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

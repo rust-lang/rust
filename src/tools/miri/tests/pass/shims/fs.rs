@@ -1,0 +1,547 @@
+//@compile-flags: -Zmiri-disable-isolation
+
+#![feature(io_error_more)]
+#![feature(io_error_uncategorized)]
+#![cfg_attr(unix, feature(unix_file_vectored_at))]
+
+use std::collections::BTreeMap;
+use std::ffi::OsString;
+use std::fs::{
+    self, File, OpenOptions, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename,
+};
+use std::io::{
+    Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
+};
+use std::path::Path;
+
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
+fn main() {
+    test_path_conversion();
+    test_file();
+    // Partial reads/writes are apparently not a thing on Windows.
+    if cfg!(not(windows)) {
+        test_file_partial_reads_writes();
+    }
+    test_file_create_new();
+    test_metadata();
+    test_seek();
+    test_errors();
+    test_from_raw_os_error();
+    test_file_clone();
+    test_file_set_len();
+    test_file_sync();
+    test_rename();
+    // Windows file handling is very incomplete.
+    if cfg!(not(windows)) {
+        test_directory();
+        test_canonicalize();
+        #[cfg(not(target_os = "solaris"))]
+        test_flock();
+        #[cfg(not(target_os = "android"))]
+        test_hard_link();
+
+        test_readv_writev();
+        #[cfg(unix)]
+        test_pread_pwrite();
+        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        test_preadv_pwritev();
+    }
+}
+
+fn test_path_conversion() {
+    let tmp = utils::tmp();
+    assert!(tmp.is_absolute(), "{:?} is not absolute", tmp);
+    assert!(tmp.is_dir(), "{:?} is not a directory", tmp);
+}
+
+fn test_file() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare("miri_test_fs_file.txt");
+
+    // Test creating, writing and closing a file (closing is tested when `file` is dropped).
+    let mut file = File::create(&path).unwrap();
+    assert!(!file.metadata().unwrap().permissions().readonly()); // new file shouldn't be read-only
+    // Writing 0 bytes should not change the file contents.
+    file.write(&mut []).unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 0);
+
+    file.write_all(bytes).unwrap();
+    assert_eq!(file.metadata().unwrap().len(), bytes.len() as u64);
+    // Test opening, reading and closing a file.
+    let mut file = File::open(&path).unwrap();
+    let mut contents = Vec::new();
+    // Reading 0 bytes should not move the file pointer.
+    file.read(&mut []).unwrap();
+    // Reading until EOF should get the whole text.
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+
+    assert!(!file.is_terminal());
+
+    // Writing to a file opened for reading should error (and not stop interpretation). std does not
+    // categorize the error so we don't check for details.
+    file.write(&[0]).unwrap_err();
+    // However, writing 0 bytes can succeed or fail.
+    let _ignore = file.write(&[]);
+
+    // Test calling File::create on an existing file, since that uses a different code path
+    File::create(&path).unwrap();
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_partial_reads_writes() {
+    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
+    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
+
+    // Ensure we sometimes do incomplete writes.
+    check_nondet(|| {
+        let mut file = File::create(&path1).unwrap();
+        file.write(&[0; 4]).unwrap() == 4
+    });
+    // Ensure we sometimes do incomplete reads.
+    check_nondet(|| {
+        let mut file = File::open(&path2).unwrap();
+        let mut buf = [0; 4];
+        file.read(&mut buf).unwrap() == 4
+    });
+
+    // Clean up
+    remove_file(&path1).unwrap();
+    remove_file(&path2).unwrap();
+}
+
+fn test_file_clone() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_file_clone.txt", bytes);
+
+    // Cloning a file should be successful.
+    let file = File::open(&path).unwrap();
+    let mut cloned = file.try_clone().unwrap();
+    // Reading from a cloned file should get the same text.
+    let mut contents = Vec::new();
+    cloned.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_create_new() {
+    let path = utils::prepare("miri_test_fs_file_create_new.txt");
+
+    // Creating a new file that doesn't yet exist should succeed.
+    OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
+    // Creating a new file that already exists should fail.
+    assert_eq!(
+        ErrorKind::AlreadyExists,
+        OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind()
+    );
+    // Optionally creating a new file that already exists should succeed.
+    OpenOptions::new().write(true).create(true).open(&path).unwrap();
+
+    // Clean up
+    remove_file(&path).unwrap();
+}
+
+fn test_seek() {
+    let bytes = b"Hello, entire World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_seek.txt", bytes);
+
+    let mut file = File::open(&path).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+    // Test that seeking to the beginning and reading until EOF gets the text again.
+    file.seek(SeekFrom::Start(0)).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes, contents.as_slice());
+    // Test seeking relative to the end of the file.
+    file.seek(SeekFrom::End(-1)).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[bytes.len() - 1..], contents.as_slice());
+    // Test seeking relative to the current position.
+    file.seek(SeekFrom::Start(5)).unwrap();
+    file.seek(SeekFrom::Current(-3)).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[2..], contents.as_slice());
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn check_metadata(bytes: &[u8], path: &Path) -> Result<()> {
+    // Test that the file metadata is correct.
+    let metadata = path.metadata()?;
+    // `path` should point to a file.
+    assert!(metadata.is_file());
+    // The size of the file must be equal to the number of written bytes.
+    assert_eq!(bytes.len() as u64, metadata.len());
+    Ok(())
+}
+
+fn test_metadata() {
+    let bytes = b"Hello, meta-World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_metadata.txt", bytes);
+
+    // Test that metadata of an absolute path is correct.
+    check_metadata(bytes, &path).expect("absolute path metadata");
+    // Test that metadata of a relative path is correct.
+    std::env::set_current_dir(path.parent().unwrap()).unwrap();
+    check_metadata(bytes, Path::new(path.file_name().unwrap())).expect("relative path metadata");
+
+    // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_set_len() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_set_len.txt", bytes);
+
+    // Test extending the file
+    let mut file = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+    let bytes_extended = b"Hello, World!\n\x00\x00\x00\x00\x00\x00";
+    file.set_len(20).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes_extended, contents.as_slice());
+
+    // Test truncating the file
+    file.seek(SeekFrom::Start(0)).unwrap();
+    file.set_len(10).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[..10], contents.as_slice());
+
+    // Can't use set_len on a file not opened for writing
+    let file = OpenOptions::new().read(true).open(&path).unwrap();
+    // Due to https://github.com/rust-lang/miri/issues/4457, we have to assume the failure could
+    // be either of the Windows or Unix kind, no matter which platform we're on.
+    let err = file.set_len(14).unwrap_err();
+    assert!(
+        [ErrorKind::PermissionDenied, ErrorKind::InvalidInput].contains(&err.kind()),
+        "unexpected error: {err}"
+    );
+
+    remove_file(&path).unwrap();
+}
+
+fn test_file_sync() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_sync.txt", bytes);
+
+    // Test that we can call sync_data and sync_all (can't readily test effects of this operation)
+    let file = OpenOptions::new().write(true).open(&path).unwrap();
+    file.sync_data().unwrap();
+    file.sync_all().unwrap();
+
+    // Test that we can call sync_data and sync_all on a file opened for reading on unix, but not
+    // on Windows
+    let file = File::open(&path).unwrap();
+    if cfg!(unix) {
+        file.sync_data().unwrap();
+        file.sync_all().unwrap();
+    } else {
+        file.sync_data().unwrap_err();
+        file.sync_all().unwrap_err();
+    }
+
+    remove_file(&path).unwrap();
+}
+
+fn test_errors() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare("miri_test_fs_errors.txt");
+
+    // The following tests also check that the `__errno_location()` shim is working properly.
+    // Opening a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
+    // Make sure we can also format this.
+    let _ = format!("{0}: {0:?}", File::open(&path).unwrap_err());
+    // Removing a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
+    // Reading the metadata of a non-existing file should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, check_metadata(bytes, &path).unwrap_err().kind());
+}
+
+fn test_rename() {
+    // Renaming a file should succeed.
+    let path1 = utils::prepare("miri_test_fs_rename_source.txt");
+    let path2 = utils::prepare("miri_test_fs_rename_destination.txt");
+
+    let file = File::create(&path1).unwrap();
+    drop(file);
+
+    // Renaming should succeed
+    rename(&path1, &path2).unwrap();
+    // Check that the old file path isn't present
+    assert_eq!(ErrorKind::NotFound, path1.metadata().unwrap_err().kind());
+    // Check that the file has moved successfully
+    assert!(path2.metadata().unwrap().is_file());
+
+    // Renaming a nonexistent file should fail
+    assert_eq!(ErrorKind::NotFound, rename(&path1, &path2).unwrap_err().kind());
+
+    remove_file(&path2).unwrap();
+}
+
+fn test_canonicalize() {
+    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    create_dir(&dir_path).unwrap();
+    let path = dir_path.join("test_file");
+    drop(File::create(&path).unwrap());
+
+    let p = fs::canonicalize(format!("{}/./test_file", dir_path.to_string_lossy())).unwrap();
+    assert_eq!(p.to_string_lossy().find("/./"), None);
+
+    remove_dir_all(&dir_path).unwrap();
+}
+
+fn test_directory() {
+    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    // Creating a directory should succeed.
+    create_dir(&dir_path).unwrap();
+    // Test that the metadata of a directory is correct.
+    assert!(dir_path.metadata().unwrap().is_dir());
+    // Creating a directory when it already exists should fail.
+    assert_eq!(ErrorKind::AlreadyExists, create_dir(&dir_path).unwrap_err().kind());
+
+    // Create some files and dirs inside the directory
+    let path_1 = dir_path.join("test_file_1");
+    drop(File::create(&path_1).unwrap());
+    let path_2 = dir_path.join("test_file_2");
+    drop(File::create(&path_2).unwrap());
+    let dir_1 = dir_path.join("test_dir_1");
+    create_dir(&dir_1).unwrap();
+    // Test that read_dir metadata calls succeed
+    assert_eq!(
+        BTreeMap::from([
+            (OsString::from("test_file_1"), true),
+            (OsString::from("test_file_2"), true),
+            (OsString::from("test_dir_1"), false)
+        ]),
+        read_dir(&dir_path)
+            .unwrap()
+            .map(|e| {
+                let e = e.unwrap();
+                (e.file_name(), e.metadata().unwrap().is_file())
+            })
+            .collect::<BTreeMap<_, _>>()
+    );
+    // Deleting the directory should fail, since it is not empty.
+
+    // Solaris/Illumos `rmdir` call set errno to EEXIST if directory contains
+    // other entries than `.` and `..`.
+    // https://docs.oracle.com/cd/E86824_01/html/E54765/rmdir-2.html
+    let err = remove_dir(&dir_path).unwrap_err().kind();
+    assert!(matches!(err, ErrorKind::AlreadyExists | ErrorKind::DirectoryNotEmpty));
+    // Clean up the files in the directory
+    remove_file(&path_1).unwrap();
+    remove_file(&path_2).unwrap();
+    remove_dir(&dir_1).unwrap();
+    // Now there should be nothing left in the directory.
+    let dir_iter = read_dir(&dir_path).unwrap();
+    let file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
+    assert!(file_names.is_empty());
+
+    // Deleting the directory should succeed.
+    remove_dir(&dir_path).unwrap();
+    // Reading the metadata of a nonexistent directory should fail with a "not found" error.
+    assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
+
+    // To test remove_dir_all, re-create the directory with a file and a directory in it.
+    create_dir(&dir_path).unwrap();
+    drop(File::create(&path_1).unwrap());
+    create_dir(&path_2).unwrap();
+    remove_dir_all(&dir_path).unwrap();
+}
+
+fn test_from_raw_os_error() {
+    let code = 6; // not a code that std or Miri know
+    let error = Error::from_raw_os_error(code);
+    assert!(matches!(error.kind(), ErrorKind::Uncategorized));
+    // Make sure we can also format this.
+    let _ = format!("{error:?}");
+}
+
+#[cfg(unix)]
+fn test_pread_pwrite() {
+    use std::os::unix::fs::FileExt;
+
+    let bytes = b"hello world";
+    let path = utils::prepare_with_content("miri_test_fs_pread_pwrite.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mut buf1 = [0u8; 3];
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check that we get expected result after seek
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b" wo");
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check pread
+    f.read_exact_at(&mut buf1, 2).unwrap();
+    assert_eq!(&buf1, b"llo");
+    f.read_exact_at(&mut buf1, 6).unwrap();
+    assert_eq!(&buf1, b"wor");
+
+    // Ensure that cursor position is not changed
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b" wo");
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check pwrite
+    f.write_all_at(b" mo", 6).unwrap();
+
+    let mut buf2 = [0u8; 11];
+    f.read_exact_at(&mut buf2, 0).unwrap();
+    assert_eq!(&buf2, b"hello  mold");
+
+    // Ensure that cursor position is not changed
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b"  m");
+}
+
+// Solaris does not support per-handle file locking.
+#[cfg(not(target_os = "solaris"))]
+fn test_flock() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);
+    let file1 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+    let file2 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+
+    // Test that we can apply many shared locks.
+    file1.lock_shared().unwrap();
+    file2.lock_shared().unwrap();
+    // Test that shared lock prevents exclusive lock.
+    assert!(matches!(file1.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
+    // Unlock both files.
+    file1.unlock().unwrap();
+    file2.unlock().unwrap();
+
+    // Take exclusive lock.
+    file1.lock().unwrap();
+    // Test that shared lock prevents exclusive and shared locks.
+    assert!(matches!(file2.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
+    assert!(matches!(file2.try_lock_shared().unwrap_err(), fs::TryLockError::WouldBlock));
+    // Unlock exclusive lock.
+    file1.unlock().unwrap();
+}
+
+/// Test vectored reads and vectored writes.
+fn test_readv_writev() {
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_readv_writev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read =
+        f.read_vectored(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)]).unwrap();
+
+    // Vectored read should read at least a byte.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[0..bytes_read]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f.write_vectored(&[IoSlice::new(buffer1), IoSlice::new(buffer2)]).unwrap();
+
+    // Vectored write should write at least a byte.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes.
+    f.seek(SeekFrom::Start(bytes_read as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+/// Test vectored reads and vectored writes with byte offsets.
+///
+/// **Note**: We skip this test on Solaris and Android targets. This is
+/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
+/// standard library uses `syscall(...)` for vectored reads/writes with
+/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
+#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+fn test_preadv_pwritev() {
+    use std::os::unix::fs::FileExt;
+
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_preadv_pwritev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    const OFFSET: usize = 2;
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read = f
+        .read_vectored_at(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)], OFFSET as u64)
+        .unwrap();
+
+    // Vectored read should read at least a byte at the provided offset.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[OFFSET..(bytes_read + OFFSET)]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f
+        .write_vectored_at(
+            &[IoSlice::new(buffer1), IoSlice::new(buffer2)],
+            (bytes.len() + OFFSET) as u64,
+        )
+        .unwrap();
+
+    // Vectored write should write at least a byte at the provided offset.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes. We move the cursor
+    // to include the offset.
+    f.seek(SeekFrom::Start((bytes.len() + OFFSET) as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+// std uses `libc::link` on Android which we do not support.
+#[cfg(not(target_os = "android"))]
+fn test_hard_link() {
+    let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
+    let link = utils::prepare("miri_test_fs_hard_link_link.txt");
+
+    fs::hard_link(&source, &link).unwrap();
+
+    // Verify that the hard link works:
+    // Modifications to one are visible through the other.
+    fs::write(&source, b"hello world").unwrap();
+    let contents = fs::read(&link).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Only on Unix: verify both files have same inode
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let source_meta = std::fs::metadata(&source).unwrap();
+        let link_meta = std::fs::metadata(&link).unwrap();
+        assert_eq!(source_meta.ino(), link_meta.ino());
+    }
+
+    // Test error: link already exists
+    assert_eq!(ErrorKind::AlreadyExists, fs::hard_link(&source, &link).unwrap_err().kind());
+
+    // Cleanup after test
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
+}

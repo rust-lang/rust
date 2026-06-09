@@ -1,0 +1,59 @@
+error: lifetime may not live long enough
+  --> $DIR/empty-binders-err.rs:20:12
+   |
+LL | fn covariance<'a, 'b, 'upper>(v: bool)
+   |               --      ------ lifetime `'upper` defined here
+   |               |
+   |               lifetime `'a` defined here
+...
+LL |     let _: &'upper () = match v {
+   |            ^^^^^^^^^^ type annotation requires that `'a` must outlive `'upper`
+   |
+   = help: consider adding the following bound: `'a: 'upper`
+
+error: lifetime may not live long enough
+  --> $DIR/empty-binders-err.rs:20:12
+   |
+LL | fn covariance<'a, 'b, 'upper>(v: bool)
+   |                   --  ------ lifetime `'upper` defined here
+   |                   |
+   |                   lifetime `'b` defined here
+...
+LL |     let _: &'upper () = match v {
+   |            ^^^^^^^^^^ type annotation requires that `'b` must outlive `'upper`
+   |
+   = help: consider adding the following bound: `'b: 'upper`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: add bound `'a: 'upper`
+   = help: add bound `'b: 'upper`
+
+error: lifetime may not live long enough
+  --> $DIR/empty-binders-err.rs:35:12
+   |
+LL | fn contra_fn<'a, 'b, 'lower>(v: bool)
+   |              --      ------ lifetime `'lower` defined here
+   |              |
+   |              lifetime `'a` defined here
+...
+LL |     let _: fn(&'lower ()) = match v {
+   |            ^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'lower: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/empty-binders-err.rs:48:12
+   |
+LL | fn contra_struct<'a, 'b, 'lower>(v: bool)
+   |                  --      ------ lifetime `'lower` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+...
+LL |     let _: Contra<'lower> = match v {
+   |            ^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'lower: 'a`
+
+error: aborting due to 4 previous errors
+

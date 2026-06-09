@@ -1,0 +1,53 @@
+error: found call to `str::trim` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:61:23
+   |
+LL |     let _ = " A B C ".trim().split_whitespace(); // should trigger lint
+   |                       ^^^^^^^ help: remove `trim()`
+   |
+   = note: `-D clippy::trim-split-whitespace` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trim_split_whitespace)]`
+
+error: found call to `str::trim_start` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:64:23
+   |
+LL |     let _ = " A B C ".trim_start().split_whitespace(); // should trigger lint
+   |                       ^^^^^^^^^^^^^ help: remove `trim_start()`
+
+error: found call to `str::trim_end` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:67:23
+   |
+LL |     let _ = " A B C ".trim_end().split_whitespace(); // should trigger lint
+   |                       ^^^^^^^^^^^ help: remove `trim_end()`
+
+error: found call to `str::trim` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:72:37
+   |
+LL |     let _ = (" A B C ").to_string().trim().split_whitespace(); // should trigger lint
+   |                                     ^^^^^^^ help: remove `trim()`
+
+error: found call to `str::trim_start` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:75:37
+   |
+LL |     let _ = (" A B C ").to_string().trim_start().split_whitespace(); // should trigger lint
+   |                                     ^^^^^^^^^^^^^ help: remove `trim_start()`
+
+error: found call to `str::trim_end` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:78:37
+   |
+LL |     let _ = (" A B C ").to_string().trim_end().split_whitespace(); // should trigger lint
+   |                                     ^^^^^^^^^^^ help: remove `trim_end()`
+
+error: found call to `str::trim` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:87:15
+   |
+LL |     let _ = s.trim().split_whitespace(); // should trigger lint
+   |               ^^^^^^^ help: remove `trim()`
+
+error: found call to `str::trim` before `str::split_whitespace`
+  --> tests/ui/trim_split_whitespace.rs:97:15
+   |
+LL |     let _ = s.trim().split_whitespace(); // should trigger lint
+   |               ^^^^^^^ help: remove `trim()`
+
+error: aborting due to 8 previous errors
+

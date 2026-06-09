@@ -1,0 +1,69 @@
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:6:16
+   |
+LL |               if let $p = $e $b
+   |                  ^^^^^^^^^^^
+...
+LL | /     foo!(a, 1, {
+LL | |         println!("irrefutable pattern");
+LL | |     });
+   | |______- in this macro invocation
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:6:16
+   |
+LL |               if let $p = $e $b
+   |                  ^^^
+...
+LL | /     bar!(a, 1, {
+LL | |         println!("irrefutable pattern");
+LL | |     });
+   | |______- in this macro invocation
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: this warning originates in the macro `foo` which comes from the expansion of the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:26:8
+   |
+LL |     if let a = 1 {
+   |        ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:30:8
+   |
+LL |     if let a = 1 {
+   |        ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:40:15
+   |
+LL |     } else if let a = 1 {
+   |               ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: irrefutable `if let` pattern
+  --> $DIR/if-let.rs:46:15
+   |
+LL |     } else if let a = 1 {
+   |               ^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: 6 warnings emitted
+

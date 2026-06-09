@@ -1,0 +1,14 @@
+error: environment variable `NON_UNICODE_VAR` is not a valid Unicode string
+ --> non_unicode_env.rs:2:13
+  |
+2 |     let _ = env!("NON_UNICODE_VAR");
+  |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: environment variable `NON_UNICODE_VAR` is not a valid Unicode string
+ --> non_unicode_env.rs:3:13
+  |
+3 |     let _ = option_env!("NON_UNICODE_VAR");
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

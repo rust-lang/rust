@@ -1,0 +1,58 @@
+error[E0643]: method `foo` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:8:12
+   |
+LL |     fn foo(&self, _: &impl Debug);
+   |                       ---------- declaration in trait here
+...
+LL |     fn foo<U: Debug>(&self, _: &U) { }
+   |            ^ expected `impl Trait`, found generic parameter
+   |
+help: try removing the generic parameter and using `impl Trait` instead
+   |
+LL -     fn foo<U: Debug>(&self, _: &U) { }
+LL +     fn foo(&self, _: &impl Debug) { }
+   |
+
+error[E0643]: method `bar` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:17:23
+   |
+LL |     fn bar<U: Debug>(&self, _: &U);
+   |            - declaration in trait here
+...
+LL |     fn bar(&self, _: &impl Debug) { }
+   |                       ^^^^^^^^^^ expected generic parameter, found `impl Trait`
+   |
+help: try changing the `impl Trait` argument to a generic parameter
+   |
+LL -     fn bar(&self, _: &impl Debug) { }
+LL +     fn bar<U: Debug>(&self, _: &U) { }
+   |
+
+error[E0643]: method `baz` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:26:33
+   |
+LL |     fn baz<U: Debug, T: Debug>(&self, _: &U, _: &T);
+   |                      - declaration in trait here
+...
+LL |     fn baz<T: Debug>(&self, _: &impl Debug, _: &T) { }
+   |                                 ^^^^^^^^^^ expected generic parameter, found `impl Trait`
+   |
+help: try changing the `impl Trait` argument to a generic parameter
+   |
+LL -     fn baz<T: Debug>(&self, _: &impl Debug, _: &T) { }
+LL +     fn baz<U: Debug, T: Debug>(&self, _: &T, _: &T) { }
+   |
+
+error[E0643]: method `hash` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:37:33
+   |
+LL |     fn hash(&self, hasher: &mut impl Hasher) {}
+   |                                 ^^^^^^^^^^^ expected generic parameter, found `impl Trait`
+   |
+  --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
+   |
+   = note: declaration in trait here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0643`.

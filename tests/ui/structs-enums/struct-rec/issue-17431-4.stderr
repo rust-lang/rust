@@ -1,0 +1,14 @@
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/issue-17431-4.rs:3:1
+   |
+LL | struct Foo<T> { foo: Option<Option<Foo<T>>>, marker: marker::PhantomData<T> }
+   | ^^^^^^^^^^^^^                      ------ recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Foo<T> { foo: Option<Option<Box<Foo<T>>>>, marker: marker::PhantomData<T> }
+   |                                    ++++      +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

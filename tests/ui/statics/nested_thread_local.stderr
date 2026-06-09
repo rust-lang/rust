@@ -1,0 +1,8 @@
+error: #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
+  --> $DIR/nested_thread_local.rs:6:1
+   |
+LL | static mut FOO: &u32 = {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

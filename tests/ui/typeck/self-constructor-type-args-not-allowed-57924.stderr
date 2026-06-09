@@ -1,0 +1,11 @@
+error[E0109]: type arguments are not allowed on self constructor
+  --> $DIR/self-constructor-type-args-not-allowed-57924.rs:6:16
+   |
+LL |         Self::<E>(e)
+   |         ----   ^ type argument not allowed
+   |         |
+   |         not allowed on self constructor
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0109`.

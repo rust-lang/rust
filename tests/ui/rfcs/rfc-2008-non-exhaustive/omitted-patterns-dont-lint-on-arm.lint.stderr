@@ -1,0 +1,75 @@
+error: some variants are not matched explicitly
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:15:11
+   |
+LL |     match val {
+   |           ^^^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+   |
+   = help: ensure that all variants are matched explicitly by adding the suggested match arms
+   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+note: the lint level is defined here
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:14:12
+   |
+LL |     #[deny(non_exhaustive_omitted_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: some variants are not matched explicitly
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:23:11
+   |
+LL |     match val {
+   |           ^^^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
+   |
+   = help: ensure that all variants are matched explicitly by adding the suggested match arms
+   = note: the matched value is of type `NonExhaustiveEnum` and the `non_exhaustive_omitted_patterns` attribute was found
+note: the lint level is defined here
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:22:27
+   |
+LL |     #[cfg_attr(lint, deny(non_exhaustive_omitted_patterns))]
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: the lint level must be set on the whole match
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:34:9
+   |
+LL |         #[deny(non_exhaustive_omitted_patterns)]
+   |                ------------------------------- remove this attribute
+LL |         _ => {}
+   |         ^
+   |
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[deny(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
+
+warning: the lint level must be set on the whole match
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:42:9
+   |
+LL |         #[cfg_attr(lint, deny(non_exhaustive_omitted_patterns))]
+   |                               ------------------------------- remove this attribute
+LL |         _ => {}
+   |         ^
+   |
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[deny(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
+
+warning: the lint level must be set on the whole match
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:50:9
+   |
+LL |         #[cfg_attr(lint, warn(non_exhaustive_omitted_patterns))]
+   |                               ------------------------------- remove this attribute
+LL |         _ => {}
+   |         ^
+   |
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[warn(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
+
+error: aborting due to 2 previous errors; 3 warnings emitted
+

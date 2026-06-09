@@ -1,0 +1,67 @@
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:8:5
+   |
+LL | /     v.iter().for_each(|v| {
+LL | |
+LL | |
+LL | |         if *v == 10 {
+...  |
+LL | |     });
+   | |_______^
+   |
+   = note: `-D clippy::needless-for-each` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
+help: try
+   |
+LL ~     for v in v.iter() {
+LL +
+LL + 
+LL +         if *v == 10 {
+LL +             return;
+LL +         } else {
+LL +             println!("{v}");
+LL +         }
+LL +     }
+   |
+help: ...and replace `return` with `continue`
+   |
+LL -             return;
+LL +             continue;
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:22:5
+   |
+LL | /     [].iter().for_each(move |_: &i32| {
+LL | |
+LL | |         i += 1;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for _ in [].iter() {
+LL +
+LL +         i += 1;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:28:5
+   |
+LL | /     [1i32].iter().for_each(move |_: &i32| {
+LL | |
+LL | |         i += 1;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for _ in [1i32].iter() {
+LL +
+LL +         i += 1;
+LL +     }
+   |
+
+error: aborting due to 3 previous errors
+

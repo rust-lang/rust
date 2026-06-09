@@ -1,0 +1,88 @@
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:21:9
+   |
+LL |         let number = numbers.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-while-let-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_while_let_some)]`
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(number) = numbers.pop() {
+LL ~         
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:30:9
+   |
+LL |         let number = val.numbers.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(number) = val.numbers.pop() {
+LL ~         
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:35:20
+   |
+LL |         accept_i32(numbers.pop().unwrap());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32(element);
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:40:20
+   |
+LL |         accept_i32(numbers.pop().expect(""));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32(element);
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:84:9
+   |
+LL |         let (a, b) = numbers.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some((a, b)) = numbers.pop() {
+LL ~         
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:89:26
+   |
+LL |         accept_i32_tuple(numbers.pop().unwrap());
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(element) = numbers.pop() {
+LL ~         accept_i32_tuple(element);
+   |
+
+error: you seem to be trying to pop elements from a `Vec` in a loop
+  --> tests/ui/manual_while_let_some.rs:95:9
+   |
+LL |         let Foo { a, b } = results.pop().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a `while..let` loop
+   |
+LL ~     while let Some(Foo { a, b }) = results.pop() {
+LL ~         
+   |
+
+error: aborting due to 7 previous errors
+

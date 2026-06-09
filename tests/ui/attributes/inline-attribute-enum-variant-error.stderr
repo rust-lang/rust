@@ -1,0 +1,10 @@
+error: `#[inline]` attribute cannot be used on enum variants
+  --> $DIR/inline-attribute-enum-variant-error.rs:4:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: aborting due to 1 previous error
+

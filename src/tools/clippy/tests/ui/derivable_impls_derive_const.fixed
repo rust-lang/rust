@@ -1,0 +1,25 @@
+#![allow(dead_code)]
+#![feature(const_trait_impl)]
+#![feature(const_default)]
+#![feature(derive_const)]
+
+mod issue15493 {
+    #[derive(Copy, Clone)]
+    #[repr(transparent)]
+    #[derive_const(Default)]
+    struct Foo(u64);
+
+    
+
+    #[derive(Copy, Clone)]
+    #[derive_const(Default)]
+    enum Bar {
+        #[default]
+        A,
+        B,
+    }
+
+    
+}
+
+fn main() {}

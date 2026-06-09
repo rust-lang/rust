@@ -1,0 +1,11 @@
+PRINT-ATTR INPUT (DISPLAY): /// 1
+#[rustfmt::attr2] #[doc = "3"] #[doc = "4"] #[rustfmt::attr5] /// 6
+#[print_attr(nodebug)] struct S;
+PRINT-ATTR RE-COLLECTED (DISPLAY): #[doc = " 1"] #[rustfmt::attr2] #[doc = "3"] #[doc = "4"] #[rustfmt::attr5]
+#[doc = " 6"] #[print_attr(nodebug)] struct S;
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[doc = " 1"] #[rustfmt :: attr2] #[doc = "3"] #[doc = "4"]
+#[rustfmt :: attr5] #[doc = " 6"] #[print_attr(nodebug)] struct S;
+PRINT-ATTR INPUT (DISPLAY): #[doc = " 1"] #[rustfmt::attr2] #[doc = "3"] #[doc = "4"] #[rustfmt::attr5]
+#[doc = " 6"] struct S;
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[doc = " 1"] #[rustfmt :: attr2] #[doc = "3"] #[doc = "4"]
+#[rustfmt :: attr5] #[doc = " 6"] struct S;

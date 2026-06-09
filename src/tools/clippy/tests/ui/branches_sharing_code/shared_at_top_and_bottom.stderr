@@ -1,0 +1,189 @@
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:16:5
+   |
+LL | /     if x == 7 {
+LL | |
+LL | |
+LL | |         let t = 7;
+LL | |         let _overlap_start = t * 2;
+LL | |         let _overlap_end = 2 * t;
+   | |_________________________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:30:5
+   |
+LL | /         let _u = 9;
+LL | |     }
+   | |_____^
+note: the lint level is defined here
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:1:9
+   |
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider moving these statements before the if
+   |
+LL ~     let t = 7;
+LL +     let _overlap_start = t * 2;
+LL +     let _overlap_end = 2 * t;
+LL +     if x == 7 {
+   |
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL +     let _u = 9;
+   |
+
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:34:5
+   |
+LL | /     if x == 99 {
+LL | |
+LL | |
+LL | |         let r = 7;
+LL | |         let _overlap_start = r;
+LL | |         let _overlap_middle = r * r;
+   | |____________________________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:47:5
+   |
+LL | /         let _overlap_end = r * r * r;
+LL | |         let z = "end";
+LL | |     }
+   | |_____^
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~     let r = 7;
+LL +     let _overlap_start = r;
+LL +     let _overlap_middle = r * r;
+LL +     if x == 99 {
+   |
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL +     let _overlap_end = r * r * r;
+LL +     let z = "end";
+   |
+
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:65:5
+   |
+LL | /     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+LL | |
+LL | |
+LL | |         let a = 0xcafe;
+LL | |         let b = 0xffff00ff;
+LL | |         let e_id = gen_id(a, b);
+   | |________________________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:87:5
+   |
+LL | /         let pack = DataPack {
+LL | |             id: e_id,
+LL | |             name: "Player 1".to_string(),
+LL | |             some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
+LL | |         };
+LL | |         process_data(pack);
+LL | |     }
+   | |_____^
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~     let a = 0xcafe;
+LL +     let b = 0xffff00ff;
+LL +     let e_id = gen_id(a, b);
+LL +     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+   |
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL +     let pack = DataPack {
+LL +         id: e_id,
+LL +         name: "Player 1".to_string(),
+LL +         some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
+LL +     };
+LL +     process_data(pack);
+   |
+
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:100:5
+   |
+LL | /     let _ = if x == 7 {
+...  |
+LL | |         let _ = 19;
+   | |___________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:111:5
+   |
+LL | /         x << 2
+LL | |     };
+   | |_____^
+   = note: the end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving these statements before the if
+   |
+LL ~     let _ = 19;
+LL +     let _ = if x == 7 {
+   |
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL ~     x << 2;
+   |
+
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:114:5
+   |
+LL | /     if x == 9 {
+...  |
+LL | |         let _ = 17;
+   | |___________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:125:5
+   |
+LL | /         x * 4
+LL | |     }
+   | |_____^
+   = note: the end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving these statements before the if
+   |
+LL ~     let _ = 17;
+LL +     if x == 9 {
+   |
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL +     x * 4
+   |
+
+error: all if blocks contain the same code at both the start and the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:157:9
+   |
+LL | /         if false {
+LL | |
+LL | |             let x = 1;
+   | |______________________^
+   |
+note: this code is shared at the end
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:165:9
+   |
+LL | /             let y = 1;
+LL | |         }
+   | |_________^
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~         let x = 1;
+LL +         if false {
+   |
+help: consider moving these statements after the if
+   |
+LL ~         }
+LL +         let y = 1;
+   |
+
+error: aborting due to 6 previous errors
+

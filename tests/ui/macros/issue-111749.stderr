@@ -1,0 +1,35 @@
+error: the `#[test]` attribute may only be used on a free function
+  --> $DIR/issue-111749.rs:8:17
+   |
+LL |     cbor_map! { #[test(test)] 4i32};
+   |                 ^^^^^^^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL -     cbor_map! { #[test(test)] 4i32};
+LL +     cbor_map! { #[cfg(test)] 4i32};
+   |
+
+error: attribute must be of the form `#[test]`
+  --> $DIR/issue-111749.rs:8:17
+   |
+LL |     cbor_map! { #[test(test)] 4i32};
+   |                 ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 2 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: attribute must be of the form `#[test]`
+  --> $DIR/issue-111749.rs:8:17
+   |
+LL |     cbor_map! { #[test(test)] 4i32};
+   |                 ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+

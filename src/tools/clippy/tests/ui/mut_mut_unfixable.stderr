@@ -1,0 +1,41 @@
+error: a type of form `&mut &mut _`
+  --> tests/ui/mut_mut_unfixable.rs:9:11
+   |
+LL | fn fun(x: &mut &mut u32) -> bool {
+   |           ^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut u32`
+   |
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
+
+error: an expression of form `&mut &mut _`
+  --> tests/ui/mut_mut_unfixable.rs:15:17
+   |
+LL |     let mut x = &mut &mut 1u32;
+   |                 ^^^^^^^^^^^^^^ help: remove the extra `&mut`: `&mut 1u32`
+
+error: this expression mutably borrows a mutable reference
+  --> tests/ui/mut_mut_unfixable.rs:18:21
+   |
+LL |         let mut y = &mut x;
+   |                     ^^^^^^ help: reborrow instead: `&mut *x`
+
+error: an expression of form `&mut &mut _`
+  --> tests/ui/mut_mut_unfixable.rs:24:17
+   |
+LL |         let y = &mut &mut 2;
+   |                 ^^^^^^^^^^^ help: remove the extra `&mut`: `&mut 2`
+
+error: an expression of form `&mut &mut _`
+  --> tests/ui/mut_mut_unfixable.rs:30:17
+   |
+LL |         let y = &mut &mut &mut 2;
+   |                 ^^^^^^^^^^^^^^^^ help: remove the extra `&mut`s: `&mut 2`
+
+error: an expression of form `&mut &mut _`
+  --> tests/ui/mut_mut_unfixable.rs:39:17
+   |
+LL |         let y = &mut &mut x;
+   |                 ^^^^^^^^^^^ help: remove the extra `&mut`: `&mut x`
+
+error: aborting due to 6 previous errors
+

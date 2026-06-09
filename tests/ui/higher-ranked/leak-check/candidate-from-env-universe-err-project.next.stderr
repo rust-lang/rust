@@ -1,0 +1,22 @@
+error: higher-ranked subtype error
+  --> $DIR/candidate-from-env-universe-err-project.rs:38:5
+   |
+LL |     projection_bound::<T>();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/candidate-from-env-universe-err-project.rs:52:30
+   |
+LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,40 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/issue-113860.rs:12:5
+   |
+LL |     pub(self) const X: u32 = 3;
+   |     ^^^^^^^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error: module has missing stability attribute
+  --> $DIR/issue-113860.rs:1:1
+   |
+LL | / #![feature(staged_api)]
+LL | |
+LL | |
+LL | | pub trait Trait {
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: trait has missing stability attribute
+  --> $DIR/issue-113860.rs:4:1
+   |
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^
+
+error: implementation has missing stability attribute
+  --> $DIR/issue-113860.rs:10:1
+   |
+LL | impl Trait for u8 {
+   | ^^^^^^^^^^^^^^^^^
+
+error: associated constant has missing stability attribute
+  --> $DIR/issue-113860.rs:6:5
+   |
+LL |     const X: u32;
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

@@ -1,0 +1,102 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Foo"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "foo"
+                      PARAM_LIST
+                        L_PAREN "("
+                        R_PAREN ")"
+                      COLON ":"
+                      WHITESPACE " "
+                      TYPE_BOUND_LIST
+                        TYPE_BOUND
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Send"
+                    COMMA ","
+                    WHITESPACE " "
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "bar"
+                      PARAM_LIST
+                        L_PAREN "("
+                        PARAM
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "i32"
+                        R_PAREN ")"
+                      COLON ":"
+                      WHITESPACE " "
+                      TYPE_BOUND_LIST
+                        TYPE_BOUND
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Send"
+                    COMMA ","
+                    WHITESPACE " "
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "baz"
+                      PARAM_LIST
+                        L_PAREN "("
+                        PARAM
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "i32"
+                        COMMA ","
+                        WHITESPACE " "
+                        PARAM
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "i32"
+                        R_PAREN ")"
+                      COLON ":"
+                      WHITESPACE " "
+                      TYPE_BOUND_LIST
+                        TYPE_BOUND
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Send"
+                    R_ANGLE ">"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

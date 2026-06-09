@@ -1,0 +1,1 @@
+fn main() { let y : u32 = "z"; { let x: u32 = "y"; } }

@@ -1,0 +1,11 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/macro-mismatched-delim-brace-paren.rs:4:10
+   |
+LL |     foo! {
+   |          ^ unclosed delimiter
+LL |         bar, "baz", 1, 2.0
+LL |     )
+   |     ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

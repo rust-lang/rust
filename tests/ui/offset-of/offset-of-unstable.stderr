@@ -1,0 +1,92 @@
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:12:9
+   |
+LL |         Unstable,
+   |         ^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:21:9
+   |
+LL |         UnstableWithStableFieldType,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:26:9
+   |
+LL |         UnstableWithStableFieldType,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:10:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         Unstable,
+LL | |         unstable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:16:5
+   |
+LL |     offset_of!(StableWithUnstableField, unstable);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:18:5
+   |
+LL |     offset_of!(StableWithUnstableFieldType, stable.unstable);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:19:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         UnstableWithStableFieldType,
+LL | |         unstable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/offset-of-unstable.rs:24:5
+   |
+LL | /     offset_of!(
+LL | |
+LL | |         UnstableWithStableFieldType,
+LL | |         unstable.stable
+LL | |     );
+   | |_____^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

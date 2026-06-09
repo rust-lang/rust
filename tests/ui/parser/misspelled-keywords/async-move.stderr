@@ -1,0 +1,14 @@
+error: expected one of `move`, `use`, `{`, `|`, or `||`, found `Move`
+  --> $DIR/async-move.rs:4:11
+   |
+LL |     async Move {}
+   |           ^^^^ expected one of `move`, `use`, `{`, `|`, or `||`
+   |
+help: write keyword `move` in lowercase
+   |
+LL -     async Move {}
+LL +     async move {}
+   |
+
+error: aborting due to 1 previous error
+

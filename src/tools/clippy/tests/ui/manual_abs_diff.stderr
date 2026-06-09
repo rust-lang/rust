@@ -1,0 +1,94 @@
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:11:13
+   |
+LL |     let _ = if a > b { a - b } else { b - a };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
+   |
+   = note: `-D clippy::manual-abs-diff` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_abs_diff)]`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:13:13
+   |
+LL |     let _ = if a < b { b - a } else { a - b };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `b.abs_diff(a)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:16:13
+   |
+LL |     let _ = if 5 > b { 5 - b } else { b - 5 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `b.abs_diff(5)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:18:13
+   |
+LL |     let _ = if b > 5 { b - 5 } else { 5 - b };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `b.abs_diff(5)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:21:13
+   |
+LL |     let _ = if a >= b { a - b } else { b - a };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:23:13
+   |
+LL |     let _ = if a <= b { b - a } else { a - b };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `b.abs_diff(a)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:32:13
+   |
+LL |       let _ = if (a + b) > (c + d) {
+   |  _____________^
+LL | |
+LL | |         (a + b) - (c + d)
+LL | |     } else {
+LL | |         (c + d) - (a + b)
+LL | |     };
+   | |_____^ help: replace with `abs_diff`: `(a + b).abs_diff(c + d)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:38:13
+   |
+LL |       let _ = if (a + b) < (c + d) {
+   |  _____________^
+LL | |
+LL | |         (c + d) - (a + b)
+LL | |     } else {
+LL | |         (a + b) - (c + d)
+LL | |     };
+   | |_____^ help: replace with `abs_diff`: `(c + d).abs_diff(a + b)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:48:22
+   |
+LL |     const _: usize = if A > B { A - B } else { B - A };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `A.abs_diff(B)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:53:13
+   |
+LL |     let _ = if a > b { a - b } else { b - a };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:59:13
+   |
+LL |     let _ = if a > b { (a - b) as u32 } else { (b - a) as u32 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
+
+error: manual absolute difference pattern without using `abs_diff`
+  --> tests/ui/manual_abs_diff.rs:119:5
+   |
+LL | /     if a < b {
+LL | |
+LL | |         b - a
+LL | |     } else {
+LL | |         a - b
+LL | |     }
+   | |_____^ help: replace with `abs_diff`: `b.abs_diff(*a)`
+
+error: aborting due to 12 previous errors
+

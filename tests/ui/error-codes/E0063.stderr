@@ -1,0 +1,27 @@
+error[E0063]: missing field `x` in initializer of `SingleFoo`
+  --> $DIR/E0063.rs:30:13
+   |
+LL |     let w = SingleFoo { };
+   |             ^^^^^^^^^ missing `x`
+
+error[E0063]: missing fields `y` and `z` in initializer of `PluralFoo`
+  --> $DIR/E0063.rs:32:13
+   |
+LL |     let x = PluralFoo {x: 1};
+   |             ^^^^^^^^^ missing `y` and `z`
+
+error[E0063]: missing fields `a`, `b`, `y` and 1 other field in initializer of `TruncatedFoo`
+  --> $DIR/E0063.rs:34:13
+   |
+LL |     let y = TruncatedFoo{x:1};
+   |             ^^^^^^^^^^^^ missing `a`, `b`, `y` and 1 other field
+
+error[E0063]: missing fields `a`, `b`, `c` and 2 other fields in initializer of `TruncatedPluralFoo`
+  --> $DIR/E0063.rs:36:13
+   |
+LL |     let z = TruncatedPluralFoo{x:1};
+   |             ^^^^^^^^^^^^^^^^^^ missing `a`, `b`, `c` and 2 other fields
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0063`.

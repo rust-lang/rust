@@ -1,0 +1,25 @@
+error: `for<...>` may only modify trait bounds, not lifetime bounds
+  --> $DIR/erroneous-lifetime-bound.rs:1:25
+   |
+LL | fn foo<T>() where T: for<'a> 'a {}
+   |                         ^^^^
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/erroneous-lifetime-bound.rs:1:30
+   |
+LL | fn foo<T>() where T: for<'a> 'a {}
+   |                              ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | fn foo<T>() where for<'a> T: for<'a> 'a {}
+   |                   +++++++
+help: consider introducing lifetime `'a` here
+   |
+LL | fn foo<'a, T>() where T: for<'a> 'a {}
+   |        +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

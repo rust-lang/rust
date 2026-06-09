@@ -1,0 +1,73 @@
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:30:16
+   |
+LL |     let _ = S::new::<isize,f64>(1, 1.0);
+   |                ^^^        ---- help: remove the unnecessary generic argument
+   |                |
+   |                expected 1 generic argument
+   |
+note: associated function defined here, with 1 generic parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:6:8
+   |
+LL |     fn new<U>(x: T, _: U) -> S<T> {
+   |        ^^^ -
+
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/bad-mid-path-type-params.rs:33:13
+   |
+LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
+   |             ^   -- help: remove the lifetime argument
+   |             |
+   |             expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/bad-mid-path-type-params.rs:1:8
+   |
+LL | struct S<T> {
+   |        ^
+
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:36:24
+   |
+LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
+   |                        ^^^        ---- help: remove the unnecessary generic argument
+   |                        |
+   |                        expected 1 generic argument
+   |
+note: associated function defined here, with 1 generic parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:14:8
+   |
+LL |     fn new<U>(x: T, y: U) -> Self;
+   |        ^^^ -
+
+error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/bad-mid-path-type-params.rs:39:17
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
+   |                 ^^^^^   -- help: remove the lifetime argument
+   |                 |
+   |                 expected 0 lifetime arguments
+   |
+note: trait defined here, with 0 lifetime parameters
+  --> $DIR/bad-mid-path-type-params.rs:13:7
+   |
+LL | trait Trait<T> {
+   |       ^^^^^
+
+error[E0107]: associated function takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:39:36
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
+   |                                    ^^^      ---- help: remove the unnecessary generic argument
+   |                                    |
+   |                                    expected 1 generic argument
+   |
+note: associated function defined here, with 1 generic parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:14:8
+   |
+LL |     fn new<U>(x: T, y: U) -> Self;
+   |        ^^^ -
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

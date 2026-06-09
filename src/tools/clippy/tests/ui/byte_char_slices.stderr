@@ -1,0 +1,59 @@
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:5:15
+   |
+LL |     let bad = &[b'a', b'b', b'c'];
+   |               ^^^^^^^^^^^^^^^^^^^ help: try: `b"abc"`
+   |
+   = note: `-D clippy::byte-char-slices` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::byte_char_slices)]`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:7:18
+   |
+LL |     let quotes = &[b'"', b'H', b'i'];
+   |                  ^^^^^^^^^^^^^^^^^^^ help: try: `b"\"Hi"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:9:18
+   |
+LL |     let quotes = &[b'\'', b'S', b'u', b'p'];
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b"'Sup"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:11:19
+   |
+LL |     let escapes = &[b'\x42', b'E', b's', b'c'];
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b"\x42Esc"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:23:43
+   |
+LL |     const START: u32 = u32::from_le_bytes([b'W', b'O', b'R', b'K']);
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `*b"WORK"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:26:35
+   |
+LL |     let auto_deref_to_slice: u8 = [b'a', b'c'].iter().copied().sum();
+   |                                   ^^^^^^^^^^^^ help: try: `b"ac"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:43:27
+   |
+LL |     let with_escape: u8 = [b'\'', b'"', b'\x00', b'\n', b'\\'].iter().copied().sum();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b"'\"\x00\n\\"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:46:21
+   |
+LL |     takes_array_ref(&[b'a', b'b']);
+   |                     ^^^^^^^^^^^^^ help: try: `b"ab"`
+
+error: can be more succinctly written as a byte str
+  --> tests/ui/byte_char_slices.rs:49:26
+   |
+LL |     takes_array_ref_ref(&&[b'a', b'b']);
+   |                          ^^^^^^^^^^^^^ help: try: `b"ab"`
+
+error: aborting due to 9 previous errors
+

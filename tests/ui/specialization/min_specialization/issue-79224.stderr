@@ -1,0 +1,51 @@
+error[E0277]: the trait bound `B: Clone` is not satisfied
+  --> $DIR/issue-79224.rs:30:5
+   |
+LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B`
+   |
+   = note: required for `B` to implement `ToOwned`
+help: consider further restricting type parameter `B` with trait `Clone`
+   |
+LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
+   |                +++++++++++++++++++
+
+error[E0277]: the trait bound `B: Clone` is not satisfied
+  --> $DIR/issue-79224.rs:28:29
+   |
+LL | impl<B: ?Sized> Display for Cow<'_, B> {
+   |                             ^^^^^^^^^^ the trait `Clone` is not implemented for `B`
+   |
+   = note: required for `B` to implement `ToOwned`
+help: consider further restricting type parameter `B` with trait `Clone`
+   |
+LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
+   |                +++++++++++++++++++
+
+error[E0277]: the trait bound `B: Clone` is not satisfied
+  --> $DIR/issue-79224.rs:30:13
+   |
+LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+   |             ^^^^ the trait `Clone` is not implemented for `B`
+   |
+   = note: required for `B` to implement `ToOwned`
+help: consider further restricting type parameter `B` with trait `Clone`
+   |
+LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
+   |                +++++++++++++++++++
+
+error[E0277]: the trait bound `B: Clone` is not satisfied
+  --> $DIR/issue-79224.rs:30:12
+   |
+LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+   |            ^^^^^ the trait `Clone` is not implemented for `B`
+   |
+   = note: required for `B` to implement `ToOwned`
+help: consider further restricting type parameter `B` with trait `Clone`
+   |
+LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
+   |                +++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

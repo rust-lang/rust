@@ -1,0 +1,53 @@
+//! AArch64 intrinsics.
+//!
+//! The reference for NEON is [Arm's NEON Intrinsics Reference][arm_ref]. The
+//! [Arm's NEON Intrinsics Online Database][arm_dat] is also useful.
+//!
+//! [arm_ref]: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0073a/IHI0073A_arm_neon_intrinsics_ref.pdf
+//! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
+
+#![cfg_attr(
+    all(target_arch = "aarch64", target_abi = "softfloat"),
+    // Just allow the warning: anyone soundly using the intrinsics has to enable
+    // the target feature, and that will generate a warning for them.
+    allow(aarch64_softfloat_neon)
+)]
+
+mod mte;
+#[unstable(feature = "stdarch_aarch64_mte", issue = "129010")]
+pub use self::mte::*;
+
+mod rand;
+#[unstable(feature = "stdarch_aarch64_rand", issue = "153514")]
+pub use self::rand::*;
+
+mod neon;
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub use self::neon::*;
+
+// The rest of `core_arch::aarch64` is available on `arm64ec` but SVE is not supported on `arm64ec`.
+#[cfg(any(all(target_arch = "aarch64", target_endian = "little"), doc))]
+mod sve;
+#[cfg(any(all(target_arch = "aarch64", target_endian = "little"), doc))]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve::*;
+
+// The rest of `core_arch::aarch64` is available on `arm64ec` but SVE is not supported on `arm64ec`.
+#[cfg(any(all(target_arch = "aarch64", target_endian = "little"), doc))]
+mod sve2;
+#[cfg(any(all(target_arch = "aarch64", target_endian = "little"), doc))]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve2::*;
+
+mod prefetch;
+#[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
+pub use self::prefetch::*;
+
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub use super::arm_shared::*;
+
+#[cfg(test)]
+use stdarch_test::assert_instr;
+
+#[cfg(test)]
+pub(crate) mod test_support;

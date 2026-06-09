@@ -1,0 +1,25 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/method-argument-mismatch-variance-ice-119867.rs:8:23
+   |
+LL |     fn deserialize(s: _) {}
+   |                       ^ not allowed in type signatures
+   |
+help: try replacing `_` with the type in the corresponding trait method signature
+   |
+LL -     fn deserialize(s: _) {}
+LL +     fn deserialize(s: &ArchivedVec<T>) {}
+   |
+
+error[E0186]: method `deserialize` has a `&self` declaration in the trait, but not in the impl
+  --> $DIR/method-argument-mismatch-variance-ice-119867.rs:8:5
+   |
+LL |     fn deserialize(&self);
+   |     ---------------------- `&self` used in trait
+...
+LL |     fn deserialize(s: _) {}
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `&self` in impl
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0186.
+For more information about an error, try `rustc --explain E0121`.

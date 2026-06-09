@@ -1,0 +1,24 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/bad-env-capture.rs:3:27
+   |
+LL |     fn bar() { log(debug, x); }
+   |                           ^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error[E0425]: cannot find value `debug` in this scope
+  --> $DIR/bad-env-capture.rs:3:20
+   |
+LL |     fn bar() { log(debug, x); }
+   |                    ^^^^^ not found in this scope
+
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/bad-env-capture.rs:3:16
+   |
+LL |     fn bar() { log(debug, x); }
+   |                ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0434.
+For more information about an error, try `rustc --explain E0425`.

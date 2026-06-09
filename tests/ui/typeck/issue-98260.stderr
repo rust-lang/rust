@@ -1,0 +1,15 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-98260.rs:3:27
+   |
+LL |     fn a(aa: B) -> Result<_, B> {
+   |                           ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn a(aa: B) -> Result<_, B> {
+LL +     fn a(aa: B) -> Result<(), B> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0121`.

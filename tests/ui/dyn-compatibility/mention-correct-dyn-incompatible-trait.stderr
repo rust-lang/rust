@@ -1,0 +1,21 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/mention-correct-dyn-incompatible-trait.rs:19:24
+   |
+LL |     let test: &mut dyn Bar = &mut thing;
+   |                        ^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/mention-correct-dyn-incompatible-trait.rs:4:8
+   |
+LL |     fn foo<T>(&self, val: T);
+   |        ^^^ ...because method `foo` has generic type parameters
+...
+LL | trait Bar: Foo { }
+   |       --- this trait is not dyn compatible...
+   = help: consider moving `foo` to another trait
+   = help: only type `Thing` implements `Bar`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

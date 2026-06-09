@@ -1,0 +1,17 @@
+error: conditional `else if` is not supported for `let...else`
+  --> $DIR/let-else-if.rs:2:33
+   |
+LL |     let Some(_) = Some(()) else if true {
+   |                                 ^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL ~     let Some(_) = Some(()) else { if true {
+LL |
+...
+LL |         return;
+LL ~     } };
+   |
+
+error: aborting due to 1 previous error
+

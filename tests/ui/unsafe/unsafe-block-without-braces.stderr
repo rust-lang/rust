@@ -1,0 +1,15 @@
+error: expected `{`, found `std`
+  --> $DIR/unsafe-block-without-braces.rs:3:9
+   |
+LL |     unsafe //{
+   |     ------ while parsing this `unsafe` expression
+LL |         std::mem::transmute::<f32, u32>(1.0);
+   |         ^^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |         { std::mem::transmute::<f32, u32>(1.0); }
+   |         +                                       +
+
+error: aborting due to 1 previous error
+

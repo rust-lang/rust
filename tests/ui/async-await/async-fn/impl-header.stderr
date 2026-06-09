@@ -1,0 +1,51 @@
+error: `async` trait implementations are unsupported
+  --> $DIR/impl-header.rs:5:6
+   |
+LL | impl async Fn<()> for F {}
+   |      ^^^^^
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/impl-header.rs:5:12
+   |
+LL | impl async Fn<()> for F {}
+   |            ^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0183]: manual implementations of `Fn` are experimental
+  --> $DIR/impl-header.rs:5:12
+   |
+LL | impl async Fn<()> for F {}
+   |            ^^^^^^ manual implementations of `Fn` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0046]: not all trait items implemented, missing: `call`
+  --> $DIR/impl-header.rs:5:1
+   |
+LL | impl async Fn<()> for F {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
+   |
+   = help: implement the missing item: `fn call(&self, _: ()) -> <Self as FnOnce<()>>::Output { todo!() }`
+
+error[E0277]: expected a `FnMut()` closure, found `F`
+  --> $DIR/impl-header.rs:5:23
+   |
+LL | impl async Fn<()> for F {}
+   |                       ^ expected an `FnMut()` closure, found `F`
+   |
+help: the trait `FnMut()` is not implemented for `F`
+  --> $DIR/impl-header.rs:3:1
+   |
+LL | struct F;
+   | ^^^^^^^^
+   = note: wrap the `F` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0046, E0183, E0277, E0658.
+For more information about an error, try `rustc --explain E0046`.

@@ -1,0 +1,22 @@
+error[E0277]: `&dyn IntoIterator<IntoIter = I, Item = i32>` is not an iterator
+  --> $DIR/dont-suggest-unsize-deref.rs:11:18
+   |
+LL |     use_iterator(i);
+   |     ------------ ^ `&dyn IntoIterator<IntoIter = I, Item = i32>` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&dyn IntoIterator<IntoIter = I, Item = i32>`
+   = note: required for `&dyn IntoIterator<IntoIter = I, Item = i32>` to implement `IntoIterator`
+note: required by a bound in `use_iterator`
+  --> $DIR/dont-suggest-unsize-deref.rs:3:8
+   |
+LL | fn use_iterator<I>(itr: I)
+   |    ------------ required by a bound in this function
+LL | where
+LL |     I: IntoIterator<Item = i32>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `use_iterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

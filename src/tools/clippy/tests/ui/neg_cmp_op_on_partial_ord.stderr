@@ -1,0 +1,29 @@
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+  --> tests/ui/neg_cmp_op_on_partial_ord.rs:16:21
+   |
+LL |     let _not_less = !(a_value < another_value);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::neg_cmp_op_on_partial_ord)]`
+
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+  --> tests/ui/neg_cmp_op_on_partial_ord.rs:20:30
+   |
+LL |     let _not_less_or_equal = !(a_value <= another_value);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+  --> tests/ui/neg_cmp_op_on_partial_ord.rs:24:24
+   |
+LL |     let _not_greater = !(a_value > another_value);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the use of negated comparison operators on partially ordered types produces code that is hard to read and refactor, please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable
+  --> tests/ui/neg_cmp_op_on_partial_ord.rs:28:33
+   |
+LL |     let _not_greater_or_equal = !(a_value >= another_value);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

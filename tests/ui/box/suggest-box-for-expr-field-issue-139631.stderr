@@ -1,0 +1,44 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-box-for-expr-field-issue-139631.rs:11:18
+   |
+LL |     let v2 = X { a };
+   |                  ^ expected `Box<u32>`, found integer
+   |
+   = note: expected struct `Box<u32>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     let v2 = X { a: Box::new(a) };
+   |                  ++++++++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-box-for-expr-field-issue-139631.rs:12:21
+   |
+LL |     let v3 = Y { y: a };
+   |                     ^ expected `Box<u32>`, found integer
+   |
+   = note: expected struct `Box<u32>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     let v3 = Y { y: Box::new(a) };
+   |                     +++++++++ +
+
+error[E0560]: struct `Y` has no field named `a`
+  --> $DIR/suggest-box-for-expr-field-issue-139631.rs:13:18
+   |
+LL |     let v4 = Y { a };
+   |                  ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL -     let v4 = Y { a };
+LL +     let v4 = Y { y };
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0560.
+For more information about an error, try `rustc --explain E0308`.

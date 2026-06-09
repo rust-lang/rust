@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `Vec<u8>: const Destruct` is not satisfied
+  --> $DIR/const-closure-with-indestructible-indestructible.rs:10:16
+   |
+LL |           i_need(const || {
+   |  _________------_^
+   | |         |
+   | |         required by a bound introduced by this call
+LL | |
+LL | |             let y = v;
+LL | |         })
+   | |_________^
+   |
+note: required by a bound in `i_need`
+  --> $DIR/const-closure-with-indestructible-indestructible.rs:5:20
+   |
+LL | const fn i_need<F: [const] std::marker::Destruct>(x: F) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `i_need`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,26 @@
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/issue-72410.rs:14:19
+   |
+LL |     where for<'a> &'a mut [dyn Bar]: ;
+   |                   ^^^^^^^^^^^^^^^^^ `Bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-72410.rs:13:8
+   |
+LL | pub trait Bar {
+   |           --- this trait is not dyn compatible...
+LL |     fn map()
+   |        ^^^ ...because associated function `map` has no `self` parameter
+help: consider turning `map` into a method by giving it a `&self` argument
+   |
+LL |     fn map(&self)
+   |            +++++
+help: alternatively, consider constraining `map` so it does not apply to trait objects
+   |
+LL |     where for<'a> &'a mut [dyn Bar]:, Self: Sized ;
+   |                                     +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

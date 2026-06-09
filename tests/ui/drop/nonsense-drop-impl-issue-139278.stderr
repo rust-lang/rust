@@ -1,0 +1,18 @@
+error[E0438]: const `SPLOK` is not a member of trait `Drop`
+  --> $DIR/nonsense-drop-impl-issue-139278.rs:5:5
+   |
+LL |     const SPLOK: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/nonsense-drop-impl-issue-139278.rs:4:1
+   |
+LL | impl Drop for Foo {
+   | ^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0438.
+For more information about an error, try `rustc --explain E0046`.

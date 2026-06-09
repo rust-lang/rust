@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-check-hidden-type.rs:14:5
+   |
+LL | fn boom<'a, 'b>() -> impl Extend<'a, 'b> {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     None::<&'_ &'_ ()>
+   |     ^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

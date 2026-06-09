@@ -1,0 +1,59 @@
+- // MIR for `match_const_debug` before SingleUseConsts
++ // MIR for `match_const_debug` after SingleUseConsts
+  
+  fn match_const_debug() -> &str {
+      let mut _0: &str;
+      let _1: i32;
+      let _2: ();
+      scope 1 {
+-         debug my_int => _1;
++         debug my_int => const <T as MyTrait>::ASSOC_INT;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const <T as MyTrait>::ASSOC_INT;
++         nop;
+          StorageLive(_2);
+          _2 = do_whatever() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+-         switchInt(copy _1) -> [7: bb4, 42: bb3, otherwise: bb2];
++         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb4, 42: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          _0 = const "world";
+          goto -> bb5;
+      }
+  
+      bb3: {
+          _0 = const "towel";
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _0 = const "hello";
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 5, align: 1) {
+      77 6f 72 6c 64                                  │ world
+  }
+  
+  ALLOC1 (size: 5, align: 1) {
+      74 6f 77 65 6c                                  │ towel
+  }
+  
+  ALLOC2 (size: 5, align: 1) {
+      68 65 6c 6c 6f                                  │ hello
+  }
+  

@@ -1,0 +1,620 @@
+//! Structural editing for ast using `SyntaxEditor`
+
+use crate::{
+    AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
+    algo::neighbor,
+    ast::{self, AstNode, HasGenericParams, HasName, edit::IndentLevel},
+    syntax_editor::{Position, SyntaxEditor},
+};
+
+pub trait GetOrCreateWhereClause: ast::HasGenericParams {
+    fn where_clause_position(&self) -> Option<Position>;
+
+    fn get_or_create_where_clause(
+        &self,
+        editor: &SyntaxEditor,
+        new_preds: impl Iterator<Item = ast::WherePred>,
+    ) {
+        let make = editor.make();
+        let existing = self.where_clause();
+        let all_preds: Vec<_> =
+            existing.iter().flat_map(|wc| wc.predicates()).chain(new_preds).collect();
+        let new_where = make.where_clause(all_preds);
+
+        if let Some(existing) = &existing {
+            editor.replace(existing.syntax(), new_where.syntax());
+        } else if let Some(pos) = self.where_clause_position() {
+            editor.insert_all(
+                pos,
+                vec![make.whitespace(" ").into(), new_where.syntax().clone().into()],
+            );
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Fn {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(ty) = self.ret_type() {
+            Some(Position::after(ty.syntax()))
+        } else if let Some(param_list) = self.param_list() {
+            Some(Position::after(param_list.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Impl {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(ty) = self.self_ty() {
+            Some(Position::after(ty.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Trait {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::TypeAlias {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Struct {
+    fn where_clause_position(&self) -> Option<Position> {
+        let tfl = self.field_list().and_then(|fl| match fl {
+            ast::FieldList::RecordFieldList(_) => None,
+            ast::FieldList::TupleFieldList(it) => Some(it),
+        });
+        if let Some(tfl) = tfl {
+            Some(Position::after(tfl.syntax()))
+        } else if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Enum {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl SyntaxEditor {
+    /// Adds a new generic param to the node using `SyntaxEditor`
+    pub fn add_generic_param(
+        &self,
+        node: &impl ast::HasGenericParams,
+        new_param: ast::GenericParam,
+    ) {
+        let make = self.make();
+        match node.generic_param_list() {
+            Some(generic_param_list) => {
+                let is_lifetime = matches!(new_param, ast::GenericParam::LifetimeParam(_));
+
+                if let Some(first_param) = generic_param_list.generic_params().next() {
+                    let last_lifetime = generic_param_list
+                        .generic_params()
+                        .filter(|p| matches!(p, ast::GenericParam::LifetimeParam(_)))
+                        .last();
+
+                    if is_lifetime {
+                        if let Some(last_lt) = last_lifetime {
+                            let elements = vec![
+                                make.token(SyntaxKind::COMMA).into(),
+                                make.token(SyntaxKind::WHITESPACE).into(),
+                                new_param.syntax().clone().into(),
+                            ];
+                            self.insert_all(Position::after(last_lt.syntax()), elements);
+                        } else {
+                            // Insert before the first parameter
+                            let elements = vec![
+                                new_param.syntax().clone().into(),
+                                make.token(SyntaxKind::COMMA).into(),
+                                make.token(SyntaxKind::WHITESPACE).into(),
+                            ];
+                            self.insert_all(Position::before(first_param.syntax()), elements);
+                        }
+                    } else {
+                        let last_param = generic_param_list.generic_params().last().unwrap();
+                        let elements = vec![
+                            make.token(SyntaxKind::COMMA).into(),
+                            make.token(SyntaxKind::WHITESPACE).into(),
+                            new_param.syntax().clone().into(),
+                        ];
+                        self.insert_all(Position::after(last_param.syntax()), elements);
+                    }
+                } else {
+                    if let Some(l_angle) = generic_param_list.l_angle_token() {
+                        self.insert(Position::after(l_angle), new_param.syntax().clone());
+                    }
+                }
+            }
+            None => {
+                let position =
+                    if let Some(name) = node.syntax().children().find_map(ast::Name::cast) {
+                        Position::after(name.syntax())
+                    } else if let Some(impl_node) = ast::Impl::cast(node.syntax().clone()) {
+                        impl_node
+                            .impl_token()
+                            .map_or_else(|| Position::last_child_of(node.syntax()), Position::after)
+                    } else if let Some(fn_node) = ast::Fn::cast(node.syntax().clone()) {
+                        if let Some(fn_token) = fn_node.fn_token() {
+                            Position::after(fn_token)
+                        } else if let Some(param_list) = fn_node.param_list() {
+                            Position::before(param_list.syntax())
+                        } else {
+                            Position::last_child_of(node.syntax())
+                        }
+                    } else {
+                        Position::last_child_of(node.syntax())
+                    };
+
+                let elements = vec![
+                    make.token(SyntaxKind::L_ANGLE).into(),
+                    new_param.syntax().clone().into(),
+                    make.token(SyntaxKind::R_ANGLE).into(),
+                ];
+                self.insert_all(position, elements);
+            }
+        }
+    }
+}
+
+fn get_or_insert_comma_after(editor: &SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
+    let make = editor.make();
+    match comma_after(syntax) {
+        Some(it) => it,
+        None => {
+            let comma = make.token(T![,]);
+            editor.insert(Position::after(syntax), &comma);
+            comma
+        }
+    }
+}
+
+impl ast::AssocItemList {
+    /// Adds a new associated item after all of the existing associated items.
+    ///
+    /// Attention! This function does align the first line of `item` with respect to `self`,
+    /// but it does _not_ change indentation of other lines (if any).
+    pub fn add_items(&self, editor: &SyntaxEditor, items: Vec<ast::AssocItem>) {
+        let make = editor.make();
+        let (indent, position, whitespace) = match self.assoc_items().last() {
+            Some(last_item) => (
+                IndentLevel::from_node(last_item.syntax()),
+                Position::after(last_item.syntax()),
+                "\n\n",
+            ),
+            None => match self.l_curly_token() {
+                Some(l_curly) => {
+                    normalize_ws_between_braces(editor, self.syntax());
+                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
+                }
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax()), "\n"),
+            },
+        };
+
+        let elements: Vec<SyntaxElement> = items
+            .into_iter()
+            .enumerate()
+            .flat_map(|(i, item)| {
+                let whitespace = if i != 0 { "\n\n" } else { whitespace };
+                vec![
+                    make.whitespace(&format!("{whitespace}{indent}")).into(),
+                    item.syntax().clone().into(),
+                ]
+            })
+            .collect();
+        editor.insert_all(position, elements);
+    }
+}
+
+impl ast::RecordExprFieldList {
+    pub fn add_fields(
+        &self,
+        editor: &SyntaxEditor,
+        fields: impl IntoIterator<Item = ast::RecordExprField>,
+    ) {
+        add_record_fields(
+            editor,
+            self.syntax(),
+            self.fields().last().map(|it| it.syntax().clone()),
+            self.l_curly_token(),
+            fields.into_iter().map(|it| it.syntax().clone().into()),
+        );
+    }
+}
+
+impl ast::RecordPatFieldList {
+    pub fn add_fields(
+        &self,
+        editor: &SyntaxEditor,
+        fields: impl IntoIterator<Item = ast::RecordPatField>,
+    ) {
+        add_record_fields(
+            editor,
+            self.syntax(),
+            self.fields().last().map(|it| it.syntax().clone()),
+            self.l_curly_token(),
+            fields.into_iter().map(|it| it.syntax().clone().into()),
+        );
+    }
+}
+
+fn add_record_fields(
+    editor: &SyntaxEditor,
+    field_list: &SyntaxNode,
+    last_field: Option<SyntaxNode>,
+    l_curly: Option<SyntaxToken>,
+    fields: impl Iterator<Item = SyntaxElement>,
+) {
+    let fields = fields.collect::<Vec<_>>();
+    if fields.is_empty() {
+        return;
+    }
+
+    let make = editor.make();
+    let is_multiline = field_list.text().contains_char('\n');
+    let whitespace = || {
+        if is_multiline {
+            let indent = IndentLevel::from_node(field_list) + 1;
+            make.whitespace(&format!("\n{indent}"))
+        } else {
+            make.whitespace(" ")
+        }
+    };
+
+    if is_multiline {
+        normalize_ws_between_braces(editor, field_list);
+    }
+
+    let mut elements = Vec::new();
+    let next_after_insert;
+    let position = match last_field {
+        Some(last_field) => match comma_after(&last_field) {
+            Some(comma) => {
+                next_after_insert = comma.next_sibling_or_token();
+                Position::after(comma)
+            }
+            None => {
+                next_after_insert = last_field.next_sibling_or_token();
+                elements.push(make.token(T![,]).into());
+                Position::after(last_field)
+            }
+        },
+        None => match l_curly {
+            Some(it) => {
+                next_after_insert = it.next_sibling_or_token();
+                Position::after(it)
+            }
+            None => {
+                next_after_insert = None;
+                Position::last_child_of(field_list)
+            }
+        },
+    };
+
+    let fields_len = fields.len();
+    for (idx, field) in fields.into_iter().enumerate() {
+        elements.push(whitespace().into());
+        elements.push(field);
+        if is_multiline || idx + 1 != fields_len {
+            elements.push(make.token(T![,]).into());
+        }
+    }
+    if !is_multiline && next_after_insert.is_some_and(|it| it.kind() != SyntaxKind::WHITESPACE) {
+        elements.push(make.whitespace(" ").into());
+    }
+
+    editor.insert_all(position, elements);
+}
+
+fn comma_after(syntax: &SyntaxNode) -> Option<SyntaxToken> {
+    syntax
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T![,])
+}
+
+impl ast::Impl {
+    pub fn get_or_create_assoc_item_list_with_editor(
+        &self,
+        editor: &SyntaxEditor,
+    ) -> ast::AssocItemList {
+        let make = editor.make();
+        if let Some(list) = self.assoc_item_list() {
+            list
+        } else {
+            let list = make.assoc_item_list_empty();
+            editor.insert_all(
+                Position::last_child_of(self.syntax()),
+                vec![make.whitespace(" ").into(), list.syntax().clone().into()],
+            );
+            list
+        }
+    }
+}
+
+impl ast::VariantList {
+    pub fn add_variant(&self, editor: &SyntaxEditor, variant: &ast::Variant) {
+        let make = editor.make();
+        let (indent, position) = match self.variants().last() {
+            Some(last_item) => (
+                IndentLevel::from_node(last_item.syntax()),
+                Position::after(get_or_insert_comma_after(editor, last_item.syntax())),
+            ),
+            None => match self.l_curly_token() {
+                Some(l_curly) => {
+                    normalize_ws_between_braces(editor, self.syntax());
+                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly))
+                }
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax())),
+            },
+        };
+        let elements: Vec<SyntaxElement> = vec![
+            make.whitespace(&format!("{}{indent}", "\n")).into(),
+            variant.syntax().clone().into(),
+            make.token(T![,]).into(),
+        ];
+        editor.insert_all(position, elements);
+    }
+}
+
+impl ast::Fn {
+    pub fn replace_or_insert_body(&self, editor: &SyntaxEditor, body: ast::BlockExpr) {
+        let make = editor.make();
+        if let Some(old_body) = self.body() {
+            editor.replace(old_body.syntax(), body.syntax());
+        } else {
+            let single_space = make.whitespace(" ");
+            let elements = vec![single_space.into(), body.syntax().clone().into()];
+
+            if let Some(semicolon) = self.semicolon_token() {
+                editor.replace_with_many(semicolon, elements);
+            } else {
+                editor.insert_all(Position::last_child_of(self.syntax()), elements);
+            }
+        }
+    }
+}
+
+fn normalize_ws_between_braces(editor: &SyntaxEditor, node: &SyntaxNode) -> Option<()> {
+    let make = editor.make();
+    let l = node
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T!['{'])?;
+    let r = node
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T!['}'])?;
+
+    let indent = IndentLevel::from_node(node);
+
+    match l.next_sibling_or_token() {
+        Some(ws)
+            if ws.kind() == SyntaxKind::WHITESPACE
+                && ws.next_sibling_or_token()?.into_token()? == r =>
+        {
+            editor.replace(ws, make.whitespace(&format!("\n{indent}")));
+        }
+        Some(ws) if ws.kind() == T!['}'] => {
+            editor.insert(Position::after(l), make.whitespace(&format!("\n{indent}")));
+        }
+        _ => (),
+    }
+    Some(())
+}
+
+pub trait Removable: AstNode {
+    fn remove(&self, editor: &SyntaxEditor);
+}
+
+impl Removable for ast::TypeBoundList {
+    fn remove(&self, editor: &SyntaxEditor) {
+        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
+            Some(colon) => editor.delete_all(colon..=self.syntax().clone().into()),
+            None => editor.delete(self.syntax()),
+        }
+    }
+}
+
+impl Removable for ast::Use {
+    fn remove(&self, editor: &SyntaxEditor) {
+        let make = editor.make();
+        let next_ws = self
+            .syntax()
+            .next_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(next_ws) = next_ws {
+            let ws_text = next_ws.syntax().text();
+            if let Some(rest) = ws_text.strip_prefix('\n') {
+                if rest.is_empty() {
+                    editor.delete(next_ws.syntax());
+                } else {
+                    editor.replace(next_ws.syntax(), make.whitespace(rest));
+                }
+            }
+        }
+
+        editor.delete(self.syntax());
+    }
+}
+
+impl Removable for ast::UseTree {
+    fn remove(&self, editor: &SyntaxEditor) {
+        for dir in [Direction::Next, Direction::Prev] {
+            if let Some(next_use_tree) = neighbor(self, dir) {
+                let separators = self
+                    .syntax()
+                    .siblings_with_tokens(dir)
+                    .skip(1)
+                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
+                for sep in separators {
+                    editor.delete(sep);
+                }
+                break;
+            }
+        }
+        editor.delete(self.syntax());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use parser::Edition;
+    use stdx::trim_indent;
+    use test_utils::assert_eq_text;
+
+    use crate::{SourceFile, ast::syntax_factory::SyntaxFactory};
+
+    use super::*;
+
+    fn ast_from_text<N: AstNode>(text: &str) -> N {
+        let parse = SourceFile::parse(text, Edition::CURRENT);
+        let node = match parse.tree().syntax().descendants().find_map(N::cast) {
+            Some(it) => it,
+            None => {
+                let node = std::any::type_name::<N>();
+                panic!("Failed to make ast node `{node}` from text {text}")
+            }
+        };
+        let node = node.clone_subtree();
+        assert_eq!(node.syntax().text_range().start(), 0.into());
+        node
+    }
+
+    #[test]
+    fn add_variant_to_empty_enum() {
+        let make = SyntaxFactory::without_mappings();
+        let variant = make.variant(None, make.name("Bar"), None, None);
+
+        check_add_variant(
+            r#"
+enum Foo {}
+"#,
+            r#"
+enum Foo {
+    Bar,
+}
+"#,
+            variant,
+        );
+    }
+
+    #[test]
+    fn add_variant_to_non_empty_enum() {
+        let make = SyntaxFactory::without_mappings();
+        let variant = make.variant(None, make.name("Baz"), None, None);
+
+        check_add_variant(
+            r#"
+enum Foo {
+    Bar,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            variant,
+        );
+    }
+
+    #[test]
+    fn add_variant_with_tuple_field_list() {
+        let make = SyntaxFactory::without_mappings();
+        let variant = make.variant(
+            None,
+            make.name("Baz"),
+            Some(make.tuple_field_list([make.tuple_field(None, make.ty("bool"))]).into()),
+            None,
+        );
+
+        check_add_variant(
+            r#"
+enum Foo {
+    Bar,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz(bool),
+}
+"#,
+            variant,
+        );
+    }
+
+    #[test]
+    fn add_variant_with_record_field_list() {
+        let make = SyntaxFactory::without_mappings();
+        let variant = make.variant(
+            None,
+            make.name("Baz"),
+            Some(
+                make.record_field_list([make.record_field(None, make.name("x"), make.ty("bool"))])
+                    .into(),
+            ),
+            None,
+        );
+
+        check_add_variant(
+            r#"
+enum Foo {
+    Bar,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz { x: bool },
+}
+"#,
+            variant,
+        );
+    }
+
+    fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
+        let (editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
+        if let Some(it) = enum_.variant_list() {
+            it.add_variant(&editor, &variant)
+        }
+        let edit = editor.finish();
+        let after = edit.new_root.to_string();
+        assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(after.trim()));
+    }
+}

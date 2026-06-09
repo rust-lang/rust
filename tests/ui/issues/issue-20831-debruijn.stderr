@@ -1,0 +1,51 @@
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/issue-20831-debruijn.rs:28:33
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime as defined here...
+  --> $DIR/issue-20831-debruijn.rs:28:67
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                                                   ^^^^^^^^^
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined here...
+  --> $DIR/issue-20831-debruijn.rs:26:6
+   |
+LL | impl<'a> Publisher<'a> for MyStruct<'a> {
+   |      ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-20831-debruijn.rs:28:33
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `<MyStruct<'a> as Publisher<'_>>`
+              found `<MyStruct<'_> as Publisher<'_>>`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-20831-debruijn.rs:28:5
+   |
+LL | impl<'a> Publisher<'a> for MyStruct<'a> {
+   |      -- lifetime `'a` defined here
+LL |     type Output = u64;
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |                       |
+   |     |                       has type `Box<dyn Subscriber<Input = <MyStruct<'_> as Publisher<'1>>::Output>>`
+   |     requires that `'a` must outlive `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-20831-debruijn.rs:28:5
+   |
+LL | impl<'a> Publisher<'a> for MyStruct<'a> {
+   |      -- lifetime `'a` defined here
+LL |     type Output = u64;
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |                       |
+   |     |                       has type `Box<dyn Subscriber<Input = <MyStruct<'_> as Publisher<'1>>::Output>>`
+   |     requires that `'1` must outlive `'a`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0803`.

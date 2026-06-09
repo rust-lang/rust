@@ -1,0 +1,71 @@
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:5:8
+   |
+LL |     if "".is_empty() {
+   |        ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::const-is-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::const_is_empty)]`
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:8:8
+   |
+LL |     if "foobar".is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:14:8
+   |
+LL |     if b"".is_empty() {
+   |        ^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:17:8
+   |
+LL |     if b"foobar".is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:34:8
+   |
+LL |     if empty2.is_empty() {
+   |        ^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:37:8
+   |
+LL |     if non_empty2.is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:60:13
+   |
+LL |     let _ = value.is_empty();
+   |             ^^^^^^^^^^^^^^^^
+
+error: this expression always evaluates to false
+  --> tests/ui/const_is_empty.rs:64:13
+   |
+LL |     let _ = x.is_empty();
+   |             ^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:67:13
+   |
+LL |     let _ = "".is_empty();
+   |             ^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:70:13
+   |
+LL |     let _ = b"".is_empty();
+   |             ^^^^^^^^^^^^^^
+
+error: this expression always evaluates to true
+  --> tests/ui/const_is_empty.rs:124:13
+   |
+LL |     let _ = val.is_empty();
+   |             ^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

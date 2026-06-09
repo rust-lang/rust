@@ -1,0 +1,12 @@
+error[E0597]: `foo` does not live long enough
+  --> $DIR/issue-40157.rs:2:53
+   |
+LL |     {println!("{:?}", match { let foo = vec![1, 2]; foo.get(1) } { x => x });}
+   |                                   ---               ^^^        - `foo` dropped here while still borrowed
+   |                                   |                 |
+   |                                   |                 borrowed value does not live long enough
+   |                                   binding `foo` declared here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,29 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/return_from_external_macro.rs:7:13
+   |
+LL |     drop(|| ret_from_ext::foo!());
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             returns a reference to data owned by the current function
+   |             temporary value created here
+   |
+   = note: this error originates in the macro `ret_from_ext::foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/return_from_external_macro.rs:10:5
+   |
+LL |     ret_from_ext::foo!()
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     creates a temporary value which is freed while still in use
+   |     opaque type requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+   |
+   = note: this error originates in the macro `ret_from_ext::foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0515, E0716.
+For more information about an error, try `rustc --explain E0515`.

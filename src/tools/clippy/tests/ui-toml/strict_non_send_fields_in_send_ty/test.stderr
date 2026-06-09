@@ -1,0 +1,92 @@
+error: some fields in `NoGeneric` are not safe to be sent to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:11:1
+   |
+LL | unsafe impl Send for NoGeneric {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: it is not safe to send field `rc_is_not_send` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:8:5
+   |
+LL |     rc_is_not_send: Rc<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+   = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_send_fields_in_send_ty)]`
+
+error: some fields in `MultiField<T>` are not safe to be sent to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:20:1
+   |
+LL | unsafe impl<T> Send for MultiField<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: it is not safe to send field `field1` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:15:5
+   |
+LL |     field1: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+note: it is not safe to send field `field2` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:16:5
+   |
+LL |     field2: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+note: it is not safe to send field `field3` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:17:5
+   |
+LL |     field3: T,
+   |     ^^^^^^^^^
+   = help: add `T: Send` bound in `Send` impl
+
+error: some fields in `MyOption<T>` are not safe to be sent to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:28:1
+   |
+LL | unsafe impl<T> Send for MyOption<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: it is not safe to send field `0` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:24:12
+   |
+LL |     MySome(T),
+   |            ^
+   = help: add `T: Send` bound in `Send` impl
+
+error: some fields in `HeuristicTest` are not safe to be sent to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:44:1
+   |
+LL | unsafe impl Send for HeuristicTest {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: it is not safe to send field `field1` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:37:5
+   |
+LL |     field1: Vec<*const NonSend>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+note: it is not safe to send field `field2` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:38:5
+   |
+LL |     field2: [*const NonSend; 3],
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+note: it is not safe to send field `field3` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:39:5
+   |
+LL |     field3: (*const NonSend, *const NonSend, *const NonSend),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+note: it is not safe to send field `field4` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:40:5
+   |
+LL |     field4: (*const NonSend, Rc<u8>),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+note: it is not safe to send field `field5` to another thread
+  --> tests/ui-toml/strict_non_send_fields_in_send_ty/test.rs:41:5
+   |
+LL |     field5: Vec<Vec<*const NonSend>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use a thread-safe type that implements `Send`
+
+error: aborting due to 4 previous errors
+

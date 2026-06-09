@@ -1,0 +1,99 @@
+//@ check-pass
+//@ run-rustfix
+//@ edition:2021
+
+#![warn(rust_2024_guarded_string_incompatible_syntax)]
+
+macro_rules! demo1 {
+    ( $a:tt ) => { println!("one tokens") };
+}
+
+macro_rules! demo2 {
+    ( $a:tt $b:tt ) => { println!("two tokens") };
+}
+
+macro_rules! demo3 {
+    ( $a:tt $b:tt $c:tt ) => { println!("three tokens") };
+}
+
+macro_rules! demo4 {
+    ( $a:tt $b:tt $c:tt $d:tt ) => { println!("four tokens") };
+}
+
+macro_rules! demo5 {
+    ( $a:tt $b:tt $c:tt $d:tt $e:tt ) => { println!("five tokens") };
+}
+
+macro_rules! demo6 {
+    ( $a:tt $b:tt $c:tt $d:tt $e:tt $f:tt ) => { println!("six tokens") };
+}
+
+
+fn main() {
+    demo1!("");
+    demo2!(# "");
+    demo3!(# ""#);
+    demo2!(# "foo");
+    demo3!(# "foo"#);
+    demo2!("foo"#);
+
+    demo3!(## "foo");
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo4!(### "foo");
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo4!(## "foo"#);
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo6!(### "foo"##);
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+
+    demo4!("foo"###);
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+
+    demo2!(#"");
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo3!(#""#);
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo3!(##"");
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo2!(#"foo");
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo3!(##"foo");
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo3!(#"foo"#);
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo4!(##"foo"#);
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    demo5!(##"foo"##);
+    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING hard error in Rust 2024
+}

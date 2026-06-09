@@ -1,0 +1,12 @@
+error: the function has a cognitive complexity of (3/0)
+  --> tests/ui/cognitive_complexity_attr_used.rs:9:4
+   |
+LL | fn kaboom() {
+   |    ^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cognitive_complexity)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/token-error-correct-3.rs:12:21
+   |
+LL |         if !is_directory(path.as_ref()) {
+   |                                         - closing delimiter possibly meant for this
+LL |             callback(path.as_ref();
+   |                     ^ unclosed delimiter
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true)
+LL |         } else {
+   |         ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

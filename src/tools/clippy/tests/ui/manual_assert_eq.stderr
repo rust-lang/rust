@@ -1,0 +1,88 @@
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:8:5
+   |
+LL |     assert!(a == "a".to_ascii_lowercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-assert-eq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_assert_eq)]`
+help: replace it with `assert_eq!(..)`
+   |
+LL -     assert!(a == "a".to_ascii_lowercase());
+LL +     assert_eq!(a, "a".to_ascii_lowercase());
+   |
+
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:10:5
+   |
+LL |     assert!(a != "a".to_ascii_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_ne!(..)`
+   |
+LL -     assert!(a != "a".to_ascii_uppercase());
+LL +     assert_ne!(a, "a".to_ascii_uppercase());
+   |
+
+error: used `debug_assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:12:5
+   |
+LL |     debug_assert!(a == "a".to_ascii_lowercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert_eq!(..)`
+   |
+LL -     debug_assert!(a == "a".to_ascii_lowercase());
+LL +     debug_assert_eq!(a, "a".to_ascii_lowercase());
+   |
+
+error: used `debug_assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:14:5
+   |
+LL |     debug_assert!(a != "a".to_ascii_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert_ne!(..)`
+   |
+LL -     debug_assert!(a != "a".to_ascii_uppercase());
+LL +     debug_assert_ne!(a, "a".to_ascii_uppercase());
+   |
+
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:19:5
+   |
+LL |     assert!(v == vec![1, 2, 3]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_eq!(..)`
+   |
+LL -     assert!(v == vec![1, 2, 3]);
+LL +     assert_eq!(v, vec![1, 2, 3]);
+   |
+
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:21:5
+   |
+LL |     assert!(vec![1, 2, 3] == v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_eq!(..)`
+   |
+LL -     assert!(vec![1, 2, 3] == v);
+LL +     assert_eq!(vec![1, 2, 3], v);
+   |
+
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:23:5
+   |
+LL |     assert!(vec![1] == vec![1, 2, 3]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_eq!(..)`
+   |
+LL -     assert!(vec![1] == vec![1, 2, 3]);
+LL +     assert_eq!(vec![1], vec![1, 2, 3]);
+   |
+
+error: aborting due to 7 previous errors
+

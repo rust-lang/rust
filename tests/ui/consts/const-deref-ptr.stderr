@@ -1,0 +1,9 @@
+error[E0080]: memory access failed: attempting to access 8 bytes, but got 0xdeadbeef[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/const-deref-ptr.rs:4:30
+   |
+LL |     static C: u64 = unsafe { *(0xdeadbeef as *const u64) };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::C` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

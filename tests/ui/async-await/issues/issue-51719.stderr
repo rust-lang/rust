@@ -1,0 +1,11 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-51719.rs:8:25
+   |
+LL |     let _gen = || foo().await;
+   |                --       ^^^^^ only allowed inside `async` functions and blocks
+   |                |
+   |                this is not `async`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0728`.

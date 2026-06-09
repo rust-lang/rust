@@ -1,0 +1,755 @@
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:17:17
+   |
+LL |     want::<foo>(f);
+   |     ----------- ^ expected `foo`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:18:17
+   |
+LL |     want::<bar>(f);
+   |     ----------- ^ expected `bar`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:19:24
+   |
+LL |     want::<Foo<usize>>(f);
+   |     ------------------ ^ expected `Foo<usize>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:20:27
+   |
+LL |     want::<Foo<usize, B>>(f);
+   |     --------------------- ^ expected `Foo<usize, B>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, B>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:21:22
+   |
+LL |     want::<Foo<foo>>(f);
+   |     ---------------- ^ expected `Foo<foo>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<foo>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:22:25
+   |
+LL |     want::<Foo<foo, B>>(f);
+   |     ------------------- ^ expected `Foo<foo, B>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<foo, B>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:23:22
+   |
+LL |     want::<Foo<bar>>(f);
+   |     ---------------- ^ expected `Foo<bar>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:24:25
+   |
+LL |     want::<Foo<bar, B>>(f);
+   |     ------------------- ^ expected `Foo<bar, B>`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, B>`
+                found type `usize`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:28:19
+   |
+LL |     want::<usize>(f);
+   |     ------------- ^ expected `usize`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:29:17
+   |
+LL |     want::<bar>(f);
+   |     ----------- ^ expected `bar`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:30:24
+   |
+LL |     want::<Foo<usize>>(f);
+   |     ------------------ ^ expected `Foo<usize>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:31:27
+   |
+LL |     want::<Foo<usize, B>>(f);
+   |     --------------------- ^ expected `Foo<usize, B>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, B>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:32:22
+   |
+LL |     want::<Foo<foo>>(f);
+   |     ---------------- ^ expected `Foo<foo>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<foo>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:33:25
+   |
+LL |     want::<Foo<foo, B>>(f);
+   |     ------------------- ^ expected `Foo<foo, B>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<foo, B>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:34:22
+   |
+LL |     want::<Foo<bar>>(f);
+   |     ---------------- ^ expected `Foo<bar>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:35:25
+   |
+LL |     want::<Foo<bar, B>>(f);
+   |     ------------------- ^ expected `Foo<bar, B>`, found `foo`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, B>`
+              found struct `foo`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:39:19
+   |
+LL |     want::<usize>(f);
+   |     ------------- ^ expected `usize`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `usize`
+            found struct `Foo<foo>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:40:17
+   |
+LL |     want::<foo>(f);
+   |     ----------- ^ expected `foo`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `foo`
+              found struct `Foo<foo>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:41:17
+   |
+LL |     want::<bar>(f);
+   |     ----------- ^ expected `bar`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `bar`
+              found struct `Foo<foo>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:42:24
+   |
+LL |     want::<Foo<usize>>(f);
+   |     ------------------ ^ expected `Foo<usize>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize>`
+              found struct `Foo<foo>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:43:27
+   |
+LL |     want::<Foo<usize, B>>(f);
+   |     --------------------- ^ expected `Foo<usize, B>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, B>`
+              found struct `Foo<foo, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:44:25
+   |
+LL |     want::<Foo<foo, B>>(f);
+   |     ------------------- ^ expected `Foo<foo, B>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<_, B>`
+              found struct `Foo<_, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:45:22
+   |
+LL |     want::<Foo<bar>>(f);
+   |     ---------------- ^ expected `Foo<bar>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar>`
+              found struct `Foo<foo>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:46:25
+   |
+LL |     want::<Foo<bar, B>>(f);
+   |     ------------------- ^ expected `Foo<bar, B>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, B>`
+              found struct `Foo<foo, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:47:23
+   |
+LL |     want::<&Foo<foo>>(f);
+   |     ----------------- ^ expected `&Foo<foo>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_>`
+                 found struct `Foo<_>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo>>(&f);
+   |                       +
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:48:26
+   |
+LL |     want::<&Foo<foo, B>>(f);
+   |     -------------------- ^ expected `&Foo<foo, B>`, found `Foo<foo>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_, B>`
+                 found struct `Foo<_, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:52:19
+   |
+LL |     want::<usize>(f);
+   |     ------------- ^ expected `usize`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `usize`
+            found struct `Foo<foo, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:53:17
+   |
+LL |     want::<foo>(f);
+   |     ----------- ^ expected `foo`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `foo`
+              found struct `Foo<foo, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:54:17
+   |
+LL |     want::<bar>(f);
+   |     ----------- ^ expected `bar`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `bar`
+              found struct `Foo<foo, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:55:24
+   |
+LL |     want::<Foo<usize>>(f);
+   |     ------------------ ^ expected `Foo<usize>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, A>`
+              found struct `Foo<foo, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:56:27
+   |
+LL |     want::<Foo<usize, B>>(f);
+   |     --------------------- ^ expected `Foo<usize, B>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, _>`
+              found struct `Foo<foo, _>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:57:22
+   |
+LL |     want::<Foo<foo>>(f);
+   |     ---------------- ^ expected `Foo<foo>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<_, A>`
+              found struct `Foo<_, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:58:22
+   |
+LL |     want::<Foo<bar>>(f);
+   |     ---------------- ^ expected `Foo<bar>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, A>`
+              found struct `Foo<foo, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:59:25
+   |
+LL |     want::<Foo<bar, B>>(f);
+   |     ------------------- ^ expected `Foo<bar, B>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, _>`
+              found struct `Foo<foo, _>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:60:23
+   |
+LL |     want::<&Foo<foo>>(f);
+   |     ----------------- ^ expected `&Foo<foo>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_, A>`
+                 found struct `Foo<_, B>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:61:26
+   |
+LL |     want::<&Foo<foo, B>>(f);
+   |     -------------------- ^ expected `&Foo<foo, B>`, found `Foo<foo, B>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_, _>`
+                 found struct `Foo<_, _>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo, B>>(&f);
+   |                          +
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:65:19
+   |
+LL |     want::<usize>(f);
+   |     ------------- ^ expected `usize`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected type `usize`
+            found struct `Foo<foo, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:66:17
+   |
+LL |     want::<foo>(f);
+   |     ----------- ^ expected `foo`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `foo`
+              found struct `Foo<foo, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:67:17
+   |
+LL |     want::<bar>(f);
+   |     ----------- ^ expected `bar`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `bar`
+              found struct `Foo<foo, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:68:24
+   |
+LL |     want::<Foo<usize>>(f);
+   |     ------------------ ^ expected `Foo<usize>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, A, B>`
+              found struct `Foo<foo, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:69:27
+   |
+LL |     want::<Foo<usize, B>>(f);
+   |     --------------------- ^ expected `Foo<usize, B>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<usize, _, B>`
+              found struct `Foo<foo, _, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:70:22
+   |
+LL |     want::<Foo<foo>>(f);
+   |     ---------------- ^ expected `Foo<foo>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<_, A, B>`
+              found struct `Foo<_, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:71:25
+   |
+LL |     want::<Foo<foo, B>>(f);
+   |     ------------------- ^ expected `Foo<foo, B>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<_, _, B>`
+              found struct `Foo<_, _, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:72:22
+   |
+LL |     want::<Foo<bar>>(f);
+   |     ---------------- ^ expected `Foo<bar>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, A, B>`
+              found struct `Foo<foo, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:73:25
+   |
+LL |     want::<Foo<bar, B>>(f);
+   |     ------------------- ^ expected `Foo<bar, B>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<bar, _, B>`
+              found struct `Foo<foo, _, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:74:23
+   |
+LL |     want::<&Foo<foo>>(f);
+   |     ----------------- ^ expected `&Foo<foo>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_, A, B>`
+                 found struct `Foo<_, B, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch.rs:75:26
+   |
+LL |     want::<&Foo<foo, B>>(f);
+   |     -------------------- ^ expected `&Foo<foo, B>`, found `Foo<foo, B, A>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&Foo<_, _, B>`
+                 found struct `Foo<_, _, A>`
+note: function defined here
+  --> $DIR/type-mismatch.rs:14:4
+   |
+LL | fn want<T>(t: T) {}
+   |    ^^^^    ----
+
+error: aborting due to 47 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

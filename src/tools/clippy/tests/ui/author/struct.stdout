@@ -1,0 +1,50 @@
+if let ExprKind::Struct(qpath, fields, None) = expr.kind
+    && fields.len() == 1
+    && fields[0].ident.as_str() == "field"
+    && let ExprKind::If(cond, then, Some(else_expr)) = fields[0].expr.kind
+    && let ExprKind::Lit(ref lit) = cond.kind
+    && let LitKind::Bool(true) = lit.node
+    && let ExprKind::Block(block, None) = then.kind
+    && block.stmts.is_empty()
+    && let Some(trailing_expr) = block.expr
+    && let ExprKind::Lit(ref lit1) = trailing_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block1, None) = else_expr.kind
+    && block1.stmts.is_empty()
+    && let Some(trailing_expr1) = block1.expr
+    && let ExprKind::Lit(ref lit2) = trailing_expr1.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit2.node
+{
+    // report your lint here
+}
+if let PatKind::Struct(ref qpath, fields, false) = arm.pat.kind
+    && fields.len() == 1
+    && fields[0].ident.as_str() == "field"
+    && let PatKind::Expr(lit_expr) = fields[0].pat.kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+    && arm.guard.is_none()
+    && let ExprKind::Block(block, None) = arm.body.kind
+    && block.stmts.is_empty()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let PatKind::TupleStruct(ref qpath, fields, None) = arm.pat.kind
+    && fields.len() == 1
+    && let PatKind::Expr(lit_expr) = fields[0].kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+    && arm.guard.is_none()
+    && let ExprKind::Block(block, None) = arm.body.kind
+    && block.stmts.is_empty()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let ExprKind::MethodCall(method_name, receiver, args, _) = expr.kind
+    && method_name.ident.as_str() == "test"
+    && args.is_empty()
+{
+    // report your lint here
+}

@@ -1,0 +1,28 @@
+//! Tidy check to prevent creation of unnecessary debug artifacts while running tests.
+
+use std::path::Path;
+
+use crate::diagnostics::{CheckId, TidyCtx};
+use crate::walk::{filter_dirs, filter_not_rust, walk};
+
+const GRAPHVIZ_POSTFLOW_MSG: &str = "`borrowck_graphviz_postflow` attribute in test";
+
+pub fn check(test_dir: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("debug_artifacts").path(test_dir));
+
+    walk(
+        test_dir,
+        |path, _is_dir| filter_dirs(path) || filter_not_rust(path),
+        &mut |entry, contents| {
+            for (i, line) in contents.lines().enumerate() {
+                if line.contains("borrowck_graphviz_postflow") {
+                    check.error(format!(
+                        "{}:{}: {GRAPHVIZ_POSTFLOW_MSG}",
+                        entry.path().display(),
+                        i + 1
+                    ));
+                }
+            }
+        },
+    );
+}

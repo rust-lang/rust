@@ -1,0 +1,51 @@
+#![warn(clippy::byte_char_slices)]
+#![allow(clippy::useless_vec)]
+
+fn main() {
+    let bad = b"abc";
+    //~^ byte_char_slices
+    let quotes = b"\"Hi";
+    //~^ byte_char_slices
+    let quotes = b"'Sup";
+    //~^ byte_char_slices
+    let escapes = b"\x42Esc";
+    //~^ byte_char_slices
+
+    let good = &[b'a', 0x42];
+    let good = vec![b'a', b'a'];
+}
+
+fn takes_array_ref(_: &[u8; 2]) {}
+
+fn takes_array_ref_ref(_: &&[u8; 2]) {}
+
+fn issue16759(bytes: [u32; 3]) {
+    const START: u32 = u32::from_le_bytes(*b"WORK");
+    //~^ byte_char_slices
+
+    let auto_deref_to_slice: u8 = b"ac".iter().copied().sum();
+    //~^ byte_char_slices
+
+    let with_comment = [
+        // 1     2     3
+        b'a', b'b', b'c', //   x
+        b'd', b'e', b'f', //  2x
+        b'g', b'h', b'i', //  3x
+    ];
+    let with_cfg = [
+        b'a',
+        b'b',
+        b'c',
+        #[cfg(feature = "foo")]
+        b'd',
+    ];
+
+    let with_escape: u8 = b"'\"\x00\n\\".iter().copied().sum();
+    //~^ byte_char_slices
+
+    takes_array_ref(b"ab");
+    //~^ byte_char_slices
+
+    takes_array_ref_ref(&b"ab");
+    //~^ byte_char_slices
+}

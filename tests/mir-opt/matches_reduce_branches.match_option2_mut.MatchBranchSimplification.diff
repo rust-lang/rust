@@ -1,0 +1,39 @@
+- // MIR for `match_option2_mut` before MatchBranchSimplification
++ // MIR for `match_option2_mut` after MatchBranchSimplification
+  
+  fn match_option2_mut(_1: &mut Option2<i32>) -> Option2<i32> {
+      let mut _0: Option2<i32>;
+      let mut _2: isize;
+  
+      bb0: {
+          _2 = discriminant((*_1));
+          switchInt(copy _2) -> [0: bb1, 1: bb2, 2: bb3, otherwise: bb4];
+      }
+  
+      bb1: {
+          (*_1) = Option2::<i32>::None2;
+          _0 = Option2::<i32>::None1;
+          goto -> bb5;
+      }
+  
+      bb2: {
+          (*_1) = Option2::<i32>::None2;
+          _0 = Option2::<i32>::None2;
+          goto -> bb5;
+      }
+  
+      bb3: {
+          (*_1) = Option2::<i32>::None2;
+          _0 = copy (*_1);
+          goto -> bb5;
+      }
+  
+      bb4: {
+          unreachable;
+      }
+  
+      bb5: {
+          return;
+      }
+  }
+  

@@ -1,0 +1,23 @@
+error[E0557]: feature has been removed
+  --> $DIR/feature-gate-sanitize.rs:1:12
+   |
+LL | #![feature(no_sanitize)]
+   |            ^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.91.0; see <https://github.com/rust-lang/rust/pull/142681> for more information
+   = note: renamed to sanitize(xyz = "on|off")
+
+error[E0658]: the `#[sanitize]` attribute is an experimental feature
+  --> $DIR/feature-gate-sanitize.rs:3:1
+   |
+LL | #[sanitize(address = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #39699 <https://github.com/rust-lang/rust/issues/39699> for more information
+   = help: add `#![feature(sanitize)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0557, E0658.
+For more information about an error, try `rustc --explain E0557`.

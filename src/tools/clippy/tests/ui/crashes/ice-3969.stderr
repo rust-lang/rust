@@ -1,0 +1,35 @@
+error: trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> tests/ui/crashes/ice-3969.rs:20:10
+   |
+LL |     str: Sized;
+   |          ^^^^^
+   |
+   = note: `-D trivial-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(trivial_bounds)]`
+
+error: trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
+  --> tests/ui/crashes/ice-3969.rs:25:30
+   |
+LL |     for<'a> Dst<dyn A + 'a>: Sized,
+   |                              ^^^^^
+
+error: trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> tests/ui/crashes/ice-3969.rs:33:10
+   |
+LL |     str: Sized,
+   |          ^^^^^
+
+error: trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
+  --> tests/ui/crashes/ice-3969.rs:41:13
+   |
+LL |     String: ::std::ops::Neg<Output = String>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
+  --> tests/ui/crashes/ice-3969.rs:49:10
+   |
+LL |     i32: Iterator,
+   |          ^^^^^^^^
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,11 @@
+error[E0277]: `{integer}` is not a future
+  --> $DIR/issue-83919.rs:21:26
+   |
+LL |     fn get_fut(&self) -> Self::Fut {
+   |                          ^^^^^^^^^ `{integer}` is not a future
+   |
+   = help: the trait `Future` is not implemented for `{integer}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

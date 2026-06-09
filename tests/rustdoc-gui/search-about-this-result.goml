@@ -1,0 +1,44 @@
+// Check the "About this Result" popover.
+// Try a complex result.
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=scroll_traits::Iterator<T>,(T->bool)->(Extend<T>,Extend<T>)"
+
+// These two commands are used to be sure the search will be run.
+focus: ".search-input"
+press-key: "Enter"
+
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-count: ("#search-tabs button", 1)
+assert-count: (".search-results > a", 1)
+
+assert: "//div[@class='type-signature']/strong[text()='Iterator']"
+assert: "//div[@class='type-signature']/strong[text()='(B']"
+assert: "//div[@class='type-signature']/strong[text()='B)']"
+
+assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='FnMut']"
+assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='Iterator::Item']"
+assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='bool']"
+assert: "//div[@class='type-signature']/div[@class='where']/strong[text()='Extend']"
+
+assert-text: ("div.type-signature div.where:nth-child(4)", "where")
+assert-text: ("div.type-signature div.where:nth-child(5)", "    T matches Iterator::Item")
+assert-text: ("div.type-signature div.where:nth-child(6)", "    F: FnMut (&Iterator::Item) -> bool")
+assert-text: ("div.type-signature div.where:nth-child(7)", "    B: Default + Extend<Iterator::Item>")
+
+// Try a simple result that *won't* give an info box.
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=F->lib2::WhereWhitespace<T>"
+
+// These two commands are used to be sure the search will be run.
+focus: ".search-input"
+press-key: "Enter"
+
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-text: ("//div[@class='type-signature']", "F -> WhereWhitespace<T>")
+assert-count: ("#search-tabs button", 1)
+assert-count: (".search-results > a", 1)
+assert-count: ("//div[@class='type-signature']/div[@class='where']", 0)
+
+assert: "//div[@class='type-signature']/strong[text()='F']"
+assert: "//div[@class='type-signature']/strong[text()='WhereWhitespace']"
+assert: "//div[@class='type-signature']/strong[text()='T']"

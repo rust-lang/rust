@@ -1,0 +1,31 @@
+// MIR for `f` after DestinationPropagation
+
+fn f(_1: usize) -> usize {
+    debug a => _1;
+    let mut _0: usize;
+    let _2: usize;
+    let mut _3: usize;
+    let mut _4: usize;
+    scope 1 {
+        debug b => _2;
+    }
+
+    bb0: {
+        nop;
+        _2 = copy _1;
+        _1 = const 5_usize;
+        nop;
+        nop;
+        _1 = move _2;
+        nop;
+        nop;
+        nop;
+        _0 = id::<usize>(move _1) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        nop;
+        nop;
+        return;
+    }
+}

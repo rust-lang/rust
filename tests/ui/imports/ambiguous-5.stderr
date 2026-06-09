@@ -1,0 +1,23 @@
+error[E0659]: `Class` is ambiguous
+  --> $DIR/ambiguous-5.rs:12:23
+   |
+LL |     struct MarkRecord(Class);
+   |                       ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Class` could refer to the struct imported here
+  --> $DIR/ambiguous-5.rs:11:9
+   |
+LL |     use super::*;
+   |         ^^^^^^^^
+   = help: consider adding an explicit import of `Class` to disambiguate
+note: `Class` could also refer to the struct imported here
+  --> $DIR/ambiguous-5.rs:10:9
+   |
+LL |     use super::gsubgpos::*;
+   |         ^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Class` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

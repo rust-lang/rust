@@ -1,0 +1,21 @@
+// This test ensures that the "go_to_first" feature is working as expected.
+
+// First, we check that the first page doesn't have the string we're looking for to ensure
+// that the feature is changing page as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-text-false: (".main-heading h1", "Struct test_docs::FooCopy item path")
+
+// We now check that we land on the search result page if "go_to_first" isn't set.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo"
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
+assert-text-false: (".main-heading h1", "Struct test_docs::FooCopy item path")
+// Ensure that the search results are displayed, not the "normal" content.
+assert-css: ("#main-content", {"display": "none"})
+
+// Now we can check that the feature is working as expected!
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo&go_to_first=true"
+// Waiting for the page to load...
+wait-for-text: (".main-heading .rustdoc-breadcrumbs", "test_docs")
+wait-for-text: (".main-heading h1", "Struct Foo Copy item path")

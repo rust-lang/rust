@@ -1,0 +1,78 @@
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:20:16
+   |
+LL |         A { i, j } | B { i, j } => {
+   |                ^            ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:4:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+help: try ignoring the field
+   |
+LL |         A { i, j: _ } | B { i, j: _ } => {
+   |                 +++             +++
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:30:16
+   |
+LL |         A { i, ref j } | B { i, ref j } => {
+   |                ^^^^^            ^^^^^
+   |
+help: try ignoring the field
+   |
+LL -         A { i, ref j } | B { i, ref j } => {
+LL +         A { i, j: _ } | B { i, j: _ } => {
+   |
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:40:21
+   |
+LL |         Some(A { i, j } | B { i, j }) => {
+   |                     ^            ^
+   |
+help: try ignoring the field
+   |
+LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
+   |                      +++             +++
+
+error: unused variable: `j`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:52:21
+   |
+LL |         Some(A { i, ref j } | B { i, ref j }) => {
+   |                     ^^^^^            ^^^^^
+   |
+help: try ignoring the field
+   |
+LL -         Some(A { i, ref j } | B { i, ref j }) => {
+LL +         Some(A { i, j: _ } | B { i, j: _ }) => {
+   |
+
+error: unused variable: `i`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:62:24
+   |
+LL |         MixedEnum::A { i } | MixedEnum::B(i) => {
+   |                        ^                  ^
+   |
+help: try ignoring the field
+   |
+LL -         MixedEnum::A { i } | MixedEnum::B(i) => {
+LL +         MixedEnum::A { i: _ } | MixedEnum::B(_) => {
+   |
+
+error: unused variable: `i`
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:70:24
+   |
+LL |         MixedEnum::A { ref i } | MixedEnum::B(ref i) => {
+   |                        ^^^^^                  ^^^^^
+   |
+help: try ignoring the field
+   |
+LL -         MixedEnum::A { ref i } | MixedEnum::B(ref i) => {
+LL +         MixedEnum::A { i: _ } | MixedEnum::B(_) => {
+   |
+
+error: aborting due to 6 previous errors
+

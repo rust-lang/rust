@@ -1,0 +1,9 @@
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "use FxHashMap" },
+    { path = "std::collections::HashSet", reason = "use FxHashSet" },
+    { path = "std::collections::hash_map::RandomState", reason = "use BuildHasherDefault<FxHasher>"}
+]
+
+disallowed-methods = [
+    { path = "std::process::Command::new", reason = "use `toolchain::command` instead as it forces the choice of a working directory" },
+]

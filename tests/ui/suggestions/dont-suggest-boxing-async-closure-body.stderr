@@ -1,0 +1,41 @@
+error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
+  --> $DIR/dont-suggest-boxing-async-closure-body.rs:9:9
+   |
+LL |     foo(async move || {});
+   |     --- ^^^^^^^^^^^^^^^^ expected `Box<_>`, found `async` closure body
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note:            expected struct `Box<_>`
+           found `async` closure body `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
+note: required by a bound in `foo`
+  --> $DIR/dont-suggest-boxing-async-closure-body.rs:4:31
+   |
+LL | fn foo<X>(x: impl FnOnce() -> Box<X>) {}
+   |                               ^^^^^^ required by this bound in `foo`
+
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-boxing-async-closure-body.rs:11:9
+   |
+LL |     bar(async move || {});
+   |     --- ^^^^^^^^^^^^^^^^ expected `Box<dyn FnOnce() -> _>`, found `{async closure@dont-suggest-boxing-async-closure-body.rs:11:9}`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Box<(dyn FnOnce() -> _ + 'static)>`
+             found closure `{async closure@$DIR/dont-suggest-boxing-async-closure-body.rs:11:9: 11:22}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+note: function defined here
+  --> $DIR/dont-suggest-boxing-async-closure-body.rs:6:4
+   |
+LL | fn bar<X>(x: Box<dyn FnOnce() -> X>) {}
+   |    ^^^    -------------------------
+help: store this in the heap by calling `Box::new`
+   |
+LL |     bar(Box::new(async move || {}));
+   |         +++++++++                +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

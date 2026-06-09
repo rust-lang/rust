@@ -1,0 +1,15 @@
+error[E0426]: use of undeclared label `'b`
+  --> $DIR/undeclared-label-span.rs:7:9
+   |
+LL |         'b
+   |         ^^ undeclared label `'b`
+
+error[E0426]: use of undeclared label `'c`
+  --> $DIR/undeclared-label-span.rs:10:9
+   |
+LL |         'c
+   |         ^^ undeclared label `'c`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0426`.

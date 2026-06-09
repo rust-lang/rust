@@ -1,0 +1,85 @@
+error: struct constructor field order is inconsistent with struct definition field order
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:18:11
+   |
+LL |     Foo { y, x, z: z };
+   |           ^^^^^^^^^^ help: if the field evaluation order doesn't matter, try: `x, y, z: z`
+   |
+   = note: `-D clippy::inconsistent-struct-constructor` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inconsistent_struct_constructor)]`
+
+error: struct constructor field order is inconsistent with struct definition field order
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:22:9
+   |
+LL | /         z: z,
+LL | |
+LL | |         x,
+   | |_________^
+   |
+help: if the field evaluation order doesn't matter, try
+   |
+LL ~         x,
+LL +
+LL ~         z: z,
+   |
+
+error: struct constructor field order is inconsistent with struct definition field order
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:38:13
+   |
+LL | /             #[expect(clippy::bool_to_int_with_if)] // obfuscates the meaning
+LL | |
+LL | |             expn_depth: if condition { 1 } else { 0 },
+LL | |             macro_unsafe_blocks: Vec::new(),
+   | |___________________________________________^
+   |
+help: if the field evaluation order doesn't matter, try
+   |
+LL ~             macro_unsafe_blocks: Vec::new(),
+LL +             #[expect(clippy::bool_to_int_with_if)] // obfuscates the meaning
+LL +
+LL ~             expn_depth: if condition { 1 } else { 0 },
+   |
+
+error: struct constructor field order is inconsistent with struct definition field order
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:58:13
+   |
+LL | /             d: 0,
+LL | |
+LL | |             #[cfg(all())]
+LL | |             c: 1,
+LL | |             b: 2,
+LL | |             a: 3,
+   | |________________^
+   |
+help: if the field evaluation order doesn't matter, try
+   |
+LL ~             a: 3,
+LL +
+LL +             b: 2,
+LL +             #[cfg(all())]
+LL +             c: 1,
+LL ~             d: 0,
+   |
+
+error: struct constructor field order is inconsistent with struct definition field order
+  --> tests/ui-toml/toml_inconsistent_struct_constructor/conf_inconsistent_struct_constructor.rs:76:13
+   |
+LL | /             d: 0,
+LL | |
+LL | |             #[cfg(any())]
+LL | |             c: 1,
+LL | |             b: 2,
+LL | |             a: 3,
+   | |________________^
+   |
+help: if the field evaluation order doesn't matter, try
+   |
+LL ~             a: 3,
+LL +
+LL +             #[cfg(any())]
+LL +             c: 1,
+LL +             b: 2,
+LL ~             d: 0,
+   |
+
+error: aborting due to 5 previous errors
+

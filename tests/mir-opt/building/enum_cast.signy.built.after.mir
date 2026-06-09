@@ -1,0 +1,17 @@
+// MIR for `signy` after built
+
+fn signy(_1: SignedAroundZero) -> i16 {
+    debug x => _1;
+    let mut _0: i16;
+    let _2: SignedAroundZero;
+    let mut _3: i16;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _0 = move _3 as i16 (IntToInt);
+        StorageDead(_2);
+        return;
+    }
+}

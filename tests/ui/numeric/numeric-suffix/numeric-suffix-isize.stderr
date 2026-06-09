@@ -1,0 +1,212 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:17:18
+   |
+LL |     foo::<isize>(42_usize);
+   |     ------------ ^^^^^^^^ expected `isize`, found `usize`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `usize` to `isize`
+   |
+LL -     foo::<isize>(42_usize);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:21:18
+   |
+LL |     foo::<isize>(42_u64);
+   |     ------------ ^^^^^^ expected `isize`, found `u64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u64` to `isize`
+   |
+LL -     foo::<isize>(42_u64);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:25:18
+   |
+LL |     foo::<isize>(42_u32);
+   |     ------------ ^^^^^^ expected `isize`, found `u32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u32` to `isize`
+   |
+LL -     foo::<isize>(42_u32);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:29:18
+   |
+LL |     foo::<isize>(42_u16);
+   |     ------------ ^^^^^^ expected `isize`, found `u16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u16` to `isize`
+   |
+LL -     foo::<isize>(42_u16);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:33:18
+   |
+LL |     foo::<isize>(42_u8);
+   |     ------------ ^^^^^ expected `isize`, found `u8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `u8` to `isize`
+   |
+LL -     foo::<isize>(42_u8);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:38:18
+   |
+LL |     foo::<isize>(42_i64);
+   |     ------------ ^^^^^^ expected `isize`, found `i64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i64` to `isize`
+   |
+LL -     foo::<isize>(42_i64);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:42:18
+   |
+LL |     foo::<isize>(42_i32);
+   |     ------------ ^^^^^^ expected `isize`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i32` to `isize`
+   |
+LL -     foo::<isize>(42_i32);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:46:18
+   |
+LL |     foo::<isize>(42_i16);
+   |     ------------ ^^^^^^ expected `isize`, found `i16`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i16` to `isize`
+   |
+LL -     foo::<isize>(42_i16);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:50:18
+   |
+LL |     foo::<isize>(42_i8);
+   |     ------------ ^^^^^ expected `isize`, found `i8`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `i8` to `isize`
+   |
+LL -     foo::<isize>(42_i8);
+LL +     foo::<isize>(42_isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:54:18
+   |
+LL |     foo::<isize>(42.0_f64);
+   |     ------------ ^^^^^^^^ expected `isize`, found `f64`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `f64` to `isize`
+   |
+LL -     foo::<isize>(42.0_f64);
+LL +     foo::<isize>(42isize);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-suffix-isize.rs:58:18
+   |
+LL |     foo::<isize>(42.0_f32);
+   |     ------------ ^^^^^^^^ expected `isize`, found `f32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/numeric-suffix-isize.rs:3:4
+   |
+LL | fn foo<N>(_x: N) {}
+   |    ^^^    -----
+help: change the type of the numeric literal from `f32` to `isize`
+   |
+LL -     foo::<isize>(42.0_f32);
+LL +     foo::<isize>(42isize);
+   |
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

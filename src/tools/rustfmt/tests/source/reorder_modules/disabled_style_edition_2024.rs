@@ -1,0 +1,47 @@
+// rustfmt-style_edition: 2024
+// rustfmt-reorder_modules: false
+
+mod x86;
+mod v0s;
+mod v001;
+mod x87;
+mod zyxw;
+mod A2;
+mod ZYXW;
+mod w5s009t;
+mod u8;
+mod x86_128;
+mod _ZYXW;
+mod ZY_XW;
+mod a1;
+mod v01;
+mod v0u;
+mod x86_64;
+mod ua;
+mod x86_32;
+mod v9;
+mod v010;
+mod u_zzz;
+mod v0;
+mod v00;
+mod v009;
+mod w005s09t;
+mod u32;
+mod v1;
+mod v00t;
+mod v09;
+mod u256;
+mod ZY_XW;
+mod _abcd;
+mod ABCD;
+mod Z_YXW;
+mod u64;
+mod abcd;
+mod ZYXW_;
+mod u16;
+mod uz;
+mod v10;
+mod x64;
+mod u128;
+mod usize;
+mod v000;

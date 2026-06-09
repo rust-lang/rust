@@ -1,0 +1,31 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: (i32, i32);
+      scope 1 {
+          debug x => _1;
+          let _2: i32;
+          scope 2 {
+              debug y => _2;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = foo() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          (_1.1: i32) = const 99_i32;
+          (_1.0: i32) = const 42_i32;
+          StorageLive(_2);
+          _2 = copy (_1.1: i32);
+          _0 = const ();
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

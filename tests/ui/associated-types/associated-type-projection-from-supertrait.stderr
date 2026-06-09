@@ -1,0 +1,59 @@
+error[E0308]: mismatched types
+  --> $DIR/associated-type-projection-from-supertrait.rs:27:23
+   |
+LL | fn b() { dent(ModelT, Blue); }
+   |          ----         ^^^^ expected `Black`, found `Blue`
+   |          |
+   |          arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/associated-type-projection-from-supertrait.rs:25:4
+   |
+LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
+   |    ^^^^              ---------------
+
+error[E0308]: mismatched types
+  --> $DIR/associated-type-projection-from-supertrait.rs:28:23
+   |
+LL | fn c() { dent(ModelU, Black); }
+   |          ----         ^^^^^ expected `Blue`, found `Black`
+   |          |
+   |          arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/associated-type-projection-from-supertrait.rs:25:4
+   |
+LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
+   |    ^^^^              ---------------
+
+error[E0308]: mismatched types
+  --> $DIR/associated-type-projection-from-supertrait.rs:32:28
+   |
+LL | fn f() { ModelT.chip_paint(Blue); }
+   |                 ---------- ^^^^ expected `Black`, found `Blue`
+   |                 |
+   |                 arguments to this method are incorrect
+   |
+note: method defined here
+  --> $DIR/associated-type-projection-from-supertrait.rs:12:8
+   |
+LL |     fn chip_paint(&self, c: Self::Color) { }
+   |        ^^^^^^^^^^        --------------
+
+error[E0308]: mismatched types
+  --> $DIR/associated-type-projection-from-supertrait.rs:33:28
+   |
+LL | fn g() { ModelU.chip_paint(Black); }
+   |                 ---------- ^^^^^ expected `Blue`, found `Black`
+   |                 |
+   |                 arguments to this method are incorrect
+   |
+note: method defined here
+  --> $DIR/associated-type-projection-from-supertrait.rs:12:8
+   |
+LL |     fn chip_paint(&self, c: Self::Color) { }
+   |        ^^^^^^^^^^        --------------
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

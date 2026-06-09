@@ -1,0 +1,133 @@
+// https://github.com/rust-lang/rust/issues/133150
+#![warn(clippy::doc_nested_refdefs)]
+#[rustfmt::skip]
+/// > [link][]: def
+//~^ ERROR: link reference defined in quote
+///
+/// > [link][]: def (title)
+//~^ ERROR: link reference defined in quote
+///
+/// > [link][]: def "title"
+//~^ ERROR: link reference defined in quote
+///
+/// > [link]: not def
+///
+/// > [link][]: notdef
+///
+/// > [link]\: notdef
+pub struct Empty;
+
+#[rustfmt::skip]
+/// > [link][]: def
+//~^ ERROR: link reference defined in quote
+/// > inner text
+///
+/// > [link][]: def (title)
+//~^ ERROR: link reference defined in quote
+/// > inner text
+///
+/// > [link][]: def "title"
+//~^ ERROR: link reference defined in quote
+/// > inner text
+///
+/// > [link]: not def
+/// > inner text
+///
+/// > [link][]: notdef
+/// > inner text
+///
+/// > [link]\: notdef
+/// > inner text
+pub struct NotEmpty;
+
+#[rustfmt::skip]
+/// > [link][]: def
+//~^ ERROR: link reference defined in quote
+/// >
+/// > inner text
+///
+/// > [link][]: def (title)
+//~^ ERROR: link reference defined in quote
+/// >
+/// > inner text
+///
+/// > [link][]: def "title"
+//~^ ERROR: link reference defined in quote
+/// >
+/// > inner text
+///
+/// > [link]: not def
+/// >
+/// > inner text
+///
+/// > [link][]: notdef
+/// >
+/// > inner text
+///
+/// > [link]\: notdef
+/// >
+/// > inner text
+pub struct NotEmptyLoose;
+
+#[rustfmt::skip]
+/// > first lines
+/// > [link]: def
+///
+/// > first lines
+/// > [link]: def (title)
+///
+/// > firs lines
+/// > [link]: def "title"
+///
+/// > firs lines
+/// > [link]: not def
+///
+/// > first lines
+/// > [link][]: notdef
+///
+/// > first lines
+/// > [link]\: notdef
+pub struct NotAtStartTight;
+
+#[rustfmt::skip]
+/// > first lines
+/// >
+/// > [link]: def
+///
+/// > first lines
+/// >
+/// > [link]: def (title)
+///
+/// > firs lines
+/// >
+/// > [link]: def "title"
+///
+/// > firs lines
+/// >
+/// > [link]: not def
+///
+/// > first lines
+/// >
+/// > [link][]: notdef
+///
+/// > first lines
+/// >
+/// > [link]\: notdef
+pub struct NotAtStartLoose;
+
+#[rustfmt::skip]
+/// > - [link][]: def
+//~^ ERROR: link reference defined in list item
+/// >
+/// > - [link][]: def (title)
+//~^ ERROR: link reference defined in list item
+/// >
+/// > - [link][]: def "title"
+//~^ ERROR: link reference defined in list item
+/// >
+/// > - [link]: not def
+/// >
+/// > - [link][]: notdef
+/// >
+/// > - [link]\: notdef
+pub struct ListNested;

@@ -1,0 +1,54 @@
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:5:5
+   |
+LL |     ++i;
+   |     ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     ++i;
+LL +     i += 1;
+   |
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:11:11
+   |
+LL |     while ++i < 5 {
+   |     ----- ^^ not a valid prefix operator
+   |     |
+   |     while parsing the condition of this `while` expression
+   |
+help: use `+= 1` instead
+   |
+LL -     while ++i < 5 {
+LL +     while { i += 1; i } < 5 {
+   |
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:19:5
+   |
+LL |     ++tmp;
+   |     ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     ++tmp;
+LL +     tmp += 1;
+   |
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:25:11
+   |
+LL |     while ++tmp < 5 {
+   |     ----- ^^ not a valid prefix operator
+   |     |
+   |     while parsing the condition of this `while` expression
+   |
+help: use `+= 1` instead
+   |
+LL -     while ++tmp < 5 {
+LL +     while { tmp += 1; tmp } < 5 {
+   |
+
+error: aborting due to 4 previous errors
+

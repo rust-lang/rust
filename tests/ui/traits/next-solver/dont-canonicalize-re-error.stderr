@@ -1,0 +1,24 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/dont-canonicalize-re-error.rs:27:26
+   |
+LL | impl<A: Sized> Constrain<'missing> for W<A> {}
+   |                          ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | impl<'missing, A: Sized> Constrain<'missing> for W<A> {}
+   |      +++++++++
+
+error[E0119]: conflicting implementations of trait `Tr<'_>` for type `W<_>`
+  --> $DIR/dont-canonicalize-re-error.rs:23:1
+   |
+LL | impl<'a, A> Tr<'a> for W<A> {}
+   | --------------------------- first implementation here
+LL | struct W<A>(A);
+LL | impl<'a, A> Tr<'a> for A where A: Constrain<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `W<_>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0261.
+For more information about an error, try `rustc --explain E0119`.

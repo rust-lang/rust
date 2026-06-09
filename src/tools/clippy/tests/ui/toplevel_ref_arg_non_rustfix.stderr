@@ -1,0 +1,19 @@
+error: `ref` directly on a function parameter does not prevent taking ownership of the passed argument. Consider using a reference type instead
+  --> tests/ui/toplevel_ref_arg_non_rustfix.rs:9:15
+   |
+LL | fn the_answer(ref mut x: u8) {
+   |               ^^^^^^^^^
+   |
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
+
+error: `ref` directly on a function parameter does not prevent taking ownership of the passed argument. Consider using a reference type instead
+  --> tests/ui/toplevel_ref_arg_non_rustfix.rs:21:24
+   |
+LL |         fn fun_example(ref _x: usize) {}
+   |                        ^^^^^^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

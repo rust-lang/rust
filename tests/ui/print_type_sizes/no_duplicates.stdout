@@ -1,0 +1,2 @@
+print-type-size type: `SevenBytes`: 7 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 7 bytes

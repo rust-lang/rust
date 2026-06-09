@@ -1,0 +1,8 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/issue-56445-3.rs:4:15
+   |
+LL |     ram: [u8; Self::SIZE],
+   |               ^^^^
+
+error: aborting due to 1 previous error
+

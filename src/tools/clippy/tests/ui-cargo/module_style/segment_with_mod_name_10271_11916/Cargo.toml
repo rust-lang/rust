@@ -1,0 +1,10 @@
+# Should not produce FP when irrelavant path segment shares the same name with module.
+# See issue #10271 and #11916.
+[package]
+name = "segment-with-mod-name-10271-11916"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+members = ["foo/bar"]

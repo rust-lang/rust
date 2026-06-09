@@ -1,0 +1,19 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/display-is-suggestable.rs:6:5
+   |
+LL |     foo();
+   |     ^^^-- argument #1 of type `&dyn std::fmt::Display + Send` is missing
+   |
+note: function defined here
+  --> $DIR/display-is-suggestable.rs:3:4
+   |
+LL | fn foo(x: &(dyn Display + Send)) {}
+   |    ^^^ ------------------------
+help: provide the argument
+   |
+LL |     foo(/* &dyn std::fmt::Display + Send */);
+   |         +++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

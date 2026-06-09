@@ -1,0 +1,96 @@
+Function name: closure_bug::main
+Raw bytes (132): 0x[01, 01, 04, 01, 05, 01, 09, 01, 0d, 01, 11, 18, 01, 07, 01, 00, 0a, 01, 01, 09, 00, 0f, 01, 00, 12, 00, 2d, 01, 02, 09, 00, 0a, 01, 06, 05, 00, 08, 01, 01, 08, 00, 0e, 05, 00, 0f, 00, 17, 02, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 00, 08, 01, 01, 08, 00, 0e, 09, 00, 0f, 00, 17, 06, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 00, 08, 01, 01, 08, 00, 0e, 0d, 00, 0f, 00, 17, 0a, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 00, 08, 01, 01, 08, 00, 0e, 11, 00, 0f, 00, 17, 0e, 00, 16, 00, 17, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/closure_bug.rs
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(0), rhs = Counter(4)
+Number of file 0 mappings: 24
+- Code(Counter(0)) at (prev + 7, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 15)
+- Code(Counter(0)) at (prev + 0, 18) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(1)) at (prev + 0, 15) to (start + 0, 23)
+- Code(Expression(0, Sub)) at (prev + 0, 22) to (start + 0, 23)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(2)) at (prev + 0, 15) to (start + 0, 23)
+- Code(Expression(1, Sub)) at (prev + 0, 22) to (start + 0, 23)
+    = (c0 - c2)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(3)) at (prev + 0, 15) to (start + 0, 23)
+- Code(Expression(2, Sub)) at (prev + 0, 22) to (start + 0, 23)
+    = (c0 - c3)
+- Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 0, 8)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 14)
+- Code(Counter(4)) at (prev + 0, 15) to (start + 0, 23)
+- Code(Expression(3, Sub)) at (prev + 0, 22) to (start + 0, 23)
+    = (c0 - c4)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c4
+
+Function name: closure_bug::main::{closure#0}
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 0e, 0c, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 01, 00, 29, 00, 2a]
+Number of files: 1
+- file 0 => $DIR/closure_bug.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 14, 12) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 41) to (start + 0, 42)
+Highest counter ID seen: c1
+
+Function name: closure_bug::main::{closure#1}
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 17, 0c, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 01, 00, 29, 00, 2a]
+Number of files: 1
+- file 0 => $DIR/closure_bug.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 23, 12) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 41) to (start + 0, 42)
+Highest counter ID seen: c1
+
+Function name: closure_bug::main::{closure#2}
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 20, 0c, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 01, 00, 29, 00, 2a]
+Number of files: 1
+- file 0 => $DIR/closure_bug.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 32, 12) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 41) to (start + 0, 42)
+Highest counter ID seen: c1
+
+Function name: closure_bug::main::{closure#3}
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 29, 0c, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 01, 00, 29, 00, 2a]
+Number of files: 1
+- file 0 => $DIR/closure_bug.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 41, 12) to (start + 0, 18)
+- Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
+- Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 0, 41) to (start + 0, 42)
+Highest counter ID seen: c1
+

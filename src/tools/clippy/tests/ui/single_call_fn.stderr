@@ -1,0 +1,81 @@
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:13:1
+   |
+LL | fn i() {}
+   | ^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:20:13
+   |
+LL |     let a = i;
+   |             ^
+   = note: `-D clippy::single-call-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:15:1
+   |
+LL | fn j() {}
+   | ^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:27:9
+   |
+LL |         j();
+   |         ^
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:36:1
+   |
+LL | / fn c() {
+LL | |
+LL | |     println!("really");
+LL | |     println!("long");
+LL | |     println!("function...");
+LL | | }
+   | |_^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:44:5
+   |
+LL |     c();
+   |     ^
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:47:1
+   |
+LL | fn a() {}
+   | ^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:51:5
+   |
+LL |     a();
+   |     ^
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:93:5
+   |
+LL |     fn default() {}
+   |     ^^^^^^^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:110:5
+   |
+LL |     T::default();
+   |     ^^^^^^^^^^
+
+error: this function is only used once
+  --> tests/ui/single_call_fn.rs:107:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^^^^
+   |
+note: used here
+  --> tests/ui/single_call_fn.rs:111:5
+   |
+LL |     S::foo();
+   |     ^^^^^^
+
+error: aborting due to 6 previous errors
+

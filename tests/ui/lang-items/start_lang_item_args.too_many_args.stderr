@@ -1,0 +1,18 @@
+error[E0308]: lang item `start` function has wrong type
+  --> $DIR/start_lang_item_args.rs:45:1
+   |
+LL | / fn start<T>(
+LL | |
+LL | |     _main: fn() -> T,
+LL | |     _argc: isize,
+...  |
+LL | |     _extra_arg: (),
+LL | | ) -> isize {
+   | |__________^ incorrect number of function parameters
+   |
+   = note: expected signature `fn(fn() -> T, isize, *const *const u8, u8) -> _`
+              found signature `fn(fn() -> T, isize, *const *const u8, u8, ()) -> _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

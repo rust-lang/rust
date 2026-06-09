@@ -1,0 +1,59 @@
+error: expected type, found `{`
+  --> $DIR/macro-fail.rs:27:27
+   |
+LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
+   |                                 ----------------------
+   |                                 |
+   |                                 this macro call doesn't expand to a type
+   |                                 in this macro invocation
+...
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |                           ^ expected type
+   |
+   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected type, found `{`
+  --> $DIR/macro-fail.rs:27:27
+   |
+LL |   Example::<gimme_a_const!(marker)>
+   |             ----------------------
+   |             |
+   |             this macro call doesn't expand to a type
+   |             in this macro invocation
+...
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |                           ^ expected type
+   |
+   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected type, found `{`
+  --> $DIR/macro-fail.rs:4:10
+   |
+LL |   () => {{
+   |          ^ expected type
+...
+LL |   let _fail = Example::<external_macro!()>;
+   |                         -----------------
+   |                         |
+   |                         this macro call doesn't expand to a type
+   |                         in this macro invocation
+   |
+   = note: this error originates in the macro `external_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-fail.rs:36:25
+   |
+LL |     macro_rules! gimme_a_const {
+   |     -------------------------- when calling this macro
+...
+LL |   let _fail = Example::<gimme_a_const!()>;
+   |                         ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$rusty:ident`
+  --> $DIR/macro-fail.rs:27:8
+   |
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,83 @@
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:13:13
+   |
+LL |     let _ = str.splitn(2, '=').next();
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
+   |
+   = note: `-D clippy::needless-splitn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_splitn)]`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:15:13
+   |
+LL |     let _ = str.splitn(2, '=').nth(0);
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:19:18
+   |
+LL |     let (_, _) = str.splitn(3, '=').next_tuple().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
+
+error: unnecessary use of `rsplitn`
+  --> tests/ui/needless_splitn.rs:23:13
+   |
+LL |     let _ = str.rsplitn(2, '=').next();
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
+
+error: unnecessary use of `rsplitn`
+  --> tests/ui/needless_splitn.rs:25:13
+   |
+LL |     let _ = str.rsplitn(2, '=').nth(0);
+   |             ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
+
+error: unnecessary use of `rsplitn`
+  --> tests/ui/needless_splitn.rs:29:18
+   |
+LL |     let (_, _) = str.rsplitn(3, '=').next_tuple().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^ help: try: `str.rsplit('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:32:13
+   |
+LL |     let _ = str.splitn(5, '=').next();
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:34:13
+   |
+LL |     let _ = str.splitn(5, '=').nth(3);
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:41:13
+   |
+LL |     let _ = s.splitn(2, '=').next()?;
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.split('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:43:13
+   |
+LL |     let _ = s.splitn(2, '=').nth(0)?;
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.split('=')`
+
+error: unnecessary use of `rsplitn`
+  --> tests/ui/needless_splitn.rs:45:13
+   |
+LL |     let _ = s.rsplitn(2, '=').next()?;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `s.rsplit('=')`
+
+error: unnecessary use of `rsplitn`
+  --> tests/ui/needless_splitn.rs:47:13
+   |
+LL |     let _ = s.rsplitn(2, '=').nth(0)?;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `s.rsplit('=')`
+
+error: unnecessary use of `splitn`
+  --> tests/ui/needless_splitn.rs:56:13
+   |
+LL |     let _ = "key=value".splitn(2, '=').nth(0).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split('=')`
+
+error: aborting due to 13 previous errors
+

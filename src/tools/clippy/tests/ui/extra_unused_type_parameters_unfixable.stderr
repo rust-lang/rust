@@ -1,0 +1,28 @@
+error: type parameter `T` goes unused in function definition
+  --> tests/ui/extra_unused_type_parameters_unfixable.rs:3:24
+   |
+LL | fn unused_where_clause<T, U>(x: U)
+   |                        ^
+   |
+   = help: consider removing the parameter
+   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::extra_unused_type_parameters)]`
+
+error: type parameters go unused in function definition: T, V
+  --> tests/ui/extra_unused_type_parameters_unfixable.rs:11:30
+   |
+LL | fn unused_multi_where_clause<T, U, V: Default>(x: U)
+   |                              ^     ^^^^^^^^^^
+   |
+   = help: consider removing the parameters
+
+error: type parameters go unused in function definition: T, U, V
+  --> tests/ui/extra_unused_type_parameters_unfixable.rs:19:28
+   |
+LL | fn unused_all_where_clause<T, U: Default, V: Default>()
+   |                            ^  ^^^^^^^^^^  ^^^^^^^^^^
+   |
+   = help: consider removing the parameters
+
+error: aborting due to 3 previous errors
+

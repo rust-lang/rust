@@ -1,0 +1,63 @@
+error[E0511]: invalid monomorphization of `simd_reduce_add_ordered` intrinsic: expected return type `f32` (element of input `f32x4`), found `i32`
+  --> $DIR/generic-reduction.rs:25:9
+   |
+LL |         simd_reduce_add_ordered(z, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_mul_ordered` intrinsic: expected return type `f32` (element of input `f32x4`), found `i32`
+  --> $DIR/generic-reduction.rs:27:9
+   |
+LL |         simd_reduce_mul_ordered(z, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_and` intrinsic: expected return type `u32` (element of input `u32x4`), found `f32`
+  --> $DIR/generic-reduction.rs:30:22
+   |
+LL |         let _: f32 = simd_reduce_and(x);
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_or` intrinsic: expected return type `u32` (element of input `u32x4`), found `f32`
+  --> $DIR/generic-reduction.rs:32:22
+   |
+LL |         let _: f32 = simd_reduce_or(x);
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_xor` intrinsic: expected return type `u32` (element of input `u32x4`), found `f32`
+  --> $DIR/generic-reduction.rs:34:22
+   |
+LL |         let _: f32 = simd_reduce_xor(x);
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_and` intrinsic: unsupported simd_reduce_and from `f32x4` with element `f32` to `f32`
+  --> $DIR/generic-reduction.rs:37:22
+   |
+LL |         let _: f32 = simd_reduce_and(z);
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_or` intrinsic: unsupported simd_reduce_or from `f32x4` with element `f32` to `f32`
+  --> $DIR/generic-reduction.rs:39:22
+   |
+LL |         let _: f32 = simd_reduce_or(z);
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_xor` intrinsic: unsupported simd_reduce_xor from `f32x4` with element `f32` to `f32`
+  --> $DIR/generic-reduction.rs:41:22
+   |
+LL |         let _: f32 = simd_reduce_xor(z);
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_all` intrinsic: unsupported simd_reduce_all from `f32x4` with element `f32` to `bool`
+  --> $DIR/generic-reduction.rs:44:23
+   |
+LL |         let _: bool = simd_reduce_all(z);
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_reduce_any` intrinsic: unsupported simd_reduce_any from `f32x4` with element `f32` to `bool`
+  --> $DIR/generic-reduction.rs:46:23
+   |
+LL |         let _: bool = simd_reduce_any(z);
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

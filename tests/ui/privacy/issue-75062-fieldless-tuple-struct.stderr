@@ -1,0 +1,15 @@
+error[E0603]: tuple struct `Bar` is private
+  --> $DIR/issue-75062-fieldless-tuple-struct.rs:9:10
+   |
+LL |     foo::Bar();
+   |          ^^^ private tuple struct
+   |
+note: the tuple struct `Bar` is defined here
+  --> $DIR/issue-75062-fieldless-tuple-struct.rs:5:5
+   |
+LL |     struct Bar();
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

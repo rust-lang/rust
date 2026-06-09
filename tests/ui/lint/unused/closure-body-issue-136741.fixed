@@ -1,0 +1,36 @@
+//@ run-rustfix
+// ignore-tidy-linelength
+#![deny(unused_parens)]
+#![deny(unused_braces)]
+
+fn long_expr_that_does_not_require_braces_long_expr_that_does_not_require_braces_long_expr_that_does_not_require_braces()
+{}
+
+fn func(f: impl FnOnce()) {
+    f()
+}
+
+pub fn main() {
+    let _closure = |x: i32, y: i32| { x * (x + (y * 2)) };
+    let _ = || 0 == 0; //~ ERROR unnecessary parentheses around closure body
+    let _ = (0..).find(|n| n % 2 == 0); //~ ERROR unnecessary parentheses around closure body
+    let _ = (0..).find(|n| {n % 2 == 0});
+
+    // multiple lines of code will not lint with braces
+    let _ = (0..).find(|n| {
+        n % 2 == 0
+    });
+
+    // multiple lines of code will lint with parentheses
+    let _ = (0..).find(|n| n % 2 == 0);
+
+    let _ = || {
+        _ = 0;
+        0 == 0 //~ ERROR unnecessary parentheses around block return value
+    };
+
+    // long expressions will not lint with braces
+    func(|| {
+        long_expr_that_does_not_require_braces_long_expr_that_does_not_require_braces_long_expr_that_does_not_require_braces()
+    })
+}

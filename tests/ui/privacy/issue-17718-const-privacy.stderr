@@ -1,0 +1,27 @@
+error[E0603]: constant `B` is private
+  --> $DIR/issue-17718-const-privacy.rs:5:8
+   |
+LL | use a::B;
+   |        ^ private constant
+   |
+note: the constant `B` is defined here
+  --> $DIR/issue-17718-const-privacy.rs:13:5
+   |
+LL |     const B: usize = 3;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: constant `BAR` is private
+  --> $DIR/issue-17718-const-privacy.rs:8:5
+   |
+LL |     BAR,
+   |     ^^^ private constant
+   |
+note: the constant `BAR` is defined here
+  --> $DIR/auxiliary/issue-17718-const-privacy.rs:4:1
+   |
+LL | const BAR: usize = 3;
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'undefined`
+  --> $DIR/undeclared-object-lifetime.rs:6:24
+   |
+LL | fn f(_: std::cell::Ref<'undefined, dyn std::fmt::Debug>) {}
+   |                        ^^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'undefined` here
+   |
+LL | fn f<'undefined>(_: std::cell::Ref<'undefined, dyn std::fmt::Debug>) {}
+   |     ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

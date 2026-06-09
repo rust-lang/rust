@@ -1,0 +1,8 @@
+error: couldn't read the file
+  --> $DIR/extented-attribute-macro-error.rs:3:10
+   |
+LL | #![doc = include_str!("../not_existing_file.md")]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,11 @@
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/E0118.rs:1:1
+   |
+LL | impl<T> T {
+   | ^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0118`.

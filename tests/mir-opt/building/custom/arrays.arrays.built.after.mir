@@ -1,0 +1,18 @@
+// MIR for `arrays` after built
+
+fn arrays() -> usize {
+    let mut _0: usize;
+    let mut _1: [i32; C];
+    let mut _2: *const [i32; C];
+    let mut _3: *const [i32];
+    let mut _4: usize;
+
+    bb0: {
+        _1 = [const 5_i32; C];
+        _2 = &raw const _1;
+        _3 = copy _2 as *const [i32] (PointerCoercion(Unsize, AsCast));
+        _4 = PtrMetadata(copy _3);
+        _0 = copy _4;
+        return;
+    }
+}

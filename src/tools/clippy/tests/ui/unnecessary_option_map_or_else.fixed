@@ -1,0 +1,83 @@
+#![warn(clippy::unnecessary_option_map_or_else)]
+#![allow(
+    clippy::let_and_return,
+    clippy::let_unit_value,
+    clippy::unnecessary_lazy_evaluations,
+    clippy::unnecessary_literal_unwrap,
+    clippy::needless_return
+)]
+
+const fn double_it(x: i32) -> i32 {
+    x * 2
+}
+
+fn main() {
+    // Expected errors
+    // Basic scenario
+    let option = Some(());
+    option.unwrap_or_else(|| ()); //~ unnecessary_option_map_or_else
+
+    // Type ascription
+    let option = Some(());
+    option.unwrap_or_else(|| ()); //~ unnecessary_option_map_or_else
+
+    // Auto-deref
+    let string = String::new();
+    let option = Some(&string);
+    let _: &str = option.map_or_else(|| &string, |x| x);
+    // This should in theory lint with a smarter check
+
+    // Temporary variable
+    let option = Some(());
+    option.unwrap_or_else(|| ());
+
+    // Temporary variable with pattern
+    let option = Some(((), ()));
+    option.unwrap_or_else(|| ((), ()));
+
+    // std::convert::identity
+    let string = String::new();
+    let option = Some(&string);
+    let _: &str = option.unwrap_or_else(|| &string); //~ unnecessary_option_map_or_else
+
+    let x: Option<((), ())> = Some(((), ()));
+    x.unwrap_or_else(|| ((), ()));
+    //~^ unnecessary_option_map_or_else
+
+    // Returned temporary variable.
+    let x: Option<()> = Some(());
+    x.unwrap_or_else(|| ());
+
+    // Returned temporary variable with pattern
+    let x: Option<((), ())> = Some(((), ()));
+    x.unwrap_or_else(|| ((), ()));
+
+    // Correct usages
+    let option = Some(());
+    option.map_or_else(|| (), |_| ());
+
+    let option = Some(());
+    option.map_or_else(|| (), |_: ()| ());
+
+    let string = String::new();
+    let option = Some(&string);
+    let _: &str = option.map_or_else(|| &string, |_| &string);
+
+    let option = Some(());
+    option.map_or_else(
+        || (),
+        |_| {
+            let tmp = ();
+            tmp
+        },
+    );
+
+    let num = 5;
+    let option = Some(num);
+    let _: i32 = option.map_or_else(|| 0, double_it);
+
+    let increase = |x: i32| x + 1;
+    let num = 5;
+    let option = Some(num);
+    let _: i32 = option.map_or_else(|| 0, increase);
+}

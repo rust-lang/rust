@@ -1,0 +1,18 @@
+error: `#[inline]` attribute cannot be used on constants
+  --> $DIR/multiple-invalid.rs:4:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error: `#[target_feature]` attribute cannot be used on constants
+  --> $DIR/multiple-invalid.rs:6:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[target_feature]` can only be applied to functions
+
+error: aborting due to 2 previous errors
+

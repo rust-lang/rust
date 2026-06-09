@@ -1,0 +1,58 @@
+SOURCE_FILE
+  FN
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      CFG_META
+        CFG_KW "cfg"
+        L_PAREN "("
+        CFG_ATOM
+          IDENT "test"
+        R_PAREN ")"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      PATH_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Ignore"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  MODULE
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      KEY_VALUE_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "path"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          STRING "\"a.rs\""
+      R_BRACK "]"
+    WHITESPACE "\n"
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "b"
+    SEMICOLON ";"
+  WHITESPACE "\n"

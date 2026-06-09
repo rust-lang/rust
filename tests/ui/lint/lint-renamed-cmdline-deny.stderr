@@ -1,0 +1,33 @@
+error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
+   |
+   = help: use the new name `bare_trait_objects`
+   = note: requested on the command line with `-D bare_trait_object`
+   = note: requested on the command line with `-D renamed-and-removed-lints`
+
+error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
+   |
+   = help: use the new name `bare_trait_objects`
+   = note: requested on the command line with `-D bare_trait_object`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lint `bare_trait_object` has been renamed to `bare_trait_objects`
+   |
+   = help: use the new name `bare_trait_objects`
+   = note: requested on the command line with `-D bare_trait_object`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused variable: `unused`
+  --> $DIR/lint-renamed-cmdline-deny.rs:6:17
+   |
+LL | fn main() { let unused = (); }
+   |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-renamed-cmdline-deny.rs:5:8
+   |
+LL | #[deny(unused)]
+   |        ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+
+error: aborting due to 4 previous errors
+

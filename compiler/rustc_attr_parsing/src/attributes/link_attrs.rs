@@ -1,0 +1,703 @@
+use rustc_errors::msg;
+use rustc_feature::{AttributeStability, Features};
+use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_hir::attrs::*;
+use rustc_session::Session;
+use rustc_session::errors::feature_err;
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_span::edition::Edition::Edition2024;
+use rustc_span::kw;
+use rustc_target::spec::{Arch, BinaryFormat};
+
+use super::prelude::*;
+use super::util::parse_single_integer;
+use crate::attributes::AttributeSafety;
+use crate::attributes::cfg::parse_cfg_entry;
+use crate::session_diagnostics::{
+    AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
+    ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
+    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
+    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
+    WholeArchiveNeedsStatic,
+};
+
+pub(crate) struct LinkNameParser;
+
+impl SingleAttributeParser for LinkNameParser {
+    const PATH: &[Symbol] = &[sym::link_name];
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
+    );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
+        let name = cx.expect_string_literal(nv)?;
+
+        if name.as_str().contains('\0') {
+            // `#[link_name = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
+            return None;
+        }
+        if name.is_empty() {
+            // Otherwise LLVM will just make up a name and the linker will fail
+            // to find an empty symbol name.
+            cx.emit_err(EmptyLinkName { span: nv.value_span });
+            return None;
+        }
+
+        Some(LinkName { name, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct LinkParser;
+
+impl CombineAttributeParser for LinkParser {
+    type Item = LinkEntry;
+    const PATH: &[Symbol] = &[sym::link];
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::Link;
+    const TEMPLATE: AttributeTemplate = template!(List: &[
+            r#"name = "...""#,
+            r#"name = "...", kind = "dylib|static|...""#,
+            r#"name = "...", wasm_import_module = "...""#,
+            r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
+            r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
+        ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let items = match args {
+            ArgParser::List(list) => list,
+            // This is an edgecase added because making this a hard error would break too many crates
+            // Specifically `#[link = "dl"]` is accepted with a FCW
+            // For more information, see https://github.com/rust-lang/rust/pull/143193
+            ArgParser::NameValue(nv) if nv.value_as_str().is_some_and(|v| v == sym::dl) => {
+                cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
+                return None;
+            }
+            _ => {
+                let attr_span = cx.attr_span;
+                cx.adcx().expected_list(attr_span, args);
+                return None;
+            }
+        };
+
+        let sess = cx.sess();
+        let features = cx.features();
+
+        let mut name = None;
+        let mut kind = None;
+        let mut modifiers = None;
+        let mut cfg = None;
+        let mut wasm_import_module = None;
+        let mut import_name_type = None;
+        for item in items.mixed() {
+            let Some(item) = item.meta_item() else {
+                cx.adcx().expected_not_literal(item.span());
+                continue;
+            };
+
+            let cont = match item.path().word().map(|ident| ident.name) {
+                Some(sym::name) => Self::parse_link_name(item, &mut name, cx),
+                Some(sym::kind) => Self::parse_link_kind(item, &mut kind, cx, sess, features),
+                Some(sym::modifiers) => Self::parse_link_modifiers(item, &mut modifiers, cx),
+                Some(sym::cfg) => Self::parse_link_cfg(item, &mut cfg, cx, sess, features),
+                Some(sym::wasm_import_module) => {
+                    Self::parse_link_wasm_import_module(item, &mut wasm_import_module, cx)
+                }
+                Some(sym::import_name_type) => {
+                    Self::parse_link_import_name_type(item, &mut import_name_type, cx)
+                }
+                _ => {
+                    cx.adcx().expected_specific_argument_strings(
+                        item.span(),
+                        &[
+                            sym::name,
+                            sym::kind,
+                            sym::modifiers,
+                            sym::cfg,
+                            sym::wasm_import_module,
+                            sym::import_name_type,
+                        ],
+                    );
+                    true
+                }
+            };
+            if !cont {
+                return None;
+            }
+        }
+
+        // Do this outside the above loop so we don't depend on modifiers coming after kinds
+        let mut verbatim = None;
+        if let Some((modifiers, span)) = modifiers {
+            for modifier in modifiers.as_str().split(',') {
+                let (modifier, value): (Symbol, bool) = match modifier.strip_prefix(&['+', '-']) {
+                    Some(m) => (Symbol::intern(m), modifier.starts_with('+')),
+                    None => {
+                        cx.emit_err(InvalidLinkModifier { span });
+                        continue;
+                    }
+                };
+
+                macro report_unstable_modifier($feature: ident) {
+                    if !features.$feature() {
+                        feature_err(
+                            sess,
+                            sym::$feature,
+                            span,
+                            format!("linking modifier `{modifier}` is unstable"),
+                        )
+                        .emit();
+                    }
+                }
+                let assign_modifier = |dst: &mut Option<bool>| {
+                    if dst.is_some() {
+                        cx.emit_err(MultipleModifiers { span, modifier });
+                    } else {
+                        *dst = Some(value);
+                    }
+                };
+                match (modifier, &mut kind) {
+                    (sym::bundle, Some(NativeLibKind::Static { bundle, .. })) => {
+                        assign_modifier(bundle)
+                    }
+                    (sym::bundle, _) => {
+                        cx.emit_err(BundleNeedsStatic { span });
+                    }
+
+                    (sym::export_symbols, Some(NativeLibKind::Static { export_symbols, .. })) => {
+                        assign_modifier(export_symbols)
+                    }
+
+                    (sym::export_symbols, _) => {
+                        cx.emit_err(ExportSymbolsNeedsStatic { span });
+                    }
+
+                    (sym::verbatim, _) => assign_modifier(&mut verbatim),
+
+                    (
+                        sym::whole_dash_archive,
+                        Some(NativeLibKind::Static { whole_archive, .. }),
+                    ) => assign_modifier(whole_archive),
+                    (sym::whole_dash_archive, _) => {
+                        cx.emit_err(WholeArchiveNeedsStatic { span });
+                    }
+
+                    (sym::as_dash_needed, Some(NativeLibKind::Dylib { as_needed }))
+                    | (sym::as_dash_needed, Some(NativeLibKind::Framework { as_needed }))
+                    | (sym::as_dash_needed, Some(NativeLibKind::RawDylib { as_needed })) => {
+                        report_unstable_modifier!(native_link_modifiers_as_needed);
+                        assign_modifier(as_needed)
+                    }
+                    (sym::as_dash_needed, _) => {
+                        cx.emit_err(AsNeededCompatibility { span });
+                    }
+
+                    _ => {
+                        cx.adcx().expected_specific_argument_strings(
+                            span,
+                            &[
+                                sym::bundle,
+                                sym::export_symbols,
+                                sym::verbatim,
+                                sym::whole_dash_archive,
+                                sym::as_dash_needed,
+                            ],
+                        );
+                    }
+                }
+            }
+        }
+
+        if let Some((_, span)) = wasm_import_module {
+            if name.is_some() || kind.is_some() || modifiers.is_some() || cfg.is_some() {
+                cx.emit_err(IncompatibleWasmLink { span });
+            }
+        }
+
+        if wasm_import_module.is_some() {
+            (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
+        }
+        let Some((name, _name_span)) = name else {
+            cx.emit_err(LinkRequiresName { span: cx.attr_span });
+            return None;
+        };
+
+        // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
+        if let Some((_, span)) = import_name_type {
+            if !matches!(kind, Some(NativeLibKind::RawDylib { .. })) {
+                cx.emit_err(ImportNameTypeRaw { span });
+            }
+        }
+
+        Some(LinkEntry {
+            span: cx.attr_span,
+            kind: kind.unwrap_or(NativeLibKind::Unspecified),
+            name,
+            cfg,
+            verbatim,
+            import_name_type,
+        })
+    }
+}
+
+impl LinkParser {
+    fn parse_link_name(
+        item: &MetaItemParser,
+        name: &mut Option<(Symbol, Span)>,
+        cx: &mut AcceptContext<'_, '_>,
+    ) -> bool {
+        if name.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::name);
+            return true;
+        }
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::name)) else {
+            return false;
+        };
+        let Some(link_name) = cx.expect_string_literal(nv) else {
+            return false;
+        };
+
+        if link_name.as_str().contains('\0') {
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
+        }
+        if link_name.is_empty() {
+            cx.emit_err(EmptyLinkName { span: nv.value_span });
+        }
+
+        *name = Some((link_name, nv.value_span));
+        true
+    }
+
+    fn parse_link_kind(
+        item: &MetaItemParser,
+        kind: &mut Option<NativeLibKind>,
+        cx: &mut AcceptContext<'_, '_>,
+        sess: &Session,
+        features: &Features,
+    ) -> bool {
+        if kind.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::kind);
+            return true;
+        }
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::kind)) else {
+            return true;
+        };
+        let Some(link_kind) = cx.expect_string_literal(nv) else {
+            return true;
+        };
+
+        let link_kind = match link_kind {
+            kw::Static => {
+                NativeLibKind::Static { bundle: None, whole_archive: None, export_symbols: None }
+            }
+            sym::dylib => NativeLibKind::Dylib { as_needed: None },
+            sym::framework => {
+                if !sess.target.is_like_darwin {
+                    cx.emit_err(LinkFrameworkApple { span: nv.value_span });
+                }
+                NativeLibKind::Framework { as_needed: None }
+            }
+            sym::raw_dash_dylib => {
+                if sess.target.is_like_windows {
+                    // raw-dylib is stable and working on Windows
+                } else if sess.target.binary_format == BinaryFormat::Elf && features.raw_dylib_elf()
+                {
+                    // raw-dylib is unstable on ELF, but the user opted in
+                } else if sess.target.binary_format == BinaryFormat::Elf && sess.is_nightly_build()
+                {
+                    feature_err(
+                        sess,
+                        sym::raw_dylib_elf,
+                        nv.value_span,
+                        msg!("link kind `raw-dylib` is unstable on ELF platforms"),
+                    )
+                    .emit();
+                } else {
+                    cx.emit_err(RawDylibOnlyWindows { span: nv.value_span });
+                }
+
+                NativeLibKind::RawDylib { as_needed: None }
+            }
+            sym::link_dash_arg => {
+                if !features.link_arg_attribute() {
+                    feature_err(
+                        sess,
+                        sym::link_arg_attribute,
+                        nv.value_span,
+                        msg!("link kind `link-arg` is unstable"),
+                    )
+                    .emit();
+                }
+                NativeLibKind::LinkArg
+            }
+            _kind => {
+                cx.adcx().expected_specific_argument_strings(
+                    nv.value_span,
+                    &[
+                        kw::Static,
+                        sym::dylib,
+                        sym::framework,
+                        sym::raw_dash_dylib,
+                        sym::link_dash_arg,
+                    ],
+                );
+                return true;
+            }
+        };
+        *kind = Some(link_kind);
+        true
+    }
+
+    fn parse_link_modifiers(
+        item: &MetaItemParser,
+        modifiers: &mut Option<(Symbol, Span)>,
+        cx: &mut AcceptContext<'_, '_>,
+    ) -> bool {
+        if modifiers.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::modifiers);
+            return true;
+        }
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::modifiers)) else {
+            return true;
+        };
+        let Some(link_modifiers) = cx.expect_string_literal(nv) else {
+            return true;
+        };
+        *modifiers = Some((link_modifiers, nv.value_span));
+        true
+    }
+
+    fn parse_link_cfg(
+        item: &MetaItemParser,
+        cfg: &mut Option<CfgEntry>,
+        cx: &mut AcceptContext<'_, '_>,
+        sess: &Session,
+        features: &Features,
+    ) -> bool {
+        if cfg.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::cfg);
+            return true;
+        }
+        let Some(link_cfg) = cx.expect_single_element_list(item.args(), item.span()) else {
+            return true;
+        };
+        if !features.link_cfg() {
+            feature_err(sess, sym::link_cfg, item.span(), msg!("link cfg is unstable")).emit();
+        }
+        *cfg = parse_cfg_entry(cx, link_cfg).ok();
+        true
+    }
+
+    fn parse_link_wasm_import_module(
+        item: &MetaItemParser,
+        wasm_import_module: &mut Option<(Symbol, Span)>,
+        cx: &mut AcceptContext<'_, '_>,
+    ) -> bool {
+        if wasm_import_module.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::wasm_import_module);
+            return true;
+        }
+        let Some(nv) =
+            cx.expect_name_value(item.args(), item.span(), Some(sym::wasm_import_module))
+        else {
+            return true;
+        };
+        let Some(link_wasm_import_module) = cx.expect_string_literal(nv) else {
+            return true;
+        };
+        *wasm_import_module = Some((link_wasm_import_module, item.span()));
+        true
+    }
+
+    fn parse_link_import_name_type(
+        item: &MetaItemParser,
+        import_name_type: &mut Option<(PeImportNameType, Span)>,
+        cx: &mut AcceptContext<'_, '_>,
+    ) -> bool {
+        if import_name_type.is_some() {
+            cx.adcx().duplicate_key(item.span(), sym::import_name_type);
+            return true;
+        }
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::import_name_type))
+        else {
+            return true;
+        };
+        let Some(link_import_name_type) = cx.expect_string_literal(nv) else {
+            return true;
+        };
+        if cx.sess().target.arch != Arch::X86 {
+            cx.emit_err(ImportNameTypeX86 { span: item.span() });
+            return true;
+        }
+
+        let link_import_name_type = match link_import_name_type {
+            sym::decorated => PeImportNameType::Decorated,
+            sym::noprefix => PeImportNameType::NoPrefix,
+            sym::undecorated => PeImportNameType::Undecorated,
+            _ => {
+                cx.adcx().expected_specific_argument_strings(
+                    item.span(),
+                    &[sym::decorated, sym::noprefix, sym::undecorated],
+                );
+                return true;
+            }
+        };
+        *import_name_type = Some((link_import_name_type, item.span()));
+        true
+    }
+}
+
+pub(crate) struct LinkSectionParser;
+
+fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReason> {
+    let mut parts = name.as_str().split(',').map(|s| s.trim());
+
+    // The segment can be empty.
+    let _segment = parts.next();
+
+    // But the section is required.
+    let section = match parts.next() {
+        None | Some("") => return Err(InvalidMachoSectionReason::MissingSection),
+        Some(section) => section,
+    };
+
+    if section.len() > 16 {
+        return Err(InvalidMachoSectionReason::SectionTooLong { section: section.to_string() });
+    }
+
+    // LLVM also checks the other components of the section specifier, but that logic is hard to
+    // keep in sync. We skip it here for now, assuming that if you got that far you'll be able
+    // to interpret the LLVM errors.
+
+    Ok(())
+}
+
+impl SingleAttributeParser for LinkSectionParser {
+    const PATH: &[Symbol] = &[sym::link_section];
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Static),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
+    );
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
+        let name = cx.expect_string_literal(nv)?;
+        if name.as_str().contains('\0') {
+            // `#[link_section = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnLinkSection { span: cx.attr_span });
+            return None;
+        }
+
+        // We (currently) only validate macho section specifiers.
+        match cx.sess.target.binary_format {
+            BinaryFormat::MachO => match check_link_section_macho(name) {
+                Ok(()) => {}
+                Err(reason) => {
+                    cx.emit_err(InvalidMachoSection { name_span: nv.value_span, reason });
+                    return None;
+                }
+            },
+            BinaryFormat::Coff | BinaryFormat::Elf | BinaryFormat::Wasm | BinaryFormat::Xcoff => {}
+        }
+
+        Some(LinkSection { name })
+    }
+}
+
+pub(crate) struct ExportStableParser;
+impl NoArgsAttributeParser for ExportStableParser {
+    const PATH: &[Symbol] = &[sym::export_stable];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const STABILITY: AttributeStability = unstable!(export_stable);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
+}
+
+pub(crate) struct FfiConstParser;
+impl NoArgsAttributeParser for FfiConstParser {
+    const PATH: &[Symbol] = &[sym::ffi_const];
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(ffi_const);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::FfiConst;
+}
+
+pub(crate) struct FfiPureParser;
+impl NoArgsAttributeParser for FfiPureParser {
+    const PATH: &[Symbol] = &[sym::ffi_pure];
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(ffi_pure);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
+}
+
+pub(crate) struct RustcStdInternalSymbolParser;
+impl NoArgsAttributeParser for RustcStdInternalSymbolParser {
+    const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Static),
+        Allow(Target::ForeignStatic),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcStdInternalSymbol;
+}
+
+pub(crate) struct LinkOrdinalParser;
+
+impl SingleAttributeParser for LinkOrdinalParser {
+    const PATH: &[Symbol] = &[sym::link_ordinal];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Warn(Target::MacroCall),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["ordinal"],
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
+    );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let ordinal = parse_single_integer(cx, args)?;
+
+        // According to the table at
+        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
+        // ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
+        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import
+        // information to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        //
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
+        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that
+        // specifies a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import
+        // library for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an
+        // import library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I
+        // don't know yet if the resulting EXE runs, as I haven't yet built the necessary DLL --
+        // see earlier comment about LINK.EXE failing.)
+        let Ok(ordinal) = ordinal.try_into() else {
+            cx.emit_err(LinkOrdinalOutOfRange { span: cx.attr_span, ordinal });
+            return None;
+        };
+
+        Some(LinkOrdinal { ordinal, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct LinkageParser;
+
+impl SingleAttributeParser for LinkageParser {
+    const PATH: &[Symbol] = &[sym::linkage];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Static),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignFn),
+        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
+        "available_externally",
+        "common",
+        "extern_weak",
+        "external",
+        "internal",
+        "linkonce",
+        "linkonce_odr",
+        "weak",
+        "weak_odr",
+    ]);
+    const STABILITY: AttributeStability = unstable!(linkage);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::linkage))?;
+
+        let Some(value) = cx.expect_string_literal(name_value) else {
+            return None;
+        };
+
+        // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+        // applicable to variable declarations and may not really make sense for
+        // Rust code in the first place but allow them anyway and trust that the
+        // user knows what they're doing. Who knows, unanticipated use cases may pop
+        // up in the future.
+        //
+        // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+        // and don't have to be, LLVM treats them as no-ops.
+        let linkage = match value {
+            sym::available_externally => Linkage::AvailableExternally,
+            sym::common => Linkage::Common,
+            sym::extern_weak => Linkage::ExternalWeak,
+            sym::external => Linkage::External,
+            sym::internal => Linkage::Internal,
+            sym::linkonce => Linkage::LinkOnceAny,
+            sym::linkonce_odr => Linkage::LinkOnceODR,
+            sym::weak => Linkage::WeakAny,
+            sym::weak_odr => Linkage::WeakODR,
+
+            _ => {
+                cx.adcx().expected_specific_argument(
+                    name_value.value_span,
+                    &[
+                        sym::available_externally,
+                        sym::common,
+                        sym::extern_weak,
+                        sym::external,
+                        sym::internal,
+                        sym::linkonce,
+                        sym::linkonce_odr,
+                        sym::weak,
+                        sym::weak_odr,
+                    ],
+                );
+                return None;
+            }
+        };
+
+        Some(AttributeKind::Linkage(linkage, cx.attr_span))
+    }
+}
+
+pub(crate) struct NeedsAllocatorParser;
+
+impl NoArgsAttributeParser for NeedsAllocatorParser {
+    const PATH: &[Symbol] = &[sym::needs_allocator];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(allocator_internals);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
+}
+
+pub(crate) struct CompilerBuiltinsParser;
+
+impl NoArgsAttributeParser for CompilerBuiltinsParser {
+    const PATH: &[Symbol] = &[sym::compiler_builtins];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(compiler_builtins);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
+}

@@ -1,0 +1,64 @@
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:24:18
+   |
+LL |     let _fail1 = 1234i32;
+   |                  ^^^^^^^ help: add an underscore: `1234_i32`
+   |
+   = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unseparated_literal_suffix)]`
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:26:18
+   |
+LL |     let _fail2 = 1234u32;
+   |                  ^^^^^^^ help: add an underscore: `1234_u32`
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:28:18
+   |
+LL |     let _fail3 = 1234isize;
+   |                  ^^^^^^^^^ help: add an underscore: `1234_isize`
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:30:18
+   |
+LL |     let _fail4 = 1234usize;
+   |                  ^^^^^^^^^ help: add an underscore: `1234_usize`
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:32:18
+   |
+LL |     let _fail5 = 0x123isize;
+   |                  ^^^^^^^^^^ help: add an underscore: `0x123_isize`
+
+error: float type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:37:19
+   |
+LL |     let _failf1 = 1.5f32;
+   |                   ^^^^^^ help: add an underscore: `1.5_f32`
+
+error: float type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:39:19
+   |
+LL |     let _failf2 = 1f32;
+   |                   ^^^^ help: add an underscore: `1_f32`
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:15:9
+   |
+LL |         42usize
+   |         ^^^^^^^ help: add an underscore: `42_usize`
+...
+LL |     let _ = lit_from_macro!();
+   |             ----------------- in this macro invocation
+   |
+   = note: this error originates in the macro `lit_from_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: integer type suffix should be separated by an underscore
+  --> tests/ui/unseparated_prefix_literals.rs:48:16
+   |
+LL |     assert_eq!(4897u32, 32223);
+   |                ^^^^^^^ help: add an underscore: `4897_u32`
+
+error: aborting due to 9 previous errors
+

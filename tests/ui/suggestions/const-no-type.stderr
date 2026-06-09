@@ -1,0 +1,59 @@
+error: missing type for `const` item
+  --> $DIR/const-no-type.rs:33:8
+   |
+LL | const C = 42;
+   |        ^ help: provide a type for the constant: `: i32`
+
+error: missing type for `const` item
+  --> $DIR/const-no-type.rs:38:8
+   |
+LL | const D = &&42;
+   |        ^ help: provide a type for the constant: `: &&i32`
+
+error: missing type for `static` item
+  --> $DIR/const-no-type.rs:43:9
+   |
+LL | static S = Vec::<String>::new();
+   |         ^ help: provide a type for the static variable: `: Vec<String>`
+
+error: missing type for `static mut` item
+  --> $DIR/const-no-type.rs:48:14
+   |
+LL | static mut SM = "abc";
+   |              ^ help: provide a type for the static variable: `: &str`
+
+error: missing type for `const` item
+  --> $DIR/const-no-type.rs:14:9
+   |
+LL | const C2 = 42;
+   |         ^
+   |
+help: provide a type for the item
+   |
+LL | const C2: <type> = 42;
+   |         ++++++++
+
+error: missing type for `static` item
+  --> $DIR/const-no-type.rs:20:10
+   |
+LL | static S2 = "abc";
+   |          ^
+   |
+help: provide a type for the item
+   |
+LL | static S2: <type> = "abc";
+   |          ++++++++
+
+error: missing type for `static mut` item
+  --> $DIR/const-no-type.rs:26:15
+   |
+LL | static mut SM2 = "abc";
+   |               ^
+   |
+help: provide a type for the item
+   |
+LL | static mut SM2: <type> = "abc";
+   |               ++++++++
+
+error: aborting due to 7 previous errors
+

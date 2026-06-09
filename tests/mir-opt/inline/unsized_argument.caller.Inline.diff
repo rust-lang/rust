@@ -1,0 +1,38 @@
+- // MIR for `caller` before Inline
++ // MIR for `caller` after Inline
+  
+  fn caller(_1: Box<[i32]>) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: std::boxed::Box<[i32]>;
+      let mut _4: *const [i32];
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = move _1;
+          _4 = copy ((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>) as *const [i32] (Transmute);
+          _2 = callee(move (*_4)) -> [return: bb1, unwind: bb3];
+      }
+  
+      bb1: {
+          drop(_3) -> [return: bb2, unwind: bb4];
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  
+      bb3 (cleanup): {
+          drop(_3) -> [return: bb4, unwind terminate(cleanup)];
+      }
+  
+      bb4 (cleanup): {
+          resume;
+      }
+  }
+  

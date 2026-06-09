@@ -1,0 +1,8 @@
+error: expected string literal
+  --> $DIR/env-arg-2-not-string-literal.rs:1:25
+   |
+LL | fn main() { env!("one", 10); }
+   |                         ^^
+
+error: aborting due to 1 previous error
+

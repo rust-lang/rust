@@ -1,0 +1,18 @@
+//! Validates the correct printing of E0152 in the case of duplicate "lang_item" function
+//! definitions.
+//!
+//! Issue: <https://github.com/rust-lang/rust/issues/31788>
+
+//@ normalize-stderr: "loaded from .*libstd-.*.rmeta" -> "loaded from SYSROOT/libstd-*.rmeta"
+//@ dont-require-annotations: NOTE
+
+#![feature(lang_items)]
+
+#[lang = "eh_personality"]
+fn personality() {
+    //~^ ERROR: found duplicate lang item `eh_personality`
+    //~| NOTE first defined in crate `std`
+    loop {}
+}
+
+fn main() {}

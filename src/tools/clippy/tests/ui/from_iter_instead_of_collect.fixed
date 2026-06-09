@@ -1,0 +1,118 @@
+#![warn(clippy::from_iter_instead_of_collect)]
+#![allow(unused_imports)]
+#![allow(clippy::useless_vec, clippy::manual_repeat_n)]
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+
+struct Foo(Vec<bool>);
+
+impl FromIterator<bool> for Foo {
+    fn from_iter<T: IntoIterator<Item = bool>>(_: T) -> Self {
+        todo!()
+    }
+}
+
+impl<'a> FromIterator<&'a bool> for Foo {
+    fn from_iter<T: IntoIterator<Item = &'a bool>>(iter: T) -> Self {
+        iter.into_iter().copied().collect::<Self>()
+        //~^ from_iter_instead_of_collect
+    }
+}
+
+fn main() {
+    let iter_expr = std::iter::repeat(5).take(5);
+    let _ = iter_expr.collect::<Vec<_>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = vec![5, 5, 5, 5].iter().enumerate().collect::<HashMap<usize, &i8>>();
+    //~^ from_iter_instead_of_collect
+
+    Vec::from_iter(vec![42u32]);
+
+    let a = vec![0, 1, 2];
+    assert_eq!(a, (0..3).collect::<Vec<_>>());
+    //~^ from_iter_instead_of_collect
+    assert_eq!(a, (0..3).collect::<Vec<i32>>());
+    //~^ from_iter_instead_of_collect
+
+    let mut b = (0..3).collect::<VecDeque<_>>();
+    //~^ from_iter_instead_of_collect
+    b.push_back(4);
+
+    let mut b = (0..3).collect::<VecDeque<i32>>();
+    //~^ from_iter_instead_of_collect
+    b.push_back(4);
+
+    {
+        use std::collections;
+        let mut b = (0..3).collect::<collections::VecDeque<i32>>();
+        //~^ from_iter_instead_of_collect
+        b.push_back(4);
+    }
+
+    let values = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'd')];
+    let bm = values.iter().cloned().collect::<BTreeMap<_, _>>();
+    //~^ from_iter_instead_of_collect
+    let mut bar = bm.range(0..2).collect::<BTreeMap<_, _>>();
+    //~^ from_iter_instead_of_collect
+    bar.insert(&4, &'e');
+
+    let mut bts = (0..3).collect::<BTreeSet<_>>();
+    //~^ from_iter_instead_of_collect
+    bts.insert(2);
+    {
+        use std::collections;
+        let _ = (0..3).collect::<collections::BTreeSet<_>>();
+        //~^ from_iter_instead_of_collect
+        let _ = (0..3).collect::<collections::BTreeSet<u32>>();
+        //~^ from_iter_instead_of_collect
+    }
+
+    for _i in [1, 2, 3].iter().collect::<Vec<_>>() {}
+    //~^ from_iter_instead_of_collect
+    for _i in [1, 2, 3].iter().collect::<Vec<&i32>>() {}
+    //~^ from_iter_instead_of_collect
+}
+
+fn issue14581() {
+    let nums = [0, 1, 2];
+    let _ = &nums.iter().map(|&num| char::from_u32(num).unwrap()).collect::<String>();
+    //~^ from_iter_instead_of_collect
+}
+
+fn test_implicit_generic_args(iter: impl Iterator<Item = &'static i32> + Copy) {
+    struct S<'l, T = i32, const A: usize = 3, const B: usize = 3> {
+        a: [&'l T; A],
+        b: [&'l T; B],
+    }
+
+    impl<'l, T, const A: usize, const B: usize> FromIterator<&'l T> for S<'l, T, A, B> {
+        fn from_iter<I: IntoIterator<Item = &'l T>>(_: I) -> Self {
+            todo!()
+        }
+    }
+
+    let _ = iter.collect::<S<'static, i32, 7>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<'static, i32>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<'static, _, 7>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<'static, _, 7, 8>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<_, 7, 8>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<i32>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S<i32>>();
+    //~^ from_iter_instead_of_collect
+
+    let _ = iter.collect::<S>();
+    //~^ from_iter_instead_of_collect
+}

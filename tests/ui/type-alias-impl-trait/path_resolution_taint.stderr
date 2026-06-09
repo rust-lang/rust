@@ -1,0 +1,9 @@
+error[E0405]: cannot find trait `Captures` in this scope
+  --> $DIR/path_resolution_taint.rs:5:54
+   |
+LL | fn dyn_hoops<T>() -> *const dyn Iterator<Item = impl Captures> {
+   |                                                      ^^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0405`.

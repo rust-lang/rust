@@ -1,0 +1,17 @@
+[package]
+name = "pass"
+version = "0.1.0"
+publish = false
+
+[lints.rust]
+# Warnings does not conflict with any group or lint
+warnings = "deny"
+# Groups & lints at the same level do not conflict
+rust_2018_idioms = "warn"
+unsafe_code = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+style = { level = "warn", priority = 1 }
+similar_names = "allow"
+dbg_macro = { level = "warn", priority = 2 }

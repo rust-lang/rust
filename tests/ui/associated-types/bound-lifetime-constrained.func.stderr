@@ -1,0 +1,15 @@
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/bound-lifetime-constrained.rs:16:50
+   |
+LL | fn func1(_: for<'a> fn(<() as Foo<'a>>::Item) -> &'a i32) {
+   |                                                  ^^^^^^^
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/bound-lifetime-constrained.rs:23:29
+   |
+LL | fn func2(_: for<'a> fn() -> <() as Foo<'a>>::Item) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0581`.

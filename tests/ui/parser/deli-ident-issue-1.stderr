@@ -1,0 +1,17 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/deli-ident-issue-1.rs:22:66
+   |
+LL | impl dyn Demo {
+   |               - unclosed delimiter
+...
+LL |         && let Some(c) = num {
+   |                              - this delimiter might not be properly closed...
+...
+LL |     }
+   |     - ...as it matches this but it has different indentation
+...
+LL | fn main() { }
+   |                                                                 ^
+
+error: aborting due to 1 previous error
+

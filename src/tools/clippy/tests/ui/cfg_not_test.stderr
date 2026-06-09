@@ -1,0 +1,45 @@
+error: code is excluded from test builds
+  --> tests/ui/cfg_not_test.rs:8:5
+   |
+LL |     #[cfg(not(test))]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider not excluding any code from test builds
+   = note: this could increase code coverage despite not actually being tested
+   = note: `-D clippy::cfg-not-test` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cfg_not_test)]`
+
+error: code is excluded from test builds
+  --> tests/ui/cfg_not_test.rs:13:5
+   |
+LL |     #[cfg(not(test))]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider not excluding any code from test builds
+
+error: code is excluded from test builds
+  --> tests/ui/cfg_not_test.rs:26:1
+   |
+LL | #[cfg(not(test))]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider not excluding any code from test builds
+
+error: code is excluded from test builds
+  --> tests/ui/cfg_not_test.rs:29:1
+   |
+LL | #[cfg(all(debug_assertions, not(test)))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider not excluding any code from test builds
+
+error: code is excluded from test builds
+  --> tests/ui/cfg_not_test.rs:32:1
+   |
+LL | #[cfg(not(any(not(debug_assertions), test)))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider not excluding any code from test builds
+
+error: aborting due to 5 previous errors
+

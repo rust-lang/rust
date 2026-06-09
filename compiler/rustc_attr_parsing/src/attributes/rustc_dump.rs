@@ -1,0 +1,260 @@
+use rustc_feature::AttributeStability;
+use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
+use rustc_hir::{MethodKind, Target};
+use rustc_span::{Span, Symbol, sym};
+
+use super::prelude::*;
+use crate::target_checking::AllowedTargets;
+
+pub(crate) struct RustcDumpUserArgsParser;
+
+impl NoArgsAttributeParser for RustcDumpUserArgsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_user_args];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpUserArgs;
+}
+
+pub(crate) struct RustcDumpDefParentsParser;
+
+impl NoArgsAttributeParser for RustcDumpDefParentsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_def_parents];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpDefParents;
+}
+
+pub(crate) struct RustcDumpDefPathParser;
+
+impl SingleAttributeParser for RustcDumpDefPathParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_def_path];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::Impl { of_trait: false }),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        cx.expect_no_args(args)?;
+        Some(AttributeKind::RustcDumpDefPath(cx.attr_span))
+    }
+}
+
+pub(crate) struct RustcDumpHiddenTypeOfOpaquesParser;
+
+impl NoArgsAttributeParser for RustcDumpHiddenTypeOfOpaquesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_hidden_type_of_opaques];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpHiddenTypeOfOpaques;
+}
+
+pub(crate) struct RustcDumpInferredOutlivesParser;
+
+impl NoArgsAttributeParser for RustcDumpInferredOutlivesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_inferred_outlives];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpInferredOutlives;
+}
+
+pub(crate) struct RustcDumpItemBoundsParser;
+
+impl NoArgsAttributeParser for RustcDumpItemBoundsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_item_bounds];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::AssocTy)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
+}
+
+pub(crate) struct RustcDumpLayoutParser;
+
+impl CombineAttributeParser for RustcDumpLayoutParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_layout];
+
+    type Item = RustcDumpLayoutKind;
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcDumpLayout(items);
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let Some(items) = cx.expect_list(args, cx.attr_span) else {
+            return vec![];
+        };
+
+        let mut result = Vec::new();
+        for item in items.mixed() {
+            let Some(arg) = item.meta_item_no_args() else {
+                cx.adcx().expected_not_literal(item.span());
+                continue;
+            };
+            let Some(ident) = arg.ident() else {
+                cx.adcx().expected_identifier(arg.span());
+                return vec![];
+            };
+            let kind = match ident.name {
+                sym::align => RustcDumpLayoutKind::Align,
+                sym::backend_repr => RustcDumpLayoutKind::BackendRepr,
+                sym::debug => RustcDumpLayoutKind::Debug,
+                sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::size => RustcDumpLayoutKind::Size,
+                _ => {
+                    cx.adcx().expected_specific_argument(
+                        ident.span,
+                        &[
+                            sym::align,
+                            sym::backend_repr,
+                            sym::debug,
+                            sym::homogeneous_aggregate,
+                            sym::size,
+                        ],
+                    );
+                    continue;
+                }
+            };
+            result.push(kind);
+        }
+        result
+    }
+}
+
+pub(crate) struct RustcDumpObjectLifetimeDefaultsParser;
+
+impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_object_lifetime_defaults];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::AssocConst),
+        Allow(Target::AssocTy),
+        Allow(Target::Const),
+        Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Struct),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::TyAlias),
+        Allow(Target::Union),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpObjectLifetimeDefaults;
+}
+
+pub(crate) struct RustcDumpPredicatesParser;
+
+impl NoArgsAttributeParser for RustcDumpPredicatesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_predicates];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::AssocConst),
+        Allow(Target::AssocTy),
+        Allow(Target::Const),
+        Allow(Target::Delegation { mac: false }),
+        Allow(Target::Delegation { mac: true }),
+        Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Struct),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::TyAlias),
+        Allow(Target::Union),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
+}
+
+pub(crate) struct RustcDumpSymbolNameParser;
+
+impl SingleAttributeParser for RustcDumpSymbolNameParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_symbol_name];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::Impl { of_trait: false }),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(Word);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        cx.expect_no_args(args)?;
+        Some(AttributeKind::RustcDumpSymbolName(cx.attr_span))
+    }
+}
+
+pub(crate) struct RustcDumpVariancesParser;
+
+impl NoArgsAttributeParser for RustcDumpVariancesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_variances];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Enum),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+    ]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_dump_variances]` attribute is used for rustc unit tests"
+    );
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
+}
+
+pub(crate) struct RustcDumpVariancesOfOpaquesParser;
+
+impl NoArgsAttributeParser for RustcDumpVariancesOfOpaquesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_variances_of_opaques];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariancesOfOpaques;
+}
+
+pub(crate) struct RustcDumpVtableParser;
+
+impl NoArgsAttributeParser for RustcDumpVtableParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_vtable];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::TyAlias),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDumpVtable;
+}

@@ -1,0 +1,45 @@
+error: invalid `struct` delimiters or `fn` call arguments
+  --> $DIR/recover-from-bad-variant.rs:7:13
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if `Enum::Foo` is a struct, use braces as delimiters
+   |
+LL -     let x = Enum::Foo(a: 3, b: 4);
+LL +     let x = Enum::Foo { a: 3, b: 4 };
+   |
+help: if `Enum::Foo` is a function, use the arguments directly
+   |
+LL -     let x = Enum::Foo(a: 3, b: 4);
+LL +     let x = Enum::Foo(3, 4);
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:10:9
+   |
+LL |         Enum::Foo(a, b) => {}
+   |         ^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: the struct variant's fields are being ignored
+   |
+LL -         Enum::Foo(a, b) => {}
+LL +         Enum::Foo { a: _, b: _ } => {}
+   |
+
+error[E0769]: tuple variant `Enum::Bar` written as struct variant
+  --> $DIR/recover-from-bad-variant.rs:12:9
+   |
+LL |         Enum::Bar { a, b } => {}
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL -         Enum::Bar { a, b } => {}
+LL +         Enum::Bar(a, b) => {}
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0164, E0769.
+For more information about an error, try `rustc --explain E0164`.

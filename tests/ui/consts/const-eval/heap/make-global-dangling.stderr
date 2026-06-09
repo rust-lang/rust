@@ -1,0 +1,15 @@
+error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got null pointer
+  --> $DIR/make-global-dangling.rs:9:8
+   |
+LL |     &*(intrinsics::const_make_global(std::ptr::null_mut()) as *const u32)
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Y` failed here
+
+error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/make-global-dangling.rs:14:8
+   |
+LL |     &*(intrinsics::const_make_global(std::ptr::dangling_mut()) as *const u32)
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Z` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

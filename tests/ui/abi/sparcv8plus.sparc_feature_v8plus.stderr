@@ -1,0 +1,12 @@
+warning: unstable feature specified for `-Ctarget-feature`: `v8plus`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+error: +v8plus,-v9 (FIXME)
+  --> $DIR/sparcv8plus.rs:40:1
+   |
+LL | compile_error!("+v8plus,-v9 (FIXME)");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

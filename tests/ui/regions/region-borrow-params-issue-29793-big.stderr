@@ -1,0 +1,39 @@
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/region-borrow-params-issue-29793-big.rs:67:26
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ^^^^^^^^^        - `x` is borrowed here
+   |                          |
+   |                          may outlive borrowed value `x`
+   |
+note: closure is returned here
+  --> $DIR/region-borrow-params-issue-29793-big.rs:67:9
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |         WrapB::new().set(move |t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
+  --> $DIR/region-borrow-params-issue-29793-big.rs:67:26
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ^^^^^^^^^                   - `y` is borrowed here
+   |                          |
+   |                          may outlive borrowed value `y`
+   |
+note: closure is returned here
+  --> $DIR/region-borrow-params-issue-29793-big.rs:67:9
+   |
+LL |         WrapB::new().set(|t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
+   |
+LL |         WrapB::new().set(move |t: bool| if t { x } else { y }) // (separate errors for `x` vs `y`)
+   |                          ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0373`.

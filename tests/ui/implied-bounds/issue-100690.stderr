@@ -1,0 +1,22 @@
+error[E0277]: expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
+  --> $DIR/issue-100690.rs:34:23
+   |
+LL |         real_dispatch(f)
+   |         ------------- ^ expected an `FnOnce(&mut UIView<'_, T>)` closure, found `F`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = note: expected a closure with signature `for<'a, 'b> fn(&'a mut UIView<'b, _>)`
+              found a closure with signature `fn(&mut UIView<'a, _>)`
+note: required by a bound in `real_dispatch`
+  --> $DIR/issue-100690.rs:8:8
+   |
+LL | fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
+   |    ------------- required by a bound in this function
+LL | where
+LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `real_dispatch`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

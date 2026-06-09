@@ -1,0 +1,16 @@
+CHECK: cmake_plus_one_cxx_asm
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      lfence
+CHECK:      movl
+CHECK:      lfence
+CHECK-NEXT: incl
+CHECK-NEXT: jmp     0x{{[[:xdigit:]]+}} <cmake_plus_one_cxx_asm+0x{{[[:xdigit:]]+}}>
+CHECK-NEXT: shlq    $0x0, (%rsp)
+CHECK-NEXT: lfence
+CHECK-NEXT: retq
+CHECK:      popq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

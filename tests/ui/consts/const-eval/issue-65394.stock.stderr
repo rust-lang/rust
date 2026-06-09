@@ -1,0 +1,12 @@
+error[E0493]: destructor of `Vec<i32>` cannot be evaluated at compile-time
+  --> $DIR/issue-65394.rs:12:9
+   |
+LL |     let mut x = Vec::<i32>::new();
+   |         ^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL | };
+   | - value is dropped here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.

@@ -1,0 +1,19 @@
+- // MIR for `rewrap` before DestinationPropagation
++ // MIR for `rewrap` after DestinationPropagation
+  
+  fn rewrap() -> (u8,) {
+      let mut _0: (u8,);
+      let mut _1: (u8,);
+      let mut _2: (u8,);
+  
+      bb0: {
+-         (_1.0: u8) = const 0_u8;
+-         _0 = copy _1;
++         (_0.0: u8) = const 0_u8;
++         nop;
+          _2 = (copy (_0.0: u8),);
+          _0 = copy _2;
+          return;
+      }
+  }
+  

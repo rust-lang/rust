@@ -1,0 +1,75 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-match-check.rs:4:22
+   |
+LL | const X: i32 = { let 0 = 0; 0 };
+   |                      ^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL | const X: i32 = { if let 0 = 0 { todo!() }; 0 };
+   |                  ++           +++++++++++
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL | const X: i32 = { let _0 = 0; 0 };
+   |                      +
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-match-check.rs:8:23
+   |
+LL | static Y: i32 = { let 0 = 0; 0 };
+   |                       ^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL | static Y: i32 = { if let 0 = 0 { todo!() }; 0 };
+   |                   ++           +++++++++++
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL | static Y: i32 = { let _0 = 0; 0 };
+   |                       +
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-match-check.rs:13:26
+   |
+LL |     const X: i32 = { let 0 = 0; 0 };
+   |                          ^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     const X: i32 = { if let 0 = 0 { todo!() }; 0 };
+   |                      ++           +++++++++++
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     const X: i32 = { let _0 = 0; 0 };
+   |                          +
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/const-match-check.rs:19:26
+   |
+LL |     const X: i32 = { let 0 = 0; 0 };
+   |                          ^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     const X: i32 = { if let 0 = 0 { todo!() }; 0 };
+   |                      ++           +++++++++++
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     const X: i32 = { let _0 = 0; 0 };
+   |                          +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

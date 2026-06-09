@@ -1,0 +1,33 @@
+- // MIR for `remap_debuginfo_locals` before ReferencePropagation
++ // MIR for `remap_debuginfo_locals` after ReferencePropagation
+  
+  fn remap_debuginfo_locals() -> () {
+      let mut _0: ();
+      let _1: &usize;
+      let mut _2: *const usize;
+      let _3: &usize;
+      let _4: usize;
+      let mut _5: &usize;
+      scope 1 (inlined foo) {
+-         debug a => _1;
++         debug a => _5;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         StorageLive(_2);
+-         StorageLive(_3);
+          _5 = const remap_debuginfo_locals::promoted[0];
+-         _3 = &(*_5);
+-         _2 = &raw const (*_3);
+-         // DBG: _1 = &(*_2);
+-         _1 = &(*_2);
+-         StorageDead(_2);
+-         StorageDead(_3);
+-         StorageDead(_1);
++         // DBG: _5 = &(*_5);
+          _0 = const ();
+          return;
+      }
+  }
+  

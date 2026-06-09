@@ -1,0 +1,75 @@
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/auxiliary/submodule.rs:2:5
+   |
+LL |     dbg!();
+   |     ^^^^^^
+   |
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!();
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:5
+   |
+LL |     dbg!(dbg!(dbg!(42)));
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:10
+   |
+LL |     dbg!(dbg!(dbg!(42)));
+   |          ^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:15
+   |
+LL |     dbg!(dbg!(dbg!(42)));
+   |               ^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:14:5
+   |
+LL |     dbg!(1, 2, dbg!(3, 4));
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(1, 2, dbg!(3, 4));
+LL +     (1, 2, dbg!(3, 4));
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:14:16
+   |
+LL |     dbg!(1, 2, dbg!(3, 4));
+   |                ^^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!(1, 2, dbg!(3, 4));
+LL +     dbg!(1, 2, (3, 4));
+   |
+
+error: aborting due to 6 previous errors
+

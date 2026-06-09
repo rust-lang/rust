@@ -1,0 +1,10 @@
+error: expected `{}`, found `;`
+  --> $DIR/empty-impl-semicolon.rs:2:9
+   |
+LL | impl Foo;
+   |         ^
+   |
+   = help: try using `{}` instead
+
+error: aborting due to 1 previous error
+

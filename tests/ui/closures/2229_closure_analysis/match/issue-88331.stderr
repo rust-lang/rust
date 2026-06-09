@@ -1,0 +1,39 @@
+error[E0004]: non-exhaustive patterns: `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
+  --> $DIR/issue-88331.rs:11:20
+   |
+LL |     move |i| match msg_type {
+   |                    ^^^^^^^^ patterns `Opcode(0_u8)` and `Opcode(2_u8..=u8::MAX)` not covered
+   |
+note: `Opcode` defined here
+  --> $DIR/issue-88331.rs:4:12
+   |
+LL | pub struct Opcode(pub u8);
+   |            ^^^^^^
+   = note: the matched value is of type `Opcode`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         Opcode::OP1 => unimplemented!(),
+LL ~         Opcode(0_u8) | Opcode(2_u8..=u8::MAX) => todo!(),
+   |
+
+error[E0004]: non-exhaustive patterns: `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
+  --> $DIR/issue-88331.rs:27:20
+   |
+LL |     move |i| match msg_type {
+   |                    ^^^^^^^^ patterns `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
+   |
+note: `Opcode2` defined here
+  --> $DIR/issue-88331.rs:18:12
+   |
+LL | pub struct Opcode2(Opcode);
+   |            ^^^^^^^
+   = note: the matched value is of type `Opcode2`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         Opcode2::OP2=> unimplemented!(),
+LL ~         Opcode2(Opcode(0_u8)) | Opcode2(Opcode(2_u8..=u8::MAX)) => todo!(),
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

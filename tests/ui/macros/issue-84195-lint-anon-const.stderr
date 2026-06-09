@@ -1,0 +1,39 @@
+error: trailing semicolon in macro used in expression position
+  --> $DIR/issue-84195-lint-anon-const.rs:8:14
+   |
+LL |     () => { 0; };
+   |              ^
+...
+LL |     let val: [u8; len!()] = [];
+   |                   ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+note: the lint level is defined here
+  --> $DIR/issue-84195-lint-anon-const.rs:5:9
+   |
+LL | #![deny(semicolon_in_expressions_from_macros)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `len` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: trailing semicolon in macro used in expression position
+  --> $DIR/issue-84195-lint-anon-const.rs:8:14
+   |
+LL |     () => { 0; };
+   |              ^
+...
+LL |     let val: [u8; len!()] = [];
+   |                   ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+note: the lint level is defined here
+  --> $DIR/issue-84195-lint-anon-const.rs:5:9
+   |
+LL | #![deny(semicolon_in_expressions_from_macros)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `len` (in Nightly builds, run with -Z macro-backtrace for more info)
+

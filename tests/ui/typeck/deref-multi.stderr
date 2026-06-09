@@ -1,0 +1,74 @@
+error[E0308]: mismatched types
+  --> $DIR/deref-multi.rs:2:5
+   |
+LL | fn a(x: &&i32) -> i32 {
+   |                   --- expected `i32` because of return type
+LL |     x
+   |     ^ expected `i32`, found `&&i32`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     **x
+   |     ++
+
+error[E0308]: mismatched types
+  --> $DIR/deref-multi.rs:7:5
+   |
+LL | fn a2(x: &&&&&i32) -> i32 {
+   |                       --- expected `i32` because of return type
+LL |     x
+   |     ^ expected `i32`, found `&&&&&i32`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     *****x
+   |     +++++
+
+error[E0308]: mismatched types
+  --> $DIR/deref-multi.rs:12:5
+   |
+LL | fn b(x: &i32) -> i32 {
+   |                  --- expected `i32` because of return type
+LL |     &x
+   |     ^^ expected `i32`, found `&&i32`
+   |
+help: consider removing the `&` and dereferencing the borrow instead
+   |
+LL -     &x
+LL +     *x
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/deref-multi.rs:17:5
+   |
+LL | fn c(x: Box<i32>) -> i32 {
+   |                      --- expected `i32` because of return type
+LL |     &x
+   |     ^^ expected `i32`, found `&Box<i32>`
+   |
+   = note:   expected type `i32`
+           found reference `&Box<i32>`
+help: consider removing the `&` and dereferencing the borrow instead
+   |
+LL -     &x
+LL +     *x
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/deref-multi.rs:22:5
+   |
+LL | fn d(x: std::sync::Mutex<&i32>) -> i32 {
+   |                                    --- expected `i32` because of return type
+LL |     x.lock().unwrap()
+   |     ^^^^^^^^^^^^^^^^^ expected `i32`, found `MutexGuard<'_, &i32>`
+   |
+   = note: expected type `i32`
+            found struct `std::sync::MutexGuard<'_, &i32>`
+help: consider dereferencing the type
+   |
+LL |     **x.lock().unwrap()
+   |     ++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

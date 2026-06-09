@@ -1,0 +1,11 @@
+error[E0606]: casting `*const (dyn Sub + 'static)` as `*const Wrapper<dyn Super>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-upcast.rs:11:5
+   |
+LL |     ptr as _
+   |     ^^^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

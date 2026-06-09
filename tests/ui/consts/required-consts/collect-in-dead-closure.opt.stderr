@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/collect-in-dead-closure.rs:9:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ evaluation of `Fail::<i32>::C` failed here
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-dead-closure.rs:17:17
+   |
+LL |         let _ = Fail::<T>::C;
+   |                 ^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn not_called::<i32>`
+  --> $DIR/collect-in-dead-closure.rs:24:33
+   |
+LL |         let _closure: fn() = || not_called::<T>();
+   |                                 ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,53 @@
+error: needless call to `as_bytes`
+  --> tests/ui/needless_as_bytes.rs:17:8
+   |
+LL |     if "some string".as_bytes().is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `is_empty()` can be called directly on strings: `"some string".is_empty()`
+   |
+   = note: `-D clippy::needless-as-bytes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_as_bytes)]`
+
+error: needless call to `as_bytes`
+  --> tests/ui/needless_as_bytes.rs:20:30
+   |
+LL |         println!("len = {}", "some string".as_bytes().len());
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `len()` can be called directly on strings: `"some string".len()`
+
+error: needless call to `bytes`
+  --> tests/ui/needless_as_bytes.rs:23:8
+   |
+LL |     if "some string".bytes().is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `is_empty()` can be called directly on strings: `"some string".is_empty()`
+
+error: needless call to `bytes`
+  --> tests/ui/needless_as_bytes.rs:26:30
+   |
+LL |         println!("len = {}", "some string".bytes().len());
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `len()` can be called directly on strings: `"some string".len()`
+
+error: needless call to `as_bytes`
+  --> tests/ui/needless_as_bytes.rs:31:8
+   |
+LL |     if s.as_bytes().is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ help: `is_empty()` can be called directly on strings: `s.is_empty()`
+
+error: needless call to `as_bytes`
+  --> tests/ui/needless_as_bytes.rs:34:30
+   |
+LL |         println!("len = {}", s.as_bytes().len());
+   |                              ^^^^^^^^^^^^^^^^^^ help: `len()` can be called directly on strings: `s.len()`
+
+error: needless call to `bytes`
+  --> tests/ui/needless_as_bytes.rs:37:8
+   |
+LL |     if s.bytes().is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^ help: `is_empty()` can be called directly on strings: `s.is_empty()`
+
+error: needless call to `bytes`
+  --> tests/ui/needless_as_bytes.rs:40:30
+   |
+LL |         println!("len = {}", s.bytes().len());
+   |                              ^^^^^^^^^^^^^^^ help: `len()` can be called directly on strings: `s.len()`
+
+error: aborting due to 8 previous errors
+

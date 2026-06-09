@@ -1,0 +1,38 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+       ]
+  --> $DIR/vtable-multiple.rs:18:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as B>::foo_b),
+       ]
+  --> $DIR/vtable-multiple.rs:22:1
+   |
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a),
+           Method(<S as B>::foo_b),
+           TraitVPtr(<S as B>),
+           Method(<S as C>::foo_c),
+       ]
+  --> $DIR/vtable-multiple.rs:26:1
+   |
+LL | impl C for S {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,17 @@
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded-opaque.rs:8:31
+   |
+LL | fn produce<T>() -> impl Trait<Assoc = impl Trait> {
+   |                               ^^^^^ associated type `Assoc` not found
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded-opaque.rs:8:31
+   |
+LL | fn produce<T>() -> impl Trait<Assoc = impl Trait> {
+   |                               ^^^^^ associated type `Assoc` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

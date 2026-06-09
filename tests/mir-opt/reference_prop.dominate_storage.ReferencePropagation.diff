@@ -1,0 +1,35 @@
+- // MIR for `dominate_storage` before ReferencePropagation
++ // MIR for `dominate_storage` after ReferencePropagation
+  
+  fn dominate_storage() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _2: &i32;
+      let mut _3: i32;
+      let mut _4: bool;
+      let mut _5: i32;
+      let mut _6: bool;
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+          _1 = const 5_i32;
+          _2 = &_1;
+          goto -> bb2;
+      }
+  
+      bb2: {
+          _5 = copy (*_2);
+          _0 = opaque::<i32>(copy _5) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_1);
+          StorageLive(_1);
+          _6 = const true;
+          switchInt(copy _6) -> [0: bb3, otherwise: bb1];
+      }
+  }
+  

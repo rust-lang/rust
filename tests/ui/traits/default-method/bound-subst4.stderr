@@ -1,0 +1,13 @@
+warning: method `h` is never used
+  --> $DIR/bound-subst4.rs:7:8
+   |
+LL | trait A<T> {
+   |       - method in this trait
+LL |     fn g(&self, x: usize) -> usize { x }
+LL |     fn h(&self, x: T) { }
+   |        ^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,13 @@
+error[E0700]: hidden type for `impl Debug` captures lifetime that does not appear in bounds
+  --> $DIR/impl-fn-hrtb-bounds-2.rs:8:9
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug {
+   |                           ---------- opaque type defined here
+LL |     |x| x
+   |     --- ^
+   |     |
+   |     hidden type `&u8` captures the anonymous lifetime as defined here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

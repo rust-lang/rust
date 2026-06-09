@@ -1,0 +1,22 @@
+error[E0015]: cannot call non-const associated function `<T as A>::assoc` in constant functions
+  --> $DIR/issue-88155.rs:8:5
+   |
+LL |     T::assoc()
+   |     ^^^^^^^^^^
+   |
+note: associated function `assoc` is not const because trait `A` is not const
+  --> $DIR/issue-88155.rs:3:1
+   |
+LL | pub trait A {
+   | ^^^^^^^^^^^ this trait is not const
+LL |     fn assoc() -> bool;
+   |     ------------------- this associated function is not const
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `A` const
+   |
+LL | pub const trait A {
+   |     +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0015`.

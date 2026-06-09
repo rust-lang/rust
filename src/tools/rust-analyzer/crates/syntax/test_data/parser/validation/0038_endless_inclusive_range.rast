@@ -1,0 +1,30 @@
+SOURCE_FILE@0..33
+  FN@0..32
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..32
+      STMT_LIST@10..32
+        L_CURLY@10..11 "{"
+        WHITESPACE@11..16 "\n    "
+        EXPR_STMT@16..21
+          RANGE_EXPR@16..20
+            LITERAL@16..17
+              INT_NUMBER@16..17 "0"
+            DOT2EQ@17..20 "..="
+          SEMICOLON@20..21 ";"
+        WHITESPACE@21..26 "\n    "
+        EXPR_STMT@26..30
+          RANGE_EXPR@26..29
+            DOT2EQ@26..29 "..="
+          SEMICOLON@29..30 ";"
+        WHITESPACE@30..31 "\n"
+        R_CURLY@31..32 "}"
+  WHITESPACE@32..33 "\n"
+error 16..20: An inclusive range must have an end expression
+error 26..29: An inclusive range must have an end expression

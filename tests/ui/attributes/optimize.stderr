@@ -1,0 +1,82 @@
+error: `#[optimize]` attribute cannot be used on structs
+  --> $DIR/optimize.rs:8:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on expressions
+  --> $DIR/optimize.rs:12:5
+   |
+LL |     #[optimize(speed)]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on modules
+  --> $DIR/optimize.rs:21:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on inherent impl blocks
+  --> $DIR/optimize.rs:24:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions
+
+error: `#[optimize]` attribute cannot be used on required trait methods
+  --> $DIR/optimize.rs:45:5
+   |
+LL |     #[optimize(speed)]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[optimize]` can only be applied to functions with a body
+
+error: multiple `optimize` attributes
+  --> $DIR/optimize.rs:59:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/optimize.rs:58:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: multiple `optimize` attributes
+  --> $DIR/optimize.rs:63:1
+   |
+LL | #[optimize(size)]
+   | ^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/optimize.rs:62:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: `#[optimize(none)]` cannot be used with `#[inline]` attributes
+  --> $DIR/optimize.rs:66:1
+   |
+LL | #[optimize(none)]
+   | ^^^^^^^^^^^^^^^^^ `#[optimize(none)]` here
+LL | #[inline]
+   | --------- `#[inline]` here
+
+error: `#[optimize(none)]` cannot be used with `#[inline]` attributes
+  --> $DIR/optimize.rs:71:1
+   |
+LL | #[inline(always)]
+   | ----------------- `#[inline]` here
+LL | #[optimize(none)]
+   | ^^^^^^^^^^^^^^^^^ `#[optimize(none)]` here
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,62 @@
+error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
+  --> tests/ui/derive_ord_xor_partial_ord.rs:22:10
+   |
+LL | #[derive(Ord, PartialEq, Eq)]
+   |          ^^^
+   |
+note: `PartialOrd` implemented here
+  --> tests/ui/derive_ord_xor_partial_ord.rs:27:1
+   |
+LL | impl PartialOrd for DeriveOrd {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derive_ord_xor_partial_ord)]`
+
+error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
+  --> tests/ui/derive_ord_xor_partial_ord.rs:33:10
+   |
+LL | #[derive(Ord, PartialEq, Eq)]
+   |          ^^^
+   |
+note: `PartialOrd` implemented here
+  --> tests/ui/derive_ord_xor_partial_ord.rs:38:1
+   |
+LL | impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you are implementing `Ord` explicitly but have derived `PartialOrd`
+  --> tests/ui/derive_ord_xor_partial_ord.rs:47:1
+   |
+LL | / impl std::cmp::Ord for DerivePartialOrd {
+LL | |
+LL | |
+LL | |     fn cmp(&self, other: &Self) -> Ordering {
+...  |
+LL | | }
+   | |_^
+   |
+note: `PartialOrd` implemented here
+  --> tests/ui/derive_ord_xor_partial_ord.rs:44:10
+   |
+LL | #[derive(PartialOrd, PartialEq, Eq)]
+   |          ^^^^^^^^^^
+
+error: you are implementing `Ord` explicitly but have derived `PartialOrd`
+  --> tests/ui/derive_ord_xor_partial_ord.rs:69:5
+   |
+LL | /     impl Ord for DerivePartialOrdInUseOrd {
+LL | |
+LL | |
+LL | |         fn cmp(&self, other: &Self) -> Ordering {
+...  |
+LL | |     }
+   | |_____^
+   |
+note: `PartialOrd` implemented here
+  --> tests/ui/derive_ord_xor_partial_ord.rs:66:14
+   |
+LL |     #[derive(PartialOrd, PartialEq, Eq)]
+   |              ^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

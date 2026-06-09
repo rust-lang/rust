@@ -1,0 +1,33 @@
+error[E0277]: the trait bound `Box<T>: Copy` is not satisfied
+  --> $DIR/issue-74824.rs:10:26
+   |
+LL |     type Copy<T>: Copy = Box<T>;
+   |                          ^^^^^^ the trait `Copy` is not implemented for `Box<T>`
+   |
+note: required by a bound in `UnsafeCopy::Copy`
+  --> $DIR/issue-74824.rs:10:19
+   |
+LL |     type Copy<T>: Copy = Box<T>;
+   |                   ^^^^ required by this bound in `UnsafeCopy::Copy`
+
+error[E0277]: the trait bound `T: Clone` is not satisfied
+  --> $DIR/issue-74824.rs:10:26
+   |
+LL |     type Copy<T>: Copy = Box<T>;
+   |                          ^^^^^^ the trait `Clone` is not implemented for `T`
+   |
+   = note: required for `Box<T>` to implement `Clone`
+   = note: required for `<Self as UnsafeCopy>::Copy<T>` to implement `Copy`
+note: required by a bound in `UnsafeCopy::Copy`
+  --> $DIR/issue-74824.rs:10:19
+   |
+LL |     type Copy<T>: Copy = Box<T>;
+   |                   ^^^^ required by this bound in `UnsafeCopy::Copy`
+help: consider restricting type parameter `T` with trait `Clone`
+   |
+LL |     type Copy<T: std::clone::Clone>: Copy = Box<T>;
+   |                +++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/fn-item-as-const-arg-137084.rs:9:5
+   |
+LL | fn a<const b: i32>() {}
+   | -------------------- function `a` defined here
+LL | fn d(e: &String) {
+LL |     a::<d>
+   |     ^^^^^^ expected `()`, found fn item
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {a::<d>}`
+help: try adding a return type
+   |
+LL | fn d(e: &String) -> fn() {
+   |                  +++++++
+help: use parentheses to call this function
+   |
+LL |     a::<d>()
+   |           ++
+
+error: the constant `d` is not of type `i32`
+  --> $DIR/fn-item-as-const-arg-137084.rs:9:9
+   |
+LL |     a::<d>
+   |         ^ expected `i32`, found fn item
+   |
+note: required by a const generic parameter in `a`
+  --> $DIR/fn-item-as-const-arg-137084.rs:7:6
+   |
+LL | fn a<const b: i32>() {}
+   |      ^^^^^^^^^^^^ required by this const generic parameter in `a`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

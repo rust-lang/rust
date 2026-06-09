@@ -1,0 +1,17 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/issue-45296.rs:4:5
+   |
+LL |     #![allow(unused_variables)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn foo() {}
+   |     ----------- the inner attribute doesn't annotate this function
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+help: to annotate the function, change the attribute from inner to outer style
+   |
+LL -     #![allow(unused_variables)]
+LL +     #[allow(unused_variables)]
+   |
+
+error: aborting due to 1 previous error
+

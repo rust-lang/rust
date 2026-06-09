@@ -1,0 +1,144 @@
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:6:1
+   |
+LL | #[export_name = "foo"]
+   | ---------------------- help: remove this attribute
+LL | pub fn foo<T>() {}
+   | ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/export-name-on-generics.rs:3:9
+   |
+LL | #![deny(no_mangle_generic_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:9:1
+   |
+LL | #[export_name = "bar"]
+   | ---------------------- help: remove this attribute
+LL | pub extern "C" fn bar<T>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:21:5
+   |
+LL |     #[export_name = "foo"]
+   |     ---------------------- help: remove this attribute
+LL |     pub fn foo<T>() {}
+   |     ^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:24:5
+   |
+LL |     #[export_name = "bar"]
+   |     ---------------------- help: remove this attribute
+LL |     pub extern "C" fn bar<T>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:42:5
+   |
+LL |     #[export_name = "foo"]
+   |     ---------------------- help: remove this attribute
+LL |     fn foo<T>() {}
+   |     ^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:45:5
+   |
+LL |     #[export_name = "bar"]
+   |     ---------------------- help: remove this attribute
+LL |     extern "C" fn bar<T>() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:64:5
+   |
+LL |     #[export_name = "foo"]
+   |     ---------------------- help: remove this attribute
+LL |     fn foo() {}
+   |     ^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:67:5
+   |
+LL |     #[export_name = "foo2"]
+   |     ----------------------- help: remove this attribute
+LL |     fn foo2<U>() {}
+   |     ^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:70:5
+   |
+LL |     #[export_name = "baz"]
+   |     ---------------------- help: remove this attribute
+LL |     extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:73:5
+   |
+LL |     #[export_name = "baz"]
+   |     ---------------------- help: remove this attribute
+LL |     fn baz(x: &i32) -> &i32 { x }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:76:5
+   |
+LL |     #[export_name = "qux"]
+   |     ---------------------- help: remove this attribute
+LL |     fn qux<'a>(x: &'a i32) -> &i32 { x }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:83:5
+   |
+LL |     #[export_name = "foo"]
+   |     ---------------------- help: remove this attribute
+LL |     pub fn foo() {}
+   |     ^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:86:5
+   |
+LL |     #[export_name = "bar"]
+   |     ---------------------- help: remove this attribute
+LL |     pub extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:89:5
+   |
+LL |     #[export_name = "baz"]
+   |     ---------------------- help: remove this attribute
+LL |     pub fn baz<U>() {}
+   |     ^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:105:5
+   |
+LL |     #[export_name = "foo"]
+   |     ---------------------- help: remove this attribute
+LL |     fn foo() {}
+   |     ^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:108:5
+   |
+LL |     #[export_name = "bar"]
+   |     ---------------------- help: remove this attribute
+LL |     extern "C" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: functions generic over types or consts must be mangled
+  --> $DIR/export-name-on-generics.rs:111:5
+   |
+LL |     #[export_name = "baz"]
+   |     ---------------------- help: remove this attribute
+LL |     fn baz<U>() {}
+   |     ^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+

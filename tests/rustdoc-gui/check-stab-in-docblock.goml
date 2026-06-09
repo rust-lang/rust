@@ -1,0 +1,45 @@
+// This test checks that using `.stab` attributes in `.docblock` elements doesn't
+// create scrollable paragraphs and is correctly displayed (not making weird blocks).
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// Needs the text to be display to check for scrollable content.
+show-text: true
+set-window-size: (786, 600)
+// Confirms that there 3 paragraphs.
+assert-count: (".top-doc .docblock p", 3)
+// Checking that there is no scrollable content.
+store-property: (".top-doc .docblock p:nth-of-type(1)", {
+    "clientHeight": clientHeight,
+    "clientWidth": clientWidth,
+})
+assert-property: (
+    ".top-doc .docblock p:nth-of-type(1)",
+    {"scrollHeight": |clientHeight|, "scrollWidth": |clientWidth|},
+)
+store-property: (".top-doc .docblock p:nth-of-type(2)", {
+    "clientHeight": clientHeight,
+    "clientWidth": clientWidth,
+})
+assert-property: (
+    ".top-doc .docblock p:nth-of-type(2)",
+    {"scrollHeight": |clientHeight|, "scrollWidth": |clientWidth|},
+)
+store-property: (".top-doc .docblock p:nth-of-type(3)", {
+    "clientHeight": clientHeight,
+    "clientWidth": clientWidth,
+})
+assert-property: (
+    ".top-doc .docblock p:nth-of-type(3)",
+    {"scrollHeight": |clientHeight|, "scrollWidth": |clientWidth|},
+)
+
+// Ensure that `<code>` elements in code don't make big blocks.
+compare-elements-size-near: (
+    "#reexport\.TheStdReexport > code",
+    ".docblock p span[data-span='1']",
+    {"height": 1},
+)
+compare-elements-size-near: (
+    "#reexport\.TheStdReexport > code",
+    ".docblock p span[data-span='2']",
+    {"height": 1},
+)

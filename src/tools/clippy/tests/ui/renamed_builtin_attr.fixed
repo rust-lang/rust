@@ -1,0 +1,5 @@
+//@compile-flags: -Zdeduplicate-diagnostics=yes
+
+#[clippy::cognitive_complexity = "1"]
+//~^ ERROR: usage of deprecated attribute
+fn main() {}

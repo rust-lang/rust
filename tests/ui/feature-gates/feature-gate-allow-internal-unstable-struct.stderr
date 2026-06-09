@@ -1,0 +1,20 @@
+error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
+  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:6:1
+   |
+LL | #[allow_internal_unstable(something)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[allow_internal_unstable]` attribute cannot be used on structs
+  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:6:1
+   |
+LL | #[allow_internal_unstable(something)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

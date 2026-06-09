@@ -1,0 +1,329 @@
+//! Serialization for client-server communication.
+
+use std::any::Any;
+use std::io::Write;
+use std::num::NonZero;
+
+use super::buffer::Buffer;
+
+pub(super) trait Encode<S>: Sized {
+    fn encode(self, w: &mut Buffer, s: &mut S);
+}
+
+pub(super) trait Decode<'a, 's, S>: Sized {
+    fn decode(r: &mut &'a [u8], s: &'s mut S) -> Self;
+}
+
+macro_rules! rpc_encode_decode {
+    (le $ty:ty) => {
+        impl<S> Encode<S> for $ty {
+            #[inline]
+            fn encode(self, w: &mut Buffer, _: &mut S) {
+                w.extend_from_array(&self.to_le_bytes());
+            }
+        }
+
+        impl<S> Decode<'_, '_, S> for $ty {
+            #[inline]
+            fn decode(r: &mut &[u8], _: &mut S) -> Self {
+                const N: usize = size_of::<$ty>();
+
+                let mut bytes = [0; N];
+                bytes.copy_from_slice(&r[..N]);
+                *r = &r[N..];
+
+                Self::from_le_bytes(bytes)
+            }
+        }
+    };
+    (struct $name:ident $(<$($T:ident),+>)? { $($field:ident),* $(,)? }) => {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
+            fn encode(self, w: &mut Buffer, s: &mut S) {
+                $(self.$field.encode(w, s);)*
+            }
+        }
+
+        impl<'a, S, $($($T: for<'s> Decode<'a, 's, S>),+)?> Decode<'a, '_, S>
+            for $name $(<$($T),+>)?
+        {
+            #[inline]
+            fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+                $name {
+                    $($field: Decode::decode(r, s)),*
+                }
+            }
+        }
+    };
+    (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
+        #[allow(non_upper_case_globals, non_camel_case_types)]
+        const _: () = {
+            #[repr(u8)] enum Tag { $($variant),* }
+
+            $(const $variant: u8 = Tag::$variant as u8;)*
+
+            impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
+                #[inline]
+                fn encode(self, w: &mut Buffer, s: &mut S) {
+                    match self {
+                        $($name::$variant $(($field))* => {
+                            $variant.encode(w, s);
+                            $($field.encode(w, s);)*
+                        })*
+                    }
+                }
+            }
+
+            impl<'a, S, $($($T: for<'s> Decode<'a, 's, S>),+)?> Decode<'a, '_, S>
+                for $name $(<$($T),+>)?
+            {
+                #[inline]
+                fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+                    match u8::decode(r, s) {
+                        $($variant => {
+                            $(let $field = Decode::decode(r, s);)*
+                            $name::$variant $(($field))*
+                        })*
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        };
+    }
+}
+
+impl<S> Encode<S> for () {
+    #[inline]
+    fn encode(self, _: &mut Buffer, _: &mut S) {}
+}
+
+impl<S> Decode<'_, '_, S> for () {
+    #[inline]
+    fn decode(_: &mut &[u8], _: &mut S) -> Self {}
+}
+
+impl<S> Encode<S> for u8 {
+    #[inline]
+    fn encode(self, w: &mut Buffer, _: &mut S) {
+        w.push(self);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for u8 {
+    #[inline]
+    fn decode(r: &mut &[u8], _: &mut S) -> Self {
+        let x = r[0];
+        *r = &r[1..];
+        x
+    }
+}
+
+rpc_encode_decode!(le u32);
+#[cfg(target_pointer_width = "64")]
+rpc_encode_decode!(le usize);
+
+#[cfg(not(target_pointer_width = "64"))]
+const MAX_USIZE_SIZE: usize = 8;
+
+#[cfg(not(target_pointer_width = "64"))]
+impl<S> Encode<S> for usize {
+    #[inline]
+    fn encode(self, w: &mut Buffer, _: &mut S) {
+        const N: usize = size_of::<usize>();
+
+        // We can pad with zeros without changing the value because of
+        // little endian encoding.
+        let mut bytes = [0; MAX_USIZE_SIZE];
+        bytes[..N].copy_from_slice(&self.to_le_bytes());
+
+        w.extend_from_array(&bytes);
+    }
+}
+
+#[cfg(not(target_pointer_width = "64"))]
+impl<S> Decode<'_, '_, S> for usize {
+    #[inline]
+    fn decode(r: &mut &[u8], _: &mut S) -> Self {
+        const N: usize = size_of::<usize>();
+        const {
+            assert!(N <= MAX_USIZE_SIZE);
+        }
+
+        let mut bytes = [0; N];
+        bytes.copy_from_slice(&r[..N]);
+        *r = &r[MAX_USIZE_SIZE..];
+
+        Self::from_le_bytes(bytes)
+    }
+}
+
+impl<S> Encode<S> for bool {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        (self as u8).encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for bool {
+    #[inline]
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
+        match u8::decode(r, s) {
+            0 => false,
+            1 => true,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<S> Encode<S> for NonZero<u32> {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        self.get().encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for NonZero<u32> {
+    #[inline]
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
+        Self::new(u32::decode(r, s)).unwrap()
+    }
+}
+
+impl<S, A: Encode<S>, B: Encode<S>> Encode<S> for (A, B) {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        self.0.encode(w, s);
+        self.1.encode(w, s);
+    }
+}
+
+impl<'a, S, A: for<'s> Decode<'a, 's, S>, B: for<'s> Decode<'a, 's, S>> Decode<'a, '_, S>
+    for (A, B)
+{
+    #[inline]
+    fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+        (Decode::decode(r, s), Decode::decode(r, s))
+    }
+}
+
+impl<S> Encode<S> for &str {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        let bytes = self.as_bytes();
+        bytes.len().encode(w, s);
+        w.write_all(bytes).unwrap();
+    }
+}
+
+impl<'a, S> Decode<'a, '_, S> for &'a str {
+    #[inline]
+    fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+        let len = usize::decode(r, s);
+        let xs = &r[..len];
+        *r = &r[len..];
+        str::from_utf8(xs).unwrap()
+    }
+}
+
+impl<S> Encode<S> for String {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        self[..].encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for String {
+    #[inline]
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
+        <&str>::decode(r, s).to_string()
+    }
+}
+
+impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        self.len().encode(w, s);
+        for x in self {
+            x.encode(w, s);
+        }
+    }
+}
+
+impl<'a, S, T: for<'s> Decode<'a, 's, S>> Decode<'a, '_, S> for Vec<T> {
+    #[inline]
+    fn decode(r: &mut &'a [u8], s: &mut S) -> Self {
+        let len = usize::decode(r, s);
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::decode(r, s));
+        }
+        vec
+    }
+}
+
+/// Simplified version of panic payloads, ignoring
+/// types other than `&'static str` and `String`.
+pub enum PanicMessage {
+    StaticStr(&'static str),
+    String(String),
+    Unknown,
+}
+
+impl From<Box<dyn Any + Send>> for PanicMessage {
+    fn from(payload: Box<dyn Any + Send + 'static>) -> Self {
+        if let Some(s) = payload.downcast_ref::<&'static str>() {
+            return PanicMessage::StaticStr(s);
+        }
+        if let Ok(s) = payload.downcast::<String>() {
+            return PanicMessage::String(*s);
+        }
+        PanicMessage::Unknown
+    }
+}
+
+impl From<PanicMessage> for Box<dyn Any + Send> {
+    fn from(val: PanicMessage) -> Self {
+        match val {
+            PanicMessage::StaticStr(s) => Box::new(s),
+            PanicMessage::String(s) => Box::new(s),
+            PanicMessage::Unknown => {
+                struct UnknownPanicMessage;
+                Box::new(UnknownPanicMessage)
+            }
+        }
+    }
+}
+
+impl PanicMessage {
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            PanicMessage::StaticStr(s) => Some(s),
+            PanicMessage::String(s) => Some(s),
+            PanicMessage::Unknown => None,
+        }
+    }
+
+    pub fn into_string(self) -> Option<String> {
+        match self {
+            PanicMessage::StaticStr(s) => Some(s.into()),
+            PanicMessage::String(s) => Some(s),
+            PanicMessage::Unknown => None,
+        }
+    }
+}
+
+impl<S> Encode<S> for PanicMessage {
+    #[inline]
+    fn encode(self, w: &mut Buffer, s: &mut S) {
+        self.as_str().encode(w, s);
+    }
+}
+
+impl<S> Decode<'_, '_, S> for PanicMessage {
+    #[inline]
+    fn decode(r: &mut &[u8], s: &mut S) -> Self {
+        match Option::<String>::decode(r, s) {
+            Some(s) => PanicMessage::String(s),
+            None => PanicMessage::Unknown,
+        }
+    }
+}

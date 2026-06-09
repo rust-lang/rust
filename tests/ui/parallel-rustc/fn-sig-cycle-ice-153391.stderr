@@ -1,0 +1,31 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/fn-sig-cycle-ice-153391.rs:8:15
+   |
+LL |     fn g() -> B;
+   |               ^
+   |
+help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn g() -> impl B;
+   |               ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/fn-sig-cycle-ice-153391.rs:13:23
+   |
+LL |     fn bar(&self, x: &A);
+   |                       ^
+   |
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `A`
+   |
+LL -     fn bar(&self, x: &A);
+LL +     fn bar<T: A>(&self, x: &T);
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn bar(&self, x: &impl A);
+   |                       ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

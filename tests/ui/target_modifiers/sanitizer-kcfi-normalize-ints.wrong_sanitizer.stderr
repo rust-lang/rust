@@ -1,0 +1,13 @@
+error: mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
+  --> $DIR/sanitizer-kcfi-normalize-ints.rs:12:1
+   |
+LL | #![feature(no_core)]
+   | ^
+   |
+   = help: the `-Zsanitizer` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+   = note: unset `-Zsanitizer` in this crate is incompatible with `-Zsanitizer=kcfi` in dependency `kcfi_normalize_ints`
+   = help: set `-Zsanitizer=kcfi` in this crate or unset `-Zsanitizer` in `kcfi_normalize_ints`
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=sanitizer` to silence this error
+
+error: aborting due to 1 previous error
+

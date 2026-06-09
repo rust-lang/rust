@@ -1,0 +1,22 @@
+error: lifetime may not live long enough
+  --> $DIR/type-alias-free-regions.rs:17:9
+   |
+LL | impl<'a> FromBox<'a> for C<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn from_box(b: Box<B>) -> Self {
+   |                 - has type `Box<Box<&'1 isize>>`
+LL |         C { f: b }
+   |         ^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/type-alias-free-regions.rs:27:9
+   |
+LL | impl<'a> FromTuple<'a> for C<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn from_tuple(b: (B,)) -> Self {
+   |                   - has type `(Box<&'1 isize>,)`
+LL |         C { f: Box::new(b.0) }
+   |         ^^^^^^^^^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+
+error: aborting due to 2 previous errors
+

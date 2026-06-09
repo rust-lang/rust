@@ -1,0 +1,31 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `*mut u8`
+  --> $DIR/pointer-arith-assign.rs:10:5
+   |
+LL |     _ptr += 2;
+   |     ----^^^^^
+   |     |
+   |     cannot use `+=` on type `*mut u8`
+   |
+help: consider using `add` or `wrapping_add` to do pointer arithmetic
+   |
+LL -     _ptr += 2;
+LL +     _ptr = _ptr.wrapping_add(2);
+   |
+
+error[E0368]: binary assignment operation `-=` cannot be applied to type `*mut u8`
+  --> $DIR/pointer-arith-assign.rs:17:5
+   |
+LL |     _ptr -= 2;
+   |     ----^^^^^
+   |     |
+   |     cannot use `-=` on type `*mut u8`
+   |
+help: consider using `sub` or `wrapping_sub` to do pointer arithmetic
+   |
+LL -     _ptr -= 2;
+LL +     _ptr = _ptr.wrapping_sub(2);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0368`.

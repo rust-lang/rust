@@ -1,0 +1,18 @@
+error[E0038]: the trait `MyAdd` is not dyn compatible
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:22
+   |
+LL |     let y = x as dyn MyAdd<i32>;
+   |                      ^^^^^^^^^^ `MyAdd` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:6:55
+   |
+LL | trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
+   |       ----- this trait is not dyn compatible...       ^^^^ ...because method `add` references the `Self` type in its return type
+   = help: consider moving `add` to another trait
+   = help: only type `i32` implements `MyAdd`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

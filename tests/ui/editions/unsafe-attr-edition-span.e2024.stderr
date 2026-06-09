@@ -1,0 +1,24 @@
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attr-edition-span.rs:21:3
+   |
+LL | #[no_mangle]
+   |   ^^^^^^^^^ usage of unsafe attribute
+   |
+help: wrap the attribute in `unsafe(...)`
+   |
+LL | #[unsafe(no_mangle)]
+   |   +++++++         +
+
+error: unsafe attribute used without unsafe
+  --> $DIR/unsafe-attr-edition-span.rs:25:7
+   |
+LL |     #[no_mangle]
+   |       ^^^^^^^^^ usage of unsafe attribute
+   |
+help: wrap the attribute in `unsafe(...)`
+   |
+LL |     #[unsafe(no_mangle)]
+   |       +++++++         +
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,140 @@
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:11:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+   = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
+
+error: this assertion is always `false`
+  --> tests/ui/assertions_on_constants.rs:14:5
+   |
+LL |     assert!(false);
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: replace this with `panic!()` or `unreachable!()`
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:17:5
+   |
+LL |     assert!(true, "true message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion is always `false`
+  --> tests/ui/assertions_on_constants.rs:20:5
+   |
+LL |     assert!(false, "false message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace this with `panic!()` or `unreachable!()`
+
+error: this assertion is always `false`
+  --> tests/ui/assertions_on_constants.rs:24:5
+   |
+LL |     assert!(false, "{}", msg.to_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace this with `panic!()` or `unreachable!()`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:28:5
+   |
+LL |     assert!(B);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:32:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:35:5
+   |
+LL |     assert!(C, "C message");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:38:5
+   |
+LL |     debug_assert!(true);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:46:5
+   |
+LL |     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:55:19
+   |
+LL |     const _: () = assert!(true);
+   |                   ^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:58:5
+   |
+LL |     assert!(8 == (7 + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:69:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:72:5
+   |
+LL |     assert!(8 == (7 + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:80:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:91:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:97:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
+
+error: aborting due to 17 previous errors
+

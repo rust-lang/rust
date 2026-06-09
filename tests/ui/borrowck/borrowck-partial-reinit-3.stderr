@@ -1,0 +1,13 @@
+error[E0382]: assign of moved value: `x.0`
+  --> $DIR/borrowck-partial-reinit-3.rs:11:5
+   |
+LL |     mem::drop(x.0);
+   |               --- value moved here
+LL |     x.0.f = 3;
+   |     ^^^^^^^^^ value assigned here after move
+   |
+   = note: move occurs because `x.0` has type `Test`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

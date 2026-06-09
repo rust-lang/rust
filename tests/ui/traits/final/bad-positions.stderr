@@ -1,0 +1,26 @@
+error: `final` is not followed by an item
+  --> $DIR/bad-positions.rs:4:5
+   |
+LL |     final;
+   |     ^^^^^ the `final` qualifier
+   |
+   = note: only associated functions in traits may be prefixed by `final`
+
+error: `final` is not followed by an item
+  --> $DIR/bad-positions.rs:5:5
+   |
+LL |     final 1 + 1;
+   |     ^^^^^ the `final` qualifier
+   |
+   = note: only associated functions in traits may be prefixed by `final`
+
+error: `final` is not followed by an item
+  --> $DIR/bad-positions.rs:6:5
+   |
+LL |     final { println!("text"); };
+   |     ^^^^^ the `final` qualifier
+   |
+   = note: only associated functions in traits may be prefixed by `final`
+
+error: aborting due to 3 previous errors
+

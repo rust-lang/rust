@@ -1,0 +1,47 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/two-phase-activation-sharing-interference.rs:29:15
+   |
+LL |     let y = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     { let z = &x; read(z); }
+   |               ^^ immutable borrow occurs here
+LL |
+LL |     *y += 1;
+   |     ------- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/two-phase-activation-sharing-interference.rs:37:13
+   |
+LL |     let y = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     let z = &x;
+   |             ^^ immutable borrow occurs here
+LL |
+LL |     *y += 1;
+   |     ------- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/two-phase-activation-sharing-interference.rs:47:13
+   |
+LL |     let y = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     let z = &x;
+   |             ^^ immutable borrow occurs here
+...
+LL |     *y += 1;
+   |     ------- mutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/two-phase-activation-sharing-interference.rs:56:14
+   |
+LL |     let y = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     let _z = &x;
+   |              ^^ immutable borrow occurs here
+LL |
+LL |     *y += 1;
+   |     ------- mutable borrow later used here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

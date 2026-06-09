@@ -1,0 +1,103 @@
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:23:21
+   |
+LL |     type Ma = (u32, !, i32);
+   |                     ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:24:24
+   |
+LL |     type Meeshka = Vec<!>;
+   |                        ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:25:28
+   |
+LL |     type Mow = &'static fn(!) -> !;
+   |                            ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:26:31
+   |
+LL |     type Skwoz = &'static mut !;
+   |                               ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:27:36
+   |
+LL |     type Meow = fn() -> Result<(), !>;
+   |                                    ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:30:20
+   |
+LL |         type Wub = !;
+   |                    ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:33:47
+   |
+LL |     fn look_ma_no_feature_gate<F: FnOnce() -> !>() {}
+   |                                               ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:35:30
+   |
+LL |     fn tadam(f: &dyn Fn() -> !) {}
+   |                              ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:37:34
+   |
+LL |     fn toudoum() -> impl Fn() -> ! {
+   |                                  ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `!` type is experimental
+  --> $DIR/feature-gate-never_type.rs:41:35
+   |
+LL |     fn infallible() -> Result<(), !> {
+   |                                   ^
+   |
+   = note: see issue #35121 <https://github.com/rust-lang/rust/issues/35121> for more information
+   = help: add `#![feature(never_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

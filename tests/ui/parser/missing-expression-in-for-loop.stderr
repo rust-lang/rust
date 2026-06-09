@@ -1,0 +1,13 @@
+error: missing expression to iterate on in `for` loop
+  --> $DIR/missing-expression-in-for-loop.rs:2:14
+   |
+LL |     for i in {
+   |              ^
+   |
+help: try adding an expression to the `for` loop
+   |
+LL |     for i in /* expression */ {
+   |              ++++++++++++++++
+
+error: aborting due to 1 previous error
+

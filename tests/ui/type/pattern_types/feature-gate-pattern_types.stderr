@@ -1,0 +1,59 @@
+error[E0658]: use of unstable library feature `pattern_type_macro`
+  --> $DIR/feature-gate-pattern_types.rs:5:19
+   |
+LL | type NonNullU32 = pattern_type!(u32 is 1..);
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
+   = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `pattern_type_macro`
+  --> $DIR/feature-gate-pattern_types.rs:7:16
+   |
+LL | type Percent = pattern_type!(u32 is 0..=100);
+   |                ^^^^^^^^^^^^
+   |
+   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
+   = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `pattern_type_macro`
+  --> $DIR/feature-gate-pattern_types.rs:9:17
+   |
+LL | type Negative = pattern_type!(i32 is ..=0);
+   |                 ^^^^^^^^^^^^
+   |
+   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
+   = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `pattern_type_macro`
+  --> $DIR/feature-gate-pattern_types.rs:11:17
+   |
+LL | type Positive = pattern_type!(i32 is 0..);
+   |                 ^^^^^^^^^^^^
+   |
+   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
+   = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `pattern_type_macro`
+  --> $DIR/feature-gate-pattern_types.rs:13:15
+   |
+LL | type Always = pattern_type!(Option<u32> is Some(_));
+   |               ^^^^^^^^^^^^
+   |
+   = note: see issue #123646 <https://github.com/rust-lang/rust/issues/123646> for more information
+   = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: pattern not supported in pattern types
+  --> $DIR/feature-gate-pattern_types.rs:13:44
+   |
+LL | type Always = pattern_type!(Option<u32> is Some(_));
+   |                                            ^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

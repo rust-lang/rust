@@ -1,0 +1,12 @@
+warning: method `bar` is never used
+  --> $DIR/impl-inherent-prefer-over-trait.rs:6:8
+   |
+LL | trait Trait {
+   |       ----- method in this trait
+LL |     fn bar(&self);
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

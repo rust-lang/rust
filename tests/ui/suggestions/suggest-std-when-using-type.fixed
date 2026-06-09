@@ -1,0 +1,5 @@
+//@ run-rustfix
+fn main() {
+    let pi = std::f32::consts::PI; //~ ERROR ambiguous associated type
+    println!("{pi}");
+}

@@ -1,0 +1,31 @@
+error[E0283]: type annotations needed
+  --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
+   |
+LL |     test(22, std::default::Default::default());
+   |     ^^^^ -- type must be known at this point
+   |     |
+   |     cannot infer type of the type parameter `U` declared on the function `test`
+   |
+note: multiple `impl`s satisfying `i32: Convert<_>` found
+  --> $DIR/multidispatch-convert-ambig-dest.rs:8:1
+   |
+LL | impl Convert<i8> for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl Convert<i16> for i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `test`
+  --> $DIR/multidispatch-convert-ambig-dest.rs:21:11
+   |
+LL | fn test<T,U>(_: T, _: U)
+   |    ---- required by a bound in this function
+LL | where T : Convert<U>
+   |           ^^^^^^^^^^ required by this bound in `test`
+help: consider specifying the generic arguments
+   |
+LL |     test::<i32, U>(22, std::default::Default::default());
+   |         ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

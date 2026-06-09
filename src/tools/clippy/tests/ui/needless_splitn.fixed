@@ -1,0 +1,58 @@
+//@edition:2018
+
+#![warn(clippy::needless_splitn)]
+#![allow(clippy::iter_skip_next, clippy::iter_nth_zero, clippy::manual_split_once)]
+
+extern crate itertools;
+
+#[allow(unused_imports)]
+use itertools::Itertools;
+
+fn main() {
+    let str = "key=value=end";
+    let _ = str.split('=').next();
+    //~^ needless_splitn
+    let _ = str.split('=').nth(0);
+    //~^ needless_splitn
+    let _ = str.splitn(2, '=').nth(1);
+    let (_, _) = str.splitn(2, '=').next_tuple().unwrap();
+    let (_, _) = str.split('=').next_tuple().unwrap();
+    //~^ needless_splitn
+    let _: Vec<&str> = str.splitn(3, '=').collect();
+
+    let _ = str.rsplit('=').next();
+    //~^ needless_splitn
+    let _ = str.rsplit('=').nth(0);
+    //~^ needless_splitn
+    let _ = str.rsplitn(2, '=').nth(1);
+    let (_, _) = str.rsplitn(2, '=').next_tuple().unwrap();
+    let (_, _) = str.rsplit('=').next_tuple().unwrap();
+    //~^ needless_splitn
+
+    let _ = str.split('=').next();
+    //~^ needless_splitn
+    let _ = str.split('=').nth(3);
+    //~^ needless_splitn
+    let _ = str.splitn(5, '=').nth(4);
+    let _ = str.splitn(5, '=').nth(5);
+}
+
+fn _question_mark(s: &str) -> Option<()> {
+    let _ = s.split('=').next()?;
+    //~^ needless_splitn
+    let _ = s.split('=').nth(0)?;
+    //~^ needless_splitn
+    let _ = s.rsplit('=').next()?;
+    //~^ needless_splitn
+    let _ = s.rsplit('=').nth(0)?;
+    //~^ needless_splitn
+
+    Some(())
+}
+
+#[clippy::msrv = "1.51"]
+fn _test_msrv() {
+    // `manual_split_once` MSRV shouldn't apply to `needless_splitn`
+    let _ = "key=value".split('=').nth(0).unwrap();
+    //~^ needless_splitn
+}

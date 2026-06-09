@@ -1,0 +1,27 @@
+error[E0080]: memory access failed: attempting to access 4 bytes, but got 0x100[noalloc] which is a dangling pointer (it has no provenance)
+  --> $DIR/copy-intrinsic.rs:20:5
+   |
+LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `COPY_OOB_1` failed here
+
+error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC0+0x28 which is at or beyond the end of the allocation of size 4 bytes
+  --> $DIR/copy-intrinsic.rs:28:5
+   |
+LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `COPY_OOB_2` failed here
+
+error[E0080]: overflow computing total size of `copy`
+  --> $DIR/copy-intrinsic.rs:34:5
+   |
+LL |     copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `COPY_SIZE_OVERFLOW` failed here
+
+error[E0080]: overflow computing total size of `copy_nonoverlapping`
+  --> $DIR/copy-intrinsic.rs:39:5
+   |
+LL |     copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `COPY_NONOVERLAPPING_SIZE_OVERFLOW` failed here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,107 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-then-neeing-semi.rs:28:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |
+LL | |         async_dummy();
+   | |         -------------- expected because of this
+...  |
+LL | |         async_dummy()
+   | |         ^^^^^^^^^^^^^ expected `()`, found future
+...  |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+note: calling an async function returns a future
+  --> $DIR/if-then-neeing-semi.rs:28:9
+   |
+LL |         async_dummy()
+   |         ^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+   |
+LL |         async_dummy().await
+   |                      ++++++
+help: consider removing this semicolon
+   |
+LL -         async_dummy();
+LL +         async_dummy()
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-then-neeing-semi.rs:41:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |
+LL | |         async_dummy();
+   | |         -------------- expected because of this
+...  |
+LL | |         async_dummy2()
+   | |         ^^^^^^^^^^^^^^ expected `()`, found future
+...  |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+note: calling an async function returns a future
+  --> $DIR/if-then-neeing-semi.rs:41:9
+   |
+LL |         async_dummy2()
+   |         ^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+   |
+LL |         async_dummy2().await
+   |                       ++++++
+help: consider removing this semicolon and boxing the expressions
+   |
+LL ~         Box::new(async_dummy())
+LL |
+LL |     } else {
+LL ~         Box::new(async_dummy2())
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-then-neeing-semi.rs:54:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |
+LL | |         async_dummy()
+   | |         ------------- expected because of this
+...  |
+LL | |         async_dummy2()
+   | |         ^^^^^^^^^^^^^^ expected future, found a different future
+...  |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: distinct uses of `impl Trait` result in different opaque types
+help: consider `await`ing on both `Future`s
+   |
+LL ~         async_dummy().await
+LL |
+LL |     } else {
+LL ~         async_dummy2().await
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-then-neeing-semi.rs:13:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |
+LL | |         dummy();
+   | |         --------
+   | |         |      |
+   | |         |      help: consider removing this semicolon
+   | |         expected because of this
+...  |
+LL | |         dummy()
+   | |         ^^^^^^^ expected `()`, found `i32`
+LL | |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

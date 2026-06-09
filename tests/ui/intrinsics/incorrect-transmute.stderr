@@ -1,0 +1,21 @@
+error[E0658]: the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items
+  --> $DIR/incorrect-transmute.rs:6:1
+   |
+LL | #[rustc_intrinsic]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0133]: call to unsafe function `transmute` is unsafe and requires unsafe function or block
+  --> $DIR/incorrect-transmute.rs:2:5
+   |
+LL |     transmute(); // does not ICE
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0133, E0658.
+For more information about an error, try `rustc --explain E0133`.

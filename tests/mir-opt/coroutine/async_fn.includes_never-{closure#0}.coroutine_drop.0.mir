@@ -1,0 +1,155 @@
+// MIR for `includes_never::{closure#0}` 0 coroutine_drop
+
+fn includes_never::{closure#0}(_1: &mut {async fn body of includes_never()}) -> () {
+    debug _task_context => _2;
+    debug crash => ((*_1).0: bool);
+    debug x => ((*_1).1: u32);
+    let mut _0: ();
+    let mut _2: &mut std::task::Context<'_>;
+    let _3: bool;
+    let mut _6: {async block@$DIR/async_fn.rs:61:18: 61:23};
+    let mut _7: {async block@$DIR/async_fn.rs:61:18: 61:23};
+    let mut _8: &u32;
+    let mut _10: ();
+    let _11: ();
+    let mut _12: std::task::Poll<u32>;
+    let mut _13: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:61:18: 61:23}>;
+    let mut _14: &mut {async block@$DIR/async_fn.rs:61:18: 61:23};
+    let mut _15: &mut {async block@$DIR/async_fn.rs:61:18: 61:23};
+    let mut _16: &mut std::task::Context<'_>;
+    let mut _17: &mut std::task::Context<'_>;
+    let mut _18: &mut std::task::Context<'_>;
+    let mut _19: isize;
+    let mut _21: !;
+    let mut _22: &mut std::task::Context<'_>;
+    let mut _23: ();
+    let _24: ();
+    let mut _25: bool;
+    let mut _26: !;
+    let mut _28: u32;
+    let mut _29: {async block@$DIR/async_fn.rs:67:15: 67:20};
+    let mut _30: {async block@$DIR/async_fn.rs:67:15: 67:20};
+    let mut _31: &u32;
+    let _33: ();
+    let mut _34: std::task::Poll<u32>;
+    let mut _35: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:67:15: 67:20}>;
+    let mut _36: &mut {async block@$DIR/async_fn.rs:67:15: 67:20};
+    let mut _37: &mut {async block@$DIR/async_fn.rs:67:15: 67:20};
+    let mut _38: &mut std::task::Context<'_>;
+    let mut _39: &mut std::task::Context<'_>;
+    let mut _40: std::future::ResumeTy;
+    let mut _41: isize;
+    let mut _43: !;
+    let mut _44: std::future::ResumeTy;
+    let mut _45: ();
+    let _46: ();
+    let mut _47: Never;
+    let mut _48: u32;
+    let mut _49: u32;
+    scope 1 {
+        debug crash => (((*_1) as variant#3).0: bool);
+        let _4: u32;
+        scope 2 {
+            debug x => (((*_1) as variant#3).1: u32);
+            let _5: u32;
+            let mut _9: {async block@$DIR/async_fn.rs:61:18: 61:23};
+            scope 3 {
+                debug result => _5;
+                scope 6 {
+                    debug bad => _27;
+                    let mut _32: {async block@$DIR/async_fn.rs:67:15: 67:20};
+                    scope 8 {
+                        debug __awaitee => _32;
+                        let _42: u32;
+                        scope 9 {
+                            debug result => _42;
+                        }
+                    }
+                }
+                scope 7 {
+                    let _27: Never;
+                }
+            }
+            scope 4 {
+                debug __awaitee => (((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:61:18: 61:23});
+                let _20: u32;
+                scope 5 {
+                    debug result => _20;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _49 = discriminant((*_1));
+        switchInt(move _49) -> [0: bb9, 3: bb12, otherwise: bb13];
+    }
+
+    bb1: {
+        StorageDead(_23);
+        StorageDead(_22);
+        drop((((*_1) as variant#3).2: {async block@$DIR/async_fn.rs:61:18: 61:23})) -> [return: bb2, unwind: bb6];
+    }
+
+    bb2: {
+        nop;
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_6);
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb10;
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+
+    bb6 (cleanup): {
+        nop;
+        goto -> bb7;
+    }
+
+    bb7 (cleanup): {
+        StorageDead(_6);
+        StorageDead(_5);
+        nop;
+        nop;
+        goto -> bb5;
+    }
+
+    bb8: {
+        return;
+    }
+
+    bb9: {
+        goto -> bb11;
+    }
+
+    bb10: {
+        goto -> bb4;
+    }
+
+    bb11: {
+        goto -> bb8;
+    }
+
+    bb12: {
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_22);
+        StorageLive(_23);
+        goto -> bb1;
+    }
+
+    bb13: {
+        return;
+    }
+}

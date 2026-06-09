@@ -1,0 +1,69 @@
+name: New lint suggestion
+description: Suggest a new Clippy lint.
+labels: ["A-lint"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for your lint idea!
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+      description: What does this lint do?
+    validations:
+      required: true
+  - type: textarea
+    id: advantage
+    attributes:
+      label: Advantage
+      description: >
+        What is the advantage of the recommended code over the original code?
+      placeholder: |
+        - Remove bounds check inserted by ...
+        - Remove the need to duplicate/store ...
+        - Remove typo ...
+  - type: textarea
+    id: drawbacks
+    attributes:
+      label: Drawbacks
+      description: What might be possible drawbacks of such a lint?
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: >
+        Include a short example showing when the lint should trigger together
+        with the improved code.
+      value: |
+        ```rust
+        <code>
+        ```
+
+        Could be written as:
+
+        ```rust
+        <code>
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: comparison
+    attributes:
+      label: Comparison with existing lints
+      description: |
+        What makes this lint different from any existing lints that are similar, and how are those differences useful?
+
+        You can [use this playground template to see what existing lints are triggered by the bad code][playground]
+        (make sure to use "Tools > Clippy" and not "Build").
+        You can also look through the list of [rustc's allowed-by-default lints][allowed-by-default],
+        as those won't show up in the playground above.
+
+        [allowed-by-default]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html
+
+        [playground]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&code=%23%21%5Bwarn%28clippy%3A%3Apedantic%29%5D%0A%23%21%5Bwarn%28clippy%3A%3Anursery%29%5D%0A%23%21%5Bwarn%28clippy%3A%3Arestriction%29%5D%0A%23%21%5Bwarn%28clippy%3A%3Aall%29%5D%0A%23%21%5Ballow%28clippy%3A%3Ablanket_clippy_restriction_lints%2C+reason+%3D+%22testing+to+see+if+any+restriction+lints+match+given+code%22%29%5D%0A%0A%2F%2F%21+Template+that+can+be+used+to+see+what+clippy+lints+a+given+piece+of+code+would+trigger
+      placeholder: Unlike `clippy::...`, the proposed lint would...
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context that you believe may be relevant.

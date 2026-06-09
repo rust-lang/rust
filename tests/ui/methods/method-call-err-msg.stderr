@@ -1,0 +1,91 @@
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/method-call-err-msg.rs:13:7
+   |
+LL |     x.zero(0)
+   |       ^^^^ - unexpected argument of type `{integer}`
+   |
+note: method defined here
+  --> $DIR/method-call-err-msg.rs:5:8
+   |
+LL |     fn zero(self) -> Foo { self }
+   |        ^^^^
+help: remove the extra argument
+   |
+LL -     x.zero(0)
+LL +     x.zero()
+   |
+
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+  --> $DIR/method-call-err-msg.rs:14:7
+   |
+LL |      .one()
+   |       ^^^-- argument #1 of type `isize` is missing
+   |
+note: method defined here
+  --> $DIR/method-call-err-msg.rs:6:8
+   |
+LL |     fn one(self, _: isize) -> Foo { self }
+   |        ^^^       --------
+help: provide the argument
+   |
+LL |      .one(/* isize */)
+   |           +++++++++++
+
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+  --> $DIR/method-call-err-msg.rs:15:7
+   |
+LL |      .two(0);
+   |       ^^^--- argument #2 of type `isize` is missing
+   |
+note: method defined here
+  --> $DIR/method-call-err-msg.rs:7:8
+   |
+LL |     fn two(self, _: isize, _: isize) -> Foo { self }
+   |        ^^^                 --------
+help: provide the argument
+   |
+LL |      .two(0, /* isize */);
+   |            +++++++++++++
+
+error[E0599]: `Foo` is not an iterator
+  --> $DIR/method-call-err-msg.rs:19:7
+   |
+LL |   pub struct Foo;
+   |   -------------- method `take` not found for this struct because it doesn't satisfy `Foo: Iterator`
+...
+LL | /     y.zero()
+LL | |      .take()
+   | |      -^^^^ `Foo` is not an iterator
+   | |______|
+   |
+   |
+   = note: the following trait bounds were not satisfied:
+           `Foo: Iterator`
+           which is required by `&mut Foo: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `take`, perhaps you need to implement one of them:
+           candidate #1: `Iterator`
+           candidate #2: `std::io::Read`
+
+error[E0061]: this method takes 3 arguments but 0 arguments were supplied
+  --> $DIR/method-call-err-msg.rs:21:7
+   |
+LL |     y.three::<usize>();
+   |       ^^^^^^^^^^^^^^-- three arguments of type `usize`, `usize`, and `usize` are missing
+   |
+note: method defined here
+  --> $DIR/method-call-err-msg.rs:8:8
+   |
+LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }
+   |        ^^^^^          ----  ----  ----
+help: provide the arguments
+   |
+LL |     y.three::<usize>(/* usize */, /* usize */, /* usize */);
+   |                      +++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0061, E0599.
+For more information about an error, try `rustc --explain E0061`.

@@ -1,0 +1,115 @@
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:21:14
+   |
+LL |     string().as_ptr();
+   |     -------- ^^^^^^ pointer created here
+   |     |
+   |     this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/temporaries.rs:2:9
+   |
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:25:25
+   |
+LL |     "hello".to_string().as_ptr();
+   |     ------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:32:26
+   |
+LL |     (string() + "hello").as_ptr();
+   |     -------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:68:61
+   |
+LL |         (if true { String::new() } else { "hello".into() }).as_ptr();
+   |         --------------------------------------------------- ^^^^^^ pointer created here
+   |         |
+   |         this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:77:10
+   |
+LL | /         (loop {
+LL | |             break String::new();
+LL | |         })
+   | |__________- this `String` is dropped at end of statement
+LL |           .as_ptr();
+   |            ^^^^^^ pointer created here
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:86:10
+   |
+LL | /         match string() {
+LL | |             s => s,
+LL | |         }
+   | |_________- this `String` is dropped at end of statement
+LL |           .as_ptr();
+   |            ^^^^^^ pointer created here
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/temporaries.rs:94:18
+   |
+LL |     { string() }.as_ptr();
+   |     ------------ ^^^^^^ pointer created here
+   |     |
+   |     this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Vec<u8>` is dropped at end of statement
+  --> $DIR/temporaries.rs:134:15
+   |
+LL |     vec![0u8].as_ptr();
+   |     --------- ^^^^^^ pointer created here
+   |     |
+   |     this `Vec<u8>` is dropped at end of statement
+   |
+   = help: bind the `Vec<u8>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 8 previous errors
+

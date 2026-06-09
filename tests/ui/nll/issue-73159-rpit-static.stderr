@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl Iterator<Item = u8>` captures lifetime that does not appear in bounds
+  --> $DIR/issue-73159-rpit-static.rs:8:9
+   |
+LL | impl<'a> Foo<'a> {
+   |      -- hidden type `Copied<std::slice::Iter<'a, u8>>` captures the lifetime `'a` as defined here
+LL |     fn make_it(&self) -> impl Iterator<Item = u8> {
+   |                          ------------------------ opaque type defined here
+LL |         self.0.iter().copied()
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL |     fn make_it(&self) -> impl Iterator<Item = u8> + use<'a> {
+   |                                                   +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

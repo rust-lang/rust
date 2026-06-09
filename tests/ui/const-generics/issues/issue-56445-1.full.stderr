@@ -1,0 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-56445-1.rs:9:26
+   |
+LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
+   |                          ^^ the type must not depend on the parameter `'a`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0770`.

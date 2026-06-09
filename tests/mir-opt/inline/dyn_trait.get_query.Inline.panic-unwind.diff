@@ -1,0 +1,45 @@
+- // MIR for `get_query` before Inline
++ // MIR for `get_query` after Inline
+  
+  fn get_query(_1: &T) -> () {
+      debug t => _1;
+      let mut _0: ();
+      let _2: &<Q as Query>::C;
+      let mut _3: &T;
+      let mut _4: &<Q as Query>::C;
+      scope 1 {
+          debug c => _2;
++         scope 2 (inlined try_execute_query::<<Q as Query>::C>) {
++             debug c => _4;
++             let mut _5: &dyn Cache<V = <Q as Query>::V>;
++             scope 3 (inlined mk_cycle::<<Q as Query>::V>) {
++                 debug c => _5;
++             }
++         }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = <Q as Query>::cache::<T>(move _3) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = copy _2;
+-         _0 = try_execute_query::<<Q as Query>::C>(move _4) -> [return: bb2, unwind continue];
++         StorageLive(_5);
++         _5 = copy _4 as &dyn Cache<V = <Q as Query>::V> (PointerCoercion(Unsize, Implicit));
++         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(move _5) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
++         StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

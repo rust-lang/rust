@@ -1,0 +1,23 @@
+error[E0277]: expected a `Fn(isize)` closure, found `S`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:27:21
+   |
+LL |     let x = call_it(&S, 22);
+   |             ------- ^^ expected an `Fn(isize)` closure, found `S`
+   |             |
+   |             required by a bound introduced by this call
+   |
+help: the trait `Fn(isize)` is not implemented for `S`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:8:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+   = note: `S` implements `FnMut`, but it must implement `Fn`, which is more general
+note: required by a bound in `call_it`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:22:14
+   |
+LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
+   |              ^^^^^^^^^^^^^^^^ required by this bound in `call_it`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

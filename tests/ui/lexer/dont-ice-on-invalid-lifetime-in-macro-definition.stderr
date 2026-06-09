@@ -1,0 +1,14 @@
+error: prefix `f` is unknown
+  --> $DIR/dont-ice-on-invalid-lifetime-in-macro-definition.rs:5:17
+   |
+LL |             e::<f'g>
+   |                 ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL |             e::<f 'g>
+   |                  +
+
+error: aborting due to 1 previous error
+

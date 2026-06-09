@@ -1,0 +1,2 @@
+struct-field-name-threshold = 0
+enum-variant-name-threshold = 0

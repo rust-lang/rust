@@ -1,0 +1,27 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/useless-pub.rs:8:5
+   |
+LL |     pub fn foo(&self) {}
+   |     ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/useless-pub.rs:12:10
+   |
+LL |     V1 { pub f: i32 },
+   |          ^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/useless-pub.rs:13:8
+   |
+LL |     V2(pub i32),
+   |        ^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

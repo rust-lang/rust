@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `impl Tr + ?Sized` cannot be known at compilation time
+  --> $DIR/pretty-print-opaque-no-feat.rs:9:30
+   |
+LL |         let y: Box<dyn Tr> = x;
+   |                              ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl Tr + ?Sized`
+   = note: required for the cast from `Box<impl Tr + ?Sized>` to `Box<dyn Tr>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

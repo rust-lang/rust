@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `A`
+  --> $DIR/specializing-constness.rs:20:1
+   |
+LL | impl<T: [const] Spec> const A for T {
+   | ----------------------------------- first implementation here
+...
+LL | impl<T: Spec + Sup> A for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

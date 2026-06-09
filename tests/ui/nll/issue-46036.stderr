@@ -1,0 +1,17 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/issue-46036.rs:8:24
+   |
+LL |     let a = 3;
+   |         - binding `a` declared here
+LL |     let foo = Foo { x: &a };
+   |                        ^^
+   |                        |
+   |                        borrowed value does not live long enough
+   |                        this usage requires that `a` is borrowed for `'static`
+LL |     loop { }
+LL | }
+   | - `a` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

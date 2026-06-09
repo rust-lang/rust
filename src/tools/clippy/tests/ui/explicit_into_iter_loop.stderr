@@ -1,0 +1,47 @@
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:10:18
+   |
+LL |         for _ in iterator.into_iter() {}
+   |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
+   |
+   = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::explicit_into_iter_loop)]`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:24:14
+   |
+LL |     for _ in t.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:28:14
+   |
+LL |     for _ in r.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:37:14
+   |
+LL |     for _ in mr.into_iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&*mr`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:50:14
+   |
+LL |     for _ in u.into_iter() {}
+   |              ^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut u`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:54:14
+   |
+LL |     for _ in mr.into_iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *mr`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:84:14
+   |
+LL |     for _ in dbg!([1, 2]).into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `dbg!([1, 2])`
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,71 @@
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:17:13
+   |
+LL |     let _ = s_i32.len() * size_of::<i32>(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+   |
+   = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_slice_size_calculation)]`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:20:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32.len(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:23:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:26:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32_ref.len(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(*s_i32_ref)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:29:13
+   |
+LL |     let _ = size_of::<i32>() * s_i32_ref_ref.len(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(**s_i32_ref_ref)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:35:13
+   |
+LL |     let _ = len * size_of::<i32>(); // WARNING
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:38:13
+   |
+LL |     let _ = s_i32.len() * size; // WARNING
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:41:13
+   |
+LL |     let _ = len * size; // WARNING
+   |             ^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:45:13
+   |
+LL |     let _ = external!(&[1u64][..]).len() * size_of::<u64>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(external!(&[1u64][..]))`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:65:13
+   |
+LL |     let _ = s_i32.len() * size_of::<i32>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
+
+error: manual slice size calculation
+  --> tests/ui/manual_slice_size_calculation.rs:81:13
+   |
+LL |             self.dst.len() * size_of::<u8>()
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(&self.dst)`
+
+error: aborting due to 11 previous errors
+

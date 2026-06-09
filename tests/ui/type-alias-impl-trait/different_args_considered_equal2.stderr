@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/different_args_considered_equal2.rs:10:9
+   |
+LL | pub type Opaque<'a> = impl Sized;
+   |                 -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL |         None::<Opaque<'static>>
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `i32`
+  --> $DIR/ice-124857-combine-effect-const-infer-vars.rs:9:1
+   |
+LL | impl const Foo for i32 {}
+   | ---------------------- first implementation here
+LL |
+LL | impl<T> const Foo for T where T: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

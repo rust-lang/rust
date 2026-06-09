@@ -1,0 +1,197 @@
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:2:20
+   |
+LL |     if let () = () 'a {}
+   |                    --^^^
+   |                    |
+   |                    the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     if let () = () 'a: {}
+   |                      +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:2:20
+   |
+LL |     if let () = () 'a {}
+   |                    ^^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/label-after-block-like.rs:2:8
+   |
+LL |     if let () = () 'a {}
+   |        ^^^^^^^^^^^
+help: you might have meant to write this as part of a block
+   |
+LL |     if let () = () { 'a {} }
+   |                    +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:8:13
+   |
+LL |     if true 'a {}
+   |             --^^^
+   |             |
+   |             the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     if true 'a: {}
+   |               +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:8:13
+   |
+LL |     if true 'a {}
+   |             ^^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/label-after-block-like.rs:8:8
+   |
+LL |     if true 'a {}
+   |        ^^^^
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { 'a {} }
+   |             +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:14:10
+   |
+LL |     loop 'a {}
+   |          --^^^
+   |          |
+   |          the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     loop 'a: {}
+   |            +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:14:10
+   |
+LL |     loop 'a {}
+   |     ---- ^^ expected `{`
+   |     |
+   |     while parsing this `loop` expression
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     loop { 'a {} }
+   |          +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:20:16
+   |
+LL |     while true 'a {}
+   |                --^^^
+   |                |
+   |                the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     while true 'a: {}
+   |                  +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:20:16
+   |
+LL |     while true 'a {}
+   |     ----- ---- ^^ expected `{`
+   |     |     |
+   |     |     this `while` condition successfully parsed
+   |     while parsing the body of this `while` expression
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     while true { 'a {} }
+   |                +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:26:23
+   |
+LL |     while let () = () 'a {}
+   |                       --^^^
+   |                       |
+   |                       the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     while let () = () 'a: {}
+   |                         +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:26:23
+   |
+LL |     while let () = () 'a {}
+   |     ----- ----------- ^^ expected `{`
+   |     |     |
+   |     |     this `while` condition successfully parsed
+   |     while parsing the body of this `while` expression
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     while let () = () { 'a {} }
+   |                       +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:32:19
+   |
+LL |     for _ in 0..0 'a {}
+   |                   --^^^
+   |                   |
+   |                   the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     for _ in 0..0 'a: {}
+   |                     +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:32:19
+   |
+LL |     for _ in 0..0 'a {}
+   |                   ^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     for _ in 0..0 { 'a {} }
+   |                   +       +
+
+error: labeled expression must be followed by `:`
+  --> $DIR/label-after-block-like.rs:38:12
+   |
+LL |     unsafe 'a {}
+   |            --^^^
+   |            |
+   |            the label
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+help: add `:` after the label
+   |
+LL |     unsafe 'a: {}
+   |              +
+
+error: expected `{`, found `'a`
+  --> $DIR/label-after-block-like.rs:38:12
+   |
+LL |     unsafe 'a {}
+   |     ------ ^^ expected `{`
+   |     |
+   |     while parsing this `unsafe` expression
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |     unsafe { 'a {} }
+   |            +       +
+
+error: aborting due to 14 previous errors
+

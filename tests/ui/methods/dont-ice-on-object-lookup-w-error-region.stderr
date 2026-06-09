@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'missing`
+  --> $DIR/dont-ice-on-object-lookup-w-error-region.rs:6:20
+   |
+LL | fn project(x: Pin<&'missing mut dyn Future<Output = ()>>) {
+   |                    ^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'missing` here
+   |
+LL | fn project<'missing>(x: Pin<&'missing mut dyn Future<Output = ()>>) {
+   |           ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

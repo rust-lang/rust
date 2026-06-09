@@ -1,0 +1,20 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/multiple-candidates-in-adt-field-2.rs:16:43
+   |
+LL |     field: <Foo<<u8 as Identity>::This>>::Inherent,
+   |                                           ^^^^^^^^ multiple `Inherent` found
+   |
+note: candidate #1 is defined in an impl for the type `Foo<u8>`
+  --> $DIR/multiple-candidates-in-adt-field-2.rs:9:5
+   |
+LL |     type Inherent = u16;
+   |     ^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Foo<u16>`
+  --> $DIR/multiple-candidates-in-adt-field-2.rs:12:5
+   |
+LL |     type Inherent = u32;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,4 @@
+warning: failed to connect to jobserver from environment variable `MAKEFLAGS="--jobserver-auth=3,3"`: file descriptor 3 from the jobserver environment variable value is not a pipe
+  |
+  = note: the build environment is likely misconfigured
+

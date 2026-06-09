@@ -1,0 +1,71 @@
+error: unnecessary use of `clone` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:11:17
+   |
+LL |         let _ = &[data_ref.clone()];
+   |                 ^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(data_ref)`
+   |
+   = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cloned_ref_to_slice_refs)]`
+
+error: unnecessary use of `clone` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:15:17
+   |
+LL |         let _ = &[Data.clone()];
+   |                 ^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&Data)`
+
+error: unnecessary use of `clone` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:22:17
+   |
+LL |         let _ = &[Point(0, 0).clone()];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&Point(0, 0))`
+
+error: unnecessary use of `to_owned` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:73:14
+   |
+LL |     let _b = &[_a.to_owned()];
+   |              ^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&_a)`
+
+error: unnecessary use of `to_string` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:75:14
+   |
+LL |     let _c = &[_a.to_string()];
+   |              ^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&_a)`
+
+error: unnecessary use of `to_os_string` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:79:14
+   |
+LL |     let _b = &[_a.to_os_string()];
+   |              ^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&_a)`
+
+error: unnecessary use of `to_path_buf` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:83:14
+   |
+LL |     let _b = &[_a.to_path_buf()];
+   |              ^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&_a)`
+
+error: unnecessary use of `to_path_buf` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:87:14
+   |
+LL |     let _b = &[_a.to_path_buf()];
+   |              ^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(_a)`
+
+error: unnecessary use of `to_string` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:112:14
+   |
+LL |     let _b = &[w.to_string()];
+   |              ^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&**w)`
+
+error: unnecessary use of `to_path_buf` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:117:14
+   |
+LL |     let _b = &[w.to_path_buf()];
+   |              ^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&***w)`
+
+error: unnecessary use of `to_path_buf` to create a slice from a reference
+  --> tests/ui/cloned_ref_to_slice_refs.rs:136:14
+   |
+LL |     let _d = &[accessor!(_a).to_path_buf()];
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&accessor!(_a))`
+
+error: aborting due to 11 previous errors
+

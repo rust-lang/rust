@@ -1,0 +1,80 @@
+//! Computes a normalizes-to (projection) goal for inherent associated types,
+//! `#![feature(inherent_associated_type)]`. Since HIR ty lowering already determines
+//! which impl the IAT is being projected from, we just:
+//! 1. instantiate generic parameters,
+//! 2. equate the self type, and
+//! 3. instantiate and register where clauses.
+
+use rustc_type_ir::solve::QueryResultOrRerunNonErased;
+use rustc_type_ir::{self as ty, Interner, Unnormalized};
+
+use crate::delegate::SolverDelegate;
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource};
+
+impl<D, I> EvalCtxt<'_, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    pub(super) fn normalize_inherent_associated_term(
+        &mut self,
+        goal: Goal<I, ty::NormalizesTo<I>>,
+        def_id: I::InherentAssocTermId,
+    ) -> QueryResultOrRerunNonErased<I> {
+        let cx = self.cx();
+        let inherent = goal.predicate.alias;
+
+        let impl_def_id = cx.inherent_alias_term_parent(def_id);
+        let impl_args = self.fresh_args_for_item(impl_def_id.into());
+
+        // Equate impl header and add impl where clauses
+        self.eq(
+            goal.param_env,
+            inherent.self_ty(),
+            cx.type_of(impl_def_id.into()).instantiate(cx, impl_args).skip_norm_wip(),
+        )?;
+
+        // Equate IAT with the RHS of the project goal
+        let inherent_args = inherent.rebase_inherent_args_onto_impl(impl_args, cx);
+
+        // Check both where clauses on the impl and IAT
+        //
+        // FIXME(-Znext-solver=coinductive): I think this should be split
+        // and we tag the impl bounds with `GoalSource::ImplWhereBound`?
+        // Right now this includes both the impl and the assoc item where bounds,
+        // and I don't think the assoc item where-bounds are allowed to be coinductive.
+        //
+        // Projecting to the IAT also "steps out the impl constructor", so we would have
+        // to be very careful when changing the impl where-clauses to be productive.
+        self.add_goals(
+            GoalSource::Misc,
+            cx.predicates_of(def_id.into())
+                .iter_instantiated(cx, inherent_args)
+                .map(Unnormalized::skip_norm_wip)
+                .map(|pred| goal.with(cx, pred)),
+        );
+
+        let normalized = match inherent.kind {
+            ty::AliasTermKind::InherentTy { def_id } => {
+                cx.type_of(def_id.into()).instantiate(cx, inherent_args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => cx
+                .const_of_item(def_id.into())
+                .instantiate(cx, inherent_args)
+                .skip_norm_wip()
+                .into(),
+            ty::AliasTermKind::InherentConst { .. } => {
+                // FIXME(gca): This is dead code at the moment. It should eventually call
+                // self.evaluate_const like projected consts do in consider_impl_candidate in
+                // normalizes_to/mod.rs. However, how generic args are represented for IACs is up in
+                // the air right now.
+                // Will self.evaluate_const eventually take the inherent_args or the impl_args form
+                // of args? It might be either.
+                panic!("References to inherent associated consts should have been blocked");
+            }
+            kind => panic!("expected inherent alias, found {kind:?}"),
+        };
+        self.instantiate_normalizes_to_term(goal, normalized);
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+}

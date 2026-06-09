@@ -1,0 +1,58 @@
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:13:16
+   |
+LL |     let kind = TyKind::Bool;
+   |                ^^^^^^ help: try using `ty::<kind>` directly: `ty`
+   |
+note: the lint level is defined here
+  --> $DIR/ty_tykind_usage.rs:11:8
+   |
+LL | #[deny(rustc::usage_of_ty_tykind)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:16:9
+   |
+LL |         TyKind::Bool => {},
+   |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:22:12
+   |
+LL |     if let TyKind::Int(int_ty) = kind {}
+   |            ^^^^^^ help: try using `ty::<kind>` directly: `ty`
+
+error: usage of `ty::TyKind`
+  --> $DIR/ty_tykind_usage.rs:24:24
+   |
+LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
+   |                        ^^^^^^^^^^
+   |
+   = help: try using `Ty` instead
+
+error: usage of `ty::TyKind`
+  --> $DIR/ty_tykind_usage.rs:26:37
+   |
+LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
+   |                                     ^^^^^^^^^^^
+   |
+   = help: try using `Ty` instead
+
+error: usage of `ty::TyKind`
+  --> $DIR/ty_tykind_usage.rs:26:53
+   |
+LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
+   |                                                     ^^^^^^^^^^^
+   |
+   = help: try using `Ty` instead
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:29:9
+   |
+LL |         IrTyKind::Bool
+   |         --------^^^^^^
+   |         |
+   |         help: try using `ty::<kind>` directly: `ty`
+
+error: aborting due to 7 previous errors
+

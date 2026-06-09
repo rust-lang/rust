@@ -1,0 +1,11 @@
+error[E0609]: no field `1` on type `(usize,)`
+  --> $DIR/issue-19244-1.rs:4:24
+   |
+LL |     let a: [isize; TUP.1];
+   |                        ^ unknown field
+   |
+   = note: available field is: `0`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

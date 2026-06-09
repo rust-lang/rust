@@ -1,0 +1,22 @@
+error[E0391]: cycle detected when computing type of `Foo::T`
+  --> $DIR/issue-34373.rs:7:34
+   |
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   |                                  ^^^^^^^^^^
+   |
+note: ...which requires expanding type alias `DefaultFoo`...
+  --> $DIR/issue-34373.rs:9:19
+   |
+LL | type DefaultFoo = Foo;
+   |                   ^^^
+   = note: ...which again requires computing type of `Foo::T`, completing the cycle
+note: cycle used when checking that `Foo` is well-formed
+  --> $DIR/issue-34373.rs:7:1
+   |
+LL | pub struct Foo<T = Box<dyn Trait<DefaultFoo>>>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

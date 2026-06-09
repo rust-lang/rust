@@ -1,0 +1,19 @@
+error[E0119]: conflicting implementations of trait `Copy` for type `E`
+  --> $DIR/duplicate-derive-copy-clone-diagnostics.rs:6:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ---- first implementation here
+LL | #[derive(Copy, Clone)]
+   |          ^^^^ conflicting implementation for `E`
+
+error[E0119]: conflicting implementations of trait `Clone` for type `E`
+  --> $DIR/duplicate-derive-copy-clone-diagnostics.rs:6:16
+   |
+LL | #[derive(Copy, Clone)]
+   |                ----- first implementation here
+LL | #[derive(Copy, Clone)]
+   |                ^^^^^ conflicting implementation for `E`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

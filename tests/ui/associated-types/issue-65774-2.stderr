@@ -1,0 +1,43 @@
+error[E0277]: the trait bound `T: MyDisplay` is not satisfied
+  --> $DIR/issue-65774-2.rs:10:33
+   |
+LL |     type MpuConfig: MyDisplay = T;
+   |                                 ^ unsatisfied trait bound
+   |
+help: the trait `MyDisplay` is not implemented for `T`
+  --> $DIR/issue-65774-2.rs:7:1
+   |
+LL | struct T;
+   | ^^^^^^^^
+help: the trait `MyDisplay` is implemented for `&'a mut T`
+  --> $DIR/issue-65774-2.rs:5:1
+   |
+LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `MPU::MpuConfig`
+  --> $DIR/issue-65774-2.rs:10:21
+   |
+LL |     type MpuConfig: MyDisplay = T;
+   |                     ^^^^^^^^^ required by this bound in `MPU::MpuConfig`
+
+error[E0277]: the trait bound `T: MyDisplay` is not satisfied
+  --> $DIR/issue-65774-2.rs:39:25
+   |
+LL |         writer.my_write(valref)
+   |                         ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `MyDisplay` is not implemented for `T`
+  --> $DIR/issue-65774-2.rs:7:1
+   |
+LL | struct T;
+   | ^^^^^^^^
+help: the trait `MyDisplay` is implemented for `&'a mut T`
+  --> $DIR/issue-65774-2.rs:5:1
+   |
+LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required for the cast from `&mut T` to `&dyn MyDisplay`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

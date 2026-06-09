@@ -1,0 +1,27 @@
+error[E0515]: cannot yield value referencing local variable `s`
+  --> $DIR/issue-55850.rs:28:9
+   |
+LL |         yield &s[..]
+   |         ^^^^^^^-^^^^
+   |         |      |
+   |         |      `s` is borrowed here
+   |         yields a value referencing data owned by the current function
+
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/issue-55850.rs:28:16
+   |
+LL |     GenIter(#[coroutine] move || {
+   |                          ------- within this coroutine
+LL |         let mut s = String::new();
+LL |         yield &s[..]
+   |         -------^---- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     GenIter(#[coroutine] static move || {
+   |                          ++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0515, E0626.
+For more information about an error, try `rustc --explain E0515`.

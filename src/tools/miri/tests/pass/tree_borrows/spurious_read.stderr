@@ -1,0 +1,16 @@
+Thread 1 executing: start
+Thread 2 executing: start
+Thread 2 executing: retag x (&mut, protect)
+Thread 1 executing: retag x (&mut, protect)
+Thread 1 executing: retag y (&mut, protect)
+Thread 2 executing: retag y (&mut, protect)
+Thread 2 executing: spurious read x
+Thread 1 executing: spurious read x
+Thread 1 executing: ret x
+Thread 2 executing: ret x
+Thread 2 executing: ret y
+Thread 1 executing: ret y
+Thread 1 executing: write y
+Thread 2 executing: write y
+Thread 2 executing: end
+Thread 1 executing: end

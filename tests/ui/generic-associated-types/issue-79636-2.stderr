@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `SomeTrait::Wrapped`
+  --> $DIR/issue-79636-2.rs:9:18
+   |
+LL |     W: SomeTrait<Wrapped = W>,
+   |                  ^^^^^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `A`
+  --> $DIR/issue-79636-2.rs:2:10
+   |
+LL |     type Wrapped<A>: SomeTrait;
+   |          ^^^^^^^ -
+help: add missing generic argument
+   |
+LL |     W: SomeTrait<Wrapped<A> = W>,
+   |                         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

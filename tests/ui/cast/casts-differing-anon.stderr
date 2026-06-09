@@ -1,0 +1,11 @@
+error[E0606]: casting `*mut impl Debug + ?Sized` as `*mut impl Debug + ?Sized` is invalid
+  --> $DIR/casts-differing-anon.rs:21:13
+   |
+LL |     b_raw = f_raw as *mut _;
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: the pointers may have different metadata
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

@@ -1,0 +1,74 @@
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:24:17
+   |
+LL |         true => Default::default(),
+   |                 ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
+   |
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:39:5
+   |
+LL |     deserialize()?;
+   |     ^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
+   |
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `deserialize`
+  --> $DIR/never-type-fallback-breaking.rs:35:23
+   |
+LL |     fn deserialize<T: Default>() -> Option<T> {
+   |                       ^^^^^^^ required by this bound in `deserialize`
+
+error[E0277]: the trait bound `(): From<!>` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:52:5
+   |
+LL |     help(1)?;
+   |     ^^^^^^^ the trait `From<!>` is not implemented for `()`
+   |
+   = help: the following other types implement trait `From<T>`:
+             `(T, T)` implements `From<[T; 2]>`
+             `(T, T, T)` implements `From<[T; 3]>`
+             `(T, T, T, T)` implements `From<[T; 4]>`
+             `(T, T, T, T, T)` implements `From<[T; 5]>`
+             `(T, T, T, T, T, T)` implements `From<[T; 6]>`
+             `(T, T, T, T, T, T, T)` implements `From<[T; 7]>`
+             `(T, T, T, T, T, T, T, T)` implements `From<[T; 8]>`
+             `(T, T, T, T, T, T, T, T, T)` implements `From<[T; 9]>`
+           and 4 others
+   = note: required for `!` to implement `Into<()>`
+note: required by a bound in `help`
+  --> $DIR/never-type-fallback-breaking.rs:46:20
+   |
+LL | fn help<'a: 'a, T: Into<()>, U>(_: U) -> Result<T, ()> {
+   |                    ^^^^^^^^ required by this bound in `help`
+
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:64:19
+   |
+LL |     takes_apit(|| Default::default())?;
+   |                   ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
+   |
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+
+error[E0277]: the trait bound `!: Default` is not satisfied
+  --> $DIR/never-type-fallback-breaking.rs:78:17
+   |
+LL |     takes_apit2(mk()?);
+   |     ----------- ^^^^^ the trait `Default` is not implemented for `!`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
+   = help: you might have intended to use the type `()` here instead
+note: required by a bound in `takes_apit2`
+  --> $DIR/never-type-fallback-breaking.rs:73:25
+   |
+LL | fn takes_apit2(_x: impl Default) {}
+   |                         ^^^^^^^ required by this bound in `takes_apit2`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

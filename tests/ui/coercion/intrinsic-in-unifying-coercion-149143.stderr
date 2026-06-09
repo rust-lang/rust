@@ -1,0 +1,27 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/intrinsic-in-unifying-coercion-149143.rs:10:46
+   |
+LL |         let f = if true { transmute } else { safe_transmute };
+   |                           ---------          ^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |                           |
+   |                           expected because of this
+   |
+   = note: expected fn item `unsafe fn(_) -> _ {std::intrinsics::transmute::<_, _>}`
+              found fn item `unsafe fn(_) -> _ {safe_transmute::<_, _>}`
+   = note: different fn items have unique types, even if their signatures are the same
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/intrinsic-in-unifying-coercion-149143.rs:16:51
+   |
+LL |         let f = if true { safe_transmute } else { transmute };
+   |                           --------------          ^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |                           |
+   |                           expected because of this
+   |
+   = note: expected fn item `unsafe fn(_) -> _ {safe_transmute::<_, _>}`
+              found fn item `unsafe fn(_) -> _ {std::intrinsics::transmute::<_, _>}`
+   = note: different fn items have unique types, even if their signatures are the same
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

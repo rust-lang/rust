@@ -1,0 +1,34 @@
+error[E0195]: lifetime parameters or bounds on associated function `deserialize_token` do not match the trait declaration
+  --> $DIR/issue-13853-5.rs:9:25
+   |
+LL |     fn deserialize_token<'a, D: Deserializer<'a>>(_: D, _: &'a str) -> Self;
+   |                         ------------------------- lifetimes in impl do not match this associated function in trait
+...
+LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+   |                         ^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match associated function in trait
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-13853-5.rs:7:10
+   |
+LL | impl<'a, T: Deserializable> Deserializable for &'a str {
+   |          ^ unconstrained type parameter
+
+error[E0308]: mismatched types
+  --> $DIR/issue-13853-5.rs:9:70
+   |
+LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+   |        -----------------                                             ^^^^^^^ expected `&str`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `_y`
+   |
+LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+LL ~         _y
+LL ~
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0195, E0207, E0308.
+For more information about an error, try `rustc --explain E0195`.

@@ -1,0 +1,11 @@
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation_emoji.rs:9:50
+   |
+LL |     /// But it may still be missing punctuation 😢
+   |                                                   ^ help: end the paragraph with some punctuation: `.`
+   |
+   = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_paragraphs_missing_punctuation)]`
+
+error: aborting due to 1 previous error
+

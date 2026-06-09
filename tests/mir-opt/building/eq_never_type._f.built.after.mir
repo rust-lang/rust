@@ -1,0 +1,53 @@
+// MIR for `_f` after built
+
+fn _f(_1: !, _2: !) -> () {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: ();
+    let mut _3: !;
+    let _4: bool;
+    let mut _5: &();
+    let mut _6: !;
+    let mut _7: &();
+    let _8: ();
+    let mut _9: !;
+
+    bb0: {
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = copy _1;
+        unreachable;
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = copy _2;
+        unreachable;
+    }
+
+    bb2: {
+        _7 = &_8;
+        StorageDead(_9);
+        _4 = <() as PartialEq>::eq(move _5, move _7) -> [return: bb3, unwind: bb5];
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_5);
+        StorageDead(_8);
+        StorageDead(_4);
+        unreachable;
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

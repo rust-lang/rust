@@ -1,0 +1,22 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/copy-is-not-modulo-regions.rs:13:21
+   |
+LL | struct Bar<'lt>(Foo<'lt>);
+   |                 -------- this field does not implement `Copy`
+...
+LL | impl<'any> Copy for Bar<'any> {}
+   |                     ^^^^^^^^^
+   |
+note: the `Copy` impl for `Foo<'any>` requires that `'any: 'static`
+  --> $DIR/copy-is-not-modulo-regions.rs:10:17
+   |
+LL | struct Bar<'lt>(Foo<'lt>);
+   |                 ^^^^^^^^
+help: consider restricting type parameter `'any` with  `'static`
+   |
+LL | impl<'any: 'static> Copy for Bar<'any> {}
+   |          +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

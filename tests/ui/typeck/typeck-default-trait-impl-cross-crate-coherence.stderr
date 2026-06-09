@@ -1,0 +1,46 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:13:1
+   |
+LL | impl DefaultedTrait for (A,) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^----
+   |                         |
+   |                         this is not defined in the current crate because tuples are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:16:1
+   |
+LL | impl !DefaultedTrait for (B,) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^----
+   |                          |
+   |                          this is not defined in the current crate because tuples are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0321]: cross-crate traits with a default impl, like `DefaultedTrait`, can only be implemented for a struct/enum type defined in the current crate
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:20:1
+   |
+LL | impl DefaultedTrait for Box<C> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait for type in another crate
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:21:1
+   |
+LL | impl DefaultedTrait for lib::Something<C> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------
+   |                         |
+   |                         `Something` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0117, E0321.
+For more information about an error, try `rustc --explain E0117`.

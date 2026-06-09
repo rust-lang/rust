@@ -1,0 +1,59 @@
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:13:17
+   |
+LL |         let b = &*a;
+   |                 ^^^ help: if you would like to reborrow, try removing `&*`: `a`
+   |
+   = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_deref_ref)]`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:16:22
+   |
+LL |         let b = &mut &*bar(&12);
+   |                      ^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `bar(&12)`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:71:23
+   |
+LL |         let addr_y = &&*x as *const _ as usize; // assert ok
+   |                       ^^^ help: if you would like to reborrow, try removing `&*`: `x`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:123:9
+   |
+LL |         (&*s).foo();
+   |         ^^^^^ help: if you would like to reborrow, try removing `&*`: `s`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:137:21
+   |
+LL |         let mut x = &*x;
+   |                     ^^^ help: if you would like to reborrow, try removing `&*`: `x`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:143:21
+   |
+LL |         let ref x = &*x;
+   |                     ^^^ help: if you would like to reborrow, try removing `&*`: `x`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:148:25
+   |
+LL |         let ref mut x = &*std::convert::identity(x);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `std::convert::identity(x)`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:160:25
+   |
+LL |         let ref mut x = &*s.clone().0;
+   |                         ^^^^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `s.clone().0`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:170:27
+   |
+LL |         let ref mut x = { &*y };
+   |                           ^^^ help: if you would like to reborrow, try removing `&*`: `y`
+
+error: aborting due to 9 previous errors
+

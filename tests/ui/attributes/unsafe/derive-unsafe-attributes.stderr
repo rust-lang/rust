@@ -1,0 +1,65 @@
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/derive-unsafe-attributes.rs:1:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[derive(r#unsafe(Debug))]
+   |          ++
+
+error: traits in `#[derive(...)]` don't accept arguments
+  --> $DIR/derive-unsafe-attributes.rs:1:16
+   |
+LL | #[derive(unsafe(Debug))]
+   |                ^^^^^^^ help: remove the arguments
+
+error: `derive` is not an unsafe attribute
+  --> $DIR/derive-unsafe-attributes.rs:10:3
+   |
+LL | #[unsafe(derive(Debug))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/derive-unsafe-attributes.rs:1:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^ expected identifier, found keyword
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[derive(r#unsafe(Debug))]
+   |          ++
+
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/derive-unsafe-attributes.rs:1:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^ expected identifier, found keyword
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[derive(r#unsafe(Debug))]
+   |          ++
+
+error: cannot find derive macro `r#unsafe` in this scope
+  --> $DIR/derive-unsafe-attributes.rs:1:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^
+
+error: cannot find derive macro `r#unsafe` in this scope
+  --> $DIR/derive-unsafe-attributes.rs:1:10
+   |
+LL | #[derive(unsafe(Debug))]
+   |          ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+

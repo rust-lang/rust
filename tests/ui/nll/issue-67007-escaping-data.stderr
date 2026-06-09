@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-67007-escaping-data.rs:16:9
+   |
+LL | impl<'tcx> Consumer<'tcx> {
+   |      ---- lifetime `'tcx` defined here
+LL |     fn bad_method<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
+   |                   -- lifetime `'a` defined here
+LL |         let other = self.use_fcx(fcx);
+LL |         fcx.use_it(other);
+   |         ^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'tcx`
+   |
+   = help: consider adding the following bound: `'a: 'tcx`
+   = note: requirement occurs because of the type `FnCtxt<'_, '_>`, which makes the generic argument `'_` invariant
+   = note: the struct `FnCtxt<'a, 'tcx>` is invariant over the parameter `'tcx`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

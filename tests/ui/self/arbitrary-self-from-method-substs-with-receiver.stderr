@@ -1,0 +1,70 @@
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:25:42
+   |
+LL |     fn a<R: Receiver<Target=Self>>(self: R) -> u32 {
+   |                                          ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:29:39
+   |
+LL |     fn b<R: Deref<Target=Self>>(self: R) -> u32 {
+   |                                       ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `impl Receiver<Target = Self>`
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:33:16
+   |
+LL |     fn c(self: impl Receiver<Target=Self>) -> u32 {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `impl Deref<Target = Self>`
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:37:16
+   |
+LL |     fn d(self: impl Deref<Target=Self>) -> u32 {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:51:16
+   |
+LL |     assert_eq!(foo.a::<&Foo>(), 2);
+   |                ^^^ expected `&Foo`, found `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:53:16
+   |
+LL |     assert_eq!(foo.b::<&Foo>(), 1);
+   |                ^^^ expected `&Foo`, found `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:60:16
+   |
+LL |     assert_eq!(smart_ptr.a::<&Foo>(), 2);
+   |                ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`
+   |
+   = note: expected reference `&Foo`
+                 found struct `SmartPtr<'_, Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:62:16
+   |
+LL |     assert_eq!(smart_ptr.b::<&Foo>(), 1);
+   |                ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`
+   |
+   = note: expected reference `&Foo`
+                 found struct `SmartPtr<'_, Foo>`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0801.
+For more information about an error, try `rustc --explain E0308`.

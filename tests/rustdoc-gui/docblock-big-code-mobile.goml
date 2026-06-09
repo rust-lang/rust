@@ -1,0 +1,15 @@
+// If we have a long `<code>`, we need to ensure that it'll be fully displayed on mobile, meaning
+// that it'll be on two lines.
+
+emulate: "iPhone 8" // it has the following size: (375, 667)
+go-to: "file://" + |DOC_PATH| + "/test_docs/long_code_block/index.html"
+show-text: true // We need to enable text draw to be able to have the "real" size
+
+// We now check that the block is on two lines:
+// Little explanations for this test: if the text wasn't displayed on two lines, it would take
+// around 24px (which is the font size).
+assert-size: (".docblock p > code", {"height": 48})
+
+// Same check, but where the long code block is also a link
+go-to: "file://" + |DOC_PATH| + "/test_docs/long_code_block_link/index.html"
+assert-size: (".docblock p > a > code", {"height": 48})

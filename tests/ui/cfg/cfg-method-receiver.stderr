@@ -1,0 +1,24 @@
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-method-receiver.rs:9:17
+   |
+LL |     cbor_map! { #[cfg(test)] 4};
+   |                 ^^^^^^^^^^^^
+
+error[E0689]: can't call method `signum` on ambiguous numeric type `{integer}`
+  --> $DIR/cfg-method-receiver.rs:3:14
+   |
+LL |         $key.signum();
+   |              ^^^^^^
+...
+LL |     cbor_map! { #[cfg(test)] 4};
+   |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `cbor_map` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you must specify a concrete type for this numeric value, like `i32`
+   |
+LL |     cbor_map! { #[cfg(test)] 4_i32};
+   |                               ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0689`.

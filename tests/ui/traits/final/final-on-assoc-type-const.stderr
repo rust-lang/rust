@@ -1,0 +1,18 @@
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/final-on-assoc-type-const.rs:6:5
+   |
+LL |     final type Ovo;
+   |     -----^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: `final` is only allowed on associated functions in traits
+  --> $DIR/final-on-assoc-type-const.rs:8:5
+   |
+LL |     final type const QwQ: ();
+   |     -----^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,23 @@
+error: called `.bytes().nth()` on a `String`
+  --> tests/ui/bytes_nth.rs:7:13
+   |
+LL |     let _ = s.bytes().nth(3);
+   |             ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3).copied()`
+   |
+   = note: `-D clippy::bytes-nth` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bytes_nth)]`
+
+error: called `.bytes().nth().unwrap()` on a `String`
+  --> tests/ui/bytes_nth.rs:9:14
+   |
+LL |     let _ = &s.bytes().nth(3).unwrap();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.as_bytes()[3]`
+
+error: called `.bytes().nth()` on a `str`
+  --> tests/ui/bytes_nth.rs:11:13
+   |
+LL |     let _ = s[..].bytes().nth(3);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `s[..].as_bytes().get(3).copied()`
+
+error: aborting due to 3 previous errors
+

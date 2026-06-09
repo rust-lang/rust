@@ -1,0 +1,137 @@
+//! Library used by tidy and other tools.
+//!
+//! This library contains the tidy lints and exposes it
+//! to be used by tools.
+
+use std::ffi::OsStr;
+use std::process::Command;
+
+macro_rules! static_regex {
+    ($re:literal) => {{
+        static RE: ::std::sync::LazyLock<::regex::Regex> =
+            ::std::sync::LazyLock::new(|| ::regex::Regex::new($re).unwrap());
+        &*RE
+    }};
+}
+
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The expression that failed
+/// * The error itself
+/// * (optionally) a path connected to the error (e.g. failure to open a file)
+#[macro_export]
+macro_rules! t {
+    ($e:expr, $p:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
+        }
+    };
+
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
+}
+
+pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<String> {
+    let output = Command::new("git").arg("diff").arg(base_commit).arg(extra_arg).output().ok()?;
+    Some(String::from_utf8_lossy(&output.stdout).into())
+}
+
+/// Similar to `files_modified`, but only involves a single call to `git`.
+///
+/// removes all elements from `items` that do not cause any match when `pred` is called with the list of modifed files.
+///
+/// if in CI, no elements will be removed.
+pub fn files_modified_batch_filter<T>(
+    base_commit: &Option<String>,
+    is_ci: bool,
+    items: &mut Vec<T>,
+    pred: impl Fn(&T, &str) -> bool,
+) {
+    if is_ci {
+        // assume everything is modified on CI because we really don't want false positives there.
+        return;
+    }
+    let Some(base_commit) = base_commit else {
+        eprintln!("No base commit, assuming all files are modified");
+        return;
+    };
+    match crate::git_diff(base_commit, "--name-status") {
+        Some(output) => {
+            let modified_files: Vec<_> = output
+                .lines()
+                .filter_map(|ln| {
+                    let (status, name) = ln
+                        .trim_end()
+                        .split_once('\t')
+                        .expect("bad format from `git diff --name-status`");
+                    if status == "M" { Some(name) } else { None }
+                })
+                .collect();
+            items.retain(|item| {
+                for modified_file in &modified_files {
+                    if pred(item, modified_file) {
+                        // at least one predicate matches, keep this item.
+                        return true;
+                    }
+                }
+                // no predicates matched, remove this item.
+                false
+            });
+        }
+        None => {
+            eprintln!("warning: failed to run `git diff` to check for changes");
+            eprintln!("warning: assuming all files are modified");
+        }
+    }
+}
+
+/// Returns true if any modified file matches the predicate, if we are in CI, or if unable to list modified files.
+pub fn files_modified(
+    base_commit: &Option<String>,
+    is_ci: bool,
+    pred: impl Fn(&str) -> bool,
+) -> bool {
+    let mut v = vec![()];
+    files_modified_batch_filter(base_commit, is_ci, &mut v, |_, p| pred(p));
+    !v.is_empty()
+}
+
+pub mod alphabetical;
+pub mod arg_parser;
+pub mod bins;
+pub mod codegen;
+pub mod debug_artifacts;
+pub mod deps;
+pub mod diagnostics;
+pub mod edition;
+pub mod error_codes;
+pub mod extdeps;
+pub mod extra_checks;
+pub mod features;
+pub mod filenames;
+pub mod gcc_submodule;
+pub(crate) mod iter_header;
+pub mod known_bug;
+pub mod mir_opt_tests;
+pub mod pal;
+pub mod rustdoc_css_themes;
+pub mod rustdoc_gui_tests;
+pub mod rustdoc_json;
+pub mod rustdoc_templates;
+pub mod style;
+pub mod target_policy;
+pub mod target_specific_tests;
+pub mod tests_placement;
+pub mod tests_revision_unpaired_stdout_stderr;
+pub mod triagebot;
+pub mod ui_tests;
+pub mod unit_tests;
+pub mod unknown_revision;
+pub mod unstable_book;
+pub mod walk;
+pub mod x_version;

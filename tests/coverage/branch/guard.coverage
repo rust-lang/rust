@@ -1,0 +1,45 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      4|fn branch_match_guard(x: Option<u32>) {
+   LL|      4|    no_merge!();
+   LL|       |
+   LL|      1|    match x {
+   LL|      1|        Some(0) => {
+   LL|      1|            println!("zero");
+   LL|      1|        }
+   LL|      3|        Some(x) if x % 2 == 0 => {
+                           ^2             ^2
+  ------------------
+  |  Branch (LL:20): [True: 2, False: 1]
+  ------------------
+   LL|      2|            println!("is nonzero and even");
+   LL|      2|        }
+   LL|      1|        Some(x) if x % 3 == 0 => {
+  ------------------
+  |  Branch (LL:20): [True: 1, False: 0]
+  ------------------
+   LL|      1|            println!("is nonzero and odd, but divisible by 3");
+   LL|      1|        }
+   LL|      0|        _ => {
+   LL|      0|            println!("something else");
+   LL|      0|        }
+   LL|       |    }
+   LL|      4|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    branch_match_guard(Some(0));
+   LL|       |    branch_match_guard(Some(2));
+   LL|       |    branch_match_guard(Some(6));
+   LL|       |    branch_match_guard(Some(3));
+   LL|       |}
+

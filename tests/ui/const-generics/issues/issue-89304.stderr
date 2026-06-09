@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `From<GenericStruct<_>>` for type `GenericStruct<_>`
+  --> $DIR/issue-89304.rs:6:1
+   |
+LL | impl<const T: usize> From<GenericStruct<T>> for GenericStruct<{T + 1}> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
+
+error[E0119]: conflicting implementations of trait `From<GenericStruct<_>>` for type `GenericStruct<_>`
+  --> $DIR/issue-89304.rs:13:1
+   |
+LL | impl<const T: usize> From<GenericStruct<{T + 1}>> for GenericStruct<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

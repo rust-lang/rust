@@ -1,0 +1,23 @@
+error: use of `char::is_digit` with literal radix of 10
+  --> tests/ui/is_digit_ascii_radix.rs:9:13
+   |
+LL |     let _ = c.is_digit(10);
+   |             ^^^^^^^^^^^^^^ help: try: `c.is_ascii_digit()`
+   |
+   = note: `-D clippy::is-digit-ascii-radix` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::is_digit_ascii_radix)]`
+
+error: use of `char::is_digit` with literal radix of 16
+  --> tests/ui/is_digit_ascii_radix.rs:11:13
+   |
+LL |     let _ = c.is_digit(16);
+   |             ^^^^^^^^^^^^^^ help: try: `c.is_ascii_hexdigit()`
+
+error: use of `char::is_digit` with literal radix of 16
+  --> tests/ui/is_digit_ascii_radix.rs:13:13
+   |
+LL |     let _ = c.is_digit(0x10);
+   |             ^^^^^^^^^^^^^^^^ help: try: `c.is_ascii_hexdigit()`
+
+error: aborting due to 3 previous errors
+

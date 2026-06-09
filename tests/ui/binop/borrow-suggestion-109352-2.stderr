@@ -1,0 +1,64 @@
+error[E0369]: cannot multiply `Bar` by `Bar`
+  --> $DIR/borrow-suggestion-109352-2.rs:19:23
+   |
+LL |     let _ = owned_bar * owned_bar;
+   |             --------- ^ --------- Bar
+   |             |
+   |             Bar
+   |
+note: an implementation of `Mul` might be missing for `Bar`
+  --> $DIR/borrow-suggestion-109352-2.rs:1:1
+   |
+LL | struct Bar;
+   | ^^^^^^^^^^ must implement `Mul`
+note: the trait `Mul` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot multiply `&Bar` by `&Bar`
+  --> $DIR/borrow-suggestion-109352-2.rs:21:21
+   |
+LL |     let _ = ref_bar * ref_bar;
+   |             ------- ^ ------- &Bar
+   |             |
+   |             &Bar
+   |
+   = note: an implementation for `&mut Bar * &mut Bar` exists
+help: consider making this expression a mutable borrow
+  --> $DIR/borrow-suggestion-109352-2.rs:21:13
+   |
+LL |     let _ = ref_bar * ref_bar;
+   |             ^^^^^^^
+help: consider making this expression a mutable borrow
+  --> $DIR/borrow-suggestion-109352-2.rs:21:23
+   |
+LL |     let _ = ref_bar * ref_bar;
+   |                       ^^^^^^^
+
+error[E0369]: cannot multiply `&Bar` by `&mut Bar`
+  --> $DIR/borrow-suggestion-109352-2.rs:23:21
+   |
+LL |     let _ = ref_bar * ref_mut_bar;
+   |             ------- ^ ----------- &mut Bar
+   |             |
+   |             &Bar
+   |
+   = note: an implementation for `&mut Bar * &mut Bar` exists
+help: consider making this expression a mutable borrow
+  --> $DIR/borrow-suggestion-109352-2.rs:23:13
+   |
+LL |     let _ = ref_bar * ref_mut_bar;
+   |             ^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/borrow-suggestion-109352-2.rs:25:27
+   |
+LL |     let _ = ref_mut_bar * ref_bar;
+   |                           ^^^^^^^ types differ in mutability
+   |
+   = note: expected mutable reference `&mut Bar`
+                      found reference `&Bar`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.

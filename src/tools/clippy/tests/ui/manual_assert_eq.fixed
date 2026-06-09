@@ -1,0 +1,114 @@
+//@aux-build:proc_macros.rs
+#![warn(clippy::manual_assert_eq)]
+#![allow(clippy::manual_ignore_case_cmp)] // only raised before the fix
+#![expect(clippy::eq_op, clippy::assertions_on_constants)]
+
+fn main() {
+    let a = "a";
+    assert_eq!(a, "a".to_ascii_lowercase());
+    //~^ manual_assert_eq
+    assert_ne!(a, "a".to_ascii_uppercase());
+    //~^ manual_assert_eq
+    debug_assert_eq!(a, "a".to_ascii_lowercase());
+    //~^ manual_assert_eq
+    debug_assert_ne!(a, "a".to_ascii_uppercase());
+    //~^ manual_assert_eq
+
+    // macros
+    let v = vec![];
+    assert_eq!(v, vec![1, 2, 3]);
+    //~^ manual_assert_eq
+    assert_eq!(vec![1, 2, 3], v);
+    //~^ manual_assert_eq
+    assert_eq!(vec![1], vec![1, 2, 3]);
+    //~^ manual_assert_eq
+
+    // Don't lint: has assert message
+    assert!(a == "a".to_ascii_lowercase(), "{a}");
+    assert!(a == "a".to_ascii_lowercase(), "a==a");
+    assert!(a == "a".to_ascii_lowercase(), "{a}==a");
+    assert!(a != "a".to_ascii_uppercase(), "a!=A");
+    debug_assert!(a == "a".to_ascii_lowercase(), "a==a");
+    debug_assert!(a != "a".to_ascii_uppercase(), "a!=A");
+
+    // Don't lint: `!=`, and at least one of the sides is a constant value
+    assert!(a != "A");
+    assert!("A" != a);
+    assert!("A" != "A");
+
+    // Don't lint: comparison of ptrs
+    fn cmp_ptrs(a: *const u8, b: *const u8) {
+        assert!(a == b);
+    }
+
+    // Don't lint: one of the sides isn't `Debug`
+    {
+        #[derive(PartialEq)]
+        struct NotDebug;
+
+        #[derive(PartialEq)]
+        struct NotDebug2;
+
+        impl PartialEq<NotDebug2> for NotDebug {
+            fn eq(&self, other: &NotDebug2) -> bool {
+                unimplemented!()
+            }
+        }
+        impl PartialEq<NotDebug> for NotDebug2 {
+            fn eq(&self, other: &NotDebug) -> bool {
+                unimplemented!()
+            }
+        }
+
+        #[derive(Debug)]
+        struct IsDebug;
+
+        impl PartialEq<IsDebug> for NotDebug {
+            fn eq(&self, other: &IsDebug) -> bool {
+                unimplemented!()
+            }
+        }
+        impl PartialEq<NotDebug> for IsDebug {
+            fn eq(&self, other: &NotDebug) -> bool {
+                unimplemented!()
+            }
+        }
+
+        let nd = NotDebug;
+        assert!(nd == nd);
+
+        let nd2 = NotDebug2;
+        assert!(nd == nd2);
+        assert!(nd2 == nd);
+
+        let id = IsDebug;
+        assert!(id == nd);
+        assert!(nd == id);
+    }
+
+    // Don't lint: in const context
+    const {
+        assert!(5 == 2 + 3);
+    }
+
+    // Don't lint: in external macro
+    {
+        // NOTE: this only works because `root_macro_call_first_node` returns `external!`,
+        // which then gets rejected by the macro name check
+        proc_macros::external!(assert!('a' == 'b'));
+        proc_macros::external!({
+            let some_padding_before = 'a';
+            assert!('a' == 'b');
+            let some_padding_after = 'b';
+        });
+
+        // .. which also means that the following is _technically_ a FN -- but surely no one would write
+        // code like this (diverging/unit expression as a child expression of a macro call)
+        vec![(), assert!('a' == 'b'), ()];
+    }
+}
+
+// Don't lint: in const context
+const _: () = {
+    assert!(8 == (7 + 1));
+};

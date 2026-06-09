@@ -1,0 +1,14 @@
+[package]
+name = "rustc_traits"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_span = { path = "../rustc_span" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

@@ -1,0 +1,22 @@
+error[E0391]: cycle detected when computing the super predicates of `B`
+  --> $DIR/cycle-trait-supertrait-indirect.rs:7:10
+   |
+LL | trait B: C {
+   |          ^
+   |
+note: ...which requires computing the super predicates of `C`...
+  --> $DIR/cycle-trait-supertrait-indirect.rs:11:10
+   |
+LL | trait C: B { }
+   |          ^
+   = note: ...which again requires computing the super predicates of `B`, completing the cycle
+note: cycle used when computing the super predicates of `A`
+  --> $DIR/cycle-trait-supertrait-indirect.rs:4:10
+   |
+LL | trait A: B {
+   |          ^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,0 +1,37 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/almost-supertrait-associated-type.rs:20:20
+   |
+LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {
+   |                    ^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/almost-supertrait-associated-type.rs:32:34
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   |       --- this trait is not dyn compatible...
+...
+LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
+   = help: consider moving `transmute` to another trait
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/almost-supertrait-associated-type.rs:7:32
+   |
+LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
+   |                                ^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/almost-supertrait-associated-type.rs:32:34
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   |       --- this trait is not dyn compatible...
+...
+LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
+   = help: consider moving `transmute` to another trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,33 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/non-lifetime-binder.rs:6:29
+   |
+LL | fn f() -> impl for<T> Trait<impl Trait<T>> {}
+   |           ------------------^^^^^^^^^^^^^-
+   |           |                 |
+   |           |                 nested `impl Trait` here
+   |           outer `impl Trait`
+
+error: cannot capture late-bound type parameter in nested `impl Trait`
+  --> $DIR/non-lifetime-binder.rs:6:40
+   |
+LL | fn f() -> impl for<T> Trait<impl Trait<T>> {}
+   |                    -                   ^
+   |                    |
+   |                    parameter defined here
+
+error[E0277]: the trait bound `(): Trait<impl Trait<{type error}>>` is not satisfied
+  --> $DIR/non-lifetime-binder.rs:6:11
+   |
+LL | fn f() -> impl for<T> Trait<impl Trait<T>> {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<impl Trait<{type error}>>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/non-lifetime-binder.rs:4:1
+   |
+LL | trait Trait<T> {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0666.
+For more information about an error, try `rustc --explain E0277`.

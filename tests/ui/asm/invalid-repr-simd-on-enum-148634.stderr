@@ -1,0 +1,20 @@
+error: `#[repr(simd)]` attribute cannot be used on enums
+  --> $DIR/invalid-repr-simd-on-enum-148634.rs:6:1
+   |
+LL | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(simd)]` can only be applied to structs
+
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/invalid-repr-simd-on-enum-148634.rs:6:8
+   |
+LL | #[repr(simd)]
+   |        ^^^^
+...
+LL | enum Es {}
+   | ------- zero-variant enum
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0084`.

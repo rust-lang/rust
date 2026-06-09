@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
+  --> $DIR/unsized_coercion3.rs:11:15
+   |
+LL | fn hello() -> Box<impl Trait + ?Sized> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
+   |
+help: the trait `Trait` is implemented for `u32`
+  --> $DIR/unsized_coercion3.rs:9:1
+   |
+LL | impl Trait for u32 {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
+  --> $DIR/unsized_coercion3.rs:14:17
+   |
+LL |         let x = hello();
+   |                 ^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
+   |
+help: the trait `Trait` is implemented for `u32`
+  --> $DIR/unsized_coercion3.rs:9:1
+   |
+LL | impl Trait for u32 {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

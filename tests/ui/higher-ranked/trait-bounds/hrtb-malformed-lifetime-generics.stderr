@@ -1,0 +1,62 @@
+error: `Fn` traits cannot take lifetime parameters
+  --> $DIR/hrtb-malformed-lifetime-generics.rs:4:17
+   |
+LL | fn fa(_: impl Fn<'a>(&'a str) -> bool) {}
+   |                 ^^^^
+   |
+help: consider using a higher-ranked trait bound instead
+   |
+LL - fn fa(_: impl Fn<'a>(&'a str) -> bool) {}
+LL + fn fa(_: impl for<'a> Fn(&'a str) -> bool) {}
+   |
+
+error: `Fn` traits cannot take lifetime parameters
+  --> $DIR/hrtb-malformed-lifetime-generics.rs:7:20
+   |
+LL | fn fb(_: impl FnMut<'a, 'b>(&'a str, &'b str) -> bool) {}
+   |                    ^^^^^^^^
+   |
+help: consider using a higher-ranked trait bound instead
+   |
+LL - fn fb(_: impl FnMut<'a, 'b>(&'a str, &'b str) -> bool) {}
+LL + fn fb(_: impl for<'a, 'b> FnMut(&'a str, &'b str) -> bool) {}
+   |
+
+error: `Fn` traits cannot take lifetime parameters
+  --> $DIR/hrtb-malformed-lifetime-generics.rs:10:41
+   |
+LL | fn fc(_: impl std::fmt::Display + FnOnce<'a>(&'a str) -> bool + std::fmt::Debug) {}
+   |                                         ^^^^
+   |
+help: consider using a higher-ranked trait bound instead
+   |
+LL - fn fc(_: impl std::fmt::Display + FnOnce<'a>(&'a str) -> bool + std::fmt::Debug) {}
+LL + fn fc(_: impl std::fmt::Display + for<'a> FnOnce(&'a str) -> bool + std::fmt::Debug) {}
+   |
+
+error: `Fn` traits cannot take lifetime parameters
+  --> $DIR/hrtb-malformed-lifetime-generics.rs:14:24
+   |
+LL | fn fd(_: impl AliasedFn<'a>(&'a str) -> bool) {}
+   |                        ^^^^
+   |
+help: consider using a higher-ranked trait bound instead
+   |
+LL - fn fd(_: impl AliasedFn<'a>(&'a str) -> bool) {}
+LL + fn fd(_: impl for<'a> AliasedFn(&'a str) -> bool) {}
+   |
+
+error: `Fn` traits cannot take lifetime parameters
+  --> $DIR/hrtb-malformed-lifetime-generics.rs:17:27
+   |
+LL | fn fe<F>(_: F) where F: Fn<'a>(&'a str) -> bool {}
+   |                           ^^^^
+   |
+help: consider using a higher-ranked trait bound instead
+   |
+LL - fn fe<F>(_: F) where F: Fn<'a>(&'a str) -> bool {}
+LL + fn fe<F>(_: F) where F: for<'a> Fn(&'a str) -> bool {}
+   |
+
+error: aborting due to 5 previous errors
+

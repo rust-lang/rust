@@ -1,0 +1,88 @@
+error: this function call uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:29:5
+   |
+LL |     c(y);
+   |     ^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function call uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:31:5
+   |
+LL |     system(z);
+   |     ^^^^^^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function call uses unsized type `CustomUnsized` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:33:5
+   |
+LL |     c_custom_unsized(w);
+   |     ^^^^^^^^^^^^^^^^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function definition uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:12:1
+   |
+LL | extern "C" fn c(_: [u8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function definition uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:14:1
+   |
+LL | extern "system" fn system(_: [u8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function definition uses unsized type `CustomUnsized` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:23:1
+   |
+LL | extern "C" fn c_custom_unsized(x: CustomUnsized) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function call uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:40:5
+   |
+LL |     c(y);
+   |     ^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function call uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:55:5
+   |
+LL |     system(y);
+   |     ^^^^^^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function call uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:64:5
+   |
+LL |     c_polymorphic(x);
+   |     ^^^^^^^^^^^^^^^^ function called here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+error: this function definition uses unsized type `[u8]` which is not supported with the chosen ABI
+  --> $DIR/non-rustic-unsized.rs:59:1
+   |
+LL | extern "C" fn c_polymorphic<T: ?Sized>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = help: only rustic ABIs support unsized parameters
+
+note: the above error was encountered while instantiating `fn c_polymorphic::<[u8]>`
+  --> $DIR/non-rustic-unsized.rs:64:5
+   |
+LL |     c_polymorphic(x);
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+

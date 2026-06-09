@@ -1,0 +1,19 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/misspelled-associated-item.rs:8:14
+   |
+LL |     let () = Trait::typoe();
+   |              ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     let () = <dyn Trait>::typoe();
+   |              ++++      +
+help: you may have misspelled this associated item, causing `Trait` to be interpreted as a type rather than a trait
+   |
+LL -     let () = Trait::typoe();
+LL +     let () = Trait::typo();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0782`.

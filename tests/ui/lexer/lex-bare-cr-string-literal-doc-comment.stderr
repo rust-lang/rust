@@ -1,0 +1,51 @@
+error: bare CR not allowed in doc-comment
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:3:32
+   |
+LL | /// doc comment with bare CR: '␍'
+   |                                ^
+
+error: bare CR not allowed in block doc-comment
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:7:38
+   |
+LL | /** block doc comment with bare CR: '␍' */
+   |                                      ^
+
+error: bare CR not allowed in doc-comment
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:12:36
+   |
+LL |     //! doc comment with bare CR: '␍'
+   |                                    ^
+
+error: bare CR not allowed in block doc-comment
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:15:42
+   |
+LL |     /*! block doc comment with bare CR: '␍' */
+   |                                          ^
+
+error: bare CR not allowed in string, use `\r` instead
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:19:18
+   |
+LL |     let _s = "foo␍bar";
+   |                  ^
+   |
+help: escape the character
+   |
+LL |     let _s = "foo\rbar";
+   |                  ++
+
+error: bare CR not allowed in raw string
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:22:19
+   |
+LL |     let _s = r"bar␍foo";
+   |                   ^
+
+error: unknown character escape: `\r`
+  --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:25:19
+   |
+LL |     let _s = "foo\␍bar";
+   |                   ^ unknown character escape
+   |
+   = help: this is an isolated carriage return; consider checking your editor and version control settings
+
+error: aborting due to 7 previous errors
+

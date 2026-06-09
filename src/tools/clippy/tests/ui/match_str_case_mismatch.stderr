@@ -1,0 +1,88 @@
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:112:9
+   |
+LL |         "Bar" => {},
+   |         ^^^^^
+   |
+   = note: `-D clippy::match-str-case-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_str_case_mismatch)]`
+help: consider changing the case of this arm to respect `to_ascii_lowercase`
+   |
+LL -         "Bar" => {},
+LL +         "bar" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:123:9
+   |
+LL |         "~!@#$%^&*()-_=+Foo" => {},
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_lowercase` (notice the capitalization)
+   |
+LL -         "~!@#$%^&*()-_=+Foo" => {},
+LL +         "~!@#$%^&*()-_=+foo" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:136:9
+   |
+LL |         "Воды" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_lowercase`
+   |
+LL -         "Воды" => {},
+LL +         "воды" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:148:9
+   |
+LL |         "barǲ" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_lowercase`
+   |
+LL -         "barǲ" => {},
+LL +         "barǳ" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:159:9
+   |
+LL |         "bARʁ" => {},
+   |         ^^^^^^
+   |
+help: consider changing the case of this arm to respect `to_uppercase`
+   |
+LL -         "bARʁ" => {},
+LL +         "BARʁ" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:170:9
+   |
+LL |         "Bar" => {},
+   |         ^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_lowercase`
+   |
+LL -         "Bar" => {},
+LL +         "bar" => {},
+   |
+
+error: this `match` arm has a differing case than its expression
+  --> tests/ui/match_str_case_mismatch.rs:186:9
+   |
+LL |         "bAR" => {},
+   |         ^^^^^
+   |
+help: consider changing the case of this arm to respect `to_ascii_uppercase`
+   |
+LL -         "bAR" => {},
+LL +         "BAR" => {},
+   |
+
+error: aborting due to 7 previous errors
+

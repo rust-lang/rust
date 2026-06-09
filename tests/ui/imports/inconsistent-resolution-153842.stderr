@@ -1,0 +1,26 @@
+error: cannot determine resolution for the import
+  --> $DIR/inconsistent-resolution-153842.rs:2:13
+   |
+LL |     pub use crate::s::Trait as s;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: cannot determine resolution for the import
+  --> $DIR/inconsistent-resolution-153842.rs:2:13
+   |
+LL |     pub use crate::s::Trait as s;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0432]: unresolved imports `crate::s::Trait`, `a::s`
+  --> $DIR/inconsistent-resolution-153842.rs:2:13
+   |
+LL |     pub use crate::s::Trait as s;
+   |             ^^^^^^^^^^^^^^^^^^^^
+...
+LL | use a::s;
+   |     ^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

@@ -1,0 +1,27 @@
+warning: unexpected `cfg` condition value: `too`
+  --> $DIR/values-none.rs:11:7
+   |
+LL | #[cfg(foo = "too")]
+   |       ^^^--------
+   |          |
+   |          help: remove the value
+   |
+   = note: no expected value for `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(foo, values("too"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/values-none.rs:16:7
+   |
+LL | #[cfg(foo = "bar")]
+   |       ^^^--------
+   |          |
+   |          help: remove the value
+   |
+   = note: no expected value for `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(foo, values("bar"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

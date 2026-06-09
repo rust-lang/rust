@@ -1,0 +1,64 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_trait"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n   "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "F"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Fn"
+                  PARENTHESIZED_ARG_LIST
+                    L_PAREN "("
+                    TYPE_ARG
+                      REF_TYPE
+                        AMP "&"
+                        LIFETIME
+                          LIFETIME_IDENT "'a"
+                        WHITESPACE " "
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "str"
+                    R_PAREN ")"
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

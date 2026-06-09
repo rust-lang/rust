@@ -1,0 +1,28 @@
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+struct S;
+struct Y;
+
+trait Trait {}
+
+impl Trait for S {}
+impl Trait for Y {}
+
+fn foo() -> Box<dyn Trait> {
+    if true {
+        Box::new(S)
+    } else {
+        Box::new(Y) //~ ERROR `if` and `else` have incompatible types
+    }
+}
+
+fn bar() -> Box<dyn Trait> {
+    match true {
+        true => Box::new(S),
+        false => Box::new(Y), //~ ERROR `match` arms have incompatible types
+    }
+}
+
+fn main() {}

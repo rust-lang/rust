@@ -1,0 +1,61 @@
+warning: identifier contains 5 non normalized (NFKC) characters: 'Ǉ', 'Ǌ', 'ǈ', 'Ǌ', and 'Ǆ'
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:7:4
+   |
+LL | fn ǇǊaaǈǊaǄooo() {}
+   |    ^^^^^^^^^^^
+   |
+   = note: these characters are included in the Not_NFKC Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
+warning: identifier contains 5 non normalized (NFKC) characters: 'ǈ', 'ǌ', 'ǈ', 'ǋ', and 'ǅ'
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:11:4
+   |
+LL | fn ǈǌaaǈǋaǅooo() {}
+   |    ^^^^^^^^^^^
+   |
+   = note: these characters are included in the Not_NFKC Unicode general security profile
+
+error: function `ǇǊaaǈǊaǄooo` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:7:4
+   |
+LL | fn ǇǊaaǈǊaǄooo() {}
+   |    ^^^^^^^^^^^ help: convert the identifier to snake case: `ǉǌaa_ǉǌa_ǆooo`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:2:11
+   |
+LL | #![forbid(non_snake_case)]
+   |           ^^^^^^^^^^^^^^
+
+error: function `ǈǌaaǈǋaǅooo` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:11:4
+   |
+LL | fn ǈǌaaǈǋaǅooo() {}
+   |    ^^^^^^^^^^^ help: convert the identifier to snake case: `ǉǌaa_ǉǌa_ǆooo`
+
+error: function `ΦΙΛΟΣ_ΦΙΛΟΣ` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:16:4
+   |
+LL | fn ΦΙΛΟΣ_ΦΙΛΟΣ() {}
+   |    ^^^^^^^^^^^ help: convert the identifier to snake case: `φιλος_φιλος`
+
+error: function `Σ` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:19:4
+   |
+LL | fn Σ() {}
+   |    ^ help: convert the identifier to snake case: `σ`
+
+error: function `ΦΙΛΟΣ_Σ` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:22:4
+   |
+LL | fn ΦΙΛΟΣ_Σ() {}
+   |    ^^^^^^^ help: convert the identifier to snake case: `φιλος_σ`
+
+error: function `Σ_ΦΙΛΟΣ` should have a snake case name
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:25:4
+   |
+LL | fn Σ_ΦΙΛΟΣ() {}
+   |    ^^^^^^^ help: convert the identifier to snake case: `σ_φιλος`
+
+error: aborting due to 6 previous errors; 2 warnings emitted
+

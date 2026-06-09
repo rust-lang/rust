@@ -1,0 +1,25 @@
+error: cannot find macro parameter `$nonexistent` in this scope
+  --> $DIR/issue-6596-1.rs:3:9
+   |
+LL |         $nonexistent
+   |         ^^^^^^^^^^^^ not found in this scope
+...
+LL |     e!(foo);
+   |     ------- in this macro invocation
+   |
+   = note: available metavariable names are: $inp
+   = note: this error originates in the macro `e` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find macro parameter `$x` in this scope
+  --> $DIR/issue-6596-1.rs:10:9
+   |
+LL |         $x
+   |         ^^ not found in this scope
+...
+LL |     m!();
+   |     ---- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

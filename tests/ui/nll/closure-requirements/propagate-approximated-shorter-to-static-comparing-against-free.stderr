@@ -1,0 +1,82 @@
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:21:15
+   |
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: case1::{closure#0} with closure args [
+               i32,
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?2
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:22:9
+   |
+LL |     foo(cell, |cell_a, cell_x| {
+   |                ------  ------ `cell_x` is a reference that is only valid in the closure body
+   |                |
+   |                `cell_a` declared here, outside of the closure body
+LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `cell_x` escapes the closure body here
+   |
+   = note: requirement occurs because of the type `Cell<&'?9 u32>`, which makes the generic argument `&'?9 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
+   |
+LL | fn case1() {
+   | ^^^^^^^^^^
+   |
+   = note: defining type: case1
+
+note: external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15
+   |
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: case2::{closure#0} with closure args [
+               i32,
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: number of external vids: 2
+   = note: where '?1: '?0
+
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
+   |
+LL | fn case2() {
+   | ^^^^^^^^^^
+   |
+   = note: defining type: case2
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26
+   |
+LL |     let a = 0;
+   |         - binding `a` declared here
+LL |     let cell = Cell::new(&a);
+   |                          ^^ borrowed value does not live long enough
+...
+LL |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
+   |         ------------------------ argument requires that `a` is borrowed for `'static`
+LL |     })
+LL | }
+   | - `a` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:13:8
+   |
+LL |     F: for<'x> FnOnce(Cell<&'a u32>, Cell<&'x u32>),
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0521, E0597.
+For more information about an error, try `rustc --explain E0521`.

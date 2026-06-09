@@ -1,0 +1,37 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/const_arg_trivial_macro_expansion-4.rs:7:9
+   |
+LL |         N
+   |         ^ cannot perform const operation using `N`
+...
+LL | fn foo<const N: usize>() -> Foo<{ arg!{} arg!{} }> { loop {} }
+   |                                   ------ in this macro invocation
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: this error originates in the macro `arg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const_arg_trivial_macro_expansion-4.rs:7:9
+   |
+LL |         N
+   |         ^ cannot perform const operation using `N`
+...
+LL | fn foo<const N: usize>() -> Foo<{ arg!{} arg!{} }> { loop {} }
+   |                                          ------ in this macro invocation
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: this error originates in the macro `arg` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generic parameters may not be used in const operations
+  --> $DIR/const_arg_trivial_macro_expansion-4.rs:15:46
+   |
+LL | fn bar<const N: usize>() -> [(); { empty!{}; N }] { loop {} }
+   |                                              ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 3 previous errors
+

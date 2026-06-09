@@ -1,0 +1,14 @@
+error: recursion limit reached while expanding `m!`
+  --> $DIR/macro-guard-matcher-recursion.rs:6:13
+   |
+LL |             m!($g)
+   |             ^^^^^^
+...
+LL |     m!(if x)
+   |     -------- in this macro invocation
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`macro_guard_matcher_recursion`)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A == _`
+  --> $DIR/recursive-associated-type-overflow-21946.rs:9:14
+   |
+LL |     type A = <FooStruct as Foo>::A;
+   |              ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

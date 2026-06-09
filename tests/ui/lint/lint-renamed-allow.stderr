@@ -1,0 +1,15 @@
+error: unused variable: `unused`
+  --> $DIR/lint-renamed-allow.rs:8:17
+   |
+LL | fn main() { let unused = (); }
+   |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-renamed-allow.rs:7:8
+   |
+LL | #[deny(unused)]
+   |        ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+
+error: aborting due to 1 previous error
+

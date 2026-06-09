@@ -1,0 +1,75 @@
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash;
+
+use crate::{Align, HasDataLayout, Integer, Primitive, Size};
+
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum RegKind {
+    Integer,
+    Float,
+    Vector {
+        /// The `hint_vector_elem` is strictly for optimization purposes. E.g. it can be used by
+        /// a codegen backend to prevent extra bitcasts that obscure a pattern. Alternatively,
+        /// it can be safely ignored by always picking i8.
+        hint_vector_elem: Primitive,
+    },
+}
+
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Reg {
+    pub kind: RegKind,
+    pub size: Size,
+}
+
+macro_rules! reg_ctor {
+    ($name:ident, $kind:ident, $bits:expr) => {
+        pub fn $name() -> Reg {
+            Reg { kind: RegKind::$kind, size: Size::from_bits($bits) }
+        }
+    };
+}
+
+impl Reg {
+    reg_ctor!(i8, Integer, 8);
+    reg_ctor!(i16, Integer, 16);
+    reg_ctor!(i32, Integer, 32);
+    reg_ctor!(i64, Integer, 64);
+    reg_ctor!(i128, Integer, 128);
+
+    reg_ctor!(f32, Float, 32);
+    reg_ctor!(f64, Float, 64);
+    reg_ctor!(f128, Float, 128);
+
+    /// A vector of the given size with an unknown (and irrelevant) element type.
+    pub fn opaque_vector(size: Size) -> Reg {
+        // Default to an i8 vector of the given size.
+        Reg { kind: RegKind::Vector { hint_vector_elem: Primitive::Int(Integer::I8, true) }, size }
+    }
+}
+
+impl Reg {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+        let dl = cx.data_layout();
+        match self.kind {
+            RegKind::Integer => match self.size.bits() {
+                1 => dl.i1_align,
+                2..=8 => dl.i8_align,
+                9..=16 => dl.i16_align,
+                17..=32 => dl.i32_align,
+                33..=64 => dl.i64_align,
+                65..=128 => dl.i128_align,
+                _ => panic!("unsupported integer: {self:?}"),
+            },
+            RegKind::Float => match self.size.bits() {
+                16 => dl.f16_align,
+                32 => dl.f32_align,
+                64 => dl.f64_align,
+                128 => dl.f128_align,
+                _ => panic!("unsupported float: {self:?}"),
+            },
+            RegKind::Vector { .. } => dl.llvmlike_vector_align(self.size),
+        }
+    }
+}

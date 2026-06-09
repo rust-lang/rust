@@ -1,0 +1,49 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-55872-1.rs:12:15
+   |
+LL |     fn foo<T>() -> Self::E;
+   |     ----------------------- definition of `foo` from trait
+...
+LL |     fn foo<T: Default>() -> Self::E {
+   |               ^^^^^^^ impl has extra requirement `T: Default`
+
+error[E0277]: the trait bound `S: Copy` is not satisfied in `(S, T)`
+  --> $DIR/issue-55872-1.rs:12:29
+   |
+LL |     fn foo<T: Default>() -> Self::E {
+   |                             ^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `S`
+...
+LL |         (S::default(), T::default())
+   |         ---------------------------- return type was inferred to be `(S, T)` here
+   |
+   = note: required because it appears within the type `(S, T)`
+help: consider further restricting type parameter `S` with trait `Copy`
+   |
+LL | impl<S: Default + std::marker::Copy> Bar for S {
+   |                 +++++++++++++++++++
+
+error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
+  --> $DIR/issue-55872-1.rs:12:29
+   |
+LL |     fn foo<T: Default>() -> Self::E {
+   |                             ^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `T`
+...
+LL |         (S::default(), T::default())
+   |         ---------------------------- return type was inferred to be `(S, T)` here
+   |
+   = note: required because it appears within the type `(S, T)`
+help: consider further restricting type parameter `T` with trait `Copy`
+   |
+LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
+   |                       +++++++++++++++++++
+
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-55872-1.rs:12:29
+   |
+LL |     fn foo<T: Default>() -> Self::E {
+   |                             ^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

@@ -1,0 +1,17 @@
+error: this looks like a failed attempt at checking for the file extension
+  --> tests/ui/path_ends_with_ext.rs:11:5
+   |
+LL |     path.ends_with(".md");
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `path.extension().is_some_and(|ext| ext == "md")`
+   |
+   = note: `-D clippy::path-ends-with-ext` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::path_ends_with_ext)]`
+
+error: this looks like a failed attempt at checking for the file extension
+  --> tests/ui/path_ends_with_ext.rs:32:5
+   |
+LL |     path.ends_with(".md")
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `path.extension().map_or(false, |ext| ext == "md")`
+
+error: aborting due to 2 previous errors
+

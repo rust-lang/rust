@@ -1,0 +1,215 @@
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:7:13
+   |
+LL |     x.split("x");
+   |             ^^^ help: consider using a `char`: `'x'`
+   |
+   = note: `-D clippy::single-char-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_char_pattern)]`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:19:23
+   |
+LL |     x.split_inclusive("x");
+   |                       ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:21:16
+   |
+LL |     x.contains("x");
+   |                ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:23:19
+   |
+LL |     x.starts_with("x");
+   |                   ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:25:17
+   |
+LL |     x.ends_with("x");
+   |                 ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:27:12
+   |
+LL |     x.find("x");
+   |            ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:29:13
+   |
+LL |     x.rfind("x");
+   |             ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:31:14
+   |
+LL |     x.rsplit("x");
+   |              ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:33:24
+   |
+LL |     x.split_terminator("x");
+   |                        ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:35:25
+   |
+LL |     x.rsplit_terminator("x");
+   |                         ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:37:17
+   |
+LL |     x.splitn(2, "x");
+   |                 ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:39:18
+   |
+LL |     x.rsplitn(2, "x");
+   |                  ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:41:18
+   |
+LL |     x.split_once("x");
+   |                  ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:43:19
+   |
+LL |     x.rsplit_once("x");
+   |                   ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:45:15
+   |
+LL |     x.matches("x");
+   |               ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:47:16
+   |
+LL |     x.rmatches("x");
+   |                ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:49:21
+   |
+LL |     x.match_indices("x");
+   |                     ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:51:22
+   |
+LL |     x.rmatch_indices("x");
+   |                      ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:53:26
+   |
+LL |     x.trim_start_matches("x");
+   |                          ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:55:24
+   |
+LL |     x.trim_end_matches("x");
+   |                        ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:57:15
+   |
+LL |     x.replace("x", "y");
+   |               ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:59:16
+   |
+LL |     x.replacen("x", "y", 3);
+   |                ^^^ help: consider using a `char`: `'x'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:62:13
+   |
+LL |     x.split("\n");
+   |             ^^^^ help: consider using a `char`: `'\n'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:64:13
+   |
+LL |     x.split("'");
+   |             ^^^ help: consider using a `char`: `'\''`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:66:13
+   |
+LL |     x.split("\'");
+   |             ^^^^ help: consider using a `char`: `'\''`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:69:13
+   |
+LL |     x.split("\"");
+   |             ^^^^ help: consider using a `char`: `'"'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:75:31
+   |
+LL |     x.replace(';', ",").split(","); // issue #2978
+   |                               ^^^ help: consider using a `char`: `','`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:78:19
+   |
+LL |     x.starts_with("\x03"); // issue #2996
+   |                   ^^^^^^ help: consider using a `char`: `'\x03'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:87:13
+   |
+LL |     x.split(r"a");
+   |             ^^^^ help: consider using a `char`: `'a'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:89:13
+   |
+LL |     x.split(r#"a"#);
+   |             ^^^^^^ help: consider using a `char`: `'a'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:91:13
+   |
+LL |     x.split(r###"a"###);
+   |             ^^^^^^^^^^ help: consider using a `char`: `'a'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:93:13
+   |
+LL |     x.split(r###"'"###);
+   |             ^^^^^^^^^^ help: consider using a `char`: `'\''`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:95:13
+   |
+LL |     x.split(r###"#"###);
+   |             ^^^^^^^^^^ help: consider using a `char`: `'#'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:98:13
+   |
+LL |     x.split(r#"\"#);
+   |             ^^^^^^ help: consider using a `char`: `'\\'`
+
+error: single-character string constant used as pattern
+  --> tests/ui/single_char_pattern.rs:100:13
+   |
+LL |     x.split(r"\");
+   |             ^^^^ help: consider using a `char`: `'\\'`
+
+error: aborting due to 35 previous errors
+

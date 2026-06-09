@@ -1,0 +1,13 @@
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/unmarked-free-const.rs:9:18
+   |
+LL |     let x = [(); N];
+   |                  ^
+   |
+help: add `type` before `const` for `N`
+   |
+LL | type const N: usize = 4;
+   | ++++
+
+error: aborting due to 1 previous error
+

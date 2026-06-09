@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/early_bound.rs:6:36
+   |
+LL |         let _ = identity::<&'a ()>(test(false));
+   |                                    ^^^^^^^^^^^ expected `()`, got `&()`
+   |
+note: previous use here
+  --> $DIR/early_bound.rs:3:29
+   |
+LL | fn test<'a: 'a>(n: bool) -> impl Sized + 'a {
+   |                             ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

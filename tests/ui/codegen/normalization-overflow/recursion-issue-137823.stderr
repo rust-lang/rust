@@ -1,0 +1,14 @@
+error: reached the recursion limit while instantiating `convert2::<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<ConvertWrap<Ser>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
+  --> $DIR/recursion-issue-137823.rs:8:5
+   |
+LL |     convert2::<ConvertWrap<S>>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `convert2` defined here
+  --> $DIR/recursion-issue-137823.rs:12:1
+   |
+LL | fn convert2<S: Converter>() -> S::Out {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

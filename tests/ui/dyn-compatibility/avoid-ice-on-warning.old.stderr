@@ -1,0 +1,35 @@
+error: return types are denoted using `->`
+  --> $DIR/avoid-ice-on-warning.rs:4:23
+   |
+LL | fn call_this<F>(f: F) : Fn(&str) + call_that {}
+   |                       ^
+   |
+help: use `->` instead
+   |
+LL - fn call_this<F>(f: F) : Fn(&str) + call_that {}
+LL + fn call_this<F>(f: F) -> Fn(&str) + call_that {}
+   |
+
+error[E0405]: cannot find trait `call_that` in this scope
+  --> $DIR/avoid-ice-on-warning.rs:4:36
+   |
+LL | fn call_this<F>(f: F) : Fn(&str) + call_that {}
+   |                                    ^^^^^^^^^ not found in this scope
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/avoid-ice-on-warning.rs:4:25
+   |
+LL | fn call_this<F>(f: F) : Fn(&str) + call_that {}
+   |                         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn call_this<F>(f: F) : dyn Fn(&str) + call_that {}
+   |                         +++
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0405`.

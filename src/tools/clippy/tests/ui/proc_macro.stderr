@@ -1,0 +1,11 @@
+error: approximate value of `f{32, 64}::consts::PI` found
+  --> tests/ui/proc_macro.rs:9:14
+   |
+LL |     let _x = 3.14;
+   |              ^^^^
+   |
+   = help: consider using the constant directly
+   = note: `#[deny(clippy::approx_constant)]` on by default
+
+error: aborting due to 1 previous error
+

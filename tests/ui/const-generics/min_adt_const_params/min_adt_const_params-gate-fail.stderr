@@ -1,0 +1,8 @@
+error: the trait `ConstParamTy` may not be implemented for this struct
+  --> $DIR/min_adt_const_params-gate-fail.rs:27:24
+   |
+LL | impl ConstParamTy_ for Meowl {}
+   |                        ^^^^^ struct fields are less visible than the struct
+
+error: aborting due to 1 previous error
+

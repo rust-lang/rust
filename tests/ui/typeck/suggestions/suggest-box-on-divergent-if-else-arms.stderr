@@ -1,0 +1,94 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:15:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         Struct
+   | |         ------ expected because of this
+LL | |     } else {
+LL | |         foo()
+   | |         ^^^^^ expected `Struct`, found `Box<dyn Trait>`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected struct `Struct`
+              found struct `Box<dyn Trait>`
+help: `Struct` implements `Trait` so you can box it to coerce to the trait object `Box<dyn Trait>`
+   |
+LL |         Box::new(Struct)
+   |         +++++++++      +
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:20:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         foo()
+   | |         ----- expected because of this
+LL | |     } else {
+LL | |         Struct
+   | |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected struct `Box<dyn Trait>`
+              found struct `Struct`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(Struct)
+   |         +++++++++      +
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:25:9
+   |
+LL |   fn bar() -> impl Trait {
+   |               ---------- the found opaque type
+...
+LL |       let _ = if true {
+   |  _____________-
+LL | |         Struct
+   | |         ------ expected because of this
+LL | |     } else {
+LL | |         bar()
+   | |         ^^^^^ expected `Struct`, found opaque type
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note:   expected struct `Struct`
+           found opaque type `impl Trait`
+help: `Struct` implements `Trait` so you can box both arms and coerce to the trait object `Box<dyn Trait>`
+   |
+LL ~         Box::new(Struct) as Box<dyn Trait>
+LL |     } else {
+LL ~         Box::new(bar())
+   |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:30:9
+   |
+LL |   fn bar() -> impl Trait {
+   |               ---------- the expected opaque type
+...
+LL |       let _ = if true {
+   |  _____________-
+LL | |         bar()
+   | |         ----- expected because of this
+LL | |     } else {
+LL | |         Struct
+   | |         ^^^^^^ expected opaque type, found `Struct`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected opaque type `impl Trait`
+                   found struct `Struct`
+help: `Struct` implements `Trait` so you can box both arms and coerce to the trait object `Box<dyn Trait>`
+   |
+LL ~         Box::new(bar()) as Box<dyn Trait>
+LL |     } else {
+LL ~         Box::new(Struct)
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

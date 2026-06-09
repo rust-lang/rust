@@ -1,0 +1,47 @@
+error: use of a disallowed/placeholder name `toto`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:6:9
+   |
+LL | fn test(toto: ()) {}
+   |         ^^^^
+   |
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
+
+error: use of a disallowed/placeholder name `toto`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:10:9
+   |
+LL |     let toto = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `tata`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:12:9
+   |
+LL |     let tata = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `titi`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:14:9
+   |
+LL |     let titi = 42;
+   |         ^^^^
+
+error: use of a disallowed/placeholder name `toto`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:21:10
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |          ^^^^
+
+error: use of a disallowed/placeholder name `tata`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:21:21
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |                     ^^^^
+
+error: use of a disallowed/placeholder name `titi`
+  --> tests/ui-toml/toml_disallow/conf_french_disallowed_name.rs:21:28
+   |
+LL |         (toto, Some(tata), titi @ Some(_)) => (),
+   |                            ^^^^
+
+error: aborting due to 7 previous errors
+

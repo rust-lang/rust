@@ -1,0 +1,44 @@
+error[E0308]: mismatched types
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
+   |
+LL | fn wat<T>(t: &T) -> T {
+   |        -            - expected `T` because of return type
+   |        |
+   |        expected this type parameter
+LL |     t.clone()
+   |     ^^^^^^^^^ expected type parameter `T`, found `&T`
+   |
+   = note: expected type parameter `_`
+                   found reference `&_`
+note: `T` does not implement `Clone`, so `&T` was cloned instead
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
+   |
+LL |     t.clone()
+   |     ^
+help: consider restricting type parameter `T` with trait `Clone`
+   |
+LL | fn wat<T: Clone>(t: &T) -> T {
+   |         +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:9:5
+   |
+LL | fn wut(t: &Foo) -> Foo {
+   |                    --- expected `Foo` because of return type
+LL |     t.clone()
+   |     ^^^^^^^^^ expected `Foo`, found `&Foo`
+   |
+note: `Foo` does not implement `Clone`, so `&Foo` was cloned instead
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:9:5
+   |
+LL |     t.clone()
+   |     ^
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

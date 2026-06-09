@@ -1,0 +1,22 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/ice-151186-fn-ptr-in-where-clause.rs:8:24
+   |
+LL | trait MyTrait<const F: fn() -> ()> {}
+   |                        ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: the constant `foo` is not of type `fn()`
+  --> $DIR/ice-151186-fn-ptr-in-where-clause.rs:13:33
+   |
+LL | impl<T> Maybe<T> for T where T: MyTrait<{ foo }> {}
+   |                                 ^^^^^^^^^^^^^^^^ expected fn pointer, found fn item
+   |
+note: required by a const generic parameter in `MyTrait`
+  --> $DIR/ice-151186-fn-ptr-in-where-clause.rs:8:15
+   |
+LL | trait MyTrait<const F: fn() -> ()> {}
+   |               ^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `MyTrait`
+
+error: aborting due to 2 previous errors
+

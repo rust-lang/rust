@@ -1,0 +1,102 @@
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:4:5
+   |
+LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     x == y;
+   |     ^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to `&i32`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:4:5
+   |
+LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     x == y;
+   |     ^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to `&i32`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:10:5
+   |
+LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
+   |                --  -- lifetime `'b` defined here
+   |                |
+   |                lifetime `'a` defined here
+LL |     x == y;
+   |     ^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `&i32`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:10:5
+   |
+LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
+   |                --  -- lifetime `'b` defined here
+   |                |
+   |                lifetime `'a` defined here
+LL |     x == y;
+   |     ^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `&i32`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'a` and `'b` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:16:5
+   |
+LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     f == g;
+   |     ^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to `&i32`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/type-check-pointer-comparisons.rs:16:5
+   |
+LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     f == g;
+   |     ^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to `&i32`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: `'a` and `'b` must be the same: replace one with the other
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+

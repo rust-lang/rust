@@ -1,0 +1,247 @@
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:27:26
+   |
+LL |     const BAD32_1: f32 = 0.123_456_789_f32;
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::excessive-precision` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::excessive_precision)]`
+help: consider changing the type or truncating it to
+   |
+LL -     const BAD32_1: f32 = 0.123_456_789_f32;
+LL +     const BAD32_1: f32 = 0.123_456_79_f32;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:29:26
+   |
+LL |     const BAD32_2: f32 = 0.123_456_789;
+   |                          ^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     const BAD32_2: f32 = 0.123_456_789;
+LL +     const BAD32_2: f32 = 0.123_456_79;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:31:26
+   |
+LL |     const BAD32_3: f32 = 0.100_000_000_000_1;
+   |                          ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     const BAD32_3: f32 = 0.100_000_000_000_1;
+LL +     const BAD32_3: f32 = 0.1;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:33:29
+   |
+LL |     const BAD32_EDGE: f32 = 1.000_000_9;
+   |                             ^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     const BAD32_EDGE: f32 = 1.000_000_9;
+LL +     const BAD32_EDGE: f32 = 1.000_001;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:38:26
+   |
+LL |     const BAD64_3: f64 = 0.100_000_000_000_000_000_1;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     const BAD64_3: f64 = 0.100_000_000_000_000_000_1;
+LL +     const BAD64_3: f64 = 0.1;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:42:22
+   |
+LL |     println!("{:?}", 8.888_888_888_888_888_888_888);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     println!("{:?}", 8.888_888_888_888_888_888_888);
+LL +     println!("{:?}", 8.888_888_888_888_89);
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:54:22
+   |
+LL |     let bad32: f32 = 1.123_456_789;
+   |                      ^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad32: f32 = 1.123_456_789;
+LL +     let bad32: f32 = 1.123_456_8;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:56:26
+   |
+LL |     let bad32_suf: f32 = 1.123_456_789_f32;
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad32_suf: f32 = 1.123_456_789_f32;
+LL +     let bad32_suf: f32 = 1.123_456_8_f32;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:58:21
+   |
+LL |     let bad32_inf = 1.123_456_789_f32;
+   |                     ^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad32_inf = 1.123_456_789_f32;
+LL +     let bad32_inf = 1.123_456_8_f32;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:69:36
+   |
+LL |     let bad_vec32: Vec<f32> = vec![0.123_456_789];
+   |                                    ^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad_vec32: Vec<f32> = vec![0.123_456_789];
+LL +     let bad_vec32: Vec<f32> = vec![0.123_456_79];
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:71:36
+   |
+LL |     let bad_vec64: Vec<f64> = vec![0.123_456_789_123_456_789];
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad_vec64: Vec<f64> = vec![0.123_456_789_123_456_789];
+LL +     let bad_vec64: Vec<f64> = vec![0.123_456_789_123_456_78];
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:76:24
+   |
+LL |     let bad_e32: f32 = 1.123_456_788_888e-10;
+   |                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad_e32: f32 = 1.123_456_788_888e-10;
+LL +     let bad_e32: f32 = 1.123_456_8e-10;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:80:27
+   |
+LL |     let bad_bige32: f32 = 1.123_456_788_888E-10;
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let bad_bige32: f32 = 1.123_456_788_888E-10;
+LL +     let bad_bige32: f32 = 1.123_456_8E-10;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:93:13
+   |
+LL |     let _ = 2.225_073_858_507_201_1e-308_f64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let _ = 2.225_073_858_507_201_1e-308_f64;
+LL +     let _ = 2.225_073_858_507_201e-308_f64;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:97:13
+   |
+LL |     let _ = 1.000_000_000_000_001e-324_f64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     let _ = 1.000_000_000_000_001e-324_f64;
+LL +     let _ = 0_f64;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:108:20
+   |
+LL |     const _: f64 = 3.0000000000000000e+00;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the type or truncating it to
+   |
+LL -     const _: f64 = 3.0000000000000000e+00;
+LL +     const _: f64 = 3.0;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:113:18
+   |
+LL |     let _: f32 = 1.01234567890123456789012345678901234567890;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider making it a `const` item
+  --> tests/ui/excessive_precision.rs:113:5
+   |
+LL |     let _: f32 = 1.01234567890123456789012345678901234567890;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider changing the type or truncating it to
+   |
+LL -     let _: f32 = 1.01234567890123456789012345678901234567890;
+LL +     let _: f32 = 1.012_345_7;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:115:18
+   |
+LL |     let _: f64 = 1.01234567890123456789012345678901234567890;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider making it a `const` item
+  --> tests/ui/excessive_precision.rs:115:5
+   |
+LL |     let _: f64 = 1.01234567890123456789012345678901234567890;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider changing the type or truncating it to
+   |
+LL -     let _: f64 = 1.01234567890123456789012345678901234567890;
+LL +     let _: f64 = 1.012_345_678_901_234_6;
+   |
+
+error: float has excessive precision
+  --> tests/ui/excessive_precision.rs:127:17
+   |
+LL |     let gamma = 0.5772156649015328606065120900824024310421;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider making it a `const` item
+  --> tests/ui/excessive_precision.rs:127:5
+   |
+LL |     let gamma = 0.5772156649015328606065120900824024310421;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider changing the type or truncating it to
+   |
+LL -     let gamma = 0.5772156649015328606065120900824024310421;
+LL +     let gamma = 0.577_215_664_901_532_9;
+   |
+
+error: aborting due to 19 previous errors
+

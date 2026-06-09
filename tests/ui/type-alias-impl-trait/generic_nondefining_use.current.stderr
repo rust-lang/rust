@@ -1,0 +1,30 @@
+error[E0792]: expected generic type parameter, found `u32`
+  --> $DIR/generic_nondefining_use.rs:20:21
+   |
+LL | type OneTy<T> = impl Debug;
+   |            - this generic parameter must be used with a generic type parameter
+...
+LL | fn concrete_ty() -> OneTy<u32> {
+   |                     ^^^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/generic_nondefining_use.rs:29:5
+   |
+LL | type OneLifetime<'a> = impl Debug;
+   |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL |     6u32
+   |     ^^^^
+
+error[E0792]: expected generic constant parameter, found `123`
+  --> $DIR/generic_nondefining_use.rs:35:24
+   |
+LL | type OneConst<const X: usize> = impl Debug;
+   |               -------------- this generic parameter must be used with a generic constant parameter
+...
+LL | fn concrete_const() -> OneConst<{ 123 }> {
+   |                        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

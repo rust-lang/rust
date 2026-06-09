@@ -1,0 +1,12 @@
+warning: unreachable block in `if` or `while` expression
+  --> $DIR/protect-precedences.rs:13:41
+   |
+LL |         if let _ = return true && false {};
+   |                    -------------------- ^^ unreachable block in `if` or `while` expression
+   |                    |
+   |                    any code following this expression is unreachable
+   |
+   = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

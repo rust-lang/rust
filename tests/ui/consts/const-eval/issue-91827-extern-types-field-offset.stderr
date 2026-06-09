@@ -1,0 +1,9 @@
+error[E0080]: `extern type` field does not have a known offset
+  --> $DIR/issue-91827-extern-types-field-offset.rs:38:17
+   |
+LL |     let field = &x.a;
+   |                 ^^^^ evaluation of `OFFSET` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

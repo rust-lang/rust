@@ -1,0 +1,15 @@
+error: at least one trait must be specified
+  --> $DIR/issue-83499-input-output-iteration-ice.rs:7:45
+   |
+LL | unsafe extern "C" fn foo(_: Bar, _: ...) -> impl {}
+   |                                             ^^^^
+
+error[E0425]: cannot find type `Bar` in this scope
+  --> $DIR/issue-83499-input-output-iteration-ice.rs:7:29
+   |
+LL | unsafe extern "C" fn foo(_: Bar, _: ...) -> impl {}
+   |                             ^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

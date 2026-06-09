@@ -1,0 +1,39 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-caller.rs:8:12
+   |
+LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |          --  -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     let z: Option<&'b &'a usize> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-caller.rs:14:12
+   |
+LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |          --  -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     let y: Paramd<'a> = Paramd { x: a };
+LL |     let z: Option<&'b Paramd<'a>> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-caller.rs:19:12
+   |
+LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |          --  -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+LL |     let z: Option<&'a &'b usize> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,38 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Clone"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

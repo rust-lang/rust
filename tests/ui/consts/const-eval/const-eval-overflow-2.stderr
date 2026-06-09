@@ -1,0 +1,9 @@
+error[E0080]: attempt to negate `i8::MIN`, which would overflow
+  --> $DIR/const-eval-overflow-2.rs:11:25
+   |
+LL | const NEG_NEG_128: i8 = -NEG_128;
+   |                         ^^^^^^^^ evaluation of `NEG_NEG_128` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

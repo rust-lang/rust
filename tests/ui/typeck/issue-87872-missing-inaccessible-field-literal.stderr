@@ -1,0 +1,10 @@
+error: cannot construct `Foo` with struct literal syntax due to private fields
+  --> $DIR/issue-87872-missing-inaccessible-field-literal.rs:9:5
+   |
+LL |     foo::Foo {};
+   |     ^^^^^^^^
+   |
+   = note: private field `you_cant_use_this_field` that was not provided
+
+error: aborting due to 1 previous error
+

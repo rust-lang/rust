@@ -1,0 +1,10 @@
+warning: trait `IntoIteratorX` is never used
+  --> $DIR/associated-types-issue-20220.rs:7:7
+   |
+LL | trait IntoIteratorX {
+   |       ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

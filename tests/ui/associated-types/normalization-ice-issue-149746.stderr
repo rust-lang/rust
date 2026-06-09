@@ -1,0 +1,80 @@
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:6:24
+   |
+LL |     _significant_drop: <() as Owner>::Ty<T>,
+   |                        ^^^^^^^^^^^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+help: consider restricting type parameter `T` with trait `FnMut`
+   |
+LL | pub struct Warns<T: FnMut()> {
+   |                   +++++++++
+
+warning: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/normalization-ice-issue-149746.rs:12:9
+   |
+LL |     _ = || w.field
+   |         ^^ -------
+   |            |     |
+   |            |     in Rust 2018, `w` is dropped here, but in Rust 2021, only `w.field` will be dropped here as part of the closure
+   |            in Rust 2018, this closure captures all of `w`, but in Rust 2021, it will only capture `w.field`
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+note: the lint level is defined here
+  --> $DIR/normalization-ice-issue-149746.rs:2:9
+   |
+LL | #![warn(rust_2021_incompatible_closure_captures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a dummy let to cause `w` to be fully captured
+   |
+LL |     _ = || { let _ = &w; w.field }
+   |            +++++++++++++         +
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:12:9
+   |
+LL |     _ = || w.field
+   |         ^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:10:16
+   |
+LL | pub fn test<T>(w: Warns<T>) {
+   |                ^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+
+error[E0277]: expected a `FnMut()` closure, found `T`
+  --> $DIR/normalization-ice-issue-149746.rs:12:9
+   |
+LL |     _ = || w.field
+   |         ^^^^^^^^^^ expected an `FnMut()` closure, found `T`
+   |
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Owner::Ty`
+  --> $DIR/normalization-ice-issue-149746.rs:3:26
+   |
+LL | trait Owner { type Ty<T: FnMut()>; }
+   |                          ^^^^^^^ required by this bound in `Owner::Ty`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

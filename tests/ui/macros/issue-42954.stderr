@@ -1,0 +1,19 @@
+error: `<` is interpreted as a start of generic arguments for `u32`, not a comparison
+  --> $DIR/issue-42954.rs:7:19
+   |
+LL |         $i as u32 < 0
+   |                   ^ - interpreted as generic arguments
+   |                   |
+   |                   not interpreted as comparison
+...
+LL |     is_plainly_printable!(c);
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `is_plainly_printable` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: try comparing the cast value
+   |
+LL |         ($i as u32) < 0
+   |         +         +
+
+error: aborting due to 1 previous error
+

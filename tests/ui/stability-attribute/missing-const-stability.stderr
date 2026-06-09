@@ -1,0 +1,26 @@
+error: function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:7:1
+   |
+LL | pub const fn foo() {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error: trait has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:23:1
+   |
+LL | pub const trait Bar {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:36:1
+   |
+LL | pub const unsafe fn size_of_val<T>(x: *const T) -> usize { 42 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:16:5
+   |
+LL |     pub const fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

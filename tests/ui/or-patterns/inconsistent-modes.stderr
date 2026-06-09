@@ -1,0 +1,80 @@
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:6:26
+   |
+LL |     let (Ok(a) | Err(ref a)): Result<&u8, u8> = Ok(&0);
+   |             -            ^ bound in different ways
+   |             |
+   |             first binding
+
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:8:30
+   |
+LL |     let (Ok(ref mut a) | Err(a)): Result<u8, &mut u8> = Ok(0);
+   |                     -        ^ bound in different ways
+   |                     |
+   |                     first binding
+
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:10:34
+   |
+LL |     let (Ok(ref a) | Err(ref mut a)): Result<&u8, &mut u8> = Ok(&0);
+   |                 - first binding  ^ bound in different ways
+
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:13:40
+   |
+LL |     let (Ok((ref a, b)) | Err((ref mut a, ref b))) = Ok((0, &0));
+   |                  - first binding       ^ bound in different ways
+
+error[E0409]: variable `b` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:13:47
+   |
+LL |     let (Ok((ref a, b)) | Err((ref mut a, ref b))) = Ok((0, &0));
+   |                     - first binding           ^ bound in different ways
+
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:19:39
+   |
+LL |     let (Ok(Ok(a) | Err(a)) | Err(ref a)) = Err(0);
+   |                         -             ^ bound in different ways
+   |                         |
+   |                         first binding
+
+error[E0409]: variable `a` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/inconsistent-modes.rs:23:34
+   |
+LL |     let (Ok([Ok((Ok(ref a) | Err(a),)) | Err(a)]) | Err(a)) = Err(&1);
+   |                         -        ^ bound in different ways
+   |                         |
+   |                         first binding
+
+error[E0308]: mismatched types
+  --> $DIR/inconsistent-modes.rs:10:26
+   |
+LL |     let (Ok(ref a) | Err(ref mut a)): Result<&u8, &mut u8> = Ok(&0);
+   |             -----        ^^^^^^^^^    -------------------- expected due to this
+   |             |            |
+   |             |            types differ in mutability
+   |             first introduced with type `&&u8` here
+   |
+   = note:      expected reference `&&_`
+           found mutable reference `&mut &mut _`
+   = note: a binding must have the same type in all alternatives
+
+error[E0308]: mismatched types
+  --> $DIR/inconsistent-modes.rs:13:32
+   |
+LL |     let (Ok((ref a, b)) | Err((ref mut a, ref b))) = Ok((0, &0));
+   |              -----             ^^^^^^^^^             ----------- this expression has type `Result<({integer}, &{integer}), (_, _)>`
+   |              |                 |
+   |              |                 types differ in mutability
+   |              first introduced with type `&{integer}` here
+   |
+   = note:      expected reference `&{integer}`
+           found mutable reference `&mut _`
+   = note: a binding must have the same type in all alternatives
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0308, E0409.
+For more information about an error, try `rustc --explain E0308`.

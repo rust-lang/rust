@@ -1,0 +1,349 @@
+//! Traits for parsing attributes.
+//!
+//! This module defines traits for attribute parsers, little state machines that recognize and parse
+//! attributes out of a longer list of attributes. The main trait is called [`AttributeParser`].
+//! You can find more docs about [`AttributeParser`]s on the trait itself.
+//! However, for many types of attributes, implementing [`AttributeParser`] is not necessary.
+//! It allows for a lot of flexibility you might not want.
+//!
+//! Specifically, you might not care about managing the state of your [`AttributeParser`]
+//! state machine yourself. In this case you can choose to implement:
+//!
+//! - [`NoArgsAttributeParser`]: used for implementing an attribute that appears only once and
+//! accepts no arguments
+//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
+//! appears more than once in a list of attributes
+//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
+//! contents of attributes, if an attribute appear multiple times in a list
+//!
+//! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
+
+use std::marker::PhantomData;
+
+use rustc_feature::AttributeStability;
+use rustc_hir::attrs::AttributeKind;
+use rustc_span::edition::Edition;
+use rustc_span::{Span, Symbol};
+use thin_vec::ThinVec;
+
+use crate::context::{AcceptContext, FinalizeContext};
+use crate::parser::ArgParser;
+use crate::session_diagnostics::UnusedMultiple;
+use crate::target_checking::AllowedTargets;
+use crate::{AttributeTemplate, template};
+
+/// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
+mod prelude;
+
+pub(crate) mod allow_unstable;
+pub(crate) mod autodiff;
+pub(crate) mod body;
+pub(crate) mod cfg;
+pub(crate) mod cfg_select;
+pub(crate) mod cfi_encoding;
+pub(crate) mod codegen_attrs;
+pub(crate) mod confusables;
+pub(crate) mod crate_level;
+pub(crate) mod debugger;
+pub(crate) mod deprecation;
+pub(crate) mod diagnostic;
+pub(crate) mod doc;
+pub(crate) mod dummy;
+pub(crate) mod inline;
+pub(crate) mod instruction_set;
+pub(crate) mod link_attrs;
+pub(crate) mod lint_helpers;
+pub(crate) mod loop_match;
+pub(crate) mod macro_attrs;
+pub(crate) mod must_not_suspend;
+pub(crate) mod must_use;
+pub(crate) mod no_implicit_prelude;
+pub(crate) mod no_link;
+pub(crate) mod non_exhaustive;
+pub(crate) mod path;
+pub(crate) mod pin_v2;
+pub(crate) mod proc_macro_attrs;
+pub(crate) mod prototype;
+pub(crate) mod repr;
+pub(crate) mod rustc_allocator;
+pub(crate) mod rustc_dump;
+pub(crate) mod rustc_internal;
+pub(crate) mod semantics;
+pub(crate) mod stability;
+pub(crate) mod test_attrs;
+pub(crate) mod traits;
+pub(crate) mod transparency;
+pub(crate) mod util;
+
+type AcceptFn<T> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess>, &ArgParser);
+type AcceptMapping<T> =
+    &'static [(&'static [Symbol], AttributeTemplate, AttributeStability, AcceptFn<T>)];
+
+/// An [`AttributeParser`] is a type which searches for syntactic attributes.
+///
+/// Parsers are often tiny state machines that gets to see all syntactical attributes on an item.
+/// [`Default::default`] creates a fresh instance that sits in some kind of initial state, usually that the
+/// attribute it is looking for was not yet seen.
+///
+/// Then, it defines what paths this group will accept in [`AttributeParser::ATTRIBUTES`].
+/// These are listed as pairs, of symbols and function pointers. The function pointer will
+/// be called when that attribute is found on an item, which can influence the state of the little
+/// state machine.
+///
+/// Finally, after all attributes on an item have been seen, and possibly been accepted,
+/// the [`finalize`](AttributeParser::finalize) functions for all attribute parsers are called. Each can then report
+/// whether it has seen the attribute it has been looking for.
+///
+/// The state machine is automatically reset to parse attributes on the next item.
+///
+/// For a simpler attribute parsing interface, consider using [`SingleAttributeParser`]
+/// or [`CombineAttributeParser`] instead.
+pub(crate) trait AttributeParser: Default + 'static {
+    /// The symbols for the attributes that this parser is interested in.
+    ///
+    /// If an attribute has this symbol, the `accept` function will be called on it.
+    const ATTRIBUTES: AcceptMapping<Self>;
+    const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+
+    /// The parser has gotten a chance to accept the attributes on an item,
+    /// here it can produce an attribute.
+    ///
+    /// All finalize methods of all parsers are unconditionally called.
+    /// This means you can't unconditionally return `Some` here,
+    /// that'd be equivalent to unconditionally applying an attribute to
+    /// every single syntax item that could have attributes applied to it.
+    /// Your accept mappings should determine whether this returns something.
+    fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind>;
+}
+
+/// Alternative to [`AttributeParser`] that automatically handles state management.
+/// A slightly simpler and more restricted way to convert attributes.
+/// Assumes that an attribute can only appear a single time on an item,
+/// and errors when it sees more.
+///
+/// [`Single<T> where T: SingleAttributeParser`](Single) implements [`AttributeParser`].
+///
+/// [`SingleAttributeParser`] can only convert attributes one-to-one, and cannot combine multiple
+/// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
+pub(crate) trait SingleAttributeParser: 'static {
+    /// The single path of the attribute this parser accepts.
+    ///
+    /// If you need the parser to accept more than one path, use [`AttributeParser`] instead
+    const PATH: &[Symbol];
+
+    /// Configures what to do when when the same attribute is
+    /// applied more than once on the same syntax node.
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const STABILITY: AttributeStability;
+
+    const ALLOWED_TARGETS: AllowedTargets;
+
+    /// The template this attribute parser should implement. Used for diagnostics.
+    const TEMPLATE: AttributeTemplate;
+
+    /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind>;
+}
+
+/// Use in combination with [`SingleAttributeParser`].
+/// `Single<T: SingleAttributeParser>` implements [`AttributeParser`].
+pub(crate) struct Single<T: SingleAttributeParser>(PhantomData<T>, Option<(AttributeKind, Span)>);
+
+impl<T: SingleAttributeParser> Default for Single<T> {
+    fn default() -> Self {
+        Self(Default::default(), Default::default())
+    }
+}
+
+impl<T: SingleAttributeParser> AttributeParser for Single<T> {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
+        T::PATH,
+        <T as SingleAttributeParser>::TEMPLATE,
+        T::STABILITY,
+        |group: &mut Single<T>, cx, args| {
+            if let Some(pa) = T::convert(cx, args) {
+                if let Some((_, used)) = group.1 {
+                    T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
+                } else {
+                    group.1 = Some((pa, cx.attr_span));
+                }
+            }
+        },
+    )];
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        Some(self.1?.0)
+    }
+}
+
+pub(crate) enum OnDuplicate {
+    /// Give a default warning
+    Warn,
+
+    /// Duplicates will be a warning, with a note that this will be an error in the future.
+    WarnButFutureError,
+
+    /// Give a default error
+    Error,
+
+    /// Ignore duplicates
+    Ignore,
+
+    /// Custom function called when a duplicate attribute is found.
+    ///
+    /// - `unused` is the span of the attribute that was unused or bad because of some
+    ///   duplicate reason
+    /// - `used` is the span of the attribute that was used in favor of the unused attribute
+    Custom(fn(cx: &AcceptContext<'_, '_>, used: Span, unused: Span)),
+}
+
+impl OnDuplicate {
+    fn exec<P: SingleAttributeParser>(
+        &self,
+        cx: &mut AcceptContext<'_, '_>,
+        used: Span,
+        unused: Span,
+    ) {
+        match self {
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
+            OnDuplicate::Error => {
+                cx.emit_err(UnusedMultiple {
+                    this: unused,
+                    other: used,
+                    name: Symbol::intern(
+                        &P::PATH.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
+                    ),
+                });
+            }
+            OnDuplicate::Ignore => {}
+            OnDuplicate::Custom(f) => f(cx, used, unused),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum AttributeSafety {
+    /// Normal attribute that does not need `#[unsafe(...)]`
+    Normal,
+    /// Unsafe attribute that requires safety obligations to be discharged.
+    ///
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
+}
+
+/// An even simpler version of [`SingleAttributeParser`]:
+/// now automatically check that there are no arguments provided to the attribute.
+///
+/// [`WithoutArgs<T> where T: NoArgsAttributeParser`](WithoutArgs) implements [`SingleAttributeParser`].
+//
+pub(crate) trait NoArgsAttributeParser: 'static {
+    const PATH: &[Symbol];
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const STABILITY: AttributeStability;
+
+    /// Create the [`AttributeKind`] given attribute's [`Span`].
+    const CREATE: fn(Span) -> AttributeKind;
+}
+
+pub(crate) struct WithoutArgs<T: NoArgsAttributeParser>(PhantomData<T>);
+
+impl<T: NoArgsAttributeParser> Default for WithoutArgs<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
+    const PATH: &[Symbol] = T::PATH;
+    const ON_DUPLICATE: OnDuplicate = T::ON_DUPLICATE;
+    const SAFETY: AttributeSafety = T::SAFETY;
+    const STABILITY: AttributeStability = T::STABILITY;
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let _ = cx.expect_no_args(args);
+        Some(T::CREATE(cx.attr_span))
+    }
+}
+
+type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
+
+/// Alternative to [`AttributeParser`] that automatically handles state management.
+/// If multiple attributes appear on an element, combines the values of each into a
+/// [`ThinVec`].
+/// [`Combine<T> where T: CombineAttributeParser`](Combine) implements [`AttributeParser`].
+///
+/// [`CombineAttributeParser`] can only convert a single kind of attribute, and cannot combine multiple
+/// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
+pub(crate) trait CombineAttributeParser: 'static {
+    const PATH: &[rustc_span::Symbol];
+
+    type Item;
+    /// A function that converts individual items (of type [`Item`](Self::Item)) into the final attribute.
+    ///
+    /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
+    ///  where `x` is a vec of these individual reprs.
+    const CONVERT: ConvertFn<Self::Item>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const STABILITY: AttributeStability;
+
+    const ALLOWED_TARGETS: AllowedTargets;
+
+    /// The template this attribute parser should implement. Used for diagnostics.
+    const TEMPLATE: AttributeTemplate;
+
+    /// Converts a single syntactical attribute to a number of elements of the semantic attribute, or [`AttributeKind`]
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item>;
+}
+
+/// Use in combination with [`CombineAttributeParser`].
+/// `Combine<T: CombineAttributeParser>` implements [`AttributeParser`].
+pub(crate) struct Combine<T: CombineAttributeParser> {
+    phantom: PhantomData<T>,
+    /// A list of all items produced by parsing attributes so far. One attribute can produce any amount of items.
+    items: ThinVec<<T as CombineAttributeParser>::Item>,
+    /// The full span of the first attribute that was encountered.
+    first_span: Option<Span>,
+}
+
+impl<T: CombineAttributeParser> Default for Combine<T> {
+    fn default() -> Self {
+        Self {
+            phantom: Default::default(),
+            items: Default::default(),
+            first_span: Default::default(),
+        }
+    }
+}
+
+impl<T: CombineAttributeParser> AttributeParser for Combine<T> {
+    const ATTRIBUTES: AcceptMapping<Self> =
+        &[(T::PATH, T::TEMPLATE, T::STABILITY, |group: &mut Combine<T>, cx, args| {
+            // Keep track of the span of the first attribute, for diagnostics
+            group.first_span.get_or_insert(cx.attr_span);
+            group.items.extend(T::extend(cx, args))
+        })];
+    const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        if let Some(first_span) = self.first_span {
+            Some(T::CONVERT(self.items, first_span))
+        } else {
+            None
+        }
+    }
+}

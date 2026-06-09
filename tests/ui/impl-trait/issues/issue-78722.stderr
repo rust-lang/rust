@@ -1,0 +1,20 @@
+error[E0658]: `async` blocks are not allowed in constants
+  --> $DIR/issue-78722.rs:13:20
+   |
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^
+   |
+   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
+   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0271]: expected `{async block@$DIR/issue-78722.rs:11:13: 11:18}` to be a future that resolves to `u8`, but it resolves to `()`
+  --> $DIR/issue-78722.rs:9:30
+   |
+LL |         fn concrete_use() -> F {
+   |                              ^ expected `u8`, found `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0658.
+For more information about an error, try `rustc --explain E0271`.

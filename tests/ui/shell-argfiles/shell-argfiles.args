@@ -1,0 +1,4 @@
+--cfg unquoted_set
+'--cfg' 'single_quoted_set'
+"--cfg" "double_quoted_set"
+--check-cfg 'cfg(cmdline_set, unquoted_set, single_quoted_set, double_quoted_set)'

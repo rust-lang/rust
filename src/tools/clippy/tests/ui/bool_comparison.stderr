@@ -1,0 +1,143 @@
+error: equality checks against true are unnecessary
+  --> tests/ui/bool_comparison.rs:7:16
+   |
+LL |     let _ = if x == true { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `x`
+   |
+   = note: `-D clippy::bool-comparison` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:9:16
+   |
+LL |     let _ = if x == false { "yes" } else { "no" };
+   |                ^^^^^^^^^^ help: try: `!x`
+
+error: equality checks against true are unnecessary
+  --> tests/ui/bool_comparison.rs:11:16
+   |
+LL |     let _ = if true == x { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `x`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:13:16
+   |
+LL |     let _ = if false == x { "yes" } else { "no" };
+   |                ^^^^^^^^^^ help: try: `!x`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:15:16
+   |
+LL |     let _ = if x != true { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `!x`
+
+error: inequality checks against false are unnecessary
+  --> tests/ui/bool_comparison.rs:17:16
+   |
+LL |     let _ = if x != false { "yes" } else { "no" };
+   |                ^^^^^^^^^^ help: try: `x`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:19:16
+   |
+LL |     let _ = if true != x { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `!x`
+
+error: inequality checks against false are unnecessary
+  --> tests/ui/bool_comparison.rs:21:16
+   |
+LL |     let _ = if false != x { "yes" } else { "no" };
+   |                ^^^^^^^^^^ help: try: `x`
+
+error: less than comparison against true can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:23:16
+   |
+LL |     let _ = if x < true { "yes" } else { "no" };
+   |                ^^^^^^^^ help: try: `!x`
+
+error: greater than checks against false are unnecessary
+  --> tests/ui/bool_comparison.rs:25:16
+   |
+LL |     let _ = if false < x { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `x`
+
+error: greater than checks against false are unnecessary
+  --> tests/ui/bool_comparison.rs:27:16
+   |
+LL |     let _ = if x > false { "yes" } else { "no" };
+   |                ^^^^^^^^^ help: try: `x`
+
+error: less than comparison against true can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:29:16
+   |
+LL |     let _ = if true > x { "yes" } else { "no" };
+   |                ^^^^^^^^ help: try: `!x`
+
+error: order comparisons between booleans can be simplified
+  --> tests/ui/bool_comparison.rs:33:16
+   |
+LL |     let _ = if x < y { "yes" } else { "no" };
+   |                ^^^^^ help: try: `!x & y`
+
+error: order comparisons between booleans can be simplified
+  --> tests/ui/bool_comparison.rs:35:16
+   |
+LL |     let _ = if x > y { "yes" } else { "no" };
+   |                ^^^^^ help: try: `x & !y`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:92:8
+   |
+LL |     if false == m!(func) {}
+   |        ^^^^^^^^^^^^^^^^^ help: try: `!m!(func)`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:94:8
+   |
+LL |     if m!(func) == false {}
+   |        ^^^^^^^^^^^^^^^^^ help: try: `!m!(func)`
+
+error: equality checks against true are unnecessary
+  --> tests/ui/bool_comparison.rs:96:8
+   |
+LL |     if true == m!(func) {}
+   |        ^^^^^^^^^^^^^^^^ help: try: `m!(func)`
+
+error: equality checks against true are unnecessary
+  --> tests/ui/bool_comparison.rs:98:8
+   |
+LL |     if m!(func) == true {}
+   |        ^^^^^^^^^^^^^^^^ help: try: `m!(func)`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:116:14
+   |
+LL |     let _ = ((1 < 2) == false) as usize;
+   |              ^^^^^^^^^^^^^^^^ help: try: `1 >= 2`
+
+error: equality checks against false can be replaced by a negation
+  --> tests/ui/bool_comparison.rs:118:14
+   |
+LL |     let _ = (false == m!(func)) as usize;
+   |              ^^^^^^^^^^^^^^^^^ help: try: `!m!(func)`
+
+error: order comparisons between booleans can be simplified
+  --> tests/ui/bool_comparison.rs:122:14
+   |
+LL |     let _ = ((1 < 2) > m!(func)) as usize;
+   |              ^^^^^^^^^^^^^^^^^^ help: try: `(1 < 2) & !m!(func)`
+
+error: order comparisons between booleans can be simplified
+  --> tests/ui/bool_comparison.rs:144:9
+   |
+LL |         x > m!(func)
+   |         ^^^^^^^^^^^^ help: try: `x & !m!(func)`
+
+error: order comparisons between booleans can be simplified
+  --> tests/ui/bool_comparison.rs:149:9
+   |
+LL |         x < m!(func)
+   |         ^^^^^^^^^^^^ help: try: `!x & m!(func)`
+
+error: aborting due to 23 previous errors
+

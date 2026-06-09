@@ -1,0 +1,32 @@
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:7:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'a` used here
+   |     lifetime `'b` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:7:5
+   |
+LL |     (x, y)
+   |     ^^^^^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/lifetime_mismatch.rs:15:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+   |     |
+   |     lifetime `'x` used here
+   |     lifetime `'y` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/lifetime_mismatch.rs:15:5
+   |
+LL |     (i, j)
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+

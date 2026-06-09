@@ -1,0 +1,16 @@
+warning: trait method `try_into` will become ambiguous in Rust 2021
+  --> $DIR/inherent-dyn-collision.rs:42:9
+   |
+LL |         get_dyn_trait().try_into().unwrap()
+   |         ^^^^^^^^^^^^^^^ help: disambiguate the method call: `(&*get_dyn_trait())`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/prelude.html>
+note: the lint level is defined here
+  --> $DIR/inherent-dyn-collision.rs:8:9
+   |
+LL | #![warn(rust_2021_prelude_collisions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

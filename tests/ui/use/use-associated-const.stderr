@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `foo::Foo`
+  --> $DIR/use-associated-const.rs:11:10
+   |
+LL | use foo::Foo::BAR;
+   |          ^^^ `Foo` is a struct, not a module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

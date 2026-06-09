@@ -1,0 +1,23 @@
+error[E0659]: `p` is ambiguous
+  --> $DIR/ambiguous-panic-rename-panics.rs:16:5
+   |
+LL |     p!();
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
+note: `p` could refer to the macro imported here
+  --> $DIR/ambiguous-panic-rename-panics.rs:14:9
+   |
+LL |     use m1::*;
+   |         ^^^^^
+   = help: consider adding an explicit import of `p` to disambiguate
+note: `p` could also refer to the macro imported here
+  --> $DIR/ambiguous-panic-rename-panics.rs:12:5
+   |
+LL | use m2::*;
+   |     ^^^^^
+   = help: use `crate::p` to refer to this macro unambiguously
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

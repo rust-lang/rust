@@ -1,0 +1,20 @@
+error[E0275]: overflow evaluating the requirement `Bar<Bar<Bar<Bar<Bar<Bar<Bar<...>>>>>>>: Foo`
+  --> $DIR/E0275.rs:6:33
+   |
+LL | impl<T> Foo for T where Bar<T>: Foo {}
+   |                                 ^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`E0275`)
+note: required for `Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<Bar<...>>>>>>>>>>>>>` to implement `Foo`
+  --> $DIR/E0275.rs:6:9
+   |
+LL | impl<T> Foo for T where Bar<T>: Foo {}
+   |         ^^^     ^               --- unsatisfied trait bound introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `Bar<T>` to implement `Foo`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/E0275.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

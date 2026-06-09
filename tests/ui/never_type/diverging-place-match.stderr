@@ -1,0 +1,141 @@
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:4:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let _: ! = *x;
+...  |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:14:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let _ = *x;
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:25:21
+   |
+LL |         let _: () = *x;
+   |                --   ^^ expected `()`, found `!`
+   |                |
+   |                expected due to this
+   |
+   = note: expected unit type `()`
+                   found type `!`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:22:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let _: () = *x;
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:31:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         match *x { _ => {} };
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:39:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const (!, ()) = 0 as _;
+LL | |         let _ = (*x).0;
+LL | |         // ^ I think this is still UB, but because of the inbounds projection.
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:51:18
+   |
+LL |         let (_ | 1i32) = *x;
+   |                  ^^^^    -- this expression has type `!`
+   |                  |
+   |                  expected `!`, found `i32`
+   |
+   = note: expected type `!`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:48:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let (_ | 1i32) = *x;
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:61:14
+   |
+LL |         let (1i32 | _) = *x;
+   |              ^^^^        -- this expression has type `!`
+   |              |
+   |              expected `!`, found `i32`
+   |
+   = note: expected type `!`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:58:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         let x: *const ! = 0 as _;
+LL | |         let (1i32 | _) = *x;
+LL | |
+LL | |     }
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/diverging-place-match.rs:69:26
+   |
+LL |         let ref _x: () = *x;
+   |                          ^^ expected `()`, found `!`
+   |
+   = note: expected unit type `()`
+                   found type `!`
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

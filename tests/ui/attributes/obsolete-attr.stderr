@@ -1,0 +1,14 @@
+error: cannot find attribute `fixed_stack_segment` in this scope
+  --> $DIR/obsolete-attr.rs:6:3
+   |
+LL | #[fixed_stack_segment] fn f() {}
+   |   ^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `ab_isize` in this scope
+  --> $DIR/obsolete-attr.rs:3:3
+   |
+LL | #[ab_isize = "stdcall"] extern "C" {}
+   |   ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

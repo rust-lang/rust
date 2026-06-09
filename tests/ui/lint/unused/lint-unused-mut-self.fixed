@@ -1,0 +1,14 @@
+//@ run-rustfix
+
+#![allow(unused_assignments)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![deny(unused_mut)]
+
+struct Foo;
+impl Foo {
+    fn foo(self) {} //~ ERROR: variable does not need to be mutable
+    fn bar(self: Box<Foo>) {} //~ ERROR: variable does not need to be mutable
+}
+
+fn main() {}

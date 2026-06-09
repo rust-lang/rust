@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/trivial-anon-const-use-cases.rs:14:19
+   |
+LL |     stuff: [u8; { S + 1 }], // `S + 1` is NOT a valid const expression in this context.
+   |                   ^ cannot perform const operation using `S`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `S`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

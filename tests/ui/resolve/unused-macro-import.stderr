@@ -1,0 +1,14 @@
+warning: unused import: `crate::mac`
+  --> $DIR/unused-macro-import.rs:10:9
+   |
+LL |     use crate::mac;
+   |         ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-macro-import.rs:3:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

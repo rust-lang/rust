@@ -1,0 +1,19 @@
+error[E0606]: casting `E` as `f32` is invalid
+  --> $DIR/enum-to-float-cast-2.rs:14:13
+   |
+LL |     let a = E::L0 as f32;
+   |             ^^^^^^^^^^^^
+   |
+   = help: cast through an integer first
+
+error[E0606]: casting `F` as `f32` is invalid
+  --> $DIR/enum-to-float-cast-2.rs:15:13
+   |
+LL |     let c = F::H1 as f32;
+   |             ^^^^^^^^^^^^
+   |
+   = help: cast through an integer first
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0606`.

@@ -1,0 +1,13 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `rust`
+  --> $DIR/type-ascription-and-other-error.rs:2:9
+   |
+LL |     not rust;
+   |         ^^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     not.rust;
+   |        +
+
+error: aborting due to 1 previous error
+

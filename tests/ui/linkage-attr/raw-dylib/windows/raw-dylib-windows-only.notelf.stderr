@@ -1,0 +1,9 @@
+error[E0455]: link kind `raw-dylib` is only supported on Windows targets
+  --> $DIR/raw-dylib-windows-only.rs:6:29
+   |
+LL | #[link(name = "foo", kind = "raw-dylib")]
+   |                             ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0455`.

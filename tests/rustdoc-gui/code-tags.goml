@@ -1,0 +1,24 @@
+// This test ensures that items and documentation code blocks are wrapped in <pre><code>
+
+// We need to disable this check because `trait.impl/test_docs/trait.AnotherOne.js`
+// doesn't exist.
+fail-on-request-error: false
+go-to: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
+set-window-size: (1080, 600)
+// There should be four doc codeblocks.
+// Check that their content is inside <pre><code>
+assert-count: (".example-wrap pre > code", 4)
+// Check that function signature is inside <pre><code>
+assert: "pre.rust.item-decl > code"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert: "pre.rust.item-decl > code"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.AnEnum.html"
+assert: "pre.rust.item-decl > code"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait.AnotherOne.html"
+assert: "pre.rust.item-decl > code"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/type.SomeType.html"
+assert: "pre.rust.item-decl > code"

@@ -1,0 +1,17 @@
+// Regression test for issues #100790 and #106439.
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+pub struct Example(usize)
+where
+    (): Sized;
+//~^^^ ERROR where clauses are not allowed before tuple struct bodies
+
+struct _Demo(pub usize, usize)
+where
+    (): Sized,
+    String: Clone;
+//~^^^^ ERROR where clauses are not allowed before tuple struct bodies
+
+fn main() {}

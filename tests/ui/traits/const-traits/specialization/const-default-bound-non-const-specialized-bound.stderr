@@ -1,0 +1,31 @@
+error[E0119]: conflicting implementations of trait `Bar`
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:24:1
+   |
+LL | / impl<T> const Bar for T
+LL | | where
+LL | |     T: [const] Foo,
+   | |___________________- first implementation here
+...
+LL | / impl<T> Bar for T
+LL | | where
+LL | |     T: Foo,
+LL | |     T: Specialize,
+   | |__________________^ conflicting implementation
+
+error[E0119]: conflicting implementations of trait `Baz`
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:43:1
+   |
+LL | / impl<T> const Baz for T
+LL | | where
+LL | |     T: [const] Foo,
+   | |___________________- first implementation here
+...
+LL | / impl<T> const Baz for T
+LL | | where
+LL | |     T: Foo,
+LL | |     T: Specialize,
+   | |__________________^ conflicting implementation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

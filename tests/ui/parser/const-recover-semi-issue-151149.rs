@@ -1,0 +1,36 @@
+//@ run-rustfix
+#![feature(const_trait_impl)]
+#![allow(dead_code)]
+#![allow(unused)]
+
+const trait ConstDefault {
+    fn const_default() -> Self;
+}
+
+impl const ConstDefault for u8 {
+    fn const_default() -> Self { 0 }
+}
+
+const fn val() -> u8 {
+    42
+}
+
+const C: u8 = u8::const_default()
+&1 //~ ERROR expected `;`, found keyword `const`
+
+const fn foo() -> &'static u8 {
+    const C: u8 = u8::const_default() //~ ERROR expected `;`
+    &C
+}
+
+const fn bar() {
+    const C: u8 = 1
+     + 2 //~ ERROR expected `;`, found `}`
+}
+
+const fn baz() {
+    const C: u8 = 1
+     + val() //~ ERROR expected `;`, found `}`
+}
+
+fn main() {}

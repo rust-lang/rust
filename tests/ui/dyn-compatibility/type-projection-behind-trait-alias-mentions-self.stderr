@@ -1,0 +1,20 @@
+error: associated type binding in trait object type mentions `Self`
+  --> $DIR/type-projection-behind-trait-alias-mentions-self.rs:16:12
+   |
+LL | trait F = Fn() -> Self;
+   |                   ---- this binding mentions `Self`
+...
+LL |     let _: dyn F;
+   |            ^^^^^ contains a mention of `Self`
+
+error: associated type binding in trait object type mentions `Self`
+  --> $DIR/type-projection-behind-trait-alias-mentions-self.rs:17:12
+   |
+LL | trait G = H<T = Self>;
+   |             -------- this binding mentions `Self`
+...
+LL |     let _: dyn G;
+   |            ^^^^^ contains a mention of `Self`
+
+error: aborting due to 2 previous errors
+

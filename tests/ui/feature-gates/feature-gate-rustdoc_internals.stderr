@@ -1,0 +1,43 @@
+error[E0658]: `#[doc(keyword)]` is meant for internal use only
+  --> $DIR/feature-gate-rustdoc_internals.rs:1:1
+   |
+LL | #[doc(keyword = "match")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
+   = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(attribute)]` is meant for internal use only
+  --> $DIR/feature-gate-rustdoc_internals.rs:5:1
+   |
+LL | #[doc(attribute = "repr")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
+   = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(fake_variadic)]` is meant for internal use only
+  --> $DIR/feature-gate-rustdoc_internals.rs:11:1
+   |
+LL | #[doc(fake_variadic)]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
+   = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[doc(search_unbox)]` is meant for internal use only
+  --> $DIR/feature-gate-rustdoc_internals.rs:14:1
+   |
+LL | #[doc(search_unbox)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
+   = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

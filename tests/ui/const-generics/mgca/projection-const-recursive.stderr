@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `<() as Trait>::A normalizes-to _`
+  --> $DIR/projection-const-recursive.rs:12:5
+   |
+LL |     type const A: () = <() as Trait>::A;
+   |     ^^^^^^^^^^^^^^^^ types differ
+
+error: the constant `<() as Trait>::A` is not of type `()`
+  --> $DIR/projection-const-recursive.rs:12:5
+   |
+LL |     type const A: () = <() as Trait>::A;
+   |     ^^^^^^^^^^^^^^^^ expected `()`, found a different `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

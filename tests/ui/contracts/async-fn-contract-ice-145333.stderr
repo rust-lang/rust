@@ -1,0 +1,8 @@
+error: contract annotations are not yet supported on async or gen functions
+  --> $DIR/async-fn-contract-ice-145333.rs:6:1
+   |
+LL | #[core::contracts::ensures(|ret| *ret)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,81 @@
+use std::num::IntErrorKind;
+
+use rustc_ast::{LitKind, ast};
+use rustc_feature::is_builtin_attr_name;
+use rustc_hir::RustcVersion;
+use rustc_hir::limit::Limit;
+use rustc_span::Symbol;
+
+use crate::context::AcceptContext;
+use crate::parser::{ArgParser, NameValueParser};
+use crate::session_diagnostics::LimitInvalid;
+
+/// Parse a rustc version number written inside string literal in an attribute,
+/// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are
+/// not accepted in this position, unlike when parsing CFG_RELEASE.
+pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
+    let mut components = s.as_str().split('-');
+    let d = components.next()?;
+    if components.next().is_some() {
+        return None;
+    }
+    let mut digits = d.splitn(3, '.');
+    let major = digits.next()?.parse().ok()?;
+    let minor = digits.next()?.parse().ok()?;
+    let patch = digits.next().unwrap_or("0").parse().ok()?;
+    Some(RustcVersion { major, minor, patch })
+}
+
+pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
+    attr.is_doc_comment() || attr.name().is_some_and(|name| is_builtin_attr_name(name))
+}
+
+/// Parse a single integer.
+///
+/// Used by attributes that take a single integer as argument, such as
+/// `#[link_ordinal]`.
+/// `cx` is the context given to the attribute.
+/// `args` is the parser for the attribute arguments.
+pub(crate) fn parse_single_integer(
+    cx: &mut AcceptContext<'_, '_>,
+    args: &ArgParser,
+) -> Option<u128> {
+    let single = cx.expect_single_element_list(args, cx.attr_span)?;
+    let Some(lit) = single.as_lit() else {
+        cx.adcx().expected_integer_literal(single.span());
+        return None;
+    };
+    let LitKind::Int(num, _ty) = lit.kind else {
+        cx.adcx().expected_integer_literal(single.span());
+        return None;
+    };
+    Some(num.0)
+}
+
+impl AcceptContext<'_, '_> {
+    pub(crate) fn parse_limit_int(&mut self, nv: &NameValueParser) -> Option<Limit> {
+        let limit = self.expect_string_literal(nv)?;
+
+        let error_str = match limit.as_str().parse() {
+            Ok(i) => return Some(Limit::new(i)),
+            Err(e) => match e.kind() {
+                IntErrorKind::PosOverflow => "`limit` is too large",
+                IntErrorKind::Empty => "`limit` must be a non-negative integer",
+                IntErrorKind::InvalidDigit => "not a valid integer",
+                IntErrorKind::NegOverflow => {
+                    panic!(
+                        "`limit` should never negatively overflow since we're parsing into a usize and we'd get Empty instead"
+                    )
+                }
+                IntErrorKind::Zero => {
+                    panic!("zero is a valid `limit` so should have returned Ok() when parsing")
+                }
+                kind => panic!("unimplemented IntErrorKind variant: {:?}", kind),
+            },
+        };
+
+        self.emit_err(LimitInvalid { span: self.attr_span, value_span: nv.value_span, error_str });
+
+        None
+    }
+}

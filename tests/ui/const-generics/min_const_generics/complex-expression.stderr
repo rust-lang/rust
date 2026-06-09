@@ -1,0 +1,75 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:10:38
+   |
+LL | struct Break0<const N: usize>([u8; { N + 1 }]);
+   |                                      ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:13:40
+   |
+LL | struct Break1<const N: usize>([u8; { { N } }]);
+   |                                        ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:17:17
+   |
+LL |     let _: [u8; N + 1];
+   |                 ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:22:17
+   |
+LL |     let _ = [0; N + 1];
+   |                 ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:26:45
+   |
+LL | struct BreakTy0<T>(T, [u8; { size_of::<*mut T>() }]);
+   |                                             ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:29:47
+   |
+LL | struct BreakTy1<T>(T, [u8; { { size_of::<*mut T>() } }]);
+   |                                               ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/complex-expression.rs:33:32
+   |
+LL |     let _: [u8; size_of::<*mut T>() + 1];
+   |                                ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/complex-expression.rs:38:17
+   |
+LL |     let _ = [0; size_of::<*mut T>() + 1];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error: aborting due to 7 previous errors; 1 warning emitted
+

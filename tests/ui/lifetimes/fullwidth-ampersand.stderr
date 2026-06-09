@@ -1,0 +1,27 @@
+error: unknown start of token: \u{ff06}
+  --> $DIR/fullwidth-ampersand.rs:3:10
+   |
+LL | fn f(_: &＆()) -> &() { todo!() }
+   |          ^^
+   |
+help: Unicode character '＆' (Fullwidth Ampersand) looks like '&' (Ampersand), but it is not
+   |
+LL - fn f(_: &＆()) -> &() { todo!() }
+LL + fn f(_: &&()) -> &() { todo!() }
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/fullwidth-ampersand.rs:3:18
+   |
+LL | fn f(_: &＆()) -> &() { todo!() }
+   |         -----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of argument 1's 2 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL | fn f<'a>(_: &'a ＆'a ()) -> &'a () { todo!() }
+   |     ++++     ++   ++         ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

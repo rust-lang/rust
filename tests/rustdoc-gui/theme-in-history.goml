@@ -1,0 +1,25 @@
+// Ensures that the theme is working when going back in history.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+// Set the theme to dark.
+call-function: ("switch-theme", {"theme": "dark"})
+
+assert-css: ("body", { "background-color": "#353535" })
+assert-local-storage: { "rustdoc-theme": "dark" }
+
+// Now we go to the settings page.
+go-to: "file://" + |DOC_PATH| + "/settings.html"
+wait-for: "#settings"
+// We change the theme to "light".
+click: "#theme-light"
+wait-for-css: ("body", { "background-color": "white" })
+assert-local-storage: { "rustdoc-theme": "light" }
+
+// We go back in history.
+history-go-back:
+// Confirm that we're not on the settings page.
+assert-false: "#settings"
+// Check that the current theme is still "light".
+assert-css: ("body", { "background-color": "white" })
+assert-local-storage: { "rustdoc-theme": "light" }

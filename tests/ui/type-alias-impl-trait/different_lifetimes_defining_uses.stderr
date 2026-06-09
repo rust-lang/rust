@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_lifetimes_defining_uses.rs:13:5
+   |
+LL |     b
+   |     ^ expected `&'a u32`, got `&'b u32`
+   |
+note: previous use here
+  --> $DIR/different_lifetimes_defining_uses.rs:8:5
+   |
+LL |     a
+   |     ^
+
+error: aborting due to 1 previous error
+

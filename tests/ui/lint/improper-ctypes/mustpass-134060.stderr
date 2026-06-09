@@ -1,0 +1,12 @@
+warning: `extern` fn uses type `()`, which is not FFI-safe
+  --> $DIR/mustpass-134060.rs:11:34
+   |
+LL |     extern "C" fn foo_(&self, _: ()) -> i64 {
+   |                                  ^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: 1 warning emitted
+

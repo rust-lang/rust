@@ -1,0 +1,51 @@
+- // MIR for `custom_discriminant` before UnreachableEnumBranching
++ // MIR for `custom_discriminant` after UnreachableEnumBranching
+  
+  fn custom_discriminant() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let mut _2: Test2;
+      let mut _3: isize;
+      let _4: &str;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test2::D;
+          _3 = discriminant(_2);
+          switchInt(move _3) -> [4: bb3, 5: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_4);
+          _4 = const "E";
+          _1 = &(*_4);
+          StorageDead(_4);
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _1 = const "D";
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 1, align: 1) {
+      45                                              │ E
+  }
+  
+  ALLOC1 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  

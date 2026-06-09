@@ -1,0 +1,27 @@
+error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
+  --> $DIR/ice-on-shadowing-std-with-macro.rs:16:9
+   |
+LL |         extern crate core as std;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_other_core! {}
+   | --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: cannot find `collections` in `std`
+  --> $DIR/ice-on-shadowing-std-with-macro.rs:8:14
+   |
+LL |     use std::collections::hash_map::HashMap;
+   |              ^^^^^^^^^^^ could not find `collections` in `std`
+
+error[E0432]: unresolved import `std::vec`
+  --> $DIR/ice-on-shadowing-std-with-macro.rs:9:14
+   |
+LL |     use std::vec::IntoIter;
+   |              ^^^ could not find `vec` in `std`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

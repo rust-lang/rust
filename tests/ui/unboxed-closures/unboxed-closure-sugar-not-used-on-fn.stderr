@@ -1,0 +1,23 @@
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:3:17
+   |
+LL | fn bar1(x: &dyn Fn<(), Output=()>) {
+   |                 ^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `Fn() -> ()`
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/unboxed-closure-sugar-not-used-on-fn.rs:7:28
+   |
+LL | fn bar2<T>(x: &T) where T: Fn<()> {
+   |                            ^^^^^^ help: use parenthetical notation instead: `Fn() -> ()`
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

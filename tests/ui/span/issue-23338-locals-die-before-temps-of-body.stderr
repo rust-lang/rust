@@ -1,0 +1,48 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:10:5
+   |
+LL |     let y = x;
+   |         - binding `y` declared here
+LL |     y.borrow().clone()
+   |     ^---------
+   |     |
+   |     borrowed value does not live long enough
+   |     a temporary with access to the borrow is created here ...
+LL | }
+   | -
+   | |
+   | `y` dropped here while still borrowed
+   | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Ref<'_, String>`
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL |     let x = y.borrow().clone(); x
+   |     +++++++                   +++
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:17:9
+   |
+LL |         let y = x;
+   |             - binding `y` declared here
+LL |         y.borrow().clone()
+   |         ^---------
+   |         |
+   |         borrowed value does not live long enough
+   |         a temporary with access to the borrow is created here ...
+LL |     };
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Ref<'_, String>`
+   |     |
+   |     `y` dropped here while still borrowed
+   |
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+   |
+LL |         let x = y.borrow().clone(); x
+   |         +++++++                   +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

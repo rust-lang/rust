@@ -1,0 +1,10 @@
+error: pointers cannot be reliably compared during const eval
+  --> $DIR/issue-25826.rs:3:30
+   |
+LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const () };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 1 previous error
+

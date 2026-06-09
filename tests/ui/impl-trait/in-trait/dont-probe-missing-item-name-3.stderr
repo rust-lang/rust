@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/dont-probe-missing-item-name-3.rs:8:13
+   |
+LL | fn foo() -> i32::Assoc {}
+   |             ^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Assoc` implemented for `i32`, you could use the fully-qualified path
+   |
+LL - fn foo() -> i32::Assoc {}
+LL + fn foo() -> <i32 as Example>::Assoc {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

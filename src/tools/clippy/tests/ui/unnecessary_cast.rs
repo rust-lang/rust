@@ -1,0 +1,658 @@
+//@aux-build:extern_fake_libc.rs
+#![warn(clippy::unnecessary_cast)]
+#![allow(
+    clippy::borrow_as_ptr,
+    clippy::multiple_bound_locations,
+    clippy::no_effect,
+    clippy::nonstandard_macro_braces,
+    clippy::unnecessary_operation,
+    nonstandard_style,
+    unused
+)]
+
+extern crate extern_fake_libc;
+
+type PtrConstU8 = *const u8;
+type PtrMutU8 = *mut u8;
+
+fn owo<T>(ptr: *const T) -> *const T {
+    ptr as *const T
+    //~^ unnecessary_cast
+}
+
+fn uwu<T, U>(ptr: *const T) -> *const U {
+    ptr as *const U
+}
+
+mod fake_libc {
+    type pid_t = i32;
+    pub unsafe fn getpid() -> pid_t {
+        pid_t::from(0)
+    }
+    // Make sure a where clause does not break it
+    pub fn getpid_SAFE_TRUTH<T: Clone>(t: &T) -> pid_t
+    where
+        T: Clone,
+    {
+        t;
+        unsafe { getpid() }
+    }
+}
+
+fn aaa() -> ::std::primitive::u32 {
+    0
+}
+
+use std::primitive::u32 as UnsignedThirtyTwoBitInteger;
+
+fn bbb() -> UnsignedThirtyTwoBitInteger {
+    0
+}
+
+#[rustfmt::skip]
+fn main() {
+    // Test cast_unnecessary
+    1i32 as i32;
+    //~^ unnecessary_cast
+    1f32 as f32;
+    //~^ unnecessary_cast
+    false as bool;
+    //~^ unnecessary_cast
+    &1i32 as &i32;
+
+    -1_i32 as i32;
+    //~^ unnecessary_cast
+    - 1_i32 as i32;
+    //~^ unnecessary_cast
+    -1f32 as f32;
+    //~^ unnecessary_cast
+    1_i32 as i32;
+    //~^ unnecessary_cast
+    1_f32 as f32;
+    //~^ unnecessary_cast
+
+    let _: *mut u8 = [1u8, 2].as_ptr() as *const u8 as *mut u8;
+    //~^ unnecessary_cast
+
+    [1u8, 2].as_ptr() as *const u8;
+    //~^ unnecessary_cast
+    [1u8, 2].as_ptr() as *mut u8;
+    [1u8, 2].as_mut_ptr() as *mut u8;
+    //~^ unnecessary_cast
+    [1u8, 2].as_mut_ptr() as *const u8;
+    [1u8, 2].as_ptr() as PtrConstU8;
+    [1u8, 2].as_ptr() as PtrMutU8;
+    [1u8, 2].as_mut_ptr() as PtrMutU8;
+    [1u8, 2].as_mut_ptr() as PtrConstU8;
+    let _: *const u8 = [1u8, 2].as_ptr() as _;
+    let _: *mut u8 = [1u8, 2].as_mut_ptr() as _;
+    let _: *const u8 = [1u8, 2].as_ptr() as *const _;
+    let _: *mut u8 = [1u8, 2].as_mut_ptr() as *mut _;
+
+    owo::<u32>([1u32].as_ptr()) as *const u32;
+    //~^ unnecessary_cast
+    uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
+    //~^ unnecessary_cast
+    // this will not lint in the function body even though they have the same type, instead here
+    uwu::<u32, u32>([1u32].as_ptr()) as *const u32;
+    //~^ unnecessary_cast
+
+    // macro version
+    macro_rules! foo {
+        ($a:ident, $b:ident) => {
+            #[allow(unused)]
+            pub fn $a() -> $b {
+                1 as $b
+            }
+        };
+    }
+    foo!(a, i32);
+    foo!(b, f32);
+    foo!(c, f64);
+
+    // do not lint cast from cfg-dependant type
+    let x = 0 as std::ffi::c_ulong;
+    let y = x as u64;
+    let x: std::ffi::c_ulong = 0;
+    let y = x as u64;
+
+    // do not lint cast to cfg-dependant type
+    let x = 1 as std::os::raw::c_char;
+    let y = x as u64;
+
+    // do not lint cast to alias type
+    1 as I32Alias;
+    &1 as &I32Alias;
+    // or from
+    let x: I32Alias = 1;
+    let y = x as u64;
+    fake_libc::getpid_SAFE_TRUTH(&0u32) as i32;
+    extern_fake_libc::getpid_SAFE_TRUTH() as i32;
+    let pid = unsafe { fake_libc::getpid() };
+    pid as i32;
+    aaa() as u32;
+    //~^ unnecessary_cast
+    let x = aaa();
+    x as u32;
+    //~^ unnecessary_cast
+    bbb() as u32;
+    //~^ unnecessary_cast
+    let x = bbb();
+    x as u32;
+    //~^ unnecessary_cast
+
+    let i8_ptr: *const i8 = &1;
+    let u8_ptr: *const u8 = &1;
+
+    // cfg dependant pointees
+    i8_ptr as *const std::os::raw::c_char;
+    u8_ptr as *const std::os::raw::c_char;
+
+    // type aliased pointees
+    i8_ptr as *const std::ffi::c_char;
+    u8_ptr as *const std::ffi::c_char;
+
+    // issue #9960
+    macro_rules! bind_var {
+        ($id:ident, $e:expr) => {{
+            let $id = 0usize;
+            let _ = $e != 0usize;
+            let $id = 0isize;
+            let _ = $e != 0usize;
+        }}
+    }
+    bind_var!(x, (x as usize) + 1);
+}
+
+type I32Alias = i32;
+
+mod fixable {
+    #![allow(dead_code)]
+
+    fn main() {
+        // casting integer literal to float is unnecessary
+        100 as f32;
+        //~^ unnecessary_cast
+        100 as f64;
+        //~^ unnecessary_cast
+        100_i32 as f64;
+        //~^ unnecessary_cast
+        let _ = -100 as f32;
+        //~^ unnecessary_cast
+        let _ = -100 as f64;
+        //~^ unnecessary_cast
+        let _ = -100_i32 as f64;
+        //~^ unnecessary_cast
+        100. as f32;
+        //~^ unnecessary_cast
+        100. as f64;
+        //~^ unnecessary_cast
+        // Should not trigger
+        #[rustfmt::skip]
+        let v = vec!(1);
+        &v as &[i32];
+        0x10 as f32;
+        0o10 as f32;
+        0b10 as f32;
+        0x11 as f64;
+        0o11 as f64;
+        0b11 as f64;
+
+        1 as u32;
+        //~^ unnecessary_cast
+        0x10 as i32;
+        //~^ unnecessary_cast
+        0b10 as usize;
+        //~^ unnecessary_cast
+        0o73 as u16;
+        //~^ unnecessary_cast
+        1_000_000_000 as u32;
+        //~^ unnecessary_cast
+
+        1.0 as f64;
+        //~^ unnecessary_cast
+        0.5 as f32;
+        //~^ unnecessary_cast
+
+        1.0 as u16;
+
+        let _ = -1 as i32;
+        //~^ unnecessary_cast
+        let _ = -1.0 as f32;
+        //~^ unnecessary_cast
+
+        let _ = 1 as I32Alias;
+        let _ = &1 as &I32Alias;
+
+        let x = 1i32;
+        let _ = &(x as i32);
+        //~^ unnecessary_cast
+    }
+
+    type I32Alias = i32;
+
+    fn issue_9380() {
+        let _: i32 = -(1) as i32;
+        //~^ unnecessary_cast
+        let _: f32 = -(1) as f32;
+        let _: i64 = -(1) as i64;
+        //~^ unnecessary_cast
+        let _: i64 = -(1.0) as i64;
+
+        let _ = -(1 + 1) as i64;
+    }
+
+    fn issue_9563() {
+        let _: f64 = (-8.0 as f64).exp();
+        //~^ unnecessary_cast
+        #[allow(ambiguous_negative_literals)]
+        let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
+        //
+        //~^^ unnecessary_cast
+    }
+
+    fn issue_9562_non_literal() {
+        fn foo() -> f32 {
+            0.
+        }
+
+        let _num = foo() as f32;
+        //~^ unnecessary_cast
+    }
+
+    fn issue_9603() {
+        let _: f32 = -0x400 as f32;
+    }
+
+    // Issue #11968: The suggestion for this lint removes the parentheses and leave the code as
+    // `*x.pow(2)` which tries to dereference the return value rather than `x`.
+    fn issue_11968(x: &usize) -> usize {
+        (*x as usize).pow(2)
+        //~^ unnecessary_cast
+    }
+
+    #[allow(clippy::cast_lossless)]
+    fn issue_14640() {
+        let x = 5usize;
+        let vec: Vec<u64> = vec![1, 2, 3, 4, 5];
+        assert_eq!(vec.len(), x as usize);
+        //~^ unnecessary_cast
+
+        let _ = (5i32 as i64 as i64).abs();
+        //~^ unnecessary_cast
+
+        let _ = 5i32 as i64 as i64;
+        //~^ unnecessary_cast
+    }
+
+    mod issue_16449_support {
+        use std::marker::PhantomData;
+        use std::ops::{Add, Mul};
+
+        pub trait PowLike<Rhs> {
+            type Output;
+            fn pow_like(self, rhs: Rhs) -> Self::Output;
+        }
+
+        impl PowLike<f64> for f64 {
+            type Output = f64;
+            fn pow_like(self, rhs: f64) -> f64 {
+                self.powf(rhs)
+            }
+        }
+
+        impl PowLike<i32> for f64 {
+            type Output = f64;
+            fn pow_like(self, _: i32) -> f64 {
+                self
+            }
+        }
+
+        impl PowLike<u32> for f64 {
+            type Output = f32;
+            fn pow_like(self, _: u32) -> f32 {
+                self as f32
+            }
+        }
+
+        pub struct Mat<T>(pub PhantomData<T>);
+
+        pub fn mat<T>(_: &[[T; 1]; 1]) -> Mat<T> {
+            Mat(PhantomData)
+        }
+
+        pub struct Out<T>(pub PhantomData<T>);
+
+        impl Out<f64> {
+            pub fn view(self) {}
+        }
+
+        impl Out<f32> {
+            pub fn view(self) {}
+        }
+
+        impl Mul<&Mat<f64>> for f64 {
+            type Output = Out<f64>;
+
+            fn mul(self, _: &Mat<f64>) -> Self::Output {
+                Out(PhantomData)
+            }
+        }
+
+        impl Mul<&Mat<f32>> for f32 {
+            type Output = Out<f32>;
+
+            fn mul(self, _: &Mat<f32>) -> Self::Output {
+                Out(PhantomData)
+            }
+        }
+
+        pub fn id<T>(x: T) -> T {
+            x
+        }
+
+        pub fn id_with<T, U>(x: T, _: U) -> T {
+            x
+        }
+
+        pub struct Wrap<T> {
+            pub inner: T,
+        }
+
+        pub fn wrap<T>(inner: T) -> Wrap<T> {
+            Wrap { inner }
+        }
+
+        pub struct MethodWrap;
+
+        impl MethodWrap {
+            pub fn id<T>(&self, x: T) -> T {
+                x
+            }
+
+            pub fn id_with<T, U>(&self, x: T, _: U) -> T {
+                x
+            }
+
+            pub fn wrap<T>(&self, inner: T) -> Wrap<T> {
+                Wrap { inner }
+            }
+        }
+
+        pub struct X;
+
+        impl Add<i32> for X {
+            type Output = f64;
+            fn add(self, _: i32) -> f64 {
+                1.0
+            }
+        }
+
+        impl Add<u32> for X {
+            type Output = f32;
+            fn add(self, _: u32) -> f32 {
+                1.0
+            }
+        }
+
+        pub struct Y;
+
+        impl Add<i32> for Y {
+            type Output = f64;
+            fn add(self, _: i32) -> f64 {
+                1.0
+            }
+        }
+
+        pub trait PowLikeSingleImpl<Rhs> {
+            type Output;
+            fn pow_like_single_impl(self, rhs: Rhs) -> Self::Output;
+        }
+
+        impl PowLikeSingleImpl<i32> for f64 {
+            type Output = f64;
+
+            fn pow_like_single_impl(self, _: i32) -> f64 {
+                self
+            }
+        }
+    }
+
+    // Issue #16449: removing the cast still affects inference / impl selection,
+    // so these must not lint.
+
+    // Minimal reproduction of the original issue.
+    fn issue_16449_minimal_original_reproduction() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    // Wrappers that preserve the inference sensitive path.
+    fn issue_16449_struct_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        Wrap {
+            inner: 1.0_f64.pow_like(2) as f64 * &a,
+        }
+        .inner
+        .view();
+    }
+
+    fn issue_16449_free_identity_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        id(1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    fn issue_16449_method_identity_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+        s.id(1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    fn issue_16449_free_wrap_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        wrap(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+    }
+
+    fn issue_16449_method_wrap_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+        s.wrap(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+    }
+
+    fn issue_16449_block_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ({ 1.0_f64.pow_like(2) as f64 * &a }).view();
+    }
+
+    #[allow(clippy::if_same_then_else)]
+    fn issue_16449_if_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (if true {
+            1.0_f64.pow_like(2) as f64 * &a
+        } else {
+            1.0_f64.pow_like(2) as f64 * &a
+        })
+        .view();
+    }
+
+    fn issue_16449_match_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (match 0 {
+            0 => 1.0_f64.pow_like(2) as f64 * &a,
+            _ => 1.0_f64.pow_like(2) as f64 * &a,
+        })
+        .view();
+    }
+
+    #[allow(clippy::let_and_return)]
+    fn issue_16449_let_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ({
+            let x = 1.0_f64.pow_like(2) as f64 * &a;
+            x
+        })
+        .view();
+    }
+
+    #[allow(clippy::never_loop)]
+    fn issue_16449_loop_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (loop {
+            break 1.0_f64.pow_like(2) as f64 * &a;
+        })
+        .view();
+    }
+
+    #[allow(clippy::double_parens)]
+    fn issue_16449_operator_reproduction() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ((X + 2) as f64 * &a).view();
+    }
+
+    // Placeholder generic arguments still leave inference active,
+    // so these must not lint.
+    fn issue_16449_placeholder_generics_do_not_lint() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        // placeholder call
+        id::<_>(1.0_f64.pow_like(2) as f64 * &a).view();
+        // placeholder method call
+        s.id::<_>(1.0_f64.pow_like(2) as f64 * &a).view();
+        // mixed placeholder call
+        id_with::<_, u8>(1.0_f64.pow_like(2) as f64 * &a, 0).view();
+        // mixed placeholder method call
+        s.id_with::<_, u8>(1.0_f64.pow_like(2) as f64 * &a, 0).view();
+    }
+
+    // These look similar, but inference no longer depends on the cast, so they should lint.
+
+    fn issue_16449_explicit_generics_still_lint() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        // explicit call
+        id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+        //~^ unnecessary_cast
+
+        // explicit method call
+        s.id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+        //~^ unnecessary_cast
+
+        // explicit free wrap
+        wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+        //~^ unnecessary_cast
+
+        // explicit method wrap
+        s.wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+        //~^ unnecessary_cast
+    }
+
+    // A nonprimitive method receiver alone should not suppress the lint.
+    fn issue_16449_nonprimitive_receiver_should_still_lint() {
+        use self::issue_16449_support::PowLikeSingleImpl;
+        struct Receiver;
+
+        impl Receiver {
+            fn take(&self, x: f64) -> f64 {
+                x
+            }
+        }
+
+        let receiver = Receiver;
+        let _ = receiver.take(1.0_f64.pow_like_single_impl(2) as f64).abs();
+        //~^ unnecessary_cast
+    }
+
+    fn issue_16449_wrapper_still_lints() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        let _ = id(1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = wrap(1.0_f64.powi(2) as f64).inner.abs();
+        //~^ unnecessary_cast
+
+        let _ = s.id(1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = s.wrap(1.0_f64.powi(2) as f64).inner.abs();
+        //~^ unnecessary_cast
+
+        let _ = id(1.0_f64.powi(2) as f64 * &a);
+        //~^ unnecessary_cast
+
+        let _ = s.id(1.0_f64.powi(2) as f64 * &a);
+        //~^ unnecessary_cast
+    }
+
+    // To guarantee that good suggestions given before continue
+    // to be given even after the fix.
+    #[allow(clippy::double_parens)]
+    fn issue_16449_still_lints() {
+        use self::issue_16449_support::*;
+
+        const ONE: f64 = 1.0;
+        let one = 1.0_f64;
+
+        let _ = 1.0_f64.pow_like(0.5) as f64;
+        //~^ unnecessary_cast
+
+        let _ = 1.0_f64.pow_like(2) as f64;
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = ((Y + 2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + 1.0_f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + ONE).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + one).abs();
+        //~^ unnecessary_cast
+    }
+}
+
+fn issue16475() -> *const u8 {
+    static NONE: Option<((), &'static u8)> = None;
+    unsafe {
+        *(&NONE as *const _ as *const _ as *const *const u8 as *const *const u8)
+        //~^ unnecessary_cast
+    }
+}

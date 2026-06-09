@@ -1,0 +1,33 @@
+- // MIR for `assert_nonzero_nonmax` before SimplifyCfg-after-unreachable-enum-branching
++ // MIR for `assert_nonzero_nonmax` after SimplifyCfg-after-unreachable-enum-branching
+  
+  fn assert_nonzero_nonmax(_1: u8) -> u8 {
+      let mut _0: u8;
+  
+      bb0: {
+-         switchInt(copy _1) -> [0: bb3, 1: bb2, 255: bb3, otherwise: bb4];
++         switchInt(copy _1) -> [0: bb2, 1: bb1, 255: bb2, otherwise: bb3];
+      }
+  
+      bb1: {
+-         _0 = const 1_u8;
+-         return;
+-     }
+- 
+-     bb2: {
+          _0 = const 2_u8;
+          return;
+      }
+  
+-     bb3: {
++     bb2: {
+          unreachable;
+      }
+  
+-     bb4: {
++     bb3: {
+          _0 = copy _1;
+          return;
+      }
+  }
+  

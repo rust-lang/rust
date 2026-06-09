@@ -1,0 +1,33 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/move-in-static-initializer-issue-38520.rs:12:23
+   |
+LL | static Y: usize = get(*&X);
+   |                       ^^^ move occurs because value has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-in-static-initializer-issue-38520.rs:5:1
+   |
+LL | struct Foo(usize);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | static Y: usize = get(*&X);
+   |                       --- you could clone this value
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/move-in-static-initializer-issue-38520.rs:13:22
+   |
+LL | const Z: usize = get(*&X);
+   |                      ^^^ move occurs because value has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/move-in-static-initializer-issue-38520.rs:5:1
+   |
+LL | struct Foo(usize);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL | const Z: usize = get(*&X);
+   |                      --- you could clone this value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,29 @@
+error: found `.or(Some(…)).unwrap()`
+  --> tests/ui/or_then_unwrap.rs:22:20
+   |
+LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
+   |
+   = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::or_then_unwrap)]`
+
+error: found `.or(Ok(…)).unwrap()`
+  --> tests/ui/or_then_unwrap.rs:27:20
+   |
+LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
+
+error: found `.or(Some(…)).unwrap()`
+  --> tests/ui/or_then_unwrap.rs:33:20
+   |
+LL |     let _ = option.or(Some(vec!["fallback"])).unwrap(); // should trigger lint
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or(vec!["fallback"])`
+
+error: found `.or(Some(…)).unwrap()`
+  --> tests/ui/or_then_unwrap.rs:39:31
+   |
+LL |     let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
+
+error: aborting due to 4 previous errors
+

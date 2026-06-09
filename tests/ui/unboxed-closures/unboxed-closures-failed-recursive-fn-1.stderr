@@ -1,0 +1,65 @@
+error[E0597]: `factorial` does not live long enough
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:15:17
+   |
+LL |     let mut factorial: Option<Box<dyn Fn(u32) -> u32>> = None;
+   |         ------------- binding `factorial` declared here
+LL |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- value captured here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `factorial` dropped here while still borrowed
+   | borrow might be used here, when `factorial` is dropped and runs the destructor for type `Option<Box<dyn Fn(u32) -> u32>>`
+
+error[E0506]: cannot assign to `factorial` because it is borrowed
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:20:5
+   |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- `factorial` is borrowed here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 --------- borrow occurs due to use in closure
+...
+LL |     factorial = Some(Box::new(f));
+   |     ^^^^^^^^^
+   |     |
+   |     `factorial` is assigned to here but it was already borrowed
+   |     borrow later used here
+
+error[E0597]: `factorial` does not live long enough
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:28:17
+   |
+LL |     let mut factorial: Option<Box<dyn Fn(u32) -> u32 + 'static>> = None;
+   |         -------------  ----------------------------------------- type annotation requires that `factorial` is borrowed for `'static`
+   |         |
+   |         binding `factorial` declared here
+LL |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- value captured here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `factorial` dropped here while still borrowed
+
+error[E0506]: cannot assign to `factorial` because it is borrowed
+  --> $DIR/unboxed-closures-failed-recursive-fn-1.rs:33:5
+   |
+LL |     let mut factorial: Option<Box<dyn Fn(u32) -> u32 + 'static>> = None;
+   |                        ----------------------------------------- type annotation requires that `factorial` is borrowed for `'static`
+LL |
+LL |     let f = |x: u32| -> u32 {
+   |             --------------- `factorial` is borrowed here
+LL |         let g = factorial.as_ref().unwrap();
+   |                 --------- borrow occurs due to use in closure
+...
+LL |     factorial = Some(Box::new(f));
+   |     ^^^^^^^^^ `factorial` is assigned to here but it was already borrowed
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0506, E0597.
+For more information about an error, try `rustc --explain E0506`.

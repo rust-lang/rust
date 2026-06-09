@@ -1,0 +1,39 @@
+error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/type_const-not-constparamty.rs:8:18
+   |
+LL | type const FREE: S = const { S };
+   |                  ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct S;
+   |
+
+error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/type_const-not-constparamty.rs:19:19
+   |
+LL |     type const N: S = const { S };
+   |                   ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct S;
+   |
+
+error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/type_const-not-constparamty.rs:12:19
+   |
+LL |     type const N: S;
+   |                   ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct S;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0741`.

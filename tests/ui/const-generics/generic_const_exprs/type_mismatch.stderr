@@ -1,0 +1,43 @@
+error[E0046]: not all trait items implemented, missing: `ASSOC`
+  --> $DIR/type_mismatch.rs:8:1
+   |
+LL |     const ASSOC: usize;
+   |     ------------------ `ASSOC` from trait
+...
+LL | impl<const N: u64> Q for [u8; N] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `ASSOC` in implementation
+
+error: the constant `N` is not of type `usize`
+  --> $DIR/type_mismatch.rs:8:26
+   |
+LL | impl<const N: u64> Q for [u8; N] {}
+   |                          ^^^^^^^ expected `usize`, found `u64`
+   |
+   = note: the length of array `[u8; N]` must be type `usize`
+
+error: the constant `13` is not of type `u64`
+  --> $DIR/type_mismatch.rs:12:26
+   |
+LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
+   |                          ^^^^^^^^ expected `u64`, found `usize`
+   |
+note: required for `[u8; 13]` to implement `Q`
+  --> $DIR/type_mismatch.rs:8:20
+   |
+LL | impl<const N: u64> Q for [u8; N] {}
+   |      ------------  ^     ^^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:12:20
+   |
+LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
+   |        ------      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `[u8; <[u8; 13] as Q>::ASSOC]`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0308.
+For more information about an error, try `rustc --explain E0046`.

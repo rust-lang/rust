@@ -1,0 +1,20 @@
+error[E0049]: associated type `Baz` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/impl-trait-in-type-alias-with-bad-substs.rs:19:14
+   |
+LL |     type Baz<'a>;
+   |              -- expected 0 type parameters
+...
+LL |     type Baz<T> = impl Sized;
+   |              ^ found 1 type parameter
+
+error: unconstrained opaque type
+  --> $DIR/impl-trait-in-type-alias-with-bad-substs.rs:19:19
+   |
+LL |     type Baz<T> = impl Sized;
+   |                   ^^^^^^^^^^
+   |
+   = note: `Baz` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0049`.

@@ -1,0 +1,69 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |
+   LL|     12|extern "C" fn might_abort(should_abort: bool) {
+   LL|     12|    if should_abort {
+   LL|      0|        println!("aborting...");
+   LL|      0|        panic!("panics and aborts");
+   LL|     12|    } else {
+   LL|     12|        println!("Don't Panic");
+   LL|     12|    }
+   LL|     12|}
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    let mut countdown = 10;
+   LL|     11|    while countdown > 0 {
+   LL|     10|        if countdown < 5 {
+   LL|      4|            might_abort(false);
+   LL|      6|        }
+   LL|       |        // See discussion (below the `Notes` section) on coverage results for the closing brace.
+   LL|     10|        if countdown < 5 { might_abort(false); } // Counts for different regions on one line.
+                                       ^4                    ^6
+   LL|       |        // For the following example, the closing brace is the last character on the line.
+   LL|       |        // This shows the character after the closing brace is highlighted, even if that next
+   LL|       |        // character is a newline.
+   LL|     10|        if countdown < 5 { might_abort(false); }
+                                       ^4                    ^6
+   LL|     10|        countdown -= 1;
+   LL|       |    }
+   LL|      1|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |// Notes:
+   LL|       |//   1. Compare this program and its coverage results to those of the similar tests
+   LL|       |//      `panic_unwind.rs` and `try_error_result.rs`.
+   LL|       |//   2. This test confirms the coverage generated when a program includes `UnwindAction::Terminate`.
+   LL|       |//   3. The test does not invoke the abort. By executing to a successful completion, the coverage
+   LL|       |//      results show where the program did and did not execute.
+   LL|       |//   4. If the program actually aborted, the coverage counters would not be saved (which "works as
+   LL|       |//      intended"). Coverage results would show no executed coverage regions.
+   LL|       |//   6. If `should_abort` is `true` and the program aborts, the program exits with a `132` status
+   LL|       |//      (on Linux at least).
+   LL|       |
+   LL|       |/*
+   LL|       |
+   LL|       |Expect the following coverage results:
+   LL|       |
+   LL|       |```text
+   LL|       |    16|     11|    while countdown > 0 {
+   LL|       |    17|     10|        if countdown < 5 {
+   LL|       |    18|      4|            might_abort(false);
+   LL|       |    19|      6|        }
+   LL|       |```
+   LL|       |
+   LL|       |This is actually correct.
+   LL|       |
+   LL|       |The condition `countdown < 5` executed 10 times (10 loop iterations).
+   LL|       |
+   LL|       |It evaluated to `true` 4 times, and executed the `might_abort()` call.
+   LL|       |
+   LL|       |It skipped the body of the `might_abort()` call 6 times. If an `if` does not include an explicit
+   LL|       |`else`, the coverage implementation injects a counter, at the character immediately after the `if`s
+   LL|       |closing brace, to count the "implicit" `else`. This is the only way to capture the coverage of the
+   LL|       |non-true condition.
+   LL|       |
+   LL|       |As another example of why this is important, say the condition was `countdown < 50`, which is always
+   LL|       |`true`. In that case, we wouldn't have a test for what happens if `might_abort()` is not called.
+   LL|       |The closing brace would have a count of `0`, highlighting the missed coverage.
+   LL|       |*/
+

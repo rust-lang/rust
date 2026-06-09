@@ -1,0 +1,58 @@
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui-toml/semicolon_block/both.rs:42:5
+   |
+LL |     { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_outside_block)]`
+help: put the `;` here
+   |
+LL -     { unit_fn_block(); }
+LL +     { unit_fn_block() };
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui-toml/semicolon_block/both.rs:44:5
+   |
+LL |     unsafe { unit_fn_block(); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     unsafe { unit_fn_block(); }
+LL +     unsafe { unit_fn_block() };
+   |
+
+error: consider moving the `;` inside the block for consistent formatting
+  --> tests/ui-toml/semicolon_block/both.rs:50:5
+   |
+LL | /     {
+LL | |
+LL | |         unit_fn_block();
+LL | |         unit_fn_block()
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
+help: put the `;` here
+   |
+LL ~         unit_fn_block();
+LL ~     }
+   |
+
+error: consider moving the `;` outside the block for consistent formatting
+  --> tests/ui-toml/semicolon_block/both.rs:65:5
+   |
+LL |     { m!(()); }
+   |     ^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     { m!(()); }
+LL +     { m!(()) };
+   |
+
+error: aborting due to 4 previous errors
+

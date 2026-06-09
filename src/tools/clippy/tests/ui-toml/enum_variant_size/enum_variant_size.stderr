@@ -1,0 +1,22 @@
+error: large size difference between variants
+  --> tests/ui-toml/enum_variant_size/enum_variant_size.rs:5:1
+   |
+LL | / enum Bad {
+LL | |
+LL | |     A(()),
+   | |     ----- the second-largest variant contains at least 0 bytes
+LL | |     B([u8; 501]),
+   | |     ------------ the largest variant contains at least 501 bytes
+LL | | }
+   | |_^ the entire enum is at least 502 bytes
+   |
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+LL -     B([u8; 501]),
+LL +     B(Box<[u8; 501]>),
+   |
+
+error: aborting due to 1 previous error
+

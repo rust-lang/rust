@@ -1,0 +1,14 @@
+error: ['a: o, T: o]
+  --> $DIR/capture-lifetime-not-in-hir.rs:8:29
+   |
+LL | fn foo<'a, T: Bar<'a>>() -> impl Into<T::Assoc> {
+   |                             ^^^^^^^^^^^^^^^^^^^
+
+error: ['a: o, T: o, 'a: o]
+  --> $DIR/capture-lifetime-not-in-hir.rs:14:30
+   |
+LL | fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

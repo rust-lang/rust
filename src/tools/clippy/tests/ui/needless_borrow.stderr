@@ -1,0 +1,173 @@
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:16:15
+   |
+LL |     let _ = x(&&a); // warn
+   |               ^^^ help: change this to: `&a`
+   |
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:22:13
+   |
+LL |     mut_ref(&mut &mut b); // warn
+   |             ^^^^^^^^^^^ help: change this to: `&mut b`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:36:13
+   |
+LL |             &&a
+   |             ^^^ help: change this to: `&a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:39:15
+   |
+LL |         46 => &&a,
+   |               ^^^ help: change this to: `&a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:46:27
+   |
+LL |                     break &ref_a;
+   |                           ^^^^^^ help: change this to: `ref_a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:54:15
+   |
+LL |     let _ = x(&&&a);
+   |               ^^^^ help: change this to: `&a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:56:15
+   |
+LL |     let _ = x(&mut &&a);
+   |               ^^^^^^^^ help: change this to: `&a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:58:15
+   |
+LL |     let _ = x(&&&mut b);
+   |               ^^^^^^^^ help: change this to: `&mut b`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:60:15
+   |
+LL |     let _ = x(&&ref_a);
+   |               ^^^^^^^ help: change this to: `ref_a`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:64:11
+   |
+LL |         x(&b);
+   |           ^^ help: change this to: `b`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:72:13
+   |
+LL |     mut_ref(&mut x);
+   |             ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:74:13
+   |
+LL |     mut_ref(&mut &mut x);
+   |             ^^^^^^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:76:23
+   |
+LL |     let y: &mut i32 = &mut x;
+   |                       ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:78:23
+   |
+LL |     let y: &mut i32 = &mut &mut x;
+   |                       ^^^^^^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:88:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:95:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:108:13
+   |
+LL |     let _ = (&x).0;
+   |             ^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:119:5
+   |
+LL |     (&&()).foo();
+   |     ^^^^^^ help: change this to: `(&())`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:129:5
+   |
+LL |     (&&5).foo();
+   |     ^^^^^ help: change this to: `(&5)`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:156:23
+   |
+LL |     let x: (&str,) = (&"",);
+   |                       ^^^ help: change this to: `""`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:199:13
+   |
+LL |             (&self.f)()
+   |             ^^^^^^^^^ help: change this to: `(self.f)`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:209:13
+   |
+LL |             (&mut self.f)()
+   |             ^^^^^^^^^^^^^ help: change this to: `(self.f)`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:247:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:255:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:260:22
+   |
+LL |         let _ = &mut (&mut x.u).x;
+   |                      ^^^^^^^^^^ help: change this to: `x.u`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow.rs:262:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:284:23
+   |
+LL |     option.unwrap_or((&x.0,));
+   |                       ^^^^ help: change this to: `x.0`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:291:13
+   |
+LL |     let _ = (&slice).len();
+   |             ^^^^^^^^ help: change this to: `slice`
+
+error: aborting due to 28 previous errors
+

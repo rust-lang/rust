@@ -1,0 +1,23 @@
+error[E0507]: cannot move out of `*array` which is behind a shared reference
+  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:14:13
+   |
+LL |             *array
+   |             ^^^^^^ move occurs because `*array` has type `Vec<Value>`, which does not implement the `Copy` trait
+   |
+note: if `Value` implemented `Clone`, you could clone the value
+  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:4:1
+   |
+LL | struct Value;
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             *array
+   |             ------ you could clone this value
+help: consider removing the dereference here
+   |
+LL -             *array
+LL +             array
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,39 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound-rpass.rs:5:17
+   |
+LL | fn invariant_id<'a,'b>(t: &'b mut &'static ()) -> &'b mut &'a ()
+   |                 ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-static-bound-rpass.rs:3:9
+   |
+LL | #![warn(redundant_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound-rpass.rs:9:14
+   |
+LL | fn static_id<'a>(t: &'a ()) -> &'static ()
+   |              ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound-rpass.rs:13:23
+   |
+LL | fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
+   |                       ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'b`
+  --> $DIR/regions-static-bound-rpass.rs:13:26
+   |
+LL | fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
+   |                          ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'b`
+
+warning: 4 warnings emitted
+

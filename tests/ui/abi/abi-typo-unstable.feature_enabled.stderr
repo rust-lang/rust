@@ -1,0 +1,16 @@
+error[E0703]: invalid ABI: found `rust-cull`
+  --> $DIR/abi-typo-unstable.rs:5:8
+   |
+LL | extern "rust-cull" fn rust_call(_: ()) {}
+   |        ^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+help: there's a similarly named valid ABI `rust-call`
+   |
+LL - extern "rust-cull" fn rust_call(_: ()) {}
+LL + extern "rust-call" fn rust_call(_: ()) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0703`.

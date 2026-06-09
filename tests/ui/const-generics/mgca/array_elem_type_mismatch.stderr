@@ -1,0 +1,14 @@
+error: the constant `2` is not of type `u8`
+  --> $DIR/array_elem_type_mismatch.rs:7:16
+   |
+LL |     foo::<_, { [0, 1u8, 2u32, 8u64] }>();
+   |                ^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `u32`
+
+error: the constant `8` is not of type `u8`
+  --> $DIR/array_elem_type_mismatch.rs:7:16
+   |
+LL |     foo::<_, { [0, 1u8, 2u32, 8u64] }>();
+   |                ^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `u64`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,151 @@
+   LL|       |//@ edition: 2021
+   LL|       |// ignore-tidy-linelength
+   LL|       |
+   LL|       |// This file deliberately contains line and column numbers larger than 127,
+   LL|       |// to verify that `coverage-dump`'s ULEB128 parser can handle them.
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    wide_function();
+   LL|      1|    long_function();
+   LL|      1|    far_function();
+   LL|      1|}
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn wide_function() { /*                                                                                                           */ (); }
+   LL|       |
+   LL|      1|fn long_function() {
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|       |    //
+   LL|      1|}
+   LL|       |
+   LL|      1|fn far_function() {}
+

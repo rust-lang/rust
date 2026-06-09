@@ -1,0 +1,42 @@
+error: struct literals are not allowed here
+  --> $DIR/E0423-struct-literal-comment.rs:9:8
+   |
+LL |     if T { x: 10 } == T {} {}
+   |        ^^^^^^^^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (T { x: 10 }) == T {} {}
+   |        +           +
+
+error: expected expression, found `==`
+  --> $DIR/E0423-struct-literal-comment.rs:15:38
+   |
+LL |     if U { /* keep comment here */ } == U {}
+   |                                      ^^ expected expression
+
+error[E0423]: expected value, found struct `T`
+  --> $DIR/E0423-struct-literal-comment.rs:9:23
+   |
+LL |     if T { x: 10 } == T {} {}
+   |                       ^ not a value
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if T { x: 10 } == (T {}) {}
+   |                       +    +
+
+error[E0423]: expected value, found struct `U`
+  --> $DIR/E0423-struct-literal-comment.rs:15:8
+   |
+LL |     if U { /* keep comment here */ } == U {}
+   |        ^ not a value
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if (U { /* keep comment here */ }) == U {}
+   |        +                             +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

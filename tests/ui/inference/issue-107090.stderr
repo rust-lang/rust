@@ -1,0 +1,82 @@
+error[E0261]: use of undeclared lifetime name `'short`
+  --> $DIR/issue-107090.rs:4:9
+   |
+LL |     Foo<'short, 'out, T>: Convert<'a, 'b>;
+   |         ^^^^^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'short` lifetime
+   |
+LL |     for<'short> Foo<'short, 'out, T>: Convert<'a, 'b>;
+   |     +++++++++++
+help: consider introducing lifetime `'short` here
+   |
+LL | struct Foo<'short, 'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
+   |            +++++++
+
+error[E0261]: use of undeclared lifetime name `'out`
+  --> $DIR/issue-107090.rs:4:17
+   |
+LL |     Foo<'short, 'out, T>: Convert<'a, 'b>;
+   |                 ^^^^ undeclared lifetime
+   |
+help: consider making the bound lifetime-generic with a new `'out` lifetime
+   |
+LL |     for<'out> Foo<'short, 'out, T>: Convert<'a, 'b>;
+   |     +++++++++
+help: consider introducing lifetime `'out` here
+   |
+LL | struct Foo<'out, 'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
+   |            +++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/issue-107090.rs:11:47
+   |
+LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |                                               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'out`
+  --> $DIR/issue-107090.rs:11:67
+   |
+LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |                                                                   ^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'out` here
+   |
+LL | impl<'out, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |      +++++
+
+error[E0261]: use of undeclared lifetime name `'out`
+  --> $DIR/issue-107090.rs:14:49
+   |
+LL |     fn cast(&'long self) -> &'short Foo<'short, 'out, T> {
+   |                                                 ^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'out` here
+   |
+LL |     fn cast<'out>(&'long self) -> &'short Foo<'short, 'out, T> {
+   |            ++++++
+help: consider introducing lifetime `'out` here
+   |
+LL | impl<'out, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |      +++++
+
+error[E0261]: use of undeclared lifetime name `'short`
+  --> $DIR/issue-107090.rs:20:68
+   |
+LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
+   |                                                                    ^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'short` here
+   |
+LL | fn badboi<'short, 'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
+   |           +++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

@@ -1,0 +1,34 @@
+error[E0404]: expected trait, found builtin type `u32`
+  --> $DIR/change-ty-to-const-param-sugg-0.rs:1:12
+   |
+LL | fn make<N: u32>() {}
+   |            ^^^ not a trait
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | fn make<const N: u32>() {}
+   |         +++++
+
+error[E0404]: expected trait, found builtin type `usize`
+  --> $DIR/change-ty-to-const-param-sugg-0.rs:5:17
+   |
+LL | struct Array<N: usize>([bool; N]);
+   |                 ^^^^^ not a trait
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | struct Array<const N: usize>([bool; N]);
+   |              +++++
+
+error[E0423]: expected value, found type parameter `N`
+  --> $DIR/change-ty-to-const-param-sugg-0.rs:5:31
+   |
+LL | struct Array<N: usize>([bool; N]);
+   |              -                ^ not a value
+   |              |
+   |              found this type parameter
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0404, E0423.
+For more information about an error, try `rustc --explain E0404`.

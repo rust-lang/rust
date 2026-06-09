@@ -1,0 +1,27 @@
+#![warn(clippy::pedantic)]
+// Should suggest lowercase
+#![allow(clippy::all)]
+//~^ ERROR: unknown lint
+#![warn(clippy::cmp_owned)]
+//~^ ERROR: unknown lint
+
+// Should suggest similar clippy lint name
+#[warn(clippy::if_not_else)]
+//~^ ERROR: unknown lint
+#[warn(clippy::unnecessary_cast)]
+//~^ ERROR: unknown lint
+#[warn(clippy::useless_transmute)]
+//~^ ERROR: unknown lint
+// Should suggest rustc lint name(`dead_code`)
+#[warn(dead_code)]
+//~^ ERROR: unknown lint
+// Shouldn't suggest removed/deprecated clippy lint name(`unused_collect`)
+#[warn(clippy::unused_self)]
+//~^ ERROR: unknown lint
+// Shouldn't suggest renamed clippy lint name(`const_static_lifetime`)
+#[warn(clippy::redundant_static_lifetimes)]
+//~^ ERROR: unknown lint
+// issue #118183, should report `missing_docs` from rustc lint
+#[warn(missing_docs)]
+//~^ ERROR: unknown lint
+fn main() {}

@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:7:5
+   |
+LL | fn foo(mut x: Ref, y: Ref) {
+   |        -----       - has type `Ref<'_, '1>`
+   |        |
+   |        has type `Ref<'_, '2>`
+LL |     x.b = y.b;
+   |     ^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(mut x: Ref<'a, 'a>, y: Ref<'a, 'a>) {
+   |       ++++           ++++++++        ++++++++
+
+error: aborting due to 1 previous error
+

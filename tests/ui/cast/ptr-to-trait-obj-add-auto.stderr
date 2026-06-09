@@ -1,0 +1,21 @@
+error[E0804]: cannot add auto trait `Send` to dyn bound via pointer cast
+  --> $DIR/ptr-to-trait-obj-add-auto.rs:4:5
+   |
+LL |     x as _
+   |     ^^^^^^ unsupported cast
+   |
+   = note: this could allow UB elsewhere
+   = help: use `transmute` if you're sure this is sound
+
+error[E0804]: cannot add auto traits `Send`, `Sync`, and `Unpin` to dyn bound via pointer cast
+  --> $DIR/ptr-to-trait-obj-add-auto.rs:13:5
+   |
+LL |     x as _
+   |     ^^^^^^ unsupported cast
+   |
+   = note: this could allow UB elsewhere
+   = help: use `transmute` if you're sure this is sound
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0804`.

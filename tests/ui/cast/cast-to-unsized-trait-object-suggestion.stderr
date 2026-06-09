@@ -1,0 +1,25 @@
+error[E0620]: cast to unsized type: `&{integer}` as `dyn Send`
+  --> $DIR/cast-to-unsized-trait-object-suggestion.rs:2:5
+   |
+LL |     &1 as dyn Send;
+   |     ^^^^^^^^^^^^^^
+   |
+help: consider casting to a reference instead
+   |
+LL |     &1 as &dyn Send;
+   |           +
+
+error[E0620]: cast to unsized type: `Box<{integer}>` as `dyn Send`
+  --> $DIR/cast-to-unsized-trait-object-suggestion.rs:3:5
+   |
+LL |     Box::new(1) as dyn Send;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can cast to a `Box` instead
+   |
+LL |     Box::new(1) as Box<dyn Send>;
+   |                    ++++        +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0620`.

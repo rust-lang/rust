@@ -1,0 +1,173 @@
+error: casts from `i8` to `f32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:12:13
+   |
+LL |     let _ = x0 as f32;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+help: use `f32::from` instead
+   |
+LL -     let _ = x0 as f32;
+LL +     let _ = f32::from(x0);
+   |
+
+error: casts from `i8` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:14:13
+   |
+LL |     let _ = x0 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x0 as f64;
+LL +     let _ = f64::from(x0);
+   |
+
+error: casts from `i8` to `f32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:16:13
+   |
+LL |     let _ = x0 as F32;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `F32::from` instead
+   |
+LL -     let _ = x0 as F32;
+LL +     let _ = F32::from(x0);
+   |
+
+error: casts from `i8` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:18:13
+   |
+LL |     let _ = x0 as F64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `F64::from` instead
+   |
+LL -     let _ = x0 as F64;
+LL +     let _ = F64::from(x0);
+   |
+
+error: casts from `u8` to `f32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:21:13
+   |
+LL |     let _ = x1 as f32;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f32::from` instead
+   |
+LL -     let _ = x1 as f32;
+LL +     let _ = f32::from(x1);
+   |
+
+error: casts from `u8` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:23:13
+   |
+LL |     let _ = x1 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x1 as f64;
+LL +     let _ = f64::from(x1);
+   |
+
+error: casts from `i16` to `f32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:26:13
+   |
+LL |     let _ = x2 as f32;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f32::from` instead
+   |
+LL -     let _ = x2 as f32;
+LL +     let _ = f32::from(x2);
+   |
+
+error: casts from `i16` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:28:13
+   |
+LL |     let _ = x2 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x2 as f64;
+LL +     let _ = f64::from(x2);
+   |
+
+error: casts from `u16` to `f32` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:31:13
+   |
+LL |     let _ = x3 as f32;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f32::from` instead
+   |
+LL -     let _ = x3 as f32;
+LL +     let _ = f32::from(x3);
+   |
+
+error: casts from `u16` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:33:13
+   |
+LL |     let _ = x3 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x3 as f64;
+LL +     let _ = f64::from(x3);
+   |
+
+error: casts from `i32` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:36:13
+   |
+LL |     let _ = x4 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x4 as f64;
+LL +     let _ = f64::from(x4);
+   |
+
+error: casts from `u32` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:39:13
+   |
+LL |     let _ = x5 as f64;
+   |             ^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = x5 as f64;
+LL +     let _ = f64::from(x5);
+   |
+
+error: casts from `f32` to `f64` can be expressed infallibly using `From`
+  --> tests/ui/cast_lossless_float.rs:43:13
+   |
+LL |     let _ = 1.0f32 as f64;
+   |             ^^^^^^^^^^^^^
+   |
+   = help: an `as` cast can become silently lossy if the types change in the future
+help: use `f64::from` instead
+   |
+LL -     let _ = 1.0f32 as f64;
+LL +     let _ = f64::from(1.0f32);
+   |
+
+error: aborting due to 13 previous errors
+

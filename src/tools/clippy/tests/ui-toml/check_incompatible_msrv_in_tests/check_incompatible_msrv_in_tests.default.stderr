@@ -1,0 +1,11 @@
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.4.0`
+  --> tests/ui-toml/check_incompatible_msrv_in_tests/check_incompatible_msrv_in_tests.rs:14:5
+   |
+LL |     sleep(Duration::new(1, 0))
+   |     ^^^^^
+   |
+   = note: `-D clippy::incompatible-msrv` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::incompatible_msrv)]`
+
+error: aborting due to 1 previous error
+

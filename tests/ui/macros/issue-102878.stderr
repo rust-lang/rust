@@ -1,0 +1,11 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-102878.rs:1:35
+   |
+LL | macro_rules!test{($l:expr,$_:r)=>({const:y y)}
+   |                                  -^         ^ mismatched closing delimiter
+   |                                  ||
+   |                                  |unclosed delimiter
+   |                                  closing delimiter possibly meant for this
+
+error: aborting due to 1 previous error
+

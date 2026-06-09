@@ -1,0 +1,34 @@
+error: expected `{`, found `)`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+   |
+LL |     fn b() {(loop)}
+   |              ----^ expected `{`
+   |              |
+   |              while parsing this `loop` expression
+
+error: expected `{`, found `)`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+   |
+LL |     fn b() {(loop)}
+   |              ----^ expected `{`
+   |              |
+   |              while parsing this `loop` expression
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: expected a `Fn(&_)` closure, found `()`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:7:5
+   |
+LL |     #[core::contracts::ensures]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected an `Fn(&_)` closure, found `()`
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> Fn(&'a _)` is not implemented for `()`
+note: required by a bound in `build_check_ensures`
+  --> $SRC_DIR/core/src/contracts.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

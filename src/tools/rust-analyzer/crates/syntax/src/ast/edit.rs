@@ -1,0 +1,287 @@
+//! This module contains functions for editing syntax trees. As the trees are
+//! immutable, all function here return a fresh copy of the tree, instead of
+//! doing an in-place modification.
+use parser::T;
+use std::{
+    fmt,
+    iter::{self, once},
+    ops,
+};
+
+use crate::{
+    AstToken, NodeOrToken, SyntaxElement,
+    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, HasName, make},
+    syntax_editor::{Position, SyntaxEditor, SyntaxMappingBuilder},
+};
+
+use super::syntax_factory::SyntaxFactory;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IndentLevel(pub u8);
+
+impl From<u8> for IndentLevel {
+    fn from(level: u8) -> IndentLevel {
+        IndentLevel(level)
+    }
+}
+
+impl fmt::Display for IndentLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let spaces = "                                        ";
+        let buf;
+        let len = self.0 as usize * 4;
+        let indent = if len <= spaces.len() {
+            &spaces[..len]
+        } else {
+            buf = " ".repeat(len);
+            &buf
+        };
+        fmt::Display::fmt(indent, f)
+    }
+}
+
+impl ops::Add<u8> for IndentLevel {
+    type Output = IndentLevel;
+    fn add(self, rhs: u8) -> IndentLevel {
+        IndentLevel(self.0 + rhs)
+    }
+}
+
+impl ops::AddAssign<u8> for IndentLevel {
+    fn add_assign(&mut self, rhs: u8) {
+        self.0 += rhs;
+    }
+}
+
+impl IndentLevel {
+    pub fn zero() -> IndentLevel {
+        IndentLevel(0)
+    }
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+    pub fn from_element(element: &SyntaxElement) -> IndentLevel {
+        match element {
+            rowan::NodeOrToken::Node(it) => IndentLevel::from_node(it),
+            rowan::NodeOrToken::Token(it) => IndentLevel::from_token(it),
+        }
+    }
+
+    pub fn from_node(node: &SyntaxNode) -> IndentLevel {
+        match node.first_token() {
+            Some(it) => Self::from_token(&it),
+            None => IndentLevel(0),
+        }
+    }
+
+    pub fn from_token(token: &SyntaxToken) -> IndentLevel {
+        for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
+            let text = ws.syntax().text();
+            if let Some(pos) = text.rfind('\n') {
+                let level = text[pos + 1..].chars().count() / 4;
+                return IndentLevel(level as u8);
+            }
+        }
+        IndentLevel(0)
+    }
+
+    pub(super) fn clone_increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
+        let (editor, node) = SyntaxEditor::new(node.clone());
+        let tokens = node
+            .preorder_with_tokens()
+            .filter_map(|event| match event {
+                rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                _ => None,
+            })
+            .filter_map(ast::Whitespace::cast)
+            .filter(|ws| ws.text().contains('\n'));
+        for ws in tokens {
+            let new_ws = make::tokens::whitespace(&format!("{}{self}", ws.syntax()));
+            editor.replace(ws.syntax(), &new_ws);
+        }
+        editor.finish().new_root().clone()
+    }
+
+    pub(super) fn clone_decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
+        let (editor, node) = SyntaxEditor::new(node.clone());
+        let tokens = node
+            .preorder_with_tokens()
+            .filter_map(|event| match event {
+                rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+                _ => None,
+            })
+            .filter_map(ast::Whitespace::cast)
+            .filter(|ws| ws.text().contains('\n'));
+        for ws in tokens {
+            let new_ws =
+                make::tokens::whitespace(&ws.syntax().text().replace(&format!("\n{self}"), "\n"));
+            editor.replace(ws.syntax(), &new_ws);
+        }
+        editor.finish().new_root().clone()
+    }
+}
+
+fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
+    iter::successors(Some(token), |token| token.prev_token())
+}
+
+pub trait AstNodeEdit: AstNode + Clone + Sized {
+    fn indent_level(&self) -> IndentLevel {
+        IndentLevel::from_node(self.syntax())
+    }
+    #[must_use]
+    fn indent(&self, level: IndentLevel) -> Self {
+        Self::cast(level.clone_increase_indent(self.syntax())).unwrap()
+    }
+    #[must_use]
+    fn indent_with_mapping(&self, level: IndentLevel, make: &SyntaxFactory) -> Self {
+        let new_node = self.indent(level);
+        if let Some(mut mapping) = make.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(new_node.syntax().clone());
+            for (old, new) in self.syntax().children().zip(new_node.syntax().children()) {
+                builder.map_node(old, new);
+            }
+            builder.finish(&mut mapping);
+        }
+        new_node
+    }
+    #[must_use]
+    fn dedent(&self, level: IndentLevel) -> Self {
+        Self::cast(level.clone_decrease_indent(self.syntax())).unwrap()
+    }
+    #[must_use]
+    fn reset_indent(&self) -> Self {
+        let level = IndentLevel::from_node(self.syntax());
+        self.dedent(level)
+    }
+}
+
+impl<N: AstNode + Clone> AstNodeEdit for N {}
+
+pub trait AttrsOwnerEdit: ast::HasAttrs {
+    fn remove_attrs_and_docs(&self, editor: &SyntaxEditor) {
+        let mut remove_next_ws = false;
+        for child in self.syntax().children_with_tokens() {
+            match child.kind() {
+                ATTR | COMMENT => {
+                    remove_next_ws = true;
+                    editor.delete(child);
+                    continue;
+                }
+                WHITESPACE if remove_next_ws => {
+                    editor.delete(child);
+                }
+                _ => (),
+            }
+            remove_next_ws = false;
+        }
+    }
+}
+
+impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
+
+impl ast::IdentPat {
+    pub fn set_pat(&self, pat: Option<ast::Pat>, editor: &SyntaxEditor) -> ast::IdentPat {
+        let make = editor.make();
+        match pat {
+            None => {
+                if let Some(at_token) = self.at_token() {
+                    // Remove `@ Pat`
+                    let start = at_token.clone().into();
+                    let end = self
+                        .pat()
+                        .map(|it| it.syntax().clone().into())
+                        .unwrap_or_else(|| at_token.into());
+                    editor.delete_all(start..=end);
+
+                    // Remove any trailing ws
+                    if let Some(last) =
+                        self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
+                    {
+                        last.detach();
+                    }
+                }
+            }
+            Some(pat) => {
+                if let Some(old_pat) = self.pat() {
+                    // Replace existing pattern
+                    editor.replace(old_pat.syntax(), pat.syntax())
+                } else if let Some(at_token) = self.at_token() {
+                    // Have an `@` token but not a pattern yet
+                    editor.insert(Position::after(at_token), pat.syntax());
+                } else {
+                    // Don't have an `@`, should have a name
+                    let name = self.name().unwrap();
+                    let elements = vec![
+                        make.whitespace(" ").into(),
+                        make.token(T![@]).into(),
+                        make.whitespace(" ").into(),
+                        pat.syntax().clone().into(),
+                    ];
+
+                    if self.syntax().parent().is_none() {
+                        let (local, local_self) = SyntaxEditor::with_ast_node(self);
+                        let local_name = local_self.name().unwrap();
+                        local.insert_all(Position::after(local_name.syntax()), elements);
+                        let edit = local.finish();
+                        return ast::IdentPat::cast(edit.new_root().clone()).unwrap();
+                    } else {
+                        editor.insert_all(Position::after(name.syntax()), elements);
+                    }
+                }
+            }
+        }
+        self.clone()
+    }
+}
+
+impl ast::UseTree {
+    pub fn wrap_in_tree_list_with_editor(&self) -> Option<ast::UseTree> {
+        if self.use_tree_list().is_some()
+            && self.path().is_none()
+            && self.star_token().is_none()
+            && self.rename().is_none()
+        {
+            return None;
+        }
+
+        let (editor, use_tree) = SyntaxEditor::with_ast_node(self);
+        let make = editor.make();
+        let first_child = use_tree.syntax().first_child_or_token()?;
+        let last_child = use_tree.syntax().last_child_or_token()?;
+        let use_tree_list = make.use_tree_list(once(self.clone()));
+        editor.replace_all(first_child..=last_child, vec![use_tree_list.syntax().clone().into()]);
+
+        let edit = editor.finish();
+        ast::UseTree::cast(edit.new_root().clone())
+    }
+}
+
+pub fn indent(node: &SyntaxNode, level: IndentLevel) -> SyntaxNode {
+    level.clone_increase_indent(node)
+}
+
+#[test]
+fn test_increase_indent() {
+    let arm_list = {
+        let arm = make::match_arm(make::wildcard_pat().into(), None, make::ext::expr_unit());
+        make::match_arm_list([arm.clone(), arm])
+    };
+    assert_eq!(
+        arm_list.syntax().to_string(),
+        "{
+    _ => (),
+    _ => (),
+}"
+    );
+    let indented = arm_list.indent(IndentLevel(2));
+    assert_eq!(
+        indented.syntax().to_string(),
+        "{
+            _ => (),
+            _ => (),
+        }"
+    );
+}

@@ -1,0 +1,65 @@
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:8:13
+   |
+LL |     let _ = &vec[..];
+   |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
+   |
+   = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deref_by_slicing)]`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:10:13
+   |
+LL |     let _ = &mut vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&mut *vec`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:14:13
+   |
+LL |     let _ = &ref_vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&**ref_vec`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:16:21
+   |
+LL |     let mut_slice = &mut ref_vec[..];
+   |                     ^^^^^^^^^^^^^^^^ help: dereference the original value instead: `&mut **ref_vec`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:18:13
+   |
+LL |     let _ = &mut mut_slice[..]; // Err, re-borrows slice
+   |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:23:13
+   |
+LL |     let _ = &s[..];
+   |             ^^^^^^ help: dereference the original value instead: `&*s`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:27:18
+   |
+LL |     let _ = &mut &S[..]; // Err, re-borrows slice
+   |                  ^^^^^^ help: reborrow the original value instead: `&*S`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:33:13
+   |
+LL |     let _ = &slice_ref[..]; // Err, derefs slice
+   |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:38:13
+   |
+LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
+   |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
+
+error: slicing when dereferencing would work
+  --> tests/ui/deref_by_slicing.rs:44:13
+   |
+LL |     let _ = &a[..];
+   |             ^^^^^^ help: reborrow the original value instead: `&*a`
+
+error: aborting due to 10 previous errors
+

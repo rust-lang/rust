@@ -1,0 +1,33 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-91949-hangs-on-recursion.rs:21:1
+   |
+LL | / fn recurse<T>(elements: T) -> Vec<char>
+LL | |
+LL | | where
+LL | |     T: Iterator<Item = ()>,
+   | |___________________________^ cannot return without recursing
+LL |   {
+LL |       recurse(IteratorOfWrapped(elements).map(|t| t.0))
+   |       ------------------------------------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error[E0275]: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "512"]` attribute to your crate (`issue_91949_hangs_on_recursion`)
+note: required for `IteratorOfWrapped<(), std::iter::Empty<()>>` to implement `Iterator`
+  --> $DIR/issue-91949-hangs-on-recursion.rs:14:32
+   |
+LL | impl<T, I: Iterator<Item = T>> Iterator for IteratorOfWrapped<T, I> {
+   |                     --------   ^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     unsatisfied trait bound introduced here
+   = note: 256 redundant requirements hidden
+   = note: required for `IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<..., ...>>, ...>>` to implement `Iterator`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/issue-91949-hangs-on-recursion.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0275`.

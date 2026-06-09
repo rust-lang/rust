@@ -1,0 +1,90 @@
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:21:37
+   |
+LL | fn baz<T>() where T: Iterator<Item: ?Trait1> {}
+   |                                     ^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined on the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:28:21
+   |
+LL |     fn f() where T: ?Trait1 {}
+   |                     ^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined on the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:35:34
+   |
+LL | struct S2<T>(T) where for<'a> T: ?Trait5<'a>;
+   |                                  ^^^^^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined on the closest item
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:13:29
+   |
+LL | fn foo(_: Box<(dyn Trait3 + ?Trait2)>) {}
+   |                             ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:16:20
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                    ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:16:30
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                              ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:16:40
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                                        ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:21:37
+   |
+LL | fn baz<T>() where T: Iterator<Item: ?Trait1> {}
+   |                                     ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:35:34
+   |
+LL | struct S2<T>(T) where for<'a> T: ?Trait5<'a>;
+   |                                  ^^^^^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits
+  --> $DIR/more_maybe_bounds.rs:28:21
+   |
+LL |     fn f() where T: ?Trait1 {}
+   |                     ^^^^^^^
+
+error: aborting due to 13 previous errors
+

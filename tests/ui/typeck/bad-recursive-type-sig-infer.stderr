@@ -1,0 +1,15 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/bad-recursive-type-sig-infer.rs:1:11
+   |
+LL | fn a() -> _ {
+   |           ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/bad-recursive-type-sig-infer.rs:6:11
+   |
+LL | fn b() -> _ {
+   |           ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

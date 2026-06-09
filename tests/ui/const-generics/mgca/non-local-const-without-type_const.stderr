@@ -1,0 +1,10 @@
+error: use of `const` in the type system not defined as `type const`
+  --> $DIR/non-local-const-without-type_const.rs:7:18
+   |
+LL |     let x = [(); non_local_const::N];
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: only consts marked defined as `type const` may be used in types
+
+error: aborting due to 1 previous error
+

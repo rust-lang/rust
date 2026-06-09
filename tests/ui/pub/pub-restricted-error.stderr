@@ -1,0 +1,10 @@
+error: expected identifier, found `(`
+  --> $DIR/pub-restricted-error.rs:4:16
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     pub(crate) () foo: usize,
+   |                ^ expected identifier
+
+error: aborting due to 1 previous error
+

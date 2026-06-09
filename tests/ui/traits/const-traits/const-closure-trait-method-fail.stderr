@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `(): const Tr` is not satisfied
+  --> $DIR/const-closure-trait-method-fail.rs:17:23
+   |
+LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the `impl` of trait `Tr` `const`
+   |
+LL | impl const Tr for () {
+   |      +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

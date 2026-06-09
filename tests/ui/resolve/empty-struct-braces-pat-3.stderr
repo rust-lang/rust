@@ -1,0 +1,51 @@
+error[E0164]: expected tuple struct or tuple variant, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-pat-3.rs:17:9
+   |
+LL |         E::Empty3() => ()
+   |         ^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: use the struct variant pattern syntax
+   |
+LL -         E::Empty3() => ()
+LL +         E::Empty3 {} => ()
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
+  --> $DIR/empty-struct-braces-pat-3.rs:21:9
+   |
+LL |         XE::XEmpty3() => ()
+   |         ^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: use the struct variant pattern syntax
+   |
+LL -         XE::XEmpty3() => ()
+LL +         XE::XEmpty3 {} => ()
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-pat-3.rs:25:9
+   |
+LL |         E::Empty3(..) => ()
+   |         ^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: use the struct variant pattern syntax
+   |
+LL -         E::Empty3(..) => ()
+LL +         E::Empty3 {} => ()
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
+  --> $DIR/empty-struct-braces-pat-3.rs:29:9
+   |
+LL |         XE::XEmpty3(..) => ()
+   |         ^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: use the struct variant pattern syntax
+   |
+LL -         XE::XEmpty3(..) => ()
+LL +         XE::XEmpty3 {} => ()
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0164`.

@@ -1,0 +1,330 @@
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:37:17
+   |
+LL |         let _ = boxed_slice.get(1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/get_unwrap.rs:9:9
+   |
+LL | #![deny(clippy::get_unwrap)]
+   |         ^^^^^^^^^^^^^^^^^^
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = boxed_slice.get(1).unwrap();
+LL +         let _ = &boxed_slice[1];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:37:17
+   |
+LL |         let _ = boxed_slice.get(1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:40:17
+   |
+LL |         let _ = some_slice.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_slice.get(0).unwrap();
+LL +         let _ = &some_slice[0];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:40:17
+   |
+LL |         let _ = some_slice.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a Vec
+  --> tests/ui/get_unwrap.rs:43:17
+   |
+LL |         let _ = some_vec.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_vec.get(0).unwrap();
+LL +         let _ = &some_vec[0];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:43:17
+   |
+LL |         let _ = some_vec.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a VecDeque
+  --> tests/ui/get_unwrap.rs:46:17
+   |
+LL |         let _ = some_vecdeque.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_vecdeque.get(0).unwrap();
+LL +         let _ = &some_vecdeque[0];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:46:17
+   |
+LL |         let _ = some_vecdeque.get(0).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a HashMap
+  --> tests/ui/get_unwrap.rs:49:17
+   |
+LL |         let _ = some_hashmap.get(&1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_hashmap.get(&1).unwrap();
+LL +         let _ = &some_hashmap[&1];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:49:17
+   |
+LL |         let _ = some_hashmap.get(&1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a BTreeMap
+  --> tests/ui/get_unwrap.rs:52:17
+   |
+LL |         let _ = some_btreemap.get(&1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_btreemap.get(&1).unwrap();
+LL +         let _ = &some_btreemap[&1];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:52:17
+   |
+LL |         let _ = some_btreemap.get(&1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:58:21
+   |
+LL |         let _: u8 = *boxed_slice.get(1).unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _: u8 = *boxed_slice.get(1).unwrap();
+LL +         let _: u8 = boxed_slice[1];
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:58:22
+   |
+LL |         let _: u8 = *boxed_slice.get(1).unwrap();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get_mut().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:65:9
+   |
+LL |         *boxed_slice.get_mut(0).unwrap() = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         *boxed_slice.get_mut(0).unwrap() = 1;
+LL +         boxed_slice[0] = 1;
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:65:10
+   |
+LL |         *boxed_slice.get_mut(0).unwrap() = 1;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get_mut().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:68:9
+   |
+LL |         *some_slice.get_mut(0).unwrap() = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         *some_slice.get_mut(0).unwrap() = 1;
+LL +         some_slice[0] = 1;
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:68:10
+   |
+LL |         *some_slice.get_mut(0).unwrap() = 1;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get_mut().unwrap()` on a Vec
+  --> tests/ui/get_unwrap.rs:71:9
+   |
+LL |         *some_vec.get_mut(0).unwrap() = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         *some_vec.get_mut(0).unwrap() = 1;
+LL +         some_vec[0] = 1;
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:71:10
+   |
+LL |         *some_vec.get_mut(0).unwrap() = 1;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get_mut().unwrap()` on a VecDeque
+  --> tests/ui/get_unwrap.rs:74:9
+   |
+LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         *some_vecdeque.get_mut(0).unwrap() = 1;
+LL +         some_vecdeque[0] = 1;
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:74:10
+   |
+LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a Vec
+  --> tests/ui/get_unwrap.rs:88:17
+   |
+LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_vec.get(0..1).unwrap().to_vec();
+LL +         let _ = some_vec[0..1].to_vec();
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:88:17
+   |
+LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get_mut().unwrap()` on a Vec
+  --> tests/ui/get_unwrap.rs:91:17
+   |
+LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+LL +         let _ = some_vec[0..1].to_vec();
+   |
+
+error: used `unwrap()` on an `Option` value
+  --> tests/ui/get_unwrap.rs:91:17
+   |
+LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:104:24
+   |
+LL |         let _x: &i32 = f.get(1 + 2).unwrap();
+   |                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _x: &i32 = f.get(1 + 2).unwrap();
+LL +         let _x: &i32 = &f[1 + 2];
+   |
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:108:18
+   |
+LL |         let _x = f.get(1 + 2).unwrap().to_string();
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _x = f.get(1 + 2).unwrap().to_string();
+LL +         let _x = f[1 + 2].to_string();
+   |
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:112:18
+   |
+LL |         let _x = f.get(1 + 2).unwrap().abs();
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _x = f.get(1 + 2).unwrap().abs();
+LL +         let _x = f[1 + 2].abs();
+   |
+
+error: called `.get_mut().unwrap()` on a slice
+  --> tests/ui/get_unwrap.rs:130:33
+   |
+LL |                         let b = rest.get_mut(linidx(j, k) - linidx(i, k) - 1).unwrap();
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -                         let b = rest.get_mut(linidx(j, k) - linidx(i, k) - 1).unwrap();
+LL +                         let b = &mut rest[linidx(j, k) - linidx(i, k) - 1];
+   |
+
+error: aborting due to 30 previous errors
+

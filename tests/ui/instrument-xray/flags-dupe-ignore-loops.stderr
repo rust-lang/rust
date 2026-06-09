@@ -1,0 +1,2 @@
+error: incorrect value `ignore-loops,ignore-loops` for unstable option `instrument-xray` - either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit` was expected
+

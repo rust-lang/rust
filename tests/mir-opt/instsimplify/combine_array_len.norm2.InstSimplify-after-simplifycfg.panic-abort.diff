@@ -1,0 +1,71 @@
+- // MIR for `norm2` before InstSimplify-after-simplifycfg
++ // MIR for `norm2` after InstSimplify-after-simplifycfg
+  
+  fn norm2(_1: [f32; 2]) -> f32 {
+      debug x => _1;
+      let mut _0: f32;
+      let _2: f32;
+      let _3: usize;
+      let mut _4: bool;
+      let _6: usize;
+      let mut _7: bool;
+      let mut _8: f32;
+      let mut _9: f32;
+      let mut _10: f32;
+      let mut _11: f32;
+      let mut _12: f32;
+      let mut _13: f32;
+      scope 1 {
+          debug a => _2;
+          let _5: f32;
+          scope 2 {
+              debug b => _5;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = const 0_usize;
+          _4 = Lt(copy _3, const 2_usize);
+          assert(move _4, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _3) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _2 = copy _1[_3];
+          StorageDead(_3);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = const 1_usize;
+          _7 = Lt(copy _6, const 2_usize);
+          assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          _5 = copy _1[_6];
+          StorageDead(_6);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _2;
+          StorageLive(_10);
+          _10 = copy _2;
+          _8 = Mul(move _9, move _10);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = copy _5;
+          StorageLive(_13);
+          _13 = copy _5;
+          _11 = Mul(move _12, move _13);
+          StorageDead(_13);
+          StorageDead(_12);
+          _0 = Add(move _8, move _11);
+          StorageDead(_11);
+          StorageDead(_8);
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

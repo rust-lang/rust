@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `printf` in this scope
+  --> $DIR/suggest_print_over_printf.rs:5:5
+   |
+LL |     printf("%d", x);
+   |     ^^^^^^ not found in this scope
+   |
+help: you may have meant to use the `print` macro
+   |
+LL -     printf("%d", x);
+LL +     print!("%d", x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

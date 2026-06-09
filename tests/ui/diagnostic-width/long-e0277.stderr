@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `(..., ..., ..., ...): Trait` is not satisfied
+  --> $DIR/long-e0277.rs:12:21
+   |
+LL |     require_trait::<D>();
+   |                     ^ unsatisfied trait bound
+   |
+   = help: the trait `Trait` is not implemented for `(..., ..., ..., ...)`
+help: this trait has no implementations, consider adding one
+  --> $DIR/long-e0277.rs:7:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `require_trait`
+  --> $DIR/long-e0277.rs:9:21
+   |
+LL | fn require_trait<T: Trait>() {}
+   |                     ^^^^^ required by this bound in `require_trait`
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-e0277.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

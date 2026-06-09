@@ -1,0 +1,26 @@
+error[E0503]: cannot use `*x` because it was mutably borrowed
+  --> $DIR/privately-uninhabited-issue-137999.rs:25:30
+   |
+LL |         Test::A(a, _) => a,
+   |                 - `x.0` is borrowed here
+...
+LL |     let r2: &mut u32 = match x {
+   |                              ^ use of borrowed `x.0`
+...
+LL |     let _ = *r1;
+   |             --- borrow later used here
+
+error[E0503]: cannot use `*x` because it was mutably borrowed
+  --> $DIR/privately-uninhabited-issue-137999.rs:36:11
+   |
+LL |     let r = &mut *x;
+   |             ------- `*x` is borrowed here
+LL |     match x {
+   |           ^ use of borrowed `*x`
+...
+LL |     let _ = r;
+   |             - borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0503`.

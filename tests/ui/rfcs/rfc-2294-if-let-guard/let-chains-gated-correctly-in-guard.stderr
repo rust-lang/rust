@@ -1,0 +1,8 @@
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/let-chains-gated-correctly-in-guard.rs:7:28
+   |
+LL |             if let _ = (if let Some(0) = None
+   |                            ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

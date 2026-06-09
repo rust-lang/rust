@@ -1,0 +1,10 @@
+warning: `#[diagnostic::on_unmatch_args]` can only be applied to macro definitions
+  --> $DIR/report_warning_on_non_macro.rs:4:1
+   |
+LL | #[diagnostic::on_unmatch_args(message = "not allowed here")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

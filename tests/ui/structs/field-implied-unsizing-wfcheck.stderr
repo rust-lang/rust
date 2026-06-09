@@ -1,0 +1,163 @@
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:2:13
+   |
+LL |     nested: &'static Bar<dyn std::fmt::Debug>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:6:17
+   |
+LL | struct FooTuple(&'static Bar<dyn std::fmt::Debug>);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:10:22
+   |
+LL |     Struct { nested: &'static Bar<dyn std::fmt::Debug> },
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:15:11
+   |
+LL |     Tuple(&'static Bar<dyn std::fmt::Debug>),
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:24:25
+   |
+LL |     FooStruct { nested: &Bar(4) };
+   |                         ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:26:14
+   |
+LL |     FooTuple(&Bar(4));
+   |              ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:28:32
+   |
+LL |     FooEnum1::Struct { nested: &Bar(4) };
+   |                                ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/field-implied-unsizing-wfcheck.rs:30:21
+   |
+LL |     FooEnum2::Tuple(&Bar(4));
+   |                     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/field-implied-unsizing-wfcheck.rs:19:12
+   |
+LL | struct Bar<T>(T);
+   |            ^  - ...if indirection were used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

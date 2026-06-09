@@ -1,0 +1,190 @@
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:12
+   |
+LL |     extern "rust-call" fn call(self, args: ()) -> () {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:22:12
+   |
+LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:12
+   |
+LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:39:12
+   |
+LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
+   |
+LL | impl Fn<()> for Foo {
+   |      ^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0183]: manual implementations of `Fn` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
+   |
+LL | impl Fn<()> for Foo {
+   |      ^^^^^^ manual implementations of `Fn` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0053]: method `call` has an incompatible type for trait
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:32
+   |
+LL |     extern "rust-call" fn call(self, args: ()) -> () {}
+   |                                ^^^^ expected `&Foo`, found `Foo`
+   |
+   = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
+              found signature `extern "rust-call" fn(Foo, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
+   |                                +
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:6
+   |
+LL | impl FnMut<()> for Bar {
+   |      ^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0183]: manual implementations of `FnMut` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:6
+   |
+LL | impl FnMut<()> for Bar {
+   |      ^^^^^^^^^ manual implementations of `FnMut` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0277]: expected a `FnMut()` closure, found `Foo`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:17
+   |
+LL | impl Fn<()> for Foo {
+   |                 ^^^ expected an `FnMut()` closure, found `Foo`
+   |
+help: the trait `FnMut()` is not implemented for `Foo`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:8:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+   = note: wrap the `Foo` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error[E0183]: manual implementations of `FnOnce` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
+   |
+LL | impl FnOnce() for Foo1 {
+   |      ^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
+   |
+LL | impl FnOnce() for Foo1 {
+   |      ^^^^^^^^ associated item constraint not allowed here
+   |
+help: parenthesized trait syntax expands to `FnOnce<(), Output=()>`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
+   |
+LL | impl FnOnce() for Foo1 {
+   |      ^^^^^^^^
+
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:6
+   |
+LL | impl FnOnce<()> for Baz {
+   |      ^^^^^^^^^^
+   |
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0183]: manual implementations of `FnOnce` are experimental
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:6
+   |
+LL | impl FnOnce<()> for Baz {
+   |      ^^^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error[E0046]: not all trait items implemented, missing: `Output`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:1
+   |
+LL | impl FnOnce() for Foo1 {
+   | ^^^^^^^^^^^^^^^^^^^^^^ missing `Output` in implementation
+   |
+   = help: implement the missing item: `type Output = /* Type */;`
+
+error[E0053]: method `call_mut` has an incompatible type for trait
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:36
+   |
+LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+   |                                    ^^^^^ types differ in mutability
+   |
+   = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
+              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
+help: change the self-receiver type to match the trait
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |                                     +++
+
+error[E0277]: expected a `FnOnce()` closure, found `Bar`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:20
+   |
+LL | impl FnMut<()> for Bar {
+   |                    ^^^ expected an `FnOnce()` closure, found `Bar`
+   |
+help: the trait `FnOnce()` is not implemented for `Bar`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:25:1
+   |
+LL | struct Bar;
+   | ^^^^^^^^^^
+   = note: wrap the `Bar` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `FnMut`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error[E0046]: not all trait items implemented, missing: `Output`
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1
+   |
+LL | impl FnOnce<()> for Baz {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ missing `Output` in implementation
+   |
+   = help: implement the missing item: `type Output = /* Type */;`
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0046, E0053, E0183, E0229, E0277, E0658.
+For more information about an error, try `rustc --explain E0046`.

@@ -1,0 +1,134 @@
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:13:5
+   |
+LL | /     if a {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(a)`
+   |
+   = note: `a as i32` or `a.into()` can also be valid options
+   = note: `-D clippy::bool-to-int-with-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bool_to_int_with_if)]`
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:19:5
+   |
+LL | /     if a {
+LL | |
+LL | |         0
+LL | |     } else {
+LL | |         1
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(!a)`
+   |
+   = note: `!a as i32` or `(!a).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:25:5
+   |
+LL | /     if !a {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(!a)`
+   |
+   = note: `!a as i32` or `(!a).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:31:5
+   |
+LL | /     if a || b {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(a || b)`
+   |
+   = note: `(a || b) as i32` or `(a || b).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:37:5
+   |
+LL | /     if cond(a, b) {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(cond(a, b))`
+   |
+   = note: `cond(a, b) as i32` or `cond(a, b).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:43:5
+   |
+LL | /     if x + y < 4 {
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `i32::from(x + y < 4)`
+   |
+   = note: `(x + y < 4) as i32` or `(x + y < 4).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:53:12
+   |
+LL |       } else if b {
+   |  ____________^
+LL | |
+LL | |         1
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace with from: `{ i32::from(b) }`
+   |
+   = note: `b as i32` or `b.into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:63:12
+   |
+LL |       } else if b {
+   |  ____________^
+LL | |
+LL | |         0
+LL | |     } else {
+LL | |         1
+LL | |     };
+   | |_____^ help: replace with from: `{ i32::from(!b) }`
+   |
+   = note: `!b as i32` or `(!b).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:129:5
+   |
+LL |     if a { 1 } else { 0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `u8::from(a)`
+   |
+   = note: `a as u8` or `a.into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:173:13
+   |
+LL |     let _ = if dbg!(4 > 0) { 1 } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(dbg!(4 > 0))`
+   |
+   = note: `dbg!(4 > 0) as i32` or `dbg!(4 > 0).into()` can also be valid options
+
+error: boolean to int conversion using if
+  --> tests/ui/bool_to_int_with_if.rs:176:18
+   |
+LL |     let _ = dbg!(if 4 > 0 { 1 } else { 0 });
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `i32::from(4 > 0)`
+   |
+   = note: `(4 > 0) as i32` or `(4 > 0).into()` can also be valid options
+
+error: aborting due to 11 previous errors
+

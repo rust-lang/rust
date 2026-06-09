@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `T: [const] PartialEq` is not satisfied
+  --> $DIR/call-generic-method-fail.rs:5:5
+   |
+LL |     *t == *t
+   |     ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

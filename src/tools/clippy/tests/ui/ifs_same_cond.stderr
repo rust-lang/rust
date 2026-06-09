@@ -1,0 +1,52 @@
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:8:8
+   |
+LL |     if b {
+   |        ^
+LL |
+LL |     } else if b {
+   |               ^
+   |
+   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
+
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:13:8
+   |
+LL |     if b {
+   |        ^
+LL |
+LL |     } else if b {
+   |               ^
+LL |     } else if b {
+   |               ^
+
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:19:8
+   |
+LL |     if a == 1 {
+   |        ^^^^^^
+LL |
+LL |     } else if a == 1 {
+   |               ^^^^^^
+
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:24:8
+   |
+LL |     if 2 * a == 1 {
+   |        ^^^^^^^^^^
+...
+LL |     } else if 2 * a == 1 {
+   |               ^^^^^^^^^^
+
+error: these `if` branches have the same condition
+  --> tests/ui/ifs_same_cond.rs:58:8
+   |
+LL |     if a.contains("ah") {
+   |        ^^^^^^^^^^^^^^^^
+LL |
+LL |     } else if a.contains("ah") {
+   |               ^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

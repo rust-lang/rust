@@ -1,0 +1,8 @@
+error: expected identifier, found `<`
+  --> $DIR/doc-before-syntax-error.rs:2:1
+   |
+LL | <>
+   | ^ expected identifier
+
+error: aborting due to 1 previous error
+

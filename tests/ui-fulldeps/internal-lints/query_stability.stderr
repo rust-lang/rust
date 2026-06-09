@@ -1,0 +1,79 @@
+error: using `drain` can result in unstable query results
+  --> $DIR/query_stability.rs:14:16
+   |
+LL |     for _ in x.drain() {}
+   |                ^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+note: the lint level is defined here
+  --> $DIR/query_stability.rs:5:9
+   |
+LL | #![deny(rustc::potential_query_instability)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using `iter` can result in unstable query results
+  --> $DIR/query_stability.rs:17:16
+   |
+LL |     for _ in x.iter() {}
+   |                ^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `iter_mut` can result in unstable query results
+  --> $DIR/query_stability.rs:20:36
+   |
+LL |     for _ in Some(&mut x).unwrap().iter_mut() {}
+   |                                    ^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `into_iter` can result in unstable query results
+  --> $DIR/query_stability.rs:23:14
+   |
+LL |     for _ in x {}
+   |              ^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `keys` can result in unstable query results
+  --> $DIR/query_stability.rs:27:15
+   |
+LL |     let _ = x.keys();
+   |               ^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `values` can result in unstable query results
+  --> $DIR/query_stability.rs:30:15
+   |
+LL |     let _ = x.values();
+   |               ^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `values_mut` can result in unstable query results
+  --> $DIR/query_stability.rs:34:18
+   |
+LL |     for val in x.values_mut() {
+   |                  ^^^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `into_iter` can result in unstable query results
+  --> $DIR/query_stability.rs:39:38
+   |
+LL |     FxHashMap::<u32, i32>::default().extend(x);
+   |                                      ^^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `into_iter` can result in unstable query results
+  --> $DIR/query_stability.rs:48:9
+   |
+LL |     _ = hide_into_iter(map);
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,50 @@
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:10:1
+   |
+LL | #[repr(C)]
+   | ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
+error: `#[repr(transparent)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:17:1
+   |
+LL | #[repr(transparent)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(transparent)]` can only be applied to data types
+
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:24:1
+   |
+LL | #[repr(C)]
+   | ^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
+error: `#[repr(C)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:33:1
+   |
+LL | #[repr(C, packed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(C)]` can only be applied to data types
+
+error: `#[repr(packed)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:33:1
+   |
+LL | #[repr(C, packed)]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(packed)]` can only be applied to data types
+
+error: `#[repr(u8)]` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:41:1
+   |
+LL | #[repr(u8)]
+   | ^^^^^^^^^^^
+   |
+   = help: `#[repr(u8)]` can only be applied to enums
+
+error: aborting due to 6 previous errors
+

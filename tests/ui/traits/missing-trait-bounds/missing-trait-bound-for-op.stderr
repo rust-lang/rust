@@ -1,0 +1,16 @@
+error[E0369]: binary operation `==` cannot be applied to type `&[T]`
+  --> $DIR/missing-trait-bound-for-op.rs:4:15
+   |
+LL |     let _ = s == t;
+   |             - ^^ - &[T]
+   |             |
+   |             &[T]
+   |
+help: consider restricting type parameter `T` with trait `PartialEq`
+   |
+LL | pub fn foo<T: std::cmp::PartialEq>(s: &[T], t: &[T]) {
+   |             +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

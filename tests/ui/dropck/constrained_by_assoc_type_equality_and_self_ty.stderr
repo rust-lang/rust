@@ -1,0 +1,15 @@
+error[E0367]: `Drop` impl requires `<T as Trait>::Assoc == U` but the struct it is implemented for does not
+  --> $DIR/constrained_by_assoc_type_equality_and_self_ty.rs:7:15
+   |
+LL | impl<T: Trait<Assoc = U>, U: ?Sized> Drop for Foo<T, U> {
+   |               ^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/constrained_by_assoc_type_equality_and_self_ty.rs:5:1
+   |
+LL | struct Foo<T: Trait, U: ?Sized>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0367`.

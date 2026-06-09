@@ -1,0 +1,14 @@
+error[E0201]: duplicate definitions with name `bar`:
+  --> $DIR/issue-8153.rs:11:5
+   |
+LL |     fn bar(&self) -> isize;
+   |     ----------------------- item in trait
+...
+LL |     fn bar(&self) -> isize {1}
+   |     -------------------------- previous definition here
+LL |     fn bar(&self) -> isize {2}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0201`.

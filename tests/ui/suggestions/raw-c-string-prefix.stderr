@@ -1,0 +1,21 @@
+error: prefix `rc` is unknown
+  --> $DIR/raw-c-string-prefix.rs:6:5
+   |
+LL |     rc"abc";
+   |     ^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: use `cr` for a raw C-string
+   |
+LL -     rc"abc";
+LL +     cr"abc";
+   |
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"abc"`
+  --> $DIR/raw-c-string-prefix.rs:6:7
+   |
+LL |     rc"abc";
+   |       ^^^^^ expected one of 8 possible tokens
+
+error: aborting due to 2 previous errors
+

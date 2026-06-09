@@ -1,0 +1,20 @@
+error: trait `Tr` is never used
+  --> $DIR/unused-trait-with-assoc-const.rs:3:7
+   |
+LL | trait Tr {
+   |       ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-trait-with-assoc-const.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: struct `Foo` is never constructed
+  --> $DIR/unused-trait-with-assoc-const.rs:7:8
+   |
+LL | struct Foo;
+   |        ^^^
+
+error: aborting due to 2 previous errors
+

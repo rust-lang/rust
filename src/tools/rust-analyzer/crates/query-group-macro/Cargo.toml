@@ -1,0 +1,24 @@
+[package]
+name = "query-group-macro"
+version = "0.0.0"
+repository.workspace = true
+description = "A macro mimicking the `#[salsa::query_group]` macro for migrating to new Salsa"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits", "visit-mut"] }
+
+[dev-dependencies]
+expect-test = "1.5.1"
+salsa.workspace = true
+salsa-macros.workspace = true

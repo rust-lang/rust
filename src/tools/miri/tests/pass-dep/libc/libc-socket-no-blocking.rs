@@ -1,0 +1,783 @@
+//@ignore-target: windows
+//@compile-flags: -Zmiri-disable-isolation
+//@revisions: windows_host unix_host
+//@[unix_host] ignore-host: windows
+//@[windows_host] only-host: windows
+
+#![feature(io_error_inprogress)]
+
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
+use std::io::ErrorKind;
+use std::time::Duration;
+use std::{ptr, thread};
+
+use libc_utils::*;
+
+const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn main() {
+    test_fcntl_nonblock_opt();
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos"
+    ))]
+    test_sock_nonblock_opt();
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+    test_ioctl_fionbio_op();
+
+    test_accept_nonblock();
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos"
+    ))]
+    test_accept4_sock_nonblock_opt();
+    test_connect_nonblock();
+    test_send_recv_nonblock();
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos"
+    ))]
+    test_send_recv_dontwait();
+    test_write_read_nonblock();
+    test_readv_nonblock_err();
+    test_writev_nonblock_err();
+
+    test_getsockname_ipv4_connect_nonblock();
+
+    test_getpeername_ipv4_nonblock();
+    test_getpeername_ipv4_nonblock_no_peer();
+}
+
+/// Test that setting the O_NONBLOCK flag changes the blocking state of a socket.
+fn test_fcntl_nonblock_opt() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change socket to be non-blocking.
+        errno_check(libc::fcntl(sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+    // Ensure that socket is really non-blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
+
+    unsafe {
+        // Change socket back to be blocking.
+        errno_check(libc::fcntl(sockfd, libc::F_SETFL, 0));
+    }
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+    // Ensure that socket is really blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "solaris",
+    target_os = "illumos"
+))]
+/// Test creating a non-blocking socket by using the SOCK_NONBLOCK option
+/// for the `socket` syscall.
+fn test_sock_nonblock_opt() {
+    let sockfd = unsafe {
+        errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_NONBLOCK, 0))
+            .unwrap()
+    };
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+    // Ensure that socket is really non-blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
+}
+
+#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+/// Test changing the blocking state of a socket using the `ioctl(fd, FIONBIO, ...)`
+/// syscall.
+fn test_ioctl_fionbio_op() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change socket to be non-blocking.
+        let mut value = 1 as libc::c_int;
+        errno_check(libc::ioctl(sockfd, libc::FIONBIO, &mut value));
+    }
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+    // Ensure that socket is really non-blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
+
+    unsafe {
+        // Change socket back to be blocking.
+        let mut value = 0 as libc::c_int;
+        errno_check(libc::ioctl(sockfd, libc::FIONBIO, &mut value));
+    }
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+    // Ensure that socket is really blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
+}
+
+/// Test that nonblocking TCP server sockets return [`ErrorKind::WouldBlock`] when trying
+/// to accept when no incoming connection exists. This also tests that nonblocking server sockets
+/// are still able to accept incoming connections should they already exist before the `accept` or
+/// `accept4` syscall is called.
+fn test_accept_nonblock() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change server socket to be non-blocking.
+        errno_check(libc::fcntl(server_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // This should fail as we don't have an incoming connection for this address.
+    let err = net::accept_ipv4(server_sockfd).unwrap_err();
+    // Assert that either EAGAIN or EWOULDBLOCK was returned.
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        // Instantly yield to main thread to ensure that the `connect` syscall
+        // was called before we call the `accept` on the server.
+        thread::sleep(Duration::from_millis(10));
+
+        net::accept_ipv4(server_sockfd).unwrap();
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    server_thread.join().unwrap();
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "solaris",
+    target_os = "illumos"
+))]
+/// Test that calling `accept4` with the SOCK_NONBLOCK flag produces
+/// a non-blocking peer socket.
+fn test_accept4_sock_nonblock_opt() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::sockname_ipv4(|storage, len| unsafe {
+            libc::accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
+        })
+        .unwrap();
+
+        let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
+
+        // Ensure that peer socket is non-blocking.
+        assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
+
+        let mut buffer = [0u8; 8];
+        // Reading from a socket should return EWOULDBLOCK when there is no
+        // data written into it.
+        let err = unsafe {
+            errno_result(libc::read(peerfd, buffer.as_mut_ptr().cast(), buffer.len())).unwrap_err()
+        };
+        assert_eq!(err.kind(), ErrorKind::WouldBlock);
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    server_thread.join().unwrap();
+}
+
+/// Test that connecting to a server socket works when the client
+/// socket is non-blocking before the `connect` call.
+fn test_connect_nonblock() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        net::accept_ipv4(server_sockfd).unwrap();
+    });
+
+    // Yield to server thread to ensure that it's currently accepting.
+    thread::sleep(Duration::from_millis(10));
+
+    // Non-blocking connects always "fail" with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    loop {
+        // There should be no error during async connection.
+        let errno = net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR)
+            .unwrap();
+        assert_eq!(errno, 0);
+
+        let result = net::sockname_ipv4(|storage, len| unsafe {
+            libc::getpeername(client_sockfd, storage, len)
+        });
+        match result {
+            Ok(_) => {
+                // The client is now connected.
+                break;
+            }
+            Err(err) if err.kind() == ErrorKind::NotConnected => {
+                // The client is still connecting.
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(err) => panic!("unexpected error whilst ensuring connection: {err}"),
+        }
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test sending bytes into and receiving bytes from a connected stream without blocking.
+fn test_send_recv_nonblock() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        // `peerfd` is a blocking socket now. But that's okay, the client still does non-blocking
+        // reads/writes.
+
+        // Yield back to client so that it starts receiving before we start sending.
+        thread::sleep(Duration::from_millis(10));
+
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::send(peerfd, buf, count, 0),
+            )
+            .unwrap()
+        };
+
+        // The buffer should contain `TEST_BYTES` at the beginning.
+        // This will block until the client sent us this data.
+        let mut buffer = [0; TEST_BYTES.len()];
+        unsafe {
+            libc_utils::read_exact_generic(
+                buffer.as_mut_ptr().cast(),
+                buffer.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::recv(peerfd, buf, count, 0),
+            )
+            .unwrap()
+        };
+        assert_eq!(&buffer, TEST_BYTES);
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We are connected and the server socket is not writing.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    // Receiving from a socket when the peer is not writing is
+    // not possible without blocking.
+    let err = unsafe {
+        errno_result(libc::recv(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+
+    // Try to receive bytes from the peer socket without blocking.
+    // Since the peer socket might do partial writes, we might need to
+    // sleep multiple times until we received everything.
+
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::RetryAfter(Duration::from_millis(10)),
+            |buf, count| libc::recv(client_sockfd, buf, count, 0),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, TEST_BYTES);
+
+    // Test non-blocking writing.
+
+    // Sending into the empty buffer should succeed without blocking.
+    unsafe {
+        libc_utils::write_all_generic(
+            TEST_BYTES.as_ptr().cast(),
+            TEST_BYTES.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::send(client_sockfd, buf, count, 0),
+        )
+        .unwrap()
+    };
+
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
+                fill_buf.as_ptr().cast(),
+                fill_buf.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::send(client_sockfd, buf, count, 0),
+            )
+        };
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+
+    server_thread.join().unwrap();
+}
+
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "solaris",
+    target_os = "illumos"
+))]
+/// Test sending bytes into and receiving bytes from a connected stream without blocking.
+/// Instead of using non-blocking sockets, we test whether it works with blocking sockets
+/// when passing the `libc::MSG_DONTWAIT` flag to the send and receive calls.
+fn test_send_recv_dontwait() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        // Similar to above we use blocking operations on the server side.
+
+        // Yield back to client so that it starts receiving before we start sending.
+        thread::sleep(Duration::from_millis(10));
+
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::send(peerfd, buf, count, 0),
+            )
+            .unwrap()
+        };
+
+        // The buffer should contain `TEST_BYTES` at the beginning.
+        // This will block until the client sent us this data.
+        let mut buffer = [0; TEST_BYTES.len()];
+        unsafe {
+            libc_utils::read_exact_generic(
+                buffer.as_mut_ptr().cast(),
+                buffer.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::recv(peerfd, buf, count, 0),
+            )
+            .unwrap()
+        };
+        assert_eq!(&buffer, TEST_BYTES);
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    // We are connected and the server socket is not writing.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    // Receiving from a socket when the peer is not writing is
+    // not possible without blocking.
+    let err = unsafe {
+        errno_result(libc::recv(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_DONTWAIT,
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+
+    // Try to receive bytes from the peer socket without blocking.
+    // Since the peer socket might do partial writes, we might need to
+    // sleep multiple times until we received everything.
+
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::RetryAfter(Duration::from_millis(10)),
+            |buf, count| libc::recv(client_sockfd, buf, count, libc::MSG_DONTWAIT),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, TEST_BYTES);
+
+    // Test non-blocking writing.
+
+    // Sending into the empty buffer should succeed without blocking.
+    unsafe {
+        libc_utils::write_all_generic(
+            TEST_BYTES.as_ptr().cast(),
+            TEST_BYTES.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::send(client_sockfd, buf, count, libc::MSG_DONTWAIT),
+        )
+        .unwrap()
+    };
+
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
+                fill_buf.as_ptr().cast(),
+                fill_buf.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::send(client_sockfd, buf, count, libc::MSG_DONTWAIT),
+            )
+        };
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test writing bytes into and reading bytes from a connected stream without blocking.
+fn test_write_read_nonblock() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        // Similar to above we use blocking operations on the server side.
+
+        // Yield back to client so that it starts receiving before we start sending.
+        thread::sleep(Duration::from_millis(10));
+
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+        // The buffer should contain `TEST_BYTES` at the beginning.
+        // This will block until the client sent us this data.
+        let mut buffer = [0; TEST_BYTES.len()];
+        libc_utils::read_exact(peerfd, &mut buffer).unwrap();
+        assert_eq!(&buffer, TEST_BYTES);
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We are connected and the server socket is not writing.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    // Reading from a socket when the peer is not writing is
+    // not possible without blocking.
+    let err = unsafe {
+        errno_result(libc::read(
+            client_sockfd,
+            buffer.as_mut_ptr() as *mut libc::c_void,
+            buffer.len(),
+        ))
+        .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+
+    // Try to read bytes from the peer socket without blocking.
+    // Since the peer socket might do partial writes, we might need to
+    // sleep multiple times until we read everything.
+
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::RetryAfter(Duration::from_millis(10)),
+            |buf, count| libc::read(client_sockfd, buf, count),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, TEST_BYTES);
+
+    // Now we test non-blocking writing.
+
+    // Writing into the empty buffer should succeed without blocking.
+    libc_utils::write_all(client_sockfd, TEST_BYTES).unwrap();
+
+    let fill_buf = [1u8; 32_000];
+    // Keep sending data until the buffer is full and we would block.
+    loop {
+        let result = unsafe {
+            libc_utils::write_all_generic(
+                fill_buf.as_ptr().cast(),
+                fill_buf.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::write(client_sockfd, buf, count),
+            )
+        };
+
+        match result {
+            Ok(_) => { /* continue to fill buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test that Miri's internal temporary read buffer gets correctly deallocated when the
+/// vectored read produces an error due to the socket read buffer being empty.
+fn test_readv_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let err = unsafe {
+        errno_result(libc::readv(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+}
+
+/// Test that Miri's internal temporary write buffer gets correctly deallocated when the
+/// vectored write produces an error due to the socket write buffer being full.
+fn test_writev_nonblock_err() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    let mut write_buffer = [1u8; 32_000];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(15_000);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    loop {
+        let result = unsafe {
+            errno_result(libc::writev(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int))
+        };
+
+        match result {
+            Ok(_) => { /* continue filling buffer */ }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+}
+
+/// Test the `getsockname` syscall on a connecting IPv4 socket
+/// which is not connected.
+fn test_getsockname_ipv4_connect_nonblock() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12321` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12321` is just a random non-zero port because Windows
+    // and Apple hosts return EADDRNOTAVAIL when attempting to connect to
+    // a zero port.
+    let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
+
+    // Non-blocking connect should fail with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getsockname(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    // The unspecified IPv4 address.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    if cfg!(windows_host) {
+        // On Windows hosts a connecting socket is bound to the unspecified address.
+        assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    } else {
+        // On UNIX hosts a connecting socket is bound to any local interface address
+        // but not the unspecified address.
+        assert_ne!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    }
+    assert!(sock_addr.sin_port > 0);
+}
+
+/// Test that the `getpeername` syscall successfully returns the peer address
+/// for a non-blocking IPv4 socket whose connection has been successfully
+/// established before calling the syscall.
+fn test_getpeername_ipv4_nonblock() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        net::accept_ipv4(server_sockfd).unwrap();
+    });
+
+    // Yield to server thread to ensure that it's currently accepting.
+    thread::sleep(Duration::from_millis(10));
+
+    // Non-blocking connects always "fail" with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    loop {
+        let peername_result = net::sockname_ipv4(|storage, len| unsafe {
+            libc::getpeername(client_sockfd, storage, len)
+        });
+
+        match peername_result {
+            Ok((_, peer_addr)) => {
+                assert_eq!(addr.sin_family, peer_addr.sin_family);
+                assert_eq!(addr.sin_port, peer_addr.sin_port);
+                assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
+                break;
+            }
+            Err(err) if err.kind() == ErrorKind::NotConnected => {
+                // Connection is not yet established; wait and retry later.
+                thread::sleep(Duration::from_millis(10))
+            }
+            Err(err) => {
+                panic!("error whilst getting peername: {err}")
+            }
+        }
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test that the `getpeername` syscall returns ENOTCONN
+/// for a non-blocking IPv4 socket which is stuck at
+/// connecting to the remote address.
+fn test_getpeername_ipv4_nonblock_no_peer() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12321` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12321` is just a random non-zero port because Windows
+    // and Apple hosts return EADDRNOTAVAIL when attempting to connect to
+    // a zero port.
+    let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
+
+    // Non-blocking connect should fail with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    // There should be no error during async connection.
+    let errno =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR).unwrap();
+    assert_eq!(errno, 0);
+
+    // Since we're never accepting the connection, the socket should never be
+    // successfully connected and thus we should be unable to read the peername.
+    let Err(err) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getpeername(client_sockfd, storage, len)
+    }) else {
+        unreachable!()
+    };
+    assert_eq!(err.kind(), ErrorKind::NotConnected);
+}

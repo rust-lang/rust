@@ -1,0 +1,421 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_trait"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "F"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Fn"
+                  PARENTHESIZED_ARG_LIST
+                    L_PAREN "("
+                    TYPE_ARG
+                      REF_TYPE
+                        AMP "&"
+                        LIFETIME
+                          LIFETIME_IDENT "'a"
+                        WHITESPACE " "
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "str"
+                    R_PAREN ")"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_ref"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          LIFETIME
+            LIFETIME_IDENT "'a"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "F"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Debug"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_parens"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        PAREN_TYPE
+          L_PAREN "("
+          REF_TYPE
+            AMP "&"
+            LIFETIME
+              LIFETIME_IDENT "'a"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "F"
+          R_PAREN ")"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Fn"
+                  PARENTHESIZED_ARG_LIST
+                    L_PAREN "("
+                    TYPE_ARG
+                      REF_TYPE
+                        AMP "&"
+                        LIFETIME
+                          LIFETIME_IDENT "'a"
+                        WHITESPACE " "
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "str"
+                    R_PAREN ")"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_slice"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "F"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        SLICE_TYPE
+          L_BRACK "["
+          REF_TYPE
+            AMP "&"
+            LIFETIME
+              LIFETIME_IDENT "'a"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "F"
+          R_BRACK "]"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Eq"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_qpath"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "_t"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "T"
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH
+              PATH_SEGMENT
+                TYPE_ANCHOR
+                  L_ANGLE "<"
+                  REF_TYPE
+                    AMP "&"
+                    LIFETIME
+                      LIFETIME_IDENT "'a"
+                    WHITESPACE " "
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "T"
+                  WHITESPACE " "
+                  AS_KW "as"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Baz"
+                  R_ANGLE ">"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Foo"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Iterator"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "for_for_fn"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE "\n    "
+      WHERE_PRED
+        FOR_BINDER
+          FOR_KW "for"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'a"
+            R_ANGLE ">"
+        WHITESPACE " "
+        FOR_TYPE
+          FOR_BINDER
+            FOR_KW "for"
+            GENERIC_PARAM_LIST
+              L_ANGLE "<"
+              LIFETIME_PARAM
+                LIFETIME
+                  LIFETIME_IDENT "'b"
+              R_ANGLE ">"
+          WHITESPACE " "
+          FN_PTR_TYPE
+            FN_KW "fn"
+            PARAM_LIST
+              L_PAREN "("
+              PARAM
+                REF_TYPE
+                  AMP "&"
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+              COMMA ","
+              WHITESPACE " "
+              PARAM
+                REF_TYPE
+                  AMP "&"
+                  LIFETIME
+                    LIFETIME_IDENT "'b"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+              R_PAREN ")"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+      COMMA ","
+    WHITESPACE "\n"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

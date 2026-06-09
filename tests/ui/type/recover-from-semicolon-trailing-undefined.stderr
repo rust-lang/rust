@@ -1,0 +1,26 @@
+error: cannot find macro `x` in this scope
+  --> $DIR/recover-from-semicolon-trailing-undefined.rs:7:9
+   |
+LL |         x!("{}", x);
+   |         ^
+
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/recover-from-semicolon-trailing-undefined.rs:10:20
+   |
+LL |       let x_str = {
+   |  _________________-
+LL | |         x!("{}", x);
+LL | |
+LL | |     };
+   | |_____- this block is missing a tail expression
+LL |       println!("{}", x_str);
+   |                 --   ^^^^^ `()` cannot be formatted with the default formatter
+   |                 |
+   |                 required by this formatting parameter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

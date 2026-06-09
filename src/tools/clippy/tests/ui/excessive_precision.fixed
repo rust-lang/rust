@@ -1,0 +1,147 @@
+#![warn(clippy::excessive_precision)]
+#![allow(
+    dead_code,
+    overflowing_literals,
+    unused_variables,
+    clippy::print_literal,
+    clippy::useless_vec,
+    clippy::approx_constant
+)]
+
+macro_rules! make_pi {
+    ($i:ident : $t:ty) => {
+        const $i: $t = 3.14159265358979323846264338327950288419716939937510582097494459230781640628;
+    };
+}
+
+fn main() {
+    // Consts
+    const GOOD32: f32 = 0.123_456;
+    const GOOD32_SM: f32 = 0.000_000_000_1;
+    const GOOD32_DOT: f32 = 10_000_000_000.0;
+    const GOOD32_EDGE: f32 = 1.000_000_8;
+    const GOOD64: f64 = 0.123_456_789_012;
+    const GOOD64_SM: f32 = 0.000_000_000_000_000_1;
+    const GOOD64_DOT: f32 = 10_000_000_000_000_000.0;
+
+    const BAD32_1: f32 = 0.123_456_79_f32;
+    //~^ excessive_precision
+    const BAD32_2: f32 = 0.123_456_79;
+    //~^ excessive_precision
+    const BAD32_3: f32 = 0.1;
+    //~^ excessive_precision
+    const BAD32_EDGE: f32 = 1.000_001;
+    //~^ excessive_precision
+
+    const BAD64_1: f64 = 0.123_456_789_012_345_67f64;
+    const BAD64_2: f64 = 0.123_456_789_012_345_67;
+    const BAD64_3: f64 = 0.1;
+    //~^ excessive_precision
+
+    // Literal as param
+    println!("{:?}", 8.888_888_888_888_89);
+    //~^ excessive_precision
+
+    // // TODO add inferred type tests for f32
+    // Locals
+    let good32: f32 = 0.123_456_f32;
+    let good32_2: f32 = 0.123_456;
+
+    let good64: f64 = 0.123_456_789_012;
+    let good64_suf: f64 = 0.123_456_789_012f64;
+    let good64_inf = 0.123_456_789_012;
+
+    let bad32: f32 = 1.123_456_8;
+    //~^ excessive_precision
+    let bad32_suf: f32 = 1.123_456_8_f32;
+    //~^ excessive_precision
+    let bad32_inf = 1.123_456_8_f32;
+    //~^ excessive_precision
+
+    let bad64: f64 = 0.123_456_789_012_345_67;
+    let bad64_suf: f64 = 0.123_456_789_012_345_67f64;
+    let bad64_inf = 0.123_456_789_012_345_67;
+
+    // Vectors
+    let good_vec32: Vec<f32> = vec![0.123_456];
+    let good_vec64: Vec<f64> = vec![0.123_456_789];
+
+    let bad_vec32: Vec<f32> = vec![0.123_456_79];
+    //~^ excessive_precision
+    let bad_vec64: Vec<f64> = vec![0.123_456_789_123_456_78];
+    //~^ excessive_precision
+
+    // Exponential float notation
+    let good_e32: f32 = 1e-10;
+    let bad_e32: f32 = 1.123_456_8e-10;
+    //~^ excessive_precision
+
+    let good_bige32: f32 = 1E-10;
+    let bad_bige32: f32 = 1.123_456_8E-10;
+    //~^ excessive_precision
+
+    // Inferred type
+    let good_inferred: f32 = 1f32 * 1_000_000_000.;
+
+    // issue #2840
+    let num = 0.000_000_000_01e-10f64;
+
+    // issue #6341
+    let exponential: f64 = 4.886506780521244E-03;
+
+    // issue #7744
+    let _ = 2.225_073_858_507_201e-308_f64;
+    //~^ excessive_precision
+
+    // issue #7745
+    let _ = 0_f64;
+    //~^ excessive_precision
+
+    // issue #9910
+    const INF1: f32 = 1.0e+33f32;
+    const INF2: f64 = 1.0e+3300f64;
+    const NEG_INF1: f32 = -1.0e+33f32;
+    const NEG_INF2: f64 = -1.0e+3300f64;
+    const NEG_INF3: f32 = -3.40282357e+38_f32;
+
+    // issue #12954
+    const _: f64 = 3.0;
+    //~^ excessive_precision
+    const _: f64 = 3.0000000000000000;
+
+    // Overly specified constants
+    let _: f32 = 1.012_345_7;
+    //~^ excessive_precision
+    let _: f64 = 1.012_345_678_901_234_6;
+    //~^ excessive_precision
+    const _: f32 = 1.01234567890123456789012345678901234567890;
+    const _: f64 = 1.01234567890123456789012345678901234567890;
+
+    static STATIC1: f32 = 1.01234567890123456789012345678901234567890;
+    static STATIC2: f64 = 1.01234567890123456789012345678901234567890;
+
+    static mut STATIC_MUT1: f32 = 1.01234567890123456789012345678901234567890;
+    static mut STATIC_MUT2: f64 = 1.01234567890123456789012345678901234567890;
+
+    // From issue #13855
+    let gamma = 0.577_215_664_901_532_9;
+    //~^ excessive_precision
+    const GAMMA: f64 = 0.5772156649015328606065120900824024310421;
+
+    make_pi!(P32: f32);
+    make_pi!(P64: f64);
+}
+
+trait ExcessivelyPreciseTrait {
+    // Overly specified constants
+    const GOOD1: f32 = 1.01234567890123456789012345678901234567890;
+    const GOOD2: f64 = 1.01234567890123456789012345678901234567890;
+}
+
+struct ExcessivelyPreciseStruct;
+
+impl ExcessivelyPreciseStruct {
+    // Overly specified constants
+    const GOOD1: f32 = 1.01234567890123456789012345678901234567890;
+    const GOOD2: f64 = 1.01234567890123456789012345678901234567890;
+}

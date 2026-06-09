@@ -1,0 +1,57 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/by_value.rs:18:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: First Pass analysis includes:
+  --> $DIR/by_value.rs:22:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let p = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
+  --> $DIR/by_value.rs:25:17
+   |
+LL |         let p = t.0.0;
+   |                 ^^^^^
+note: Capturing t[(1, 0)] -> Immutable
+  --> $DIR/by_value.rs:28:29
+   |
+LL |         println!("{} {:?}", t.1, p);
+   |                             ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/by_value.rs:22:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let p = t.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/by_value.rs:25:17
+   |
+LL |         let p = t.0.0;
+   |                 ^^^^^
+note: Min Capture t[(1, 0)] -> Immutable
+  --> $DIR/by_value.rs:28:29
+   |
+LL |         println!("{} {:?}", t.1, p);
+   |                             ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,11 @@
+warning: unused closure that must be used
+  --> $DIR/unused-closure-ice-16256.rs:7:5
+   |
+LL |     |c: u8| buf.push(c);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

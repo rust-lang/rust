@@ -1,0 +1,8 @@
+error: expected one of `(`, `::`, `<`, or `>`, found `;`
+  --> $DIR/ice-const-generic-function-return-ty.rs:2:46
+   |
+LL | fn return_ty() -> impl Into<<() as Reexported;
+   |                                              ^ expected one of `(`, `::`, `<`, or `>`
+
+error: aborting due to 1 previous error
+

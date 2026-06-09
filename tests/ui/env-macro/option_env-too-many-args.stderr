@@ -1,0 +1,8 @@
+error: option_env! takes 1 argument
+  --> $DIR/option_env-too-many-args.rs:1:13
+   |
+LL | fn main() { option_env!("one", "two"); }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

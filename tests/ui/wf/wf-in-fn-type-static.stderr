@@ -1,0 +1,31 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-in-fn-type-static.rs:13:8
+   |
+LL |     x: fn() -> &'static T
+   |        ^^^^^^^^^^^^^^^^^^
+   |        |
+   |        the parameter type `T` must be valid for the static lifetime...
+   |        ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Foo<T: 'static> {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/wf-in-fn-type-static.rs:18:8
+   |
+LL |     x: fn(&'static T)
+   |        ^^^^^^^^^^^^^^
+   |        |
+   |        the parameter type `T` must be valid for the static lifetime...
+   |        ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Bar<T: 'static> {
+   |             +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

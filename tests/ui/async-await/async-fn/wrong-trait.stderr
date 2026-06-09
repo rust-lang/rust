@@ -1,0 +1,8 @@
+error: `async` bound modifier only allowed on `Fn`/`FnMut`/`FnOnce` traits
+  --> $DIR/wrong-trait.rs:7:23
+   |
+LL | fn test(x: impl async Foo) {}
+   |                       ^^^
+
+error: aborting due to 1 previous error
+

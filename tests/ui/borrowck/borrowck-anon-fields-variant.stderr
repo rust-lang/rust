@@ -1,0 +1,40 @@
+error[E0503]: cannot use `y` because it was mutably borrowed
+  --> $DIR/borrowck-anon-fields-variant.rs:16:19
+   |
+LL |       Foo::Y(ref mut a, _) => a,
+   |              --------- `y.0` is borrowed here
+...
+LL |     let b = match y {
+   |                   ^ use of borrowed `y.0`
+...
+LL |     *a += 1;
+   |     ------- borrow later used here
+
+error[E0503]: cannot use `y` because it was mutably borrowed
+  --> $DIR/borrowck-anon-fields-variant.rs:34:19
+   |
+LL |       Foo::Y(ref mut a, _) => a,
+   |              --------- `y.0` is borrowed here
+...
+LL |     let b = match y {
+   |                   ^ use of borrowed `y.0`
+...
+LL |     *a += 1;
+   |     ------- borrow later used here
+
+error[E0499]: cannot borrow `y.0` as mutable more than once at a time
+  --> $DIR/borrowck-anon-fields-variant.rs:36:14
+   |
+LL |       Foo::Y(ref mut a, _) => a,
+   |              --------- first mutable borrow occurs here
+...
+LL |       Foo::Y(ref mut b, _) => b,
+   |              ^^^^^^^^^ second mutable borrow occurs here
+...
+LL |     *a += 1;
+   |     ------- first borrow later used here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0499, E0503.
+For more information about an error, try `rustc --explain E0499`.

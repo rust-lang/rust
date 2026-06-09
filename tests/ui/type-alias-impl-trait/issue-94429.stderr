@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/issue-94429.rs:18:9: 18:16} as Coroutine>::Yield == ()`
+  --> $DIR/issue-94429.rs:15:26
+   |
+LL |     fn run(&mut self) -> Self::Coro {
+   |                          ^^^^^^^^^^ expected `()`, found integer
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

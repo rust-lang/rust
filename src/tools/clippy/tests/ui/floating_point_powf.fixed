@@ -1,0 +1,92 @@
+#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
+#![allow(clippy::unnecessary_cast)]
+
+// FIXME(f16_f128): add tests for these types when `powf` is available
+
+fn main() {
+    let x = 3f32;
+    let _ = x.exp2();
+    //~^ suboptimal_flops
+    let _ = 3.1f32.exp2();
+    //~^ suboptimal_flops
+    let _ = (-3.1f32).exp2();
+    //~^ suboptimal_flops
+    let _ = x.exp();
+    //~^ suboptimal_flops
+    let _ = 3.1f32.exp();
+    //~^ suboptimal_flops
+    let _ = (-3.1f32).exp();
+    //~^ suboptimal_flops
+    let _ = x.sqrt();
+    //~^ suboptimal_flops
+    let _ = x.cbrt();
+    //~^ imprecise_flops
+    let _ = (x as f32).cbrt();
+    //~^ imprecise_flops
+    let _ = x.powi(3);
+    //~^ suboptimal_flops
+    let _ = x.powi(-2);
+    //~^ suboptimal_flops
+    let _ = x.powi(16_777_215);
+    //~^ suboptimal_flops
+    let _ = x.powi(-16_777_215);
+    //~^ suboptimal_flops
+    let _ = (x as f32).powi(-16_777_215);
+    //~^ suboptimal_flops
+    let _ = (x as f32).powi(3);
+    //~^ suboptimal_flops
+    let _ = (1.5_f32 + 1.0).cbrt();
+    //~^ imprecise_flops
+    let _ = 1.5_f64.cbrt();
+    //~^ imprecise_flops
+    let _ = 1.5_f64.sqrt();
+    //~^ suboptimal_flops
+    let _ = 1.5_f64.powi(3);
+    //~^ suboptimal_flops
+
+    macro_rules! m {
+        ($e:expr) => {
+            5.5 - $e
+        };
+    }
+
+    let _ = (1f32 + m!(2.0)).exp2();
+    //~^ suboptimal_flops
+
+    // Cases where the lint shouldn't be applied
+    let _ = x.powf(2.1);
+    let _ = x.powf(-2.1);
+    let _ = x.powf(16_777_216.0);
+    let _ = x.powf(-16_777_216.0);
+
+    let x = 3f64;
+    let _ = x.exp2();
+    //~^ suboptimal_flops
+    let _ = 3.1f64.exp2();
+    //~^ suboptimal_flops
+    let _ = (-3.1f64).exp2();
+    //~^ suboptimal_flops
+    let _ = x.exp();
+    //~^ suboptimal_flops
+    let _ = 3.1f64.exp();
+    //~^ suboptimal_flops
+    let _ = (-3.1f64).exp();
+    //~^ suboptimal_flops
+    let _ = x.sqrt();
+    //~^ suboptimal_flops
+    let _ = x.cbrt();
+    //~^ imprecise_flops
+    let _ = x.powi(3);
+    //~^ suboptimal_flops
+    let _ = x.powi(-2);
+    //~^ suboptimal_flops
+    let _ = x.powi(-2_147_483_648);
+    //~^ suboptimal_flops
+    let _ = x.powi(2_147_483_647);
+    //~^ suboptimal_flops
+    // Cases where the lint shouldn't be applied
+    let _ = x.powf(2.1);
+    let _ = x.powf(-2.1);
+    let _ = x.powf(-2_147_483_649.0);
+    let _ = x.powf(2_147_483_648.0);
+}

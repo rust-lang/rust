@@ -1,0 +1,21 @@
+error: `#[repr(align(...))]` attribute cannot be used on required trait methods
+  --> $DIR/repr-align-in-trait-issue-132391.rs:2:5
+   |
+LL |     #[repr(align)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(align(...))]` can only be applied to data types
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/repr-align-in-trait-issue-132391.rs:2:5
+   |
+LL |     #[repr(align)]
+   |     ^^^^^^^-----^^
+   |            |
+   |            expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

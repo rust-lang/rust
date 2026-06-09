@@ -1,0 +1,26 @@
+error[E0609]: no field `ab` on type `(Box<(dyn Fn(Option<A>) -> Option<B> + 'static)>, Box<(dyn Fn(Option<B>) -> Option<A> + 'static)>)`
+  --> $DIR/well-formed-recursion-limit.rs:12:23
+   |
+LL |     let (ab, ba) = (i.ab, i.ba);
+   |                       ^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0609]: no field `ba` on type `(Box<(dyn Fn(Option<A>) -> Option<B> + 'static)>, Box<(dyn Fn(Option<B>) -> Option<A> + 'static)>)`
+  --> $DIR/well-formed-recursion-limit.rs:12:29
+   |
+LL |     let (ab, ba) = (i.ab, i.ba);
+   |                             ^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0275]: overflow assigning `_` to `Option<_>`
+  --> $DIR/well-formed-recursion-limit.rs:15:33
+   |
+LL |     let left = move |o_a| match o_a {
+   |                                 ^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0275, E0609.
+For more information about an error, try `rustc --explain E0275`.

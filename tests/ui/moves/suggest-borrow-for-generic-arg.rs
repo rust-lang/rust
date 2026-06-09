@@ -1,0 +1,46 @@
+//! Test suggestions to borrow generic arguments instead of moving. Tests for other instances of
+//! this can be found in `moved-value-on-as-ref-arg.rs` and `borrow-closures-instead-of-move.rs`
+//@ run-rustfix
+//@ aux-crate:aux=suggest-borrow-for-generic-arg-aux.rs
+//@ edition: 2021
+
+#![allow(unused_mut)]
+use std::io::{self, Write};
+
+// test for `std::io::Write` (#131413)
+fn test_write() -> io::Result<()> {
+    let mut stdout = io::stdout();
+    aux::write_stuff(stdout)?; //~ HELP consider borrowing `stdout`
+    writeln!(stdout, "second line")?; //~ ERROR borrow of moved value: `stdout`
+
+    let mut buf = Vec::new();
+    aux::write_stuff(buf)?; //~ HELP consider mutably borrowing `buf`
+    //~^ HELP consider cloning the value
+    writeln!(buf, "second_line") //~ ERROR borrow of moved value: `buf`
+}
+
+/// test for `std::io::Read` (#131413)
+fn test_read() -> io::Result<()> {
+    let stdin = io::stdin();
+    aux::read_and_discard(stdin)?; //~ HELP consider borrowing `stdin`
+    aux::read_and_discard(stdin)?; //~ ERROR use of moved value: `stdin`
+
+    let mut bytes = std::collections::VecDeque::from([1, 2, 3, 4, 5, 6]);
+    aux::read_and_discard(bytes)?; //~ HELP consider mutably borrowing `bytes`
+    //~^ HELP consider cloning the value
+    aux::read_and_discard(bytes) //~ ERROR use of moved value: `bytes`
+}
+
+/// test that suggestions work with projection types in the callee's signature
+fn test_projections() {
+    let mut iter = [1, 2, 3, 4, 5, 6].into_iter();
+    let _six: usize = aux::sum_three(iter); //~ HELP consider mutably borrowing `iter`
+    //~^ HELP consider cloning the value
+    let _fifteen: usize = aux::sum_three(iter); //~ ERROR use of moved value: `iter`
+}
+
+fn main() {
+    test_write().unwrap();
+    test_read().unwrap();
+    test_projections();
+}

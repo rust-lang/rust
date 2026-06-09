@@ -1,0 +1,8 @@
+error: type annotations needed for the literal
+  --> $DIR/generic_const_type_mismatch.rs:16:59
+   |
+LL | type const WRAP<T : ConstParamTy_> : T = Foo::<T>{field : 1};
+   |                                                           ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: macro expansion ends with an incomplete expression: expected one of `!` or `::`
+  --> $DIR/in-repetition.rs:14:35
+   |
+LL |                 ${concat(_, $arg)}
+   |                                   ^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

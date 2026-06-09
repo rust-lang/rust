@@ -1,0 +1,69 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: doc
+---
+[Doc] doc::UnstableBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/unstable-book})
+[Doc] doc::UnstableBookGen
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({doc::src/tools/unstable-book-gen})
+[Doc] doc::TheBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/book})
+[Doc] doc::Standalone
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc})
+    - Set({doc::standalone})
+[Doc] doc::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::library})
+    - Set({doc::library/alloc})
+    - Set({doc::library/compiler-builtins/compiler-builtins})
+    - Set({doc::library/core})
+    - Set({doc::library/panic_abort})
+    - Set({doc::library/panic_unwind})
+    - Set({doc::library/proc_macro})
+    - Set({doc::library/rustc-std-workspace-core})
+    - Set({doc::library/std})
+    - Set({doc::library/std_detect})
+    - Set({doc::library/sysroot})
+    - Set({doc::library/test})
+    - Set({doc::library/unwind})
+[Doc] doc::ErrorIndex
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({doc::src/tools/error_index_generator})
+[Doc] doc::Nomicon
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/nomicon})
+[Doc] doc::Reference
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/reference})
+[Doc] doc::RustdocBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/rustdoc})
+[Doc] doc::RustByExample
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/rust-by-example})
+[Doc] doc::RustcBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({doc::src/doc/rustc})
+[Doc] doc::CargoBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/tools/cargo/src/doc})
+[Doc] doc::ClippyBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/tools/clippy/book})
+[Doc] doc::EmbeddedBook
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/embedded-book})
+[Doc] doc::EditionGuide
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/edition-guide})
+[Doc] doc::StyleGuide
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::src/doc/style-guide})
+[Doc] doc::Releases
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({doc::RELEASES.md})
+    - Set({doc::releases})

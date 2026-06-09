@@ -1,0 +1,11 @@
+error: `start` lang item function is not allowed to have `#[target_feature]`
+  --> $DIR/start_lang_item_with_target_feature.rs:20:1
+   |
+LL | #[target_feature(enable = "avx2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
+   | ------------------------------------------------------------------------------------------- `start` lang item function is not allowed to have `#[target_feature]`
+
+error: aborting due to 1 previous error
+

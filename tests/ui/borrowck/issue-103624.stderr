@@ -1,0 +1,52 @@
+error[E0507]: cannot move out of `self.b`, as `self` is a captured variable in an `Fn` closure
+  --> $DIR/issue-103624.rs:16:13
+   |
+LL |     async fn foo(&self) {
+   |                  -----
+   |                  |
+   |                  captured outer variable
+   |                  move occurs because `self.b` has type `StructB`, which does not implement the `Copy` trait
+LL |         let bar = self.b.bar().await;
+LL |         spawn_blocking(move || {
+   |                        ------- captured by this `Fn` closure
+LL |
+LL |             self.b;
+   |             ^^^^^^ `self.b` is moved here
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/issue-103624.rs:7:36
+   |
+LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {
+   |                                    ^^^^^^^^^^^
+note: if `StructB` implemented `Clone`, you could clone the value
+  --> $DIR/issue-103624.rs:23:1
+   |
+LL |             self.b;
+   |             ------ you could clone this value
+...
+LL | struct StructB {}
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+
+error[E0521]: borrowed data escapes outside of method
+  --> $DIR/issue-103624.rs:14:9
+   |
+LL |       async fn foo(&self) {
+   |                    -----
+   |                    |
+   |                    `self` is a reference that is only valid in the method body
+   |                    let's call the lifetime of this reference `'1`
+LL |           let bar = self.b.bar().await;
+LL | /         spawn_blocking(move || {
+LL | |
+LL | |             self.b;
+LL | |
+LL | |         })
+   | |          ^
+   | |          |
+   | |__________`self` escapes the method body here
+   |            argument requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0507, E0521.
+For more information about an error, try `rustc --explain E0507`.

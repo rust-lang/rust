@@ -1,0 +1,103 @@
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:20:5
+   |
+LL |     ((0))
+   |     ^^^^^ help: remove them: `(0)`
+   |
+   = note: `-D clippy::double-parens` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_parens)]`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:25:14
+   |
+LL |     dummy_fn((0));
+   |              ^^^ help: remove them: `0`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:30:20
+   |
+LL |     x.dummy_method((0));
+   |                    ^^^ help: remove them: `0`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:35:5
+   |
+LL |     ((1, 2))
+   |     ^^^^^^^^ help: remove them: `(1, 2)`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:41:5
+   |
+LL |     (())
+   |     ^^^^ help: remove them: `()`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:64:16
+   |
+LL |     assert_eq!(((1, 2)), (1, 2), "Error");
+   |                ^^^^^^^^ help: remove them: `(1, 2)`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:89:16
+   |
+LL |         () => {((100))}
+   |                ^^^^^^^ help: remove them: `(100)`
+...
+LL |     bar!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:96:5
+   |
+LL |     ((vec![1, 2]));
+   |     ^^^^^^^^^^^^^^ help: remove them: `(vec![1, 2])`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:98:14
+   |
+LL |     dummy_fn((vec![1, 2]));
+   |              ^^^^^^^^^^^^ help: remove them: `vec![1, 2]`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:100:20
+   |
+LL |     x.dummy_method((vec![1, 2]));
+   |                    ^^^^^^^^^^^^ help: remove them: `vec![1, 2]`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:110:21
+   |
+LL |             let a = (());
+   |                     ^^^^ help: remove them: `()`
+...
+LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
+   |                                      -------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:112:21
+   |
+LL |             let b = ((5));
+   |                     ^^^^^ help: remove them: `(5)`
+...
+LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
+   |                                      -------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:114:44
+   |
+LL |             let c = std::convert::identity((5));
+   |                                            ^^^ help: remove them: `5`
+...
+LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
+   |                                      -------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 13 previous errors
+

@@ -1,0 +1,88 @@
+// MIR for `disjoint_ranges` after SimplifyCfg-initial
+
+fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
+    debug x => _1;
+    debug b => _2;
+    let mut _0: u32;
+    let mut _3: &i32;
+    let mut _4: bool;
+    let mut _5: bool;
+    let mut _6: bool;
+    let mut _7: bool;
+    let mut _8: bool;
+
+    bb0: {
+        PlaceMention(_1);
+        _6 = Le(const 0_i32, copy _1);
+        switchInt(move _6) -> [0: bb3, otherwise: bb8];
+    }
+
+    bb1: {
+        _0 = const 3_u32;
+        goto -> bb14;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb11, imaginary: bb3];
+    }
+
+    bb3: {
+        _4 = Le(const 10_i32, copy _1);
+        switchInt(move _4) -> [0: bb5, otherwise: bb7];
+    }
+
+    bb4: {
+        falseEdge -> [real: bb10, imaginary: bb5];
+    }
+
+    bb5: {
+        switchInt(copy _1) -> [4294967295: bb6, otherwise: bb1];
+    }
+
+    bb6: {
+        falseEdge -> [real: bb9, imaginary: bb1];
+    }
+
+    bb7: {
+        _5 = Le(copy _1, const 20_i32);
+        switchInt(move _5) -> [0: bb5, otherwise: bb4];
+    }
+
+    bb8: {
+        _7 = Lt(copy _1, const 10_i32);
+        switchInt(move _7) -> [0: bb3, otherwise: bb2];
+    }
+
+    bb9: {
+        _0 = const 2_u32;
+        goto -> bb14;
+    }
+
+    bb10: {
+        _0 = const 1_u32;
+        goto -> bb14;
+    }
+
+    bb11: {
+        _3 = &fake shallow _1;
+        StorageLive(_8);
+        _8 = copy _2;
+        switchInt(move _8) -> [0: bb13, otherwise: bb12];
+    }
+
+    bb12: {
+        StorageDead(_8);
+        FakeRead(ForMatchGuard, _3);
+        _0 = const 0_u32;
+        goto -> bb14;
+    }
+
+    bb13: {
+        StorageDead(_8);
+        falseEdge -> [real: bb1, imaginary: bb3];
+    }
+
+    bb14: {
+        return;
+    }
+}

@@ -1,0 +1,28 @@
+error: argument to `size_of_val()` is a reference to a reference
+  --> tests/ui/size_of_ref.rs:13:5
+   |
+LL |     size_of_val(&&x);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: dereference the argument to `size_of_val()` to get the size of the value instead of the size of the reference-type
+   = note: `-D clippy::size-of-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::size_of_ref)]`
+
+error: argument to `size_of_val()` is a reference to a reference
+  --> tests/ui/size_of_ref.rs:16:5
+   |
+LL |     size_of_val(&y);
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: dereference the argument to `size_of_val()` to get the size of the value instead of the size of the reference-type
+
+error: argument to `size_of_val()` is a reference to a reference
+  --> tests/ui/size_of_ref.rs:28:9
+   |
+LL |         std::mem::size_of_val(&self) + (std::mem::size_of::<u8>() * self.data.capacity())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: dereference the argument to `size_of_val()` to get the size of the value instead of the size of the reference-type
+
+error: aborting due to 3 previous errors
+

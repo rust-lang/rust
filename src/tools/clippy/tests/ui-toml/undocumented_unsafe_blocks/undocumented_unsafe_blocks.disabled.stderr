@@ -1,0 +1,566 @@
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:244:22
+   |
+LL |             let _x = unsafe { 1 };
+   |                      ^^^^^^^^^^^^
+...
+LL |     t!();
+   |     ---- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::undocumented_unsafe_blocks)]`
+   = note: this error originates in the macro `t` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:256:13
+   |
+LL |             unsafe { 1 };
+   |             ^^^^^^^^^^^^
+...
+LL |     t!();
+   |     ---- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `t` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:337:19
+   |
+LL |     /* Safety: */ unsafe {}
+   |                   ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:342:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:347:14
+   |
+LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
+   |              ^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:347:29
+   |
+LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
+   |                             ^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:347:48
+   |
+LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
+   |                                                ^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:354:18
+   |
+LL |     let _ = (42, unsafe {}, "test", unsafe {});
+   |                  ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:354:37
+   |
+LL |     let _ = (42, unsafe {}, "test", unsafe {});
+   |                                     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:360:14
+   |
+LL |     let _ = *unsafe { &42 };
+   |              ^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:366:19
+   |
+LL |     let _ = match unsafe {} {
+   |                   ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:373:14
+   |
+LL |     let _ = &unsafe {};
+   |              ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:378:14
+   |
+LL |     let _ = [unsafe {}; 5];
+   |              ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:383:13
+   |
+LL |     let _ = unsafe {};
+   |             ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:394:8
+   |
+LL |     t!(unsafe {});
+   |        ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:401:13
+   |
+LL |             unsafe {}
+   |             ^^^^^^^^^
+...
+LL |     t!();
+   |     ---- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `t` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:410:5
+   |
+LL |     unsafe {} // SAFETY:
+   |     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:416:5
+   |
+LL |     unsafe {
+   |     ^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:427:5
+   |
+LL |     unsafe {};
+   |     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:432:20
+   |
+LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:440:5
+   |
+LL |     unsafe impl A for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:448:9
+   |
+LL |         unsafe impl B for (u32) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:470:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(());
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:496:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(());
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:506:5
+   |
+LL |     unsafe impl T for (i32) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:496:13
+   |
+LL |             unsafe impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     no_safety_comment!(u32);
+   |     ----------------------- in this macro invocation
+   |
+   = help: consider adding a safety comment on the preceding line
+   = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:513:5
+   |
+LL |     unsafe impl T for (bool) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:560:5
+   |
+LL |     unsafe impl NoComment for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:565:19
+   |
+LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:570:5
+   |
+LL |     unsafe impl TrailingComment for () {} // SAFETY:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: constant has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:575:5
+   |
+LL |     const BIG_NUMBER: i32 = 1000000;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:574:8
+   |
+LL |     // SAFETY:
+   |        ^^^^^^^
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:577:5
+   |
+LL |     unsafe impl Interference for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:585:5
+   |
+LL |     unsafe impl ImplInFn for () {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe impl missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:595:1
+   |
+LL | unsafe impl CrateRoot for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:606:9
+   |
+LL |         unsafe {};
+   |         ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: statement has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:610:5
+   |
+LL | /     let _ = {
+LL | |
+LL | |         if unsafe { true } {
+...  |
+LL | |     };
+   | |______^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:609:8
+   |
+LL |     // SAFETY: this is more than one level away, so it should warn
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:612:12
+   |
+LL |         if unsafe { true } {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:616:23
+   |
+LL |             let bar = unsafe {};
+   |                       ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:635:9
+   |
+LL |         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:640:9
+   |
+LL |         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:645:9
+   |
+LL |         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:652:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:657:5
+   |
+LL |     unsafe {
+   |     ^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:665:9
+   |
+LL |         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:671:9
+   |
+LL |         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:678:9
+   |
+LL |         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:684:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:705:52
+   |
+LL |         const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 0 };
+   |                                                    ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:714:41
+   |
+LL |         const NO_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+   |                                         ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:724:42
+   |
+LL |         const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 3 };
+   |                                          ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:729:40
+   |
+LL |         const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
+   |                                        ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:740:9
+   |
+LL |         unsafe { here_is_another_variable_with_long_name };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:769:9
+   |
+LL |         unsafe { Date::__from_ordinal_date_unchecked(1970, 1) }.into_julian_day_just_make_this_line_longer();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: statement has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:788:5
+   |
+LL |     _ = bar();
+   |     ^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:787:8
+   |
+LL |     // SAFETY: unnecessary_safety_comment triggers here
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:802:12
+   |
+LL |     return unsafe { h() };
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: module has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:808:5
+   |
+LL |     mod x {}
+   |     ^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:807:8
+   |
+LL |     // SAFETY: ...
+   |        ^^^^^^^
+
+error: module has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:818:5
+   |
+LL |     mod z {}
+   |     ^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:817:8
+   |
+LL |     // SAFETY: ...
+   |        ^^^^^^^
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:833:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:848:5
+   |
+LL |     unsafe fn unsafe_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the `safety` comment for a `# Safety` doc comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:847:8
+   |
+LL |     // SAFETY: Bla
+   |        ^^^^^^^
+
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:854:5
+   |
+LL |     unsafe fn unsafe_block_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider changing the `safety` comment for a `# Safety` doc comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:852:8
+   |
+LL |        SAFETY: Bla
+   |        ^^^^^^^
+
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:858:5
+   |
+LL |     fn safe_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:857:8
+   |
+LL |     // SAFETY: Bla
+   |        ^^^^^^^
+
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:862:5
+   |
+LL |     fn safe_doc_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:861:9
+   |
+LL |     /// SAFETY: Bla
+   |         ^^^^^^^
+
+error: aborting due to 62 previous errors
+

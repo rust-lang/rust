@@ -1,0 +1,50 @@
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:8:13
+   |
+LL | unsafe impl<#[may_dangle] 'a, T, const N: usize> NotDrop for Implee1<'a, T, N> {}
+   |             ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:11:17
+   |
+LL | unsafe impl<'a, #[may_dangle] T, const N: usize> NotDrop for Implee2<'a, T, N> {}
+   |                 ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:14:20
+   |
+LL | unsafe impl<'a, T, #[may_dangle] const N: usize> Drop for Implee1<'a, T, N> {
+   |                    ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:42:1
+   |
+LL | #[may_dangle]
+   | ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:45:1
+   |
+LL | #[may_dangle]
+   | ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:49:1
+   |
+LL | #[may_dangle]
+   | ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:51:5
+   |
+LL |     #[may_dangle]
+   |     ^^^^^^^^^^^^^
+
+error: `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+  --> $DIR/may_dangle.rs:36:17
+   |
+LL |     unsafe impl<#[may_dangle] T> Drop for Implee<T> {
+   |                 ^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

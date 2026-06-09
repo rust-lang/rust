@@ -1,0 +1,4 @@
+error: XRay instrumentation is not supported for this target
+
+error: aborting due to 1 previous error
+

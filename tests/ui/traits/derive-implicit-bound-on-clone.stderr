@@ -1,0 +1,53 @@
+error[E0308]: mismatched types
+  --> $DIR/derive-implicit-bound-on-clone.rs:10:5
+   |
+LL | fn clone_me<T, K>(x: &ContainsRc<T, K>) -> ContainsRc<T, K> {
+   |                                            ---------------- expected `ContainsRc<T, K>` because of return type
+LL |     x.clone()
+   |     ^^^^^^^^^ expected `ContainsRc<T, K>`, found `&ContainsRc<T, K>`
+   |
+   = note: expected struct `ContainsRc<_, _>`
+           found reference `&ContainsRc<_, _>`
+note: `ContainsRc<T, K>` does not implement `Clone`, so `&ContainsRc<T, K>` was cloned instead
+  --> $DIR/derive-implicit-bound-on-clone.rs:10:5
+   |
+LL |     x.clone()
+   |     ^
+help: `Clone` is not implemented because the some trait bounds could not be satisfied
+  --> $DIR/derive-implicit-bound-on-clone.rs:5:19
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct ContainsRc<T, K> {
+   |                   ^  ^ derive introduces an implicit unsatisfied trait bound `K: Clone`
+   |                   |
+   |                   derive introduces an implicit unsatisfied trait bound `T: Clone`
+   = help: consider manually implementing `Clone` to avoid the implicit type parameter bounds
+
+error[E0308]: mismatched types
+  --> $DIR/derive-implicit-bound-on-clone.rs:20:5
+   |
+LL | fn clone_me_single<T>(x: &ContainsRcSingle<T>) -> ContainsRcSingle<T> {
+   |                                                   ------------------- expected `ContainsRcSingle<T>` because of return type
+LL |     x.clone()
+   |     ^^^^^^^^^ expected `ContainsRcSingle<T>`, found `&ContainsRcSingle<T>`
+   |
+   = note: expected struct `ContainsRcSingle<_>`
+           found reference `&ContainsRcSingle<_>`
+note: `ContainsRcSingle<T>` does not implement `Clone`, so `&ContainsRcSingle<T>` was cloned instead
+  --> $DIR/derive-implicit-bound-on-clone.rs:20:5
+   |
+LL |     x.clone()
+   |     ^
+help: `Clone` is not implemented because a trait bound is not satisfied
+  --> $DIR/derive-implicit-bound-on-clone.rs:15:25
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct ContainsRcSingle<T> {
+   |                         ^ derive introduces an implicit `T: Clone` bound
+   = help: consider manually implementing `Clone` to avoid the implicit type parameter bounds
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

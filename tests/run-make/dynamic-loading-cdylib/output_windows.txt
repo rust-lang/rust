@@ -1,0 +1,12 @@
+loaded library
+extern_fn_1
+result of extern_fn_1(2, 3): 5
+extern_fn_2(2, 3)
+result of extern_fn_2(2, 3): 6
+spawning thread
+extern_fn_2(4, 5)
+result of extern_fn_2(4, 5) in other thread: 20
+dropping, last result: 20
+thread joined
+dropping, last result: 6
+unloaded library

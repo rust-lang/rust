@@ -1,0 +1,90 @@
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:7:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:7:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:12:1
+   |
+LL | pub fn bar() {}
+   | ^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:12:1
+   |
+LL | pub fn bar() {}
+   | ^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:32:1
+   |
+LL | pub extern "C" fn bar_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:32:1
+   |
+LL | pub extern "C" fn bar_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:37:1
+   |
+LL | pub extern "C" fn foo_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:37:1
+   |
+LL | pub extern "C" fn foo_c() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
+  --> $DIR/rustc-const-stability-require-const.rs:52:1
+   |
+LL | #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
+   | ---------------------------------------------------------------- attribute specified here
+LL | const fn barfoo_unmarked() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
+  --> $DIR/rustc-const-stability-require-const.rs:57:1
+   |
+LL | #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
+   | ---------------------------------------------------------------- attribute specified here
+LL | pub const fn barfoo_unstable() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:21:5
+   |
+LL |     pub fn salad(&self) -> &'static str { "mmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:21:5
+   |
+LL |     pub fn salad(&self) -> &'static str { "mmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
+  --> $DIR/rustc-const-stability-require-const.rs:26:5
+   |
+LL |     pub fn roasted(&self) -> &'static str { "mmmmmmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the function or method const
+  --> $DIR/rustc-const-stability-require-const.rs:26:5
+   |
+LL |     pub fn roasted(&self) -> &'static str { "mmmmmmmmmm" }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

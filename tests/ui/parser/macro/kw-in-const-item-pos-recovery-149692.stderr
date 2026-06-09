@@ -1,0 +1,22 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/kw-in-const-item-pos-recovery-149692.rs:8:10
+   |
+LL | m!(const Self());
+   |          ^^^^ expected identifier, found keyword
+
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/kw-in-const-item-pos-recovery-149692.rs:8:10
+   |
+LL |     (const $id:item()) => {}
+   |            -------- while parsing argument for this `item` macro fragment
+...
+LL | m!(const Self());
+   |          ^^^^
+   |
+help: if you meant to call a macro, try
+   |
+LL | m!(const Self!());
+   |              +
+
+error: aborting due to 2 previous errors
+

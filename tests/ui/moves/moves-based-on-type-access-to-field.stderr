@@ -1,0 +1,20 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-access-to-field.rs:11:12
+   |
+LL |     let x = vec!["hi".to_string()];
+   |         - move occurs because `x` has type `Vec<String>`, which does not implement the `Copy` trait
+LL |     consume(x.into_iter().next().unwrap());
+   |               ----------- `x` moved due to this method call
+LL |     touch(&x[0]);
+   |            ^ value borrowed here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `x`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     consume(x.clone().into_iter().next().unwrap());
+   |              ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

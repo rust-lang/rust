@@ -1,0 +1,13 @@
+max_width = 120
+comment_width = 100
+match_block_trailing_comma = true
+wrap_comments = true
+edition = "2024"
+error_on_line_overflow = true
+imports_granularity = "Module"
+style_edition = "2024"
+ignore = [
+    "tests/ui/crashes/ice-9405.rs",
+    "tests/ui/crashes/ice-10912.rs",
+    "tests/ui/non_expressive_names_error_recovery.rs",
+]

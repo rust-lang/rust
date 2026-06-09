@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/generic-not-strictly-equal.rs:34:5
+   |
+LL | type Opaque<'a> = impl Copy + Captures<'a>;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     relate(opaque, hidden); // defining use: Opaque<'?1> := u8
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

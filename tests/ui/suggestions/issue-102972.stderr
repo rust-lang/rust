@@ -1,0 +1,80 @@
+error[E0499]: cannot borrow `chars` as mutable more than once at a time
+  --> $DIR/issue-102972.rs:6:9
+   |
+LL |     for _c in chars.by_ref() {
+   |               --------------
+   |               |
+   |               first mutable borrow occurs here
+   |               first borrow later used here
+LL |         chars.next();
+   |         ^^^^^ second mutable borrow occurs here
+   |
+   = note: a for loop advances the iterator for you, the result is stored in `_c`
+help: if you want to call `next` on a iterator within the loop, consider using `while let`
+   |
+LL ~     let iter = chars.by_ref();
+LL ~     while let Some(_c) = iter.next() {
+LL ~         iter.next();
+   |
+
+error[E0382]: borrow of moved value: `iter`
+  --> $DIR/issue-102972.rs:14:9
+   |
+LL |     let mut iter = v.iter();
+   |         -------- move occurs because `iter` has type `std::slice::Iter<'_, i32>`, which does not implement the `Copy` trait
+LL |     for _i in iter {
+   |               ---- `iter` moved due to this implicit call to `.into_iter()`
+LL |         iter.next();
+   |         ^^^^ value borrowed here after move
+   |
+   = note: a for loop advances the iterator for you, the result is stored in `_i`
+note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: if you want to call `next` on a iterator within the loop, consider using `while let`
+   |
+LL -     for _i in iter {
+LL +     while let Some(_i) = iter.next() {
+   |
+
+error[E0499]: cannot borrow `i` as mutable more than once at a time
+  --> $DIR/issue-102972.rs:22:9
+   |
+LL |     for () in i.by_ref() {
+   |               ----------
+   |               |
+   |               first mutable borrow occurs here
+   |               first borrow later used here
+LL |         i.next();
+   |         ^ second mutable borrow occurs here
+   |
+   = note: a for loop advances the iterator for you, the result is stored in its pattern
+help: if you want to call `next` on a iterator within the loop, consider using `while let`
+   |
+LL ~     let iter = i.by_ref();
+LL ~     while let Some(()) = iter.next() {
+LL ~         iter.next();
+   |
+
+error[E0382]: borrow of moved value: `iter`
+  --> $DIR/issue-102972.rs:30:9
+   |
+LL |     let mut iter = v.iter();
+   |         -------- move occurs because `iter` has type `std::slice::Iter<'_, ()>`, which does not implement the `Copy` trait
+LL |     for () in iter {
+   |               ---- `iter` moved due to this implicit call to `.into_iter()`
+LL |         iter.next();
+   |         ^^^^ value borrowed here after move
+   |
+   = note: a for loop advances the iterator for you, the result is stored in its pattern
+note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: if you want to call `next` on a iterator within the loop, consider using `while let`
+   |
+LL -     for () in iter {
+LL +     while let Some(()) = iter.next() {
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0382, E0499.
+For more information about an error, try `rustc --explain E0382`.

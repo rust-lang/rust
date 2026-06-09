@@ -1,0 +1,9 @@
+error[E0080]: entering unreachable code
+  --> $DIR/unknown-when-no-type-parameter.rs:11:10
+   |
+LL |     [(); size_of::<<() as Project>::Assoc>()];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `foo::{constant#0}` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

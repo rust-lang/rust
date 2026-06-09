@@ -1,0 +1,56 @@
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:6:7
+   |
+LL | #[doc(as_ptr)]
+   |       ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/doc-attr.rs:1:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected this to be of the form `... = "..."`
+  --> $DIR/doc-attr.rs:10:7
+   |
+LL | #[doc(123)]
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: expected this to be of the form `... = "..."`
+  --> $DIR/doc-attr.rs:13:7
+   |
+LL | #[doc("hello", "bar")]
+   |       ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: expected this to be of the form `... = "..."`
+  --> $DIR/doc-attr.rs:13:16
+   |
+LL | #[doc("hello", "bar")]
+   |                ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unknown `doc` attribute `foo::bar`
+  --> $DIR/doc-attr.rs:18:7
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |       ^^^^^^^^
+
+error: unknown `doc` attribute `crate::bar::baz`
+  --> $DIR/doc-attr.rs:18:17
+   |
+LL | #[doc(foo::bar, crate::bar::baz = "bye")]
+   |                 ^^^^^^^^^^^^^^^
+
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:3:8
+   |
+LL | #![doc(as_ptr)]
+   |        ^^^^^^
+
+error: aborting due to 7 previous errors
+

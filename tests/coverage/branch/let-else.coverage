@@ -1,0 +1,40 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      3|fn let_else(value: Option<&str>) {
+   LL|      3|    no_merge!();
+   LL|       |
+   LL|      3|    let Some(x) = value else {
+                           ^2
+  ------------------
+  |  Branch (LL:9): [True: 2, False: 1]
+  ------------------
+   LL|      1|        say("none");
+   LL|      1|        return;
+   LL|       |    };
+   LL|       |
+   LL|      2|    say(x);
+   LL|      3|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    core::hint::black_box(message);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let_else(Some("x"));
+   LL|       |    let_else(Some("x"));
+   LL|       |    let_else(None);
+   LL|       |}
+   LL|       |
+   LL|       |// FIXME(#124118) Actually instrument let-else for branch coverage.
+

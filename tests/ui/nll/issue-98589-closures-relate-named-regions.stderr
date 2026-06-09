@@ -1,0 +1,65 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:10:5
+   |
+LL | fn test_early_early<'a: 'a, 'b: 'b>() {
+   |                     --      -- lifetime `'b` defined here
+   |                     |
+   |                     lifetime `'a` defined here
+LL |     || { None::<&'a &'b ()>; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:15:5
+   |
+LL | fn test_early_late<'a: 'a, 'b>() {
+   |                    --      -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+LL |     || { None::<&'a &'b ()>; };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:21:10
+   |
+LL | fn test_late_late<'a, 'b>() {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     || { None::<&'a &'b ()>; };
+   |          ^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:26:10
+   |
+LL | fn test_early_type<'a: 'a, T>() {
+   |                    -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     || { None::<&'a T>; };
+   |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test_early_type<'a: 'a, T: 'a>() {
+   |                             ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:32:10
+   |
+LL | fn test_late_type<'a, T>() {
+   |                   -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     || { None::<&'a T>; };
+   |          ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn test_late_type<'a, T: 'a>() {
+   |                        ++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

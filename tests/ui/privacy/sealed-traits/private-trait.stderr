@@ -1,0 +1,17 @@
+error[E0603]: module `b` is private
+  --> $DIR/private-trait.rs:8:9
+   |
+LL | impl a::b::Hidden for S {}
+   |         ^  ------ trait `Hidden` is not publicly re-exported
+   |         |
+   |         private module
+   |
+note: the module `b` is defined here
+  --> $DIR/private-trait.rs:2:5
+   |
+LL |     mod b {
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

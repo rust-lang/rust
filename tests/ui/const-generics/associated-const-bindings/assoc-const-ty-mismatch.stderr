@@ -1,0 +1,30 @@
+error: expected constant, found type
+  --> $DIR/assoc-const-ty-mismatch.rs:23:19
+   |
+LL | fn foo<F: Foo<N = usize>>() {}
+   |               -   ^^^^^ unexpected type
+   |               |
+   |               expected a constant because of this associated constant
+   |
+note: the associated constant is defined here
+  --> $DIR/assoc-const-ty-mismatch.rs:5:5
+   |
+LL |     const N: usize;
+   |     ^^^^^^^^^^^^^^
+
+error: expected type, found constant
+  --> $DIR/assoc-const-ty-mismatch.rs:25:22
+   |
+LL | fn foo2<F: FooTy<T = 3usize>>() {}
+   |                  -   ^^^^^^ unexpected constant
+   |                  |
+   |                  expected a type because of this associated type
+   |
+note: the associated type is defined here
+  --> $DIR/assoc-const-ty-mismatch.rs:9:5
+   |
+LL |     type T;
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+

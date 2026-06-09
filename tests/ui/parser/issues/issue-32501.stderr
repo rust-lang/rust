@@ -1,0 +1,15 @@
+error: `mut` must be followed by a named binding
+  --> $DIR/issue-32501.rs:7:9
+   |
+LL |     let mut _ = 0;
+   |         ^^^^
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
+help: remove the `mut` prefix
+   |
+LL -     let mut _ = 0;
+LL +     let _ = 0;
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/print-file-names-request-malformed-crate-name-2.rs:7:17
+   |
+LL | #![crate_name = concat!("this_one_is_not")]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

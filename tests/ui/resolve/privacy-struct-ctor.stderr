@@ -1,0 +1,160 @@
+error[E0423]: expected value, found struct `Z`
+  --> $DIR/privacy-struct-ctor.rs:21:9
+   |
+LL |     pub struct S(u8);
+   |     ----------------- similarly named tuple struct `S` defined here
+...
+LL |         Z;
+   |         ^ constructor is not visible here due to private fields
+   |
+help: a tuple struct with a similar name exists
+   |
+LL -         Z;
+LL +         S;
+   |
+
+error[E0423]: expected value, found struct `S`
+  --> $DIR/privacy-struct-ctor.rs:34:5
+   |
+LL |     S;
+   |     ^ constructor is not visible here due to private fields
+
+error[E0423]: expected value, found struct `S2`
+  --> $DIR/privacy-struct-ctor.rs:39:5
+   |
+LL | /     pub struct S2 {
+LL | |         s: u8
+LL | |     }
+   | |_____- `S2` defined here
+...
+LL |       S2;
+   |       ^^ help: use struct literal syntax instead: `S2 { s: val }`
+
+error[E0423]: expected value, found struct `xcrate::S`
+  --> $DIR/privacy-struct-ctor.rs:44:5
+   |
+LL |     xcrate::S;
+   |     ^^^^^^^^^ constructor is not visible here due to private fields
+   |
+note: tuple struct `m::S` exists but is inaccessible
+  --> $DIR/privacy-struct-ctor.rs:7:5
+   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0603]: tuple struct constructor `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:19:12
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
+...
+LL |         n::Z;
+   |            ^ private tuple struct constructor
+   |
+note: the tuple struct constructor `Z` is defined here
+  --> $DIR/privacy-struct-ctor.rs:13:9
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL -         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+LL +         pub(in crate::m) struct Z(pub u8);
+   |
+
+error[E0603]: tuple struct constructor `S` is private
+  --> $DIR/privacy-struct-ctor.rs:30:8
+   |
+LL |     pub struct S(u8);
+   |                  -- a constructor is private if any of the fields is private
+...
+LL |     m::S;
+   |        ^ private tuple struct constructor
+   |
+note: the tuple struct constructor `S` is defined here
+  --> $DIR/privacy-struct-ctor.rs:7:5
+   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct S(pub u8);
+   |                  +++
+
+error[E0603]: tuple struct constructor `S` is private
+  --> $DIR/privacy-struct-ctor.rs:32:19
+   |
+LL |     pub struct S(u8);
+   |                  -- a constructor is private if any of the fields is private
+...
+LL |     let _: S = m::S(2);
+   |                   ^ private tuple struct constructor
+   |
+note: the tuple struct constructor `S` is defined here
+  --> $DIR/privacy-struct-ctor.rs:7:5
+   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL |     pub struct S(pub u8);
+   |                  +++
+
+error[E0603]: tuple struct constructor `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:36:11
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
+...
+LL |     m::n::Z;
+   |           ^ private tuple struct constructor
+   |
+note: the tuple struct constructor `Z` is defined here
+  --> $DIR/privacy-struct-ctor.rs:13:9
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider making the field publicly accessible
+   |
+LL -         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+LL +         pub(in crate::m) struct Z(pub u8);
+   |
+
+error[E0603]: tuple struct constructor `S` is private
+  --> $DIR/privacy-struct-ctor.rs:42:16
+   |
+LL |     xcrate::m::S;
+   |                ^ private tuple struct constructor
+   |
+  ::: $DIR/auxiliary/privacy-struct-ctor.rs:2:18
+   |
+LL |     pub struct S(u8);
+   |                  -- a constructor is private if any of the fields is private
+   |
+note: the tuple struct constructor `S` is defined here
+  --> $DIR/auxiliary/privacy-struct-ctor.rs:2:5
+   |
+LL |     pub struct S(u8);
+   |     ^^^^^^^^^^^^
+
+error[E0603]: tuple struct constructor `Z` is private
+  --> $DIR/privacy-struct-ctor.rs:46:19
+   |
+LL |     xcrate::m::n::Z;
+   |                   ^ private tuple struct constructor
+   |
+  ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:35
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
+   |
+note: the tuple struct constructor `Z` is defined here
+  --> $DIR/auxiliary/privacy-struct-ctor.rs:5:9
+   |
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0423, E0603.
+For more information about an error, try `rustc --explain E0423`.

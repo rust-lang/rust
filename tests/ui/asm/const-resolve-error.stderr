@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/const-resolve-error.rs:7:29
+   |
+LL |     asm!("/* {0} */", const N);
+   |                             ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | async unsafe fn foo<'a, const N: /* Type */>() {
+   |                       +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

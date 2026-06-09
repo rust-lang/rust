@@ -1,0 +1,62 @@
+error: invalid register `$r0`: constant zero cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:26:18
+   |
+LL |         asm!("", out("$r0") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `$tp`: reserved for TLS
+  --> $DIR/bad-reg.rs:28:18
+   |
+LL |         asm!("", out("$tp") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `$sp`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:30:18
+   |
+LL |         asm!("", out("$sp") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `$r21`: reserved by the ABI
+  --> $DIR/bad-reg.rs:32:18
+   |
+LL |         asm!("", out("$r21") _);
+   |                  ^^^^^^^^^^^^^
+
+error: invalid register `$fp`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", out("$fp") _);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `$r31`: $r31 is used internally by LLVM and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:36:18
+   |
+LL |         asm!("", out("$r31") _);
+   |                  ^^^^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:40:26
+   |
+LL |         asm!("/* {} */", in(freg) f);
+   |                          ^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:42:26
+   |
+LL |         asm!("/* {} */", out(freg) _);
+   |                          ^^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:44:26
+   |
+LL |         asm!("/* {} */", in(freg) d);
+   |                          ^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:46:26
+   |
+LL |         asm!("/* {} */", out(freg) d);
+   |                          ^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+

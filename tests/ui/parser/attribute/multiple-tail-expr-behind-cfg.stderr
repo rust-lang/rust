@@ -1,0 +1,54 @@
+error: expected `;`, found `#`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:5:64
+   |
+LL |     #[cfg(false)]
+   |     ------------- only `;` terminated statements or tail expressions are allowed after this attribute
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>()
+   |                                                                ^ expected `;` here
+LL |     #[cfg(not(FALSE))]
+   |     - unexpected token
+   |
+help: add `;` here
+   |
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>();
+   |                                                                +
+help: alternatively, consider surrounding the expression with a block
+   |
+LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
+   |     +                                                             +
+help: it seems like you are trying to provide different expressions depending on `cfg`, consider using `if cfg!(..)`
+   |
+LL ~     if cfg!(false) {
+LL ~         [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>()
+LL ~     } else if cfg!(not(FALSE)) {
+LL ~         String::new()
+LL +     }
+   |
+
+error: expected `;`, found `#`
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:12:64
+   |
+LL |     #[attr]
+   |     ------- only `;` terminated statements or tail expressions are allowed after this attribute
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>()
+   |                                                                ^ expected `;` here
+LL |     #[attr]
+   |     - unexpected token
+   |
+help: add `;` here
+   |
+LL |     [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>();
+   |                                                                +
+help: alternatively, consider surrounding the expression with a block
+   |
+LL |     { [1, 2, 3].iter().map(|c| c.to_string()).collect::<String>() }
+   |     +                                                             +
+
+error: cannot find attribute `attr` in this scope
+  --> $DIR/multiple-tail-expr-behind-cfg.rs:13:7
+   |
+LL |     #[attr]
+   |       ^^^^
+
+error: aborting due to 3 previous errors
+

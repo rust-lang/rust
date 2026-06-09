@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/packed-struct-transmute.rs:25:24
+   |
+LL |         let oof: Oof = mem::transmute(foo);
+   |                        ^^^^^^^^^^^^^^
+   |
+   = note: source type: `Foo` (N bits)
+   = note: target type: `Oof` (N bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

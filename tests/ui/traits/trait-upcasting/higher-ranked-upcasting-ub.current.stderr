@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-upcasting-ub.rs:22:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected existential trait ref `for<'a, 'b> Supertrait<'a, 'b>`
+              found existential trait ref `for<'a> Supertrait<'a, 'a>`
+
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-upcasting-ub.rs:22:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected existential trait ref `for<'a, 'b> Supertrait<'a, 'b>`
+              found existential trait ref `for<'a> Supertrait<'a, 'a>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,6 @@
+error: linker flavor `msvc` is incompatible with the current target
+   |
+   = note: compatible flavors are: gnu, gnu-lld, gnu-cc, gnu-lld-cc, gcc, ld, ld.lld
+
+error: aborting due to 1 previous error
+

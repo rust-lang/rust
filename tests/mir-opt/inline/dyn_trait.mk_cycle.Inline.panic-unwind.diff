@@ -1,0 +1,20 @@
+- // MIR for `mk_cycle` before Inline
++ // MIR for `mk_cycle` after Inline
+  
+  fn mk_cycle(_1: &dyn Cache<V = V>) -> () {
+      debug c => _1;
+      let mut _0: ();
+      let mut _2: &dyn Cache<V = V>;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+          _0 = <dyn Cache<V = V> as Cache>::store_nocache(move _2) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

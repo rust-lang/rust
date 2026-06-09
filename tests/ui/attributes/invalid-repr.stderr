@@ -1,0 +1,10 @@
+error: `#[repr(align(...))]` attribute cannot be used on type aliases
+  --> $DIR/invalid-repr.rs:1:1
+   |
+LL | #[repr(align(16))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(align(...))]` can only be applied to data types
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,29 @@
+- // MIR for `cycle` before DeadStoreElimination-initial
++ // MIR for `cycle` after DeadStoreElimination-initial
+  
+  fn cycle(_1: i32, _2: i32, _3: i32) -> () {
+      let mut _0: ();
+      let mut _4: bool;
+      let mut _5: i32;
+  
+      bb0: {
+          _4 = cond() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          switchInt(copy _4) -> [1: bb2, otherwise: bb3];
+      }
+  
+      bb2: {
+-         _5 = copy _3;
+-         _3 = copy _2;
+-         _2 = copy _1;
+-         _1 = copy _5;
+          _4 = cond() -> [return: bb1, unwind continue];
+      }
+  
+      bb3: {
+          return;
+      }
+  }
+  

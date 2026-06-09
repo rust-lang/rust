@@ -1,0 +1,76 @@
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:38:23
+   |
+LL |         i = std::mem::transmute([1u16, 2u16]);
+   |                       ^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+   |
+   = note: `-D clippy::missing-transmute-annotations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_transmute_annotations)]`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:40:23
+   |
+LL |         i = std::mem::transmute::<_, _>([1u16, 2u16]);
+   |                       ^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:42:23
+   |
+LL |         i = std::mem::transmute::<_, i32>([1u16, 2u16]);
+   |                       ^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:44:23
+   |
+LL |         i = std::mem::transmute::<[u16; 2], _>([1u16, 2u16]);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:47:36
+   |
+LL |         let x: i32 = bar(std::mem::transmute::<[u16; 2], _>([1u16, 2u16]));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:49:23
+   |
+LL |         bar(std::mem::transmute::<[u16; 2], _>([1u16, 2u16]));
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:11:19
+   |
+LL |         std::mem::transmute($e)
+   |                   ^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+...
+LL |         i = local_bad_transmute!([1u16, 2u16]);
+   |             ---------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `local_bad_transmute` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:57:23
+   |
+LL |         i = std::mem::transmute([0i16, 0i16]);
+   |                       ^^^^^^^^^ help: consider adding missing annotations: `transmute::<[i16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:60:23
+   |
+LL |         i = std::mem::transmute(Foo::A);
+   |                       ^^^^^^^^^ help: consider adding missing annotations: `transmute::<Foo, i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:68:35
+   |
+LL |     let x: _ = unsafe { std::mem::transmute::<_, i32>([1u16, 2u16]) };
+   |                                   ^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:71:30
+   |
+LL |         let x: _ = std::mem::transmute::<_, i32>([1u16, 2u16]);
+   |                              ^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
+
+error: aborting due to 11 previous errors
+

@@ -1,0 +1,48 @@
+   LL|      1|fn main() {
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|       |
+   LL|      1|    let mut a: u8 = 0;
+   LL|      1|    let mut b: u8 = 0;
+   LL|      1|    if is_true {
+   LL|      1|        a = 2;
+   LL|      1|        b = 0;
+   LL|      1|    }
+                  ^0
+   LL|      1|    match (a, b) {
+   LL|       |        // Or patterns generate MIR `SwitchInt` with multiple targets to the same `BasicBlock`.
+   LL|       |        // This test confirms a fix for Issue #79569.
+   LL|      0|        (0 | 1, 2 | 3) => {}
+   LL|      1|        _ => {}
+   LL|       |    }
+   LL|      1|    if is_true {
+   LL|      1|        a = 0;
+   LL|      1|        b = 0;
+   LL|      1|    }
+                  ^0
+   LL|      1|    match (a, b) {
+   LL|      0|        (0 | 1, 2 | 3) => {}
+   LL|      1|        _ => {}
+   LL|       |    }
+   LL|      1|    if is_true {
+   LL|      1|        a = 2;
+   LL|      1|        b = 2;
+   LL|      1|    }
+                  ^0
+   LL|      1|    match (a, b) {
+   LL|      0|        (0 | 1, 2 | 3) => {}
+   LL|      1|        _ => {}
+   LL|       |    }
+   LL|      1|    if is_true {
+   LL|      1|        a = 0;
+   LL|      1|        b = 2;
+   LL|      1|    }
+                  ^0
+   LL|      1|    match (a, b) {
+   LL|      1|        (0 | 1, 2 | 3) => {}
+   LL|      0|        _ => {}
+   LL|       |    }
+   LL|      1|}
+

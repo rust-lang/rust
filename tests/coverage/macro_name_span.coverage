@@ -1,0 +1,26 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/117788>.
+   LL|       |// Under some circumstances, the heuristics that detect macro name spans can
+   LL|       |// get confused and produce incorrect spans beyond the bounds of the span
+   LL|       |// being processed.
+   LL|       |
+   LL|       |//@ aux-build: macro_name_span_helper.rs
+   LL|       |extern crate macro_name_span_helper;
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    affected_function();
+   LL|      1|}
+   LL|       |
+   LL|       |macro_rules! macro_with_an_unreasonably_and_egregiously_long_name {
+   LL|       |    () => {
+   LL|       |        println!("hello");
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |macro_name_span_helper::macro_that_defines_a_function! {
+   LL|      1|    fn affected_function() {
+   LL|      1|        macro_with_an_unreasonably_and_egregiously_long_name!();
+   LL|       |    }
+   LL|       |}
+

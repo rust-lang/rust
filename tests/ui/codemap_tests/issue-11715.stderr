@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/issue-11715.rs:4:13
+   |
+LL |     let y = &mut x;
+   |             ------ first mutable borrow occurs here
+LL |     let z = &mut x;
+   |             ^^^^^^ second mutable borrow occurs here
+LL |     z.use_mut();
+LL |     y.use_mut();
+   |     - first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

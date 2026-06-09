@@ -1,0 +1,45 @@
+error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as Trait>::Assoc`
+  --> $DIR/bound-normalization-fail.rs:25:32
+   |
+LL |     fn foo_fail<T: Trait>() -> impl FooLike<Output = T::Assoc> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Foo<()> as FooLike>::Output == <T as Trait>::Assoc`
+LL |
+LL |         Foo(())
+   |         ------- return type was inferred to be `Foo<()>` here
+   |
+note: expected this to be `<T as impl_trait::Trait>::Assoc`
+  --> $DIR/bound-normalization-fail.rs:14:19
+   |
+LL |     type Output = T;
+   |                   ^
+   = note: expected associated type `<T as impl_trait::Trait>::Assoc`
+                    found unit type `()`
+help: consider constraining the associated type `<T as impl_trait::Trait>::Assoc` to `()`
+   |
+LL |     fn foo_fail<T: Trait<Assoc = ()>>() -> impl FooLike<Output = T::Assoc> {
+   |                         ++++++++++++
+
+error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as Trait<'a>>::Assoc`
+  --> $DIR/bound-normalization-fail.rs:41:41
+   |
+LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output = T::Assoc> {
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Foo<()> as FooLike>::Output == <T as Trait<'a>>::Assoc`
+LL |
+LL |         Foo(())
+   |         ------- return type was inferred to be `Foo<()>` here
+   |
+note: expected this to be `<T as lifetimes::Trait<'a>>::Assoc`
+  --> $DIR/bound-normalization-fail.rs:14:19
+   |
+LL |     type Output = T;
+   |                   ^
+   = note: expected associated type `<T as lifetimes::Trait<'a>>::Assoc`
+                    found unit type `()`
+help: consider constraining the associated type `<T as lifetimes::Trait<'a>>::Assoc` to `()`
+   |
+LL |     fn foo2_fail<'a, T: Trait<'a, Assoc = ()>>() -> impl FooLike<Output = T::Assoc> {
+   |                                 ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

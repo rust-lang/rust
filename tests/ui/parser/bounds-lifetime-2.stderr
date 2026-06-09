@@ -1,0 +1,8 @@
+error: expected one of `,`, `:`, or `>`, found `+`
+  --> $DIR/bounds-lifetime-2.rs:1:17
+   |
+LL | type A = for<'a + 'b> fn();
+   |                 ^ expected one of `,`, `:`, or `>`
+
+error: aborting due to 1 previous error
+

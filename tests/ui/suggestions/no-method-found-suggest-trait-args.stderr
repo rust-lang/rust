@@ -1,0 +1,63 @@
+error[E0599]: no method named `method` found for type parameter `T` in the current scope
+  --> $DIR/no-method-found-suggest-trait-args.rs:15:11
+   |
+LL | fn foo<T>(value: T) {
+   |        - method `method` not found for this type parameter
+...
+LL |     value.method();
+   |           ^^^^^^ method not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn foo<T: Trait</* I */>>(value: T) {
+   |         ++++++++++++++++
+
+error[E0599]: no method named `method2` found for type parameter `T` in the current scope
+  --> $DIR/no-method-found-suggest-trait-args.rs:17:11
+   |
+LL | fn foo<T>(value: T) {
+   |        - method `method2` not found for this type parameter
+...
+LL |     value.method2();
+   |           ^^^^^^^ method not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method2`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn foo<T: Trait2</* 'a, A, B */>>(value: T) {
+   |         ++++++++++++++++++++++++
+
+error[E0599]: no method named `method` found for type parameter `impl Copy` in the current scope
+  --> $DIR/no-method-found-suggest-trait-args.rs:24:11
+   |
+LL | fn bar(value: impl Copy) {
+   |               --------- method `method` not found for this type parameter
+...
+LL |     value.method();
+   |           ^^^^^^ method not found in `impl Copy`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method`, perhaps you need to restrict type parameter `impl Copy` with it:
+   |
+LL | fn bar(value: impl Copy + Trait</* I */>) {
+   |                         ++++++++++++++++
+
+error[E0599]: no method named `method2` found for type parameter `impl Copy` in the current scope
+  --> $DIR/no-method-found-suggest-trait-args.rs:26:11
+   |
+LL | fn bar(value: impl Copy) {
+   |               --------- method `method2` not found for this type parameter
+...
+LL |     value.method2();
+   |           ^^^^^^^ method not found in `impl Copy`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method2`, perhaps you need to restrict type parameter `impl Copy` with it:
+   |
+LL | fn bar(value: impl Copy + Trait2</* 'a, A, B */>) {
+   |                         ++++++++++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

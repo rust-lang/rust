@@ -1,0 +1,57 @@
+Function name: pass_through::uses_inner_macro
+Raw bytes (51): 0x[01, 01, 01, 01, 05, 09, 01, 24, 01, 00, 16, 01, 01, 08, 00, 1d, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 21, 05, 01, 09, 00, 15, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 20, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/pass-through.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 36, 1) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 29)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 33)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 21)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 32)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: pass_through::uses_middle_macro
+Raw bytes (51): 0x[01, 01, 01, 01, 05, 09, 01, 2c, 01, 00, 17, 01, 01, 08, 00, 1d, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 22, 05, 01, 09, 00, 16, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 21, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/pass-through.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 44, 1) to (start + 0, 23)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 29)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 34)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 22)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 33)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: pass_through::uses_outer_macro
+Raw bytes (51): 0x[01, 01, 01, 01, 05, 09, 01, 34, 01, 00, 16, 01, 01, 08, 00, 1d, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 21, 05, 01, 09, 00, 15, 05, 01, 09, 00, 0c, 05, 00, 0d, 00, 20, 02, 01, 05, 00, 06, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/pass-through.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 9
+- Code(Counter(0)) at (prev + 52, 1) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 29)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 33)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 21)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 12)
+- Code(Counter(1)) at (prev + 0, 13) to (start + 0, 32)
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 6)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+

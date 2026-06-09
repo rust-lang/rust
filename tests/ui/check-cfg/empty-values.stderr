@@ -1,0 +1,23 @@
+warning: unexpected `cfg` condition value: `foo`
+  --> $DIR/empty-values.rs:7:7
+   |
+LL | #[cfg(foo = "foo")]
+   |       ^^^^^^^^^^^ help: remove the condition
+   |
+   = note: no expected values for `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(foo, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: (none)
+  --> $DIR/empty-values.rs:11:7
+   |
+LL | #[cfg(foo)]
+   |       ^^^ help: remove the condition
+   |
+   = note: no expected values for `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(foo)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

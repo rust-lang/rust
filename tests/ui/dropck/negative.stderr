@@ -1,0 +1,8 @@
+error: negative `Drop` impls are not supported
+  --> $DIR/negative.rs:4:1
+   |
+LL | impl !Drop for NonDrop {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

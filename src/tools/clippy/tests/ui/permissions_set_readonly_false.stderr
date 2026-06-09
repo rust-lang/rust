@@ -1,0 +1,14 @@
+error: call to `set_readonly` with argument `false`
+  --> tests/ui/permissions_set_readonly_false.rs:19:5
+   |
+LL |     permissions.set_readonly(false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: on Unix platforms this results in the file being world writable
+   = help: you can set the desired permissions using `PermissionsExt`. For more information, see
+           https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html
+   = note: `-D clippy::permissions-set-readonly-false` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::permissions_set_readonly_false)]`
+
+error: aborting due to 1 previous error
+

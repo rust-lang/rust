@@ -1,0 +1,21 @@
+error[E0741]: `T` can't be used as a const parameter type
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:16:23
+   |
+LL | struct PC<T, const N: T> {
+   |                       ^
+
+error: type annotations needed for the literal
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:10:16
+   |
+LL |     foo::<_, { 2 }>();
+   |                ^
+
+error: type annotations needed for the literal
+  --> $DIR/infer-vars-in-const-args-conflicting.rs:12:20
+   |
+LL |     let _: PC<_, { 42 }> = PC { a: 1, b: 1 };
+   |                    ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0741`.

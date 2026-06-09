@@ -1,0 +1,63 @@
+error[E0277]: the trait bound `Error: Hash` is not satisfied
+  --> $DIR/derives-span-Hash.rs:9:9
+   |
+LL | #[derive(Hash)]
+   |          ---- in this derive macro expansion
+...
+LL |         x: Error,
+   |         ^^^^^^^^ the trait `Hash` is not implemented for `Error`
+   |
+help: consider annotating `Error` with `#[derive(Hash)]`
+   |
+LL + #[derive(Hash)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Hash` is not satisfied
+  --> $DIR/derives-span-Hash.rs:16:9
+   |
+LL | #[derive(Hash)]
+   |          ---- in this derive macro expansion
+...
+LL |         Error,
+   |         ^^^^^ the trait `Hash` is not implemented for `Error`
+   |
+help: consider annotating `Error` with `#[derive(Hash)]`
+   |
+LL + #[derive(Hash)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Hash` is not satisfied
+  --> $DIR/derives-span-Hash.rs:22:5
+   |
+LL | #[derive(Hash)]
+   |          ---- in this derive macro expansion
+LL | struct Struct {
+LL |     x: Error,
+   |     ^^^^^^^^ the trait `Hash` is not implemented for `Error`
+   |
+help: consider annotating `Error` with `#[derive(Hash)]`
+   |
+LL + #[derive(Hash)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Hash` is not satisfied
+  --> $DIR/derives-span-Hash.rs:27:5
+   |
+LL | #[derive(Hash)]
+   |          ---- in this derive macro expansion
+LL | struct TupleStruct(
+LL |     Error,
+   |     ^^^^^ the trait `Hash` is not implemented for `Error`
+   |
+help: consider annotating `Error` with `#[derive(Hash)]`
+   |
+LL + #[derive(Hash)]
+LL | struct Error;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

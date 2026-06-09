@@ -1,0 +1,84 @@
+//@ run-rustfix
+
+#![deny(rustdoc::bare_urls)]
+
+/// https://somewhere.com
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com/a
+//~^ ERROR this URL is not a hyperlink
+/// https://www.somewhere.com
+//~^ ERROR this URL is not a hyperlink
+/// https://www.somewhere.com/a
+//~^ ERROR this URL is not a hyperlink
+/// https://subdomain.example.com
+//~^ ERROR not a hyperlink
+/// https://somewhere.com?
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com/a?
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com?hello=12
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com/a?hello=12
+//~^ ERROR this URL is not a hyperlink
+/// https://example.com?hello=12#xyz
+//~^ ERROR this URL is not a hyperlink
+/// https://example.com/a?hello=12#xyz
+//~^ ERROR this URL is not a hyperlink
+/// https://example.com#xyz
+//~^ ERROR this URL is not a hyperlink
+/// https://example.com/a#xyz
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com?hello=12&bye=11
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com/a?hello=12&bye=11
+//~^ ERROR this URL is not a hyperlink
+/// https://somewhere.com?hello=12&bye=11#xyz
+//~^ ERROR this URL is not a hyperlink
+/// hey! https://somewhere.com/a?hello=12&bye=11#xyz
+//~^ ERROR this URL is not a hyperlink
+pub fn c() {}
+
+#[doc = "here's a thing: https://example.com/"]
+//~^ ERROR this URL is not a hyperlink
+pub fn f() {}
+
+/// https://example.com/sugar
+//~^ ERROR this URL is not a hyperlink
+#[doc = "https://example.com/raw"]
+//~^ ERROR this URL is not a hyperlink
+pub fn mixed() {}
+
+/// <https://somewhere.com>
+/// [a](http://a.com)
+/// [b]
+///
+/// [b]: http://b.com
+///
+/// ```
+/// This link should not be linted: http://example.com
+///
+/// Nor this one: <http://example.com> or this one: [x](http://example.com)
+/// ```
+///
+/// [should_not.lint](should_not.lint)
+pub fn everything_is_fine_here() {}
+
+#[allow(rustdoc::bare_urls)]
+pub mod foo {
+    /// https://somewhere.com/a?hello=12&bye=11#xyz
+    pub fn bar() {}
+}
+
+/// [https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+/// [ https://bloob.blob ]
+//~^ ERROR this URL is not a hyperlink
+/// [ https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+/// [https://bloob.blob ]
+//~^ ERROR this URL is not a hyperlink
+/// [https://bloob.blob
+//~^ ERROR this URL is not a hyperlink
+/// https://bloob.blob]
+//~^ ERROR this URL is not a hyperlink
+pub fn lint_with_brackets() {}

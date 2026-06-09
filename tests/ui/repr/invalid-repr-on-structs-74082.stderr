@@ -1,0 +1,18 @@
+error: `#[repr(i128)]` attribute cannot be used on structs
+  --> $DIR/invalid-repr-on-structs-74082.rs:4:1
+   |
+LL | #[repr(i128)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(i128)]` can only be applied to enums
+
+error: `#[repr(u128)]` attribute cannot be used on structs
+  --> $DIR/invalid-repr-on-structs-74082.rs:7:1
+   |
+LL | #[repr(u128)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: `#[repr(u128)]` can only be applied to enums
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,130 @@
+error: private items are not exportable
+  --> $DIR/exportable.rs:10:5
+   |
+LL |     pub struct S;
+   |     ^^^^^^^^^^^^
+   |
+note: is only usable at visibility `pub(crate)`
+  --> $DIR/exportable.rs:10:5
+   |
+LL |     pub struct S;
+   |     ^^^^^^^^^^^^
+
+error: private items are not exportable
+  --> $DIR/exportable.rs:123:5
+   |
+LL |     enum E {
+   |     ^^^^^^
+   |
+note: is only usable at visibility `pub(self)`
+  --> $DIR/exportable.rs:123:5
+   |
+LL |     enum E {
+   |     ^^^^^^
+
+error: trait's are not exportable
+  --> $DIR/exportable.rs:131:5
+   |
+LL |     pub trait Trait {}
+   |     ^^^^^^^^^^^^^^^
+
+error: constant's are not exportable
+  --> $DIR/exportable.rs:135:5
+   |
+LL |     pub const C: i32 = 0;
+   |     ^^^^^^^^^^^^^^^^
+
+error: only functions with "C" ABI are exportable
+  --> $DIR/exportable.rs:13:5
+   |
+LL |     pub fn foo() -> i32 { 0 }
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: types with unstable layout are not exportable
+  --> $DIR/exportable.rs:27:5
+   |
+LL |     pub struct S3;
+   |     ^^^^^^^^^^^^^
+
+error: only functions with "C" ABI are exportable
+  --> $DIR/exportable.rs:33:5
+   |
+LL |     pub fn foo1() {}
+   |     ^^^^^^^^^^^^^
+
+error: function with `#[export_stable]` attribute uses type `Box<fn_sig::S>`, which is not exportable
+  --> $DIR/exportable.rs:44:5
+   |
+LL |     pub extern "C" fn foo3(x: Box<S>) -> i32 { 0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^------^^^^^^^^
+   |                               |
+   |                               not exportable
+
+error: method with `#[export_stable]` attribute uses type `&impl_item::S`, which is not exportable
+  --> $DIR/exportable.rs:53:9
+   |
+LL |         pub extern "C" fn foo1(&self) -> i32 { 0 }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^^
+   |                                |
+   |                                not exportable
+
+error: method with `#[export_stable]` attribute uses type `impl_item::S`, which is not exportable
+  --> $DIR/exportable.rs:57:9
+   |
+LL |         pub extern "C" fn foo2(self) -> i32 { 0 }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^----^^^^^^^^
+   |                                |
+   |                                not exportable
+
+error: generic functions are not exportable
+  --> $DIR/exportable.rs:65:9
+   |
+LL |         pub extern "C" fn foo1(&self) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: function with `#[export_stable]` attribute uses type `(u32,)`, which is not exportable
+  --> $DIR/exportable.rs:81:5
+   |
+LL |     pub extern "C" fn foo1(x: <S as Trait>::Type) -> u32 { x.0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^^^^^^^
+   |                               |
+   |                               not exportable
+
+error: function with `#[export_stable]` attribute uses type `[i32; 4]`, which is not exportable
+  --> $DIR/exportable.rs:88:5
+   |
+LL |     pub extern "C" fn foo2(_x: Type) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^----^
+   |                                |
+   |                                not exportable
+
+error: function with `#[export_stable]` attribute uses type `extern "C" fn()`, which is not exportable
+  --> $DIR/exportable.rs:97:5
+   |
+LL |     pub extern "C" fn foo3(_x: S::Type) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^
+   |                                |
+   |                                not exportable
+
+error: function with `#[export_stable]` attribute uses type `impl Copy`, which is not exportable
+  --> $DIR/exportable.rs:101:5
+   |
+LL |     pub extern "C" fn foo4() -> impl Copy {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------
+   |                                 |
+   |                                 not exportable
+
+error: ADT types with private fields are not exportable
+  --> $DIR/exportable.rs:116:5
+   |
+LL |     pub struct S2 {
+   |     ^^^^^^^^^^^^^
+   |
+note: `x` is private
+  --> $DIR/exportable.rs:118:9
+   |
+LL |         x: i32
+   |         ^^^^^^
+
+error: aborting due to 16 previous errors
+

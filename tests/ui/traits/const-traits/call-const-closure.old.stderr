@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `(): [const] Bar` is not satisfied
+  --> $DIR/call-const-closure.rs:16:18
+   |
+LL |     (const || ().foo())();
+   |                  ^^^
+   |
+help: make the `impl` of trait `Bar` `const`
+   |
+LL | impl const Bar for () {
+   |      +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

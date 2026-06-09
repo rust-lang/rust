@@ -1,0 +1,147 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:13:5
+   |
+LL |     String::from::utf8;
+   |     ^^^^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `from_utf8`
+   |
+LL -     String::from::utf8;
+LL +     String::from_utf8;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:16:5
+   |
+LL |     String::from::utf8();
+   |     ^^^^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `from_utf8`
+   |
+LL -     String::from::utf8();
+LL +     String::from_utf8();
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:19:5
+   |
+LL |     String::from::utf16();
+   |     ^^^^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `from_utf16`
+   |
+LL -     String::from::utf16();
+LL +     String::from_utf16();
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:22:5
+   |
+LL |     String::from::method_that_doesnt_exist();
+   |     ^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `from` implemented for `String`, you could use the fully-qualified path
+   |
+LL -     String::from::method_that_doesnt_exist();
+LL +     <String as Example>::from::method_that_doesnt_exist();
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:25:5
+   |
+LL |     str::into::string();
+   |     ^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `into_string`
+   |
+LL -     str::into::string();
+LL +     str::into_string();
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:28:5
+   |
+LL |     str::char::indices();
+   |     ^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `char_indices`
+   |
+LL -     str::char::indices();
+LL +     str::char_indices();
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:31:5
+   |
+LL |     Foo::bar::baz;
+   |     ^^^^^^^^
+   |
+help: there is an associated function with a similar name: `bar_baz`
+   |
+LL -     Foo::bar::baz;
+LL +     Foo::bar_baz;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:34:5
+   |
+LL |     Foo::bar::quux;
+   |     ^^^^^^^^
+   |
+help: there is an associated function with a similar name: `bar_quux`
+   |
+LL -     Foo::bar::quux;
+LL +     Foo::bar_quux;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:37:5
+   |
+LL |     Foo::bar::fizz;
+   |     ^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `bar` implemented for `Foo`, you could use the fully-qualified path
+   |
+LL -     Foo::bar::fizz;
+LL +     <Foo as Example>::bar::fizz;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:40:5
+   |
+LL |     i32::wrapping::add;
+   |     ^^^^^^^^^^^^^
+   |
+help: there is an associated function with a similar name: `wrapping_add`
+   |
+LL -     i32::wrapping::add;
+LL +     i32::wrapping_add;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:43:5
+   |
+LL |     i32::wrapping::method_that_doesnt_exist;
+   |     ^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `wrapping` implemented for `i32`, you could use the fully-qualified path
+   |
+LL -     i32::wrapping::method_that_doesnt_exist;
+LL +     <i32 as Example>::wrapping::method_that_doesnt_exist;
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-assoc-type-path-suggest-similar-item.rs:48:5
+   |
+LL |     <dyn std::any::Any>::downcast::mut_unchecked;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `downcast` implemented for `(dyn Any + 'static)`, you could use the fully-qualified path
+   |
+LL -     <dyn std::any::Any>::downcast::mut_unchecked;
+LL +     <(dyn Any + 'static) as Example>::downcast::mut_unchecked;
+   |
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

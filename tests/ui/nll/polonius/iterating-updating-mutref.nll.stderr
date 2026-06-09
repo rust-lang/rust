@@ -1,0 +1,15 @@
+error[E0499]: cannot borrow `self.buf_read` as mutable more than once at a time
+  --> $DIR/iterating-updating-mutref.rs:61:23
+   |
+LL |     pub fn next<'a>(&'a mut self) -> &'a str {
+   |                 -- lifetime `'a` defined here
+LL |         loop {
+LL |             let buf = self.buf_read.fill_buf();
+   |                       ^^^^^^^^^^^^^ `self.buf_read` was mutably borrowed here in the previous iteration of the loop
+LL |             if let Some(s) = decode(buf) {
+LL |                 return s;
+   |                        - returning this value requires that `self.buf_read` is borrowed for `'a`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

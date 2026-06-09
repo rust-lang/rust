@@ -1,0 +1,56 @@
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/arg-error-issue-121425.rs:4:1
+   |
+LL | #[repr(align(N))]
+   | ^^^^^^^^^^^^^-^^^
+   |              |
+   |              expected an integer literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/arg-error-issue-121425.rs:8:14
+   |
+LL | #[repr(align('a'))]
+   |              ^^^
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/arg-error-issue-121425.rs:12:14
+   |
+LL | #[repr(align("str"))]
+   |              ^^^^^
+
+error[E0805]: malformed `repr` attribute input
+  --> $DIR/arg-error-issue-121425.rs:16:1
+   |
+LL | #[repr(align())]
+   | ^^^^^^^^^^^^--^^
+   |             |
+   |             expected an argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/arg-error-issue-121425.rs:21:1
+   |
+LL | #[repr(packed(P))]
+   | ^^^^^^^^^^^^^^-^^^
+   |               |
+   |               expected an integer literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error[E0805]: malformed `repr` attribute input
+  --> $DIR/arg-error-issue-121425.rs:25:1
+   |
+LL | #[repr(packed())]
+   | ^^^^^^^^^^^^^--^^
+   |              |
+   |              expected an argument here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0539, E0589, E0805.
+For more information about an error, try `rustc --explain E0539`.

@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `Bar`
+  --> $DIR/coherence-constrained.rs:17:1
+   |
+LL | impl Foo for Bar {
+   | ---------------- first implementation here
+...
+LL | impl Foo for Bar {
+   | ^^^^^^^^^^^^^^^^ conflicting implementation for `Bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,35 @@
+warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
+  --> $DIR/macro-expansion-empty-span-147408.rs:20:27
+   |
+LL |     for _ in dbg!([1, 2]).into_iter() {}
+   |                           ^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+   = note: requested on the command line with `-W array-into-iter`
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL -     for _ in dbg!([1, 2]).into_iter() {}
+LL +     for _ in dbg!([1, 2]).iter() {}
+   |
+help: or remove `.into_iter()` to iterate by value
+   |
+LL -     for _ in dbg!([1, 2]).into_iter() {}
+LL +     for _ in dbg!([1, 2]) {}
+   |
+
+warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
+  --> $DIR/macro-expansion-empty-span-147408.rs:11:16
+   |
+LL |             $e.into_iter()
+   |                ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+...
+LL |     for _ in mac!(into_iter [1, 2]) {}
+   |              ---------------------- in this macro invocation
+   |
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/IntoIterator-for-arrays.html>
+   = note: this warning originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
+

@@ -1,0 +1,22 @@
+error[E0275]: overflow evaluating the requirement `{integer}: Tweedledum`
+  --> $DIR/simultaneous.rs:18:5
+   |
+LL |     is_ee(4);
+   |     ^^^^^^^^
+   |
+note: required for `{integer}` to implement `Combo`
+  --> $DIR/simultaneous.rs:11:34
+   |
+LL | impl<T: Tweedledee + Tweedledum> Combo for T {}
+   |                      ----------  ^^^^^     ^
+   |                      |
+   |                      unsatisfied trait bound introduced here
+note: required by a bound in `is_ee`
+  --> $DIR/simultaneous.rs:13:13
+   |
+LL | fn is_ee<T: Combo>(t: T) {
+   |             ^^^^^ required by this bound in `is_ee`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

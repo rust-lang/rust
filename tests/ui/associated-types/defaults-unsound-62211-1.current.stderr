@@ -1,0 +1,67 @@
+error[E0277]: `Self` doesn't implement `std::fmt::Display`
+  --> $DIR/defaults-unsound-62211-1.rs:24:96
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                                                                                ^^^^ the trait `std::fmt::Display` is not implemented for `Self`
+   |
+note: required by a bound in `UncheckedCopy::Output`
+  --> $DIR/defaults-unsound-62211-1.rs:24:86
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                                                                      ^^^^^^^ required by this bound in `UncheckedCopy::Output`
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + std::fmt::Display {
+   |                            +++++++++++++++++++
+
+error[E0277]: cannot add-assign `&'static str` to `Self`
+  --> $DIR/defaults-unsound-62211-1.rs:24:96
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                                                                                ^^^^ no implementation for `Self += &'static str`
+   |
+note: required by a bound in `UncheckedCopy::Output`
+  --> $DIR/defaults-unsound-62211-1.rs:24:47
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + AddAssign<&'static str> {
+   |                            +++++++++++++++++++++++++
+
+error[E0277]: the trait bound `Self: Deref` is not satisfied
+  --> $DIR/defaults-unsound-62211-1.rs:24:96
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                                                                                ^^^^ the trait `Deref` is not implemented for `Self`
+   |
+note: required by a bound in `UncheckedCopy::Output`
+  --> $DIR/defaults-unsound-62211-1.rs:24:25
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                         ^^^^^^^^^^^^^^^^^^^ required by this bound in `UncheckedCopy::Output`
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + Deref {
+   |                            +++++++
+
+error[E0277]: the trait bound `Self: Copy` is not satisfied
+  --> $DIR/defaults-unsound-62211-1.rs:24:96
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                                                                                                ^^^^ the trait `Copy` is not implemented for `Self`
+   |
+note: required by a bound in `UncheckedCopy::Output`
+  --> $DIR/defaults-unsound-62211-1.rs:24:18
+   |
+LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
+   |                  ^^^^ required by this bound in `UncheckedCopy::Output`
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + Copy {
+   |                            ++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

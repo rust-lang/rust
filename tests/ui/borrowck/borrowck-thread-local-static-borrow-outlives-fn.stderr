@@ -1,0 +1,11 @@
+error[E0712]: thread-local variable borrowed past end of function
+  --> $DIR/borrowck-thread-local-static-borrow-outlives-fn.rs:8:20
+   |
+LL |      assert_static(&FOO);
+   |                    ^^^^ thread-local variables cannot be borrowed beyond the end of the function
+LL | }
+   | - end of enclosing function is here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0712`.

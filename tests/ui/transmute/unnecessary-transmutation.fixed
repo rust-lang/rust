@@ -1,0 +1,114 @@
+//@ run-rustfix
+#![deny(unnecessary_transmutes)]
+#![allow(unused_unsafe, unused_imports, unused_variables, unused_parens)]
+use std::mem::transmute;
+
+pub fn bytes_at_home(x: u32) -> [u8; 4] {
+    unsafe { u32::to_ne_bytes(x) }
+    //~^ ERROR
+}
+
+pub const fn intinator_const(from: bool) -> u8 {
+    unsafe { (from) as u8 }
+    //~^ ERROR
+}
+
+pub static X: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+pub const Y: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+
+pub struct Z {}
+impl Z {
+    pub const fn intinator_assoc(x: bool) -> u8 {
+        unsafe { (x) as u8 }
+        //~^ ERROR
+    }
+}
+
+fn main() {
+    const { unsafe { (true) as u8 } };
+    //~^ ERROR
+    unsafe {
+        let x: u16 = u16::from_ne_bytes(*b"01");
+        //~^ ERROR
+        let x: [u8; 2] = u16::to_ne_bytes(x);
+        //~^ ERROR
+        let x: u32 = u32::from_ne_bytes(*b"0123");
+        //~^ ERROR
+        let x: [u8; 4] = u32::to_ne_bytes(x);
+        //~^ ERROR
+        let x: u64 = u64::from_ne_bytes(*b"feriscat");
+        //~^ ERROR
+        let x: [u8; 8] = u64::to_ne_bytes(x);
+        //~^ ERROR
+
+        let y: i16 = i16::from_ne_bytes(*b"01");
+        //~^ ERROR
+        let y: [u8; 2] = i16::to_ne_bytes(y);
+        //~^ ERROR
+        let y: i32 = i32::from_ne_bytes(*b"0123");
+        //~^ ERROR
+        let y: [u8; 4] = i32::to_ne_bytes(y);
+        //~^ ERROR
+        let y: i64 = i64::from_ne_bytes(*b"feriscat");
+        //~^ ERROR
+        let y: [u8; 8] = i64::to_ne_bytes(y);
+        //~^ ERROR
+
+        let z: f32 = f32::from_ne_bytes(*b"0123");
+        //~^ ERROR
+        let z: [u8; 4] = f32::to_ne_bytes(z);
+        //~^ ERROR
+        let z: f64 = f64::from_ne_bytes(*b"feriscat");
+        //~^ ERROR
+        let z: [u8; 8] = f64::to_ne_bytes(z);
+        //~^ ERROR
+
+        let y: u32 = u32::from('🦀');
+        //~^ ERROR
+        let y: char = char::from_u32_unchecked(y);
+        //~^ ERROR
+        let y: i32 = u32::from('🐱').cast_signed();
+        //~^ ERROR
+        let y: char = char::from_u32_unchecked(i32::cast_unsigned(y));
+        //~^ ERROR
+
+        let x: u16 = i16::cast_unsigned(8i16);
+        //~^ ERROR
+        let x: i16 = u16::cast_signed(x);
+        //~^ ERROR
+        let x: u32 = i32::cast_unsigned(4i32);
+        //~^ ERROR
+        let x: i32 = u32::cast_signed(x);
+        //~^ ERROR
+        let x: u64 = i64::cast_unsigned(7i64);
+        //~^ ERROR
+        let x: i64 = u64::cast_signed(x);
+        //~^ ERROR
+
+        let y: f32 = f32::from_bits(1u32);
+        //~^ ERROR
+        let y: u32 = f32::to_bits(y);
+        //~^ ERROR
+        let y: f64 = f64::from_bits(3u64);
+        //~^ ERROR
+        let y: u64 = f64::to_bits(2.0);
+        //~^ ERROR
+
+        let y: f64 = f64::from_bits(i64::cast_unsigned(1i64));
+        //~^ ERROR
+        let y: i64 = f64::to_bits(1f64).cast_signed();
+        //~^ ERROR
+
+        let z: bool = transmute(1u8);
+        // clippy
+        let z: u8 = u8::from(z);
+        //~^ ERROR
+
+        let z: bool = transmute(1i8);
+        // clippy
+        let z: i8 = i8::from(z);
+        //~^ ERROR
+    }
+}

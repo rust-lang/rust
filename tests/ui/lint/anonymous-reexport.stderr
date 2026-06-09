@@ -1,0 +1,44 @@
+error: unused import: `self::my_mod::TyFoo as _`
+  --> $DIR/anonymous-reexport.rs:12:9
+   |
+LL | pub use self::my_mod::TyFoo as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/anonymous-reexport.rs:1:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused import: `self::my_mod::Bar as _`
+  --> $DIR/anonymous-reexport.rs:13:9
+   |
+LL | pub use self::my_mod::Bar as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `self::my_mod::TyBar as _`
+  --> $DIR/anonymous-reexport.rs:14:9
+   |
+LL | pub use self::my_mod::TyBar as _;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused import: `Bar as _`
+  --> $DIR/anonymous-reexport.rs:15:24
+   |
+LL | pub use self::my_mod::{Bar as _};
+   |                        ^^^^^^^^
+
+error: unused import: `Bar as _`
+  --> $DIR/anonymous-reexport.rs:16:24
+   |
+LL | pub use self::my_mod::{Bar as _, Foo as _};
+   |                        ^^^^^^^^
+
+error: unused imports: `Bar as _` and `TyBar as _`
+  --> $DIR/anonymous-reexport.rs:17:24
+   |
+LL | pub use self::my_mod::{Bar as _, TyBar as _};
+   |                        ^^^^^^^^  ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

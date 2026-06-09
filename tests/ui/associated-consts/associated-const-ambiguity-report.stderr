@@ -1,0 +1,26 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/associated-const-ambiguity-report.rs:17:23
+   |
+LL | const X: i32 = <i32>::ID;
+   |                       ^^ multiple `ID` found
+   |
+note: candidate #1 is defined in an impl of the trait `Bar` for the type `i32`
+  --> $DIR/associated-const-ambiguity-report.rs:14:5
+   |
+LL |     const ID: i32 = 3;
+   |     ^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Foo` for the type `i32`
+  --> $DIR/associated-const-ambiguity-report.rs:10:5
+   |
+LL |     const ID: i32 = 1;
+   |     ^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL | const X: i32 = <i32 as Bar>::ID;
+   |                     ++++++
+LL | const X: i32 = <i32 as Foo>::ID;
+   |                     ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,52 @@
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/vs-lifetime.rs:9:23
+   |
+LL |     let _: S<'static, dyn 'static +>;
+   |                       ^^^^^^^^^^^^^
+
+error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/vs-lifetime.rs:11:12
+   |
+LL |     let _: S<'static, 'static>;
+   |            ^        --------- help: remove the lifetime argument
+   |            |
+   |            expected 1 lifetime argument
+   |
+note: struct defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/vs-lifetime.rs:4:8
+   |
+LL | struct S<'a, T>(&'a u8, T);
+   |        ^ --
+
+error[E0107]: struct takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/vs-lifetime.rs:11:12
+   |
+LL |     let _: S<'static, 'static>;
+   |            ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/vs-lifetime.rs:4:8
+   |
+LL | struct S<'a, T>(&'a u8, T);
+   |        ^     -
+help: add missing generic argument
+   |
+LL |     let _: S<'static, 'static, T>;
+   |                              +++
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/vs-lifetime.rs:14:14
+   |
+LL |     let _: S<dyn 'static +, 'static>;
+   |              ^^^^^^^^^^^^^
+
+error[E0747]: type provided when a lifetime was expected
+  --> $DIR/vs-lifetime.rs:14:14
+   |
+LL |     let _: S<dyn 'static +, 'static>;
+   |              ^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0224, E0747.
+For more information about an error, try `rustc --explain E0107`.

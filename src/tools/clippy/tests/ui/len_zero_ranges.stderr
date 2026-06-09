@@ -1,0 +1,17 @@
+error: length comparison to zero
+  --> tests/ui/len_zero_ranges.rs:7:17
+   |
+LL |         let _ = (0..42).len() == 0;
+   |                 ^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(0..42).is_empty()`
+   |
+   = note: `-D clippy::len-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
+
+error: length comparison to zero
+  --> tests/ui/len_zero_ranges.rs:12:17
+   |
+LL |         let _ = (0_u8..=42).len() == 0;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(0_u8..=42).is_empty()`
+
+error: aborting due to 2 previous errors
+

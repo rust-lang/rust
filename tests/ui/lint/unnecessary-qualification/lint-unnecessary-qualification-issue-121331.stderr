@@ -1,0 +1,31 @@
+error: unused import: `*`
+  --> $DIR/lint-unnecessary-qualification-issue-121331.rs:9:28
+   |
+LL |     CoroutineState::{self, *},
+   |                            ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unnecessary-qualification-issue-121331.rs:4:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unnecessary qualification
+  --> $DIR/lint-unnecessary-qualification-issue-121331.rs:37:5
+   |
+LL |     foo::bar();
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unnecessary-qualification-issue-121331.rs:3:9
+   |
+LL | #![deny(unused_qualifications)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+help: remove the unnecessary path segments
+   |
+LL -     foo::bar();
+LL +     bar();
+   |
+
+error: aborting due to 2 previous errors
+

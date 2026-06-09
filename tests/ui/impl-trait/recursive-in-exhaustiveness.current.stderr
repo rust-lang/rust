@@ -1,0 +1,21 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-in-exhaustiveness.rs:17:22
+   |
+LL | fn build<T>(x: T) -> impl Sized {
+   |                      ^^^^^^^^^^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-in-exhaustiveness.rs:27:23
+   |
+LL | fn build2<T>(x: T) -> impl Sized {
+   |                       ^^^^^^^^^^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-in-exhaustiveness.rs:37:23
+   |
+LL | fn build3<T>(x: T) -> impl Sized {
+   |                       ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

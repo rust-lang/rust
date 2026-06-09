@@ -1,0 +1,26 @@
+- // MIR for `array_len` before GVN
++ // MIR for `array_len` after GVN
+  
+  fn array_len(_1: &[u8; N]) -> usize {
+      debug arr => _1;
+      let mut _0: usize;
+      let mut _2: &[u8];
+      let mut _3: &[u8; N];
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &(*_1);
+          _2 = move _3 as &[u8] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_3);
+-         _0 = PtrMetadata(move _2);
++         _0 = const N;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

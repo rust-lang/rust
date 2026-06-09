@@ -1,0 +1,63 @@
+// MIR for `main` after GVN
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: &[(std::option::Option<i32>, &[&str])];
+    let mut _2: &&[(std::option::Option<i32>, &[&str])];
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const {ALLOC9: &&[(Option<i32>, &[&str])]};
+        _1 = copy (*_2);
+        StorageDead(_2);
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+}
+
+ALLOC9 (static: FOO, size: 16, align: 8) {
+    ╾ALLOC0<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+}
+
+ALLOC0 (size: 72, align: 8) {
+    0x00 │ 00 00 00 00 __ __ __ __ ╾ALLOC1<imm>╼ │ ....░░░░╾──────╼
+    0x10 │ 00 00 00 00 00 00 00 00 00 00 00 00 __ __ __ __ │ ............░░░░
+    0x20 │ ╾ALLOC2<imm>╼ 02 00 00 00 00 00 00 00 │ ╾──────╼........
+    0x30 │ 01 00 00 00 2a 00 00 00 ╾ALLOC3<imm>╼ │ ....*...╾──────╼
+    0x40 │ 03 00 00 00 00 00 00 00                         │ ........
+}
+
+ALLOC1 (size: 0, align: 8) {}
+
+ALLOC2 (size: 32, align: 8) {
+    0x00 │ ╾ALLOC4<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+    0x10 │ ╾ALLOC5<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+}
+
+ALLOC4 (size: 3, align: 1) {
+    66 6f 6f                                        │ foo
+}
+
+ALLOC5 (size: 3, align: 1) {
+    62 61 72                                        │ bar
+}
+
+ALLOC3 (size: 48, align: 8) {
+    0x00 │ ╾ALLOC6<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+    0x10 │ ╾ALLOC7<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+    0x20 │ ╾ALLOC8<imm>╼ 04 00 00 00 00 00 00 00 │ ╾──────╼........
+}
+
+ALLOC6 (size: 3, align: 1) {
+    6d 65 68                                        │ meh
+}
+
+ALLOC7 (size: 3, align: 1) {
+    6d 6f 70                                        │ mop
+}
+
+ALLOC8 (size: 4, align: 1) {
+    6d c3 b6 70                                     │ m..p
+}

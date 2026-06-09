@@ -1,0 +1,19 @@
+error: requires at least a format string argument
+  --> $DIR/ifmt-bad-format-args.rs:2:5
+   |
+LL |     format_args!();
+   |     ^^^^^^^^^^^^^^
+
+error: format argument must be a string literal
+  --> $DIR/ifmt-bad-format-args.rs:3:18
+   |
+LL |     format_args!(|| {});
+   |                  ^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     format_args!("{}", || {});
+   |                  +++++
+
+error: aborting due to 2 previous errors
+

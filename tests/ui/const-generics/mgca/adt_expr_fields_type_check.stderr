@@ -1,0 +1,45 @@
+error: the constant `N` is not of type `u8`
+  --> $DIR/adt_expr_fields_type_check.rs:24:19
+   |
+LL |     accepts_1::<{ S1::<u8> { f1: N, f2: N } }>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `bool`
+
+error: the constant `N` is not of type `isize`
+  --> $DIR/adt_expr_fields_type_check.rs:24:19
+   |
+LL |     accepts_1::<{ S1::<u8> { f1: N, f2: N } }>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `bool`
+
+error: the constant `N` is not of type `u8`
+  --> $DIR/adt_expr_fields_type_check.rs:27:19
+   |
+LL |     accepts_2::<{ S2::<u8>(N, N) }>();
+   |                   ^^^^^^^^^^^^^^ expected `u8`, found `bool`
+
+error: the constant `N` is not of type `isize`
+  --> $DIR/adt_expr_fields_type_check.rs:27:19
+   |
+LL |     accepts_2::<{ S2::<u8>(N, N) }>();
+   |                   ^^^^^^^^^^^^^^ expected `isize`, found `bool`
+
+error: the constant `N` is not of type `u8`
+  --> $DIR/adt_expr_fields_type_check.rs:30:19
+   |
+LL |     accepts_3::<{ En::Var1::<u8>(N, N) }>();
+   |                   ^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `bool`
+
+error: the constant `N` is not of type `i64`
+  --> $DIR/adt_expr_fields_type_check.rs:32:19
+   |
+LL |     accepts_3::<{ En::Var2::<u8> { field: N } }>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i64`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/adt_expr_fields_type_check.rs:34:51
+   |
+LL |     accepts_3::<{ En::Var2::<u8> { field: const { false } } }>();
+   |                                                   ^^^^^ expected `i64`, found `bool`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

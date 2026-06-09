@@ -1,0 +1,15 @@
+error: unresolved link to `zip`
+  --> $DIR/unused-extern-crate.rs:3:10
+   |
+LL | /// See [zip] crate.
+   |          ^^^ no item named `zip` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+note: the lint level is defined here
+  --> $DIR/unused-extern-crate.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

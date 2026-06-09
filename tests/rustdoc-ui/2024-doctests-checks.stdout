@@ -1,0 +1,13 @@
+
+running 1 test
+test $DIR/2024-doctests-checks.rs - Foo (line 10) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 1 test
+test $DIR/2024-doctests-checks.rs - Foo (line 17) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

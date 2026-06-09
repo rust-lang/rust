@@ -1,0 +1,56 @@
+Function name: coroutine::get_u32
+Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 0b, 01, 00, 2d, 01, 01, 08, 00, 0b, 05, 01, 09, 00, 0e, 02, 02, 09, 00, 28, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/coroutine.rs
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 11, 1) to (start + 0, 45)
+- Code(Counter(0)) at (prev + 1, 8) to (start + 0, 11)
+- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 14)
+- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 40)
+    = (c0 - c1)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c1
+
+Function name: coroutine::main
+Raw bytes (93): 0x[01, 01, 02, 01, 05, 05, 09, 11, 01, 13, 01, 00, 0a, 01, 01, 09, 00, 10, 01, 00, 13, 00, 2e, 01, 01, 09, 00, 16, 01, 06, 0b, 00, 13, 01, 00, 14, 00, 22, 01, 00, 24, 00, 2a, 01, 00, 2b, 00, 2d, 05, 01, 2b, 00, 2d, 02, 01, 0e, 00, 14, 05, 02, 0b, 00, 13, 05, 00, 0b, 00, 2e, 05, 00, 14, 00, 22, 0d, 01, 22, 00, 27, 09, 00, 2c, 00, 2e, 06, 01, 0e, 00, 14, 09, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/coroutine.rs
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 17
+- Code(Counter(0)) at (prev + 19, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 16)
+- Code(Counter(0)) at (prev + 0, 19) to (start + 0, 46)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 6, 11) to (start + 0, 19)
+- Code(Counter(0)) at (prev + 0, 20) to (start + 0, 34)
+- Code(Counter(0)) at (prev + 0, 36) to (start + 0, 42)
+- Code(Counter(0)) at (prev + 0, 43) to (start + 0, 45)
+- Code(Counter(1)) at (prev + 1, 43) to (start + 0, 45)
+- Code(Expression(0, Sub)) at (prev + 1, 14) to (start + 0, 20)
+    = (c0 - c1)
+- Code(Counter(1)) at (prev + 2, 11) to (start + 0, 19)
+- Code(Counter(1)) at (prev + 0, 11) to (start + 0, 46)
+- Code(Counter(1)) at (prev + 0, 20) to (start + 0, 34)
+- Code(Counter(3)) at (prev + 1, 34) to (start + 0, 39)
+- Code(Counter(2)) at (prev + 0, 44) to (start + 0, 46)
+- Code(Expression(1, Sub)) at (prev + 1, 14) to (start + 0, 20)
+    = (c1 - c2)
+- Code(Counter(2)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+
+Function name: coroutine::main::{closure#0}
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 16, 08, 00, 09, 01, 01, 09, 00, 1f, 05, 01, 10, 00, 15, 05, 01, 05, 00, 06]
+Number of files: 1
+- file 0 => $DIR/coroutine.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 22, 8) to (start + 0, 9)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 31)
+- Code(Counter(1)) at (prev + 1, 16) to (start + 0, 21)
+- Code(Counter(1)) at (prev + 1, 5) to (start + 0, 6)
+Highest counter ID seen: c1
+

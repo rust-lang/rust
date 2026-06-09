@@ -1,0 +1,45 @@
+note: no external requirements
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:39:47
+   |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: supply::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 std::cell::Cell<&'^1 &'?1 u32>, &'^2 std::cell::Cell<&'^3 &'?2 u32>, &'^4 std::cell::Cell<&'^1 u32>, &'^5 std::cell::Cell<&'^3 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?5
+   = note: late-bound region is '?6
+   = note: late-bound region is '?7
+   = note: late-bound region is '?8
+   = note: late-bound region is '?9
+   = note: late-bound region is '?10
+   = note: late-bound region is '?3
+   = note: late-bound region is '?4
+
+error: lifetime may not live long enough
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:9
+   |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |                                                ----------  ---------- has type `&'?7 Cell<&'2 &'?2 u32>`
+   |                                                |
+   |                                                has type `&'?5 Cell<&'1 &'?1 u32>`
+LL |         // Only works if 'x: 'y:
+LL |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&'?43 u32>`, which makes the generic argument `&'?43 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+note: no external requirements
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:38:1
+   |
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: supply
+
+error: aborting due to 1 previous error
+

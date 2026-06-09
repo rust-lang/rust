@@ -1,0 +1,28 @@
+- // MIR for `target_self` before EarlyOtherwiseBranch
++ // MIR for `target_self` after EarlyOtherwiseBranch
+  
+  fn target_self(_1: i32) -> () {
+      let mut _0: ();
++     let mut _2: bool;
+  
+      bb0: {
+          goto -> bb1;
+      }
+  
+      bb1: {
+-         switchInt(copy _1) -> [0: bb2, otherwise: bb1];
++         _2 = Ne(copy _1, copy _1);
++         switchInt(move _2) -> [0: bb3, otherwise: bb1];
+      }
+  
+      bb2: {
+-         switchInt(copy _1) -> [0: bb3, otherwise: bb1];
++         return;
+      }
+  
+      bb3: {
+-         return;
++         switchInt(copy _1) -> [0: bb2, otherwise: bb1];
+      }
+  }
+  

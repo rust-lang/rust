@@ -1,0 +1,181 @@
+use std::env;
+use std::process::Command;
+use std::sync::Arc;
+
+use camino::Utf8Path;
+
+use crate::common::{Config, Debugger};
+
+pub(crate) fn configure_cdb(config: &Config) -> Option<Arc<Config>> {
+    config.cdb.as_ref()?;
+
+    Some(Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.clone() }))
+}
+
+pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
+    config.gdb_version?;
+
+    if config.matches_env("msvc") {
+        return None;
+    }
+
+    if config.remote_test_client.is_some() && !config.target.contains("android") {
+        println!(
+            "WARNING: debuginfo tests are not available when \
+             testing with remote"
+        );
+        return None;
+    }
+
+    if config.target.contains("android") {
+        println!(
+            "{} debug-info test uses tcp 5039 port.\
+             please reserve it",
+            config.target
+        );
+
+        // android debug-info test uses remote debugger so, we test 1 thread
+        // at once as they're all sharing the same TCP port to communicate
+        // over.
+        //
+        // we should figure out how to lift this restriction! (run them all
+        // on different ports allocated dynamically).
+        //
+        // SAFETY: at this point we are still single-threaded.
+        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
+    }
+
+    Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
+}
+
+pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
+    config.lldb.as_ref()?;
+
+    Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
+}
+
+pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {
+    let mut version = None;
+    if let Ok(output) = Command::new(cdb).arg("/version").output() {
+        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+            version = extract_cdb_version(&first_line);
+        }
+    }
+    version
+}
+
+pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
+    // Example full_version_line: "cdb version 10.0.18362.1"
+    let version = full_version_line.rsplit(' ').next()?;
+    let mut components = version.split('.');
+    let major: u16 = components.next().unwrap().parse().unwrap();
+    let minor: u16 = components.next().unwrap().parse().unwrap();
+    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
+    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
+    Some([major, minor, patch, build])
+}
+
+pub(crate) fn query_gdb_version(gdb: &Utf8Path) -> Option<u32> {
+    let mut version_line = None;
+    if let Ok(output) = Command::new(&gdb).arg("--version").output() {
+        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+            version_line = Some(first_line.to_string());
+        }
+    }
+
+    let version = match version_line {
+        Some(line) => extract_gdb_version(&line),
+        None => return None,
+    };
+
+    version
+}
+
+pub(crate) fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
+    let full_version_line = full_version_line.trim();
+
+    // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
+    // of the ? sections being optional
+
+    // We will parse up to 3 digits for each component, ignoring the date
+
+    // We skip text in parentheses.  This avoids accidentally parsing
+    // the openSUSE version, which looks like:
+    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
+    // This particular form is documented in the GNU coding standards:
+    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
+
+    let unbracketed_part = full_version_line.split('[').next().unwrap();
+    let mut splits = unbracketed_part.trim_end().rsplit(' ');
+    let version_string = splits.next().unwrap();
+
+    let mut splits = version_string.split('.');
+    let major = splits.next().unwrap();
+    let minor = splits.next().unwrap();
+    let patch = splits.next();
+
+    let major: u32 = major.parse().unwrap();
+    let (minor, patch): (u32, u32) = match minor.find(not_a_digit) {
+        None => {
+            let minor = minor.parse().unwrap();
+            let patch: u32 = match patch {
+                Some(patch) => match patch.find(not_a_digit) {
+                    None => patch.parse().unwrap(),
+                    Some(idx) if idx > 3 => 0,
+                    Some(idx) => patch[..idx].parse().unwrap(),
+                },
+                None => 0,
+            };
+            (minor, patch)
+        }
+        // There is no patch version after minor-date (e.g. "4-2012").
+        Some(idx) => {
+            let minor = minor[..idx].parse().unwrap();
+            (minor, 0)
+        }
+    };
+
+    Some(((major * 1000) + minor) * 1000 + patch)
+}
+
+/// Returns LLDB version
+pub(crate) fn extract_lldb_version(full_version_line: &str) -> Option<u32> {
+    // Extract the major LLDB version from the given version string.
+    // LLDB version strings are different for Apple and non-Apple platforms.
+    // The Apple variant looks like this:
+    //
+    // LLDB-179.5 (older versions)
+    // lldb-300.2.51 (new versions)
+    //
+    // We are only interested in the major version number, so this function
+    // will return `Some(179)` and `Some(300)` respectively.
+    //
+    // Upstream versions look like:
+    // lldb version 6.0.1
+    //
+    // There doesn't seem to be a way to correlate the Apple version
+    // with the upstream version, and since the tests were originally
+    // written against Apple versions, we make a fake Apple version by
+    // multiplying the first number by 100. This is a hack.
+
+    let full_version_line = full_version_line.trim();
+
+    if let Some(apple_ver) =
+        full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
+    {
+        if let Some(idx) = apple_ver.find(not_a_digit) {
+            let version: u32 = apple_ver[..idx].parse().unwrap();
+            return Some(version);
+        }
+    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
+        if let Some(idx) = lldb_ver.find(not_a_digit) {
+            let version: u32 = lldb_ver[..idx].parse().ok()?;
+            return Some(version * 100);
+        }
+    }
+    None
+}
+
+fn not_a_digit(c: char) -> bool {
+    !c.is_ascii_digit()
+}

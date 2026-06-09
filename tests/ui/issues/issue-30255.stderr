@@ -1,0 +1,39 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:9:24
+   |
+LL | fn f(a: &S, b: i32) -> &i32 {
+   |         --             ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `a`'s 2 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL | fn f<'a>(a: &'a S<'a>, b: i32) -> &'a i32 {
+   |     ++++     ++  ++++              ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:14:34
+   |
+LL | fn g(a: &S, b: bool, c: &i32) -> &i32 {
+   |         --              ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `a`'s 2 lifetimes or `c`
+help: consider introducing a named lifetime parameter
+   |
+LL | fn g<'a>(a: &'a S<'a>, b: bool, c: &'a i32) -> &'a i32 {
+   |     ++++     ++  ++++               ++          ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-30255.rs:19:44
+   |
+LL | fn h(a: &bool, b: bool, c: &S, d: &i32) -> &i32 {
+   |         -----              --     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `a`, one of `c`'s 2 lifetimes, or `d`
+help: consider introducing a named lifetime parameter
+   |
+LL | fn h<'a>(a: &'a bool, b: bool, c: &'a S<'a>, d: &'a i32) -> &'a i32 {
+   |     ++++     ++                    ++  ++++      ++          ++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

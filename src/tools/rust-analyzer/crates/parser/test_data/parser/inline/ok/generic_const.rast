@@ -1,0 +1,71 @@
+SOURCE_FILE
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "i32"
+      R_ANGLE ">"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      CONST
+        CONST_KW "const"
+        WHITESPACE " "
+        NAME
+          IDENT "C"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          LIFETIME
+            LIFETIME_IDENT "'a"
+          WHITESPACE " "
+          TUPLE_TYPE
+            L_PAREN "("
+            R_PAREN ")"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        REF_EXPR
+          AMP "&"
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+        SEMICOLON ";"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,124 @@
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:12:5
+   |
+LL |     write!(v, "Hello\n");
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::write-with-newline` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::write_with_newline)]`
+help: use `writeln!` instead
+   |
+LL -     write!(v, "Hello\n");
+LL +     writeln!(v, "Hello");
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:15:5
+   |
+LL |     write!(v, "Hello {}\n", "world");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "Hello {}\n", "world");
+LL +     writeln!(v, "Hello {}", "world");
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:18:5
+   |
+LL |     write!(v, "Hello {} {}\n", "world", "#2");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "Hello {} {}\n", "world", "#2");
+LL +     writeln!(v, "Hello {} {}", "world", "#2");
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:21:5
+   |
+LL |     write!(v, "{}\n", 1265);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "{}\n", 1265);
+LL +     writeln!(v, "{}", 1265);
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:24:5
+   |
+LL |     write!(v, "\n");
+   |     ^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "\n");
+LL +     writeln!(v);
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:47:5
+   |
+LL |     write!(v, "\\\n");
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "\\\n");
+LL +     writeln!(v, "\\");
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:57:5
+   |
+LL | /     write!(
+LL | |
+LL | |         v,
+LL | |         "
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `writeln!` instead
+   |
+LL ~     writeln!(
+LL |
+LL ~         v
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:63:5
+   |
+LL | /     write!(
+LL | |
+LL | |         v,
+LL | |         r"
+LL | | "
+LL | |     );
+   | |_____^
+   |
+help: use `writeln!` instead
+   |
+LL ~     writeln!(
+LL |
+LL ~         v
+   |
+
+error: using `write!()` with a format string that ends in a single newline
+  --> tests/ui/write_with_newline.rs:73:5
+   |
+LL |     write!(v, "\\r\n");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: use `writeln!` instead
+   |
+LL -     write!(v, "\\r\n");
+LL +     writeln!(v, "\\r");
+   |
+
+error: aborting due to 9 previous errors
+

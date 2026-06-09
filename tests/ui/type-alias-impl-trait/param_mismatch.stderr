@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/param_mismatch.rs:13:5
+   |
+LL | type Opaque<'a> = impl Sized + 'a;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (s, id)
+   |     ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

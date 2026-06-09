@@ -1,0 +1,37 @@
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter '_ in generic type due to conflicting requirements
+  --> $DIR/resolve-re-error-ice.rs:12:5
+   |
+LL |     fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime defined here...
+  --> $DIR/resolve-re-error-ice.rs:5:16
+   |
+LL |     fn key_set(&self) -> Subject<Keys<K, V>, (), R>;
+   |                ^^^^^
+note: ...so that the method type is compatible with trait
+  --> $DIR/resolve-re-error-ice.rs:12:5
+   |
+LL |     fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `fn(&Subject<'_, _, _, _>) -> Subject<'_, std::collections::hash_map::Keys<'_, _, _>, _, _>`
+              found `fn(&Subject<'_, _, _, _>) -> Subject<'a, std::collections::hash_map::Keys<'_, _, _>, _, _>`
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
+  --> $DIR/resolve-re-error-ice.rs:10:6
+   |
+LL | impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R>
+   |      ^^
+note: ...so that the type `std::collections::hash_map::Keys<'_, K, V>` will meet its required lifetime bounds...
+  --> $DIR/resolve-re-error-ice.rs:12:5
+   |
+LL |     fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...that is required by this bound
+  --> $DIR/resolve-re-error-ice.rs:8:29
+   |
+LL | struct Subject<'a, T, V, R>(PhantomData<(&'a T, V, R)>);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0803`.

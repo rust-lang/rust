@@ -1,0 +1,14 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/while-loop.rs:2:12
+   |
+LL |     whilee a < b {
+   |            ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `while` with a similar name
+   |
+LL -     whilee a < b {
+LL +     while a < b {
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,77 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:4:20
+   |
+LL |     type Item<'q>: 'a;
+   |                    ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     type Item<'a, 'q>: 'a;
+   |               +++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait LendingIterator<'a> {
+   |                      ++++
+
+error[E0262]: invalid lifetime parameter name: `'static`
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:14:6
+   |
+LL | impl<'static> Query<'q> {
+   |      ^^^^^^^ 'static is a reserved lifetime name
+
+error[E0261]: use of undeclared lifetime name `'q`
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:14:21
+   |
+LL | impl<'static> Query<'q> {
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'q` here
+   |
+LL | impl<'q, 'static> Query<'q> {
+   |      +++
+
+error[E0392]: lifetime parameter `'q` is never used
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:11:14
+   |
+LL | struct Query<'q> {}
+   |              ^^ unused lifetime parameter
+   |
+   = help: consider removing `'q`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:7:21
+   |
+LL |     fn for_each(mut self, mut f: Box<dyn FnMut(Self::Item<'_>) + 'static>) {}
+   |                     ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     fn for_each(mut self, mut f: Box<dyn FnMut(Self::Item<'_>) + 'static>) where Self: Sized {}
+   |                                                                            +++++++++++++++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn for_each(mut &self, mut f: Box<dyn FnMut(Self::Item<'_>) + 'static>) {}
+   |                     +
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:21:31
+   |
+LL |     LendingIterator::for_each(Query::new(&data), Box::new);
+   |                               ^^^^^^^^^^ ----- unexpected argument of type `&fn() {data}`
+   |
+note: associated function defined here
+  --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:17:12
+   |
+LL |     pub fn new() -> Self {}
+   |            ^^^
+help: remove the extra argument
+   |
+LL -     LendingIterator::for_each(Query::new(&data), Box::new);
+LL +     LendingIterator::for_each(Query::new(), Box::new);
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0061, E0261, E0262, E0277, E0392.
+For more information about an error, try `rustc --explain E0061`.

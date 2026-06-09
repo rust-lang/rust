@@ -1,0 +1,54 @@
+// This tests checks that the "scraped examples" toggle is working as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+// Checking the color of the toggle line.
+show-text: true
+define-function: (
+    "check-color",
+    [theme, toggle_line_color, toggle_line_hover_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        reload:
+
+        // Clicking "More examples..." will open additional examples
+        assert-attribute-false: (".more-examples-toggle", {"open": ""})
+        click: ".more-examples-toggle"
+        assert-attribute: (".more-examples-toggle", {"open": ""})
+
+        assert-css: (".toggle-line-inner", {"background-color": |toggle_line_color|}, ALL)
+        move-cursor-to: ".toggle-line"
+        assert-css: (
+            ".toggle-line:hover .toggle-line-inner",
+            {"background-color": |toggle_line_hover_color|},
+        )
+        // We put the toggle in the original state.
+        click: ".more-examples-toggle"
+        // Moving cursor away from the toggle line to prevent disrupting next test.
+        move-cursor-to: "rustdoc-toolbar #search-button"
+    },
+)
+
+call-function: ("check-color", {
+    "theme": "ayu",
+    "toggle_line_color": "#999",
+    "toggle_line_hover_color": "#c5c5c5",
+})
+call-function: ("check-color", {
+    "theme": "dark",
+    "toggle_line_color": "#999",
+    "toggle_line_hover_color": "#c5c5c5",
+})
+call-function: ("check-color", {
+    "theme": "light",
+    "toggle_line_color": "#ccc",
+    "toggle_line_hover_color": "#999",
+})
+
+// Toggling all docs will close additional examples
+click: "#toggle-all-docs"
+assert-attribute-false: (".more-examples-toggle", {"open": ""})
+
+// After re-opening the docs, the additional examples should stay closed
+click: "#toggle-all-docs"
+assert-attribute-false: (".more-examples-toggle", {"open": ""})

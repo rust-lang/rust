@@ -1,0 +1,12 @@
+- // MIR for `assign_const_to_return` before SingleUseConsts
++ // MIR for `assign_const_to_return` after SingleUseConsts
+  
+  fn assign_const_to_return() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+          _0 = const <T as MyTrait>::ASSOC_BOOL;
+          return;
+      }
+  }
+  

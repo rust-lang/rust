@@ -1,0 +1,16 @@
+error[E0369]: cannot calculate the remainder of `&&{integer}` divided by `{integer}`
+  --> $DIR/binary-op-on-double-ref.rs:5:11
+   |
+LL |         x % 2 == 0
+   |         - ^ - {integer}
+   |         |
+   |         &&{integer}
+   |
+help: `%` can be used on `&{integer}` if you dereference the left-hand side
+   |
+LL |         *x % 2 == 0
+   |         +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

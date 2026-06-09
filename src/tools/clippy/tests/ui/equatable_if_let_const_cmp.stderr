@@ -1,0 +1,17 @@
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let_const_cmp.rs:20:23
+   |
+LL |     const _: u32 = if let ConstEq::A = C { 0 } else { 1 };
+   |                       ^^^^^^^^^^^^^^^^^^ help: try: `matches!(C, ConstEq::A)`
+   |
+   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::equatable_if_let)]`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let_const_cmp.rs:22:23
+   |
+LL |     const _: u32 = if let Some(ConstEq::A) = Some(C) { 0 } else { 1 };
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(Some(C), Some(ConstEq::A))`
+
+error: aborting due to 2 previous errors
+

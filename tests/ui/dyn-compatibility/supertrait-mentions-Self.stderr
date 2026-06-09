@@ -1,0 +1,44 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/supertrait-mentions-Self.rs:8:13
+   |
+LL | trait Baz : Bar<Self> {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/supertrait-mentions-Self.rs:4:11
+   |
+LL | trait Bar<T> {
+   |           ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: consider further restricting `Self`
+   |
+LL | trait Baz : Bar<Self> + Sized {
+   |                       +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Bar<T: ?Sized> {
+   |            ++++++++
+
+error[E0038]: the trait `Baz` is not dyn compatible
+  --> $DIR/supertrait-mentions-Self.rs:16:35
+   |
+LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
+   |                                   ^^^ `Baz` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/supertrait-mentions-Self.rs:8:13
+   |
+LL | trait Baz : Bar<Self> {
+   |       ---   ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+help: consider using an opaque type instead
+   |
+LL - fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
+LL + fn make_baz<T:Baz>(t: &T) -> &impl Baz {
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

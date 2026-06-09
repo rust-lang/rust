@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
+  --> $DIR/constrain_in_projection.rs:25:14
+   |
+LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
+   |              ^^^ unsatisfied trait bound
+   |
+help: the trait `Trait<Bar>` is not implemented for `Foo`
+      but trait `Trait<()>` is implemented for it
+  --> $DIR/constrain_in_projection.rs:19:1
+   |
+LL | impl Trait<()> for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
+  --> $DIR/constrain_in_projection.rs:25:13
+   |
+LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Trait<Bar>` is not implemented for `Foo`
+      but trait `Trait<()>` is implemented for it
+  --> $DIR/constrain_in_projection.rs:19:1
+   |
+LL | impl Trait<()> for Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

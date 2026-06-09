@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `+`, `::`, `<`, or `is`, found `0`
+  --> $DIR/missing-is.rs:6:30
+   |
+LL |     let x: pattern_type!(i32 0..1);
+   |                              ^ expected one of `!`, `(`, `+`, `::`, `<`, or `is`
+
+error: aborting due to 1 previous error
+

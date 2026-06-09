@@ -1,0 +1,21 @@
+error[E0658]: use of unstable library feature `format_args_nl`: `format_args_nl` is only for internal language use and is subject to change
+  --> $DIR/feature-gate-format_args_nl.rs:4:5
+   |
+LL |     format_args_nl!("");
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(format_args_nl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `format_args_nl`: `format_args_nl` is only for internal language use and is subject to change
+  --> $DIR/feature-gate-format_args_nl.rs:1:5
+   |
+LL | use std::format_args_nl;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(format_args_nl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

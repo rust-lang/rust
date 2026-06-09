@@ -1,0 +1,9 @@
+error[E0718]: `owned_box` lang item must be applied to a struct
+  --> $DIR/E0718.rs:4:1
+   |
+LL | #[lang = "owned_box"]
+   | ^^^^^^^^^^^^^^^^^^^^^ attribute should be applied to a struct, not a static
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0718`.

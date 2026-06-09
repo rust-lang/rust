@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/macro-span-caller-replacement.rs:5:17
+   |
+LL |             s = format!("{arg}");
+   |                 ^^^^^^^^^^^^^^^^ expected `&str`, found `String`
+...
+LL |     macro_with_format!();
+   |     -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `format` which comes from the expansion of the macro `macro_with_format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/macro-span-caller-replacement.rs:7:17
+   |
+LL |         let s : &str;
+   |                 ---- expected due to this type
+...
+LL |             s = String::new();
+   |                 ^^^^^^^^^^^^^ expected `&str`, found `String`
+...
+LL |     macro_with_format!();
+   |     -------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_with_format` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider borrowing here
+   |
+LL |             s = &String::new();
+   |                 +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

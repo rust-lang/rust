@@ -1,0 +1,29 @@
+- // MIR for `array_len` before GVN
++ // MIR for `array_len` after GVN
+  
+  fn array_len(_1: &mut [i32; 42]) -> usize {
+      debug x => _1;
+      let mut _0: usize;
+      let _2: &[i32];
+      let mut _3: &[i32; 42];
+      let mut _4: *const [i32];
+      scope 1 {
+          debug x => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &(*_1);
+          _2 = move _3 as &[i32] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = &raw const (*_2);
+-         _0 = PtrMetadata(move _4);
++         _0 = const 42_usize;
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

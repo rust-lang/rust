@@ -1,0 +1,20 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: miri
+---
+[Miri] test::Crate
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({miri::library/alloc})
+    - Set({miri::library/alloctests})
+    - Set({miri::library/compiler-builtins/compiler-builtins})
+    - Set({miri::library/core})
+    - Set({miri::library/coretests})
+    - Set({miri::library/panic_abort})
+    - Set({miri::library/panic_unwind})
+    - Set({miri::library/proc_macro})
+    - Set({miri::library/rustc-std-workspace-core})
+    - Set({miri::library/std})
+    - Set({miri::library/std_detect})
+    - Set({miri::library/sysroot})
+    - Set({miri::library/test})
+    - Set({miri::library/unwind})

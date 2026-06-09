@@ -1,0 +1,10 @@
+error: abnormal termination: attempted to lock an os_unfair_lock that is already locked by the current thread
+  --> tests/fail-dep/concurrency/apple_os_unfair_lock_reentrant.rs:LL:CC
+   |
+LL |         libc::os_unfair_lock_lock(lock.get());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

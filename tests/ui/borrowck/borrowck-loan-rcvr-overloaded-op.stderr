@@ -1,0 +1,28 @@
+error[E0503]: cannot use `p` because it was mutably borrowed
+  --> $DIR/borrowck-loan-rcvr-overloaded-op.rs:38:5
+   |
+LL |     let q = &mut p;
+   |             ------ `p` is borrowed here
+LL |
+LL |     p + 3;
+   |     ^ use of borrowed `p`
+...
+LL |     *q + 3; // OK to use the new alias `q`
+   |     -- borrow later used here
+
+error[E0502]: cannot borrow `p` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-loan-rcvr-overloaded-op.rs:39:5
+   |
+LL |     let q = &mut p;
+   |             ------ mutable borrow occurs here
+...
+LL |     p.times(3);
+   |     ^ immutable borrow occurs here
+LL |
+LL |     *q + 3; // OK to use the new alias `q`
+   |     -- mutable borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0502, E0503.
+For more information about an error, try `rustc --explain E0502`.

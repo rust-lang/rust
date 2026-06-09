@@ -1,0 +1,18 @@
+error[E0283]: type annotations needed: cannot satisfy `T: FnMut(&'a ())`
+  --> $DIR/issue-85735.rs:7:8
+   |
+LL |     T: FnMut(&'a ()),
+   |        ^^^^^^^^^^^^^
+   |
+note: multiple `impl`s or `where` clauses satisfying `T: FnMut(&'a ())` found
+  --> $DIR/issue-85735.rs:7:8
+   |
+LL |     T: FnMut(&'a ()),
+   |        ^^^^^^^^^^^^^
+LL |
+LL |     T: FnMut(&'b ()),
+   |        ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

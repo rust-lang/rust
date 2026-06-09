@@ -1,0 +1,13 @@
+error: `Foo::bar` is incompatible with `#[rustc_force_inline]`
+  --> $DIR/inherent.rs:7:5
+   |
+LL |     #[rustc_force_inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     fn bar() {}
+   |     -------- `Foo::bar` defined here
+   |
+   = note: incompatible due to: #[rustc_no_mir_inline]
+
+error: aborting due to 1 previous error
+

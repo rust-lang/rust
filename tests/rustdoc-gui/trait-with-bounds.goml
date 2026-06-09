@@ -1,0 +1,35 @@
+// Check that if a trait has more than 2 bounds, they are displayed on different lines.
+
+// It tries to load a JS for each trait but there are none since they're not implemented.
+fail-on-request-error: false
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_bounds/trait.OneBound.html"
+// They should have the same Y position.
+compare-elements-position: (
+    ".item-decl code",
+    ".item-decl a.trait[title='trait core::marker::Sized']",
+    ["y"],
+)
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_bounds/trait.TwoBounds.html"
+// They should have the same Y position.
+compare-elements-position: (
+    ".item-decl code",
+    ".item-decl a.trait[title='trait core::marker::Copy']",
+    ["y"],
+)
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_bounds/trait.ThreeBounds.html"
+// All on their own line.
+compare-elements-position-false: (
+    ".item-decl code",
+    ".item-decl a.trait[title='trait core::marker::Sized']",
+    ["y"],
+)
+compare-elements-position-false: (
+    ".item-decl a.trait[title='trait core::marker::Sized']",
+    ".item-decl a.trait[title='trait core::marker::Copy']",
+    ["y"],
+)
+compare-elements-position-false: (
+    ".item-decl a.trait[title='trait core::marker::Copy']",
+    ".item-decl a.trait[title='trait core::cmp::Eq']",
+    ["y"],
+)

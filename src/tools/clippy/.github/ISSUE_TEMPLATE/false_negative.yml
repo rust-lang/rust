@@ -1,0 +1,50 @@
+name: Bug Report (False Negative)
+description: Create a bug report about missing warnings from a lint
+labels: ["C-bug", "I-false-negative"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for filing a bug report! 🐛
+  - type: textarea
+    id: problem
+    attributes:
+      label: Summary
+      description: >
+        Please provide a short summary of the bug, along with any information
+        you feel relevant to replicate the bug.
+    validations:
+      required: true
+  - type: input
+    id: lint-name
+    attributes:
+      label: Lint Name
+      description: Please provide the lint name.
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Reproducer
+      description: Please provide the code and steps to reproduce the bug
+      value: |
+        I tried this code:
+
+        ```rust
+        <code>
+        ```
+
+        I expected to see this happen:
+
+        Instead, this happened:
+  - type: textarea
+    id: version
+    attributes:
+      label: Version
+      description: "Rust version (`rustc -Vv`)"
+      placeholder: |
+        rustc 1.46.0-nightly (f455e46ea 2020-06-20)
+        binary: rustc
+        commit-hash: f455e46eae1a227d735091091144601b467e1565
+        commit-date: 2020-06-20
+        host: x86_64-unknown-linux-gnu
+        release: 1.46.0-nightly
+        LLVM version: 10.0
+      render: text

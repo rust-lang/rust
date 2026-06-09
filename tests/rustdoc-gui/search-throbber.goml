@@ -1,0 +1,23 @@
+// We are intentionally triggering errors for race-free throbber test
+fail-on-request-error: false
+fail-on-js-error: false
+
+// First, make sure the throbber goes away when done
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search="
+wait-for: ".search-input"
+wait-for-false: ".search-form.loading"
+write-into: (".search-input", "test")
+press-key: 'Enter'
+wait-for-false: ".search-form.loading"
+
+// Make sure the throbber shows up if we prevent the search from
+// ever finishing (this tactic is needed to make sure we don't get stuck
+// with any race conditions).
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search="
+block-network-request: "*/desc/*.js"
+reload:
+wait-for: ".search-input"
+wait-for-false: ".search-form.loading"
+write-into: (".search-input", "test")
+press-key: 'Enter'
+wait-for: ".search-form.loading"

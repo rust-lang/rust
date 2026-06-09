@@ -1,0 +1,55 @@
+error: unexpected parentheses surrounding `for` loop head
+  --> $DIR/issue-103435-extra-parentheses.rs:15:8
+   |
+LL |     for(_x in 1..10) {}
+   |        ^           ^
+   |
+help: remove parentheses in `for` loop
+   |
+LL -     for(_x in 1..10) {}
+LL +     for _x in 1..10 {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-103435-extra-parentheses.rs:5:11
+   |
+LL |     if let(Some(_))= Some(1) {}
+   |           ^       ^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-103435-extra-parentheses.rs:2:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     if let(Some(_))= Some(1) {}
+LL +     if let Some(_) = Some(1) {}
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/issue-103435-extra-parentheses.rs:8:8
+   |
+LL |     for(_x)in 1..10 {}
+   |        ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     for(_x)in 1..10 {}
+LL +     for _x in 1..10 {}
+   |
+
+error: unnecessary parentheses around `if` condition
+  --> $DIR/issue-103435-extra-parentheses.rs:11:7
+   |
+LL |     if(2 == 1) {}
+   |       ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     if(2 == 1) {}
+LL +     if 2 == 1 {}
+   |
+
+error: aborting due to 4 previous errors
+

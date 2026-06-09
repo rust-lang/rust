@@ -1,0 +1,8 @@
+error: expected pattern, found `,`
+  --> $DIR/pat-tuple-1.rs:3:10
+   |
+LL |         (, ..) => {}
+   |          ^ expected pattern
+
+error: aborting due to 1 previous error
+

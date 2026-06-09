@@ -1,0 +1,17 @@
+error[E0508]: cannot move out of type `[S2; 1]`, a non-copy array
+  --> $DIR/move-error-in-promoted.rs:5:16
+   |
+LL |     let _ = S1(C[0]).clone();
+   |                ^^^^
+   |                |
+   |                cannot move out of here
+   |                move occurs because value has type `S2`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _ = S1(C[0].clone()).clone();
+   |                    ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0508`.

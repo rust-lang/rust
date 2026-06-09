@@ -1,0 +1,35 @@
+- // MIR for `f` before DataflowConstProp
++ // MIR for `f` after DataflowConstProp
+  
+  fn f() -> usize {
+      let mut _0: usize;
+      let mut _1: usize;
+      let mut _2: bool;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = const true;
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1];
++         switchInt(const true) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _1 = const 1_usize;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _1 = const 2_usize;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+-         _0 = Add(const 1_usize, move _1);
++         _0 = const 2_usize;
+          StorageDead(_1);
+          return;
+      }
+  }
+  

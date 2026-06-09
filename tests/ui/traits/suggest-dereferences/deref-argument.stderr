@@ -1,0 +1,44 @@
+error[E0277]: the trait bound `MyRef: Test` is not satisfied
+  --> $DIR/deref-argument.rs:29:18
+   |
+LL |     consume_test(my_ref);
+   |     ------------ ^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Test` is not implemented for `MyRef`
+  --> $DIR/deref-argument.rs:14:1
+   |
+LL | struct MyRef(u32);
+   | ^^^^^^^^^^^^
+note: required by a bound in `consume_test`
+  --> $DIR/deref-argument.rs:9:25
+   |
+LL | fn consume_test(x: impl Test) { x.test() }
+   |                         ^^^^ required by this bound in `consume_test`
+help: consider dereferencing here
+   |
+LL |     consume_test(*my_ref);
+   |                  +
+
+error[E0277]: the trait bound `Box<Box<Box<NonCopy>>>: Test` is not satisfied
+  --> $DIR/deref-argument.rs:34:18
+   |
+LL |     consume_test(nested_box);
+   |     ------------ ^^^^^^^^^^ the trait `Test` is not implemented for `Box<Box<Box<NonCopy>>>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `consume_test`
+  --> $DIR/deref-argument.rs:9:25
+   |
+LL | fn consume_test(x: impl Test) { x.test() }
+   |                         ^^^^ required by this bound in `consume_test`
+help: consider dereferencing here
+   |
+LL |     consume_test(***nested_box);
+   |                  +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,680 @@
+use std::mem;
+
+use rustc_ast::visit::FnKind;
+use rustc_ast::*;
+use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{AttributeParser, OmitDoc, ShouldEmit};
+use rustc_expand::expand::AstFragment;
+use rustc_hir as hir;
+use rustc_hir::Target;
+use rustc_hir::def::DefKind;
+use rustc_hir::def::Namespace::{TypeNS, ValueNS};
+use rustc_hir::def_id::LocalDefId;
+use rustc_middle::span_bug;
+use rustc_middle::ty::{PerOwnerResolverData, TyCtxtFeed};
+use rustc_span::{Span, Symbol, sym};
+use tracing::{debug, instrument};
+
+use crate::macros::MacroRulesScopeRef;
+use crate::{
+    ConstArgContext, ImplTraitContext, InvocationParent, ParentScope, Resolver, with_owner,
+    with_owner_tables,
+};
+
+pub(crate) fn collect_definitions<'ra>(
+    resolver: &mut Resolver<'ra, '_>,
+    fragment: &AstFragment,
+    parent_scope: ParentScope<'ra>,
+) -> MacroRulesScopeRef<'ra> {
+    let invocation_parent = resolver.invocation_parents[&parent_scope.expansion];
+    debug!("new fragment to visit with invocation_parent: {invocation_parent:?}");
+    debug_assert_eq!(resolver.current_owner.id, DUMMY_NODE_ID);
+    with_owner(resolver, invocation_parent.owner, |r| {
+        let mut visitor = DefCollector { r, invocation_parent, parent_scope };
+        fragment.visit_with(&mut visitor);
+        visitor.parent_scope.macro_rules
+    })
+}
+
+/// Creates `DefId`s for nodes in the AST.
+pub(crate) struct DefCollector<'a, 'ra, 'tcx> {
+    pub(crate) r: &'a mut Resolver<'ra, 'tcx>,
+    invocation_parent: InvocationParent,
+    pub(crate) parent_scope: ParentScope<'ra>,
+}
+
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
+    pub(super) fn create_def(
+        &mut self,
+        node_id: NodeId,
+        name: Option<Symbol>,
+        def_kind: DefKind,
+        span: Span,
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let parent_def = self.invocation_parent.parent_def;
+        debug!(
+            "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
+            node_id, def_kind, parent_def
+        );
+        self.r.create_def(
+            parent_def,
+            node_id,
+            name,
+            def_kind,
+            self.parent_scope.expansion.to_expn_id(),
+            span.with_parent(None),
+            false,
+        )
+    }
+
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
+        let orig_parent_def = mem::replace(&mut self.invocation_parent.parent_def, parent_def);
+        f(self);
+        self.invocation_parent.parent_def = orig_parent_def;
+    }
+
+    pub(super) fn with_owner<F: FnOnce(&mut Self, TyCtxtFeed<'tcx, LocalDefId>)>(
+        &mut self,
+        owner: NodeId,
+        name: Option<Symbol>,
+        def_kind: DefKind,
+        span: Span,
+        f: F,
+    ) {
+        debug_assert_ne!(owner, DUMMY_NODE_ID);
+        debug_assert_ne!(owner, CRATE_NODE_ID);
+        // We only get here if the owner didn't exist yet. After the owner has been created,
+        // future invocations of `collect_definitions` will get the owner out of the `owners`
+        // table.
+        let parent_def = self.invocation_parent.parent_def;
+        let feed = self.r.create_def(
+            parent_def,
+            owner,
+            name,
+            def_kind,
+            self.parent_scope.expansion.to_expn_id(),
+            span.with_parent(None),
+            true,
+        );
+        let tables = PerOwnerResolverData::new(owner, feed.key());
+
+        let orig_invoc_owner = mem::replace(&mut self.invocation_parent.owner, owner);
+        with_owner_tables(self, owner, tables, |this| f(this, feed));
+        let old = mem::replace(&mut self.invocation_parent.owner, orig_invoc_owner);
+        assert_eq!(old, owner);
+    }
+
+    fn with_impl_trait<F: FnOnce(&mut Self)>(
+        &mut self,
+        impl_trait_context: ImplTraitContext,
+        f: F,
+    ) {
+        let orig_itc =
+            mem::replace(&mut self.invocation_parent.impl_trait_context, impl_trait_context);
+        f(self);
+        self.invocation_parent.impl_trait_context = orig_itc;
+    }
+
+    fn with_const_arg<F: FnOnce(&mut Self)>(&mut self, ctxt: ConstArgContext, f: F) {
+        let orig = mem::replace(&mut self.invocation_parent.const_arg_context, ctxt);
+        f(self);
+        self.invocation_parent.const_arg_context = orig;
+    }
+
+    fn collect_field(&mut self, field: &'a FieldDef, index: Option<usize>) {
+        let index = |this: &Self| {
+            index.unwrap_or_else(|| {
+                let node_id = NodeId::placeholder_from_expn_id(this.parent_scope.expansion);
+                this.r.placeholder_field_indices[&node_id]
+            })
+        };
+
+        if field.is_placeholder {
+            let old_index = self.r.placeholder_field_indices.insert(field.id, index(self));
+            assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
+            self.visit_macro_invoc(field.id);
+            self.visit_invoc(field.id);
+        } else {
+            let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
+            let def = self.create_def(field.id, Some(name), DefKind::Field, field.span);
+            self.with_parent(def.def_id(), |this| this.brg_visit_field_def(field, def));
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn visit_macro_invoc(&mut self, id: NodeId) {
+        debug!(?self.invocation_parent);
+
+        let id = id.placeholder_to_expn_id();
+        let old_parent = self.r.invocation_parents.insert(id, self.invocation_parent);
+        assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
+    }
+}
+
+impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
+    fn visit_item(&mut self, i: &'a Item) {
+        // Pick the def data. This need not be unique, but the more
+        // information we encapsulate into, the better
+        let mut opt_syn_ext = None;
+        let def_kind = match &i.kind {
+            ItemKind::Impl(i) => DefKind::Impl { of_trait: i.of_trait.is_some() },
+            ItemKind::ForeignMod(..) => DefKind::ForeignMod,
+            ItemKind::Mod(..) => DefKind::Mod,
+            ItemKind::Trait(..) => DefKind::Trait,
+            ItemKind::TraitAlias(..) => DefKind::TraitAlias,
+            ItemKind::Enum(..) => DefKind::Enum,
+            ItemKind::Struct(..) => DefKind::Struct,
+            ItemKind::Union(..) => DefKind::Union,
+            ItemKind::ExternCrate(..) => DefKind::ExternCrate,
+            ItemKind::TyAlias(..) => DefKind::TyAlias,
+            ItemKind::Static(s) => DefKind::Static {
+                safety: hir::Safety::Safe,
+                mutability: s.mutability,
+                nested: false,
+            },
+            ItemKind::Const(citem) => {
+                let is_type_const = matches!(citem.rhs_kind, ConstItemRhsKind::TypeConst { .. });
+                DefKind::Const { is_type_const }
+            }
+            ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
+            ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
+            ItemKind::MacroDef(ident, def) => {
+                let edition = i.span.edition();
+
+                // FIXME(jdonszelmann) make one of these in the resolver?
+                // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
+                // Does that prevents errors from happening? maybe
+                let mut parser = AttributeParser::new(
+                    &self.r.tcx.sess,
+                    self.r.tcx.features(),
+                    self.r.tcx().registered_tools(()),
+                    ShouldEmit::Nothing,
+                );
+                let attrs = parser.parse_attribute_list(
+                    &i.attrs,
+                    i.span,
+                    Target::MacroDef,
+                    OmitDoc::Skip,
+                    std::convert::identity,
+                    |_lint_id, _span, _kind| {
+                        // FIXME(jdonszelmann): emit lints here properly
+                        // NOTE that before new attribute parsing, they didn't happen either
+                        // but it would be nice if we could change that.
+                    },
+                );
+
+                let ext = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
+                let macro_kinds = ext.macro_kinds();
+                opt_syn_ext = Some(ext);
+                DefKind::Macro(macro_kinds)
+            }
+            ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
+            ItemKind::Use(_) => {
+                return self.with_owner(i.id, None, DefKind::Use, i.span, |this, feed| {
+                    this.brg_visit_item(i, feed);
+                });
+            }
+            ItemKind::MacCall(..) => {
+                self.visit_macro_invoc(i.id);
+                self.brg_visit_mac_call_in_module(i.id);
+                return;
+            }
+            ItemKind::DelegationMac(..) => unreachable!(),
+        };
+        self.with_owner(
+            i.id,
+            i.kind.ident().map(|ident| ident.name),
+            def_kind,
+            i.span,
+            |this, feed| {
+                if let Some(ext) = opt_syn_ext {
+                    this.r.local_macro_map.insert(feed.def_id(), self.r.arenas.alloc_macro(ext));
+                }
+
+                this.with_parent(feed.def_id(), |this| {
+                    this.with_impl_trait(ImplTraitContext::Existential, |this| {
+                        this.brg_visit_item(i, feed)
+                    })
+                });
+            },
+        );
+    }
+
+    fn visit_block(&mut self, block: &'a Block) {
+        self.brg_visit_block(block);
+    }
+
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
+        match fn_kind {
+            FnKind::Fn(
+                ctxt,
+                _vis,
+                Fn {
+                    sig: FnSig { header, decl, span: _ }, ident, generics, contract, body, ..
+                },
+            ) if let Some(coroutine_kind) = header.coroutine_kind
+                // Foreign ones are denied, so don't create them here.
+                && ctxt != visit::FnCtxt::Foreign =>
+            {
+                self.visit_ident(ident);
+                self.visit_fn_header(header);
+                self.visit_generics(generics);
+                if let Some(contract) = contract {
+                    self.visit_contract(contract);
+                }
+
+                // For async functions, we need to create their inner defs inside of a
+                // closure to match their desugared representation. Besides that,
+                // we must mirror everything that `visit::walk_fn` below does.
+                let FnDecl { inputs, output } = &**decl;
+                for param in inputs {
+                    self.visit_param(param);
+                }
+
+                let (return_id, return_span) = coroutine_kind.return_id();
+                let return_def =
+                    self.create_def(return_id, None, DefKind::OpaqueTy, return_span).def_id();
+                self.with_parent(return_def, |this| this.visit_fn_ret_ty(output));
+
+                // If this async fn has no body (i.e. it's an async fn signature in a trait)
+                // then the closure_def will never be used, and we should avoid generating a
+                // def-id for it.
+                if let Some(body) = body {
+                    let closure_def = self
+                        .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                        .def_id();
+                    self.with_parent(closure_def, |this| this.visit_block(body));
+                }
+            }
+            FnKind::Closure(binder, Some(coroutine_kind), decl, body) => {
+                self.visit_closure_binder(binder);
+                visit::walk_fn_decl(self, decl);
+
+                // Async closures desugar to closures inside of closures, so
+                // we must create two defs.
+                let coroutine_def = self
+                    .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                    .def_id();
+                self.with_parent(coroutine_def, |this| this.visit_expr(body));
+            }
+            _ => visit::walk_fn(self, fn_kind),
+        }
+    }
+
+    fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
+        let (ident, def_kind) = match fi.kind {
+            ForeignItemKind::Static(StaticItem {
+                ident,
+                ty: _,
+                mutability,
+                expr: _,
+                safety,
+                define_opaque: _,
+                eii_impls: _,
+            }) => {
+                let safety = match safety {
+                    ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,
+                    ast::Safety::Safe(_) => hir::Safety::Safe,
+                };
+
+                (ident, DefKind::Static { safety, mutability, nested: false })
+            }
+            ForeignItemKind::Fn(Fn { ident, .. }) => (ident, DefKind::Fn),
+            ForeignItemKind::TyAlias(TyAlias { ident, .. }) => (ident, DefKind::ForeignTy),
+            ForeignItemKind::MacCall(_) => {
+                self.visit_invoc_in_module(fi.id);
+                self.visit_macro_invoc(fi.id);
+                return;
+            }
+        };
+
+        self.with_owner(fi.id, Some(ident.name), def_kind, fi.span, |this, def| {
+            this.with_parent(def.def_id(), |this| {
+                this.build_reduced_graph_for_foreign_item(fi, ident, def);
+                visit::walk_item(this, fi)
+            });
+        })
+    }
+
+    fn visit_variant(&mut self, v: &'a Variant) {
+        if v.is_placeholder {
+            self.visit_macro_invoc(v.id);
+            self.visit_invoc_in_module(v.id);
+            return;
+        }
+        let feed = self.create_def(v.id, Some(v.ident.name), DefKind::Variant, v.span);
+        self.with_parent(feed.def_id(), |this| this.brg_visit_variant(v, feed));
+    }
+
+    fn visit_where_predicate(&mut self, pred: &'a WherePredicate) {
+        if pred.is_placeholder {
+            self.visit_macro_invoc(pred.id);
+            self.visit_invoc(pred.id);
+        } else {
+            visit::walk_where_predicate(self, pred)
+        }
+    }
+
+    fn visit_variant_data(&mut self, data: &'a VariantData) {
+        // The assumption here is that non-`cfg` macro expansion cannot change field indices.
+        // It currently holds because only inert attributes are accepted on fields,
+        // and every such attribute expands into a single field after it's resolved.
+        for (index, field) in data.fields().iter().enumerate() {
+            self.collect_field(field, Some(index));
+        }
+    }
+
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        if param.is_placeholder {
+            self.visit_macro_invoc(param.id);
+            self.visit_invoc(param.id);
+            return;
+        }
+        let def_kind = match param.kind {
+            GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
+            GenericParamKind::Type { .. } => DefKind::TyParam,
+            GenericParamKind::Const { .. } => DefKind::ConstParam,
+        };
+        self.create_def(param.id, Some(param.ident.name), def_kind, param.ident.span);
+
+        // impl-Trait can happen inside generic parameters, like
+        // ```
+        // fn foo<U: Iterator<Item = impl Clone>>() {}
+        // ```
+        //
+        // In that case, the impl-trait is lowered as an additional generic parameter.
+        self.with_impl_trait(ImplTraitContext::Universal, |this| {
+            visit::walk_generic_param(this, param)
+        });
+    }
+
+    fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
+        let (ident, def_kind, ns) = match &i.kind {
+            AssocItemKind::Fn(Fn { ident, .. })
+            | AssocItemKind::Delegation(Delegation { ident, .. }) => {
+                (*ident, DefKind::AssocFn, ValueNS)
+            }
+            AssocItemKind::Const(ConstItem { ident, rhs_kind, .. }) => (
+                *ident,
+                DefKind::AssocConst {
+                    is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
+                },
+                ValueNS,
+            ),
+            AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
+            AssocItemKind::MacCall(..) => {
+                self.visit_macro_invoc(i.id);
+                self.visit_assoc_item_mac_call(i, ctxt);
+                return;
+            }
+            AssocItemKind::DelegationMac(..) => {
+                span_bug!(i.span, "degation mac invoc should have already been handled")
+            }
+        };
+
+        self.with_owner(i.id, Some(ident.name), def_kind, i.span, |this, feed| {
+            this.with_parent(feed.def_id(), |this| {
+                this.brg_visit_assoc_item(i, ctxt, ident, ns, feed)
+            });
+        })
+    }
+
+    fn visit_pat(&mut self, pat: &'a Pat) {
+        match pat.kind {
+            PatKind::MacCall(..) => {
+                self.visit_macro_invoc(pat.id);
+                self.visit_invoc(pat.id);
+            }
+            _ => visit::walk_pat(self, pat),
+        }
+    }
+
+    fn visit_anon_const(&mut self, constant: &'a AnonConst) {
+        // `MgcaDisambiguation::Direct` is set even when MGCA is disabled, so
+        // to avoid affecting stable we have to feature gate the not creating
+        // anon consts
+        if !self.r.tcx.features().min_generic_const_args() {
+            let parent = self
+                .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
+                .def_id();
+            return self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
+        }
+
+        match constant.mgca_disambiguation {
+            MgcaDisambiguation::Direct => self.with_const_arg(ConstArgContext::Direct, |this| {
+                visit::walk_anon_const(this, constant);
+            }),
+            MgcaDisambiguation::AnonConst => {
+                self.with_const_arg(ConstArgContext::NonDirect, |this| {
+                    let parent = this
+                        .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
+                        .def_id();
+                    this.with_parent(parent, |this| visit::walk_anon_const(this, constant));
+                })
+            }
+        };
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        debug!(?self.invocation_parent);
+
+        let parent_def = match &expr.kind {
+            ExprKind::MacCall(..) => {
+                self.visit_macro_invoc(expr.id);
+                self.visit_invoc(expr.id);
+                return;
+            }
+            ExprKind::Closure(..) | ExprKind::Gen(..) => {
+                self.create_def(expr.id, None, DefKind::Closure, expr.span).def_id()
+            }
+            ExprKind::ConstBlock(constant) => {
+                // Under `min_generic_const_args` a `const { }` block sometimes
+                // corresponds to an anon const rather than an inline const.
+                let def_kind = match self.invocation_parent.const_arg_context {
+                    ConstArgContext::Direct => DefKind::AnonConst,
+                    ConstArgContext::NonDirect => DefKind::InlineConst,
+                };
+
+                return self.with_const_arg(ConstArgContext::NonDirect, |this| {
+                    for attr in &expr.attrs {
+                        visit::walk_attribute(this, attr);
+                    }
+
+                    let def =
+                        this.create_def(constant.id, None, def_kind, constant.value.span).def_id();
+                    this.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                });
+            }
+
+            // Avoid overwriting `const_arg_context` as we may want to treat const blocks
+            // as being anon consts if we are inside a const argument.
+            ExprKind::Struct(_) | ExprKind::Call(..) | ExprKind::Tup(..) | ExprKind::Array(..) => {
+                return visit::walk_expr(self, expr);
+            }
+            // FIXME(mgca): we may want to handle block labels in some manner
+            ExprKind::Block(block, _) if let [stmt] = block.stmts.as_slice() => match stmt.kind {
+                // FIXME(mgca): this probably means that mac calls that expand
+                // to semi'd const blocks are handled differently to just writing
+                // out a semi'd const block.
+                StmtKind::Expr(..) | StmtKind::MacCall(..) => return visit::walk_expr(self, expr),
+
+                // Fallback to normal behaviour
+                StmtKind::Let(..) | StmtKind::Item(..) | StmtKind::Semi(..) | StmtKind::Empty => {
+                    self.invocation_parent.parent_def
+                }
+            },
+
+            _ => self.invocation_parent.parent_def,
+        };
+
+        self.with_const_arg(ConstArgContext::NonDirect, |this| {
+            // Note in some cases the `parent_def` here may be the existing parent
+            // and this is actually a no-op `with_parent` call.
+            this.with_parent(parent_def, |this| visit::walk_expr(this, expr))
+        })
+    }
+
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        match ty.kind {
+            TyKind::MacCall(..) => {
+                self.visit_macro_invoc(ty.id);
+                self.visit_invoc(ty.id);
+            }
+            TyKind::ImplTrait(opaque_id, _) => {
+                let name = *self
+                    .r
+                    .impl_trait_names
+                    .get(&ty.id)
+                    .unwrap_or_else(|| span_bug!(ty.span, "expected this opaque to be named"));
+                let kind = match self.invocation_parent.impl_trait_context {
+                    ImplTraitContext::Universal => DefKind::TyParam,
+                    ImplTraitContext::Existential => DefKind::OpaqueTy,
+                    ImplTraitContext::InBinding => return visit::walk_ty(self, ty),
+                };
+                let id = self.create_def(opaque_id, Some(name), kind, ty.span).def_id();
+                match self.invocation_parent.impl_trait_context {
+                    // Do not nest APIT, as we desugar them as `impl_trait: bounds`,
+                    // so the `impl_trait` node is not a parent to `bounds`.
+                    ImplTraitContext::Universal => visit::walk_ty(self, ty),
+                    ImplTraitContext::Existential => {
+                        self.with_parent(id, |this| visit::walk_ty(this, ty))
+                    }
+                    ImplTraitContext::InBinding => unreachable!(),
+                };
+            }
+            _ => visit::walk_ty(self, ty),
+        }
+    }
+
+    fn visit_stmt(&mut self, stmt: &'a Stmt) {
+        match stmt.kind {
+            StmtKind::MacCall(..) => {
+                self.brg_visit_mac_call_in_module(stmt.id);
+                self.visit_macro_invoc(stmt.id)
+            }
+            // FIXME(impl_trait_in_bindings): We don't really have a good way of
+            // introducing the right `ImplTraitContext` here for all the cases we
+            // care about, in case we want to introduce ITIB to other positions
+            // such as turbofishes (e.g. `foo::<impl Fn()>(|| {})`).
+            StmtKind::Let(ref local) => self.with_impl_trait(ImplTraitContext::InBinding, |this| {
+                visit::walk_local(this, local)
+            }),
+            _ => visit::walk_stmt(self, stmt),
+        }
+    }
+
+    fn visit_arm(&mut self, arm: &'a Arm) {
+        if arm.is_placeholder {
+            self.visit_macro_invoc(arm.id);
+            self.visit_invoc(arm.id);
+        } else {
+            visit::walk_arm(self, arm)
+        }
+    }
+
+    fn visit_expr_field(&mut self, f: &'a ExprField) {
+        if f.is_placeholder {
+            self.visit_macro_invoc(f.id);
+            self.visit_invoc(f.id);
+        } else {
+            visit::walk_expr_field(self, f)
+        }
+    }
+
+    fn visit_pat_field(&mut self, fp: &'a PatField) {
+        if fp.is_placeholder {
+            self.visit_macro_invoc(fp.id);
+            self.visit_invoc(fp.id);
+        } else {
+            visit::walk_pat_field(self, fp)
+        }
+    }
+
+    fn visit_param(&mut self, p: &'a Param) {
+        if p.is_placeholder {
+            self.visit_macro_invoc(p.id);
+            self.visit_invoc(p.id);
+        } else {
+            self.with_impl_trait(ImplTraitContext::Universal, |this| visit::walk_param(this, p))
+        }
+    }
+
+    // This method is called only when we are visiting an individual field
+    // after expanding an attribute on it.
+    fn visit_field_def(&mut self, field: &'a FieldDef) {
+        self.collect_field(field, None);
+    }
+
+    fn visit_crate(&mut self, krate: &'a Crate) {
+        if krate.is_placeholder {
+            self.visit_macro_invoc(krate.id);
+            self.visit_invoc_in_module(krate.id);
+        } else {
+            // Visit attributes after items for backward compatibility.
+            // This way they can use `macro_rules` defined later.
+
+            // We always have an invocation parent (set in `collect_definitions`)
+            // of at least the crate root, even for visiting the crate root,
+            // which would then remove the crate root from the tables
+            // list twice and try to insert it twice afterwards.
+            debug_assert_eq!(self.r.current_owner.id, CRATE_NODE_ID);
+
+            visit::walk_list!(self, visit_item, &krate.items);
+            visit::walk_list!(self, visit_attribute, &krate.attrs);
+            self.contains_macro_use(&krate.attrs);
+        }
+    }
+
+    fn visit_attribute(&mut self, attr: &'a Attribute) {
+        let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
+        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
+            self.r
+                .builtin_attrs
+                .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
+        }
+        visit::walk_attribute(self, attr);
+        self.invocation_parent.in_attr = orig_in_attr;
+    }
+
+    fn visit_inline_asm(&mut self, asm: &'a InlineAsm) {
+        let InlineAsm {
+            asm_macro: _,
+            template: _,
+            template_strs: _,
+            operands,
+            clobber_abis: _,
+            options: _,
+            line_spans: _,
+        } = asm;
+        for (op, _span) in operands {
+            match op {
+                InlineAsmOperand::In { expr, reg: _ }
+                | InlineAsmOperand::Out { expr: Some(expr), reg: _, late: _ }
+                | InlineAsmOperand::InOut { expr, reg: _, late: _ } => {
+                    self.visit_expr(expr);
+                }
+                InlineAsmOperand::Out { expr: None, reg: _, late: _ } => {}
+                InlineAsmOperand::SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
+                    self.visit_expr(in_expr);
+                    if let Some(expr) = out_expr {
+                        self.visit_expr(expr);
+                    }
+                }
+                InlineAsmOperand::Const { anon_const } => {
+                    let def = self
+                        .create_def(
+                            anon_const.id,
+                            None,
+                            DefKind::InlineConst,
+                            anon_const.value.span,
+                        )
+                        .def_id();
+                    self.with_parent(def, |this| visit::walk_anon_const(this, anon_const));
+                }
+                InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
+                InlineAsmOperand::Label { block } => self.visit_block(block),
+            }
+        }
+    }
+}

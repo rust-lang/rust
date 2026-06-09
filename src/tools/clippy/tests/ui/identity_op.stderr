@@ -1,0 +1,425 @@
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:44:5
+   |
+LL |     x + 0;
+   |     ^^^^^ help: consider reducing it to: `x`
+   |
+   = note: `-D clippy::identity-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::identity_op)]`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:47:5
+   |
+LL |     x + (1 - 1);
+   |     ^^^^^^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:51:5
+   |
+LL |     0 + x;
+   |     ^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:56:5
+   |
+LL |     x | (0);
+   |     ^^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:61:5
+   |
+LL |     x * 1;
+   |     ^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:64:5
+   |
+LL |     1 * x;
+   |     ^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:72:5
+   |
+LL |     -1 & x;
+   |     ^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:77:5
+   |
+LL |     u & 255;
+   |     ^^^^^^^ help: consider reducing it to: `u`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:82:5
+   |
+LL |     42 << 0;
+   |     ^^^^^^^ help: consider reducing it to: `42`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:85:5
+   |
+LL |     1 >> 0;
+   |     ^^^^^^ help: consider reducing it to: `1`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:88:5
+   |
+LL |     42 >> 0;
+   |     ^^^^^^^ help: consider reducing it to: `42`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:91:5
+   |
+LL |     &x >> 0;
+   |     ^^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:94:5
+   |
+LL |     x >> &0;
+   |     ^^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:103:5
+   |
+LL |     2 % 3;
+   |     ^^^^^ help: consider reducing it to: `2`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:106:5
+   |
+LL |     -2 % 3;
+   |     ^^^^^^ help: consider reducing it to: `-2`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:109:5
+   |
+LL |     2 % -3 + x;
+   |     ^^^^^^ help: consider reducing it to: `2`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:112:5
+   |
+LL |     -2 % -3 + x;
+   |     ^^^^^^^ help: consider reducing it to: `-2`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:115:9
+   |
+LL |     x + 1 % 3;
+   |         ^^^^^ help: consider reducing it to: `1`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:125:5
+   |
+LL |     0 + if b { 1 } else { 2 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:128:5
+   |
+LL |     0 + if b { 1 } else { 2 } + if b { 3 } else { 4 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:131:5
+   |
+LL |     0 + match a { 0 => 10, _ => 20 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:134:5
+   |
+LL |     0 + match a { 0 => 10, _ => 20 } + match a { 0 => 30, _ => 40 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:137:5
+   |
+LL |     0 + if b { 1 } else { 2 } + match a { 0 => 30, _ => 40 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if b { 1 } else { 2 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:140:5
+   |
+LL |     0 + match a { 0 => 10, _ => 20 } + if b { 3 } else { 4 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(match a { 0 => 10, _ => 20 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:143:5
+   |
+LL |     (if b { 1 } else { 2 }) + 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `((if b { 1 } else { 2 }))`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:147:5
+   |
+LL |     0 + { a } + 3;
+   |     ^^^^^^^^^ help: consider reducing it to: `({ a })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:150:5
+   |
+LL |     0 + { a } * 2;
+   |     ^^^^^^^^^^^^^ help: consider reducing it to: `({ a } * 2)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:153:5
+   |
+LL |     0 + loop { let mut c = 0; if c == 10 { break c; } c += 1; } + { a * 2 };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(loop { let mut c = 0; if c == 10 { break c; } c += 1; })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:161:7
+   |
+LL |     f(1 * a + { 8 * 5 });
+   |       ^^^^^ help: consider reducing it to: `a`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:164:7
+   |
+LL |     f(0 + if b { 1 } else { 2 } + 3);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `if b { 1 } else { 2 }`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:168:20
+   |
+LL |     const _: i32 = { 2 * 4 } + 0 + 3;
+   |                    ^^^^^^^^^^^^^ help: consider reducing it to: `{ 2 * 4 }`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:171:20
+   |
+LL |     const _: i32 = 0 + { 1 + 2 * 3 } + 3;
+   |                    ^^^^^^^^^^^^^^^^^ help: consider reducing it to: `{ 1 + 2 * 3 }`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:175:5
+   |
+LL |     0 + a as usize;
+   |     ^^^^^^^^^^^^^^ help: consider reducing it to: `a as usize`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:178:13
+   |
+LL |     let _ = 0 + a as usize;
+   |             ^^^^^^^^^^^^^^ help: consider reducing it to: `a as usize`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:181:5
+   |
+LL |     0 + { a } as usize;
+   |     ^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `({ a } as usize)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:185:9
+   |
+LL |     2 * (0 + { a });
+   |         ^^^^^^^^^^^ help: consider reducing it to: `{ a }`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:188:5
+   |
+LL |     1 * ({ a } + 4);
+   |     ^^^^^^^^^^^^^^^ help: consider reducing it to: `(({ a } + 4))`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:191:5
+   |
+LL |     1 * 1;
+   |     ^^^^^ help: consider reducing it to: `1`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:197:18
+   |
+LL |     let _: i32 = &x + 0;
+   |                  ^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:203:5
+   |
+LL |     0 + if a { 1 } else { 2 } + if b { 3 } else { 5 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if a { 1 } else { 2 })`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:215:22
+   |
+LL |         let _: i32 = *x + 0;
+   |                      ^^^^^^ help: consider reducing it to: `*x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:218:22
+   |
+LL |         let _: i32 = x + 0;
+   |                      ^^^^^ help: consider reducing it to: `*x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:223:22
+   |
+LL |         let _: i32 = **x + 0;
+   |                      ^^^^^^^ help: consider reducing it to: `**x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:227:22
+   |
+LL |         let _: i32 = *x + 0;
+   |                      ^^^^^^ help: consider reducing it to: `**x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:233:22
+   |
+LL |         let _: i32 = ***x + 0;
+   |                      ^^^^^^^^ help: consider reducing it to: `***x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:236:22
+   |
+LL |         let _: i32 = **x + 0;
+   |                      ^^^^^^^ help: consider reducing it to: `***x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:240:22
+   |
+LL |         let _: i32 = *&x + 0;
+   |                      ^^^^^^^ help: consider reducing it to: `*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:243:22
+   |
+LL |         let _: i32 = **&&x + 0;
+   |                      ^^^^^^^^^ help: consider reducing it to: `**&&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:246:22
+   |
+LL |         let _: i32 = *&*&x + 0;
+   |                      ^^^^^^^^^ help: consider reducing it to: `*&*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:249:22
+   |
+LL |         let _: i32 = **&&*&x + 0;
+   |                      ^^^^^^^^^^^ help: consider reducing it to: `**&&*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:256:22
+   |
+LL |         let _: i32 = **&&*&x + 0;
+   |                      ^^^^^^^^^^^ help: consider reducing it to: `***&&*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:259:22
+   |
+LL |         let _: i32 = **&&*&x + 0;
+   |                      ^^^^^^^^^^^ help: consider reducing it to: `***&&*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:268:18
+   |
+LL |     let _: u64 = (x + y + 0i32) as u64;
+   |                  ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:272:25
+   |
+LL |     let _: u64 = 1u64 & (x + y + 0i32) as u64;
+   |                         ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:276:25
+   |
+LL |     let _: u64 = 1u64 & ((x + y) + 0i32) as u64;
+   |                         ^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x + y))`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:280:25
+   |
+LL |     let _: u64 = 5u64 + ((x + y) + 0i32) as u64;
+   |                         ^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x + y))`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:284:14
+   |
+LL |     let _ = -(x + y + 0i32);
+   |              ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:288:14
+   |
+LL |     let _ = -(x / y / 1i32);
+   |              ^^^^^^^^^^^^^^ help: consider reducing it to: `(x / y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:292:20
+   |
+LL |     let _ = 2i32 * (x + y + 0i32);
+   |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:297:20
+   |
+LL |     let _ = 2i32 - (x - y - 0i32);
+   |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x - y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:302:17
+   |
+LL |     let _ = 2 + (x + (y * z) + 0);
+   |                 ^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(x + (y * z))`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:307:20
+   |
+LL |     let _ = 2i32 + (x * y * 1i32);
+   |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x * y)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:312:25
+   |
+LL |     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x as i32 + y as i32) as u64)`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:321:5
+   |
+LL |     0usize + &<usize as Default>::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `<usize as Default>::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:324:13
+   |
+LL |     let _ = 0usize + &usize::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `usize::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:327:21
+   |
+LL |     let _n: usize = 0usize + &Default::default();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Default::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:333:5
+   |
+LL |     0usize + &Default::default()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Default::default()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:352:5
+   |
+LL |     0usize + &<usize as Def>::def();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `<usize as Def>::def()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:355:13
+   |
+LL |     let _ = 0usize + &usize::def();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `usize::def()`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:358:21
+   |
+LL |     let _n: usize = 0usize + &Def::def();
+   |                     ^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `Def::def()`
+
+error: aborting due to 70 previous errors
+

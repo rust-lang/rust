@@ -1,0 +1,30 @@
+error: lifetime parameter `'a` never used
+  --> $DIR/zero-uses-in-fn.rs:8:14
+   |
+LL | fn september<'a>() {}
+   |             -^^- help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/zero-uses-in-fn.rs:5:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: lifetime parameter `'a` never used
+  --> $DIR/zero-uses-in-fn.rs:12:12
+   |
+LL | fn october<'a, 'b, T>(s: &'b T) -> &'b T {
+   |            ^^--
+   |            |
+   |            help: elide the unused lifetime
+
+error: lifetime parameter `'b` never used
+  --> $DIR/zero-uses-in-fn.rs:18:17
+   |
+LL | fn november<'a, 'b>(s: &'a str) -> &'a str {
+   |               --^^
+   |               |
+   |               help: elide the unused lifetime
+
+error: aborting due to 3 previous errors
+

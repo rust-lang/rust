@@ -1,0 +1,54 @@
+error: `default` is not followed by an item
+  --> $DIR/default-unmatched-assoc.rs:5:5
+   |
+LL |     default do
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: non-item in item list
+  --> $DIR/default-unmatched-assoc.rs:5:13
+   |
+LL | trait Foo {
+   |           - item list starts here
+LL |     default!();
+LL |     default do
+   |             ^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error: `default` is not followed by an item
+  --> $DIR/default-unmatched-assoc.rs:13:5
+   |
+LL |     default do
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: non-item in item list
+  --> $DIR/default-unmatched-assoc.rs:13:13
+   |
+LL | impl S {
+   |        - item list starts here
+LL |     default!();
+LL |     default do
+   |             ^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error: cannot find macro `default` in this scope
+  --> $DIR/default-unmatched-assoc.rs:4:5
+   |
+LL |     default!();
+   |     ^^^^^^^
+
+error: cannot find macro `default` in this scope
+  --> $DIR/default-unmatched-assoc.rs:12:5
+   |
+LL |     default!();
+   |     ^^^^^^^
+
+error: aborting due to 6 previous errors
+

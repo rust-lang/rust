@@ -1,0 +1,8 @@
+error: attribute items not separated with `,`
+  --> $DIR/expected-comma-found-token.rs:7:26
+   |
+LL |     message="the message"
+   |                          ^ help: try adding `,` here
+
+error: aborting due to 1 previous error
+

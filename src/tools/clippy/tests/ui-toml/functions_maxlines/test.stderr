@@ -1,0 +1,29 @@
+error: this function has too many lines (2/1)
+  --> tests/ui-toml/functions_maxlines/test.rs:19:1
+   |
+LL | fn too_many_lines() {
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::too-many-lines` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
+
+error: this function has too many lines (4/1)
+  --> tests/ui-toml/functions_maxlines/test.rs:26:1
+   |
+LL | async fn async_too_many_lines() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this function has too many lines (4/1)
+  --> tests/ui-toml/functions_maxlines/test.rs:33:1
+   |
+LL | fn closure_too_many_lines() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this function has too many lines (2/1)
+  --> tests/ui-toml/functions_maxlines/test.rs:56:1
+   |
+LL | fn comment_before_code() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,18 @@
+warning: unused extern crate
+  --> $DIR/no-macro-use-attr.rs:6:1
+   |
+LL | extern crate test_macros;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ unused
+   |
+note: the lint level is defined here
+  --> $DIR/no-macro-use-attr.rs:4:9
+   |
+LL | #![warn(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: remove the unused `extern crate`
+   |
+LL - extern crate test_macros;
+   |
+
+warning: 1 warning emitted
+

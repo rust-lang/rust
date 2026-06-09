@@ -1,0 +1,32 @@
+// This test ensures that the "Escape" shortcut is handled correctly based on the
+// current content displayed.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// First, we check that the search results are hidden when the Escape key is pressed.
+call-function: ("perform-search", {"query": "test"})
+// Check that the currently displayed element is search.
+assert-attribute: ("#main-content", {"class": "content hidden"})
+assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)
+press-key: "Escape"
+// Checks that search is no longer in the displayed content.
+wait-for: "#not-displayed #search"
+assert-false: "#alternative-display #search"
+assert-attribute: ("#main-content", {"class": "content"})
+assert-document-property: ({"URL": "index.html"}, [ENDS_WITH])
+
+// Check that clicking the search button brings back the search results
+click: "#search-button"
+wait-for: "#alternative-display #search"
+assert-attribute: ("#main-content", {"class": "content hidden"})
+assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)
+
+// Check that Escape hides the search results when a search result is focused.
+focus: ".search-input"
+assert: ".search-input:focus"
+press-key: "ArrowDown"
+assert-false: ".search-input:focus"
+assert: "#results a:focus"
+press-key: "Escape"
+wait-for: "#not-displayed #search"
+assert-false: "#alternative-display #search"
+assert-attribute: ("#main-content", {"class": "content"})

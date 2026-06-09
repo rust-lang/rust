@@ -1,0 +1,19 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-81804.rs:5:8
+   |
+LL | fn p([=(}
+   |        ^^ mismatched closing delimiter
+   |        |
+   |        unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-81804.rs:5:11
+   |
+LL | fn p([=(}
+   |     --   ^
+   |     ||
+   |     |unclosed delimiter
+   |     unclosed delimiter
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,11 @@
+warning: malformed `diagnostic::on_unmatch_args` attribute
+  --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:4:1
+   |
+LL | #[diagnostic::on_unmatch_args = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `message`, `note` and `label` are allowed as options
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,529 @@
+//! A pretty-printer for MIR.
+
+use std::{
+    fmt::{Debug, Display, Write},
+    mem,
+};
+
+use hir_def::{
+    HasModule, VariantId,
+    expr_store::ExpressionStore,
+    hir::BindingId,
+    signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
+};
+use hir_expand::{Lookup, name::Name};
+use la_arena::ArenaMap;
+use rustc_type_ir::inherent::IntoKind;
+
+use crate::{
+    InferBodyId,
+    db::{HirDatabase, InternedClosureId},
+    display::{ClosureStyle, DisplayTarget, HirDisplay},
+    mir::{PlaceElem, PlaceTy, ProjectionElem, StatementKind, TerminatorKind},
+    next_solver::{DbInterner, TyKind, infer::DbInternerInferExt},
+};
+
+use super::{
+    AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand, OperandKind,
+    Place, Rvalue, UnOp,
+};
+
+macro_rules! w {
+    ($dst:expr, $($arg:tt)*) => {
+        { let _ = write!($dst, $($arg)*); }
+    };
+}
+
+macro_rules! wln {
+    ($dst:expr) => {
+        { let _ = writeln!($dst); }
+    };
+    ($dst:expr, $($arg:tt)*) => {
+        { let _ = writeln!($dst, $($arg)*); }
+    };
+}
+
+impl MirBody {
+    pub fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
+        let hir_body = ExpressionStore::of(db, self.owner.expression_store_owner(db));
+        let mut ctx = MirPrettyCtx::new(self, hir_body, db, display_target);
+        ctx.for_body(|this| match ctx.body.owner {
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::FunctionId(id)) => {
+                let data = FunctionSignature::of(db, id);
+                w!(this, "fn {}() ", data.name.display(db, this.display_target.edition));
+            }
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::StaticId(id)) => {
+                let data = StaticSignature::of(db, id);
+                w!(this, "static {}: _ = ", data.name.display(db, this.display_target.edition));
+            }
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::ConstId(id)) => {
+                let data = ConstSignature::of(db, id);
+                w!(
+                    this,
+                    "const {}: _ = ",
+                    data.name
+                        .as_ref()
+                        .unwrap_or(&Name::missing())
+                        .display(db, this.display_target.edition)
+                );
+            }
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::VariantId(id)) => {
+                let loc = id.lookup(db);
+                let edition = this.display_target.edition;
+                w!(
+                    this,
+                    "enum {}::{} = ",
+                    EnumSignature::of(db, loc.parent).name.display(db, edition),
+                    loc.parent
+                        .enum_variants(db)
+                        .variant_name_by_id(id)
+                        .unwrap()
+                        .display(db, edition),
+                )
+            }
+            InferBodyId::AnonConstId(_) => w!(this, "{{const}}"),
+        });
+        ctx.result
+    }
+
+    // String with lines is rendered poorly in `dbg` macros, which I use very much, so this
+    // function exists to solve that.
+    pub fn dbg(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> impl Debug {
+        struct StringDbg(String);
+        impl Debug for StringDbg {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        StringDbg(self.pretty_print(db, display_target))
+    }
+}
+
+struct MirPrettyCtx<'a, 'db> {
+    body: &'a MirBody,
+    hir_body: &'a ExpressionStore,
+    db: &'db dyn HirDatabase,
+    result: String,
+    indent: String,
+    local_to_binding: ArenaMap<LocalId, BindingId>,
+    display_target: DisplayTarget,
+}
+
+impl Write for MirPrettyCtx<'_, '_> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        let mut it = s.split('\n'); // note: `.lines()` is wrong here
+        self.write(it.next().unwrap_or_default());
+        for line in it {
+            self.write_line();
+            self.write(line);
+        }
+        Ok(())
+    }
+}
+
+enum LocalName {
+    Unknown(LocalId),
+    Binding(Name, LocalId),
+}
+
+impl<'db> HirDisplay<'db> for LocalName {
+    fn hir_fmt(
+        &self,
+        f: &mut crate::display::HirFormatter<'_, 'db>,
+    ) -> Result<(), crate::display::HirDisplayError> {
+        match self {
+            LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
+            LocalName::Binding(n, l) => {
+                write!(f, "{}_{}", n.display(f.db, f.edition()), u32::from(l.into_raw()))
+            }
+        }
+    }
+}
+
+impl<'a, 'db> MirPrettyCtx<'a, 'db> {
+    fn for_body(&mut self, name: impl FnOnce(&mut MirPrettyCtx<'_, 'db>)) {
+        name(self);
+        self.with_block(|this| {
+            this.locals();
+            wln!(this);
+            this.blocks();
+        });
+        for &closure in &self.body.closures {
+            self.for_closure(closure);
+        }
+    }
+
+    fn for_closure(&mut self, closure: InternedClosureId) {
+        let body = match self.db.mir_body_for_closure(closure) {
+            Ok(it) => it,
+            Err(e) => {
+                wln!(self, "// error in {closure:?}: {e:?}");
+                return;
+            }
+        };
+        let result = mem::take(&mut self.result);
+        let indent = mem::take(&mut self.indent);
+        let mut ctx = MirPrettyCtx {
+            body,
+            local_to_binding: body.local_to_binding_map(),
+            result,
+            indent,
+            ..*self
+        };
+        ctx.for_body(|this| wln!(this, "// Closure: {:?}", closure));
+        self.result = ctx.result;
+        self.indent = ctx.indent;
+    }
+
+    fn with_block(&mut self, f: impl FnOnce(&mut MirPrettyCtx<'_, 'db>)) {
+        self.indent += "    ";
+        wln!(self, "{{");
+        f(self);
+        for _ in 0..4 {
+            self.result.pop();
+            self.indent.pop();
+        }
+        wln!(self, "}}");
+    }
+
+    fn new(
+        body: &'a MirBody,
+        hir_body: &'a ExpressionStore,
+        db: &'db dyn HirDatabase,
+        display_target: DisplayTarget,
+    ) -> Self {
+        let local_to_binding = body.local_to_binding_map();
+        MirPrettyCtx {
+            body,
+            db,
+            result: String::new(),
+            indent: String::new(),
+            local_to_binding,
+            hir_body,
+            display_target,
+        }
+    }
+
+    fn write_line(&mut self) {
+        self.result.push('\n');
+        self.result += &self.indent;
+    }
+
+    fn write(&mut self, line: &str) {
+        self.result += line;
+    }
+
+    fn locals(&mut self) {
+        for (id, local) in self.body.locals.iter() {
+            wln!(
+                self,
+                "let {}: {};",
+                self.local_name(id).display_test(self.db, self.display_target),
+                self.hir_display(&local.ty.as_ref())
+            );
+        }
+    }
+
+    fn local_name(&self, local: LocalId) -> LocalName {
+        match self.local_to_binding.get(local) {
+            Some(b) => LocalName::Binding(self.hir_body[*b].name.clone(), local),
+            None => LocalName::Unknown(local),
+        }
+    }
+
+    fn basic_block_id(&self, basic_block_id: BasicBlockId) -> String {
+        format!("'bb{}", u32::from(basic_block_id.into_raw()))
+    }
+
+    fn blocks(&mut self) {
+        for (id, block) in self.body.basic_blocks.iter() {
+            wln!(self);
+            w!(self, "{}: ", self.basic_block_id(id));
+            self.with_block(|this| {
+                for statement in &block.statements {
+                    match &statement.kind {
+                        StatementKind::Assign(l, r) => {
+                            this.place(l);
+                            w!(this, " = ");
+                            this.rvalue(r);
+                            wln!(this, ";");
+                        }
+                        StatementKind::StorageDead(p) => {
+                            wln!(
+                                this,
+                                "StorageDead({})",
+                                this.local_name(*p).display_test(this.db, this.display_target)
+                            );
+                        }
+                        StatementKind::StorageLive(p) => {
+                            wln!(
+                                this,
+                                "StorageLive({})",
+                                this.local_name(*p).display_test(this.db, this.display_target)
+                            );
+                        }
+                        StatementKind::Deinit(p) => {
+                            w!(this, "Deinit(");
+                            this.place(p);
+                            wln!(this, ");");
+                        }
+                        StatementKind::FakeRead(p) => {
+                            w!(this, "FakeRead(");
+                            this.place(p);
+                            wln!(this, ");");
+                        }
+                        StatementKind::Nop => wln!(this, "Nop;"),
+                    }
+                }
+                match &block.terminator {
+                    Some(terminator) => match &terminator.kind {
+                        TerminatorKind::Goto { target } => {
+                            wln!(this, "goto 'bb{};", u32::from(target.into_raw()))
+                        }
+                        TerminatorKind::SwitchInt { discr, targets } => {
+                            w!(this, "switch ");
+                            this.operand(discr);
+                            w!(this, " ");
+                            this.with_block(|this| {
+                                for (c, b) in targets.iter() {
+                                    wln!(this, "{c} => {},", this.basic_block_id(b));
+                                }
+                                wln!(this, "_ => {},", this.basic_block_id(targets.otherwise()));
+                            });
+                        }
+                        TerminatorKind::Call { func, args, destination, target, .. } => {
+                            w!(this, "Call ");
+                            this.with_block(|this| {
+                                w!(this, "func: ");
+                                this.operand(func);
+                                wln!(this, ",");
+                                w!(this, "args: [");
+                                this.operand_list(args);
+                                wln!(this, "],");
+                                w!(this, "destination: ");
+                                this.place(destination);
+                                wln!(this, ",");
+                                w!(this, "target: ");
+                                match target {
+                                    Some(t) => w!(this, "{}", this.basic_block_id(*t)),
+                                    None => w!(this, "<unreachable>"),
+                                }
+                                wln!(this, ",");
+                            });
+                        }
+                        _ => wln!(this, "{:?};", terminator),
+                    },
+                    None => wln!(this, "<no-terminator>;"),
+                }
+            })
+        }
+    }
+
+    fn place(&mut self, p: &Place) {
+        fn f<'db>(this: &mut MirPrettyCtx<'_, 'db>, local: LocalId, projections: &[PlaceElem]) {
+            let Some((last, head)) = projections.split_last() else {
+                // no projection
+                w!(this, "{}", this.local_name(local).display_test(this.db, this.display_target));
+                return;
+            };
+            match last {
+                ProjectionElem::Deref => {
+                    w!(this, "(*");
+                    f(this, local, head);
+                    w!(this, ")");
+                }
+                ProjectionElem::Downcast(variant_id) => match variant_id {
+                    hir_def::VariantId::EnumVariantId(e) => {
+                        w!(this, "(");
+                        f(this, local, head);
+                        let loc = e.lookup(this.db);
+                        w!(this, " as {})", loc.name.display(this.db, this.display_target.edition),);
+                    }
+                    _ => {
+                        f(this, local, head);
+                        w!(this, ".{:?}", last);
+                    }
+                },
+                ProjectionElem::Field(field) => {
+                    f(this, local, head);
+
+                    // we need to get the base type to decide how to display the field / get the field name
+                    let infcx = DbInterner::new_with(this.db, this.body.owner.krate(this.db))
+                        .infer_ctxt()
+                        .build(rustc_type_ir::TypingMode::PostAnalysis);
+                    let env = this.db.trait_environment(this.body.owner.generic_def(this.db));
+                    let place_ty = PlaceTy::from_ty(this.body.locals[local].ty.as_ref())
+                        .multi_projection_ty(&infcx, env, projections);
+                    if let Some(variant_id) = place_ty.variant_id {
+                        let variant_fields = variant_id.fields(this.db);
+                        w!(
+                            this,
+                            ".{}",
+                            variant_fields.fields()[field.to_local_field_id()]
+                                .name
+                                .display(this.db, this.display_target.edition)
+                        );
+                    } else {
+                        match place_ty.ty.kind() {
+                            TyKind::Adt(adt_def, _) if !adt_def.is_enum() => {
+                                let variant_id =
+                                    VariantId::from_non_enum(adt_def.def_id()).unwrap();
+                                let fields = variant_id.fields(this.db);
+                                w!(
+                                    this,
+                                    ".{}",
+                                    fields.fields()[field.to_local_field_id()]
+                                        .name
+                                        .display(this.db, this.display_target.edition)
+                                );
+                            }
+                            TyKind::Tuple(_) | TyKind::Closure(..) => w!(this, ".{}", field.0),
+                            _ => {
+                                w!(this, ".{:?}", last);
+                            }
+                        }
+                    };
+                }
+                ProjectionElem::Index(l) => {
+                    f(this, local, head);
+                    w!(
+                        this,
+                        "[{}]",
+                        this.local_name(*l).display_test(this.db, this.display_target)
+                    );
+                }
+                it => {
+                    f(this, local, head);
+                    w!(this, ".{:?}", it);
+                }
+            }
+        }
+        f(self, p.local, p.projection.lookup());
+    }
+
+    fn operand(&mut self, r: &Operand) {
+        match &r.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => {
+                // MIR at the time of writing doesn't have difference between move and copy, so we show them
+                // equally. Feel free to change it.
+                self.place(p);
+            }
+            OperandKind::Constant { konst, .. } => {
+                w!(self, "Const({})", self.hir_display(&konst.as_ref()))
+            }
+            OperandKind::Static(s) => w!(self, "Static({:?})", s),
+            OperandKind::Allocation { allocation } => {
+                w!(self, "Allocation({})", self.hir_display(&allocation.as_ref()))
+            }
+        }
+    }
+
+    fn rvalue(&mut self, r: &Rvalue) {
+        match r {
+            Rvalue::Use(op) => self.operand(op),
+            Rvalue::Ref(r, p) => {
+                match r {
+                    BorrowKind::Shared => w!(self, "&"),
+                    BorrowKind::Shallow => w!(self, "&shallow "),
+                    BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => w!(self, "&uniq "),
+                    BorrowKind::Mut {
+                        kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
+                    } => w!(self, "&mut "),
+                }
+                self.place(p);
+            }
+            Rvalue::Aggregate(AggregateKind::Tuple(_), it) => {
+                w!(self, "(");
+                self.operand_list(it);
+                w!(self, ")");
+            }
+            Rvalue::Aggregate(AggregateKind::Array(_), it) => {
+                w!(self, "[");
+                self.operand_list(it);
+                w!(self, "]");
+            }
+            Rvalue::Repeat(op, len) => {
+                w!(self, "[");
+                self.operand(op);
+                w!(self, "; {}]", len.as_ref().display_test(self.db, self.display_target));
+            }
+            Rvalue::Aggregate(AggregateKind::Adt(_, _), it) => {
+                w!(self, "Adt(");
+                self.operand_list(it);
+                w!(self, ")");
+            }
+            Rvalue::Aggregate(AggregateKind::Closure(_), it) => {
+                w!(self, "Closure(");
+                self.operand_list(it);
+                w!(self, ")");
+            }
+            Rvalue::Aggregate(AggregateKind::Union(_, _), it) => {
+                w!(self, "Union(");
+                self.operand_list(it);
+                w!(self, ")");
+            }
+            Rvalue::Len(p) => {
+                w!(self, "Len(");
+                self.place(p);
+                w!(self, ")");
+            }
+            Rvalue::Cast(ck, op, ty) => {
+                w!(self, "Cast({ck:?}, ");
+                self.operand(op);
+                w!(self, ", {})", self.hir_display(&ty.as_ref()));
+            }
+            Rvalue::CheckedBinaryOp(b, o1, o2) => {
+                self.operand(o1);
+                w!(self, " {b} ");
+                self.operand(o2);
+            }
+            Rvalue::UnaryOp(u, o) => {
+                let u = match u {
+                    UnOp::Not => "!",
+                    UnOp::Neg => "-",
+                };
+                w!(self, "{u} ");
+                self.operand(o);
+            }
+            Rvalue::Discriminant(p) => {
+                w!(self, "Discriminant(");
+                self.place(p);
+                w!(self, ")");
+            }
+            Rvalue::ShallowInitBoxWithAlloc(_) => w!(self, "ShallowInitBoxWithAlloc"),
+            Rvalue::ShallowInitBox(op, _) => {
+                w!(self, "ShallowInitBox(");
+                self.operand(op);
+                w!(self, ")");
+            }
+            Rvalue::CopyForDeref(p) => {
+                w!(self, "CopyForDeref(");
+                self.place(p);
+                w!(self, ")");
+            }
+            Rvalue::ThreadLocalRef(n)
+            | Rvalue::AddressOf(n)
+            | Rvalue::BinaryOp(n)
+            | Rvalue::NullaryOp(n) => match *n {},
+        }
+    }
+
+    fn operand_list(&mut self, it: &[Operand]) {
+        let mut it = it.iter();
+        if let Some(first) = it.next() {
+            self.operand(first);
+            for op in it {
+                w!(self, ", ");
+                self.operand(op);
+            }
+        }
+    }
+
+    fn hir_display<'b, T: HirDisplay<'db>>(&self, ty: &'b T) -> impl Display + use<'a, 'b, 'db, T>
+    where
+        'db: 'b,
+    {
+        ty.display_test(self.db, self.display_target)
+            .with_closure_style(ClosureStyle::ClosureWithSubst)
+    }
+}

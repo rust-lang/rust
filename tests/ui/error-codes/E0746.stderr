@@ -1,0 +1,39 @@
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:8:13
+   |
+LL | fn foo() -> dyn Trait { Struct }
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn foo() -> dyn Trait { Struct }
+LL + fn foo() -> impl Trait { Struct }
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn foo() -> Box<dyn Trait> { Box::new(Struct) }
+   |             ++++         +   +++++++++      +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/E0746.rs:11:13
+   |
+LL | fn bar() -> dyn Trait {
+   |             ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn bar() -> dyn Trait {
+LL + fn bar() -> impl Trait {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn bar() -> Box<dyn Trait> {
+LL |     if true {
+LL ~         return Box::new(0);
+LL |     }
+LL ~     Box::new(42)
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0746`.

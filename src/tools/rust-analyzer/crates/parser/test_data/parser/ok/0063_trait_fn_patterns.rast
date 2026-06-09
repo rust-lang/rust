@@ -1,0 +1,198 @@
+SOURCE_FILE
+  TRAIT
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "f1"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            TUPLE_PAT
+              L_PAREN "("
+              IDENT_PAT
+                NAME
+                  IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "b"
+              R_PAREN ")"
+            COLON ":"
+            WHITESPACE " "
+            TUPLE_TYPE
+              L_PAREN "("
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "usize"
+              COMMA ","
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "usize"
+              R_PAREN ")"
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "f2"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            RECORD_PAT
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "S"
+              WHITESPACE " "
+              RECORD_PAT_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                RECORD_PAT_FIELD
+                  IDENT_PAT
+                    NAME
+                      IDENT "a"
+                COMMA ","
+                WHITESPACE " "
+                RECORD_PAT_FIELD
+                  IDENT_PAT
+                    NAME
+                      IDENT "b"
+                WHITESPACE " "
+                R_CURLY "}"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "S"
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "f3"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            TUPLE_STRUCT_PAT
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "NewType"
+              L_PAREN "("
+              IDENT_PAT
+                NAME
+                  IDENT "a"
+              R_PAREN ")"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "NewType"
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "f4"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            REF_PAT
+              AMP "&"
+              REF_PAT
+                AMP "&"
+                IDENT_PAT
+                  NAME
+                    IDENT "a"
+            COLON ":"
+            WHITESPACE " "
+            REF_TYPE
+              AMP "&"
+              REF_TYPE
+                AMP "&"
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "usize"
+          R_PAREN ")"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            R_CURLY "}"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "bar"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u64"
+          COMMA ","
+          WHITESPACE " "
+          PARAM
+            IDENT_PAT
+              MUT_KW "mut"
+              WHITESPACE " "
+              NAME
+                IDENT "x"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i32"
+          R_PAREN ")"
+        SEMICOLON ";"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

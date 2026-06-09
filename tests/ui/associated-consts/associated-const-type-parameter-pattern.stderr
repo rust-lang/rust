@@ -1,0 +1,58 @@
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/associated-const-type-parameter-pattern.rs:20:9
+   |
+LL | pub trait Foo {
+   | -------------
+LL |     const X: EFoo;
+   |     ------------- constant defined here
+...
+LL | pub fn test<A: Foo, B: Foo>(arg: EFoo) {
+   |             - constant depends on this generic parameter
+LL |     match arg {
+LL |         A::X => println!("A::X"),
+   |         ^^^^ `const` depends on a generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/associated-const-type-parameter-pattern.rs:22:9
+   |
+LL | pub trait Foo {
+   | -------------
+LL |     const X: EFoo;
+   |     ------------- constant defined here
+...
+LL | pub fn test<A: Foo, B: Foo>(arg: EFoo) {
+   |                     - constant depends on this generic parameter
+...
+LL |         B::X => println!("B::X"),
+   |         ^^^^ `const` depends on a generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/associated-const-type-parameter-pattern.rs:28:48
+   |
+LL | pub trait Foo {
+   | -------------
+LL |     const X: EFoo;
+   |     ------------- constant defined here
+...
+LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
+   |                     -                          ^^^^ `const` depends on a generic parameter
+   |                     |
+   |                     constant depends on this generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/associated-const-type-parameter-pattern.rs:30:9
+   |
+LL | pub trait Foo {
+   | -------------
+LL |     const X: EFoo;
+   |     ------------- constant defined here
+...
+LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
+   |                     - constant depends on this generic parameter
+LL |
+LL |     let A::X = arg;
+   |         ^^^^ `const` depends on a generic parameter
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

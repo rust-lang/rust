@@ -1,0 +1,14 @@
+error: functions used as benches must have signature `fn(&mut Bencher) -> impl Termination`
+  --> $DIR/issue-12997-1.rs:8:1
+   |
+LL | fn foo() { }
+   | ^^^^^^^^^^^^
+
+error: functions used as benches must have signature `fn(&mut Bencher) -> impl Termination`
+  --> $DIR/issue-12997-1.rs:11:1
+   |
+LL | fn bar(x: isize, y: isize) { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

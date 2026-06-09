@@ -1,0 +1,135 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:2:5
+   |
+LL |     x = x = x;
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = x = x;
+   |     +++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:2:9
+   |
+LL |     x = x = x;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:2:13
+   |
+LL |     x = x = x;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:5
+   |
+LL |     x = y = y = y;
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = y = y = y;
+   |     +++
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:9
+   |
+LL |     x = y = y = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:13
+   |
+LL |     x = y = y = y;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:17
+   |
+LL |     x = y = y = y;
+   |                 ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:13:5
+   |
+LL |     x = y = y;
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = y = y;
+   |     +++
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:13:9
+   |
+LL |     x = y = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:13:13
+   |
+LL |     x = y = y;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:18:5
+   |
+LL |     x = x = y;
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = x = y;
+   |     +++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:18:9
+   |
+LL |     x = x = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:18:13
+   |
+LL |     x = x = y;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:23:5
+   |
+LL |     x = x; // will suggest add `let`
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = x; // will suggest add `let`
+   |     +++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:23:9
+   |
+LL |     x = x; // will suggest add `let`
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:27:5
+   |
+LL |     x = y // will suggest add `let`
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = y // will suggest add `let`
+   |     +++
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:27:9
+   |
+LL |     x = y // will suggest add `let`
+   |         ^ not found in this scope
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

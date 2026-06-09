@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `Result<Child, _>`
+  --> $DIR/or_else-multiple-type-params.rs:7:18
+   |
+LL |         .or_else(|err| {
+   |                  ^^^^^
+   |
+help: try giving this closure an explicit return type
+   |
+LL |         .or_else(|err| -> Result<_, F> {
+   |                        +++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

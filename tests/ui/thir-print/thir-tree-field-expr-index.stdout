@@ -1,0 +1,921 @@
+DefId(0:9 ~ thir_tree_field_expr_index[5059]::update):
+params: [
+    Param {
+        ty: u32
+        ty_span: Some($DIR/thir-tree-field-expr-index.rs:12:14: 12:17 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).1))
+        param: Some( 
+            Pat {
+                ty: u32
+                span: $DIR/thir-tree-field-expr-index.rs:12:11: 12:12 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "x"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                        ty: u32
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 89
+        span: $DIR/thir-tree-field-expr-index.rs:12:19: 23:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(89)
+                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).89)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 89
+                        span: $DIR/thir-tree-field-expr-index.rs:12:19: 23:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-expr-index.rs:12:19: 23:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 0}
+                                            init_scope: Node(4)
+                                            pattern: 
+                                                Pat {
+                                                    ty: S
+                                                    span: $DIR/thir-tree-field-expr-index.rs:13:7: 13:8 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "s"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                            ty: S
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 5
+                                                    span: $DIR/thir-tree-field-expr-index.rs:13:11: 13:45 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(5)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).5)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 5
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:13:11: 13:45 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 0:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 8
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:18: 13:19 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(8)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).8)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 8
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:18: 13:19 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 1:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 11
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:24: 13:25 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(11)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).11)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 11
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:24: 13:25 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 2:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 14
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:30: 13:31 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(14)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).14)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 14
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:30: 13:31 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 3:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 17
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:36: 13:37 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(17)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).17)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 17
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:36: 13:37 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 4:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 20
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:42: 13:43 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(20)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).20)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 20
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:13:42: 13:43 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base: None
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).22)
+                                            span: $DIR/thir-tree-field-expr-index.rs:13:3: 13:45 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(31)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 24
+                                                    span: $DIR/thir-tree-field-expr-index.rs:15:3: 15:19 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(24)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).24)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 24
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:15:3: 15:19 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 0:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 29
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:15:10: 15:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(29)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).29)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 29
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:15:10: 15:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 25
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:15:16: 15:17 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(25)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).25)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 25
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:15:16: 15:17 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(39)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 32
+                                                    span: $DIR/thir-tree-field-expr-index.rs:16:3: 16:19 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(32)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).32)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 32
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:16:3: 16:19 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 1:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 37
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:16:10: 16:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(37)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).37)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 37
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:16:10: 16:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 33
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:16:16: 16:17 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(33)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).33)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 33
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:16:16: 16:17 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(47)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 40
+                                                    span: $DIR/thir-tree-field-expr-index.rs:17:3: 17:19 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(40)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).40)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 40
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:17:3: 17:19 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 2:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 45
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:17:10: 17:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(45)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).45)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 45
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:17:10: 17:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 41
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:17:16: 17:17 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(41)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).41)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 41
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:17:16: 17:17 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(55)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 48
+                                                    span: $DIR/thir-tree-field-expr-index.rs:18:3: 18:19 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(48)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).48)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 48
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:18:3: 18:19 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 3:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 53
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:18:10: 18:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(53)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).53)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 53
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:18:10: 18:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 49
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:18:16: 18:17 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(49)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).49)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 49
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:18:16: 18:17 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(63)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 56
+                                                    span: $DIR/thir-tree-field-expr-index.rs:19:3: 19:19 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(56)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).56)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 56
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:19:3: 19:19 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 4:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 61
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:19:10: 19:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(61)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).61)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 61
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:19:10: 19:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 57
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:19:16: 19:17 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(57)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).57)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 57
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:19:16: 19:17 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(74)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 64
+                                                    span: $DIR/thir-tree-field-expr-index.rs:21:3: 21:24 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(64)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).64)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 64
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:21:3: 21:24 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 1:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 69
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:21:10: 21:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(69)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).69)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 69
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:21:10: 21:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 3:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 72
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:21:16: 21:17 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(72)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).72)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 72
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:21:16: 21:17 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 65
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:21:21: 21:22 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(65)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).65)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 65
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:21:21: 21:22 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Expr {
+                                            scope: Node(88)
+                                            expr:
+                                                Expr {
+                                                    ty: S
+                                                    temp_scope_id: 75
+                                                    span: $DIR/thir-tree-field-expr-index.rs:22:3: 22:30 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(75)
+                                                            hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).75)
+                                                            value:
+                                                                Expr {
+                                                                    ty: S
+                                                                    temp_scope_id: 75
+                                                                    span: $DIR/thir-tree-field-expr-index.rs:22:3: 22:30 (#0)
+                                                                    kind: 
+                                                                        Adt {
+                                                                            adt_def:
+                                                                                AdtDef {
+                                                                                    did: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S)
+                                                                                    variants: [VariantDef { def_id: DefId(0:3 ~ thir_tree_field_expr_index[5059]::S), ctor: None, name: "S", discr: Relative(0), fields: [FieldDef { did: DefId(0:4 ~ thir_tree_field_expr_index[5059]::S::a), name: "a", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:5 ~ thir_tree_field_expr_index[5059]::S::b), name: "b", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:6 ~ thir_tree_field_expr_index[5059]::S::c), name: "c", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:7 ~ thir_tree_field_expr_index[5059]::S::d), name: "d", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }, FieldDef { did: DefId(0:8 ~ thir_tree_field_expr_index[5059]::S::e), name: "e", vis: Restricted(DefId(0:0 ~ thir_tree_field_expr_index[5059])), safety: Safe, value: None }], tainted: None, flags:  }]
+                                                                                    flags: IS_STRUCT
+                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7076349371981215213 }
+                                                                                }
+                                                                                variant_index: 0
+                                                                                args: []
+                                                                                user_ty: None
+                                                                                field 0:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 80
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:10: 22:11 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(80)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).80)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 80
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:10: 22:11 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 2:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 83
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:16: 22:17 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(83)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).83)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 83
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:16: 22:17 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                field 4:
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 86
+                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:22: 22:23 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(86)
+                                                                                                hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).86)
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: u32
+                                                                                                        temp_scope_id: 86
+                                                                                                        span: $DIR/thir-tree-field-expr-index.rs:22:22: 22:23 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                base:
+                                                                                    FruInfo {
+                                                                                        base: 
+                                                                                            Expr {
+                                                                                                ty: S
+                                                                                                temp_scope_id: 76
+                                                                                                span: $DIR/thir-tree-field-expr-index.rs:22:27: 22:28 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(76)
+                                                                                                        hir_id: HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).76)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: S
+                                                                                                                temp_scope_id: 76
+                                                                                                                span: $DIR/thir-tree-field-expr-index.rs:22:27: 22:28 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:9 ~ thir_tree_field_expr_index[5059]::update).23))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        field_types: [
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                            ty: u32
+                                                                                        ]
+                                                                                    }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                    }
+                                ]
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:10 ~ thir_tree_field_expr_index[5059]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 2
+        span: $DIR/thir-tree-field-expr-index.rs:25:11: 25:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                hir_id: HirId(DefId(0:10 ~ thir_tree_field_expr_index[5059]::main).2)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 2
+                        span: $DIR/thir-tree-field-expr-index.rs:25:11: 25:13 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-expr-index.rs:25:11: 25:13 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

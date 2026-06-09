@@ -1,0 +1,9 @@
+error[E0748]: unterminated raw string
+  --> $DIR/issue-70677-panic-on-unterminated-raw-str-at-eof.rs:5:1
+   |
+LL | r"
+   | ^ unterminated raw string
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0748`.

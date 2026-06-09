@@ -1,0 +1,36 @@
+- // MIR for `foo` before GVN
++ // MIR for `foo` after GVN
+  
+  fn foo() -> () {
+      let mut _0: ();
+      let mut _1: (i32,);
+      let mut _2: &mut i32;
+      let mut _4: i32;
+      scope 1 {
+          debug u => _1;
+          let _3: bool;
+          scope 2 {
+              debug y => _3;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = (const 1_i32,);
++         _1 = const (1_i32,);
+          StorageLive(_2);
+          _2 = &mut (_1.0: i32);
+          (*_2) = const 5_i32;
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy (_1.0: i32);
+          _3 = Eq(move _4, const 5_i32);
+          StorageDead(_4);
+          _0 = const ();
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

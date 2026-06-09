@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `E: From<()>` is not satisfied
+  --> $DIR/from_infer_breaking_with_unit_fallback.rs:25:6
+   |
+LL |     <E as From<_>>::from(never); // Should the inference fail?
+   |      ^ unsatisfied trait bound
+   |
+help: the trait `From<()>` is not implemented for `E`
+      but trait `From<!>` is implemented for it
+  --> $DIR/from_infer_breaking_with_unit_fallback.rs:16:1
+   |
+LL | impl From<!> for E {
+   | ^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `!`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

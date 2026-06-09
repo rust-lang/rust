@@ -1,0 +1,16 @@
+error: expected identifier, found metavariable
+  --> $DIR/macro-interpolation.rs:21:19
+   |
+LL |         <$type as $trait>::$name
+   |                   ^^^^^^ expected identifier, found metavariable
+...
+LL |     let _: qpath!(ty, <str as !>::Owned);
+   |            -----------------------------
+   |            |
+   |            this macro call doesn't expand to a type
+   |            in this macro invocation
+   |
+   = note: this error originates in the macro `qpath` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

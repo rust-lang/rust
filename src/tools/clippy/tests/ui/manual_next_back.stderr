@@ -1,0 +1,17 @@
+error: manual backwards iteration
+  --> tests/ui/manual_next_back.rs:32:20
+   |
+LL |     let _ = (0..10).rev().next().unwrap();
+   |                    ^^^^^^^^^^^^^ help: use: `.next_back()`
+   |
+   = note: `-D clippy::manual-next-back` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_next_back)]`
+
+error: manual backwards iteration
+  --> tests/ui/manual_next_back.rs:34:32
+   |
+LL |     let _ = "something".bytes().rev().next();
+   |                                ^^^^^^^^^^^^^ help: use: `.next_back()`
+
+error: aborting due to 2 previous errors
+

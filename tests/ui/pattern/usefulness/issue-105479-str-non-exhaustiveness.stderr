@@ -1,0 +1,17 @@
+error[E0004]: non-exhaustive patterns: `(&_, _)` not covered
+  --> $DIR/issue-105479-str-non-exhaustiveness.rs:4:11
+   |
+LL |     match (a, b) {
+   |           ^^^^^^ pattern `(&_, _)` not covered
+   |
+   = note: the matched value is of type `(&str, &str)`
+   = note: `&str` cannot be matched exhaustively, so a wildcard `_` is necessary
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         ("c", "d") => {},
+LL +         (&_, _) => todo!()
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0004`.

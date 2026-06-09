@@ -1,0 +1,13 @@
+warning: method `clone_first` is never used
+  --> $DIR/issue-23485.rs:20:8
+   |
+LL | trait Iterator {
+   |       -------- method in this trait
+...
+LL |     fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where
+   |        ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

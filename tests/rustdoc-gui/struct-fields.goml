@@ -1,0 +1,6 @@
+// This test ensures that each field is on its own line (In other words, they have
+// `display: block`).
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.StructWithPublicUndocumentedFields.html"
+
+store-property: ("//*[@id='structfield.first']", {"offsetTop": first_top})
+assert-property-false: ("//*[@id='structfield.second']", { "offsetTop": |first_top| })

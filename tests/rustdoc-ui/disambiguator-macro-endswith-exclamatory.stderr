@@ -1,0 +1,11 @@
+warning: unresolved link to `m`
+  --> $DIR/disambiguator-macro-endswith-exclamatory.rs:3:6
+   |
+LL | //! [macro@m!]
+   |      ^^^^^^^^ no item named `m` in scope
+   |
+   = note: `macro_rules` named `m` exists in this crate, but it is not in scope at this link's location
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+warning: 1 warning emitted
+

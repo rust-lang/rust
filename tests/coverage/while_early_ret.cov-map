@@ -1,0 +1,33 @@
+Function name: while_early_ret::main
+Raw bytes (80): 0x[01, 01, 08, 0f, 05, 01, 09, 0f, 13, 01, 09, 05, 0d, 05, 01, 05, 01, 05, 09, 0c, 01, 05, 01, 00, 1c, 01, 01, 09, 00, 16, 01, 00, 19, 00, 1b, 05, 02, 09, 02, 0a, 09, 05, 0d, 02, 0e, 02, 06, 15, 02, 16, 0d, 04, 15, 00, 1b, 0a, 04, 15, 00, 1b, 1a, 03, 09, 00, 0a, 1a, 01, 09, 02, 0a, 1e, 05, 05, 00, 0b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/while_early_ret.rs
+Number of expressions: 8
+- expression 0 operands: lhs = Expression(3, Add), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Expression(4, Add)
+- expression 3 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 4 operands: lhs = Counter(1), rhs = Counter(3)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 6 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 7 operands: lhs = Counter(1), rhs = Counter(2)
+Number of file 0 mappings: 12
+- Code(Counter(0)) at (prev + 5, 1) to (start + 0, 28)
+- Code(Counter(0)) at (prev + 1, 9) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 27)
+- Code(Counter(1)) at (prev + 2, 9) to (start + 2, 10)
+- Code(Counter(2)) at (prev + 5, 13) to (start + 2, 14)
+- Code(Expression(0, Sub)) at (prev + 6, 21) to (start + 2, 22)
+    = ((c0 + c2) - c1)
+- Code(Counter(3)) at (prev + 4, 21) to (start + 0, 27)
+- Code(Expression(2, Sub)) at (prev + 4, 21) to (start + 0, 27)
+    = ((c0 + c2) - (c1 + c3))
+- Code(Expression(6, Sub)) at (prev + 3, 9) to (start + 0, 10)
+    = (c1 - c0)
+- Code(Expression(6, Sub)) at (prev + 1, 9) to (start + 2, 10)
+    = (c1 - c0)
+- Code(Expression(7, Sub)) at (prev + 5, 5) to (start + 0, 11)
+    = (c1 - c2)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c3
+

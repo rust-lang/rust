@@ -1,0 +1,65 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:8:5
+   |
+LL | fn foo1(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     x
+   |     ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |     Ok(x?)
+   |     +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:11:12
+   |
+LL | fn foo2(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     return x;
+   |            ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |     return Ok(x?);
+   |            +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:15:9
+   |
+LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     if true {
+LL |         x
+   |         ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |         Ok(x?)
+   |         +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:17:9
+   |
+LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+...
+LL |         x
+   |         ^ expected `Result<(), B>`, found `Result<(), A>`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: use `?` to coerce and return an appropriate `Err`, and wrap the resulting value in `Ok` so the expression remains of type `Result`
+   |
+LL |         Ok(x?)
+   |         +++ ++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

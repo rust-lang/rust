@@ -1,0 +1,35 @@
+error[E0226]: only a single explicit lifetime bound is permitted
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:26
+   |
+LL |     z: Box<dyn Is<'a>+'b+'c>,
+   |                          ^^
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:18
+   |
+LL | struct Foo<'a,'b,'c> {
+   |                  ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:8
+   |
+LL |     z: Box<dyn Is<'a>+'b+'c>,
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:15
+   |
+LL | struct Foo<'a,'b,'c> {
+   |               ^^
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:12
+   |
+LL | struct Foo<'a,'b,'c> {
+   |            ^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0226, E0392, E0478.
+For more information about an error, try `rustc --explain E0226`.

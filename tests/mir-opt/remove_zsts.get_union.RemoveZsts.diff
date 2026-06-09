@@ -1,0 +1,20 @@
+- // MIR for `get_union` before RemoveZsts
++ // MIR for `get_union` after RemoveZsts
+  
+  fn get_union() -> Foo {
+      let mut _0: Foo;
+      let mut _1: ();
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = ();
+-         _0 = Foo { x: move _1 };
+-         StorageDead(_1);
++         nop;
++         nop;
++         _0 = Foo { x: const () };
++         nop;
+          return;
+      }
+  }
+  
