@@ -6,7 +6,7 @@
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 #![feature(pattern_types, pattern_type_macro)]
 #![allow(invalid_value)]
-//@ ignore-parallel-frontend different alloc ids
+
 use std::{mem, pat::pattern_type};
 
 #[repr(C)]

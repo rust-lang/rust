@@ -2,7 +2,7 @@
 //@ ignore-endian-big
 // ignore-tidy-linelength
 //@ dont-require-annotations: NOTE
-//@ ignore-parallel-frontend different alloc ids
+
 #![allow(invalid_value, unnecessary_transmutes)]
 #![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 #![feature(pattern_types, pattern_type_macro)]
