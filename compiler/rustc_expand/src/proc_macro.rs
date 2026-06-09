@@ -31,7 +31,7 @@ fn record_expand_proc_macro<'a>(
 }
 
 pub struct BangProcMacro {
-    pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
+    pub client: pm::bridge::client::Client,
 }
 
 impl base::BangProcMacro for BangProcMacro {
@@ -46,7 +46,7 @@ impl base::BangProcMacro for BangProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
+        self.client.run1(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
             ecx.dcx().emit_err(errors::ProcMacroPanicked {
                 span,
                 message: e.into_string().map(|message| errors::ProcMacroPanickedHelp { message }),
@@ -56,7 +56,7 @@ impl base::BangProcMacro for BangProcMacro {
 }
 
 pub struct AttrProcMacro {
-    pub client: pm::bridge::client::Client<(pm::TokenStream, pm::TokenStream), pm::TokenStream>,
+    pub client: pm::bridge::client::Client,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -72,7 +72,7 @@ impl base::AttrProcMacro for AttrProcMacro {
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
+        self.client.run2(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
             |e| {
                 ecx.dcx().emit_err(errors::CustomAttributePanicked {
                     span,
@@ -176,7 +176,7 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
     })
 }
 
-type DeriveClient = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>;
+type DeriveClient = pm::bridge::client::Client;
 
 fn expand_derive_macro(
     invoc_id: LocalExpnId,
@@ -196,7 +196,7 @@ fn expand_derive_macro(
     let strategy = exec_strategy(ecx.sess);
     let server = proc_macro_server::Rustc::new(ecx);
 
-    match client.run(&strategy, server, input, proc_macro_backtrace) {
+    match client.run1(&strategy, server, input, proc_macro_backtrace) {
         Ok(stream) => Ok(stream),
         Err(e) => {
             let invoc_expn_data = invoc_id.expn_data();
