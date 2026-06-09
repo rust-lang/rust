@@ -342,6 +342,10 @@ enum LifetimeRibKind {
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
+    /// Errors on hidden lifetimes like in `struct S<'a>(&'a()); fn foo(s: S) {}`
+    /// `&` or `'_` lifetimes get elided to `'static`.
+    StaticUnlessHidden,
+
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
 
@@ -1368,6 +1372,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         }
                         LifetimeRibKind::AnonymousCreateParameter { .. }
                         | LifetimeRibKind::AnonymousReportError
+                        | LifetimeRibKind::StaticUnlessHidden
                         | LifetimeRibKind::ImplTrait
                         | LifetimeRibKind::Elided(_)
                         | LifetimeRibKind::ElisionFailure
@@ -1773,6 +1778,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     // lifetime would be illegal.
                                     LifetimeRibKind::Item
                                     | LifetimeRibKind::AnonymousReportError
+                                    | LifetimeRibKind::StaticUnlessHidden
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
                                     // An anonymous lifetime is legal here, and bound to the right
                                     // place, go ahead.
@@ -1836,7 +1842,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | LifetimeRibKind::Generics { .. }
                 | LifetimeRibKind::ElisionFailure
                 | LifetimeRibKind::AnonymousReportError
-                | LifetimeRibKind::ImplTrait => {}
+                | LifetimeRibKind::ImplTrait
+                | LifetimeRibKind::StaticUnlessHidden => {}
             }
         }
 
@@ -1873,6 +1880,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
                     let res = self.create_fresh_lifetime(lifetime.ident, binder, kind);
                     self.record_lifetime_use(lifetime.id, res, elision_candidate);
+                    return;
+                }
+                LifetimeRibKind::StaticUnlessHidden => {
+                    self.record_lifetime_use(lifetime.id, LifetimeRes::Static, elision_candidate);
                     return;
                 }
                 LifetimeRibKind::AnonymousReportError => {
@@ -2230,7 +2241,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     //
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
-                    LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. } => {
+                    LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
+                    | LifetimeRibKind::StaticUnlessHidden => {
                         let sess = self.r.tcx.sess;
                         let subdiag = elided_lifetime_in_path_suggestion(
                             sess.source_map(),
@@ -3313,36 +3325,33 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::ConstItem,
                     generics.span,
                     |this| {
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| {
-                                this.visit_generics(generics);
-                                if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
-                                {
-                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
-                                            this.with_lifetime_rib(
-                                                LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
-                                            )
-                                        })
-                                    });
-                                } else {
-                                    this.visit_ty(ty);
-                                }
+                        this.with_lifetime_rib(LifetimeRibKind::StaticUnlessHidden, |this| {
+                            this.visit_generics(generics);
+                            if rhs_kind.is_type_const()
+                                && !this.r.tcx.features().generic_const_parameter_types()
+                            {
+                                this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                    this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
+                                        this.with_lifetime_rib(
+                                            LifetimeRibKind::ConstParamTy,
+                                            |this| this.visit_ty(ty),
+                                        )
+                                    })
+                                });
+                            } else {
+                                this.visit_ty(ty);
+                            }
 
-                                // Only impose the restrictions of `ConstRibKind` for an
-                                // actual constant expression in a provided default.
-                                //
-                                // We allow arbitrary const expressions inside of associated consts,
-                                // even if they are potentially not const evaluatable.
-                                //
-                                // Type parameters can already be used and as associated consts are
-                                // not used as part of the type system, this is far less surprising.
-                                this.resolve_const_item_rhs(rhs_kind, None);
-                            },
-                        )
+                            // Only impose the restrictions of `ConstRibKind` for an
+                            // actual constant expression in a provided default.
+                            //
+                            // We allow arbitrary const expressions inside of associated consts,
+                            // even if they are potentially not const evaluatable.
+                            //
+                            // Type parameters can already be used and as associated consts are
+                            // not used as part of the type system, this is far less surprising.
+                            this.resolve_const_item_rhs(rhs_kind, None);
+                        })
                     },
                 );
 
@@ -3529,45 +3538,42 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::ConstItem,
                     generics.span,
                     |this| {
-                        this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| {
-                                // If this is a trait impl, ensure the const
-                                // exists in trait
-                                this.check_trait_item(
-                                    item.id,
-                                    *ident,
-                                    *ident,
-                                    &item.kind,
-                                    ValueNS,
-                                    item.span,
-                                    seen_trait_items,
-                                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                                );
+                        this.with_lifetime_rib(LifetimeRibKind::StaticUnlessHidden, |this| {
+                            // If this is a trait impl, ensure the const
+                            // exists in trait
+                            this.check_trait_item(
+                                item.id,
+                                *ident,
+                                *ident,
+                                &item.kind,
+                                ValueNS,
+                                item.span,
+                                seen_trait_items,
+                                |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                            );
 
-                                this.visit_generics(generics);
-                                if rhs_kind.is_type_const()
-                                    && !this.r.tcx.features().generic_const_parameter_types()
-                                {
-                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
-                                            this.with_lifetime_rib(
-                                                LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
-                                            )
-                                        })
-                                    });
-                                } else {
-                                    this.visit_ty(ty);
-                                }
-                                // We allow arbitrary const expressions inside of associated consts,
-                                // even if they are potentially not const evaluatable.
-                                //
-                                // Type parameters can already be used and as associated consts are
-                                // not used as part of the type system, this is far less surprising.
-                                this.resolve_const_item_rhs(rhs_kind, None);
-                            },
-                        )
+                            this.visit_generics(generics);
+                            if rhs_kind.is_type_const()
+                                && !this.r.tcx.features().generic_const_parameter_types()
+                            {
+                                this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
+                                    this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
+                                        this.with_lifetime_rib(
+                                            LifetimeRibKind::ConstParamTy,
+                                            |this| this.visit_ty(ty),
+                                        )
+                                    })
+                                });
+                            } else {
+                                this.visit_ty(ty);
+                            }
+                            // We allow arbitrary const expressions inside of associated consts,
+                            // even if they are potentially not const evaluatable.
+                            //
+                            // Type parameters can already be used and as associated consts are
+                            // not used as part of the type system, this is far less surprising.
+                            this.resolve_const_item_rhs(rhs_kind, None);
+                        })
                     },
                 );
                 self.resolve_define_opaques(define_opaque);
