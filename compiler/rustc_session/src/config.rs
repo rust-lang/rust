@@ -91,6 +91,16 @@ pub enum CFProtection {
     Full,
 }
 
+/// The different settings that the `-Z cfi-mode` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CfiMode {
+    /// Emit a trap instruction on CFI violation (default).
+    Trap,
+
+    /// Emit a diagnostic on CFI violation instead of trapping.
+    Diag,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash, StableHash, Encodable, Decodable)]
 pub enum OptLevel {
     /// `-Copt-level=0`
@@ -3139,13 +3149,14 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
-        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
-        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CfiMode,
+        CodegenRetagOptions, CoverageOptions, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, FmtDebug, FunctionReturn, InliningThreshold, InstrumentCoverage,
+        InstrumentMcount, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3225,6 +3236,7 @@ pub(crate) mod dep_tracking {
         SanitizerSet,
         CFGuard,
         CFProtection,
+        CfiMode,
         TargetTuple,
         Edition,
         LinkerPluginLto,
