@@ -1647,7 +1647,7 @@ impl char {
     ///
     /// holds across languages.
     ///
-    /// [normalization]: https://www.unicode.org/faq/normalization
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
     #[unstable(feature = "casefold", issue = "154742")]
