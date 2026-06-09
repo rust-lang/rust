@@ -2174,7 +2174,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///   `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
 ///   to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
 ///   within `T`, of course) until that reference's lifetime expires. Similarly, if you create a
-///   `&mut T` reference that is released to safe code, then you must not access the data within the
+///   `&mut T` reference, then you must not access the data within the
 ///   `UnsafeCell` until that reference expires.
 ///
 /// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
