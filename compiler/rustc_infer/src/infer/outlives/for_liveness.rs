@@ -76,7 +76,9 @@ where
                                 &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
                                     VerifyIfEq { ty, bound }
                                 }),
-                                ty,
+                                // FIXME(rigid_aliases_marker): types coming out of `item_bounds`
+                                // are marked as non-rigid while the visited ty can be rigid.
+                                ty::set_aliases_to_non_rigid(tcx, ty),
                             )
                         }
                     })

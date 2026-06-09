@@ -137,9 +137,9 @@ where
         goal: Goal<I, NormalizesTo<I>>,
         term: ty::AliasTerm<I>,
     ) {
-        self.relate_rigid_alias_non_alias(
+        self.relate(
             goal.param_env,
-            term.to_rigid(),
+            term.to_rigid().to_term(self.cx()),
             ty::Invariant,
             goal.predicate.term,
         )
@@ -195,7 +195,10 @@ where
         let cx = ecx.cx();
         let projection_pred = assumption.as_projection_clause().unwrap();
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
-        ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
+        // FIXME(rigid_aliases_marker): when renormalization check is enabled, the alias
+        // might be rigid while the param env is set to non-rigid for now.
+        let goal_alias = goal.predicate.alias.to_non_rigid();
+        ecx.eq(goal.param_env, goal_alias, assumption_projection_pred.projection_term)?;
 
         ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
 
