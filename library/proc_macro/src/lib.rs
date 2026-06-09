@@ -37,7 +37,7 @@
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 pub mod bridge;
 
@@ -295,7 +295,7 @@ impl TokenStream {
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.as_ref().map(|h| BridgeMethods::ts_is_empty(h)).unwrap_or(true)
+        self.0.as_ref().map(BridgeMethods::ts_is_empty).unwrap_or(true)
     }
 
     /// Parses this `TokenStream` as an expression and attempts to expand any
@@ -574,9 +574,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(
-                self.0.map(|v| BridgeMethods::ts_into_trees(v)).unwrap_or_default().into_iter(),
-            )
+            IntoIter(self.0.map(BridgeMethods::ts_into_trees).unwrap_or_default().into_iter())
         }
     }
 }
@@ -594,7 +592,7 @@ pub macro quote($($t:tt)*) {
     /* compiler built-in */
 }
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 mod quote;
 
@@ -754,14 +752,14 @@ impl Span {
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn save_span(&self) -> usize {
         BridgeMethods::span_save_span(self.0)
     }
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn recover_proc_macro_span(id: usize) -> Span {
         Span(BridgeMethods::span_recover_proc_macro_span(id))
     }

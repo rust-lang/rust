@@ -29,8 +29,8 @@ impl ProcMacros {
 
         for proc_macro in &self.0 {
             match proc_macro {
-                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
-                    if *trait_name == macro_name =>
+                bridge::client::ProcMacro::CustomDerive { name, client, .. }
+                    if *name == macro_name =>
                 {
                     let res = client.run(
                         &bridge::server::SAME_THREAD,
@@ -68,8 +68,8 @@ impl ProcMacros {
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {
         self.0.iter().map(|proc_macro| match *proc_macro {
-            bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
-                (trait_name, ProcMacroKind::CustomDerive)
+            bridge::client::ProcMacro::CustomDerive { name, .. } => {
+                (name, ProcMacroKind::CustomDerive)
             }
             bridge::client::ProcMacro::Bang { name, .. } => (name, ProcMacroKind::Bang),
             bridge::client::ProcMacro::Attr { name, .. } => (name, ProcMacroKind::Attr),

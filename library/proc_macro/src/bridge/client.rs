@@ -12,13 +12,6 @@ pub(crate) struct TokenStream {
 impl !Send for TokenStream {}
 impl !Sync for TokenStream {}
 
-// Forward `Drop::drop` to the inherent `drop` method.
-impl Drop for TokenStream {
-    fn drop(&mut self) {
-        Methods::ts_drop(TokenStream { handle: self.handle });
-    }
-}
-
 impl<S> Encode<S> for TokenStream {
     #[inline]
     fn encode(self, w: &mut Buffer, s: &mut S) {
@@ -290,7 +283,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(input))
+                run_client(bridge, f)
             }),
             _marker: PhantomData,
         }
@@ -314,7 +307,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
 #[derive(Copy, Clone)]
 pub enum ProcMacro {
     CustomDerive {
-        trait_name: &'static str,
+        name: &'static str,
         attributes: &'static [&'static str],
         client: Client<crate::TokenStream, crate::TokenStream>,
     },
@@ -333,18 +326,18 @@ pub enum ProcMacro {
 impl ProcMacro {
     pub fn name(&self) -> &'static str {
         match self {
-            ProcMacro::CustomDerive { trait_name, .. } => trait_name,
-            ProcMacro::Attr { name, .. } => name,
-            ProcMacro::Bang { name, .. } => name,
+            ProcMacro::CustomDerive { name, .. }
+            | ProcMacro::Attr { name, .. }
+            | ProcMacro::Bang { name, .. } => name,
         }
     }
 
     pub const fn custom_derive(
-        trait_name: &'static str,
+        name: &'static str,
         attributes: &'static [&'static str],
         expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
-        ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
+        ProcMacro::CustomDerive { name, attributes, client: Client::expand1(expand) }
     }
 
     pub const fn attr(

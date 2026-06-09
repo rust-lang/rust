@@ -1047,11 +1047,11 @@ impl CrateMetadata {
 
     fn load_proc_macro<'tcx>(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match *self.raw_proc_macro(tcx, id) {
-            ProcMacro::CustomDerive { trait_name, attributes, client } => {
+            ProcMacro::CustomDerive { name, attributes, client } => {
                 let helper_attrs =
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
-                    trait_name,
+                    name,
                     SyntaxExtensionKind::Derive(Arc::new(DeriveProcMacro { client })),
                     helper_attrs,
                 )
