@@ -1,23 +1,9 @@
-#![allow(unused, clippy::needless_lifetimes)]
-#![warn(
-    clippy::style,
-    clippy::mem_replace_option_with_none,
-    clippy::mem_replace_with_default
-)]
+#![warn(clippy::mem_replace_with_default)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::mem;
 
-fn replace_option_with_none() {
-    let mut an_option = Some(1);
-    let _ = mem::replace(&mut an_option, None);
-    //~^ mem_replace_option_with_none
-    let an_option = &mut Some(1);
-    let _ = mem::replace(an_option, None);
-    //~^ mem_replace_option_with_none
-}
-
-fn replace_with_default() {
+fn main() {
     let mut s = String::from("foo");
     let _ = std::mem::replace(&mut s, String::default());
     //~^ mem_replace_with_default
@@ -101,8 +87,6 @@ fn dont_lint_not_used() {
     std::mem::replace(&mut s, String::default());
 }
 
-fn main() {}
-
 #[clippy::msrv = "1.39"]
 fn msrv_1_39() {
     let mut s = String::from("foo");
@@ -117,63 +101,16 @@ fn msrv_1_40() {
 }
 
 fn issue9824() {
-    struct Foo<'a>(Option<&'a str>);
-    impl<'a> std::ops::Deref for Foo<'a> {
-        type Target = Option<&'a str>;
-
-        fn deref(&self) -> &Self::Target {
-            &self.0
-        }
-    }
-    impl<'a> std::ops::DerefMut for Foo<'a> {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.0
-        }
-    }
-
     struct Bar {
-        opt: Option<u8>,
         val: String,
     }
 
-    let mut f = Foo(Some("foo"));
     let mut b = Bar {
-        opt: Some(1),
         val: String::from("bar"),
     };
 
-    // replace option with none
-    let _ = std::mem::replace(&mut f.0, None);
-    //~^ mem_replace_option_with_none
-    let _ = std::mem::replace(&mut *f, None);
-    //~^ mem_replace_option_with_none
-    let _ = std::mem::replace(&mut b.opt, None);
-    //~^ mem_replace_option_with_none
-    // replace with default
     let _ = std::mem::replace(&mut b.val, String::default());
     //~^ mem_replace_with_default
-}
-
-#[clippy::msrv = "1.31"]
-fn mem_replace_option_with_some() {
-    let mut an_option = Some(0);
-    let replaced = mem::replace(&mut an_option, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
-
-    let mut an_option = &mut Some(0);
-    let replaced = mem::replace(an_option, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
-
-    let (mut opt1, mut opt2) = (Some(0), Some(0));
-    let b = true;
-    let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
-    //~^ ERROR: replacing an `Option` with `Some(..)`
-}
-
-#[clippy::msrv = "1.30"]
-fn mem_replace_option_with_some_bad_msrv() {
-    let mut an_option = Some(0);
-    let replaced = mem::replace(&mut an_option, Some(1));
 }
 
 fn issue15785() {

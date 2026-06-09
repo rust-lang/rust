@@ -1,6 +1,15 @@
-#![allow(deprecated, invalid_value, clippy::uninit_assumed_init)]
 #![warn(clippy::mem_replace_with_uninit)]
-//@no-rustfix
+#![allow(
+    // These get removed by the suggestion
+    deprecated, // for `std::mem::uninitialized`
+    invalid_value,
+    clippy::uninit_assumed_init,
+
+    // Added because the suggestion is `std::ptr::read(&mut v)`
+    // (which might be considered a bug)
+    clippy::unnecessary_mut_passed,
+)]
+
 use std::mem;
 
 fn might_panic<X>(x: X) -> X {
@@ -21,14 +30,6 @@ fn main() {
 
     unsafe {
         let taken_v = mem::replace(&mut v, mem::MaybeUninit::uninit().assume_init());
-        //~^ mem_replace_with_uninit
-
-        let new_v = might_panic(taken_v);
-        std::mem::forget(mem::replace(&mut v, new_v));
-    }
-
-    unsafe {
-        let taken_v = mem::replace(&mut v, mem::zeroed());
         //~^ mem_replace_with_uninit
 
         let new_v = might_panic(taken_v);
