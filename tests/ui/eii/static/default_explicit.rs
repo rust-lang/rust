@@ -3,6 +3,8 @@
 //@ ignore-backends: gcc
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
+// FIXME(#157649): static EII defaults currently fail to link on Apple targets.
+//@ ignore-apple
 // Tests that an explicit static EII implementation overrides a local default.
 
 #![feature(extern_item_impls)]

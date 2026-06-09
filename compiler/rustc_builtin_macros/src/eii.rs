@@ -13,7 +13,7 @@ use crate::diagnostics::{
     EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
     EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
     EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
-    EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiStaticDefaultApple, EiiStaticMultipleImplementations, EiiStaticMutable,
 };
 
 /// ```rust
@@ -86,6 +86,17 @@ fn eii_(
     let (item_span, foreign_item_name) = match kind {
         ItemKind::Fn(func) => (func.sig.span, func.ident),
         ItemKind::Static(stat) => {
+            // See https://github.com/rust-lang/rust/issues/157649
+            if let Some(expr) = &stat.expr
+                && ecx.sess.target.is_like_darwin
+            {
+                ecx.dcx().emit_err(EiiStaticDefaultApple {
+                    span: expr.span,
+                    name: path_to_string(&meta_item.path),
+                });
+                return vec![];
+            }
+
             // Statics must have an explicit name for the eii
             if meta_item.is_word() {
                 ecx.dcx().emit_err(EiiStaticArgumentRequired {
