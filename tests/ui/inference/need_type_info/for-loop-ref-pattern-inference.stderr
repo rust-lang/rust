@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-20261.rs:4:9
+  --> $DIR/for-loop-ref-pattern-inference.rs:6:9
    |
 LL |         i.clone();
    |         ^ cannot infer type
