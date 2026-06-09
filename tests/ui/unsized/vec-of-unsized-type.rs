@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/20433>.
+
 fn main() {}
 
 struct The;
