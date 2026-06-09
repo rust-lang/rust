@@ -8,10 +8,14 @@ LL |     let (a, b) = x[0];
    |          data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing here
+help: consider borrowing the pattern binding
    |
-LL |     let (a, b) = &x[0];
-   |                  +
+LL |     let (ref a, b) = x[0];
+   |          +++
+help: consider borrowing the pattern binding
+   |
+LL |     let (a, ref b) = x[0];
+   |             +++
 
 error: aborting due to 1 previous error
 

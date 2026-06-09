@@ -4,9 +4,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
-use rustc_feature::{
-    AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
-};
+use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
@@ -28,7 +26,10 @@ use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, check_cfg, parse_version, session_diagnostics};
+use crate::{
+    AttrSuggestionStyle, AttributeParser, AttributeTemplate, check_cfg, parse_version,
+    session_diagnostics, template,
+};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],

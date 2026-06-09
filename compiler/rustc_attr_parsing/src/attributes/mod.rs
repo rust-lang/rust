@@ -20,7 +20,7 @@
 
 use std::marker::PhantomData;
 
-use rustc_feature::{AttributeStability, AttributeTemplate, template};
+use rustc_feature::AttributeStability;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
@@ -30,6 +30,7 @@ use crate::context::{AcceptContext, FinalizeContext};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeTemplate, template};
 
 /// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
 mod prelude;
