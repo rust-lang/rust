@@ -1984,10 +1984,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            PatKind::Box(inner) => {
-                self.word("box ");
-                self.print_pat_paren_if_or(inner);
-            }
             PatKind::Deref(inner) => {
                 self.word("deref!");
                 self.popen();
