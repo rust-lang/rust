@@ -1179,6 +1179,10 @@ div.where {
 	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
+.impl-restriction {
+	margin-bottom: 0.75em;
+}
+
 #synthetic-implementors-list:not(.loaded), #implementors-list:not(.loaded) {
 	/* To prevent layout shift when loading the page with extra implementors being loaded
 	   from JS, we hide the list until it's complete. */
