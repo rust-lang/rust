@@ -9,7 +9,7 @@ const X: &i32 = &0;
 
 const Y: &i32 = unsafe {
     &*(intrinsics::const_make_global(X as *const i32 as *mut u8) as *const i32)
-    //~^ error: pointer passed to `const_make_global` does not point to a heap allocation: ALLOC0<imm>
+    //~^ error: pointer passed to `const_make_global` does not point to a heap allocation: ALLOC$ID
 };
 
 fn main() {}
