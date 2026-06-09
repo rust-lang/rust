@@ -405,7 +405,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     // Note: `passes` is often empty.
-    let passes: Vec<_> =
+    let mut passes: Vec<_> =
         unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
 
     if passes.is_empty() {
@@ -425,18 +425,15 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
 
-    let filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
-        .into_iter()
-        .filter(|pass| {
-            let lints = (**pass).get_lints();
-            // Lintless passes are always in
-            lints.is_empty() ||
+    passes.retain(|pass| {
+        let lints = pass.get_lints();
+        // Lintless passes are always in
+        lints.is_empty() ||
             // If the pass doesn't have a single needed lint, omit it
             !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
-        })
-        .collect();
+    });
 
-    let pass = RuntimeCombinedLateLintPass { passes: filtered_passes };
+    let pass = RuntimeCombinedLateLintPass { passes };
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
