@@ -39,7 +39,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
     let InlineData { let_stmt, delete_let, references, target } =
         if let Some(path_expr) = ctx.find_node_at_offset_with_descend::<ast::PathExpr>() {
             inline_usage(&ctx.sema, path_expr, range)
-        } else if let Some(let_stmt) = ctx.find_node_at_offset() {
+        } else if let Some(let_stmt) = ctx.find_node_at_offset_with_descend() {
             inline_let(&ctx.sema, let_stmt, range)
         } else {
             None
@@ -67,18 +67,20 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
         |builder| {
             let editor = builder.make_editor(source);
             let make = editor.make();
-            if delete_let {
-                editor.delete(let_stmt.syntax());
+            if delete_let && let Some(original) = ctx.sema.original_range_opt(let_stmt.syntax()) {
+                let place = cover_edit_range(source, original.range);
+                editor.delete_all(place.clone());
 
                 // Processing let-expr in let-chain
+                // FIXME: process let-expr in macro, but this case is very rare
                 if let Some(bin_expr) = let_stmt.syntax().parent().and_then(ast::BinExpr::cast)
                     && let Some(op_token) = bin_expr.op_token()
                 {
                     editor.delete(&op_token);
                     remove_whitespace(op_token, Direction::Prev, &editor);
-                    remove_whitespace(let_stmt.syntax(), Direction::Prev, &editor);
+                    remove_whitespace(place.start(), Direction::Prev, &editor);
                 } else {
-                    remove_whitespace(let_stmt.syntax(), Direction::Next, &editor);
+                    remove_whitespace(place.end(), Direction::Next, &editor);
                 }
             }
 
@@ -998,7 +1000,75 @@ fn f() {
 }
 "#,
         );
-        // FIXME: supports let-stmt inside macro case
+    }
+
+    #[test]
+    fn local_def_in_macro() {
+        check_assist(
+            inline_local_variable,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!(let xyz = 0;);
+    _ = xyz$0;
+}
+"#,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!();
+    _ = 0;
+}
+"#,
+        );
+        check_assist(
+            inline_local_variable,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!(let xyz = 0;);
+    _ = xyz$0;
+    _ = xyz;
+}
+"#,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!(let xyz = 0;);
+    _ = 0;
+    _ = xyz;
+}
+"#,
+        );
+        check_assist(
+            inline_local_variable,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!(let $0xyz = 0;);
+    _ = xyz;
+}
+"#,
+            r#"
+macro_rules! i {
+    ($($t:tt)*) => { $($t)* }
+}
+fn f() {
+    i!();
+    _ = 0;
+}
+"#,
+        );
     }
 
     #[test]
