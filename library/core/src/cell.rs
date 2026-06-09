@@ -2224,9 +2224,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// thus this can cause distortions in the type size in these cases.
 ///
 /// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
-/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&mut T` reference
-/// can be obtained by either dereferencing this pointer or by calling [`.get_mut()`]
-/// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
+/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. An `&T` or `&mut T` reference
+/// can then be obtained from that pointer, as long as the alasing rules outlined above are obeyed.
+/// Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
 ///
 /// ```rust,compile_fail
@@ -2421,9 +2421,9 @@ impl<T: ?Sized> UnsafeCell<T> {
 
     /// Gets a mutable pointer to the wrapped value.
     ///
-    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
-    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
-    /// caveats.
+    /// This can be cast to a pointer of any kind. When creating (shared or mutable) references, you
+    /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
+    /// more discussion and caveats.
     ///
     /// # Examples
     ///
@@ -2473,9 +2473,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// The difference from [`get`] is that this function accepts a raw pointer,
     /// which is useful to avoid the creation of temporary references.
     ///
-    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
-    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
-    /// caveats.
+    /// This can be cast to a pointer of any kind. When creating (shared or mutable) references, you
+    /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
+    /// more discussion and caveats.
     ///
     /// [`get`]: UnsafeCell::get()
     ///
