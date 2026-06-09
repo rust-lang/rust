@@ -5,19 +5,18 @@ const trait Trait {
 }
 
 #[rustc_comptime]
-fn always_const<T: const Trait>() {
+const fn always_const<T: const Trait>() {
     T::method()
 }
 
 #[rustc_comptime]
-fn conditionally_const<T: [const] Trait>() {
-    //~^ ERROR: `[const]` is not allowed here
+const fn conditionally_const<T: [const] Trait>() {
     T::method()
     //~^ ERROR: `T: const Trait` is not satisfied
 }
 
 #[rustc_comptime]
-fn non_const<T: Trait>() {
+const fn non_const<T: Trait>() {
     T::method()
     //~^ ERROR: `T: const Trait` is not satisfied
 }

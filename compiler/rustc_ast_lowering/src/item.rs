@@ -27,7 +27,7 @@ use super::{
     AstOwner, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
     ParamMode, RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
-use crate::diagnostics::ConstComptimeFn;
+use crate::diagnostics::NonConstComptimeFn;
 
 /// Wraps either IndexVec (during `hir_crate`), which acts like a primary
 /// storage for most of the MaybeOwners, or FxIndexMap during delayed AST -> HIR
@@ -353,15 +353,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.record_body(&[], body)
                 }),
             ),
-            ItemKind::Fn(Fn {
-                sig: FnSig { decl, header, span: fn_sig_span },
-                ident,
-                generics,
-                body,
-                contract,
-                define_opaque,
-                ..
-            }) => {
+            ItemKind::Fn(Fn { sig, ident, generics, body, contract, define_opaque, .. }) => {
+                let FnSig { decl, header, span: fn_sig_span } = sig;
                 self.with_new_scopes(*fn_sig_span, |this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
@@ -385,7 +378,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                     let sig = hir::FnSig {
                         decl,
-                        header: this.lower_fn_header(*header, hir::Safety::Safe, attrs),
+                        header: this.lower_fn_header(
+                            *header,
+                            sig.header_span(),
+                            hir::Safety::Safe,
+                            attrs,
+                        ),
                         span: this.lower_span(*fn_sig_span),
                     };
                     this.lower_define_opaque(hir_id, define_opaque);
@@ -808,7 +806,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
 
                 // Unmarked safety in unsafe block defaults to unsafe.
-                let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
+                let header =
+                    self.lower_fn_header(sig.header, sig.header_span(), hir::Safety::Unsafe, attrs);
 
                 if define_opaque.is_some() {
                     self.dcx().span_err(i.span, "foreign functions cannot define opaque types");
@@ -1742,7 +1741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_kind: Option<CoroutineKind>,
         attrs: &[hir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
-        let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
+        let header = self.lower_fn_header(sig.header, sig.header_span(), hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
@@ -1753,6 +1752,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_fn_header(
         &mut self,
         h: FnHeader,
+        header_span: Span,
         default_safety: hir::Safety,
         attrs: &[hir::Attribute],
     ) -> hir::FnHeader {
@@ -1780,13 +1780,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 rustc_hir::Constness::Const { always: true } => {
                     unreachable!("lower_constness cannot produce comptime")
                 }
-                // A function can't be `const` and `comptime` at the same time
-                rustc_hir::Constness::Const { always: false } => {
-                    let Const::Yes(span) = h.constness else { unreachable!() };
-                    self.dcx().emit_err(ConstComptimeFn { span, attr_span });
-                }
                 // Good
-                rustc_hir::Constness::NotConst => {}
+                rustc_hir::Constness::Const { always: false } => {}
+                // A function can't just be `comptime`, it must also be `const`.
+                rustc_hir::Constness::NotConst => {
+                    self.dcx().emit_err(NonConstComptimeFn { span: header_span, attr_span });
+                }
             }
         }
 

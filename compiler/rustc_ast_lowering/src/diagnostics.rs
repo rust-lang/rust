@@ -123,11 +123,13 @@ pub(crate) struct AwaitOnlyInAsyncFnAndBlocks {
 }
 
 #[derive(Diagnostic)]
-#[diag("a function cannot be both `comptime` and `const`")]
-pub(crate) struct ConstComptimeFn {
+#[diag("a function cannot just be `comptime`")]
+pub(crate) struct NonConstComptimeFn {
     #[primary_span]
-    #[suggestion("remove the `const`", applicability = "machine-applicable", code = "")]
-    #[note("`const` implies the function can be called at runtime, too")]
+    #[suggestion("add `const`", applicability = "machine-applicable", code = "const ")]
+    #[note(
+        "`const` is less restrictive than `comptime`, but already adds many restrictions `comptime` needs"
+    )]
     pub span: Span,
     #[label("`comptime` because of this")]
     pub attr_span: Span,

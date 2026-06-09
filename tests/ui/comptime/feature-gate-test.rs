@@ -1,5 +1,5 @@
 #[rustc_comptime]
 //~^ ERROR use of an internal attribute
-fn foo() {}
+const fn foo() {}
 
 fn main() {}

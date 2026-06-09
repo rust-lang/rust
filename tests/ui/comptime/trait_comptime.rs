@@ -3,24 +3,27 @@
 trait Foo {
     #[rustc_comptime]
     //~^ ERROR: cannot be used on required trait methods
-    fn foo();
+    const fn foo();
+    //~^ ERROR: functions in traits cannot be declared const
 
     #[rustc_comptime]
     //~^ ERROR: cannot be used on provided trait methods
-    fn bar() {}
+    const fn bar() {}
+    //~^ ERROR: functions in traits cannot be declared const
 }
 
 struct Bar;
 
 impl Bar {
     #[rustc_comptime]
-    fn foo() {}
+    const fn foo() {}
 }
 
 impl Foo for Bar {
     #[rustc_comptime]
     //~^ ERROR: cannot be used on trait methods
-    fn foo() {}
+    const fn foo() {}
+    //~^ ERROR: functions in trait impls cannot be declared const
 }
 
 fn main() {}

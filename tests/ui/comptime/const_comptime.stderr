@@ -1,16 +1,16 @@
-error: a function cannot be both `comptime` and `const`
+error: a function cannot just be `comptime`
   --> $DIR/const_comptime.rs:4:1
    |
 LL | #[rustc_comptime]
    | ----------------- `comptime` because of this
-LL | const fn foo() {}
-   | ^^^^^ help: remove the `const`
+LL | fn foo() {}
+   | ^ help: add `const`: `const`
    |
-note: `const` implies the function can be called at runtime, too
+note: `const` is less restrictive than `comptime`, but already adds many restrictions `comptime` needs
   --> $DIR/const_comptime.rs:4:1
    |
-LL | const fn foo() {}
-   | ^^^^^
+LL | fn foo() {}
+   | ^
 
 error: aborting due to 1 previous error
 

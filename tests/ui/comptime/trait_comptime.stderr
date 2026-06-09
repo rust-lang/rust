@@ -1,3 +1,30 @@
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/trait_comptime.rs:6:5
+   |
+LL |     const fn foo();
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/trait_comptime.rs:11:5
+   |
+LL |     const fn bar() {}
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/trait_comptime.rs:25:5
+   |
+LL |     const fn foo() {}
+   |     ^^^^^-
+   |     |
+   |     functions in trait impls cannot be const
+   |     help: remove the `const`
+
 error: `#[rustc_comptime]` attribute cannot be used on required trait methods
   --> $DIR/trait_comptime.rs:4:5
    |
@@ -7,7 +34,7 @@ LL |     #[rustc_comptime]
    = help: `#[rustc_comptime]` can only be applied to functions with a body
 
 error: `#[rustc_comptime]` attribute cannot be used on provided trait methods
-  --> $DIR/trait_comptime.rs:8:5
+  --> $DIR/trait_comptime.rs:9:5
    |
 LL |     #[rustc_comptime]
    |     ^^^^^^^^^^^^^^^^^
@@ -15,12 +42,13 @@ LL |     #[rustc_comptime]
    = help: `#[rustc_comptime]` can be applied to functions and inherent methods
 
 error: `#[rustc_comptime]` attribute cannot be used on trait methods in impl blocks
-  --> $DIR/trait_comptime.rs:21:5
+  --> $DIR/trait_comptime.rs:23:5
    |
 LL |     #[rustc_comptime]
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: `#[rustc_comptime]` can be applied to functions and inherent methods
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0379`.

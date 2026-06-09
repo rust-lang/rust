@@ -1,7 +1,7 @@
 #![feature(rustc_attrs, const_trait_impl)]
 
 #[rustc_comptime]
-fn foo() {}
+const fn foo() {}
 
 fn main() {
     // Ok
@@ -16,7 +16,7 @@ const fn bar() {
 }
 
 #[rustc_comptime]
-fn baz() {
+const fn baz() {
     // Ok
     foo();
 }
