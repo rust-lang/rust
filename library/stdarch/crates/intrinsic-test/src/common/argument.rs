@@ -1,5 +1,6 @@
 use itertools::Itertools;
 
+use crate::common::SupportedArchitecture;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::test_values_array_name;
 
@@ -9,22 +10,22 @@ use super::intrinsic_helpers::TypeDefinition;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Argument<T: TypeDefinition> {
+pub struct Argument<A: SupportedArchitecture> {
     /// The argument's index in the intrinsic function call.
     pub pos: usize,
     /// The argument name.
     pub name: String,
     /// The type of the argument.
-    pub ty: T,
+    pub ty: A::Type,
     /// Any constraints that are on this argument
     pub constraint: Option<Constraint>,
 }
 
-impl<T> Argument<T>
+impl<A> Argument<A>
 where
-    T: TypeDefinition,
+    A: SupportedArchitecture,
 {
-    pub fn new(pos: usize, name: String, ty: T, constraint: Option<Constraint>) -> Self {
+    pub fn new(pos: usize, name: String, ty: A::Type, constraint: Option<Constraint>) -> Self {
         Argument {
             pos,
             name,
@@ -63,13 +64,13 @@ where
 
 /// Arguments of an intrinsic - including parameters that end up being const generics.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ArgumentList<T: TypeDefinition> {
-    pub args: Vec<Argument<T>>,
+pub struct ArgumentList<A: SupportedArchitecture> {
+    pub args: Vec<Argument<A>>,
 }
 
-impl<T> ArgumentList<T>
+impl<A> ArgumentList<A>
 where
-    T: TypeDefinition,
+    A: SupportedArchitecture,
 {
     /// Returns a string with the arguments in `self` as a parameter list for a wrapper fn
     /// definition in C (e.g. `$ty1 $arg1, $ty2 $arg2`).
@@ -196,7 +197,7 @@ where
     }
 
     /// Returns an iterator over the contained arguments
-    pub fn iter(&self) -> std::slice::Iter<'_, Argument<T>> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Argument<A>> {
         self.args.iter()
     }
 }

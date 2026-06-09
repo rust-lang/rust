@@ -8,7 +8,7 @@ pub struct Intrinsic<A: SupportedArchitecture> {
     pub name: String,
 
     /// Any arguments for this intrinsic.
-    pub arguments: ArgumentList<A::Type>,
+    pub arguments: ArgumentList<A>,
 
     /// The return type of this intrinsic.
     pub results: A::Type,

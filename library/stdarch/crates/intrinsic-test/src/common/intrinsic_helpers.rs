@@ -195,7 +195,7 @@ impl IntrinsicType {
     }
 }
 
-pub trait TypeDefinition: Deref<Target = IntrinsicType> {
+pub trait TypeDefinition: Clone + Deref<Target = IntrinsicType> {
     /// Determines the load function for this type.
     fn get_load_function(&self) -> String;
 

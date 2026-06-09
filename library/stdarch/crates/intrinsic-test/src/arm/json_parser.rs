@@ -122,7 +122,7 @@ fn json_to_intrinsic(
                 });
 
             let mut arg =
-                Argument::<ArmType>::new(i, String::from(arg_name), ArmType(arg_ty), constraint);
+                Argument::<Arm>::new(i, String::from(arg_name), ArmType(arg_ty), constraint);
 
             // The JSON doesn't list immediates as const
             let IntrinsicType {
@@ -135,7 +135,7 @@ fn json_to_intrinsic(
         })
         .collect();
 
-    let arguments = ArgumentList::<ArmType> { args };
+    let arguments = ArgumentList::<Arm> { args };
 
     Ok(Intrinsic {
         name,

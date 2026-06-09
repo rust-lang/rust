@@ -30,7 +30,7 @@ pub(crate) const PASSES: u32 = 20;
 /// Architectures must support this trait
 /// to be successfully tested.
 pub trait SupportedArchitecture: Sized {
-    type Type: TypeDefinition + Sync;
+    type Type: TypeDefinition + std::fmt::Debug + PartialEq + Sync;
 
     fn intrinsics(&self) -> &[Intrinsic<Self>];
 

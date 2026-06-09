@@ -99,12 +99,7 @@ fn xml_to_intrinsic(intr: XMLIntrinsic) -> Result<Intrinsic<X86>, Box<dyn std::e
                 param.imm_width
             };
             let constraint = map_constraints(&name, &param.imm_type, effective_imm_width);
-            let arg = Argument::<X86IntrinsicType>::new(
-                i,
-                param.var_name.clone(),
-                ty.unwrap(),
-                constraint,
-            );
+            let arg = Argument::<X86>::new(i, param.var_name.clone(), ty.unwrap(), constraint);
             Some(arg)
         }
     });
@@ -124,8 +119,8 @@ fn xml_to_intrinsic(intr: XMLIntrinsic) -> Result<Intrinsic<X86>, Box<dyn std::e
     // if one of the args has etype="MASK" and type="__m<int>d",
     // then set the bit_len and simd_len accordingly
     let re = Regex::new(r"__m\d+").unwrap();
-    let is_mask = |arg: &Argument<X86IntrinsicType>| arg.ty.param.etype.as_str() == "MASK";
-    let is_vector = |arg: &Argument<X86IntrinsicType>| re.is_match(arg.ty.param.type_data.as_str());
+    let is_mask = |arg: &Argument<X86>| arg.ty.param.etype.as_str() == "MASK";
+    let is_vector = |arg: &Argument<X86>| re.is_match(arg.ty.param.type_data.as_str());
     let pos = args_test.position(|arg| is_mask(arg) && is_vector(arg));
     if let Some(index) = pos {
         args[index].ty.bit_len = args[0].ty.bit_len;
@@ -133,7 +128,7 @@ fn xml_to_intrinsic(intr: XMLIntrinsic) -> Result<Intrinsic<X86>, Box<dyn std::e
 
     args.iter_mut().for_each(|arg| arg.ty.update_simd_len());
 
-    let arguments = ArgumentList::<X86IntrinsicType> { args };
+    let arguments = ArgumentList::<X86> { args };
 
     if let Err(message) = result {
         return Err(Box::from(message));
