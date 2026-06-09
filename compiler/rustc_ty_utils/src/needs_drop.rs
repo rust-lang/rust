@@ -23,10 +23,16 @@ fn needs_drop_raw<'tcx>(
     // needs drop.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_dtor, false, false)
-        .filter(filter_array_elements(tcx, query.typing_env))
-        .next()
-        .is_some();
+    let res = drop_tys_helper(
+        tcx,
+        query.value,
+        query.typing_env,
+        adt_has_dtor,
+        DropTysOptions::default(),
+    )
+    .filter(filter_array_elements(tcx, query.typing_env))
+    .next()
+    .is_some();
 
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
@@ -41,10 +47,16 @@ fn needs_async_drop_raw<'tcx>(
     // it needs async drop.
     let adt_has_async_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_async_dtor, false, false)
-        .filter(filter_array_elements_async(tcx, query.typing_env))
-        .next()
-        .is_some();
+    let res = drop_tys_helper(
+        tcx,
+        query.value,
+        query.typing_env,
+        adt_has_async_dtor,
+        DropTysOptions::default().recurse_into_box_for_async_drop(),
+    )
+    .filter(filter_array_elements_async(tcx, query.typing_env))
+    .next()
+    .is_some();
 
     debug!("needs_async_drop_raw({:?}) = {:?}", query, res);
     res
@@ -88,8 +100,7 @@ fn has_significant_drop_raw<'tcx>(
         query.value,
         query.typing_env,
         adt_consider_insignificant_dtor(tcx),
-        true,
-        false,
+        DropTysOptions::default().only_significant(),
     )
     .filter(filter_array_elements(tcx, query.typing_env))
     .next()
@@ -320,6 +331,30 @@ enum DtorType {
     Significant,
 }
 
+#[derive(Copy, Clone, Default)]
+struct DropTysOptions {
+    only_significant: bool,
+    exhaustive: bool,
+    async_drop_recurses_into_box: bool,
+}
+
+impl DropTysOptions {
+    fn only_significant(mut self) -> Self {
+        self.only_significant = true;
+        self
+    }
+
+    fn exhaustive(mut self) -> Self {
+        self.exhaustive = true;
+        self
+    }
+
+    fn recurse_into_box_for_async_drop(mut self) -> Self {
+        self.async_drop_recurses_into_box = true;
+        self
+    }
+}
+
 // This is a helper function for `adt_drop_tys` and `adt_significant_drop_tys`.
 // Depending on the implantation of `adt_has_dtor`, it is used to check if the
 // ADT has a destructor or if the ADT only has a significant destructor. For
@@ -329,8 +364,7 @@ fn drop_tys_helper<'tcx>(
     ty: Ty<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     adt_has_dtor: impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType>,
-    only_significant: bool,
-    exhaustive: bool,
+    options: DropTysOptions,
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
     fn with_query_cache<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -353,6 +387,24 @@ fn drop_tys_helper<'tcx>(
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             Ok(Vec::new())
+        } else if options.async_drop_recurses_into_box && adt_def.is_box() {
+            let box_components = match args.as_slice() {
+                [boxed_ty, allocator_ty] => {
+                    let boxed_ty = boxed_ty.expect_ty();
+                    let allocator_ty = allocator_ty.expect_ty();
+                    match boxed_ty.kind() {
+                        // FIXME(async_drop): boxed dyn pointees are deliberately skipped here
+                        // because async drop glue does not yet dispatch through dyn metadata.
+                        // Once that is supported, this should include the boxed pointee too.
+                        ty::Dynamic(..) | ty::Error(_) => vec![allocator_ty],
+                        _ => vec![boxed_ty, allocator_ty],
+                    }
+                }
+                _ => {
+                    bug!("drop_tys_helper: `Box` has unexpected generic args: {args:?}");
+                }
+            };
+            Ok(box_components)
         } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
             match dtor_info {
                 DtorType::Significant => {
@@ -380,7 +432,7 @@ fn drop_tys_helper<'tcx>(
                 );
                 r
             });
-            if only_significant {
+            if options.only_significant {
                 // We can't recurse through the query system here because we might induce a cycle
                 Ok(field_tys.collect())
             } else {
@@ -394,7 +446,7 @@ fn drop_tys_helper<'tcx>(
         .map(|v| v.into_iter())
     };
 
-    NeedsDropTypes::new(tcx, typing_env, ty, exhaustive, adt_components)
+    NeedsDropTypes::new(tcx, typing_env, ty, options.exhaustive, adt_components)
 }
 
 fn adt_consider_insignificant_dtor<'tcx>(
@@ -433,8 +485,7 @@ fn adt_drop_tys<'tcx>(
         tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
-        false,
-        false,
+        DropTysOptions::default(),
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
@@ -453,8 +504,7 @@ fn adt_async_drop_tys<'tcx>(
         tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
-        false,
-        false,
+        DropTysOptions::default().recurse_into_box_for_async_drop(),
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
@@ -472,8 +522,7 @@ fn adt_significant_drop_tys(
         tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), // identical to `tcx.make_adt(def, identity_args)`
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_consider_insignificant_dtor(tcx),
-        true,
-        false,
+        DropTysOptions::default().only_significant(),
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
@@ -490,8 +539,7 @@ fn list_significant_drop_tys<'tcx>(
             key.value,
             key.typing_env,
             adt_consider_insignificant_dtor(tcx),
-            true,
-            true,
+            DropTysOptions::default().only_significant().exhaustive(),
         )
         .filter_map(|res| res.ok())
         .collect::<Vec<_>>(),
