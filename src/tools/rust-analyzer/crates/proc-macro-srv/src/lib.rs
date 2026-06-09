@@ -14,9 +14,15 @@
 #![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
+extern crate rustc_codegen_ssa;
 extern crate rustc_driver as _;
+extern crate rustc_interface;
 extern crate rustc_lexer;
+extern crate rustc_metadata;
 extern crate rustc_proc_macro;
+extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_target;
 
 mod bridge;
 mod dylib;
