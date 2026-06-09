@@ -1,5 +1,3 @@
-//@ normalize-stderr: "\n\n\z" -> "\n"
-
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, PhantomData, Reborrow};

@@ -1,5 +1,4 @@
 //@ known-bug: unknown
-//@ normalize-stderr: "\n\n\z" -> "\n"
 
 #![feature(reborrow)]
 
