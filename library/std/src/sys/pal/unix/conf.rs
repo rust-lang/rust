@@ -6,37 +6,18 @@ pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
-/// Returns the value for [`confstr(key, ...)`][posix_confstr]. Currently only
-/// used on Darwin, but should work on any unix (in case we need to get
-/// `_CS_PATH` or `_CS_V[67]_ENV` in the future).
+/// Returns the value for [`confstr(key, ...)`][posix_confstr].
 ///
 /// [posix_confstr]:
 ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-#[cfg(target_vendor = "apple")]
 pub fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,
 ) -> crate::io::Result<crate::ffi::OsString> {
-    let c_str_as_bytes = confstr_as_cstr(key, size_hint)?.to_bytes();
-    // Couldn't use try operator here due to required for
-    // `core::result::Result<OsString, io::error::Error>`
-    // to implement `FromResidual<core::result::Result<Infallible, Utf8Error>>`
-    let c_str_as_str = crate::str::from_utf8(c_str_as_bytes)
-        .unwrap_or_else(|err| panic!("The value from confstr on the key {key} is non-UTF8: {err}"));
-    Ok(c_str_as_str.into())
-}
-
-/// Returns the value for [`confstr(key, ...)`][posix_confstr]. This should work on
-/// any unix platform and it returns a `Result<&'static CStr>` where `Err` is returned
-/// if the key lookup from confstr read 0 bytes.
-///
-/// [posix_confstr]:
-///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/confstr.html
-pub fn confstr_as_cstr(
-    key: crate::ffi::c_int,
-    size_hint: Option<usize>,
-) -> crate::io::Result<&'static crate::ffi::CStr> {
+    use crate::ffi::OsString;
     use crate::io;
+    use crate::os::unix::ffi::OsStringExt;
+
     let mut buf: Vec<u8> = Vec::with_capacity(0);
     let mut bytes_needed_including_nul = size_hint
         .unwrap_or_else(|| {
@@ -81,9 +62,7 @@ pub fn confstr_as_cstr(
         // ... and smoke-check that it *was* a NUL-terminator.
         assert_eq!(last_byte, Some(0), "`confstr` provided a string which wasn't nul-terminated");
     };
-
-    // Values associated with confstr should be static and constant
-    Ok(unsafe { crate::ffi::CStr::from_ptr(buf.as_ptr().cast()) })
+    Ok(OsString::from_vec(buf))
 }
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]

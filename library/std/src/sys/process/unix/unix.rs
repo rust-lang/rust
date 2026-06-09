@@ -91,18 +91,9 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::env::env_read_lock();
-        // max_path_len includes nul terminated byte
-        let max_path_len = self.compute_max_len(envp.as_ref());
-        let buf = vec![0; max_path_len].into_boxed_slice();
-
-        // SAFETY: this is an 'empty' CString that we will use to populate with a null terminated
-        // filepath. max_path_len - 1 because CString already accounts for the nul terminated byte
-        // for us.
-        let shell_buf =
-            unsafe { crate::ffi::CString::from_vec_unchecked(vec![1; max_path_len - 1]) };
-        // Inserting in a pre-allocated buffer for shell_argv to use in case we get
-        // a NOEXEC error.
-        self.get_shell_argv_mut().insert(1, shell_buf);
+        let paths = self.find_path_var(envp.as_ref());
+        let max_path_len = self.compute_max_len(paths);
+        let mut buf = Box::new_uninit_slice(max_path_len);
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -113,7 +104,7 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
-            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref(), buf) };
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref(), paths, &mut buf) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
             let bytes = [
@@ -247,15 +238,10 @@ impl Command {
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
                     let _lock = sys::env::env_read_lock();
-                    let max_path_len = self.compute_max_len(envp.as_ref());
-                    let buf = vec![0; max_path_len].into_boxed_slice();
-                    // max_path_len - 1 because CString already accounts for the nul terminated byte for us.
-                    let shell_buf =
-                        crate::ffi::CString::from_vec_unchecked(vec![1; max_path_len - 1]);
-                    // Inserting in a pre-allocated buffer for shell_argv to use in case we get
-                    // a NOEXEC error.
-                    self.get_shell_argv_mut().insert(1, shell_buf);
-                    let Err(e) = self.do_exec(theirs, envp.as_ref(), buf);
+                    let paths = self.find_path_var(envp.as_ref());
+                    let max_path_len = self.compute_max_len(paths);
+                    let mut buf = Box::new_uninit_slice(max_path_len);
+                    let Err(e) = self.do_exec(theirs, envp.as_ref(), paths, &mut buf);
                     e
                 }
             }
@@ -263,52 +249,49 @@ impl Command {
         }
     }
 
+    /// Helper function to locate the PATH environment variable from an environ pointer.
+    /// This omits the "PATH=" value and returns just the colon delimited paths. The lifetime
+    /// of the resulting u8 slice is dependent on our passed in environment pointer and not
+    /// `Command`, so we don't have a lasting immutable borrow occurring on `Command`, which
+    /// will conflict with mutable borrow that will occur later on `Command` through
+    /// `Command::do_exec`.
+    ///
+    /// If we could not locate the PATH environment variable, this function will return `None`.
+    fn find_path_var<'a>(&self, maybe_envp: Option<&'a CStringArray>) -> Option<&'a [u8]> {
+        let mut envp_ptr =
+            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
+
+        if !envp_ptr.is_null() {
+            // SAFETY: We should be guaranteed to have a nul terminated array either via
+            // from CStringArray or from what `environ()` returns
+            unsafe {
+                while !(*envp_ptr).is_null() {
+                    let c_str_as_bytes = crate::ffi::CStr::from_ptr(*envp_ptr).to_bytes();
+                    if c_str_as_bytes.starts_with(b"PATH=") {
+                        return Some(&c_str_as_bytes[5..]);
+                    } else {
+                        envp_ptr = envp_ptr.add(1);
+                    }
+                }
+            }
+            None
+        } else {
+            None
+        }
+    }
+
     /// Helper function to calculate the maximum path len we'll see from the concatenation
     /// of a PATH environment + the program cstr + a separator byte. The returned value
     /// is used to pre-allocate a buffer that will be used for the entire duration of
     /// `Command::do_exec()`.
-    fn compute_max_len(&self, maybe_envp: Option<&CStringArray>) -> usize {
-        let mut max_path_len = 0;
-        let file_len = self.get_program_cstr().count_bytes();
-        // SAFETY: environ() will either return us a value on the system's environment variables or
-        // null.
-        let mut envp_ptr =
-            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
-        // This is the value associated with the `PATH` environment variable with colon delimiters
-        let mut v = 'path: {
-            if !envp_ptr.is_null() {
-                // SAFETY: We should be guaranteed to have a nul terminated array either via
-                // from CStringArray or from what `environ()` returns
-                unsafe {
-                    while !(*envp_ptr).is_null() {
-                        let c_str_as_bytes =
-                            core::ffi::CStr::from_ptr(*envp_ptr).to_bytes_with_nul();
-                        if c_str_as_bytes.starts_with(b"PATH=") {
-                            break 'path &c_str_as_bytes[5..];
-                        } else {
-                            envp_ptr = envp_ptr.add(1);
-                        }
-                    }
-                }
-                self.get_default_path().to_bytes_with_nul()
-            } else {
-                self.get_default_path().to_bytes_with_nul()
-            }
-        };
+    fn compute_max_len(&self, paths: Option<&[u8]>) -> usize {
+        // Defer to default path from `_CS_PATH_` if PATH environment variable was
+        // not found
+        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+        let longest_path_len = paths.split(|b| *b == b':').map(|path| path.len()).max();
 
-        // Iterate through each path value and store the maximum path len
-        while !v.is_empty() && v != &[b'\0'] {
-            // This excludes nul terminating bit in length calculation
-            let colon_pos = v.iter().position(|byte| *byte == b':').unwrap_or(v.len() - 1);
-            // Parsed path len from envp + file path len + 1 for separator byte
-            let binary_path_len = colon_pos + file_len + 1;
-            // +1 for the nul terminator
-            max_path_len = crate::cmp::max(max_path_len, binary_path_len);
-            v = &v[colon_pos + 1..];
-        }
-
-        // Include nul terminator
-        max_path_len + 1
+        // Parsed path len from envp + file path len + 1 for separator byte + 1 for nul terminated byte
+        longest_path_len.unwrap_or(0) + self.get_program_cstr().count_bytes() + 2
     }
 
     // And at this point we've reached a special time in the life of the
@@ -346,7 +329,8 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
-        mut buf: Box<[u8]>,
+        paths: Option<&[u8]>,
+        buf: &mut [crate::mem::MaybeUninit<u8>],
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -457,64 +441,37 @@ impl Command {
         let argv = self.get_argv();
         let envp_ptr =
             maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
-        let mut paths = 'path: {
-            if !envp_ptr.is_null() {
-                let mut envp_ptr_iter = envp_ptr;
-                // SAFETY: We should be guaranteed to have a nul terminated array either via
-                // from CStringArray or from what `environ()` returns
-                unsafe {
-                    while !(*envp_ptr_iter).is_null() {
-                        let c_str_as_bytes =
-                            core::ffi::CStr::from_ptr(*envp_ptr_iter).to_bytes_with_nul();
-                        if c_str_as_bytes.starts_with(b"PATH=") {
-                            break 'path &c_str_as_bytes[5..];
-                        } else {
-                            envp_ptr_iter = envp_ptr_iter.add(1);
-                        }
-                    }
-                }
-                self.get_default_path().to_bytes_with_nul()
-            } else {
-                self.get_default_path().to_bytes_with_nul()
-            }
-        };
+        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
 
         // Path searching does not occur when our file contains a `/`
         if file_as_bytes.contains(&b'/') {
             libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
         } else {
             let mut got_perm_denied = false;
-            // for path in paths {
-            while !paths.is_empty() && paths != &[b'\0'] {
-                // This excludes nul terminating bit in length calculation
-                let colon_pos =
-                    paths.iter().position(|byte| *byte == b':').unwrap_or(paths.len() - 1);
+            for path in paths.split(|b| *b == b':') {
+                let path_len = path.len();
 
                 // Copy path to execute in the pre-allocated buffer accordingly
-                buf[0..colon_pos].copy_from_slice(&paths[..colon_pos]);
-                buf[colon_pos] = b'/';
-                buf[colon_pos + 1..colon_pos + 1 + file_as_bytes.len()]
-                    .copy_from_slice(file_as_bytes);
+                // Use the current path entry, plus a '/' if nonempty, plus the file to
+                // execute.
+                buf[0..path_len].write_copy_of_slice(path);
+                if path_len != 0 {
+                    buf[path_len].write(b'/');
+                    buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
+                        .write_copy_of_slice(file_as_bytes);
+                } else {
+                    buf[path_len..path_len + file_as_bytes.len()]
+                        .write_copy_of_slice(file_as_bytes);
+                }
 
-                // First try executing on path
+                // Try executing on path
                 libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
                 let err = crate::sys::io::errno();
 
-                // If execve returns ENOEXEC, the file is accessible but it is not an
-                // executable file; invoke shell to interpret as a script
-                if err == libc::ENOEXEC {
-                    // directory len + file len (nul byte included) + separator byte
-                    let path_len = colon_pos + file_as_bytes.len() + 1;
-                    let shell_argv_ptr = self.get_shell_argv();
-                    let shell_file_dst = (&shell_argv_ptr[1]).as_ptr() as *mut crate::ffi::c_char;
-                    crate::ptr::copy_nonoverlapping(buf.as_ptr(), shell_file_dst.cast(), path_len);
-                    libc::execve(shell_argv_ptr[0].as_ptr(), shell_argv_ptr.as_ptr(), envp_ptr);
-                }
-
                 match err {
                     // Record that we got a 'Permission Denied' error in the event that if we
-                    // find no executable to use, we should report that there was usable executable
-                    // but we were denied access to it.
+                    // find no executable to use, we should report that there was a usable
+                    // executable but we were denied access to it.
                     libc::EACCES => got_perm_denied = true,
                     // Try the next path.
                     libc::ENOENT
@@ -524,8 +481,6 @@ impl Command {
                     | libc::ETIMEDOUT => {}
                     _ => return Err(io::Error::from_raw_os_error(err)),
                 }
-
-                paths = &paths[colon_pos + 1..];
             }
 
             // At least one failure was due to lack of permissions, so we should
