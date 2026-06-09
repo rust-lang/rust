@@ -759,10 +759,11 @@ impl MetadataBlob {
                     writeln!(out, "name {}{}", root.name(), root.extra_filename)?;
                     writeln!(
                         out,
-                        "hash {} stable_crate_id {:?}",
-                        root.hash(),
+                        "private hash {} stable_crate_id {:?}",
+                        root.private_hash(),
                         root.stable_crate_id
                     )?;
+                    writeln!(out, "public_hash {}", root.public_hash())?;
                     writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
                     writeln!(out, "triple {}", root.header.triple.tuple())?;
                     writeln!(out, "edition {}", root.edition)?;
@@ -941,8 +942,12 @@ impl CrateRoot {
         self.header.name
     }
 
-    pub(crate) fn hash(&self) -> Svh {
-        self.header.hash
+    pub(crate) fn private_hash(&self) -> Svh {
+        self.header.hashes.private_hash
+    }
+
+    pub(crate) fn public_hash(&self) -> Svh {
+        self.header.hashes.public_hash
     }
 
     pub(crate) fn stable_crate_id(&self) -> StableCrateId {
@@ -2033,8 +2038,12 @@ impl CrateMetadata {
         self.root.header.name
     }
 
-    pub(crate) fn hash(&self) -> Svh {
-        self.root.header.hash
+    pub(crate) fn private_hash(&self) -> Svh {
+        self.root.header.hashes.private_hash
+    }
+
+    pub(crate) fn public_hash(&self) -> Svh {
+        self.root.header.hashes.public_hash
     }
 
     pub(crate) fn has_async_drops(&self) -> bool {

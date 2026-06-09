@@ -150,6 +150,7 @@ attribute_parsers!(
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,
+        RustcRDRTestAttributeParser,
         StabilityParser,
         UsedParser,
         // tidy-alphabetical-end

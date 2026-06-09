@@ -20,7 +20,7 @@ enum CachingSourceMap<'a> {
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
 /// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
-pub struct StableHashState<'a> {
+pub struct StableHashState<'a, const HASH_SPANS_AS_PARENTLESS: bool = false> {
     untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
@@ -29,7 +29,20 @@ pub struct StableHashState<'a> {
     stable_hash_controls: StableHashControls,
 }
 
-impl<'a> StableHashState<'a> {
+impl<'a> StableHashState<'a, false> {
+    pub fn hash_spans_as_parentless(self) -> StableHashState<'a, true> {
+        let Self { untracked, incremental_ignore_spans, caching_source_map, stable_hash_controls } =
+            self;
+        StableHashState {
+            untracked,
+            incremental_ignore_spans,
+            caching_source_map,
+            stable_hash_controls,
+        }
+    }
+}
+
+impl<'a, const HASH_SPANS_AS_PARENTLESS: bool> StableHashState<'a, HASH_SPANS_AS_PARENTLESS> {
     #[inline]
     pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
         let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
@@ -72,7 +85,9 @@ impl<'a> StableHashState<'a> {
     }
 }
 
-impl<'a> StableHashCtxt for StableHashState<'a> {
+impl<'a, const HASH_SPANS_AS_PARENTLESS: bool> StableHashCtxt
+    for StableHashState<'a, HASH_SPANS_AS_PARENTLESS>
+{
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
     /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
     /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
@@ -86,16 +101,19 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
     fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
-        const TAG_VALID_SPAN: u8 = 0;
-        const TAG_INVALID_SPAN: u8 = 1;
-        const TAG_RELATIVE_SPAN: u8 = 2;
-
         if !self.stable_hash_controls().hash_spans {
             return;
         }
 
         let span = Span::from_raw_span(raw_span);
-        let span = span.data_untracked();
+        let mut span = span.data_untracked();
+        const TAG_VALID_SPAN: u8 = 0;
+        const TAG_INVALID_SPAN: u8 = 1;
+        const TAG_RELATIVE_SPAN: u8 = 2;
+
+        if HASH_SPANS_AS_PARENTLESS {
+            span.parent = None
+        }
         span.ctxt.stable_hash(self, hasher);
         span.parent.stable_hash(self, hasher);
 
@@ -112,8 +130,9 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
             // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
             // cheaply without the expensive `span_data_to_lines_and_cols` query.
             Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            (span.lo - parent.lo).to_u32().stable_hash(self, hasher);
-            (span.hi - parent.lo).to_u32().stable_hash(self, hasher);
+            let lo = span.lo - parent.lo;
+            let hi = span.hi - parent.lo;
+            (((hi.to_u32() as u64) << 32) | lo.to_u32() as u64).stable_hash(self, hasher);
             return;
         }
 
@@ -132,8 +151,9 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
             // This span is relative to another span in the same file,
             // only hash the relative position.
             Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
-            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
+            let lo = span.lo.0.wrapping_sub(parent.lo.0);
+            let hi = span.hi.0.wrapping_sub(parent.lo.0);
+            Hash::hash(&(((hi as u64) << 32) | lo as u64), hasher);
             return;
         }
 

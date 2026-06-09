@@ -5,7 +5,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
-    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
+    DivergingFallbackBehavior, RDRFields, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
 use rustc_span::Symbol;
 
@@ -13,7 +13,7 @@ use super::prelude::*;
 use super::util::parse_single_integer;
 use crate::diagnostics;
 use crate::session_diagnostics::{
-    AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
+    AttributeRequiresOpt, FieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
 };
 
 pub(crate) struct RustcMainParser;
@@ -227,11 +227,11 @@ fn parse_cgu_fields(
     }
 
     let Some((cfg, _)) = cfg else {
-        cx.emit_err(CguFieldsMissing { span: args.span, name: &cx.attr_path, field: sym::cfg });
+        cx.emit_err(FieldsMissing { span: args.span, name: &cx.attr_path, field: sym::cfg });
         return None;
     };
     let Some((module, _)) = module else {
-        cx.emit_err(CguFieldsMissing { span: args.span, name: &cx.attr_path, field: sym::module });
+        cx.emit_err(FieldsMissing { span: args.span, name: &cx.attr_path, field: sym::module });
         return None;
     };
     let kind = if let Some((kind, span)) = kind {
@@ -251,11 +251,7 @@ fn parse_cgu_fields(
     } else {
         // return None so that an unwrap for the attributes that need it is ok.
         if accepts_kind {
-            cx.emit_err(CguFieldsMissing {
-                span: args.span,
-                name: &cx.attr_path,
-                field: sym::kind,
-            });
+            cx.emit_err(FieldsMissing { span: args.span, name: &cx.attr_path, field: sym::kind });
             return None;
         };
 
@@ -263,6 +259,87 @@ fn parse_cgu_fields(
     };
 
     Some((cfg, module, kind))
+}
+
+fn parse_rdr_fields(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<(Symbol, Symbol)> {
+    let args = cx.expect_list(args, cx.attr_span)?;
+
+    let mut cfg = None::<(Symbol, Span)>;
+    let mut crate_name = None::<(Symbol, Span)>;
+
+    for arg in args.mixed() {
+        let Some((ident, arg)) = cx.expect_name_value(arg, arg.span(), None) else {
+            continue;
+        };
+
+        let res = match ident.name {
+            sym::cfg => &mut cfg,
+            sym::crate_name => &mut crate_name,
+            _ => {
+                cx.adcx().expected_specific_argument(ident.span, &[sym::cfg, sym::crate_name]);
+                continue;
+            }
+        };
+
+        let Some(str) = arg.value_as_str() else {
+            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
+            continue;
+        };
+
+        if res.is_some() {
+            cx.adcx().duplicate_key(ident.span.to(arg.args_span()), ident.name);
+            continue;
+        }
+
+        *res = Some((str, arg.value_span));
+    }
+
+    let Some((cfg, _)) = cfg else {
+        cx.emit_err(FieldsMissing { span: args.span, name: &cx.attr_path, field: sym::cfg });
+        return None;
+    };
+    let Some((crate_name, _)) = crate_name else {
+        cx.emit_err(FieldsMissing { span: args.span, name: &cx.attr_path, field: sym::crate_name });
+        return None;
+    };
+
+    Some((cfg, crate_name))
+}
+
+#[derive(Default)]
+pub(crate) struct RustcRDRTestAttributeParser {
+    items: ThinVec<(Span, RDRFields)>,
+}
+
+impl AttributeParser for RustcRDRTestAttributeParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[
+        (
+            &[sym::rustc_public_hash_changed],
+            template!(List: &[r#"cfg = "...", crate_name = "...""#]),
+            unstable!(rustc_attrs),
+            |this, cx, args| {
+                this.items.extend(parse_rdr_fields(cx, args).map(|(cfg, crate_name)| {
+                    (cx.attr_span, RDRFields { cfg, crate_name, changed: true })
+                }));
+            },
+        ),
+        (
+            &[sym::rustc_public_hash_unchanged],
+            template!(List: &[r#"cfg = "...", crate_name = "...""#]),
+            unstable!(rustc_attrs),
+            |this, cx, args| {
+                this.items.extend(parse_rdr_fields(cx, args).map(|(cfg, crate_name)| {
+                    (cx.attr_span, RDRFields { cfg, crate_name, changed: false })
+                }));
+            },
+        ),
+    ];
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        Some(AttributeKind::RustcRDRTestAttr(self.items))
+    }
 }
 
 #[derive(Default)]

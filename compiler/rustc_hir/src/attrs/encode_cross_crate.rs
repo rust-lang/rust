@@ -176,6 +176,7 @@ impl AttributeKind {
             RustcPreserveUbChecks => No,
             RustcProcMacroDecls => No,
             RustcPubTransparent(..) => Yes,
+            RustcRDRTestAttr(..) => No,
             RustcReallocator => No,
             RustcRegions => No,
             RustcReservationImpl(..) => Yes,

@@ -21,7 +21,8 @@ use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
+    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, StableHash, TyDecodable,
+    TyEncodable,
 };
 use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -46,6 +47,9 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::public_api_hasher::{
+    Hashed, PublicApiHashState, PublicApiHasher, RDRHashAll, RDRHashNone,
+};
 
 mod decoder;
 mod def_path_hash_map;
@@ -206,7 +210,7 @@ pub(crate) struct ProcMacroData {
 #[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
-    pub(crate) hash: Svh,
+    pub(crate) hashes: CrateHashes,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
     ///
@@ -299,6 +303,25 @@ pub(crate) struct CrateRoot {
     specialization_enabled_in: bool,
 }
 
+/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.
+#[derive(MetadataEncodable, BlobDecodable, Clone, Copy, Eq, PartialEq, Hash)]
+pub(crate) struct CrateHashes {
+    /// Hash of the crate contents, including private items. For proc macros this includes the
+    /// private hashes of all dependencies. When `public-api-hash` is enabled, for other crate
+    /// types than proc macro, it only includes the public hash of dependencies. This is only
+    /// readable by queries in downstream dependencies if the crate querying is a proc macro.
+    pub(crate) private_hash: Svh,
+    /// Hash of most data in rmeta. same as `private_hash` if the `public-api-hash` option is
+    /// disabled.
+    ///
+    /// The public hash contains `StableCrateId`, so two crates in the dependency graph should not
+    /// have the same public hash just because they have the same "public api". This is asserted
+    /// while loading: if two crates have the same public hash but different private hashes, the
+    /// resolver reports that there are multiple candidates available for a crate and compilation
+    /// aborts.
+    pub(crate) public_hash: Svh,
+}
+
 /// On-disk representation of `DefId`.
 /// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
 /// representation and the compilation session.
@@ -323,7 +346,7 @@ impl RawDefId {
     }
 }
 
-#[derive(Encodable, BlobDecodable)]
+#[derive(Encodable, BlobDecodable, StableHash)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -348,8 +371,8 @@ pub(crate) struct IncoherentImpls {
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
     (
-        - defaulted: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
-        - optional: $($name2:ident: Table<$IDX2:ty, $T2:ty>,)+
+        - defaulted: $($name1:ident: Table<$HASH1:ident, $IDX1:ty, $T1:ty>,)+
+        - optional: $($name2:ident: Table<$HASH2:ident, $IDX2:ty, $T2:ty>,)+
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
@@ -359,120 +382,225 @@ macro_rules! define_tables {
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<$IDX1, $T1>,)+
-            $($name2: TableBuilder<$IDX2, Option<$T2>>,)+
+            $($name1: TableBuilder<$HASH1<$IDX1>, $IDX1, $T1>,)+
+            $($name2: TableBuilder<$HASH2<$IDX2>, $IDX2, Option<$T2>>,)+
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut FileEncoder) -> LazyTables {
-                LazyTables {
-                    $($name1: self.$name1.encode(buf),)+
-                    $($name2: self.$name2.encode(buf),)+
-                }
+            fn encode<'a>(
+                &self,
+                buf: &mut FileEncoder,
+                hcx: &mut impl PublicApiHashState<'a>
+            ) -> Hashed<LazyTables>
+            {
+                let mut hasher = PublicApiHasher::default();
+                let tables = LazyTables {
+                    $($name1: {
+                        let table = self.$name1.encode(buf, hcx);
+                        if let Some(hash) = table.hash {
+                            tracing::debug!("{}: {hash:x?}", stringify!($name1));
+                        }
+                        hasher.digest(&table, hcx);
+                        table.value
+                    },)+
+                    $($name2: {
+                        let table = self.$name2.encode(buf, hcx);
+                        if let Some(hash) = table.hash {
+                            tracing::debug!("{}: {hash:x?}", stringify!($name2));
+                        }
+                        hasher.digest(&table, hcx);
+                        table.value
+                    },)+
+                };
+                Hashed { hash: hasher.finish(hcx), value: tables }
             }
         }
     }
 }
 
+// When adding a new field, use `RDRHashAll` as the hasher and include a `// FIXME do we need to
+// hash this comment?` to note that it wasn't reviewed for public api hashing. The docs of
+// `HashableCrateHeader` contains more information about public api hashing.
 define_tables! {
 - defaulted:
-    intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
-    is_macro_rules: Table<DefIndex, bool>,
-    type_alias_is_lazy: Table<DefIndex, bool>,
-    attr_flags: Table<DefIndex, AttrFlags>,
+    // FIXME do we need to hash this?
+    intrinsic: Table<RDRHashAll, DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
+    // FIXME do we need to hash this?
+    is_macro_rules: Table<RDRHashAll, DefIndex, bool>,
+    // FIXME do we need to hash this?
+    type_alias_is_lazy: Table<RDRHashAll, DefIndex, bool>,
+    // FIXME do we need to hash this?
+    attr_flags: Table<RDRHashAll, DefIndex, AttrFlags>,
     // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
     // StableCrateId, so we omit encoding those into the table.
     //
     // Note also that this table is fully populated (no gaps) as every DefIndex should have a
     // corresponding DefPathHash.
-    def_path_hashes: Table<DefIndex, u64>,
-    explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_item_self_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
-    inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
-    opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
+    //
+    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
+    def_path_hashes: Table<RDRHashNone, DefIndex, u64>,
+    // FIXME do we need to hash this?
+    explicit_item_bounds: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    explicit_item_self_bounds: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    inferred_outlives_of: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    explicit_super_predicates_of: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    explicit_implied_predicates_of: Table<RDRHashAll, DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    explicit_implied_const_bounds: Table<RDRHashAll, DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    inherent_impls: Table<RDRHashAll, DefIndex, LazyArray<DefIndex>>,
+    // FIXME do we need to hash this?
+    opt_rpitit_info: Table<RDRHashAll, DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
-    module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
-    ambig_module_children: Table<DefIndex, LazyArray<AmbigModChild>>,
-    cross_crate_inlinable: Table<DefIndex, bool>,
-    asyncness: Table<DefIndex, ty::Asyncness>,
-    constness: Table<DefIndex, hir::Constness>,
-    safety: Table<DefIndex, hir::Safety>,
-    defaultness: Table<DefIndex, hir::Defaultness>,
+    // FIXME do we need to hash this?
+    module_children_reexports: Table<RDRHashAll, DefIndex, LazyArray<ModChild>>,
+    // FIXME do we need to hash this?
+    ambig_module_children: Table<RDRHashAll, DefIndex, LazyArray<AmbigModChild>>,
+    // FIXME do we need to hash this?
+    cross_crate_inlinable: Table<RDRHashAll, DefIndex, bool>,
+    // FIXME do we need to hash this?
+    asyncness: Table<RDRHashAll, DefIndex, ty::Asyncness>,
+    // FIXME do we need to hash this?
+    constness: Table<RDRHashAll, DefIndex, hir::Constness>,
+    // FIXME do we need to hash this?
+    safety: Table<RDRHashAll, DefIndex, hir::Safety>,
+    // FIXME do we need to hash this?
+    defaultness: Table<RDRHashAll, DefIndex, hir::Defaultness>,
 
 - optional:
-    attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
+    // FIXME do we need to hash this?
+    attributes: Table<RDRHashAll, DefIndex, LazyArray<hir::Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
-    module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
-    associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
-    def_kind: Table<DefIndex, DefKind>,
-    visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
-    def_span: Table<DefIndex, LazyValue<Span>>,
-    def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<DefIndex, LazyValue<attrs::Deprecation>>,
-    explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
-    generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
-    type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
-    variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
-    fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
-    codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
-    impl_trait_header: Table<DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
-    const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
-    object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
-    optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
-    mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
-    trivial_const: Table<DefIndex, LazyValue<(ConstValue, Ty<'static>)>>,
-    closure_saved_names_of_captured_variables: Table<DefIndex, LazyValue<IndexVec<FieldIdx, Symbol>>>,
-    mir_coroutine_witnesses: Table<DefIndex, LazyValue<mir::CoroutineLayout<'static>>>,
-    promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
-    thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
-    impl_parent: Table<DefIndex, RawDefId>,
-    const_conditions: Table<DefIndex, LazyValue<ty::ConstConditions<'static>>>,
+    // FIXME do we need to hash this?
+    module_children_non_reexports: Table<RDRHashAll, DefIndex, LazyArray<DefIndex>>,
+    // FIXME do we need to hash this?
+    associated_item_or_field_def_ids: Table<RDRHashAll, DefIndex, LazyArray<DefIndex>>,
+    // FIXME do we need to hash this?
+    def_kind: Table<RDRHashAll, DefIndex, DefKind>,
+    // FIXME do we need to hash this?
+    visibility: Table<RDRHashAll, DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
+    // FIXME do we need to hash this?
+    def_span: Table<RDRHashAll, DefIndex, LazyValue<Span>>,
+    // FIXME do we need to hash this?
+    def_ident_span: Table<RDRHashAll, DefIndex, LazyValue<Span>>,
+    // FIXME do we need to hash this?
+    lookup_stability: Table<RDRHashAll, DefIndex, LazyValue<hir::Stability>>,
+    // FIXME do we need to hash this?
+    lookup_const_stability: Table<RDRHashAll, DefIndex, LazyValue<hir::ConstStability>>,
+    // FIXME do we need to hash this?
+    lookup_default_body_stability: Table<RDRHashAll, DefIndex, LazyValue<hir::DefaultBodyStability>>,
+    // FIXME do we need to hash this?
+    lookup_deprecation_entry: Table<RDRHashAll, DefIndex, LazyValue<attrs::Deprecation>>,
+    // FIXME do we need to hash this?
+    explicit_predicates_of: Table<RDRHashAll, DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
+    // FIXME do we need to hash this?
+    generics_of: Table<RDRHashAll, DefIndex, LazyValue<ty::Generics>>,
+    // FIXME do we need to hash this?
+    type_of: Table<RDRHashAll, DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,
+    // FIXME do we need to hash this?
+    variances_of: Table<RDRHashAll, DefIndex, LazyArray<ty::Variance>>,
+    // FIXME do we need to hash this?
+    fn_sig: Table<RDRHashAll, DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
+    // FIXME do we need to hash this?
+    codegen_fn_attrs: Table<RDRHashAll, DefIndex, LazyValue<CodegenFnAttrs>>,
+    // FIXME do we need to hash this?
+    impl_trait_header: Table<RDRHashAll, DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
+    // FIXME do we need to hash this?
+    const_param_default: Table<RDRHashAll, DefIndex, LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
+    // FIXME do we need to hash this?
+    object_lifetime_default: Table<RDRHashAll, DefIndex, LazyValue<ObjectLifetimeDefault>>,
+    // FIXME do we need to hash this?
+    optimized_mir: Table<RDRHashAll, DefIndex, LazyValue<mir::Body<'static>>>,
+    // FIXME do we need to hash this?
+    mir_for_ctfe: Table<RDRHashAll, DefIndex, LazyValue<mir::Body<'static>>>,
+    // FIXME do we need to hash this?
+    trivial_const: Table<RDRHashAll, DefIndex, LazyValue<(ConstValue, Ty<'static>)>>,
+    // FIXME do we need to hash this?
+    closure_saved_names_of_captured_variables: Table<RDRHashAll, DefIndex, LazyValue<IndexVec<FieldIdx, Symbol>>>,
+    // FIXME do we need to hash this?
+    mir_coroutine_witnesses: Table<RDRHashAll, DefIndex, LazyValue<mir::CoroutineLayout<'static>>>,
+    // FIXME do we need to hash this?
+    promoted_mir: Table<RDRHashAll, DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
+    // FIXME do we need to hash this?
+    thir_abstract_const: Table<RDRHashAll, DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
+    // FIXME do we need to hash this?
+    impl_parent: Table<RDRHashAll, DefIndex, RawDefId>,
+    // FIXME do we need to hash this?
+    const_conditions: Table<RDRHashAll, DefIndex, LazyValue<ty::ConstConditions<'static>>>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
-    coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
-    mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
-    rendered_const: Table<DefIndex, LazyValue<String>>,
-    rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
-    coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
-    coroutine_for_closure: Table<DefIndex, RawDefId>,
-    adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,
-    adt_async_destructor: Table<DefIndex, LazyValue<ty::AsyncDestructor>>,
-    coroutine_by_move_body_def_id: Table<DefIndex, RawDefId>,
-    eval_static_initializer: Table<DefIndex, LazyValue<mir::interpret::ConstAllocation<'static>>>,
-    trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
-    expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
-    default_fields: Table<DefIndex, LazyValue<DefId>>,
-    params_in_repr: Table<DefIndex, LazyValue<DenseBitSet<u32>>>,
-    repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
+    // FIXME do we need to hash this?
+    coerce_unsized_info: Table<RDRHashAll, DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
+    // FIXME do we need to hash this?
+    mir_const_qualif: Table<RDRHashAll, DefIndex, LazyValue<mir::ConstQualifs>>,
+    // FIXME do we need to hash this?
+    rendered_const: Table<RDRHashAll, DefIndex, LazyValue<String>>,
+    // FIXME do we need to hash this?
+    rendered_precise_capturing_args: Table<RDRHashAll, DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
+    // FIXME do we need to hash this?
+    fn_arg_idents: Table<RDRHashAll, DefIndex, LazyArray<Option<Ident>>>,
+    // FIXME do we need to hash this?
+    coroutine_kind: Table<RDRHashAll, DefIndex, hir::CoroutineKind>,
+    // FIXME do we need to hash this?
+    coroutine_for_closure: Table<RDRHashAll, DefIndex, RawDefId>,
+    // FIXME do we need to hash this?
+    adt_destructor: Table<RDRHashAll, DefIndex, LazyValue<ty::Destructor>>,
+    // FIXME do we need to hash this?
+    adt_async_destructor: Table<RDRHashAll, DefIndex, LazyValue<ty::AsyncDestructor>>,
+    // FIXME do we need to hash this?
+    coroutine_by_move_body_def_id: Table<RDRHashAll, DefIndex, RawDefId>,
+    // FIXME do we need to hash this?
+    eval_static_initializer: Table<RDRHashAll, DefIndex, LazyValue<mir::interpret::ConstAllocation<'static>>>,
+    // FIXME do we need to hash this?
+    trait_def: Table<RDRHashAll, DefIndex, LazyValue<ty::TraitDef>>,
+    // FIXME do we need to hash this?
+    expn_that_defined: Table<RDRHashAll, DefIndex, LazyValue<ExpnId>>,
+    // FIXME do we need to hash this?
+    default_fields: Table<RDRHashAll, DefIndex, LazyValue<DefId>>,
+    // FIXME do we need to hash this?
+    params_in_repr: Table<RDRHashAll, DefIndex, LazyValue<DenseBitSet<u32>>>,
+    // FIXME do we need to hash this?
+    repr_options: Table<RDRHashAll, DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
-    def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
-    variant_data: Table<DefIndex, LazyValue<VariantData>>,
-    assoc_container: Table<DefIndex, LazyValue<ty::AssocContainer>>,
-    macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
-    deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
-    collect_return_position_impl_trait_in_trait_tys: Table<DefIndex, LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
-    doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
-    doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
-    assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
-    opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
-    anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
-    const_of_item: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
-    associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
+    //
+    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
+    def_keys: Table<RDRHashNone, DefIndex, LazyValue<DefKey>>,
+    // FIXME do we need to hash this?
+    proc_macro_quoted_spans: Table<RDRHashAll, usize, LazyValue<Span>>,
+    // FIXME do we need to hash this?
+    variant_data: Table<RDRHashAll, DefIndex, LazyValue<VariantData>>,
+    // FIXME do we need to hash this?
+    assoc_container: Table<RDRHashAll, DefIndex, LazyValue<ty::AssocContainer>>,
+    // FIXME do we need to hash this?
+    macro_definition: Table<RDRHashAll, DefIndex, LazyValue<ast::DelimArgs>>,
+    // FIXME do we need to hash this?
+    deduced_param_attrs: Table<RDRHashAll, DefIndex, LazyArray<DeducedParamAttrs>>,
+    // FIXME do we need to hash this?
+    collect_return_position_impl_trait_in_trait_tys: Table<RDRHashAll, DefIndex, LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
+    // FIXME do we need to hash this?
+    doc_link_resolutions: Table<RDRHashAll, DefIndex, LazyValue<DocLinkResMap>>,
+    // FIXME do we need to hash this?
+    doc_link_traits_in_scope: Table<RDRHashAll, DefIndex, LazyArray<DefId>>,
+    // FIXME do we need to hash this?
+    assumed_wf_types_for_rpitit: Table<RDRHashAll, DefIndex, LazyArray<(Ty<'static>, Span)>>,
+    // FIXME do we need to hash this?
+    opaque_ty_origin: Table<RDRHashAll, DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
+    // FIXME do we need to hash this?
+    anon_const_kind: Table<RDRHashAll, DefIndex, LazyValue<ty::AnonConstKind>>,
+    // FIXME do we need to hash this?
+    const_of_item: Table<RDRHashAll, DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
+    // FIXME do we need to hash this?
+    associated_types_for_impl_traits_in_trait_or_impl: Table<RDRHashAll, DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -485,7 +613,7 @@ struct VariantData {
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Default, Clone, Copy)]
     pub struct AttrFlags: u8 {
         const IS_DOC_HIDDEN = 1 << 0;
     }
