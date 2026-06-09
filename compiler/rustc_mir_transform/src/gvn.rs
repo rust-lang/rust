@@ -128,7 +128,7 @@ pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        false && sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
