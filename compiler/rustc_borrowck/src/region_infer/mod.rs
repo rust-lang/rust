@@ -345,7 +345,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             outlives_constraints,
             scc_annotations,
             type_tests,
-            liveness_constraints,
+            mut liveness_constraints,
             universe_causes,
             placeholder_indices,
         } = lowered_constraints;
@@ -364,12 +364,45 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut scc_values =
             RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
 
-        for region in liveness_constraints.regions() {
+        // Initializes the region variables for each universally
+        // quantified region (lifetime parameter). The first N variables
+        // always correspond to the regions appearing in the function
+        // signature (both named and anonymous) and in where-clauses.
+        for (region, definition) in definitions.iter_enumerated() {
             let scc = constraint_sccs.scc(region);
-            scc_values.merge_liveness(scc, region, &liveness_constraints);
+
+            match definition.origin {
+                NllRegionVariableOrigin::FreeRegion => {
+                    // For each free, universally quantified region X:
+
+                    // Add all nodes in the CFG to liveness constraints
+                    liveness_constraints.add_all_points(region);
+
+                    // Add `end(X)` into the set for X.
+                    scc_values.add_element(scc, region);
+                }
+
+                NllRegionVariableOrigin::Placeholder(placeholder) => {
+                    // Placeholder region variables contain their placeholder.
+                    scc_values.add_element(scc, placeholder);
+                }
+
+                NllRegionVariableOrigin::Existential { .. } => {
+                    // For existential, regions, nothing to do.
+                }
+            }
         }
 
-        let mut result = Self {
+        for (region, liveness) in liveness_constraints.regions_and_liveness() {
+            // Initially copy the liveness constraints of any region that
+            // has them, setting `scc_values[scc(region)] |= liveness_constraints[region]`.
+            //
+            // These values will later be propagated during [`Self::propagate_constraints()`]
+            scc_values.merge_liveness(constraint_sccs.scc(region), liveness);
+            // Note: this includes the liveness values we just initialised above!
+        }
+
+        Self {
             definitions,
             liveness_constraints,
             constraints: outlives_constraints,
@@ -380,90 +413,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values,
             type_tests,
             universal_region_relations,
-        };
-
-        result.init_free_and_bound_regions();
-
-        result
-    }
-
-    /// Initializes the region variables for each universally
-    /// quantified region (lifetime parameter). The first N variables
-    /// always correspond to the regions appearing in the function
-    /// signature (both named and anonymous) and where-clauses. This
-    /// function iterates over those regions and initializes them with
-    /// minimum values.
-    ///
-    /// For example:
-    /// ```ignore (illustrative)
-    /// fn foo<'a, 'b>( /* ... */ ) where 'a: 'b { /* ... */ }
-    /// ```
-    /// would initialize two variables like so:
-    /// ```ignore (illustrative)
-    /// R0 = { CFG, R0 } // 'a
-    /// R1 = { CFG, R0, R1 } // 'b
-    /// ```
-    /// Here, R0 represents `'a`, and it contains (a) the entire CFG
-    /// and (b) any universally quantified regions that it outlives,
-    /// which in this case is just itself. R1 (`'b`) in contrast also
-    /// outlives `'a` and hence contains R0 and R1.
-    ///
-    /// This bit of logic also handles invalid universe relations
-    /// for higher-kinded types.
-    ///
-    /// We Walk each SCC `A` and `B` such that `A: B`
-    /// and ensure that universe(A) can see universe(B).
-    ///
-    /// This serves to enforce the 'empty/placeholder' hierarchy
-    /// (described in more detail on `RegionKind`):
-    ///
-    /// ```ignore (illustrative)
-    /// static -----+
-    ///   |         |
-    /// empty(U0) placeholder(U1)
-    ///   |      /
-    /// empty(U1)
-    /// ```
-    ///
-    /// In particular, imagine we have variables R0 in U0 and R1
-    /// created in U1, and constraints like this;
-    ///
-    /// ```ignore (illustrative)
-    /// R1: !1 // R1 outlives the placeholder in U1
-    /// R1: R0 // R1 outlives R0
-    /// ```
-    ///
-    /// Here, we wish for R1 to be `'static`, because it
-    /// cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
-    ///
-    /// Thanks to this loop, what happens is that the `R1: R0`
-    /// constraint has lowered the universe of `R1` to `U0`, which in turn
-    /// means that the `R1: !1` constraint here will cause
-    /// `R1` to become `'static`.
-    fn init_free_and_bound_regions(&mut self) {
-        for variable in self.definitions.indices() {
-            let scc = self.constraint_sccs.scc(variable);
-
-            match self.definitions[variable].origin {
-                NllRegionVariableOrigin::FreeRegion => {
-                    // For each free, universally quantified region X:
-
-                    // Add all nodes in the CFG to liveness constraints
-                    self.liveness_constraints.add_all_points(variable);
-                    self.scc_values.add_all_points(scc);
-
-                    // Add `end(X)` into the set for X.
-                    self.scc_values.add_element(scc, variable);
-                }
-
-                NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    self.scc_values.add_element(scc, placeholder);
-                }
-
-                NllRegionVariableOrigin::Existential { .. } => {
-                    // For existential, regions, nothing to do.
-                }
-            }
         }
     }
 

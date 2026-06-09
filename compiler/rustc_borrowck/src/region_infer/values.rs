@@ -96,8 +96,10 @@ impl LivenessValues {
     }
 
     /// Iterate through each region that has a value in this set.
-    pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> {
-        self.points().rows()
+    pub(crate) fn regions_and_liveness(
+        &self,
+    ) -> impl Iterator<Item = (RegionVid, &IntervalSet<PointIndex>)> {
+        self.points().iter_enumerated()
     }
 
     /// Iterate through each region that has a value in this set.
@@ -303,11 +305,6 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
         elem.add_to_row(self, r)
     }
 
-    /// Adds all the control-flow points to the values for `r`.
-    pub(crate) fn add_all_points(&mut self, r: N) {
-        self.points.insert_all_into_row(r);
-    }
-
     /// Adds all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     pub(crate) fn add_region(&mut self, r_to: N, r_from: N) -> bool {
@@ -337,13 +334,9 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
         Some(first_unset.index() - block.index())
     }
 
-    /// `self[to] |= values[from]`, essentially: that is, take all the
-    /// elements for the region `from` from `values` and add them to
-    /// the region `to` in `self`.
-    pub(crate) fn merge_liveness(&mut self, to: N, from: RegionVid, values: &LivenessValues) {
-        if let Some(set) = values.points().row(from) {
-            self.points.union_row(to, set);
-        }
+    /// Merge a row of liveness into our points.
+    pub(crate) fn merge_liveness(&mut self, to: N, liveness: &IntervalSet<PointIndex>) {
+        self.points.union_row(to, liveness);
     }
 
     /// Returns `true` if `sup_region` contains all the CFG points that
