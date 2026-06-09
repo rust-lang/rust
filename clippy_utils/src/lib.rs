@@ -46,6 +46,7 @@ mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
+pub mod disallowed_profiles;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;

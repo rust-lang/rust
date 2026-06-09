@@ -986,6 +986,28 @@ The minimum size (in bytes) to consider a type for passing by reference instead 
 * [`large_types_passed_by_value`](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
 
 
+## `profiles`
+Named profiles of disallowed items (unrelated to Cargo build profiles).
+
+#### Example
+
+```toml
+[profiles.persistent]
+disallowed-methods = [{ path = "std::env::temp_dir" }]
+disallowed-types = [{ path = "std::time::Instant", reason = "use our custom time API" }]
+
+[profiles.single_threaded]
+disallowed-methods = [{ path = "std::thread::spawn" }]
+```
+
+**Default Value:** `{}`
+
+---
+**Affected lints:**
+* [`disallowed_methods`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods)
+* [`disallowed_types`](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types)
+
+
 ## `pub-underscore-fields-behavior`
 Lint "public" fields in a struct that are prefixed with an underscore based on their
 exported visibility, or whether they are marked as "pub".

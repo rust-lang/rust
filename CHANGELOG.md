@@ -7607,6 +7607,7 @@ Released 2018-09-13
 [`module-items-ordered-within-groupings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#module-items-ordered-within-groupings
 [`msrv`]: https://doc.rust-lang.org/clippy/lint_configuration.html#msrv
 [`pass-by-value-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pass-by-value-size-limit
+[`profiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#profiles
 [`pub-underscore-fields-behavior`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pub-underscore-fields-behavior
 [`recursive-self-in-type-definitions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#recursive-self-in-type-definitions
 [`semicolon-inside-block-ignore-singleline`]: https://doc.rust-lang.org/clippy/lint_configuration.html#semicolon-inside-block-ignore-singleline
