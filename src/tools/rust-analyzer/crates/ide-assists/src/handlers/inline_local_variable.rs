@@ -1,19 +1,20 @@
 use either::{Either, for_both};
 use hir::{PathResolution, Semantics};
 use ide_db::{
-    EditionedFileId, RootDatabase,
+    RootDatabase,
     defs::Definition,
-    search::{FileReference, FileReferenceNode, UsageSearchResult},
+    search::{FileReference, UsageSearchResult},
 };
 use syntax::{
-    Direction, TextRange,
+    Direction, T, TextRange,
     ast::{self, AstNode, AstToken, HasName},
-    syntax_editor::{Element, SyntaxEditor},
+    syntax_editor::{Element, Position, SyntaxEditor},
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
+    utils::cover_edit_range,
 };
 
 // Assist: inline_local_variable
@@ -33,13 +34,13 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
-    let file_id = ctx.file_id();
+    let source = ctx.source_file().syntax();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
-        if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
-            inline_usage(&ctx.sema, path_expr, range, file_id)
+        if let Some(path_expr) = ctx.find_node_at_offset_with_descend::<ast::PathExpr>() {
+            inline_usage(&ctx.sema, path_expr, range)
         } else if let Some(let_stmt) = ctx.find_node_at_offset() {
-            inline_let(&ctx.sema, let_stmt, range, file_id)
+            inline_let(&ctx.sema, let_stmt, range)
         } else {
             None
         }?;
@@ -47,47 +48,29 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
         either::Either::Left(it) => it.initializer()?,
         either::Either::Right(it) => it.expr()?,
     };
-
-    let wrap_in_parens = references
-        .into_iter()
-        .filter_map(|FileReference { range, name, .. }| match name {
-            FileReferenceNode::NameRef(name) => Some((range, name)),
-            _ => None,
-        })
-        .map(|(range, name_ref)| {
-            if range != name_ref.syntax().text_range() {
-                // Do not rename inside macros
-                // FIXME: This feels like a bad heuristic for macros
-                return None;
+    let needs_parens = |name_ref: &ast::NameRef| {
+        let usage_node =
+            name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
+        let usage_parent = usage_node.as_ref().and_then(|it| it.parent());
+        match (usage_node, usage_parent) {
+            (Some(usage), Some(parent)) => {
+                initializer_expr.needs_parens_in_place_of(&parent, &usage)
             }
-            let usage_node =
-                name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
-            let usage_parent_option = usage_node.as_ref().and_then(|it| it.parent());
-            let usage_parent = match usage_parent_option {
-                Some(u) => u,
-                None => return Some((name_ref, false)),
-            };
-            let should_wrap = initializer_expr
-                .needs_parens_in_place_of(&usage_parent, usage_node.as_ref().unwrap());
-            Some((name_ref, should_wrap))
-        })
-        .collect::<Option<Vec<_>>>()?;
-
-    let target = match target {
-        ast::NameOrNameRef::Name(it) => it.syntax().clone(),
-        ast::NameOrNameRef::NameRef(it) => it.syntax().clone(),
+            _ => false,
+        }
     };
 
     acc.add(
         AssistId::refactor_inline("inline_local_variable"),
         "Inline variable",
-        target.text_range(),
-        move |builder| {
-            let editor = builder.make_editor(&target);
+        target.range,
+        |builder| {
+            let editor = builder.make_editor(source);
             let make = editor.make();
             if delete_let {
                 editor.delete(let_stmt.syntax());
 
+                // Processing let-expr in let-chain
                 if let Some(bin_expr) = let_stmt.syntax().parent().and_then(ast::BinExpr::cast)
                     && let Some(op_token) = bin_expr.op_token()
                 {
@@ -99,19 +82,27 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
                 }
             }
 
-            for (name, should_wrap) in wrap_in_parens {
-                let replacement = if should_wrap {
+            for FileReference { range, name, .. } in references {
+                let Some(name) = name.as_name_ref().cloned() else { continue };
+                let replacement = if needs_parens(&name) {
                     make.expr_paren(initializer_expr.clone()).into()
                 } else {
                     initializer_expr.clone()
                 };
 
-                if let Some(record_field) = ast::RecordExprField::for_field_name(&name) {
+                let place = cover_edit_range(source, range);
+                if ast::RecordExprField::for_field_name(&name).is_some() {
                     cov_mark::hit!(inline_field_shorthand);
-                    let replacement = make.record_expr_field(name, Some(replacement));
-                    editor.replace(record_field.syntax(), replacement.syntax());
+                    editor.insert_all(
+                        Position::after(place.end()),
+                        vec![
+                            make.token(T![:]).into(),
+                            make.whitespace(" ").into(),
+                            replacement.syntax().clone().into(),
+                        ],
+                    );
                 } else {
-                    editor.replace(name.syntax(), replacement.syntax());
+                    editor.replace_all(place, vec![replacement.syntax().clone().into()]);
                 }
             }
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -122,7 +113,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '
 struct InlineData {
     let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     delete_let: bool,
-    target: ast::NameOrNameRef,
+    target: hir::FileRange,
     references: Vec<FileReference>,
 }
 
@@ -130,7 +121,6 @@ fn inline_let(
     sema: &Semantics<'_, RootDatabase>,
     let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     range: TextRange,
-    file_id: EditionedFileId,
 ) -> Option<InlineData> {
     let bind_pat = match for_both!(&let_stmt, it => it.pat())? {
         ast::Pat::IdentPat(pat) => pat,
@@ -140,20 +130,18 @@ fn inline_let(
         cov_mark::hit!(test_not_inline_mut_variable);
         return None;
     }
-    if !bind_pat.syntax().text_range().contains_range(range) {
+    let target = sema.original_range_opt(bind_pat.name()?.syntax())?;
+    if !target.range.contains_range(range) {
         cov_mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
 
     let local = sema.to_def(&bind_pat)?;
-    let UsageSearchResult { mut references } = Definition::Local(local).usages(sema).all();
-    match references.remove(&file_id) {
-        Some(references) => Some(InlineData {
-            let_stmt,
-            delete_let: true,
-            target: ast::NameOrNameRef::Name(bind_pat.name()?),
-            references,
-        }),
+    let UsageSearchResult { references } = Definition::Local(local).usages(sema).all();
+    let references = references.into_iter().flat_map(|it| it.1).collect::<Vec<_>>();
+
+    match references.first() {
+        Some(_) => Some(InlineData { let_stmt, delete_let: true, target, references }),
         None => {
             cov_mark::hit!(test_not_applicable_if_variable_unused);
             None
@@ -165,11 +153,11 @@ fn inline_usage(
     sema: &Semantics<'_, RootDatabase>,
     path_expr: ast::PathExpr,
     range: TextRange,
-    file_id: EditionedFileId,
 ) -> Option<InlineData> {
     let path = path_expr.path()?;
     let name = path.as_single_name_ref()?;
-    if !name.syntax().text_range().contains_range(range) {
+    let target = sema.original_range_opt(name.syntax())?;
+    if !target.range.contains_range(range) {
         cov_mark::hit!(test_not_inline_selection_too_broad);
         return None;
     }
@@ -193,12 +181,12 @@ fn inline_usage(
 
     let let_stmt = AstNode::cast(bind_pat.syntax().parent()?)?;
 
-    let UsageSearchResult { mut references } = Definition::Local(local).usages(sema).all();
-    let mut references = references.remove(&file_id)?;
+    let UsageSearchResult { references } = Definition::Local(local).usages(sema).all();
+    let mut references = references.into_iter().flat_map(|it| it.1).collect::<Vec<_>>();
     let delete_let = references.len() == 1;
     references.retain(|fref| fref.name.as_name_ref() == Some(&name));
 
-    Some(InlineData { let_stmt, delete_let, target: ast::NameOrNameRef::NameRef(name), references })
+    Some(InlineData { let_stmt, delete_let, target, references })
 }
 
 fn remove_whitespace(elem: impl Element, dir: Direction, editor: &SyntaxEditor) {
@@ -969,8 +957,8 @@ fn main() {
     }
 
     #[test]
-    fn not_applicable_on_local_usage_in_macro() {
-        check_assist_not_applicable(
+    fn local_usage_in_macro() {
+        check_assist(
             inline_local_variable,
             r#"
 macro_rules! m {
@@ -978,11 +966,19 @@ macro_rules! m {
 }
 fn f() {
     let xyz = 0;
-    m!(xyz$0); // replacing it would break the macro
+    m!(xyz$0); // some macros may break, but it's best to support them
+}
+"#,
+            r#"
+macro_rules! m {
+    ($i:ident) => { $i }
+}
+fn f() {
+    m!(0); // some macros may break, but it's best to support them
 }
 "#,
         );
-        check_assist_not_applicable(
+        check_assist(
             inline_local_variable,
             r#"
 macro_rules! m {
@@ -990,10 +986,19 @@ macro_rules! m {
 }
 fn f() {
     let xyz$0 = 0;
-    m!(xyz); // replacing it would break the macro
+    m!(xyz); // some macros may break, but it's best to support them
+}
+"#,
+            r#"
+macro_rules! m {
+    ($i:ident) => { $i }
+}
+fn f() {
+    m!(0); // some macros may break, but it's best to support them
 }
 "#,
         );
+        // FIXME: supports let-stmt inside macro case
     }
 
     #[test]
