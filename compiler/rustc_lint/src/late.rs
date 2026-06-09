@@ -305,12 +305,12 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 // `check_foo` method in `$methods` within this pass simply calls `check_foo`
 // once per `$pass`. Compare with `declare_combined_late_lint_pass`, which is
 // similar, but combines lint passes at compile time.
-struct RuntimeCombinedLateLintPass<'a, 'tcx> {
-    passes: &'a mut [LateLintPassObject<'tcx>],
+struct RuntimeCombinedLateLintPass<'tcx> {
+    passes: Vec<LateLintPassObject<'tcx>>,
 }
 
 #[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for RuntimeCombinedLateLintPass<'_, '_> {
+impl LintPass for RuntimeCombinedLateLintPass<'_> {
     fn name(&self) -> &'static str {
         panic!()
     }
@@ -321,7 +321,7 @@ impl LintPass for RuntimeCombinedLateLintPass<'_, '_> {
 
 macro_rules! impl_late_lint_pass {
     ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => {
-        impl<'tcx> LateLintPass<'tcx> for RuntimeCombinedLateLintPass<'_, 'tcx> {
+        impl<'tcx> LateLintPass<'tcx> for RuntimeCombinedLateLintPass<'tcx> {
             $(fn $f(&mut self, context: &LateContext<'tcx>, $($param: $arg),*) {
                 for pass in self.passes.iter_mut() {
                     pass.$f(context, $($param),*);
@@ -367,14 +367,14 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         }
     } else {
         let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
-        let mut binding = store
+        let passes = store
             .late_module_passes
             .iter()
             .map(|mk_pass| (mk_pass)(tcx))
             .chain(std::iter::once(builtin_lints))
             .collect::<Vec<_>>();
 
-        let pass = RuntimeCombinedLateLintPass { passes: binding.as_mut_slice() };
+        let pass = RuntimeCombinedLateLintPass { passes };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
 }
@@ -425,7 +425,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
 
     let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
 
-    let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
+    let filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
         .into_iter()
         .filter(|pass| {
             let lints = (**pass).get_lints();
@@ -436,7 +436,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         })
         .collect();
 
-    let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
+    let pass = RuntimeCombinedLateLintPass { passes: filtered_passes };
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
