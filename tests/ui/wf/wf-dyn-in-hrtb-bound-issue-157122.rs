@@ -6,13 +6,13 @@
 // without instantiating them, so a `dyn Trait` nested inside a `for<'a>` binder
 // reaches the `ty::Dynamic` arm of `WfPredicates::visit_ty` while still carrying
 // escaping bound vars. Building the principal trait ref there via
-// `ExistentialTraitRef::with_self_ty` fed that escaping self type straight into
-// `debug_assert!(!self_ty.has_escaping_bound_vars())`, causing an ICE. We now
-// substitute a placeholder self type for the escaping case (the self type is
-// irrelevant to the `ConstArgHasType` clauses this code reads off), so the
-// assertion holds and the const-argument check is still performed -- see
-// `wf-dyn-in-hrtb-bound-const-mismatch.rs` for the latter. Distilled from
-// `itertools`'s `FormatWith` `Display` impl.
+// `ExistentialTraitRef::with_self_ty` passed that escaping self type to a
+// `debug_assert!(!self_ty.has_escaping_bound_vars())`, which ICEs once the
+// assertion is enabled. Creating a trait ref with an escaping self type is fine
+// -- escaping bound vars are caught where they are actually used -- so the
+// assertion was removed rather than worked around. The `ConstArgHasType` check
+// this arm reads off still runs; see `wf-dyn-in-hrtb-bound-const-mismatch.rs`.
+// Distilled from `itertools`'s `FormatWith` `Display` impl.
 
 use std::fmt;
 
