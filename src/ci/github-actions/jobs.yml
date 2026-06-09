@@ -551,6 +551,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
+        --set build.ccache=false
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.
@@ -568,6 +569,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --set rust.jemalloc
+        --set build.ccache=false
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.
