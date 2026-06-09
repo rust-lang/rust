@@ -1,4 +1,6 @@
 #![warn(clippy::manual_non_exhaustive)]
+// One half of the fix is emitted as a suggestion, but the other is only a help message -- see the
+// lint file for the reasons. Since the fix is therefore incomplete, rustfix will end up complaining
 //@no-rustfix
 pub mod structs {
     pub struct S {
