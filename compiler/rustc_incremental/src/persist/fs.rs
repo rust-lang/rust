@@ -355,7 +355,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
+    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 12) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
 
@@ -887,23 +887,36 @@ fn safe_remove_file(p: &Path) -> io::Result<()> {
     }
 }
 
-// On Windows the compiler would sometimes fail to rename the session directory because
-// the OS thought something was still being accessed in it. So we retry a few times to give
-// the OS time to catch up.
+// On Windows, finalizing the incremental session directory occasionally fails
+// with ERROR_ACCESS_DENIED while renaming the `-working` directory to its final
+// name. Instrumenting the compiler (logging every memory-map of the incremental
+// files plus the finalize rename) shows that by the time the rename runs, rustc
+// has already dropped every mapping of the files inside the directory
+// (work-products.bin / dep-graph.bin / query-cache.bin) -- nothing rustc owns is
+// still mapped. The denial comes from the OS still releasing the just-unmapped
+// files' backing sections; a directory cannot be renamed while a file inside it
+// is in that transient state. Under parallel build load this window is routinely
+// longer than a flat 3x50ms retry, so the warning fires for most crates on warm
+// rebuilds. Since nothing is held on the rustc side, the robust fix is a longer,
+// backed-off retry rather than dropping a mapping earlier.
+//
+// This strengthens the retry added in https://github.com/rust-lang/rust/pull/95304.
 // See https://github.com/rust-lang/rust/issues/86929.
-fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> std::io::Result<()> {
+fn rename_path_with_retry(from: &Path, to: &Path, max_retries: usize) -> std::io::Result<()> {
+    let mut attempt = 0;
     loop {
         match std_fs::rename(from, to) {
             Ok(()) => return Ok(()),
-            Err(e) => {
-                if retries_left > 0 && e.kind() == ErrorKind::PermissionDenied {
-                    // Try again after a short waiting period.
-                    std::thread::sleep(Duration::from_millis(50));
-                    retries_left -= 1;
-                } else {
-                    return Err(e);
-                }
+            Err(e) if attempt < max_retries && e.kind() == ErrorKind::PermissionDenied => {
+                // Back off with meaningful steps. The Windows sleep granularity is
+                // ~15ms, so sub-15ms waits would round up to a single tick and add
+                // no real spacing; start at 10ms and grow, capping at 100ms.
+                // 10, 20, 40, 80, then 100ms; ~1s total budget over 12 attempts.
+                let backoff_ms = (10u64 << attempt.min(4)).min(100);
+                std::thread::sleep(Duration::from_millis(backoff_ms));
+                attempt += 1;
             }
+            Err(e) => return Err(e),
         }
     }
 }
