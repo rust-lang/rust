@@ -390,6 +390,8 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
+    fn is_implicit_trait(self, def_id: Self::TraitId, including_sized: bool) -> bool;
+
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
     fn as_projection_lang_item(

@@ -21,6 +21,7 @@ pub mod generics;
 
 use std::{assert_matches, slice};
 
+pub use bounds::{IncludedBounds, MoveBound, SizedBound};
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -3059,12 +3060,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_implicit_sizedness_bounds(
+                self.add_implicit_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
+                    //IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    IncludedBounds::default(),
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty

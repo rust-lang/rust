@@ -49,7 +49,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, sizedness_fast_path};
+use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, implicit_fast_path};
 
 mod _match;
 mod candidate_assembly;
@@ -609,7 +609,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if !self.infcx.disable_trait_solver_fast_paths()
-            && sizedness_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
+            && implicit_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
         {
             return Ok(EvaluatedToOk);
         }
@@ -1862,8 +1862,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         // We prefer `Sized` candidates over everything.
-        let mut sized_candidates =
-            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate));
+        let mut sized_candidates = candidates.iter().filter(|c| {
+            matches!(c.candidate, SizedCandidate) // nia: prefmode::marker && matches(AutoImpl)
+                || (matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) && c.candidate.is_impl_candidate())
+        });
         if let Some(sized_candidate) = sized_candidates.next() {
             // There should only ever be a single sized candidate
             // as they would otherwise overlap.

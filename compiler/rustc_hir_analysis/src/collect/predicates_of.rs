@@ -18,14 +18,14 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{
-    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
-    RegionInferReason,
+    HirTyLowerer, ImpliedBoundsContext, IncludedBounds, MoveBound,
+    OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
 };
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
 /// inferred constraints concerning which regions outlive other regions.
-#[instrument(level = "debug", skip(tcx))]
+//#[instrument(level = "debug", skip(tcx))]
 pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
@@ -69,6 +69,15 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
                 .predicates
                 .iter()
                 .copied()
+                // .filter(|p| {
+                //     if !tcx.features().move_trait() {
+                //         !p.0.as_trait_clause().is_some_and(|p| {
+                //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+                //         })
+                //     } else {
+                //         true
+                //     }
+                // })
                 .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
         );
     }
@@ -196,19 +205,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             PredicateFilter::All,
             OverlappingAsssocItemConstraints::Allowed,
         );
-        icx.lowerer().add_implicit_sizedness_bounds(
+        icx.lowerer().add_implicit_bounds(
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-        );
-        icx.lowerer().add_default_traits(
-            &mut bounds,
-            tcx.types.self_param,
-            self_bounds,
-            ImpliedBoundsContext::TraitDef(def_id),
-            span,
+            IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+            //IncludedBounds::default(),
         );
         predicates.extend(bounds);
     }
@@ -235,19 +239,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     param_ty,
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    param_ty,
-                    &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                    param.span,
+                    //IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    IncludedBounds::default(),
                 );
                 trace!(?bounds);
                 predicates.extend(bounds);
@@ -340,7 +339,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.insert((ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx), *span));
     }
 
-    let mut predicates: Vec<_> = predicates.into_iter().collect();
+    let mut predicates: Vec<_> = predicates
+        .into_iter()
+        // .filter(|p| {
+        //     if !tcx.features().move_trait() {
+        //         !p.0.as_trait_clause().is_some_and(|p| {
+        //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+        //         })
+        //     } else {
+        //         true
+        //     }
+        // })
+        .collect();
 
     // Subtle: before we store the predicates into the tcx, we
     // sort them so that predicates like `T: Foo<Item=U>` come
@@ -546,6 +556,15 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 ty::ClauseKind::TypeOutlives(outlives) => !is_assoc_item_ty(outlives.0),
                 _ => true,
             })
+            // .filter(|p| {
+            //     if !tcx.features().move_trait() {
+            //         !p.0.as_trait_clause().is_some_and(|p| {
+            //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+            //         })
+            //     } else {
+            //         true
+            //     }
+            // })
             .collect();
         if predicates.len() == predicates_and_bounds.predicates.len() {
             predicates_and_bounds
@@ -600,6 +619,15 @@ pub(super) fn explicit_predicates_of<'tcx>(
                         true
                     }
                 })
+                // .filter(|p| {
+                //     if !tcx.features().move_trait() {
+                //         !p.0.as_trait_clause().is_some_and(|p| {
+                //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+                //         })
+                //     } else {
+                //         true
+                //     }
+                // })
                 .cloned();
             return GenericPredicates {
                 parent: parent_preds.parent,
@@ -688,19 +716,14 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_implicit_sizedness_bounds(
+            icx.lowerer().add_implicit_bounds(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-            );
-            icx.lowerer().add_default_traits(
-                &mut bounds,
-                self_param_ty,
-                superbounds,
-                ImpliedBoundsContext::TraitDef(trait_def_id),
-                item.span,
+                IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                //IncludedBounds::default(),
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -990,19 +1013,17 @@ impl<'tcx> ItemCtxt<'tcx> {
                 match param.kind {
                     hir::GenericParamKind::Type { .. } => {
                         let param_ty = self.lowerer().lower_ty_param(param.hir_id);
-                        self.lowerer().add_implicit_sizedness_bounds(
+                        // nia: fixme: should this add move?
+                        self.lowerer().add_implicit_bounds(
                             &mut bounds,
                             param_ty,
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                        );
-                        self.lowerer().add_default_traits(
-                            &mut bounds,
-                            param_ty,
-                            &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                            param.span,
+                            IncludedBounds {
+                                mov: MoveBound::IfFeature,
+                                ..IncludedBounds::default()
+                            }, //IncludedBounds::default(),
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

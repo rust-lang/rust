@@ -58,6 +58,26 @@ impl CollectedSizednessBounds {
     }
 }
 
+#[derive(Debug, Default)]
+pub enum MoveBound {
+    #[default]
+    Always,
+    IfFeature,
+}
+
+#[derive(Debug, Default)]
+pub enum SizedBound {
+    #[default]
+    Sized,
+    Nothing,
+}
+
+#[derive(Debug, Default)]
+pub struct IncludedBounds {
+    pub mov: MoveBound,
+    pub sized: SizedBound,
+}
+
 fn search_bounds_for<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     context: ImpliedBoundsContext<'tcx>,
@@ -120,7 +140,7 @@ fn collect_bounds<'a, 'tcx>(
 
 fn collect_sizedness_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+    hir_bounds: &[hir::GenericBound<'tcx>],
     context: ImpliedBoundsContext<'tcx>,
     span: Span,
 ) -> CollectedSizednessBounds {
@@ -151,6 +171,32 @@ fn add_trait_bound<'tcx>(
 }
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Adds implicit sizedness, `Move`, and default trait bounds.
+    pub(crate) fn add_implicit_bounds(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &[hir::GenericBound<'tcx>],
+        context: ImpliedBoundsContext<'tcx>,
+        span: Span,
+        included: IncludedBounds,
+    ) {
+        // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
+        if find_attr!(self.tcx(), crate, RustcNoImplicitBounds) {
+            return;
+        }
+
+        if matches!(included.mov, MoveBound::Always)
+            || (matches!(included.mov, MoveBound::IfFeature) && self.tcx().features().move_trait())
+        {
+            self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
+        }
+        self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
+        if matches!(included.sized, SizedBound::Sized) {
+            self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
+        }
+    }
+
     /// Adds sizedness bounds to a trait, trait alias, parameter, opaque type or associated type.
     ///
     /// - On parameters, opaque type and associated types, add default `Sized` bound if no explicit
@@ -159,20 +205,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///   bounds are present.
     /// - On parameters, opaque type, associated types and trait aliases, add a `MetaSized` bound if
     ///   a `?Sized` bound is present.
-    pub(crate) fn add_implicit_sizedness_bounds(
+    fn add_implicit_sizedness_bounds(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
-        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'tcx>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
         let tcx = self.tcx();
-
-        // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
-        if find_attr!(tcx, crate, RustcNoImplicitBounds) {
-            return;
-        }
 
         let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
         let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
@@ -234,7 +275,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    pub(crate) fn add_default_traits(
+    fn add_implicit_move_bound(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &[hir::GenericBound<'tcx>],
+        context: ImpliedBoundsContext<'tcx>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+        match context {
+            ImpliedBoundsContext::TraitDef(trait_did) => {
+                // Don't add default move supertrait to default traits.
+                let did = trait_did.to_def_id();
+                if tcx.trait_is_auto(did)
+                    || tcx.is_sizedness_trait(did)
+                    || tcx.is_default_trait(did)
+                {
+                    return;
+                }
+            }
+            ImpliedBoundsContext::AssociatedTypeOrImplTrait | ImpliedBoundsContext::TyParam(..) => {
+            }
+        }
+
+        let relaxed_bounds = collect_relaxed_bounds(hir_bounds, context);
+        self.reject_duplicate_relaxed_bounds(relaxed_bounds);
+
+        let move_did = tcx.require_lang_item(hir::LangItem::Move, span);
+        let move_bounds = collect_bounds(hir_bounds, context, move_did);
+        if !move_bounds.any() {
+            add_trait_bound(tcx, bounds, self_ty, move_did, span);
+        }
+    }
+
+    fn add_default_traits(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
@@ -250,7 +325,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `experimental_default_bounds` bound to the `bounds` if appropriate.
     ///
     /// Doesn't add the bound if the HIR bounds contain any of `Trait`, `?Trait` or `!Trait`.
-    pub(crate) fn add_default_trait(
+    fn add_default_trait(
         &self,
         trait_: hir::LangItem,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
@@ -270,21 +345,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let Some(trait_did) = tcx.lang_items().get(trait_)
-            && self.should_add_default_traits(trait_did, hir_bounds, context)
+            && !collect_bounds(hir_bounds, context, trait_did).any()
         {
             add_trait_bound(tcx, bounds, self_ty, trait_did, span);
         }
-    }
-
-    /// Returns `true` if default trait bound should be added.
-    fn should_add_default_traits<'a>(
-        &self,
-        trait_def_id: DefId,
-        hir_bounds: &'a [hir::GenericBound<'tcx>],
-        context: ImpliedBoundsContext<'tcx>,
-    ) -> bool {
-        let collected = collect_bounds(hir_bounds, context, trait_def_id);
-        !find_attr!(self.tcx(), crate, RustcNoImplicitBounds) && !collected.any()
     }
 
     fn reject_duplicate_relaxed_bounds(&self, relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>) {
@@ -317,7 +381,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
-            && (tcx.is_lang_item(def_id, hir::LangItem::Sized) || tcx.is_default_trait(def_id))
+            && (tcx.is_lang_item(def_id, hir::LangItem::Sized)
+                || tcx.is_implicit_trait(def_id, false))
+        // nia: todo: is metasized ok to include so we can simplify this?
         {
             return;
         }

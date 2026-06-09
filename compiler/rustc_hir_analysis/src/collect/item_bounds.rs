@@ -13,7 +13,8 @@ use tracing::{debug, instrument};
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
 use crate::hir_ty_lowering::{
-    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
+    HirTyLowerer, ImpliedBoundsContext, IncludedBounds, MoveBound,
+    OverlappingAsssocItemConstraints, PredicateFilter,
 };
 
 /// For associated types we include both bounds written on the type
@@ -54,19 +55,14 @@ fn associated_type_bounds<'tcx>(
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 // Implicit bounds are added to associated types unless a `?Trait` bound is found.
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    //IncludedBounds::default(),
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -380,19 +376,14 @@ fn opaque_type_bounds<'tcx>(
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    IncludedBounds { mov: MoveBound::IfFeature, ..IncludedBounds::default() },
+                    //IncludedBounds::default(),
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

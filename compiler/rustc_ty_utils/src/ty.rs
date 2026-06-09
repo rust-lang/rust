@@ -152,7 +152,19 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
-    let mut predicates: Vec<_> = predicates.into_iter().map(Unnormalized::skip_norm_wip).collect();
+    let mut predicates: Vec<_> = predicates
+        .into_iter()
+        // .filter(|p| {
+        //     if !tcx.features().move_trait() {
+        //         !p.as_trait_clause().is_some_and(|p| {
+        //             matches!(tcx.as_lang_item(p.def_id()), Some(rustc_hir::LangItem::Move))
+        //         })
+        //     } else {
+        //         true
+        //     }
+        // })
+        .map(Unnormalized::skip_norm_wip)
+        .collect();
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process

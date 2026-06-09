@@ -8,8 +8,9 @@ use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_trait_selection::traits::ObligationCause;
+use rustc_trait_selection::traits::query::type_op::custom::FallibleCustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use tracing::{debug, instrument};
 
 use super::{Locations, NormalizeLocation, TypeChecker};
@@ -181,6 +182,35 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             category,
             param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),
         );
+    }
+
+    /// `Move` proofs may error during MIR typeck, so handle them separately.
+    pub(super) fn prove_move_predicate(&mut self, ty: Ty<'tcx>, locations: Locations) {
+        let tcx = self.tcx();
+        let span = locations.span(self.body);
+
+        let trait_ref =
+            ty::TraitRef::new(tcx, tcx.require_lang_item(rustc_hir::LangItem::Move, span), [ty]);
+        let predicate: ty::Predicate<'_> =
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Trait(
+                ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive },
+            )))
+            .upcast(tcx);
+        let op = FallibleCustomTypeOp::new(
+            |ocx| {
+                ocx.register_obligation(Obligation::new(
+                    ocx.infcx.tcx,
+                    ObligationCause::dummy_with_span(span),
+                    self.infcx.param_env,
+                    predicate,
+                ));
+                Ok(())
+            },
+            "move query type op",
+        );
+
+        let _: Result<_, ErrorGuaranteed> =
+            self.fully_perform_op(locations, ConstraintCategory::MoveBound, op);
     }
 
     pub(super) fn normalize<T>(
