@@ -43,14 +43,15 @@ use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
+use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
@@ -319,10 +320,19 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 ///
 /// Relaxed bounds should only be allowed in places where we later
 /// (namely during HIR ty lowering) perform *sized elaboration*.
-#[derive(Clone, Copy, Debug)]
-enum RelaxedBoundPolicy {
-    Allowed,
+#[derive(Debug)]
+enum RelaxedBoundPolicy<'a> {
+    /// The `DefId` refers to the trait that is being relaxed.
+    Allowed(&'a mut FxIndexMap<DefId, Span>),
     Forbidden(RelaxedBoundForbiddenReason),
+}
+impl RelaxedBoundPolicy<'_> {
+    fn reborrow(&mut self) -> RelaxedBoundPolicy<'_> {
+        match self {
+            RelaxedBoundPolicy::Allowed(m) => RelaxedBoundPolicy::Allowed(m),
+            RelaxedBoundPolicy::Forbidden(reason) => RelaxedBoundPolicy::Forbidden(*reason),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1551,9 +1561,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                         path
                     }
-                    ImplTraitContext::InBinding => hir::TyKind::TraitAscription(
-                        self.lower_param_bounds(bounds, RelaxedBoundPolicy::Allowed, itctx),
-                    ),
+                    ImplTraitContext::InBinding => {
+                        hir::TyKind::TraitAscription(self.lower_param_bounds(
+                            bounds,
+                            RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                            itctx,
+                        ))
+                    }
                     ImplTraitContext::FeatureGated(position, feature) => {
                         let guar = self
                             .tcx
@@ -1676,7 +1690,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
         self.lower_opaque_inner(opaque_ty_node_id, origin, opaque_ty_span, |this| {
-            this.lower_param_bounds(bounds, RelaxedBoundPolicy::Allowed, itctx)
+            this.lower_param_bounds(
+                bounds,
+                RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                itctx,
+            )
         })
     }
 
@@ -1970,7 +1988,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bound(
         &mut self,
         tpb: &GenericBound,
-        rbp: RelaxedBoundPolicy,
+        rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         match tpb {
@@ -2209,7 +2227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_poly_trait_ref(
         &mut self,
         PolyTraitRef { bound_generic_params, modifiers, trait_ref, span, parens: _ }: &PolyTraitRef,
-        rbp: RelaxedBoundPolicy,
+        rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
@@ -2233,7 +2251,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         trait_ref: hir::TraitRef<'_>,
         span: Span,
-        rbp: RelaxedBoundPolicy,
+        rbp: RelaxedBoundPolicy<'_>,
     ) {
         // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
         // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
@@ -2245,7 +2263,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // question: E.g., `?Sized` & `?Move` most likely won't be allowed in all the same places).
 
         match rbp {
-            RelaxedBoundPolicy::Allowed => return,
+            RelaxedBoundPolicy::Allowed(dedup_map) => {
+                // `trait_def_id` only returns `None` for errors during resolution.
+                let Some(trait_def_id) = trait_ref.trait_def_id() else { return };
+                let tcx = self.tcx;
+                let err = |s| {
+                    let name = tcx.item_name(trait_def_id);
+                    tcx.dcx()
+                        .struct_span_err(
+                            vec![span, s],
+                            format!("duplicate relaxed `{name}` bounds"),
+                        )
+                        .with_code(E0203)
+                        .emit();
+                };
+                dedup_map.entry(trait_def_id).and_modify(|&mut s| err(s)).or_insert(span);
+                return;
+            }
             RelaxedBoundPolicy::Forbidden(reason) => {
                 let gate = |context, subject| {
                     let extended = self.tcx.features().more_maybe_bounds();
@@ -2307,7 +2341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy,
+        rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
     ) -> hir::GenericBounds<'hir> {
         self.arena.alloc_from_iter(self.lower_param_bounds_mut(bounds, rbp, itctx))
@@ -2316,10 +2350,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param_bounds_mut(
         &mut self,
         bounds: &[GenericBound],
-        rbp: RelaxedBoundPolicy,
+        mut rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
     ) -> impl Iterator<Item = hir::GenericBound<'hir>> {
-        bounds.iter().map(move |bound| self.lower_param_bound(bound, rbp, itctx))
+        bounds.iter().map(move |bound| self.lower_param_bound(bound, rbp.reborrow(), itctx))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -2353,7 +2387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             bounds,
             /* colon_span */ None,
             span,
-            RelaxedBoundPolicy::Allowed,
+            RelaxedBoundPolicy::Allowed(&mut Default::default()),
             ImplTraitContext::Universal,
             hir::PredicateOrigin::ImplTrait,
         );
