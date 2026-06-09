@@ -8,7 +8,7 @@ const A: &u8 = unsafe {
     *ptr = 1;
     let ptr: *const u8 = intrinsics::const_make_global(ptr);
     *(ptr as *mut u8) = 2;
-    //~^ error: writing to ALLOC0 which is read-only
+    //~^ error: writing to ALLOC$ID which is read-only
     &*ptr
 };
 
