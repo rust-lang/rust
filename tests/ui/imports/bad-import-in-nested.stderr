@@ -2,7 +2,9 @@ error[E0432]: unresolved import `super::super::C::D::AA`
   --> $DIR/bad-import-in-nested.rs:10:21
    |
 LL |         use super::{super::C::D::AA, AA as _};
-   |                     ^^^^^^^^^^^^^^^ no `AA` in `C::D`
+   |                     ^^^^^^^^^^^^^--
+   |                                  |
+   |                                  no `AA` in `C::D`
    |
    = help: consider importing this type alias instead:
            crate::A::AA
@@ -20,7 +22,9 @@ error[E0432]: unresolved import `crate::C::BB`
   --> $DIR/bad-import-in-nested.rs:23:20
    |
 LL |     use crate::{A, C::BB};
-   |                    ^^^^^ no `BB` in `C`
+   |                    ^^^--
+   |                       |
+   |                       no `BB` in `C`
    |
    = help: consider importing this type alias instead:
            crate::A::BB

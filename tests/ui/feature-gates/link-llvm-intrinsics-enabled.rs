@@ -1,3 +1,5 @@
+//! <https://github.com/rust-lang/rust/issues/20313>.
+
 //@ run-pass
 #![allow(dead_code)]
 #![feature(link_llvm_intrinsics)]

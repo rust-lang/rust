@@ -2,7 +2,9 @@ error[E0432]: unresolved import `module::SomeUsefulType`
   --> $DIR/unresolved-import-avoid-suggesting-global-path.rs:18:9
    |
 LL |     use module::SomeUsefulType;
-   |         ^^^^^^^^^^^^^^^^^^^^^^ no `SomeUsefulType` in `hygiene::module`
+   |         ^^^^^^^^--------------
+   |                 |
+   |                 no `SomeUsefulType` in `hygiene::module`
    |
 help: consider importing this struct instead
    |
@@ -14,7 +16,9 @@ error[E0432]: unresolved import `module::SomeUsefulType`
   --> $DIR/unresolved-import-avoid-suggesting-global-path.rs:28:9
    |
 LL |     use module::SomeUsefulType;
-   |         ^^^^^^^^^^^^^^^^^^^^^^ no `SomeUsefulType` in `glob::module`
+   |         ^^^^^^^^--------------
+   |                 |
+   |                 no `SomeUsefulType` in `glob::module`
    |
 help: consider importing this struct instead
    |
