@@ -21,6 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use stdarch_gen_common::{run_generator, Mode, GENERATED_MARKER};
 
 /// Mappings from HVX intrinsics to architecture-independent SIMD intrinsics.
 /// These intrinsics have equivalent semantics and can be lowered to the generic form.
@@ -1609,6 +1610,7 @@ fn generate_module_file(
     let mut output =
         File::create(output_path).map_err(|e| format!("Failed to create output: {}", e))?;
 
+    writeln!(output, "{}", GENERATED_MARKER).map_err(|e| e.to_string())?;
     writeln!(output, "{}", generate_module_doc(mode)).map_err(|e| e.to_string())?;
     writeln!(output, "{}", generate_types(mode)).map_err(|e| e.to_string())?;
     writeln!(output, "{}", generate_extern_block(intrinsics, mode)).map_err(|e| e.to_string())?;
@@ -1691,23 +1693,21 @@ fn main() -> Result<(), String> {
     }
 
     // Generate output files
-    let hexagon_dir = std::env::args()
-        .nth(1)
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| crate_dir.join("../core_arch/src/hexagon"));
-    std::fs::create_dir_all(&hexagon_dir).map_err(|e| e.to_string())?;
+    let hexagon_dir = crate_dir.join("../core_arch/src/hexagon");
 
-    // Generate v64.rs (64-byte vector mode)
-    let v64_path = hexagon_dir.join("v64.rs");
-    println!("\nStep 3: Generating v64.rs (64-byte mode)...");
-    generate_module_file(&intrinsics, &v64_path, VectorMode::V64)?;
-    println!("  Output: {}", v64_path.display());
-
-    // Generate v128.rs (128-byte vector mode)
-    let v128_path = hexagon_dir.join("v128.rs");
-    println!("\nStep 4: Generating v128.rs (128-byte mode)...");
-    generate_module_file(&intrinsics, &v128_path, VectorMode::V128)?;
-    println!("  Output: {}", v128_path.display());
+    // Either "check" to check the output versus the committed output, or "bless"
+    // to update the output.
+    let mode = Mode::from_env();
+    println!("\nStep 3: Generating v64.rs and v128.rs (mode: {mode:?})...");
+    run_generator(&hexagon_dir, mode, |out_dir| -> Result<(), String> {
+        for (filename, vmode) in [("v64.rs", VectorMode::V64), ("v128.rs", VectorMode::V128)] {
+            let path = out_dir.join(filename);
+            generate_module_file(&intrinsics, &path, vmode)?;
+            println!("  Output: {}", hexagon_dir.join(filename).display());
+        }
+        Ok(())
+    })
+    .map_err(|e| e.to_string())?;
 
     println!("\n=== Results ===");
     println!(
