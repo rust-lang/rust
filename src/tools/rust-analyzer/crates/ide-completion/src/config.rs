@@ -45,6 +45,7 @@ pub enum AutoImportExclusionType {
     Always,
     Methods,
     SubItems,
+    Variants,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
