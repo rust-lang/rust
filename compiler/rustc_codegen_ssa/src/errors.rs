@@ -702,6 +702,14 @@ pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "-Zstaticlib-rename-internal-symbols only supports ELF and Mach-O targets, but the target uses `{$binary_format}`"
+)]
+pub(crate) struct StaticlibRenameInternalSymbolsUnsupported {
+    pub binary_format: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("entry symbol `main` declared multiple times")]
 #[help(
     "did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point"
