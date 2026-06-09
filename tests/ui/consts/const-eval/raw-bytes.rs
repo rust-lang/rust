@@ -1,7 +1,6 @@
 //@ stderr-per-bitwidth
 //@ ignore-endian-big
 // ignore-tidy-linelength
-//@ normalize-stderr: "╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼" -> "╾ALLOC_ID$1╼"
 //@ dont-require-annotations: NOTE
 //@ ignore-parallel-frontend different alloc ids
 #![allow(invalid_value, unnecessary_transmutes)]
