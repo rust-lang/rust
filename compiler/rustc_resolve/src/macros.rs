@@ -959,9 +959,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
                     let (span, message, label, module, segment) = match path_res {
-                        PathResult::Failed {
-                            span, label, module, segment_name, message, ..
-                        } => {
+                        PathResult::Failed { span, label, module, segment, message, .. } => {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) = self
                                 .cm()
@@ -980,7 +978,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, message, label, module, segment_name)
+                            (span, message, label, module, segment.name)
                         }
                         PathResult::NonModule(partial_res) => {
                             let found_an = partial_res.base_res().article();
