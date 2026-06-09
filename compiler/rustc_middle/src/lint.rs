@@ -186,11 +186,6 @@ pub fn reveal_actual_level_spec<Id: Copy>(
         level_spec.level = min(level_spec.level, sess.opts.lint_cap.unwrap_or(Level::Forbid));
     };
 
-    // Ensure that we never exceed driver level.
-    if let Some(driver_level) = sess.driver_lint_caps.get(&lint) {
-        level_spec.level = min(level_spec.level, *driver_level);
-    }
-
     level_spec
 }
 
