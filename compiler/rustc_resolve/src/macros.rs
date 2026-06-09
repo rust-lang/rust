@@ -272,11 +272,22 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
             InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang),
             InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive),
-            InvocationKind::GlobDelegation { ref item, .. } => {
-                let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
-                let DelegationSuffixes::Glob(star_span) = deleg.suffixes else { unreachable!() };
-                deleg_impl = Some((self.invocation_parent(invoc_id), star_span));
-                // It is sufficient to consider glob delegation a bang macro for now.
+            InvocationKind::Delegation { ref ast } => {
+                let deleg = ast.delegation();
+                let from_glob = ast.from_glob();
+
+                let span = match from_glob {
+                    true => {
+                        let DelegationSuffixes::Glob(star_span) = deleg.suffixes else {
+                            unreachable!()
+                        };
+
+                        star_span
+                    }
+                    false => deleg.prefix.segments.last().map_or(DUMMY_SP, |s| s.span()),
+                };
+
+                deleg_impl = Some((self.invocation_parent(invoc_id), span, from_glob));
                 (&deleg.prefix, MacroKind::Bang)
             }
         };
@@ -580,7 +591,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        deleg_impl: Option<(LocalDefId, Span)>,
+        deleg_impl: Option<(LocalDefId, Span, bool)>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
@@ -589,7 +600,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind,
             parent_scope,
             force,
-            deleg_impl,
+            deleg_impl.map(|(a, b, _)| (a, b)),
             invoc_in_mod_inert_attr.map(|def_id| (def_id, node_id)),
             None,
             suggestion_span,
@@ -600,9 +611,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Err(Determinacy::Undetermined) => return Err(Indeterminate),
         };
 
-        // Everything below is irrelevant to glob delegation, take a shortcut.
-        if deleg_impl.is_some() {
-            if !matches!(res, Res::Err | Res::Def(DefKind::Trait, _)) {
+        // Everything below is irrelevant to glob/list delegation, take a shortcut.
+        if let Some((_, _, glob)) = deleg_impl {
+            if glob && !matches!(res, Res::Err | Res::Def(DefKind::Trait, _)) {
                 self.dcx().emit_err(MacroExpectedFound {
                     span: path.span,
                     expected: "trait",

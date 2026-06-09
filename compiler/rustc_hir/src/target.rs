@@ -161,8 +161,8 @@ impl Target {
         }
     }
 
-    pub fn from_ast_item(item: &ast::Item) -> Target {
-        match item.kind {
+    pub fn from_item_kind(kind: &ast::ItemKind) -> Target {
+        match kind {
             ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
             ast::ItemKind::Use(..) => Target::Use,
             ast::ItemKind::Static { .. } => Target::Static,
@@ -178,7 +178,7 @@ impl Target {
             ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(..) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ast::ItemKind::Impl(ref i) => Target::Impl { of_trait: i.of_trait.is_some() },
+            ast::ItemKind::Impl(i) => Target::Impl { of_trait: i.of_trait.is_some() },
             ast::ItemKind::MacCall(..) => Target::MacroCall,
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::Delegation(..) => Target::Delegation { mac: false },

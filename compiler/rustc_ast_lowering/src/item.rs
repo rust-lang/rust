@@ -259,7 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id,
             &i.attrs,
             i.span,
-            Target::from_ast_item(i),
+            Target::from_item_kind(&i.kind),
             &extra_hir_attributes,
         );
 

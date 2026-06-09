@@ -5,16 +5,16 @@ LL |     reuse <S as Trait>::static_empty { self.0 }
    |                                      ^^^^^^^^^^
 
 error: delegation's target expression is specified for function with no params
-  --> $DIR/delegation-first-arg.rs:61:83
-   |
-LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { self.0 }
-   |                                                                                   ^^^^^^^^^^
-
-error: delegation's target expression is specified for function with no params
   --> $DIR/delegation-first-arg.rs:76:23
    |
 LL | reuse to_reuse::empty { self + 1 }
    |                       ^^^^^^^^^^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/delegation-first-arg.rs:61:83
+   |
+LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { self.0 }
+   |                                                                                   ^^^^^^^^^^
 
 error: delegation's target expression is specified for function with no params
   --> $DIR/delegation-first-arg.rs:82:60
