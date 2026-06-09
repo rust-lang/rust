@@ -1903,7 +1903,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
     ///
-    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
+    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`,
+    /// as well as `result.ok().is_some_and(f)`.
     ///
     /// ### Why is this bad?
     /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
@@ -1919,6 +1920,8 @@ declare_clippy_lint! {
     /// result.map(|a| a > 10) == Ok(true);
     /// option.map(|a| a > 10) != Some(true);
     /// result.map(|a| a > 10) != Ok(true);
+    ///
+    /// result.ok().is_some_and(|a| a > 10);
     /// ```
     /// Use instead:
     /// ```no_run
@@ -1931,6 +1934,8 @@ declare_clippy_lint! {
     /// result.is_ok_and(|a| a > 10);
     /// option.is_none_or(|a| a > 10);
     /// !result.is_ok_and(|a| a > 10);
+    ///
+    /// result.is_ok_and(|a| a > 10);
     /// ```
     #[clippy::version = "1.77.0"]
     pub MANUAL_IS_VARIANT_AND,
@@ -5499,6 +5504,7 @@ impl Methods {
                 (sym::is_digit, [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
                 (sym::is_none, []) => check_is_some_is_none(cx, expr, recv, call_span, false, self.msrv),
                 (sym::is_some, []) => check_is_some_is_none(cx, expr, recv, call_span, true, self.msrv),
+                (sym::is_some_and, [arg]) => manual_is_variant_and::check_ok_is_some_and(cx, expr, recv, arg),
                 (sym::iter | sym::iter_mut | sym::into_iter, []) => {
                     iter_on_single_or_empty_collections::check(cx, expr, name, recv);
                 },
